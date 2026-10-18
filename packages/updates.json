@@ -5,24 +5,29 @@
   "owns": {
     "services": [
       "Pacman",
+      "SystemUpgrade",
       "Update",
       "WhatsNew"
     ],
     "js": [
       "services/pacman.js",
+      "services/system-upgrade.js",
       "services/update.js",
       "services/whatsnew.js"
     ],
     "tests": [
+      "tests/fixtures/system-upgrade",
       "tests/fixtures/update",
       "tests/pacman.test.js",
       "tests/promote-stable.test.js",
+      "tests/system-upgrade.test.js",
       "tests/update-cli.test.js",
       "tests/update.test.js",
       "tests/whatsnew.test.js"
     ],
     "scripts": [
-      "scripts/promote-stable.sh"
+      "scripts/promote-stable.sh",
+      "scripts/system-upgrade.sh"
     ]
   },
   "requires": {
@@ -35,6 +40,7 @@
   "provides": {
     "singletons": [
       "Pacman",
+      "SystemUpgrade",
       "Update"
     ],
     "ipc": []
@@ -44,6 +50,8 @@
       "updates",
       "packages"
     ],
-    "reads": []
+    "reads": [
+      "island"
+    ]
   }
 }
