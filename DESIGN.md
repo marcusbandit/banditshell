@@ -4114,6 +4114,25 @@ takes the text to start with. A person who chooses `corner` still gets the live
 popups in a slim `NotificationCorner` at the top right, with no history, no arms
 and no pin; reading the history is the launcher either way.
 
+**Each notification is its own tile, and the tiles are joined.** In the
+overview and the history a notification is a tile of `colour.tile`, the
+island's surface a step toward paper, set a small padding in from the island's
+edge so the column's corners are concentric with the island's. Tiles that
+border each other are joined into one column, as on Android: a hairline seam
+between them and nearly square corners where they meet, full corners only at
+the column's two ends. A tile comes loose when it is touched: dragging it
+sideways rounds all four of its corners, and the corners of its neighbours that
+faced it round too, so it reads as a card lifted out of the column. Let go
+early and it springs back and joins again; throw it and the column closes up
+behind it and its neighbours square their corners as they meet. The anatomy
+borrows the phone's: the app's mark large on the left, the title first with the
+time on its line, the text under it, and the app's name with its count at the
+foot. The tile is only for lists: a single notification arriving at the
+island's large size keeps the island as its card and uses the same order of
+lines. Picked on 2026-10-18 from three mocks, then joined the same day; plates
+under a folded app went with the joining, since they split the column, and the
+count at the foot is what says an app is folded.
+
 **One card per app.** The overview and the history fold notifications by app:
 the app that spoke last is on top, and its card is its newest notification with
 a count beside the name. A click on a folded card opens the group up to all of

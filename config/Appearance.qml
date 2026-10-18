@@ -170,6 +170,8 @@ Singleton {
         readonly property color pane: root.blend(root.colour.surfaceSolid, root.colour.paper, 0.12)
 
         readonly property color island: root.colour.surfaceSolid
+
+        readonly property color tile: root.blend(root.colour.island, root.colour.paper, 0.075)
     }
 
     readonly property QtObject opacity: QtObject {

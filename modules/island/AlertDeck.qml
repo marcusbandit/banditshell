@@ -457,6 +457,15 @@ Item {
                 readonly property bool spread: !!slot.group && root.unfolded.includes(slot.group.key)
                 readonly property bool folding: root.folding.includes(slot.modelData)
                 readonly property int tally: slot.head ? slot.group.entries.filter(e => !e.leaving).length : 1
+                readonly property bool loose: card.loose
+                readonly property Item above: {
+                    root.reshaped;
+                    return slot.index > 0 ? slots.itemAt(slot.index - 1) : null;
+                }
+                readonly property Item below: {
+                    root.reshaped;
+                    return slots.itemAt(slot.index + 1);
+                }
                 readonly property bool handling: card.handling
                 readonly property bool outgoing: card.flinging
                 readonly property real open: Math.max(0, arrival.value - departure.value)
@@ -527,6 +536,11 @@ Item {
                     count: slot.tally
                     countOpen: slot.spread
                     folded: slot.tally > 1 && !slot.spread
+                    tiled: root.grouped
+                    joinedAbove: root.grouped && !!slot.above
+                    joinedBelow: root.grouped && !!slot.below
+                    aboveLoose: slot.above?.loose ?? false
+                    belowLoose: slot.below?.loose ?? false
 
                     onCountTapped: root.toggle(slot.group)
                     onReleased: root.part(slot.modelData, false)
@@ -538,7 +552,7 @@ Item {
                 Separator {
                     x: card.pad
                     width: slot.width - card.pad * 2
-                    visible: slot.index > 0 && root.fanned > 0.01
+                    visible: slot.index > 0 && root.fanned > 0.01 && !root.grouped
                     opacity: root.fanned * (1 - card.shiftFade)
                 }
             }
@@ -597,7 +611,7 @@ Item {
             icon: "notifications"
             text: "all notifications"
             opacity: root.fanned
-            visible: opacity > 0.01
+            visible: opacity > 0.01 && !root.grouped
             onClicked: root.history()
         }
 
