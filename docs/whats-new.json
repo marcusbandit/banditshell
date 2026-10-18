@@ -7,7 +7,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell has a roadmap page at banditshell.marcusrosado.com. It lists where the shell is going, what is being built now and what is still undecided. Nothing in the shell itself changed."
+          "text": "banditshell has a website at banditshell.marcusrosado.com: what the shell does, how to install it, and the roadmap of where it is going. Nothing in the shell itself changed."
         }
       ]
     },

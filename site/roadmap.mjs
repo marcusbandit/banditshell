@@ -99,8 +99,9 @@ export function render(markdown, repo) {
             title = block.text;
         } else if (block.type === "heading" && block.level === 2) {
             const label = block.text.split(/:| \(/)[0];
-            sections.push({ id: slug(label), label, heading: block.text, body: [] });
+            sections.push({ id: slug(label), label, heading: block.text, body: [], blocks: [] });
         } else {
+            sections.at(-1)?.blocks.push(block);
             (sections.at(-1)?.body ?? intro).push(html(block, repo));
         }
     }
