@@ -74,7 +74,7 @@ Item {
                 id: quietButton
 
                 size: 0
-                style: "tonal"
+                style: "plate"
                 icon: "notifications_paused"
                 text: "Quiet mode"
                 checkable: true

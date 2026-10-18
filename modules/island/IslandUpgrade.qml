@@ -303,7 +303,7 @@ Item {
                             required property var modelData
 
                             text: modelData.text
-                            style: modelData.primary ? "filled" : "tonal"
+                            style: modelData.primary ? "accent" : "plate"
                             onClicked: SystemUpgrade.answer(modelData.answer)
                         }
                     }
@@ -349,7 +349,7 @@ Item {
                     visible: root.running
                     text: SystemUpgrade.cancelling ? "Stopping" : "Cancel"
                     icon: "close"
-                    style: "tonal"
+                    style: "plate"
                     alarm: SystemUpgrade.cancellable
                     interactive: SystemUpgrade.cancellable && !SystemUpgrade.cancelling
                     onClicked: SystemUpgrade.cancel()
@@ -359,7 +359,7 @@ Item {
                     visible: root.restarting
                     text: "Restart"
                     icon: "restart_alt"
-                    style: "filled"
+                    style: "accent"
                     onClicked: root.act({
                         kind: "restart",
                         mock: SystemUpgrade.mocked
@@ -370,14 +370,14 @@ Item {
                     visible: root.failed || root.cancelled
                     text: "Try again"
                     icon: "refresh"
-                    style: root.cancelled ? "tonal" : "filled"
+                    style: root.cancelled ? "plate" : "accent"
                     onClicked: SystemUpgrade.start()
                 }
 
                 Button {
                     visible: root.failed
                     text: "Run in a terminal"
-                    style: "tonal"
+                    style: "plate"
                     onClicked: {
                         SystemUpgrade.runInTerminal();
                         root.hide();
@@ -395,13 +395,13 @@ Item {
                 Button {
                     text: root.running ? "Watch in terminal" : "Log"
                     icon: "terminal"
-                    style: "text"
+                    style: "bare"
                     onClicked: SystemUpgrade.openTerminal()
                 }
 
                 Button {
                     text: root.running ? "Hide" : "Close"
-                    style: "tonal"
+                    style: "plate"
                     onClicked: {
                         if (!root.running)
                             SystemUpgrade.acknowledge();

@@ -59,7 +59,7 @@ Item {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         icon: "close"
-        style: "text"
+        style: "bare"
         onClicked: root.closed()
     }
 }
