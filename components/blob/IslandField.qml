@@ -12,7 +12,7 @@ ShaderEffect {
     property real sheenWidth: Appearance.sizes.seam
     property color sheenColour: Appearance.colour.seam
 
-    property color colour: Appearance.colour.ink
+    property color colour: Appearance.colour.island
     property color bandColour: Appearance.colour.surface
 
     property real edge: 0

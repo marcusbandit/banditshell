@@ -168,6 +168,10 @@ Singleton {
         readonly property color seam: Qt.rgba(root.colour.paper.r, root.colour.paper.g, root.colour.paper.b, 0.08)
 
         readonly property color pane: root.blend(root.colour.surfaceSolid, root.colour.paper, 0.12)
+
+        readonly property color island: root.colour.surfaceSolid
+
+        readonly property color tile: root.veil(0.075)
     }
 
     readonly property QtObject opacity: QtObject {
@@ -308,6 +312,12 @@ Singleton {
         readonly property int tooltip: root.config.anim.tooltip
 
         readonly property int settle: root.config.anim.settle
+    }
+
+    readonly property QtObject spring: QtObject {
+        readonly property real stiffness: root.config.control.spring.stiffness
+        readonly property real damping: root.config.control.spring.damping
+        readonly property real mass: root.config.control.spring.mass
     }
 
     readonly property QtObject sizes: QtObject {

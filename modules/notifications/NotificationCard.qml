@@ -18,6 +18,18 @@ Item {
     property string family: Appearance.font.family
     property int count: 1
     property bool countOpen: false
+    property bool folded: false
+    property bool tiled: false
+    property bool joinedAbove: false
+    property bool joinedBelow: false
+    property bool aboveLoose: false
+    property bool belowLoose: false
+
+    property real tug: 0
+
+    readonly property bool loose: swipe.dragging || swipe.flinging || root.leaving || Math.abs(swipe.shift) > Appearance.padding.hair
+    readonly property real pull: swipe.dragging && Math.abs(swipe.pulled) < swipe.throwDistance ? swipe.shift : 0
+    readonly property real drift: swipe.shift + tugged.value
 
     signal countTapped
     signal released
@@ -42,15 +54,21 @@ Item {
 
     readonly property var actions: root.live && root.roomy ? (root.entry?.pressable(root.notification?.actions) ?? []) : []
 
-    readonly property real pad: root.roomy ? Appearance.padding.card : root.row ? Appearance.padding.small : 0
+    readonly property real tileInset: root.tiled ? Appearance.padding.small : 0
+    readonly property real tileGap: root.tiled ? Appearance.stroke.line : 0
+    readonly property real tileBottom: root.height - root.tileGap
+    readonly property real seamRadius: Appearance.padding.hair / 2
+    readonly property real topRound: root.seamRadius + (Appearance.rounding.normal - root.seamRadius) * topOpen.value
+    readonly property real bottomRound: root.seamRadius + (Appearance.rounding.normal - root.seamRadius) * bottomOpen.value
+    readonly property real pad: root.tiled ? Appearance.padding.normal : root.roomy ? Appearance.padding.card : root.row ? Appearance.padding.small : 0
     readonly property real gap: Appearance.padding.normal
     readonly property real closeSize: Appearance.font.line.small + Appearance.padding.small
     readonly property real closeRoom: root.roomy ? root.closeSize + Appearance.padding.small : 0
     readonly property real markSize: root.line ? Appearance.font.line.small : root.row ? Appearance.font.line.small + Appearance.padding.small * 2 : Appearance.sizes.notificationBadge * (root.page && (root.entry?.picture ?? "") !== "" ? 2 : 1)
     readonly property real radius: Math.max(Appearance.rounding.small, Appearance.rounding.large - Appearance.padding.normal)
 
-    readonly property real textX: root.pad + root.markSize + root.gap
-    readonly property real textWidth: root.width - root.textX - root.pad - root.closeRoom
+    readonly property real textX: root.tileInset + root.pad + root.markSize + root.gap
+    readonly property real textWidth: root.width - root.textX - root.pad - root.tileInset - root.closeRoom
 
     readonly property bool hovered: swipe.hovered
     readonly property bool handling: swipe.handling
@@ -97,7 +115,7 @@ Item {
         Notifications.dismiss(root.entry);
     }
 
-    implicitHeight: (root.compact ? slim.height : full.implicitHeight) + root.pad * 2
+    implicitHeight: (root.compact ? slim.height : full.implicitHeight) + root.pad * 2 + root.tileGap * 2
     height: root.collapses ? implicitHeight * root.open : implicitHeight
 
     readonly property bool compact: root.row || root.line
@@ -126,6 +144,31 @@ Item {
         target: root.leaving ? 1 : 0
     }
 
+    Spring {
+        id: tugged
+
+        target: root.tug
+        epsilon: 0.25
+    }
+
+    Follow {
+        id: topOpen
+
+        speed: Appearance.animation.revealSpeed
+        epsilon: 0.005
+        target: !root.joinedAbove || root.loose || root.aboveLoose ? 1 : 0
+        startsAtTarget: true
+    }
+
+    Follow {
+        id: bottomOpen
+
+        speed: Appearance.animation.revealSpeed
+        epsilon: 0.005
+        target: !root.joinedBelow || root.loose || root.belowLoose ? 1 : 0
+        startsAtTarget: true
+    }
+
     Follow {
         id: glow
 
@@ -142,7 +185,12 @@ Item {
         enabled: root.interactive
         keepLeaves: root.keepLeaves
 
-        onTapped: Notifications.activate(root.entry)
+        onTapped: {
+            if (root.folded)
+                root.countTapped();
+            else
+                Notifications.activate(root.entry);
+        }
         onHeld: root.pin(true)
         onReleased: root.released()
         onKept: root.kept()
@@ -153,14 +201,33 @@ Item {
     Item {
         id: content
 
-        x: swipe.shift
+        x: root.drift
         width: root.width
         height: root.height
 
         SquircleRect {
-            anchors.fill: parent
-            anchors.margins: root.alert ? Appearance.padding.small : 0
+            x: root.tileInset
+            y: root.tileGap
+            width: root.width - root.tileInset * 2
+            height: root.tileBottom - root.tileGap
+            topLeftRadius: root.topRound
+            topRightRadius: root.topRound
+            bottomLeftRadius: root.bottomRound
+            bottomRightRadius: root.bottomRound
+            color: Appearance.colour.tile
+            visible: root.tiled
+        }
+
+        SquircleRect {
+            x: root.tiled ? root.tileInset : root.alert ? Appearance.padding.small : 0
+            y: root.tiled ? root.tileGap : root.alert ? Appearance.padding.small : 0
+            width: root.width - x * 2
+            height: (root.tiled ? root.tileBottom : root.height) - y * (root.tiled ? 1 : 2)
             radius: root.radius
+            topLeftRadius: root.tiled ? root.topRound : root.radius
+            topRightRadius: root.tiled ? root.topRound : root.radius
+            bottomLeftRadius: root.tiled ? root.bottomRound : root.radius
+            bottomRightRadius: root.tiled ? root.bottomRound : root.radius
             color: swipe.pressed && !swipe.moved || root.pinned ? Appearance.colour.fillStrong : Appearance.colour.fill
             opacity: root.page ? 1 : glow.value
             visible: root.interactive && opacity > 0.01
@@ -213,9 +280,9 @@ Item {
         Item {
             id: full
 
-            x: root.pad
-            y: root.pad
-            width: root.width - root.pad * 2
+            x: root.tileInset + root.pad
+            y: root.tileGap + root.pad
+            width: root.width - (root.tileInset + root.pad) * 2
             implicitHeight: Math.max(mark.height + (fold.visible ? Appearance.padding.small + fold.height : 0), words.implicitHeight)
             visible: root.roomy
 
@@ -249,17 +316,20 @@ Item {
                 spacing: Appearance.padding.small / 2
 
                 Item {
-                    id: who
+                    id: headRow
+
+                    readonly property real room: headRow.width - (ageText.text ? ageText.implicitWidth + Appearance.padding.small : 0) - (pinMark.visible ? pinMark.width + Appearance.padding.small : 0)
 
                     width: parent.width
-                    height: Appearance.font.line.small
-                    visible: !!root.entry?.appName || root.age !== "" || root.count > 1
+                    height: Math.max(Appearance.font.line.small, headline.visible ? headline.implicitHeight : 0, heading.visible ? heading.implicitHeight : 0)
 
                     StyledText {
                         id: ageText
 
                         anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.top: parent.top
+                        height: Appearance.font.line.small
+                        verticalAlignment: Text.AlignVCenter
                         text: root.age
                         color: Appearance.colour.textFaint
                         font.family: root.family
@@ -270,7 +340,7 @@ Item {
 
                         anchors.right: ageText.text ? ageText.left : parent.right
                         anchors.rightMargin: ageText.text ? Appearance.padding.small : 0
-                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.verticalCenter: ageText.verticalCenter
                         name: "push_pin"
                         size: Appearance.font.size.small
                         fill: 1
@@ -279,86 +349,30 @@ Item {
                         visible: opacity > 0.01
                     }
 
-                    Item {
-                        id: tally
+                    FoldedText {
+                        id: headline
 
-                        anchors.right: pinMark.visible ? pinMark.left : ageText.text ? ageText.left : parent.right
-                        anchors.rightMargin: tally.visible ? Appearance.padding.small : 0
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: tally.visible ? tallyCount.implicitWidth + tallyMark.width + Appearance.padding.small * 2 : 0
-                        height: parent.height
-                        visible: root.count > 1
-
-                        SquircleRect {
-                            anchors.fill: parent
-                            pill: "object"
-                            color: tallyArea.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
-                        }
-
-                        StyledText {
-                            id: tallyCount
-
-                            x: Appearance.padding.small
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: root.count
-                            font.family: root.family
-                        }
-
-                        Icon {
-                            id: tallyMark
-
-                            anchors.left: tallyCount.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            name: "expand_more"
-                            size: Appearance.font.size.small
-                            rotation: root.countOpen ? 180 : 0
-                            color: Appearance.colour.textDim
-                        }
-
-                        MouseArea {
-                            id: tallyArea
-
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-
-                            onClicked: root.countTapped()
-                        }
+                        width: headRow.room
+                        visible: root.page && !!full
+                        full: root.wordless ? "(no message)" : (root.entry?.summary ?? "")
+                        color: root.wordless ? Appearance.colour.textFaint : Appearance.colour.text
+                        font.pixelSize: Appearance.font.size.normal
+                        font.family: root.family
+                        unfolded: root.unfolded
+                        lines: 4
                     }
 
                     StyledText {
-                        anchors.left: parent.left
-                        anchors.right: tally.visible ? tally.left : pinMark.visible ? pinMark.left : ageText.text ? ageText.left : parent.right
-                        anchors.rightMargin: Appearance.padding.small
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: root.entry?.appName ?? ""
-                        color: root.urgent ? Appearance.colour.alarm : Appearance.colour.textFaint
+                        id: heading
+
+                        width: headRow.room
+                        visible: root.alert && text !== ""
+                        text: root.entry?.summary || (!root.entry?.body ? "(no message)" : "")
                         font.family: root.family
+                        wrapMode: Text.Wrap
+                        maximumLineCount: 2
                         elide: Text.ElideRight
                     }
-                }
-
-                FoldedText {
-                    id: headline
-
-                    width: parent.width
-                    visible: root.page && !!full
-                    full: root.wordless ? "(no message)" : (root.entry?.summary ?? "")
-                    color: root.wordless ? Appearance.colour.textFaint : Appearance.colour.text
-                    font.pixelSize: Appearance.font.size.normal
-                    font.family: root.family
-                    unfolded: root.unfolded
-                    lines: 4
-                }
-
-                StyledText {
-                    width: parent.width
-                    visible: root.alert && text !== ""
-                    text: root.entry?.summary || (!root.entry?.body ? "(no message)" : "")
-                    font.family: root.family
-                    wrapMode: Text.Wrap
-                    maximumLineCount: 2
-                    elide: Text.ElideRight
                 }
 
                 Item {
@@ -415,7 +429,7 @@ Item {
                 FoldedText {
                     id: message
 
-                    width: parent.width
+                    width: parent.width + root.closeRoom
                     visible: !!root.entry?.body
 
                     full: root.entry?.body ?? ""
@@ -431,10 +445,75 @@ Item {
                     lines: root.page ? 12 : 2
                 }
 
+                Item {
+                    id: who
+
+                    width: parent.width + root.closeRoom
+                    height: Appearance.font.line.small + Appearance.padding.small / 2
+                    visible: !!root.entry?.appName || root.count > 1
+
+                    Item {
+                        id: tally
+
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        width: tally.visible ? tallyCount.implicitWidth + tallyMark.width + Appearance.padding.small * 2 : 0
+                        height: Appearance.font.line.small
+                        visible: root.count > 1
+
+                        SquircleRect {
+                            anchors.fill: parent
+                            pill: "object"
+                            color: tallyArea.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
+                        }
+
+                        StyledText {
+                            id: tallyCount
+
+                            x: Appearance.padding.small
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: root.count
+                            font.family: root.family
+                        }
+
+                        Icon {
+                            id: tallyMark
+
+                            anchors.left: tallyCount.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: "expand_more"
+                            size: Appearance.font.size.small
+                            rotation: root.countOpen ? 180 : 0
+                            color: Appearance.colour.textDim
+                        }
+
+                        MouseArea {
+                            id: tallyArea
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+
+                            onClicked: root.countTapped()
+                        }
+                    }
+
+                    StyledText {
+                        anchors.left: parent.left
+                        anchors.right: tally.visible ? tally.left : parent.right
+                        anchors.rightMargin: Appearance.padding.small
+                        anchors.verticalCenter: tally.verticalCenter
+                        text: root.entry?.appName ?? ""
+                        color: root.urgent ? Appearance.colour.alarm : Appearance.colour.textFaint
+                        font.family: root.family
+                        elide: Text.ElideRight
+                    }
+                }
+
                 Flow {
                     id: buttons
 
-                    width: parent.width
+                    width: parent.width + root.closeRoom
                     visible: root.actions.length > 0
                     topPadding: Appearance.padding.normal
                     spacing: Appearance.padding.small
@@ -465,7 +544,7 @@ Item {
                             input.text = "";
                     }
 
-                    width: parent.width
+                    width: parent.width + root.closeRoom
                     visible: reply.shown
                     height: reply.shown ? send.height + Appearance.padding.normal : 0
 
@@ -536,8 +615,8 @@ Item {
     Item {
         id: close
 
-        x: swipe.shift + root.width - root.pad - width + Appearance.padding.small / 2
-        y: root.pad - Appearance.padding.small / 2
+        x: root.drift + root.width - root.tileInset - root.pad - width + Appearance.padding.small / 2
+        y: root.tileGap + root.pad - Appearance.padding.small / 2
         width: root.closeSize
         height: root.closeSize
         opacity: glow.value

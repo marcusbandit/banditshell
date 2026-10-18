@@ -105,11 +105,14 @@ Item {
             x: -root.pad
             width: root.width
             visible: Notifications.history.length > 0
-            entries: Notifications.history
+            groups: Notifications.byApp(Notifications.history)
             fanned: 1
             maxHeight: root.deckRoom
+            liftsAway: false
 
             onDismissed: entry => Notifications.forget(entry)
+            onKept: entry => Notifications.forget(entry)
+            onLifted: root.hide()
         }
     }
 }

@@ -67,6 +67,24 @@ function threads(entries) {
     return out.map(t => ({ id: `${t.key}\u0003${t.oldest}`, key: t.key, app: t.app, entries: t.entries, newest: t.newest }));
 }
 
+function byApp(entries) {
+    const ordered = (entries ?? []).map((entry, index) => ({ entry, index })).sort((a, b) => (b.entry.time ?? 0) - (a.entry.time ?? 0) || a.index - b.index);
+    const open = new Map();
+    const out = [];
+    for (const { entry } of ordered) {
+        const key = appOf(entry) || `\u0002${String(entry?.summary ?? "")}`;
+        const group = open.get(key);
+        if (group) {
+            group.entries.push(entry);
+            continue;
+        }
+        const fresh = { key, entries: [entry] };
+        open.set(key, fresh);
+        out.push(fresh);
+    }
+    return out;
+}
+
 const HEADS = ["notifications", "notification", "notifs", "notif"];
 const QUALIFIERS = ["unread", "held"];
 
