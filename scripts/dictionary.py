@@ -2,6 +2,7 @@
 import json
 import os
 import shutil
+import signal
 import sqlite3
 import sys
 import tempfile
@@ -9,7 +10,7 @@ import urllib.request
 import zipfile
 
 SOURCE = "https://github.com/globalwordnet/english-wordnet/releases/download/2025-edition/english-wordnet-2025-json.zip"
-VERSION = 1
+VERSION = 2
 PARTS = {"n": "noun", "v": "verb", "a": "adjective", "s": "adjective", "r": "adverb"}
 ENDINGS = [
     ("s", ""), ("ses", "s"), ("xes", "x"), ("zes", "z"), ("ches", "ch"), ("shes", "sh"), ("men", "man"), ("ies", "y"),
@@ -106,6 +107,9 @@ def entry_of(word, entries, synsets):
 
 def build(db, source):
     os.makedirs(os.path.dirname(db), exist_ok=True)
+    for old in os.listdir(os.path.dirname(db)):
+        if old.startswith("dictionary-"):
+            shutil.rmtree(os.path.join(os.path.dirname(db), old), ignore_errors=True)
     work = tempfile.mkdtemp(prefix="dictionary-", dir=os.path.dirname(db))
     try:
         download = os.path.join(work, "wordnet.zip")
@@ -138,6 +142,7 @@ def build(db, source):
             rank = sum(len(g["senses"]) for g in entry["groups"]) * 10 - key.count(" ") * 5
             con.execute("INSERT INTO entries VALUES (?, ?, ?)", (key, rank, json.dumps(entry, ensure_ascii=False)))
             con.executemany("INSERT OR IGNORE INTO forms VALUES (?, ?)", [(f.lower(), key) for f in entry["forms"]])
+        con.execute("CREATE INDEX ranked ON entries (key, rank)")
         con.execute("INSERT INTO meta VALUES ('version', ?)", (str(VERSION),))
         con.commit()
         con.close()
@@ -160,11 +165,12 @@ def ready(db):
 
 def stems(word):
     for ending, replacement in ENDINGS:
-        if word.endswith(ending) and len(word) > len(ending) + 1:
-            stem = word[: -len(ending)]
-            yield stem + replacement
-            if not replacement and len(stem) > 2 and stem[-1] == stem[-2] and stem[-1] not in "aeiouls":
-                yield stem[:-1]
+        stem = word[: -len(ending)]
+        if not word.endswith(ending) or len(stem + replacement) < 3:
+            continue
+        yield stem + replacement
+        if not replacement and len(stem) > 3 and stem[-1] == stem[-2] and stem[-1] not in "aeiouls":
+            yield stem[:-1]
 
 
 class Dictionary:
@@ -192,13 +198,13 @@ class Dictionary:
 
     def complete(self, word, leave_out):
         key = " ".join(word.lower().split())
-        if not key:
+        if len(key) < 2:
             return []
-        rows = self.con.execute(
-            "SELECT key, data FROM entries WHERE key > ? AND key < ? ORDER BY rank DESC, length(key) LIMIT ?",
-            (key, key + "￿", MOST_COMPLETIONS + 1),
+        keys = self.con.execute(
+            "SELECT key FROM entries INDEXED BY ranked WHERE key > ? AND key < ? ORDER BY rank DESC, length(key) LIMIT ?",
+            (key, key + "\uffff", MOST_COMPLETIONS + 1),
         ).fetchall()
-        return [json.loads(data) for k, data in rows if k != leave_out][:MOST_COMPLETIONS]
+        return [self.entry(k) for (k,) in keys if k != leave_out][:MOST_COMPLETIONS]
 
 
 def serve(db, source, build_missing=True):
@@ -220,12 +226,14 @@ def serve(db, source, build_missing=True):
             continue
         word = str(ask.get("word", ""))
         entry = words.lookup(word)
-        completions = words.complete(word, (entry or {}).get("word", "").lower()) if ask.get("complete") else []
-        say({"id": ask.get("id"), "word": word, "entry": entry, "completions": completions})
+        complete = bool(ask.get("complete"))
+        completions = words.complete(word, (entry or {}).get("word", "").lower()) if complete else []
+        say({"word": word, "entry": entry, "completions": completions, "completed": complete})
     return 0
 
 
 def main(argv):
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
     if len(argv) >= 2 and argv[0] == "serve":
         return serve(argv[1], argv[2] if len(argv) > 2 else SOURCE)
     if len(argv) >= 2 and argv[0] == "serve-built":

@@ -12,6 +12,7 @@ const ENTRIES = {
     goose: { n: { form: ["geese"], pronunciation: [{ value: "ɡuːs", variety: "US" }], sense: [{ id: "goose%1:05:00::", synset: "1-n" }] } },
     run: { v: { sense: [{ id: "run%2:38:00::", synset: "2-v" }, { id: "run%2:38:04::", synset: "3-v" }] } },
     "run out": { v: { sense: [{ id: "run_out%2:30:00::", synset: "4-v" }] } },
+    IT: { n: { sense: [{ id: "it%1:09:00::", synset: "7-n" }] } },
     happy: { a: { sense: [{ id: "happy%3:00:00::", synset: "5-a", antonym: ["unhappy%3:00:00::"] }] } }
 };
 
@@ -21,6 +22,7 @@ const SYNSETS = {
     "3-v": { definition: ["flee"], example: [{ text: "run!" }], members: ["run", "scarper", "scat"], partOfSpeech: "v" },
     "4-v": { definition: ["become used up"], members: ["run out"], partOfSpeech: "v" },
     "5-a": { definition: ["enjoying or showing joy"], members: ["happy"], similar: ["6-s"], partOfSpeech: "a" },
+    "7-n": { definition: ["information technology"], members: ["IT"], partOfSpeech: "n" },
     "6-s": { definition: ["glad"], members: ["glad"], partOfSpeech: "s" }
 };
 
@@ -75,6 +77,13 @@ test.describe("offline dictionary helper", () => {
         assert.strictEqual(running.entry.word, "run");
         assert.deepStrictEqual(prefix.completions.map(c => c.word), ["run", "run out"]);
         assert.strictEqual(nothing.entry, null);
+        assert.ok(said.slice(1).every(answer => answer.completed));
+    });
+
+    test.it("keeps short stems from landing on unrelated words", async () => {
+        const said = await ask(db, ["its", "it"]);
+        assert.strictEqual(said[1].entry, null);
+        assert.strictEqual(said[2].entry.word, "IT");
     });
 
     test.it("carries antonyms and similar words", async () => {

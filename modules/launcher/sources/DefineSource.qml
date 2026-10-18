@@ -18,10 +18,14 @@ QtObject {
 
     onWordChanged: root.lookUp()
     onExplicitChanged: root.lookUp()
+    onOnlineWantedChanged: root.lookUp()
 
     function lookUp(): void {
-        Dictionary.want(root.word, root.explicit);
-        Dictionary.online.want(root.onlineWanted ? root.word : "");
+        const asked = Words.ask(root.search.text);
+        const word = asked?.word ?? "";
+        const explicit = !!asked?.explicit;
+        Dictionary.want(word, explicit);
+        Dictionary.online.want(explicit && Dictionary.onlineEnabled ? word : "");
     }
 
     readonly property bool intent: root.explicit || root.waitingForWord
@@ -79,6 +83,7 @@ QtObject {
             detail: first ? `${first.part} · ${first.text}` : "",
             icon: "menu_book",
             word: word,
+            main: main,
             meaning: first?.text ?? "",
             peekCard: root.page,
             entry: root.pageOf(entry, main),
@@ -144,7 +149,7 @@ QtObject {
             root.openWiktionary(row.word);
             return;
         }
-        if (row.word.toLowerCase() !== root.word || !root.explicit) {
+        if (!row.main) {
             root.search.retype(`define ${row.word}`);
             return;
         }
@@ -170,9 +175,8 @@ QtObject {
                     run: () => root.openWiktionary(row.word)
                 }
             ];
-        const main = row.word.toLowerCase() === root.word && root.explicit;
         return [
-            main ? {
+            row.main ? {
                 icon: "content_copy",
                 label: "Copy definition",
                 run: () => root.copy(row.meaning || row.word)

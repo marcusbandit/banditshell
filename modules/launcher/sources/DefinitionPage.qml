@@ -43,7 +43,10 @@ Item {
         if (scroller.contentHeight <= scroller.height)
             return false;
         const step = scroller.height - Appearance.font.line.normal * 2;
-        scroller.contentY = Math.max(0, Math.min(scroller.contentHeight - scroller.height, scroller.contentY + direction * step));
+        const to = Math.max(0, Math.min(scroller.contentHeight - scroller.height, scroller.contentY + direction * step));
+        if (to === scroller.contentY)
+            return false;
+        scroller.contentY = to;
         return true;
     }
 
