@@ -20,7 +20,7 @@ Item {
     readonly property real inset: Appearance.padding.small
     readonly property real gap: Appearance.padding.normal
 
-    readonly property bool pressable: ["music", "download", "update", "kernel", "restart", "notifications", "notification", "recording", "timer"].includes(root.kind) || (root.lights && (root.kind === "dictation" || (root.kind === "launch" && root.activity?.state === "here")))
+    readonly property bool pressable: ["music", "download", "update", "kernel", "restart", "upgrade", "notifications", "notification", "recording", "timer"].includes(root.kind) || (root.lights && (root.kind === "dictation" || (root.kind === "launch" && root.activity?.state === "here")))
 
     readonly property bool hovered: press.containsMouse
 
@@ -124,7 +124,7 @@ Item {
             anchors.centerIn: parent
             visible: root.look.trailing === "ring"
             size: Math.round(root.slot * 0.75)
-            value: root.kind === "launch" && root.activity?.rec ? Launching.progress(root.activity.rec) : 0
+            value: root.look.progress !== undefined ? root.look.progress : root.kind === "launch" && root.activity?.rec ? Launching.progress(root.activity.rec) : 0
         }
 
         Icon {

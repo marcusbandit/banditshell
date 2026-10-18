@@ -90,6 +90,7 @@ singleton SystemBinaries 1.0 SystemBinaries.qml
 singleton SystemdUnits 1.0 SystemdUnits.qml
 singleton SystemInfo 1.0 SystemInfo.qml
 singleton SystemMonitor 1.0 SystemMonitor.qml
+singleton SystemUpgrade 1.0 SystemUpgrade.qml
 singleton Tablet 1.0 Tablet.qml
 singleton Tailscale 1.0 Tailscale.qml
 singleton ThemeSwitcher 1.0 ThemeSwitcher.qml

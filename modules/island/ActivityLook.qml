@@ -84,6 +84,21 @@ QtObject {
                 trailingIcon: a.upgrading ? "hourglass_top" : "download",
                 trailingTone: Appearance.colour.accent
             };
+        case "upgrade": {
+            const state = SystemUpgrade.state;
+            const failed = state === "failed";
+            const asking = SystemUpgrade.running && SystemUpgrade.asking && SystemUpgrade.question?.text !== "Proceed with installation?";
+            return {
+                glyph: SystemUpgrade.kernelTo ? "\u{f31a}" : "",
+                icon: SystemUpgrade.kernelTo ? "" : "system_update_alt",
+                tone: failed ? Appearance.colour.alarm : Appearance.colour.accent,
+                text: SystemUpgrade.running ? (asking ? "The update has a question" : SystemUpgrade.brief) : SystemUpgrade.headline,
+                trailing: SystemUpgrade.running && !asking ? "ring" : "icon",
+                progress: SystemUpgrade.progress,
+                trailingIcon: asking ? "help" : SystemUpgrade.good ? "check_circle" : failed ? "error" : "cancel",
+                trailingTone: failed ? Appearance.colour.alarm : state === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent
+            };
+        }
         case "restart":
             return {
                 icon: "restart_alt",

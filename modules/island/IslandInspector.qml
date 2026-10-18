@@ -7,6 +7,7 @@ import Quickshell.Services.Notifications
 import qs.config
 import qs.components
 import qs.services
+import "upgrade-samples.js" as Samples
 
 Scope {
     id: root
@@ -145,6 +146,7 @@ Scope {
             notifications: "opens the notification list",
             update: "opens the update menu",
             kernel: "starts the kernel upgrade",
+            upgrade: "opens the system update",
             restart: "opens the session menu",
             download: "shows the file in Files"
         })
@@ -216,6 +218,35 @@ Scope {
             launches: ["waiting", "waiting"],
             notices: ["music"],
             notes: 1
+        },
+        {
+            name: "The system update, downloading",
+            upgrade: "download"
+        },
+        {
+            name: "The system update, opened",
+            upgrade: "download",
+            task: true
+        },
+        {
+            name: "The system update, installing",
+            upgrade: "install",
+            task: true
+        },
+        {
+            name: "The system update asks a question",
+            upgrade: "question",
+            task: true
+        },
+        {
+            name: "The system update, done",
+            upgrade: "done",
+            task: true
+        },
+        {
+            name: "The system update failed",
+            upgrade: "failed",
+            task: true
         },
         {
             name: "The overview",
@@ -443,9 +474,26 @@ Scope {
         root.setLaunches([]);
         root.setNotices([]);
         root.setNotes(0, false);
+        root.setUpgrade("");
         root.island?.dragEnd(false);
-        if (root.island)
+        if (root.island) {
             root.island.pinned = false;
+            root.island.task = "";
+        }
+    }
+
+    function setUpgrade(sample: string): void {
+        if (SystemUpgrade.shown && !SystemUpgrade.mocked)
+            return;
+        if (!sample) {
+            SystemUpgrade.unmock();
+            return;
+        }
+        const codes = {
+            done: 0,
+            failed: 1
+        };
+        SystemUpgrade.mock(Samples[sample], codes[sample] ?? -2, "7.2.10");
     }
 
     function apply(index: int): void {
@@ -460,7 +508,9 @@ Scope {
         root.setVoice(s.voice ?? "off");
         root.setLaunches(s.launches ?? []);
         root.setNotices(s.notices ?? []);
+        root.setUpgrade(s.upgrade ?? "");
         root.island.pinned = s.pinned ?? false;
+        root.island.task = s.task && SystemUpgrade.mocked ? "upgrade" : "";
         root.setNotes(s.notes ?? 0, s.urgent ?? false);
         root.island.arrange(true);
     }

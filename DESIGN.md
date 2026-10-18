@@ -844,7 +844,8 @@ banditshell/
 │   │                            finished download. Each glances in the island
 │   │                            for a few seconds, held while you look; the
 │   │                            standing ones then wait under the clock until
-│   │                            they are dealt with
+│   │                            they are dealt with. A new track only glances
+│   │                            when its player is not the focused window
 │   ├── Downloads.qml            inotifywait on the XDG download folder. A name
 │   │                            counts once it is a non-empty file with no
 │   │                            .part or .crdownload beside it, which is what
@@ -854,11 +855,22 @@ banditshell/
 │   │                            running kernel whose modules folder lost its
 │   │                            vmlinuz has been replaced: that is the restart.
 │   │                            Results are kept in state so a hot reload does
-│   │                            not ask the mirrors again; the upgrade itself
-│   │                            runs detached in a terminal, because a reload
-│   │                            must never kill pacman halfway
+│   │                            not ask the mirrors again. Its terminal upgrade
+│   │                            is now only the fallback for SystemUpgrade
 │   ├── pacman.js                checkupdates' answer read into values. No QML
 │   │                            in it, tested in node
+│   ├── SystemUpgrade.qml        pacman -Syu through pkexec, so the shell's own
+│   │                            password prompt asks, run detached by
+│   │                            scripts/system-upgrade.sh so a reload or a
+│   │                            restart never kills it. Follows the log the
+│   │                            runner keeps in the runtime dir and picks a
+│   │                            running or unseen update back up after a reload;
+│   │                            answers "Proceed with installation?" itself and
+│   │                            hands every other question to the island
+│   ├── system-upgrade.js        pacman's terminal output, progress bars and
+│   │                            all, read into a phase, a fraction per stage,
+│   │                            a question and plain-word failures. Tested in
+│   │                            node against recorded runs
 │   ├── Dictation.qml            gvoice: the live phase, language and levels off
 │   │                            its socket (one connection for the whole shell),
 │   │                            and the history the clipboard shows
@@ -946,6 +958,12 @@ banditshell/
 │   │   │                        when it does not fit; the wave; the transport
 │   │   │                        between the two times on one line; its words
 │   │   │                        and its expand mark open the card
+│   │   ├── IslandUpgrade.qml    the system update when the island has become
+│   │   │                        it: stages, progress, pacman's questions as
+│   │   │                        buttons, cancel while it is still safe, and a
+│   │   │                        terminal that only watches
+│   │   ├── upgrade-samples.js   made-up pacman runs for the preview and the
+│   │   │                        inspector
 │   │   └── DictationWave.qml    the voice, as one curve that glides
 │   ├── media/
 │   │   ├── MediaController.qml  Super+M's card, floating in the middle:
@@ -1328,6 +1346,12 @@ banditshell/
 │   ├── install-package.sh       one package by whichever manager is there:
 │   │                            quietly with sudo -n, through pkexec, or typed
 │   │                            in a terminal
+│   ├── system-upgrade.sh        runs the system update in a pty under setsid,
+│   │                            its input a fifo: answers go in as lines, a
+│   │                            cancel as Ctrl-C, refused once pacman has
+│   │                            started checking or installing. `watch` is
+│   │                            the terminal's view: a tail, so closing it
+│   │                            stops nothing
 │   ├── polkit-takeover.sh       stops the other polkit agents of this user,
 │   │                            units by systemctl, the rest by name, and says
 │   │                            which, so they can be started again
@@ -3576,7 +3600,7 @@ headlessly, checks each and photographs it.
 | Dictation or an app, while something else has the big spot | appears as a row below it for a moment, then takes the big spot; the old one glides into the nearest bubble and the newcomer slides up |
 | Another of a kind that already has the big spot (a second app) | another line, at the bottom |
 | Another of a kind that sits in a bubble | only the newcomer has its moment below; the bubble keeps the others |
-| A music change, a download, an update, the kernel | a row at the bottom of the big spot, or the big spot itself if nothing else is live, for as long as its moment lasts; then it is gone, never a bubble |
+| A music change, a download, an update, the kernel | a row at the bottom of the big spot, or the big spot itself if nothing else is live, for as long as its moment lasts; then it is gone, never a bubble. A music change only counts when its player is not the focused window |
 | Anything while the pointer is on the island | has its moment below and then waits as the nearest bubble, its timer held; nothing moves under the pointer, and it takes the big spot once the pointer leaves |
 | A critical notification | takes the big spot whatever is happening |
 | Anything while the overview is open | lands inside it, notifications under the clock |
@@ -3653,16 +3677,75 @@ plate always means a click. A finished launch focuses its window, the dictation
 row opens the transcription history, and a waiting notification comes out when
 pressed.
 
-### The kernel
+### Music I am already looking at
+
+A new track glances in the island so I hear about the player I am not looking
+at: Spotify on another workspace, a video in a background tab. When the player
+is the focused window I started it myself, and telling me what it plays is
+noise. So the glance only comes when the player is somewhere else.
+
+The player and the window are matched by process: the MPRIS name's owner on the
+bus against the focused window's pid, with the window class against the
+player's desktop entry for apps whose bus name belongs to a sandbox proxy. A
+browser holds many tabs in one process, so for a browser the focused window's
+title also has to carry the track's title, which is what a browser shows for
+the tab in front. Titles lag a little behind a new video, so a browser match
+that is not certain yet waits a second and a half for the title to catch up
+before the glance goes out. A shell that just started has no focus event yet,
+so the window Hyprland lists first in its focus history stands in.
+
+### The kernel, and the update it starts
 
 `services/Pacman.qml` runs checkupdates every `packages.interval` minutes. Only
 the package of the kernel actually running counts, so linux-zen and linux-lts
-users get the same notice. Pressing it opens a terminal running
-`packages.upgrade`, `sudo pacman -Syu` by default, and never a single-package
-upgrade: Arch does not support partial upgrades. Once the running kernel's
-vmlinuz is gone from its modules folder, the island asks for a restart.
-Pressing that opens the power panel instead of restarting, because when to
-restart is not the shell's call.
+users get the same notice. Pressing it starts the system update, `pacman -Syu`
+and never a single-package upgrade: Arch does not support partial upgrades.
+Once the running kernel's vmlinuz is gone from its modules folder, the island
+asks for a restart. Pressing that opens the power panel instead of restarting,
+because when to restart is not the shell's call.
+
+The update used to open a terminal. Now the shell's own password prompt asks,
+the way the launcher does when it installs something, because pacman runs
+through pkexec. Without the shell's polkit agent, or without pkexec, it falls
+back to the terminal running `packages.upgrade`. So does a `packages.upgrade`
+that is not a plain pacman full upgrade: an AUR helper someone chose, or extra
+flags, keep the terminal, because the island only knows how to read pacman. A
+plain one in any spelling (`sudo pacman -Suy`, `--sync --sysupgrade`) runs in
+the island, and its `--noconfirm` is kept: pacman then takes its defaults and
+asks nothing.
+
+While it runs, the island carries it as a row: the kernel's mark, the stage in
+words ("Downloading 12 of 87", "Installing 34 of 87") and a ring for how far it
+has come. The row stays for the whole update, the way a timer does. Pressing it
+turns the island into the update: it widens to half again its usual width,
+everything else in it fades or melts away, and its notifications wait with
+their timers held. The update shows four stages, download, verify, install and
+finish, as one bar cut into four, with what is happening under it and the
+overall share on the right. Hiding it, a tap on the strip, Escape or a pull up
+puts the island back and leaves the update running.
+
+pacman runs in a pty, so it draws its own progress bars, and the shell reads
+those. It also means a question pacman asks reaches the island: a conflict, a
+replacement, a provider to choose come up as buttons with pacman's default as
+the filled one. "Proceed with installation?" is the one question it answers by
+itself, because pressing the notice already said yes, and only after the
+prompt has sat unanswered for a moment, so replaying a log after a reload can
+never push a stray yes into a later question.
+
+Cancel works until pacman starts checking packages. It sends Ctrl-C through the
+pty, and pacman stops before it has changed anything. After that, Ctrl-C would
+stop it between two packages and leave half an upgrade behind; pacman even
+exits 0 when that happens. So from the first check on, the cancel button is
+greyed out and says why, and the runner itself refuses a late cancel by
+reading the log, so a press that loses the race to pacman still does nothing.
+
+The terminal is not gone, it is just not the main way in. "Watch in terminal"
+opens one that tails the same log, progress bars and colour included. It only
+reads, so closing it stops nothing. The update runs under setsid, outside the
+shell, so a reload or a restart cannot kill it either; the shell picks it back
+up from the runtime dir. A finished update stays until it has been seen: a good
+one goes after its glance, a failed one waits with what went wrong in plain
+words, a way to try again and a way to run it in a terminal.
 
 ### What went
 

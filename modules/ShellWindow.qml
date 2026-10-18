@@ -157,6 +157,7 @@ PanelWindow {
             return;
         popups.pinned = false;
         islandLayer.pinned = false;
+        islandLayer.task = "";
     }
 
     function openMenu(key: string, pin = true): bool {
@@ -209,7 +210,8 @@ PanelWindow {
                 Settings.show(win.screen?.name ?? "", "updates");
             break;
         case "kernel":
-            Pacman.upgrade();
+            if (!SystemUpgrade.start())
+                Pacman.upgrade();
             break;
         case "restart":
             sessionLayer.show();
@@ -403,7 +405,7 @@ PanelWindow {
             else if (menuLayer.wantsEscape)
                 menuLayer.hide();
             else if (islandLayer.wantsEscape)
-                islandLayer.pinned = false;
+                islandLayer.close();
             else if (popups.wantsEscape)
                 popups.pinned = false;
             else

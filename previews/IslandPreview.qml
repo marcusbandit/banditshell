@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Services.Notifications
 import qs.services
 import qs.modules.island
+import "../modules/island/upgrade-samples.js" as Samples
 
 ShellRoot {
     id: preview
@@ -221,8 +222,104 @@ ShellRoot {
             wait: 150,
             expect: "91 notifications spread out, beside it: dictation, 2 launches",
             holds: () => island.restHeight <= (island.host?.height ?? 900) * 0.62
+        },
+        {
+            name: "clear the stage for the system update",
+            run: () => {
+                island.fanning = false;
+                for (const e of [...Notifications.popups])
+                    Notifications.dismiss(e);
+                preview.speak("idle");
+                Launching.shown = [];
+            },
+            wait: 1500,
+            expect: "hidden"
+        },
+        {
+            name: "the kernel update starts and waits for the password",
+            run: () => SystemUpgrade.mock("", -2, "7.2.10"),
+            expect: "upgrade"
+        },
+        {
+            name: "downloading, a ring and the stage in words",
+            run: () => SystemUpgrade.mock(Samples.download, -2, "7.2.10"),
+            expect: "upgrade"
+        },
+        {
+            name: "pressing it turns the island into the update",
+            run: () => island.choose({
+                    key: "upgrade",
+                    kind: "upgrade"
+                }),
+            wait: 300,
+            expect: "the system update"
+        },
+        {
+            name: "the update view while it downloads",
+            run: () => {},
+            expect: "the system update",
+            holds: () => island.presentation === "task" && SystemUpgrade.cancellable
+        },
+        {
+            name: "installing, too late to cancel",
+            run: () => SystemUpgrade.mock(Samples.install, -2, "7.2.10"),
+            expect: "the system update",
+            holds: () => !SystemUpgrade.cancellable && SystemUpgrade.stage === 2
+        },
+        {
+            name: "the hooks run",
+            run: () => SystemUpgrade.mock(Samples.hooks, -2, "7.2.10"),
+            expect: "the system update",
+            holds: () => SystemUpgrade.stage === 3
+        },
+        {
+            name: "pacman asks a question",
+            run: () => SystemUpgrade.mock(Samples.question, -2, "7.2.10"),
+            expect: "the system update",
+            holds: () => SystemUpgrade.asking
+        },
+        {
+            name: "done, with a restart to do",
+            run: () => {
+                Pacman.stale = true;
+                SystemUpgrade.mock(Samples.done, 0, "7.2.10");
+            },
+            expect: "the system update",
+            holds: () => SystemUpgrade.state === "done"
+        },
+        {
+            name: "failed, plain words and a way out",
+            run: () => {
+                Pacman.stale = false;
+                SystemUpgrade.mock(Samples.failed, 1, "7.2.10");
+            },
+            expect: "the system update",
+            holds: () => SystemUpgrade.state === "failed"
+        },
+        {
+            name: "hidden, the failure waits as a row",
+            run: () => island.close(),
+            wait: 400,
+            expect: "upgrade"
+        },
+        {
+            name: "a notification still takes the island over the row",
+            run: () => preview.notify("Discord", "marcus", "did the update go through?", false),
+            wait: 400,
+            expect: "one notification, below it: upgrade"
+        },
+        {
+            name: "seen and dismissed, the island is empty",
+            run: () => {
+                for (const e of [...Notifications.popups])
+                    Notifications.dismiss(e);
+                SystemUpgrade.acknowledge();
+            },
+            wait: 1500,
+            expect: "hidden"
         }
     ]
+
 
     property int step: 0
     property int made: 0

@@ -67,6 +67,11 @@ Item {
                     state: rec.state,
                     rec: rec
                 });
+        if (root.offStage && SystemUpgrade.shown)
+            out.push({
+                key: "upgrade",
+                kind: "upgrade"
+            });
         if (root.offStage)
             out.push(...Notices.fresh);
         return out;
@@ -172,6 +177,8 @@ Item {
     }
 
     property bool pinned: false
+    property string task: ""
+    readonly property bool tasking: root.task !== ""
     property bool pulling: false
     property real pullProgress: 0
 
@@ -191,7 +198,7 @@ Item {
     property bool fanning: false
 
     readonly property bool fronting: root.centreKey === "notification" && !root.deferred.includes("notification")
-    readonly property bool expanded: root.pinned || (root.dwelt && !root.fronting)
+    readonly property bool expanded: root.pinned || root.tasking || (root.dwelt && !root.fronting)
     readonly property bool alerting: root.fronting && !root.expanded
     readonly property real openness: root.pulling ? root.pullProgress : root.expanded ? 1 : 0
 
@@ -221,7 +228,7 @@ Item {
 
     readonly property bool deckRest: root.rest === "alert" || root.rest === "stack" || root.rest === "spread"
 
-    readonly property string presentation: root.openness > 0.5 ? "overview" : root.rest
+    readonly property string presentation: root.openness > 0.5 ? (root.tasking ? "task" : "overview") : root.rest
 
     readonly property var bubbleKeys: root.out ? root.liveOrder.filter(k => k !== root.centreKey && (root.viewOf(k)?.items.length ?? 0) > 0).slice(0, root.bubbleMax) : []
     property var shownBubbles: []
@@ -239,6 +246,8 @@ Item {
     }
 
     readonly property string situation: {
+        if (root.presentation === "task")
+            return "the system update";
         if (root.presentation === "overview")
             return root.alerts.length > 0 ? "overview, notifications arriving inside it" : "overview";
         const kinds = [...new Set(root.passing.map(p => p.kind))];
@@ -268,7 +277,7 @@ Item {
 
     readonly property bool attending: root.hovering || root.openness > 0
 
-    readonly property bool wantsEscape: root.pinned
+    readonly property bool wantsEscape: root.pinned || root.tasking
 
     readonly property Item grabItem: zone
 
@@ -277,7 +286,7 @@ Item {
     readonly property Item stage: scene
 
     function pressable(activity: var): bool {
-        return ["music", "download", "update", "kernel", "restart", "notification", "recording", "timer"].includes(activity?.kind ?? "");
+        return ["music", "download", "update", "kernel", "restart", "upgrade", "notification", "recording", "timer"].includes(activity?.kind ?? "");
     }
 
     readonly property bool whole: root.openness > 0 || root.deckRest || root.stackItems.some(i => root.pressable(i))
@@ -287,6 +296,7 @@ Item {
     readonly property real compactHeight: Appearance.font.line.small + Appearance.padding.small * 2
     readonly property real slot: Appearance.font.line.small
     readonly property real largeWidth: Config.values.island.width
+    readonly property real taskWidth: Math.min(Math.round(root.largeWidth * 1.5), (root.host?.width ?? root.largeWidth * 2) - (root.border + Appearance.padding.large) * 2)
     readonly property real islandTop: root.edge + Appearance.padding.small
     readonly property real budGap: Appearance.padding.normal
     readonly property real bubblePitch: root.compactHeight + root.budGap
@@ -306,13 +316,13 @@ Item {
     readonly property real restWidth: root.deckRest ? root.largeWidth : root.rest === "compact" ? root.rowsWidth + swell.value * 2 : root.compactHeight
     readonly property real restHeight: root.deckRest ? root.cardHeight + root.stackItems.length * root.compactHeight : root.compactHeight * Math.max(1, root.stackItems.length)
 
-    readonly property real fieldWidth: Math.ceil(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2)
-    readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), overview.implicitHeight - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2) + root.shadowRoom) / root.fieldStep) * root.fieldStep
+    readonly property real fieldWidth: Math.ceil(Math.max(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2, root.taskWidth + root.shadowRoom * 2))
+    readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), overview.implicitHeight - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2, upgrade.implicitHeight) + root.shadowRoom) / root.fieldStep) * root.fieldStep
     readonly property real centreX: scene.width / 2
     readonly property real surfaceX: Math.round((root.width - root.fieldWidth) / 2 + trail.value)
 
     readonly property real widening: Math.min(1, glide.value * 1.8)
-    readonly property real pillWidth: wide.value + (root.largeWidth - wide.value) * root.widening
+    readonly property real pillWidth: wide.value + (span.value - wide.value) * root.widening
     readonly property real pillHeight: tall.value + (overviewTall.value - tall.value) * glide.value
     readonly property real pillX: root.centreX - root.pillWidth / 2
     readonly property real tuckedY: root.edge - root.pillHeight - Appearance.padding.small
@@ -333,7 +343,7 @@ Item {
 
     property var holding: []
 
-    readonly property var waiting: !root.expanded && (!root.alerting || root.pulling) ? root.alerts : []
+    readonly property var waiting: root.tasking || (!root.expanded && (!root.alerting || root.pulling)) ? root.alerts : []
 
 
     function sizeOf(key: string): int {
@@ -438,6 +448,10 @@ Item {
     }
 
     function choose(activity: var): void {
+        if (activity?.kind === "upgrade") {
+            root.openTask("upgrade");
+            return;
+        }
         if (activity?.kind === "notification") {
             root.summon = "notification";
             Qt.callLater(root.arrange);
@@ -568,8 +582,14 @@ Item {
 
     function close(): void {
         root.pinned = false;
+        root.task = "";
         root.dwelt = false;
         root.spent = root.hovering;
+    }
+
+    function openTask(key: string): void {
+        root.pinned = false;
+        root.task = key;
     }
 
     function dragTo(fraction: real): void {
@@ -582,6 +602,11 @@ Item {
             return;
         root.pulling = false;
         root.pullProgress = 0;
+        if (root.tasking) {
+            if (!open)
+                root.close();
+            return;
+        }
         root.pinned = open;
         if (!open)
             root.dwelt = false;
@@ -631,6 +656,17 @@ Item {
     onExpandedChanged: if (root.expanded)
         Media.sync()
 
+    onTaskingChanged: SystemUpgrade.watchers += root.tasking ? 1 : -1
+
+    Connections {
+        target: SystemUpgrade
+
+        function onShownChanged(): void {
+            if (!SystemUpgrade.shown && root.task === "upgrade")
+                root.task = "";
+        }
+    }
+
     onHoveringChanged: {
         if (!root.hovering && !root.reforming)
             root.spent = false;
@@ -673,6 +709,8 @@ Item {
     }
 
     Component.onDestruction: {
+        if (root.tasking)
+            SystemUpgrade.watchers -= 1;
         for (const entry of root.holding)
             entry.release(root);
         Notices.release(root);
@@ -818,7 +856,23 @@ Item {
         id: overviewTall
 
         speed: root.morphSpeed
-        target: overview.implicitHeight
+        target: root.tasking ? upgrade.implicitHeight : overview.implicitHeight
+    }
+
+    Follow {
+        id: span
+
+        speed: root.morphSpeed
+        value: root.largeWidth
+        target: root.tasking ? root.taskWidth : root.largeWidth
+    }
+
+    Follow {
+        id: taskFade
+
+        speed: root.fadeSpeed(taskFade)
+        epsilon: 0.004
+        target: root.tasking ? 1 : 0
     }
 
     Follow {
@@ -850,7 +904,7 @@ Item {
 
         speed: root.fadeSpeed(deckFade)
         epsilon: 0.004
-        target: root.deckEntries.length > 0 && (root.alerting || root.openness > 0) ? 1 : 0
+        target: root.deckEntries.length > 0 && !root.tasking && (root.alerting || root.openness > 0) ? 1 : 0
     }
 
     property bool fanLeads: false
@@ -924,7 +978,7 @@ Item {
 
         speed: Appearance.animation.revealSpeed * 0.6
         epsilon: 0.004
-        target: !Media.hasTrack ? 0 : root.openness > 0 ? 0.62 * root.openness : root.rest === "compact" && root.passing.some(p => p.kind === "music") ? 0.45 : 0
+        target: !Media.hasTrack || root.tasking ? 0 : root.openness > 0 ? 0.62 * root.openness : root.rest === "compact" && root.passing.some(p => p.kind === "music") ? 0.45 : 0
     }
 
     Pull {
@@ -943,8 +997,16 @@ Item {
         angle: Config.values.control.pullAngleEdge
         travel: Math.max(1, overview.implicitHeight - root.compactHeight)
 
-        onTapped: root.pinned = !root.pinned
-        onPulled: fraction => root.dragTo(fraction)
+        onTapped: {
+            if (root.tasking)
+                root.close();
+            else
+                root.pinned = !root.pinned;
+        }
+        onPulled: fraction => {
+            if (!root.tasking)
+                root.dragTo(fraction);
+        }
         onFinished: open => root.dragEnd(open)
 
         HoverHandler {
@@ -957,7 +1019,7 @@ Item {
 
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Escape) {
-                root.pinned = false;
+                root.close();
                 event.accepted = true;
             }
         }
@@ -1206,7 +1268,7 @@ Item {
                     dirX: 0
                     dirY: -1
                     angle: Config.values.control.pullAngleEdge
-                    travel: Math.max(1, overview.implicitHeight - root.compactHeight)
+                    travel: Math.max(1, (root.tasking ? upgrade.implicitHeight : overview.implicitHeight) - root.compactHeight)
 
                     onPulled: fraction => root.dragTo(1 - fraction)
                     onFinished: open => root.dragEnd(!open)
@@ -1219,15 +1281,36 @@ Item {
                     y: root.pillY
                     width: root.largeWidth
                     activities: root.overviewRows
-                    watched: overviewFade.value > 0.01
+                    watched: overviewFade.value > 0.01 && taskFade.value < 0.99
                     arrivals: root.deckEntries.length > 0 ? deck.implicitHeight : 0
                     carried: root.stackKeys
                     carriedOpacity: 1
-                    opacity: Math.max(0, (overviewFade.value - 0.4) / 0.6) * presence.value
+                    opacity: Math.max(0, (overviewFade.value - 0.4) / 0.6) * presence.value * (1 - taskFade.value)
                     visible: opacity > 0.005
-                    enabled: root.expanded
+                    enabled: root.expanded && !root.tasking
 
                     onChosen: activity => root.choose(activity)
+                }
+
+                IslandUpgrade {
+                    id: upgrade
+
+                    x: root.centreX - root.taskWidth / 2
+                    y: root.pillY
+                    width: root.taskWidth
+                    watched: root.tasking
+                    opacity: Math.max(0, (overviewFade.value - 0.4) / 0.6) * presence.value * taskFade.value
+                    visible: opacity > 0.005
+                    enabled: root.tasking && root.expanded
+
+                    onHide: root.close()
+                    onRestart: {
+                        root.close();
+                        root.chosen({
+                            kind: "restart",
+                            mock: SystemUpgrade.mocked
+                        });
+                    }
                 }
 
                 AlertDeck {
@@ -1241,7 +1324,7 @@ Item {
                     maxHeight: Math.max(root.compactHeight * 4, ((root.host?.height ?? 1080) - root.islandTop) * 0.55)
                     opacity: deckFade.value * presence.value
                     visible: opacity > 0.005
-                    enabled: root.deckRest || root.openness > 0
+                    enabled: (root.deckRest || root.openness > 0) && !root.tasking
 
                     onDismissed: entry => Notifications.dismiss(entry)
                     onAdvanced: (forward, count, previous) => {
@@ -1282,9 +1365,9 @@ Item {
                         readonly property real shown: appear.value
 
                         property real heldTop: -1
-                        readonly property real liveTop: overview.rowTop(row.key)
+                        readonly property real liveTop: root.tasking ? -1 : overview.rowTop(row.key)
                         readonly property real toY: row.liveTop >= 0 ? row.liveTop : row.heldTop
-                        readonly property bool carried: row.here && row.toY >= 0
+                        readonly property bool carried: row.here && !root.tasking && row.toY >= 0
                         readonly property real t: row.carried ? glide.value : 0
                         readonly property real fromWidth: root.pillWidth - swell.value * 2
                         readonly property real toX: overview.x + overview.pad
@@ -1495,7 +1578,7 @@ Item {
                 width: root.slot + (to.width - root.slot) * t
                 height: width
                 source: Media.hasTrack ? Media.artUrl : ""
-                opacity: presence.value * (from?.shown ?? 0) * Math.min(1, t * 6) * (1 - Math.max(0, (t - 0.8) / 0.2))
+                opacity: presence.value * (from?.shown ?? 0) * Math.min(1, t * 6) * (1 - Math.max(0, (t - 0.8) / 0.2)) * (1 - taskFade.value)
                 visible: !!from && to.width > 0 && opacity > 0.01
             }
 
