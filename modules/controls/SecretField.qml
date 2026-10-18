@@ -1,9 +1,8 @@
 import QtQuick
-import QtQuick.Shapes
 import qs.config
 import qs.components
 import qs.services
-import "lobes.js" as Lobes
+import "secret-marks.js" as SecretMarks
 
 Item {
     id: root
@@ -188,12 +187,14 @@ Item {
     Component {
         id: markShape
 
-        Shape {
+        Item {
             id: mark
 
             property int index: 0
 
             readonly property bool standing: mark.index < root.count
+
+            readonly property var form: SecretMarks.shape(mark.index)
 
             property bool ready: false
 
@@ -203,8 +204,6 @@ Item {
             y: (strip.height - height) / 2
             width: root.markSize
             height: root.markSize
-
-            preferredRendererType: Shape.CurveRenderer
 
             visible: markFade.value > 0.004
 
@@ -229,16 +228,13 @@ Item {
                 startsAtTarget: true
             }
 
-            ShapePath {
-
-                fillColor: root.alarm ? Appearance.colour.alarm : Appearance.colour.spectrum[mark.index % Appearance.colour.spectrum.length]
-                strokeWidth: 0
-                strokeColor: "transparent"
-
-                PathSvg {
-
-                    path: Lobes.path(mark.index, root.markSize)
-                }
+            SquircleRect {
+                anchors.centerIn: parent
+                width: root.markSize * mark.form.width
+                height: root.markSize * mark.form.height
+                rotation: mark.form.turn
+                pill: "object"
+                color: root.alarm ? Appearance.colour.alarm : Appearance.colour.spectrum[mark.index % Appearance.colour.spectrum.length]
             }
         }
     }
