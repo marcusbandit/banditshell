@@ -238,11 +238,18 @@ test("sidebar rows point the replica at the part they change", () => {
     assert.strictEqual(Catalogue.zoneOf(null), "");
 });
 
-test("the rail, the brightness icon and notifications in search are config only, so settings matches the mockup", () => {
-    for (const key of ["sbStyle", "sbBright", "notificationsInSearch"])
-        assert.strictEqual(Catalogue.ROW_BY_KEY[key], undefined, key);
-    assert.strictEqual(lookup(DEFAULTS, "sidebar.style"), "full");
+test("the sidebar style row offers full and rail and defaults to rail", () => {
+    const row = Catalogue.ROW_BY_KEY.sbStyle;
+    assert.strictEqual(row.cfg, "sidebar.style");
+    assert.deepStrictEqual(row.o, ["full", "rail"]);
+    assert.strictEqual(lookup(DEFAULTS, "sidebar.style"), "rail");
     assert.strictEqual(lookup(DEFAULTS, "sidebar.status.brightness"), false);
+    assert.strictEqual(CONFIG_BACKED.sbStyle, "sidebar.style");
+    assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.sbBright), "status");
+});
+
+test("notifications in search is a row and stays off by default", () => {
+    assert.strictEqual(Catalogue.ROW_BY_KEY.notificationsInSearch.cfg, "launcher.typing.notifications");
     assert.strictEqual(lookup(DEFAULTS, "launcher.typing.notifications"), false);
 });
 

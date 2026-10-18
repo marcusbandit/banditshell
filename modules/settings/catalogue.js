@@ -314,6 +314,8 @@ const PAGES_SOURCE = {
         groups: [
             { rows: [
                 { n: 58, icon: "side_navigation", label: "Sidebar", k: "sidebar", kind: "toggle", cfg: "sidebar.enabled", detail: s => s.v("sidebar") ? "" : "super + b brings it back" },
+                { n: [], icon: "view_column_2", label: "Style", k: "sbStyle", kind: "seg", o: ["full", "rail"], cfg: "sidebar.style", dis: s => !s.v("sidebar"), kw: "sidebar rail simplified expand hover pips anomalies",
+                    why: "Full keeps everything on show. Rail rests as workspace marks and shows a status icon only when something is unusual; point at it and it grows into the full column." },
                 { n: 59, icon: "width", label: "Width", k: "sidebarW", kind: "slider", min: 40, max: 72, fmt: v => `${v} px`, cfg: "sidebar.width", dis: s => !s.v("sidebar") }
             ] },
             { t: "Workspaces", rows: [
@@ -337,6 +339,7 @@ const PAGES_SOURCE = {
                 { n: [], icon: "volume_up", label: "Sound", k: "sbSound", kind: "toggle", cfg: "sidebar.status.sound", kw: "sidebar status icons" },
                 { n: [], icon: "wifi", label: "Network", k: "sbNet", kind: "toggle", cfg: "sidebar.status.network", kw: "sidebar status icons" },
                 { n: [], icon: "bluetooth", label: "Bluetooth", k: "sbBt", kind: "toggle", cfg: "sidebar.status.bluetooth", kw: "sidebar status icons" },
+                { n: [], icon: "brightness_6", label: "Brightness", k: "sbBright", kind: "toggle", cfg: "sidebar.status.brightness", detail: "scroll it to change brightness", kw: "sidebar status icons screen backlight" },
                 { n: [], icon: "battery_5_bar", label: "Battery", k: "sbBatt", kind: "toggle", cfg: "sidebar.status.battery", detail: s => s.hasBattery ? "" : "no battery in this machine", dis: s => !s.hasBattery, kw: "sidebar status icons" }
             ] },
             { t: "Tray", rows: [
@@ -401,7 +404,9 @@ const PAGES_SOURCE = {
                 { n: [], icon: "front_hand", label: "Skin tone", k: "skinTone", kind: "choice", o: [["none", "✋ default"], ["light", "✋🏻 light"], ["medium-light", "✋🏼 medium light"], ["medium", "✋🏽 medium"], ["medium-dark", "✋🏾 medium dark"], ["dark", "✋🏿 dark"]], cfg: "launcher.typing.skinTone", kw: "emoji skin tone hands people colour",
                     why: "Emoji with people and hands come in this tone. More on an emoji row still offers every tone." },
                 { n: [], icon: "content_paste_search", label: "Clipboard in search", k: "clipboardInSearch", kind: "toggle", cfg: "launcher.typing.clipboard", kw: "clipboard history search results paste",
-                    why: "Words you type also find recent clipboard entries. Typing clip shows them either way." }
+                    why: "Words you type also find recent clipboard entries. Typing clip shows them either way." },
+                { n: [], icon: "notifications", label: "Notifications in search", k: "notificationsInSearch", kind: "toggle", cfg: "launcher.typing.notifications", kw: "notification history search results messages private",
+                    why: "Words you type also find the text of recent notifications. Off by default because message text on screen is private. Typing notifications shows them either way." }
             ] },
             { t: "Snippets", rows: [
                 { n: [], kind: "w", w: "snippets", kw: "snippets saved text expand keyword placeholders" }
@@ -1210,7 +1215,7 @@ const OPENS = [
 
 const ZONES = {
     tray: "tray", trayMax: "tray", wsStyles: "workspaces", iconMode: "workspaces", persistent: "workspaces", specialsShown: "workspaces",
-    sbClock: "clock", sbDate: "clock", sbUpdate: "update", sbSound: "status", sbNet: "status", sbBt: "status", sbBatt: "status"
+    sbClock: "clock", sbDate: "clock", sbUpdate: "update", sbSound: "status", sbNet: "status", sbBt: "status", sbBright: "status", sbBatt: "status"
 };
 
 function zoneOf(row) {

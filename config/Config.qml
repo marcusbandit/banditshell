@@ -124,7 +124,7 @@ Singleton {
 
                 width: 52,
 
-                style: "full",
+                style: "rail",
 
                 railWidth: 22,
 

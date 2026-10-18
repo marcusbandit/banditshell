@@ -10,6 +10,11 @@
           "text": "The notification list in the top right corner is gone. New notifications show in the island at the top of the screen, and the ones you have had are in the launcher: type notifications, or press the island's notifications row. banditshell panel notifications toggle (Super+N in the example binds) now opens that list in the launcher. If you want pop-ups in the corner again, set notifications.placement to corner; the corner then shows new ones only."
         },
         {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The sidebar now rests as a rail: small workspace marks until you point at it, and a status icon only when something needs you, such as a low battery or a VPN that is on. Point at it and the full column grows out. Settings, Sidebar, Style switches back to the full column. Scrolling on the sound icon changes the volume in both styles."
+        },
+        {
           "type": "config",
           "severity": "major",
           "text": "The shell now keeps a small file called banditshell.lua next to your hyprland.lua, and a note of where the shell lives under ~/.local/state/banditshell. Nothing else in your Hyprland setup is touched. Your binds keep working as they are; the file is what lets them be written as local bs = require(\"banditshell\") and hl.bind(\"SUPER + SPACE\", bs.launcher.toggle), which keeps working whatever the banditshell command looks like after future updates."
@@ -42,12 +47,12 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "The sidebar has a rail style: only small workspace marks until you point at it, and a status icon only when something needs you, such as a low battery or a VPN that is on. Set sidebar.style to rail to try it. Scrolling on the sound icon changes the volume in both styles."
+          "text": "banditshell version says which version you run, banditshell action runs any of the shell's stable actions by name, banditshell events prints what the shell does as it happens, and banditshell doctor --report collects what a bug report needs with passwords and keys left out."
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell version says which version you run, banditshell action runs any of the shell's stable actions by name, banditshell events prints what the shell does as it happens, and banditshell doctor --report collects what a bug report needs with passwords and keys left out."
+          "text": "Settings, Launcher has Notifications in search, off by default: when it is on, words you type also find the text of recent notifications. Settings, Sidebar can show a brightness icon you scroll to change the brightness."
         },
         {
           "type": "ui",

@@ -1847,7 +1847,7 @@ what its name says.
 
 **THE RAIL, 2026-10-17: `sidebar.style` is `full` or `rail`.** The launcher and the island now
 answer most of what the column used to be asked, so the column is allowed to be quiet. `full` is
-the sidebar as it was and stays the default. `rail` rests as a thin strip of the band
+the sidebar as it was. `rail` is the default since 2026-10-18 and rests as a thin strip of the band
 (`sidebar.railWidth`, which is also what `FrameExclusions` reserves, so windows tile against the
 rail and not against the full column): one mark per workspace, and below them a status icon for
 whatever is unusual and nothing for what is normal. Unusual is decided in `anomalies.js`: a

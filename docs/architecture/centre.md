@@ -130,16 +130,21 @@ user's Hyprland config at all, because the config only names action ids
 through the Lua module, and the module is loaded through a frozen shim that
 finds whichever checkout is current.
 
+## Decided on 2026-10-18
+
+- The corner tray is deleted. `placement: corner` keeps live pop-ups in the
+  corner, with no list.
+- Pills keep both roles: an object gets round ends, a place gets the shell's
+  own corner power.
+- The Material 3 parts go now, in their own change after this one: Button's
+  styles and shape morphs, the wavy scrubber and the lobed password marks.
+- The rail is the default sidebar style, and Settings keeps the switch back.
+- The three settings rows the mockup lacked (sidebar Style, the brightness
+  status icon, notifications in search) stay, and the mockup gains them.
+
 ## What stays open
 
 These are choices for the owner, not for an agent:
 
-- Whether the corner tray is deleted or kept as an opt-in `placement`.
-- Pills: 57 pill shapes are drawn two ways (circular ends on 21, the shell's
-  own power on 36). One of the two should win.
-- How far to retire the Material 3 parts: Button's five styles and shape
-  morphs, the wavy scrubber, the lobed password marks, the Material Symbols
-  font.
-- Whether the rail becomes the default sidebar style.
 - Release channels (`stable` that moves only after checks pass, `main` as
   the edge) and version numbers.
