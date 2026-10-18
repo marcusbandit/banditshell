@@ -17,6 +17,6 @@
   },
   "config": {
     "namespace": ["sidebar", "calendar"],
-    "reads": ["control", "volume"]
+    "reads": ["control", "island", "volume"]
   }
 }

@@ -104,7 +104,7 @@ Item {
 
     readonly property var alerts: root.deckEntries.filter(e => !e.leaving)
 
-    readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music" && a.kind !== "level"), ...(root.offStage ? Notices.settled : []), ...(Notifications.quieted ? [
+    readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music" && a.kind !== "level"), ...(Privacy.micRow && !root.activities.some(a => a.key === Privacy.micRow.key) ? [Privacy.micRow] : []), ...(root.offStage ? Notices.settled : []), ...(Notifications.quieted ? [
                 {
                     key: "quiet",
                     kind: "quiet",
@@ -188,7 +188,8 @@ Item {
             notifications: "the notifications",
             timers: "the timers",
             weather: "the weather",
-            calendar: "the calendar"
+            calendar: "the calendar",
+            microphone: "the microphone"
         })
     readonly property var taskViews: ({
             upgrade: upgradeView,
@@ -196,7 +197,8 @@ Item {
             notifications: notificationsView,
             timers: timersView,
             weather: weatherView,
-            calendar: calendarView
+            calendar: calendarView,
+            microphone: microphoneView
         })
     property bool pulling: false
     property real pullProgress: 0
@@ -487,6 +489,10 @@ Item {
     }
 
     function choose(activity: var): void {
+        if (activity?.kind === "privacy" && activity.data?.privacy === "mic") {
+            root.openTask("microphone");
+            return;
+        }
         if (root.taskViews[activity?.kind ?? ""]) {
             if (activity.kind === "update" && activity.key)
                 Notices.settle(activity.key);
@@ -1758,5 +1764,11 @@ Item {
         id: calendarView
 
         IslandCalendar {}
+    }
+
+    Component {
+        id: microphoneView
+
+        IslandMicrophone {}
     }
 }

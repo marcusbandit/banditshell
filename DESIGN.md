@@ -4347,6 +4347,21 @@ shell records. What counts as a camera, a microphone or a cast is in
 `privacy.js`: a stream that an active link feeds from a device. A program that
 reads the camera without PipeWire (a raw video4linux grab) is not seen.
 
+The microphone is announced, not kept on show. A voice assistant listening for
+its wake word holds the microphone all day, so when a program starts listening
+the island says "Microphone on" for one glance (`island.glanceSeconds`) and then
+goes; it comes back only when a program that was not listening before starts.
+The overview keeps a "Microphone on" row for as long as anything listens, and
+pressing it, there or during the glance, turns the island into the microphone:
+the input device, and each program that listens, named by the systemd unit it
+runs in (`diablo-voice`), then its binary, with its command line. That list is
+asked of `pw-dump` and `/proc` when the view opens, never polled. The labels are
+short on purpose ("Microphone on", "Camera on", "Screen shared"): what PipeWire
+calls a stream is often a library's name, not a program's. The rail's
+microphone mark follows the glance, except that a muted microphone something
+still listens to stays marked. The camera and a screen cast are rare and stay
+up for as long as they run.
+
 ### The kernel, and the update it starts
 
 `services/Pacman.qml` runs checkupdates every `packages.interval` minutes. Only

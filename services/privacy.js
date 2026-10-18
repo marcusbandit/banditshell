@@ -4,9 +4,9 @@ const IGNORED_BINARIES = ["quickshell", "qs"];
 const IGNORED_MEDIA_NAMES = ["Peak detect"];
 
 const PRESENTATION = {
-    mic: { name: "Microphone", icon: "mic", priority: 10, menu: "sound" },
-    camera: { name: "Camera", icon: "videocam", priority: 30, menu: "" },
-    screen: { name: "Screen", icon: "screen_share", priority: 20, menu: "" }
+    mic: { name: "Microphone", state: "Microphone on", icon: "mic", priority: 10, menu: "sound" },
+    camera: { name: "Camera", state: "Camera on", icon: "videocam", priority: 30, menu: "" },
+    screen: { name: "Screen", state: "Screen shared", icon: "screen_share", priority: 20, menu: "" }
 };
 
 function classOf(node) {
@@ -82,26 +82,35 @@ function usages(snapshot, quiet) {
     return KINDS.filter(k => found[k].length > 0).map(k => ({ kind: k, apps: found[k].slice().sort() }));
 }
 
-function appsLine(apps) {
-    if (apps.length === 0)
-        return "";
-    return apps.length === 1 ? apps[0] : `${apps[0]} +${apps.length - 1}`;
-}
-
 function usageSpec(usage) {
     const look = PRESENTATION[usage.kind];
     return {
         id: `privacy:${usage.kind}`,
         kind: "privacy",
         style: "privacy",
-        text: `${look.name}: ${appsLine(usage.apps)}`,
-        detail: usage.apps.join(", "),
+        text: look.state,
+        detail: usage.kind === "mic" ? "" : usage.apps.join(", "),
         icon: look.icon,
         priority: look.priority,
         pressable: look.menu !== "",
         source: "privacy",
         data: { privacy: usage.kind, apps: usage.apps, menu: look.menu }
     };
+}
+
+function micNews(heard, apps) {
+    const known = heard || [];
+    return (apps || []).some(app => !known.includes(app));
+}
+
+function micStep(heard, usage, showing) {
+    const apps = usage ? usage.apps : [];
+    const known = (heard || []).filter(app => apps.includes(app));
+    if (!usage)
+        return { post: false, announce: false, heard: [] };
+    const announce = micNews(known, apps);
+    const post = announce || showing;
+    return { post: post, announce: announce, heard: post ? apps.slice() : known };
 }
 
 function sameUsage(a, b) {
@@ -115,4 +124,88 @@ function changes(before, after) {
         push: next.filter(u => !old.some(o => sameUsage(o, u))),
         end: old.filter(o => !next.some(u => u.kind === o.kind)).map(o => `privacy:${o.kind}`)
     };
+}
+
+function listeners(dump) {
+    let objects;
+    try {
+        objects = JSON.parse(dump);
+    } catch (e) {
+        return [];
+    }
+    if (!Array.isArray(objects))
+        return [];
+    const props = {};
+    const clients = {};
+    const links = [];
+    for (const object of objects) {
+        const info = (object && object.info) || {};
+        if (object.type === "PipeWire:Interface:Node")
+            props[object.id] = info.props || {};
+        else if (object.type === "PipeWire:Interface:Client")
+            clients[object.id] = info.props || {};
+        else if (object.type === "PipeWire:Interface:Link")
+            links.push({ source: info["output-node-id"], target: info["input-node-id"], active: info.state === "active" });
+    }
+    const snapshot = { nodes: Object.keys(props).map(id => ({ id: Number(id), props: props[id] })), links: links };
+    const out = [];
+    for (const node of snapshot.nodes) {
+        if (kindOfConsumer(snapshot, node) !== "mic")
+            continue;
+        const client = clients[node.props["client.id"]] || {};
+        const source = feeds(snapshot, node).find(micSource);
+        const sp = source ? source.props : {};
+        out.push({
+            app: appName(node),
+            binary: String(client["application.process.binary"] || node.props["application.process.binary"] || ""),
+            pid: Number(client["application.process.id"] || node.props["application.process.id"] || 0),
+            device: String(sp["node.description"] || sp["node.nick"] || sp["node.name"] || "")
+        });
+    }
+    return out;
+}
+
+function unitOf(cgroup) {
+    const last = String(cgroup || "").trim().split("/").pop() || "";
+    if (!/\.(?:service|scope)$/.test(last) || /^user@\d+\.service$/.test(last) || /^session-\w+\.scope$/.test(last))
+        return "";
+    const name = last.replace(/\.(?:service|scope)$/, "");
+    if (!name.startsWith("app-"))
+        return name;
+    return name.slice(4).replace(/@.*$/, "").replace(/-\d+$/, "").replace(/^[A-Z][A-Za-z]*-/, "");
+}
+
+function shortCommand(cmdline) {
+    const parts = String(cmdline || "").trim().split(/\s+/).filter(part => part !== "");
+    if (parts.length === 0)
+        return "";
+    parts[0] = parts[0].split("/").pop();
+    return parts.join(" ");
+}
+
+function named(found, table) {
+    const info = {};
+    for (const line of String(table || "").split("\n")) {
+        const cells = line.split("\t");
+        if (/^\d+$/.test(cells[0] || ""))
+            info[Number(cells[0])] = { command: shortCommand(cells[1]), unit: unitOf(cells[2]) };
+    }
+    const out = [];
+    const pids = {};
+    for (const listener of found || []) {
+        const known = info[listener.pid] || {};
+        const name = known.unit || listener.binary || listener.app;
+        let row = out.find(r => r.name === name);
+        if (!row) {
+            row = { name: name, command: known.command || "", device: listener.device, pid: listener.pid, processes: 0 };
+            out.push(row);
+            pids[name] = [];
+        }
+        const key = listener.pid > 0 ? listener.pid : `app:${listener.app}`;
+        if (!pids[name].includes(key)) {
+            pids[name].push(key);
+            row.processes = pids[name].length;
+        }
+    }
+    return out;
 }

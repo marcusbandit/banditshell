@@ -18,7 +18,7 @@ Item {
         charging: Battery.charging,
         batteryIcon: Battery.icon(),
         micShown: Config.values.sidebar.status.sound,
-        micStreams: Audio.recording.some(n => (n.properties?.["media.class"] ?? "").includes("Audio")),
+        micStreams: root.micFresh || (Audio.sourceMuted && root.micIds.length > 0),
         micMuted: Audio.sourceMuted,
         recording: ScreenRecorder.recording,
         vpn: Tunnels.anyOn,
@@ -32,6 +32,31 @@ Item {
         updateMode: Config.values.sidebar.update,
         diverged: Update.diverged
     })
+
+    readonly property var micIds: Audio.recording.filter(n => (n.properties?.["media.class"] ?? "").includes("Audio")).map(n => n.id)
+
+    property var heardIds: []
+
+    property bool micFresh: false
+
+    onMicIdsChanged: {
+        const news = root.micIds.some(id => !root.heardIds.includes(id));
+        root.heardIds = root.micIds.slice();
+        if (news) {
+            root.micFresh = true;
+            micMoment.restart();
+        } else if (root.micIds.length === 0) {
+            root.micFresh = false;
+            micMoment.stop();
+        }
+    }
+
+    Timer {
+        id: micMoment
+
+        interval: Math.max(1, Config.values.island.glanceSeconds) * 1000
+        onTriggered: root.micFresh = false
+    }
 
     property var held: []
 
