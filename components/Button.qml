@@ -9,7 +9,7 @@ Item {
     property string text: ""
     property string icon: ""
     property real iconFill: 0
-    property string style: "tonal"
+    property string style: "plate"
     property int size: 1
     property bool checkable: false
     property bool checked: false

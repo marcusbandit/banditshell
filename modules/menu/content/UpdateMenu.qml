@@ -23,6 +23,7 @@ Column {
     InkText {
         width: parent.width
         alignInk: true
+        wrapMode: Text.Wrap
         text: Update.headline
         color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.text
     }

@@ -1,13 +1,61 @@
 {
   "entries": [
     {
-      "id": "2026-10-18-7",
+      "id": "2026-10-18-8",
       "date": "2026-10-18",
       "changes": [
         {
           "type": "bugs",
           "severity": "minor",
           "text": "The microphone no longer stays in the island and the rail all the time. It shows for a few seconds when a program starts listening and then goes, so a voice assistant that always listens stops keeping it on screen. It comes back when another program starts listening. The camera and screen sharing still show for as long as they run."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-18-3",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell has a website at banditshell.marcusrosado.com: what the shell does, how to install it, and the roadmap of where it is going. Nothing in the shell itself changed."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-18-4",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Pressing something in the island now opens it in the island instead of somewhere else. The shell's update notice shows what is new and the download right there, not in the sidebar, and the notifications row opens your history right in the island. Typing notifications in the launcher finds it too."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "In the island's overview, press the clock for your timers and alarms, the date for a calendar, and the temperature for the weather over the next seven days. Escape or the close mark takes you back to the overview."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Updating Linux happens in the island now instead of a terminal. Pressing the kernel notice asks for your password in the shell's own prompt, then the island shows the update as it goes: downloading, checking, installing, finishing. Press it to open the update in full, where you can cancel while that is still safe, answer pacman's questions with buttons, or watch it in a terminal. Closing that terminal or restarting the shell leaves the update running."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A new song only pops up in the island when it plays somewhere you are not looking. Music or a video in the window you are using stays quiet; Spotify in the background or a video in another tab still shows."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-18-7",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A fullscreen window covers the whole screen again, with no line round its edge. The bright edge stood out against the black bars of films and series; a smarter edge and a setting to switch it are on the way."
         }
       ]
     },
@@ -44,7 +92,7 @@
         {
           "type": "ui",
           "severity": "major",
-          "text": "The notification list in the top right corner is gone. New notifications show in the island at the top of the screen, and the ones you have had are in the launcher: type notifications, or press the island's notifications row. banditshell panel notifications toggle (Super+N in the example binds) now opens that list in the launcher. If you want pop-ups in the corner again, set notifications.placement to corner; the corner then shows new ones only."
+          "text": "The notification list in the top right corner is gone. New notifications show in the island at the top of the screen, and the ones you have had are kept: type notifications in the launcher, or press the island's notifications row to see them in the island. banditshell panel notifications toggle (Super+N in the example binds) now opens that list in the launcher. If you want pop-ups in the corner again, set notifications.placement to corner; the corner then shows new ones only."
         },
         {
           "type": "ui",

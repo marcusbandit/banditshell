@@ -30,7 +30,7 @@ Singleton {
                 kind: "restart",
                 version: Pacman.pretty(Pacman.installed)
             });
-        else if (Pacman.kernelUpdate)
+        else if (Pacman.kernelUpdate && !SystemUpgrade.shown)
             out.push({
                 key: `kernel:${Pacman.kernelUpdate.to}`,
                 kind: "kernel",
@@ -128,14 +128,40 @@ Singleton {
     property string heard: ""
     property bool awake: false
 
+    property string weighing: ""
+    property real weighedSince: 0
+    readonly property int unsureMs: 1500
+
     onTrackChanged: {
         const was = root.heard;
         root.heard = root.track;
-        if (root.awake && root.track && root.track !== was && Media.playing && Config.values.island.nowPlaying)
+        root.weighing = "";
+        if (!root.awake || !root.track || root.track === was || !Media.playing || !Config.values.island.nowPlaying)
+            return;
+        root.weighing = root.track;
+        root.weighedSince = Date.now();
+        root.weigh();
+    }
+
+    function weigh(): void {
+        if (!root.weighing)
+            return;
+        const verdict = root.weighing === root.track ? Media.frontness(Media.active) : "front";
+        if (verdict === "unsure" && Date.now() - root.weighedSince < root.unsureMs)
+            return;
+        root.weighing = "";
+        if (verdict !== "front")
             root.pass({
                 key: "music",
                 kind: "music"
             });
+    }
+
+    Timer {
+        interval: 250
+        repeat: true
+        running: root.weighing !== ""
+        onTriggered: root.weigh()
     }
 
     Timer {

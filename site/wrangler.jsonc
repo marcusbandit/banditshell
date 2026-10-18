@@ -1,0 +1,13 @@
+{
+  "name": "banditshell-site",
+  "compatibility_date": "2026-10-01",
+  "main": "./worker.mjs",
+  "workers_dev": false,
+  "routes": [{ "pattern": "banditshell.marcusrosado.com", "custom_domain": true }],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": true
+  }
+}
