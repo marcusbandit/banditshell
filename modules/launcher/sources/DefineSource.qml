@@ -12,11 +12,11 @@ QtObject {
 
     readonly property string word: Dictionary.enabled ? Words.ask(root.search.text) : ""
 
-    readonly property bool started: Dictionary.enabled && Words.started(root.search.query)
+    readonly property bool waitingForWord: Dictionary.enabled && Words.waitingForWord(root.search.query)
 
     onWordChanged: Dictionary.lookup.want(root.word)
 
-    readonly property bool intent: !!root.word || root.started
+    readonly property bool intent: !!root.word || root.waitingForWord
 
     readonly property var answer: root.word ? Dictionary.lookup.answers[root.word] : undefined
     readonly property bool pending: !!root.word && root.answer === undefined && Dictionary.lookup.failures[root.word] === undefined
@@ -46,10 +46,10 @@ QtObject {
                         peekText: [sense.text, sense.example].filter(Boolean).join("\n\n"),
                         score: i === 0 ? Infinity : 9 - i * 0.01
                     }));
-        if (root.started)
+        if (root.waitingForWord)
             return [
                 {
-                    key: "definition:hint",
+                    key: "definition-hint",
                     kind: "definition",
                     label: "Type a word to define",
                     detail: "",
@@ -76,8 +76,8 @@ QtObject {
             id: "define",
             icon: "menu_book",
             label: "Define a word",
-            words: "define dictionary definition meaning word look up",
-            hidden: !Dictionary.enabled || root.started || !!root.word,
+            words: "define dictionary meaning",
+            hidden: !Dictionary.enabled || root.waitingForWord || !!root.word,
             stay: true,
             run: () => root.search.retype("define ")
         }

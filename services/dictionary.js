@@ -1,7 +1,7 @@
 .pragma library
 
 var ASK = /^(?:define|definition of|meaning of|dictionary|dict)\s+([^\s].*)$/i;
-var STARTED = /^(?:define|definition of|meaning of|dictionary|dict)\s+$/i;
+var WAITING = /^\s*(?:define|definition of|meaning of)\s+$/i;
 var MEANING = /^what does\s+(.+?)\s+mean\??$/i;
 var WORD = /^[^\s\d<>{}()\[\]\/\\|=+*^%$#@~`",;:?!][^\d<>{}()\[\]\/\\|=+*^%$#@~`",;:?!]{0,47}$/;
 var TAGS = /<[^>]*>/g;
@@ -19,8 +19,8 @@ function ask(input) {
     return WORD.test(word) ? word.toLowerCase() : "";
 }
 
-function started(input) {
-    return STARTED.test(String(input || "").replace(/^\s+/, ""));
+function waitingForWord(input) {
+    return WAITING.test(String(input || ""));
 }
 
 function entity(match, name) {
