@@ -511,6 +511,7 @@ const STATUS_REPLIES = [
     [["focus", "quiet"], "quiet        off\nevery night  off\nalarms       let through", { quiet: "off", every_night: "off", alarms: "let through" }],
     [["focus", "mode"], "work (focus on one thing)", { text: ["work (focus on one thing)"] }],
     [["status"], "compositor  hyprland\nfollowing   true", { compositor: "hyprland", following: true }],
+    [["status"], "commit      0835201\ncount       12\nzero        0", { commit: "0835201", count: 12, zero: 0 }],
     [["screen", "brightness"], "brightness=80% displays=DP-1 warmth=off", { brightness: "80%", displays: "DP-1", warmth: "off" }]
 ];
 

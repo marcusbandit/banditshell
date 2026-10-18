@@ -1604,7 +1604,7 @@ function jstr(s,   out, i, c, n) {
     return "\"" out "\""
 }
 function jvalue(v) {
-    if (v ~ /^-?[0-9]+(\.[0-9]+)?$/ || v == "true" || v == "false")
+    if (v ~ /^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/ || v == "true" || v == "false")
         return v
     return jstr(v)
 }
