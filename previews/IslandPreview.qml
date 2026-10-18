@@ -650,6 +650,55 @@ ShellRoot {
             },
             wait: 1500,
             expect: "hidden"
+        },
+        {
+            name: "a voice assistant starts listening: Microphone on, for a glance",
+            run: () => Privacy.mock([
+                    {
+                        kind: "mic",
+                        apps: ["PipeWire ALSA [python3.12]"]
+                    }
+                ], [
+                    {
+                        name: "diablo-voice",
+                        command: "python -m voice",
+                        device: "Scarlett 2i2 USB Mic1",
+                        pid: 1042
+                    }
+                ]),
+            wait: 800,
+            expect: "privacy",
+            holds: () => island.activities.some(a => a.key === "privacy:privacy:mic" && a.text === "Microphone on")
+        },
+        {
+            name: "after the glance it tucks away though the assistant keeps listening",
+            run: () => {},
+            wait: Notices.glanceMs + 800,
+            expect: "hidden"
+        },
+        {
+            name: "the overview still says Microphone on",
+            run: () => island.pinned = true,
+            wait: 1200,
+            expect: "overview",
+            holds: () => island.overviewRows.some(r => r.key === "privacy:privacy:mic")
+        },
+        {
+            name: "pressing it turns the island into what is listening",
+            run: () => island.choose(Privacy.micRow),
+            wait: 1200,
+            expect: "the microphone",
+            holds: () => Privacy.listeners.length === 1 && Privacy.listeners[0].name === "diablo-voice"
+        },
+        {
+            name: "the assistant stops: back out, and nothing is left",
+            run: () => {
+                island.back();
+                island.back();
+                Privacy.mock(null, null);
+            },
+            wait: 1500,
+            expect: "hidden"
         }
     ]
 

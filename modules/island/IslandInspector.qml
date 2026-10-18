@@ -254,7 +254,7 @@ Scope {
             timer: "pauses or resumes the timer",
             alarm: "stops or snoozes the alarm from its buttons",
             level: "nothing, it only shows",
-            privacy: "opens the sound menu for the microphone, nothing for the camera or a screen share",
+            privacy: "turns the island into what is listening, for the microphone; nothing for the camera or a screen share",
             notifications: "turns the island into the notification history",
             held: "opens the launcher on what was held while quiet",
             update: "turns the island into the shell update",

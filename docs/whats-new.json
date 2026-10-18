@@ -5,9 +5,19 @@
       "date": "2026-10-18",
       "changes": [
         {
-          "type": "bugs",
+          "type": "ui",
           "severity": "minor",
-          "text": "The microphone no longer stays in the island and the rail all the time. It shows for a few seconds when a program starts listening and then goes, so a voice assistant that always listens stops keeping it on screen. It comes back when another program starts listening. The camera and screen sharing still show for as long as they run."
+          "text": "When a program starts using the microphone, the island says Microphone on for a few seconds and then gets out of the way, instead of staying up with a long technical name. The rail's microphone mark does the same."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Open the island and Microphone on stays there for as long as something listens. Press it to see what is using the microphone: each program by name, with its command, and the input it listens to."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The camera and screen sharing read Camera on and Screen shared, and still show for as long as they run."
         }
       ]
     },
