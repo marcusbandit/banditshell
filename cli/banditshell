@@ -682,6 +682,14 @@ cached_pid() {
     esac
 }
 
+detach() {
+    if setsid --help 2>&1 | grep -q -- --fork; then
+        setsid -f "$@"
+    else
+        setsid "$@" &
+    fi
+}
+
 absolute_path() {
     local path=$1 resolved
     [[ $path == /* ]] || path=$PWD/$path
@@ -967,7 +975,7 @@ try_worktree() {
     stop_shell || true
     if launch "$target"; then
         echo "${green}trying $name$plain$dim - back to the checkout on its own once merged, or banditshell dev back$plain"
-        (cd "$HOME" && setsid "$(readlink -f "${BASH_SOURCE[0]}")" dev watch </dev/null >/dev/null 2>&1 &) || true
+        (cd "$HOME" && detach "$(readlink -f "${BASH_SOURCE[0]}")" dev watch </dev/null >/dev/null 2>&1) || true
         return 0
     fi
     complain "$name failed to load - back on the checkout (errors: $FAILED_LOG)"
@@ -3248,7 +3256,7 @@ update_apply() {
     if [ "$detach" = 1 ] && ! dry; then
         mkdir -p "$UPDATE_STATE"
         : >"$UPDATE_STATE/progress.log"
-        (cd "$HOME" && setsid "$(readlink -f "${BASH_SOURCE[0]}")" update apply --json ${to:+--to "$to"} 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log" &)
+        (cd "$HOME" && detach "$(readlink -f "${BASH_SOURCE[0]}")" update apply --json ${to:+--to "$to"} 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log")
         return 0
     fi
     update_prepare

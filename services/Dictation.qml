@@ -10,7 +10,6 @@ Singleton {
     readonly property string dataDir: Quickshell.env("GVOICE_HOME") || `${Quickshell.env("HOME")}/.local/share/gvoice`
     readonly property string path: `${root.dataDir}/history.json`
 
-    readonly property string cli: "voice"
 
     property var entries: []
 
@@ -141,7 +140,7 @@ Singleton {
     }
 
     function run(args: var): void {
-        poke.command = [root.cli, ...args];
+        poke.command = ["sh", "-c", 'exec "$(command -v voice || printf %s "$HOME/bin/voice")" "$@"', "voice", ...args];
         poke.running = true;
     }
 

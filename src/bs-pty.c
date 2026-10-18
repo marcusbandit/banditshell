@@ -29,7 +29,9 @@ static void close_inherited(void) {
         return;
 #endif
     long last = sysconf(_SC_OPEN_MAX);
-    for (long fd = 3; fd < (last > 0 ? last : 1024); fd++)
+    if (last <= 0 || last > 65536)
+        last = last <= 0 ? 1024 : 65536;
+    for (long fd = 3; fd < last; fd++)
         close((int)fd);
 }
 

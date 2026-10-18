@@ -21,7 +21,7 @@ Installs what banditshell needs: the CLI into bin/ and, when nothing else
 provides one, ~/.local/bin/banditshell, quickshell, the fonts, every package
 the shell calls, the C helpers (banditshell dev build), tab completion for zsh
 and bash, and the Lua module your Hyprland binds load (a shim beside
-hyprland.lua and a pointer file under $XDG_STATE_HOME/banditshell). Packages
+hyprland.lua and a pointer file under \$XDG_STATE_HOME/banditshell). Packages
 come from pacman, apt, dnf, zypper, xbps or apk, whichever this machine has;
 anything a distro does not package is named so you can fetch it upstream. When
 the Spotify desktop app is installed it also
@@ -99,7 +99,7 @@ build_table() {
     add_step qt6-multimedia                "qt_present module QtMultimedia"          qt6-multimedia                2 "sound in the notifications"
     add_step qt6-websockets                "qt_present module QtWebSockets"          qt6-websockets                2 "talking to OBS while you stream"
     add_step qt6-shadertools               "qt_present tool qsb"                     qt6-shadertools               2 "qsb, to compile the chassis shader"
-    add_step material-symbols              "font_present 'Material Symbols Rounded'" @material-symbols             2 "the icon face"
+    add_step ttf-material-symbols-variable "font_present 'Material Symbols Rounded'" ttf-material-symbols-variable 2 "the icon face"
     add_step ttf-nerd-fonts-symbols        "font_present 'Symbols Nerd Font'"        ttf-nerd-fonts-symbols        2 "per-application marks"
     add_step nodejs                        "command -v node"                         nodejs                        2 "the old-bind rewriter and the tests"
     add_step rsync                         "command -v rsync"                        rsync                         2 "the last known good copy"
@@ -294,7 +294,10 @@ bar() {
 KEEPALIVE_PID=""
 SUDO_READY=0
 
+RUNTIME_MADE=0
+
 cleanup() {
+    [ "$RUNTIME_MADE" -eq 0 ] || rm -rf "$RUNTIME_DIR"
     if [ -n "$KEEPALIVE_PID" ]; then
         kill "$KEEPALIVE_PID" 2>/dev/null
         KEEPALIVE_PID=""
@@ -372,58 +375,77 @@ askpass_stop() {
 
 PKG_MANAGER=""
 APT_REFRESHED=0
+XBPS_SYNCED=0
 
 PACKAGE_TABLE='
-pacman                  apt-get                   dnf                     zypper                   xbps-install           apk
-quickshell              =                         =                       =                        =                      -
-curl                    =                         =                       =                        =                      =
-unzip                   =                         =                       =                        =                      =
-fontconfig              =                         =                       =                        =                      =
-hyprland                =                         -                       =                        -                      =
-qt6-declarative         qml6-module-qtquick+qml6-module-qtquick-shapes+qml6-module-qtquick-effects  qt6-qtdeclarative       qt6-declarative-imports  qt6-declarative        qt6-qtdeclarative
-qt6-multimedia          qml6-module-qtmultimedia  qt6-qtmultimedia        qt6-multimedia-imports   qt6-multimedia         qt6-qtmultimedia
-qt6-websockets          qml6-module-qtwebsockets  qt6-qtwebsockets-devel  qt6-websockets-imports   qt6-websockets         qt6-qtwebsockets
-qt6-shadertools         qt6-shader-baker          qt6-qtshadertools       qt6-shadertools-devel    qt6-shadertools-devel  qt6-qtshadertools-dev
-ttf-nerd-fonts-symbols  @nerd-symbols             @nerd-symbols           @nerd-symbols            @nerd-symbols          @nerd-symbols
-nodejs                  =                         =                       nodejs-default           =                      =
-rsync                   =                         =                       =                        =                      =
-wl-clipboard            =                         =                       =                        =                      =
-jq                      =                         =                       =                        =                      =
-grim                    =                         =                       =                        =                      =
-slurp                   =                         =                       =                        =                      =
-swappy                  =                         =                       =                        =                      -
-ffmpeg                  =                         ffmpeg-free             =                        =                      =
-libnotify               libnotify-bin             =                       libnotify-tools          =                      =
-xdg-utils               =                         =                       =                        =                      =
-fd                      fd-find                   fd-find                 =                        =                      =
-libqalculate            qalc                      qalculate               qalculate                qalculate              qalc
-ripgrep                 =                         =                       =                        =                      =
-networkmanager          network-manager           NetworkManager          NetworkManager           NetworkManager         networkmanager-cli
-ddcutil                 =                         =                       =                        =                      =
-pciutils                =                         =                       =                        =                      =
-wtype                   =                         =                       =                        =                      =
-ydotool                 =                         =                       =                        -                      -
-python                  python3                   python3                 python3                  python3                python3
-python-gobject          python3-gi                python3-gobject         python3-gobject          python3-gobject        py3-gobject3
-python-cryptography     python3-cryptography      python3-cryptography    python3-cryptography     python3-cryptography   py3-cryptography
-python-evdev            python3-evdev             python3-evdev           python3-evdev            python3-evdev          py3-evdev
-glib2                   libglib2.0-bin            =                       glib2-tools              glib                   glib
-zenity                  =                         =                       =                        =                      =
-qrencode                =                         =                       =                        =                      libqrencode-tools
-zxing-cpp               zxing-cpp-tools           -                       zxing-cpp-examples       zxing-cpp-progs        zxing
-librsvg                 librsvg2-bin              librsvg2-tools          rsvg-convert             librsvg-utils          rsvg-convert
-gcc                     gcc+libc6-dev             =                       =                        =                      build-base
-pkgconf                 =                         pkgconf-pkg-config      pkgconf-pkg-config       =                      =
-util-linux              =                         =                       =                        =                      util-linux-misc
-procps-ng               procps                    =                       procps                   =                      =
-tzdata                  =                         =                       timezone                 =                      =
-wayland                 libwayland-dev            wayland-devel           wayland-devel            wayland-devel          wayland-dev
-polkit                  pkexec                    =                       pkexec                   =                      =
-gnu-userland            -                         -                       -                        -                      coreutils+findutils+grep+sed+gawk+procps-ng+util-linux-misc
+pacman                         apt-get                   dnf                     zypper                   xbps-install           apk
+quickshell                     =                         =                       =                        =                      -
+curl                           =                         =                       =                        =                      =
+unzip                          =                         =                       =                        =                      =
+fontconfig                     =                         =                       =                        =                      =
+hyprland                       =                         -                       =                        -                      =
+qt6-declarative                qml6-module-qtquick+qml6-module-qtquick-shapes+qml6-module-qtquick-effects  qt6-qtdeclarative       qt6-declarative-imports  qt6-declarative        qt6-qtdeclarative
+qt6-multimedia                 qml6-module-qtmultimedia  qt6-qtmultimedia        qt6-multimedia-imports   qt6-multimedia         qt6-qtmultimedia
+qt6-websockets                 qml6-module-qtwebsockets  qt6-qtwebsockets-devel  qt6-websockets-imports   qt6-websockets         qt6-qtwebsockets
+qt6-shadertools                qt6-shader-baker          qt6-qtshadertools       qt6-shadertools-devel    qt6-shadertools-devel  qt6-qtshadertools-dev
+ttf-material-symbols-variable  @material-symbols         @material-symbols       @material-symbols        @material-symbols      @material-symbols
+ttf-nerd-fonts-symbols         @nerd-symbols             @nerd-symbols           @nerd-symbols            @nerd-symbols          @nerd-symbols
+nodejs                         =                         =                       nodejs-default           =                      =
+rsync                          =                         =                       =                        =                      =
+wl-clipboard                   =                         =                       =                        =                      =
+jq                             =                         =                       =                        =                      =
+grim                           =                         =                       =                        =                      =
+slurp                          =                         =                       =                        =                      =
+swappy                         =                         =                       =                        =                      -
+ffmpeg                         =                         ffmpeg-free             =                        =                      =
+libnotify                      libnotify-bin             =                       libnotify-tools          =                      =
+xdg-utils                      =                         =                       =                        =                      =
+fd                             fd-find                   fd-find                 =                        =                      =
+libqalculate                   qalc                      qalculate               qalculate                qalculate              qalc
+ripgrep                        =                         =                       =                        =                      =
+networkmanager                 network-manager           NetworkManager          NetworkManager           NetworkManager         networkmanager-cli
+ddcutil                        =                         =                       =                        =                      =
+pciutils                       =                         =                       =                        =                      =
+wtype                          =                         =                       =                        =                      =
+ydotool                        =                         =                       =                        -                      -
+python                         python3                   python3                 python3                  python3                python3
+python-gobject                 python3-gi                python3-gobject         python3-gobject          python3-gobject        py3-gobject3
+python-cryptography            python3-cryptography      python3-cryptography    python3-cryptography     python3-cryptography   py3-cryptography
+python-evdev                   python3-evdev             python3-evdev           python3-evdev            python3-evdev          py3-evdev
+glib2                          libglib2.0-bin            =                       glib2-tools              glib                   glib
+zenity                         =                         =                       =                        =                      =
+qrencode                       =                         =                       =                        =                      libqrencode-tools
+zxing-cpp                      zxing-cpp-tools           -                       zxing-cpp-examples       zxing-cpp-progs        zxing
+librsvg                        librsvg2-bin              librsvg2-tools          rsvg-convert             librsvg-utils          rsvg-convert
+gcc                            gcc+libc6-dev             =                       =                        =                      build-base
+pkgconf                        =                         pkgconf-pkg-config      pkgconf-pkg-config       =                      =
+util-linux                     =                         =                       =                        =                      util-linux-misc
+procps-ng                      procps                    =                       procps                   =                      =
+tzdata                         =                         =                       timezone                 =                      =
+wayland                        libwayland-dev            wayland-devel           wayland-devel            wayland-devel          wayland-dev
+polkit                         pkexec                    =                       pkexec                   =                      =
+gnu-userland                   -                         -                       -                        -                      coreutils+findutils+grep+sed+gawk+procps-ng+util-linux-misc
 '
 
 detect_manager() {
-    local tool
+    local tool word
+    for word in $( (. /etc/os-release 2>/dev/null && printf '%s %s' "${ID:-}" "${ID_LIKE:-}") ); do
+        case "$word" in
+        arch) tool=pacman ;;
+        debian | ubuntu) tool=apt-get ;;
+        fedora | rhel) tool=dnf ;;
+        opensuse* | suse) tool=zypper ;;
+        void) tool=xbps-install ;;
+        alpine) tool=apk ;;
+        gentoo) tool=emerge ;;
+        nixos) tool=nix-env ;;
+        *) continue ;;
+        esac
+        if command -v "$tool" >/dev/null 2>&1; then
+            PKG_MANAGER="$tool"
+            return 0
+        fi
+    done
     for tool in pacman apt-get dnf zypper xbps-install apk emerge nix-env; do
         if command -v "$tool" >/dev/null 2>&1; then
             PKG_MANAGER="$tool"
@@ -453,14 +475,26 @@ package_names() {
         }' <<<"$PACKAGE_TABLE"
 }
 
+package_download() {
+    awk -v pkg="$1" '$1 == pkg { for (i = 2; i <= NF; i++) if ($i ~ /^@/) { print $i; exit } }' <<<"$PACKAGE_TABLE"
+}
+
 gnu_userland_present() {
-    find / -maxdepth 0 -printf '' 2>/dev/null && setsid --help 2>&1 | grep -q -- --fork
+    find / -maxdepth 0 -printf '' 2>/dev/null \
+        && sed --version 2>/dev/null | grep -q '^sed (GNU sed)' \
+        && grep --version 2>/dev/null | grep -q 'GNU grep' \
+        && awk --version 2>/dev/null | grep -q 'GNU Awk' \
+        && ps --version 2>/dev/null | grep -q procps \
+        && setsid --help 2>&1 | grep -q -- --fork
 }
 
 install_pkg() {
     local pkg="$1" names status=0
     local -a list
     names="$(package_names "$pkg")" || status=$?
+    if [ "$status" -eq 2 ] && names="$(package_download "$pkg")" && [ -n "$names" ]; then
+        status=0
+    fi
     case "$status" in
     1)
         STEP_OUTPUT="$pkg is not packaged for $PKG_MANAGER; install it from upstream"
@@ -472,7 +506,8 @@ install_pkg() {
         ;;
     esac
     case "$names" in
-    @nerd-symbols) install_nerd_symbols; return ;;
+    @nerd-symbols) install_font "$NERD_SYMBOLS_URL" "$NERD_SYMBOLS_SHA" nerd-symbols; return ;;
+    @material-symbols) install_font "$MATERIAL_SYMBOLS_URL" "$MATERIAL_SYMBOLS_SHA" material-symbols; return ;;
     esac
     if ! need_root; then
         STEP_OUTPUT="no sudo, so $names was not installed"
@@ -486,17 +521,28 @@ install_pkg() {
             sudo -n apt-get update >/dev/null 2>&1 && APT_REFRESHED=1
         fi
         STEP_OUTPUT="$(sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y "${list[@]}" 2>&1)" && return 0
-        local backports
+        case "$STEP_OUTPUT" in
+        *"Unable to locate package"* | *"has no installation candidate"*) ;;
+        *) return 1 ;;
+        esac
+        local backports policy first="$STEP_OUTPUT"
         backports="$(. /etc/os-release 2>/dev/null && printf '%s' "${VERSION_CODENAME:-}")-backports"
-        if ! apt-cache policy 2>/dev/null | grep -q " $backports/"; then
-            STEP_OUTPUT="$STEP_OUTPUT"$'\n'"not in the main archive; $backports may carry it: add it to your apt sources and run this again"
+        policy="$(apt-cache policy 2>/dev/null)"
+        if ! grep -q " $backports/" <<<"$policy"; then
+            STEP_OUTPUT="$first"$'\n'"not in the main archive; $backports may carry it: add it to your apt sources and run this again"
             return 1
         fi
-        STEP_OUTPUT="$(sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y -t "$backports" "${list[@]}" 2>&1)"
+        STEP_OUTPUT="$(sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y -t "$backports" "${list[@]}" 2>&1)" && return 0
+        STEP_OUTPUT="$first"$'\n'"$STEP_OUTPUT"
+        return 1
         ;;
     dnf) STEP_OUTPUT="$(sudo -n dnf install -y "${list[@]}" 2>&1)" ;;
     zypper) STEP_OUTPUT="$(sudo -n zypper --non-interactive install "${list[@]}" 2>&1)" ;;
-    xbps-install) STEP_OUTPUT="$(sudo -n xbps-install -Sy "${list[@]}" 2>&1)" ;;
+    xbps-install)
+        local sync=-S
+        [ "$XBPS_SYNCED" -eq 0 ] || sync=""
+        STEP_OUTPUT="$(sudo -n xbps-install -y $sync "${list[@]}" 2>&1)" && XBPS_SYNCED=1
+        ;;
     apk) STEP_OUTPUT="$(sudo -n apk add "${list[@]}" 2>&1)" ;;
     esac
 }
@@ -513,26 +559,17 @@ MATERIAL_SYMBOLS_SHA="32e4011709e055596eb8d2dd0f7cb547b47c1d40ac9ecb8fad54f7f7ea
 NERD_SYMBOLS_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/NerdFontsSymbolsOnly.zip"
 NERD_SYMBOLS_SHA="fdca3682534f6f65e1ccb2345b0362ccf67d9b8eca7c8025330946e93e2473bc"
 
-install_material_symbols() {
-    local tmp dest="${XDG_DATA_HOME:-$HOME/.local/share}/fonts/material-symbols" status=0
+install_font() {
+    local url="$1" sha="$2" dest="${XDG_DATA_HOME:-$HOME/.local/share}/fonts/$3" tmp status=0
     tmp="$(mktemp -d)" || return 1
-    fetch_checked "$MATERIAL_SYMBOLS_URL" "$MATERIAL_SYMBOLS_SHA" "$tmp/font.ttf" \
-        && mkdir -p "$dest" \
-        && cp "$tmp/font.ttf" "$dest/MaterialSymbolsRounded.ttf" \
-        || status=1
-    rm -rf "$tmp"
-    [ "$status" -eq 0 ] && fc-cache -f "$dest" >/dev/null 2>&1
-    return "$status"
-}
-
-install_nerd_symbols() {
-    local tmp dest="${XDG_DATA_HOME:-$HOME/.local/share}/fonts/nerd-symbols" status=0
-    tmp="$(mktemp -d)" || return 1
-    fetch_checked "$NERD_SYMBOLS_URL" "$NERD_SYMBOLS_SHA" "$tmp/symbols.zip" \
-        && unzip -oq "$tmp/symbols.zip" -d "$tmp/x" \
-        && mkdir -p "$dest" \
-        && cp "$tmp"/x/*.ttf "$dest/" \
-        || status=1
+    if fetch_checked "$url" "$sha" "$tmp/download" && mkdir -p "$dest"; then
+        case "$url" in
+        *.zip) unzip -oq "$tmp/download" -d "$tmp/x" && cp "$tmp"/x/*.ttf "$dest/" || status=1 ;;
+        *) cp "$tmp/download" "$dest/$3.ttf" || status=1 ;;
+        esac
+    else
+        status=1
+    fi
     rm -rf "$tmp"
     [ "$status" -eq 0 ] && fc-cache -f "$dest" >/dev/null 2>&1
     return "$status"
@@ -766,7 +803,6 @@ run_step() {
     else
         case "$pkg" in
         @monocraft) install_monocraft && ok=0 ;;
-        @material-symbols) install_material_symbols && ok=0 ;;
         @completion) install_completion && ok=0 ;;
         @cli) install_cli && ok=0 ;;
         @path) install_path && ok=0 ;;
@@ -831,6 +867,7 @@ main() {
 
     if ! mkdir -p "$RUNTIME_DIR" 2>/dev/null || [ ! -w "$RUNTIME_DIR" ]; then
         RUNTIME_DIR="$(mktemp -d)"
+        RUNTIME_MADE=1
         PROGRESS="$RUNTIME_DIR/banditshell-install.jsonl"
         ASKPASS_RUN="$RUNTIME_DIR/banditshell-askpass"
     fi

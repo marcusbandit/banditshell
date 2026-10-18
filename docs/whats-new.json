@@ -12,7 +12,7 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "A fresh install now also gets the Material Symbols icon font, which used to need an AUR helper, the Qt module the OBS deck talks through, and a few base tools small systems leave out, such as cmp, flock and the time zone list."
+          "text": "A fresh install now also gets the Qt module the OBS deck talks through, and the base tools small systems leave out, such as cmp, flock and the time zone list. Where a distro has no package for the icon fonts, the installer downloads them."
         },
         {
           "type": "bugs",

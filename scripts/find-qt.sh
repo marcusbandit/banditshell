@@ -23,9 +23,11 @@ query() {
 }
 
 prefixes() {
-    local arch
-    arch=$(uname -m)
-    printf '%s\n' /usr/lib/qt6 /usr/lib64/qt6 "/usr/lib/$arch-linux-gnu/qt6" /usr/libexec/qt6 /usr/local/lib/qt6
+    local dir
+    printf '%s\n' /usr/lib/qt6 /usr/lib64/qt6 /usr/libexec/qt6 /usr/local/lib/qt6
+    for dir in /usr/lib/*-linux-gnu*/qt6; do
+        [ -d "$dir" ] && printf '%s\n' "$dir"
+    done
 }
 
 find_tool() {

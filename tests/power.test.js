@@ -7,7 +7,7 @@ const ROOT = path.resolve(__dirname, "..");
 const load = (file, names) => new Function(fs.readFileSync(path.join(ROOT, "services", file), "utf8") + `\nreturn { ${names.join(", ")} };`)();
 
 const Battery = load("battery.js", ["lowStep", "countdownMessage", "afterResume", "nearlyEmptyFraction", "rearmMargin", "graceSeconds"]);
-const Suspension = load("suspension.js", ["parseHibernate", "resolve", "commandFor"]);
+const Suspension = load("suspension.js", ["parseHibernate", "resolve", "commandFor", "logindCommand"]);
 const Lid = load("lid.js", ["internalOutput", "hasLid", "externalScreens", "differsFromLogind", "chooseAction", "closedFrom", "closedFromProperty"]);
 const Profile = load("powerprofile.js", ["nameFor", "profileFor", "parseProbe", "parseActive", "choices"]);
 const Charge = load("chargelimit.js", ["parseProbe", "wanted", "shouldWrite", "elsewhere", "trouble"]);
@@ -96,21 +96,23 @@ test("a hibernate that cannot work falls back to suspend", () => {
     assert.deepStrictEqual(Suspension.commandFor("nothing"), []);
 });
 
-test("sleep asks systemd when it is there and logind's own loginctl when it is not", () => {
+test("sleep asks systemd when systemd is running and logind's own loginctl when it is not", () => {
     const { spawnSync } = require("node:child_process");
     const os = require("node:os");
-    const run = tools => {
+    const run = booted => {
         const bin = fs.mkdtempSync(path.join(os.tmpdir(), "suspend-"));
-        for (const tool of tools)
+        for (const tool of ["systemctl", "loginctl"])
             fs.writeFileSync(path.join(bin, tool), `#!/bin/sh\necho ${tool} "$@"\n`, { mode: 0o755 });
-        const [program, ...args] = Suspension.commandFor("hibernate");
+        const [program, flag, script, ...rest] = Suspension.commandFor("hibernate");
+        const marker = booted ? bin : path.join(bin, "absent");
         const shell = spawnSync("sh", ["-c", "command -v sh"], { encoding: "utf8" }).stdout.trim();
-        const out = spawnSync(program === "sh" ? shell : program, args, { encoding: "utf8", env: { PATH: bin } }).stdout.trim();
+        const out = spawnSync(shell, [flag, script.replace("/run/systemd/system", marker), ...rest], { encoding: "utf8", env: { PATH: bin } }).stdout.trim();
         fs.rmSync(bin, { recursive: true, force: true });
+        assert.strictEqual(program, "sh");
         return out;
     };
-    assert.strictEqual(run(["systemctl", "loginctl"]), "systemctl hibernate");
-    assert.strictEqual(run(["loginctl"]), "loginctl hibernate");
+    assert.strictEqual(run(true), "systemctl hibernate");
+    assert.strictEqual(run(false), "loginctl hibernate");
 });
 
 const OUTPUTS = [{ name: "eDP-1" }, { name: "DP-1" }, { name: "HDMI-A-2", disabled: true }];

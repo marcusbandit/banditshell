@@ -44,7 +44,7 @@ Singleton {
         else if (name === "screensOff")
             root.switchScreens(false);
         else if (name === "sleep" && Battery.onBattery)
-            Quickshell.execDetached(Power.logind("suspend"));
+            Suspension.perform("suspend");
     }
 
     function resume(name: string): void {

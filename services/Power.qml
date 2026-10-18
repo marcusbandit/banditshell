@@ -3,13 +3,10 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "suspension.js" as Sleep
 
 Singleton {
     id: root
-
-    function logind(verb: string): var {
-        return ["sh", "-c", 'if command -v systemctl >/dev/null 2>&1; then exec systemctl "$1"; fi; exec loginctl "$1"', "sh", verb];
-    }
 
     readonly property var actions: [
         {
@@ -17,14 +14,14 @@ Singleton {
             icon: "power_settings_new",
             label: "Shut down",
             detail: "",
-            command: root.logind("poweroff")
+            command: Sleep.logindCommand("poweroff")
         },
         {
             key: "reboot",
             icon: "restart_alt",
             label: "Restart",
             detail: "",
-            command: root.logind("reboot")
+            command: Sleep.logindCommand("reboot")
         },
         {
             key: "logout",
