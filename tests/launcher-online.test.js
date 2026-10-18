@@ -85,13 +85,32 @@ test.describe("translate", () => {
 
 test.describe("define", () => {
     test.it("finds the word being asked about", () => {
-        assert.strictEqual(Dictionary.ask("define serendipity"), "serendipity");
-        assert.strictEqual(Dictionary.ask("Define Ad Hoc"), "ad hoc");
-        assert.strictEqual(Dictionary.ask("what does ephemeral mean?"), "ephemeral");
-        assert.strictEqual(Dictionary.ask("meaning of well-being"), "well-being");
-        assert.strictEqual(Dictionary.ask("define"), "");
-        assert.strictEqual(Dictionary.ask("define 42"), "");
-        assert.strictEqual(Dictionary.ask("defined"), "");
+        const word = text => Dictionary.ask(text)?.explicit ? Dictionary.ask(text).word : "";
+        assert.strictEqual(word("define serendipity"), "serendipity");
+        assert.strictEqual(word("Define Ad Hoc"), "ad hoc");
+        assert.strictEqual(word("def ephemeral"), "ephemeral");
+        assert.strictEqual(word("define: \u201cephemeral\u201d"), "ephemeral");
+        assert.strictEqual(word("what does ephemeral mean?"), "ephemeral");
+        assert.strictEqual(word("what's the meaning of life"), "life");
+        assert.strictEqual(word("meaning of well-being"), "well-being");
+        assert.strictEqual(word("definition of done"), "done");
+        assert.strictEqual(word("serendipity meaning"), "serendipity");
+        assert.strictEqual(word("ubiquitous definition?"), "ubiquitous");
+        assert.strictEqual(word("synonyms for happy"), "happy");
+        assert.strictEqual(word("happy synonyms"), "happy");
+        assert.strictEqual(word("dict caf\u00e9"), "caf\u00e9");
+        assert.strictEqual(word("define"), "");
+        assert.strictEqual(word("define 42"), "");
+        assert.strictEqual(word("define a/b"), "");
+        assert.strictEqual(word("defined"), "");
+        assert.strictEqual(word("define one two three four five"), "");
+    });
+
+    test.it("offers a quiet lookup for a lone word", () => {
+        assert.deepStrictEqual(Dictionary.ask("Serendipity"), { word: "serendipity", explicit: false });
+        assert.strictEqual(Dictionary.ask("fir"), null);
+        assert.strictEqual(Dictionary.ask("firefox nightly"), null);
+        assert.strictEqual(Dictionary.ask("2+2"), null);
     });
 
     test.it("knows when the ask is waiting for its word", () => {
@@ -102,27 +121,13 @@ test.describe("define", () => {
         assert.strictEqual(Dictionary.waitingForWord("define"), false);
         assert.strictEqual(Dictionary.waitingForWord("define word"), false);
         assert.strictEqual(Dictionary.waitingForWord("defined "), false);
+        assert.strictEqual(Dictionary.waitingForWord("def "), true);
+        assert.strictEqual(Dictionary.waitingForWord("synonyms for "), true);
         assert.strictEqual(Dictionary.waitingForWord("dict "), false);
         assert.strictEqual(Dictionary.waitingForWord("dictionary "), false);
     });
 
-    test.it("reads dictionaryapi.dev senses in order", () => {
-        const raw = JSON.stringify([{
-            word: "serendipity",
-            phonetic: "/ˌsɛɹ.ənˈdɪp.ɪ.ti/",
-            meanings: [
-                { partOfSpeech: "noun", definitions: [{ definition: "An unsought, fortunate discovery.", example: "a happy serendipity" }, { definition: "The faculty of making such discoveries." }] },
-                { partOfSpeech: "verb", definitions: [{ definition: "To find by chance." }] }
-            ]
-        }]);
-        const got = Dictionary.readAnswer(raw, "serendipity");
-        assert.strictEqual(got.word, "serendipity");
-        assert.strictEqual(got.phonetic, "/ˌsɛɹ.ənˈdɪp.ɪ.ti/");
-        assert.deepStrictEqual(got.senses.map(s => s.part), ["noun", "noun", "verb"]);
-        assert.strictEqual(got.senses[0].example, "a happy serendipity");
-    });
-
-    test.it("falls back to Wiktionary and strips its markup", () => {
+    test.it("reads Wiktionary and strips its markup", () => {
         const raw = JSON.stringify({ en: [{ partOfSpeech: "Noun", definitions: [{ definition: "The <a href=\"/wiki/x\">phenomenon</a> of finding &amp; keeping." }, { definition: "" }] }], fr: [{ partOfSpeech: "Nom", definitions: [{ definition: "autre" }] }] });
         const got = Dictionary.readAnswer(raw, "serendipity");
         assert.strictEqual(got.word, "serendipity");

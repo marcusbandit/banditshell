@@ -20,6 +20,10 @@ Item {
 
     signal colourPicked(string hex, bool done)
 
+    function scrollPage(direction: int): bool {
+        return root.shown && !!card.item?.scrollPage?.(direction);
+    }
+
     readonly property bool animated: Config.values.launcher.animatePreview && !Appearance.lessMotion
 
     readonly property var toplevel: root.row?.kind === "window" ? Hyprland.toplevels.values.find(t => Hypr.windowAddress(t.address) === root.row.address) ?? null : null

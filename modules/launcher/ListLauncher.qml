@@ -384,6 +384,9 @@ LauncherConcept {
         case Qt.Key_End:
             root.moveTo(root.results.length - 1);
             return true;
+        case Qt.Key_PageDown:
+        case Qt.Key_PageUp:
+            return peek.scrollPage(event.key === Qt.Key_PageDown ? 1 : -1);
         }
         return false;
     }

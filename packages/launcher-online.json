@@ -6,6 +6,8 @@
     "qml": [
       "modules/launcher/sources/BrowserSource.qml",
       "modules/launcher/sources/DefineSource.qml",
+      "modules/launcher/sources/DefinitionPage.qml",
+      "modules/launcher/sources/DefinitionSense.qml",
       "modules/launcher/sources/GithubSource.qml",
       "modules/launcher/sources/PackageSource.qml",
       "modules/launcher/sources/SpeedtestSource.qml",
@@ -33,13 +35,14 @@
     "scripts": [
       "scripts/browser-cookies.py",
       "scripts/browser-places.py",
+      "scripts/dictionary.py",
       "scripts/flatpak-index.py",
       "scripts/github-summary.sh",
       "scripts/install-package.sh",
       "scripts/package-search.sh",
       "scripts/uninstall-app.sh"
     ],
-    "tests": ["tests/install-package.test.js", "tests/launcher-online.test.js", "tests/online-scripts.test.js"]
+    "tests": ["tests/dictionary-helper.test.js", "tests/install-package.test.js", "tests/launcher-online.test.js", "tests/online-scripts.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor", "launcher", "files", "apps"],

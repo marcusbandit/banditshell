@@ -7,7 +7,22 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Type define in the launcher and it offers Define a word. Choose it, type the word, and its meanings show up right there. Dictionary and meaning find it too."
+          "text": "The launcher has a dictionary that works offline and answers as you type. Type define and a word, or ask it like a person: serendipity meaning, what does ephemeral mean, happy synonyms. The first time, it fetches a 10 MB English dictionary and keeps it on this computer."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Each word gets its own page beside the launcher: pronunciation, every meaning by part of speech, examples, similar and opposite words, and Wiktionary's entry when you are online. Page Up and Page Down scroll it."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Words that start with what you typed are listed under the first one, and forms like geese or ran find goose and run. A lone English word in the launcher shows its meaning quietly near the bottom."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "The Define words switch in Settings is now called Wiktionary definitions. Turned off, it stops the online lookups and leaves the offline dictionary on."
         }
       ]
     },
