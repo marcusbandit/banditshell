@@ -13,6 +13,8 @@ Singleton {
 
     readonly property bool wanted: StreamState.enabled
 
+    readonly property bool installed: !ToolInstaller.probed || ToolInstaller.has("obs")
+
     readonly property string configPath: `${Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`}/obs-studio/plugin_config/obs-websocket/config.json`
 
     property var server: null
@@ -352,6 +354,8 @@ Singleton {
     }
 
     function launch(): void {
+        if (!root.installed)
+            return;
         Quickshell.execDetached(["obs"]);
     }
 

@@ -4,9 +4,9 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
-import "../modules/workshop/layout-model.js" as LayoutModel
-import "../modules/workshop/layout-lua.js" as LayoutLua
-import "../modules/launcher/search.js" as Search
+import "layout-model.js" as LayoutModel
+import "layout-lua.js" as LayoutLua
+import "hyprland-lua.js" as HyprlandLua
 
 Singleton {
     id: root
@@ -37,7 +37,7 @@ Singleton {
 
     readonly property var names: root.layouts.filter(model => root.isReady(model.name)).map(model => `lua:${model.name}`)
 
-    readonly property var taken: Search.luaLayouts(Object.values(HyprConfig.texts)).map(name => name.replace(/^lua:/, "")).filter(name => !root.layouts.some(model => model.name === name))
+    readonly property var taken: HyprlandLua.luaLayouts(Object.values(HyprConfig.texts)).map(name => name.replace(/^lua:/, "")).filter(name => !root.layouts.some(model => model.name === name))
 
     function isReady(name: string): bool {
         return root.ready[name] === true;

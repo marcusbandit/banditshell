@@ -6,8 +6,8 @@ BalancedText 1.0 BalancedText.qml
 BatteryMeter 1.0 BatteryMeter.qml
 BatteryTank 1.0 BatteryTank.qml
 BlurredImage 1.0 BlurredImage.qml
-ButtonPair 1.0 ButtonPair.qml
 Button 1.0 Button.qml
+ButtonPair 1.0 ButtonPair.qml
 CodeBlock 1.0 CodeBlock.qml
 ColourField 1.0 ColourField.qml
 CommandJob 1.0 CommandJob.qml
@@ -18,10 +18,11 @@ FittedImage 1.0 FittedImage.qml
 FloatingTooltip 1.0 FloatingTooltip.qml
 FoldedText 1.0 FoldedText.qml
 Follow 1.0 Follow.qml
+FollowColour 1.0 FollowColour.qml
 Gauge 1.0 Gauge.qml
 GlideList 1.0 GlideList.qml
-singleton IconAudit 1.0 IconAudit.qml
 Icon 1.0 Icon.qml
+singleton IconAudit 1.0 IconAudit.qml
 ImagePalette 1.0 ImagePalette.qml
 InkIcon 1.0 InkIcon.qml
 InkText 1.0 InkText.qml

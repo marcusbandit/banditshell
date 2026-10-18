@@ -33,7 +33,7 @@ Item {
             visible: root.sheet.rows.length === 0
 
             text: root.sheet.reading ? `reading ${root.sheet.source}…` : `no binds in ${root.sheet.source}`
-            color: Appearance.colour.textGhost
+            color: Appearance.colour.textFaint
         }
 
         Repeater {

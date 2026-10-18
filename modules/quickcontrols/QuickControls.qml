@@ -96,7 +96,7 @@ Item {
         else
             b = 138.5177312231 * Math.log(t - 10) - 305.0447927307;
         const m = Math.max(r, g, b);
-        return Qt.rgba(r / m * 0.7 + 0.3, g / m * 0.7 + 0.3, b / m * 0.7 + 0.3, 1);
+        return Appearance.rgb(r / m * 0.7 + 0.3, g / m * 0.7 + 0.3, b / m * 0.7 + 0.3);
     }
 
     Follow {
@@ -105,6 +105,11 @@ Item {
         speed: Appearance.animation.revealSpeed
         target: root.active ? 1 : 0
         epsilon: 0.005
+    }
+
+    LevelCover {
+        active: reveal.value > 0.2
+        kinds: ["volume", "brightness"]
     }
 
     Timer {

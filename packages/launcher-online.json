@@ -1,0 +1,56 @@
+{
+  "name": "launcher-online",
+  "summary": "the launcher's online sources",
+  "layer": 5,
+  "owns": {
+    "qml": [
+      "modules/launcher/sources/BrowserSource.qml",
+      "modules/launcher/sources/DefineSource.qml",
+      "modules/launcher/sources/GithubSource.qml",
+      "modules/launcher/sources/PackageSource.qml",
+      "modules/launcher/sources/SpeedtestSource.qml",
+      "modules/launcher/sources/TranslateSource.qml",
+      "modules/launcher/sources/VideoDownloadSource.qml"
+    ],
+    "services": [
+      "BrowserPlaces",
+      "Dictionary",
+      "GitHub",
+      "PackageSearch",
+      "SpeedTest",
+      "Translator",
+      "Uninstaller",
+      "VideoDownloads"
+    ],
+    "js": [
+      "services/browsing.js",
+      "services/dictionary.js",
+      "services/github.js",
+      "services/speedtest.js",
+      "services/translation.js",
+      "services/videos.js"
+    ],
+    "scripts": [
+      "scripts/browser-cookies.py",
+      "scripts/browser-places.py",
+      "scripts/flatpak-index.py",
+      "scripts/github-summary.sh",
+      "scripts/install-package.sh",
+      "scripts/package-search.sh",
+      "scripts/uninstall-app.sh"
+    ],
+    "tests": ["tests/install-package.test.js", "tests/launcher-online.test.js", "tests/online-scripts.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "launcher", "files", "apps"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["launcher.online"],
+    "reads": []
+  }
+}

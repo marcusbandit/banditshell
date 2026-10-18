@@ -21,8 +21,7 @@ Item {
 
         SquircleRect {
             anchors.fill: parent
-            radius: marker.square ? Appearance.rounding.normal : height / 2
-            cornerPower: marker.square ? Appearance.rounding.power : 2
+            pill: marker.square ? "" : "object"
             color: marker.base
         }
 

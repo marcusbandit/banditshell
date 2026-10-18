@@ -37,12 +37,13 @@ Item {
             spec: Tray.markFor(root.item)
             fits: AppIcons.fits
             onMeasured: (path, box) => AppIcons.recordFit(path, box)
-            color: root.markColour
+            color: markTone.value
 
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.fast
-                }
+            FollowColour {
+                id: markTone
+
+                target: root.markColour
+                speed: Appearance.animation.revealSpeed
             }
         }
     }

@@ -11,6 +11,11 @@ Column {
 
     spacing: Appearance.padding.normal
 
+    LevelCover {
+        active: root.visible
+        kinds: ["volume", "mic"]
+    }
+
     component Level: Item {
         id: level
 
@@ -100,7 +105,7 @@ Column {
 
             width: Appearance.font.iconSize
             height: name.implicitHeight
-            opacity: channel.muted ? 0.4 : 1
+            opacity: channel.muted ? Appearance.opacity.disabled : 1
 
             Image {
                 id: shot

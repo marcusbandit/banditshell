@@ -184,12 +184,13 @@ Item {
                 height: root.button
                 radius: root.cellRadius
 
-                color: root.arming ? Appearance.colour.accentFill : Appearance.colour.fillStronger
+                color: markerTone.value
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                FollowColour {
+                    id: markerTone
+
+                    target: root.arming ? Appearance.colour.accentFill : Appearance.colour.fillStronger
+                    speed: Appearance.animation.revealSpeed
                 }
             }
 
@@ -219,12 +220,13 @@ Item {
                             name: cell.armed ? "check" : cell.modelData.icon
                             size: Appearance.sizes.sessionIcon
 
-                            color: cell.armed ? Appearance.colour.accent : cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                            color: glyphTone.value
 
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: Appearance.animation.normal
-                                }
+                            FollowColour {
+                                id: glyphTone
+
+                                target: cell.armed ? Appearance.colour.accent : cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                                speed: Appearance.animation.trackSpeed
                             }
                         }
 

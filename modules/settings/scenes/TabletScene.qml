@@ -66,7 +66,7 @@ Item {
                 radius: Appearance.rounding.small
                 color: Appearance.colour.fill
                 stroke: Appearance.colour.fillStronger
-                strokeWidth: 2
+                strokeWidth: Appearance.stroke.ring
             }
 
             Rectangle {

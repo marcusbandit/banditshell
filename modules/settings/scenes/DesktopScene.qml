@@ -11,7 +11,7 @@ Item {
     id: root
 
     readonly property real stageHeight: 300
-    readonly property color pane: Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.paper, 0.12)
+    readonly property color pane: Appearance.colour.pane
 
     SceneClock {
         id: clock
@@ -172,7 +172,7 @@ Item {
                     radius: 4
                     color: root.pane
                     stroke: Appearance.colour.fillStronger
-                    strokeWidth: 1
+                    strokeWidth: Appearance.stroke.line
                 }
 
                 SquircleRect {
@@ -183,7 +183,7 @@ Item {
                     radius: 4
                     color: root.pane
                     stroke: Appearance.colour.fillStronger
-                    strokeWidth: 1
+                    strokeWidth: Appearance.stroke.line
                 }
 
                 SquircleRect {

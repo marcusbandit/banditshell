@@ -124,7 +124,7 @@ ShellRoot {
             radius: Appearance.sizes.windowRadius * slots.mapScale
             color: Appearance.colour.surface
             stroke: Appearance.colour.fillStronger
-            strokeWidth: Appearance.font.stem
+            strokeWidth: Appearance.stroke.ring
 
             WindowView {
                 anchors.fill: parent

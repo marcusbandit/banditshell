@@ -218,13 +218,14 @@ Column {
         Icon {
             name: "expand_more"
             color: root.opened === "pair" ? Appearance.colour.text : Appearance.colour.textFaint
-            rotation: root.opened === "pair" ? 180 : 0
+            rotation: chevronTurn.value
 
-            Behavior on rotation {
-                NumberAnimation {
-                    duration: Appearance.animation.fast
-                    easing.type: Easing.OutCubic
-                }
+            Follow {
+                id: chevronTurn
+
+                target: root.opened === "pair" ? 180 : 0
+                speed: Appearance.animation.revealSpeed
+                startsAtTarget: true
             }
         }
     }

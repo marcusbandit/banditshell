@@ -90,20 +90,30 @@ Column {
                 readonly property string det: tile.modelData.det ? String(tile.modelData.det(root.s)) : tile.on ? "on" : "off"
 
                 width: tile.lead ? grid.width : grid.cell
-                height: Appearance.padding.card * 2 + Math.round(Appearance.font.iconSize * 1.2) + Appearance.padding.small + Appearance.font.line.small * 2 + 4
-                opacity: tile.off ? 0.4 : 1
-                scale: press.pressed && !tile.off ? 0.96 : 1
+                height: Appearance.padding.card * 2 + Appearance.icon.large + Appearance.padding.small + Appearance.font.line.small * 2 + 4
+                opacity: tile.off ? Appearance.opacity.disabled : 1
+                scale: squeeze.value
 
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                Follow {
+                    id: squeeze
+
+                    target: press.pressed && !tile.off ? 0.96 : 1
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
+                }
+
+                FollowColour {
+                    id: tileTone
+
+                    target: press.pressed && !tile.on && !tile.off ? Appearance.colour.fillStronger : tileHover.hovered && !tile.on && !tile.off ? Appearance.colour.fillStrong : Appearance.colour.fill
+                    speed: Appearance.animation.revealSpeed
                 }
 
                 SquircleRect {
                     anchors.fill: parent
                     radius: Appearance.rounding.large
-                    color: tileHover.hovered && !tile.on && !tile.off ? Appearance.colour.fillStrong : Appearance.colour.fill
+                    color: tileTone.value
 
                     SquircleRect {
                         anchors.fill: parent
@@ -121,7 +131,7 @@ Column {
 
                     Icon {
                         name: tile.modelData.icon
-                        size: Math.round(Appearance.font.iconSize * 1.2)
+                        size: Appearance.icon.large
                         fill: tile.on ? 1 : 0
                         color: tile.on ? Appearance.colour.accent : Appearance.colour.textFaint
                     }

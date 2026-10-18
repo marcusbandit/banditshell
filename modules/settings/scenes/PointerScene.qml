@@ -61,7 +61,7 @@ Item {
                 radius: Appearance.rounding.normal
                 color: Appearance.colour.fill
                 stroke: Appearance.colour.fillStronger
-                strokeWidth: 2
+                strokeWidth: Appearance.stroke.ring
             }
 
             Item {
@@ -80,10 +80,9 @@ Item {
                         y: 0.6 * pad.height + f.y * width
                         width: 0.14 * pad.width
                         height: width
-                        radius: width / 2
-                        cornerPower: 2
+                        pill: "object"
                         color: Appearance.colour.text
-                        opacity: clock.moving ? f.o : 0.55
+                        opacity: clock.moving ? f.o : Appearance.opacity.trail
                     }
                 }
             }
@@ -120,7 +119,7 @@ Item {
 
                         width: (index + 1) % 3 === 0 ? parent.width * 0.6 : parent.width
                         height: 6
-                        radius: 3
+                        pill: "place"
                         color: Appearance.colour.fillStronger
                     }
                 }

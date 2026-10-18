@@ -29,12 +29,12 @@ Item {
     readonly property int bleedDown: Appearance.sizes.workspaceGap - root.bleedUp
 
     readonly property int barH: Appearance.font.iconSize
-    readonly property int barGap: Math.round(Appearance.padding.small / 2)
+    readonly property int barGap: Appearance.padding.hair
     readonly property int rackGap: Appearance.padding.large
 
     readonly property int barMark: Math.round(root.barH * 0.7)
 
-    readonly property real overhang: Math.round(Appearance.padding.small / 2)
+    readonly property real overhang: Appearance.padding.hair
 
     property int hovered: -1
     property int racked: -1
@@ -186,7 +186,7 @@ Item {
         text: "0"
     }
 
-    readonly property real tagAir: Math.round(Appearance.padding.small / 2)
+    readonly property real tagAir: Appearance.padding.hair
 
     function tagWidth(count: int): real {
         const digits = `${count}`.length;
@@ -328,12 +328,15 @@ Item {
             anchors.fill: parent
             radius: root.radius
             color: Appearance.colour.accentFill
-            opacity: layout.eclipsed ? 0 : 1
+            opacity: eclipseFade.value
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.animation.fade.fast
-                }
+            Follow {
+                id: eclipseFade
+
+                target: layout.eclipsed ? 0 : 1
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
         }
     }
@@ -368,48 +371,47 @@ Item {
 
             SquircleRect {
                 anchors.centerIn: parent
-                width: bar.open ? root.dot : bar.width
-                height: bar.open ? root.dot : bar.height
+                width: plateWidth.value
+                height: plateHeight.value
                 radius: root.radius
                 color: Appearance.colour.fill
 
-                Behavior on width {
-                    NumberAnimation {
-                        duration: Appearance.animation.normal
-                        easing.type: Easing.OutCubic
-                    }
+                Follow {
+                    id: plateWidth
+
+                    target: bar.open ? root.dot : bar.width
+                    speed: Appearance.animation.trackSpeed
+                    startsAtTarget: true
                 }
 
-                Behavior on height {
-                    NumberAnimation {
-                        duration: Appearance.animation.normal
-                        easing.type: Easing.OutCubic
-                    }
+                Follow {
+                    id: plateHeight
+
+                    target: bar.open ? root.dot : bar.height
+                    speed: Appearance.animation.trackSpeed
+                    startsAtTarget: true
                 }
 
                 SquircleRect {
                     anchors.fill: parent
                     radius: root.radius
                     color: Appearance.colour.accentFill
-                    opacity: bar.open ? 1 : 0
-
-                    Behavior on opacity {
-                        NumberAnimation {
-                            duration: Appearance.animation.fade.fast
-                        }
-                    }
+                    opacity: openFade.value
                 }
+            }
+
+            Follow {
+                id: openFade
+
+                target: bar.open ? 1 : 0
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
             Item {
                 anchors.fill: parent
-                opacity: bar.open ? 0 : 1
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Appearance.animation.fade.fast
-                    }
-                }
+                opacity: 1 - openFade.value
 
                 Repeater {
                     model: ScriptModel {
@@ -546,7 +548,7 @@ Item {
 
                 readonly property real fullTarget: cell.solid ? 1 : 0
 
-                property real full: cell.fullTarget
+                readonly property real full: fullness.value
 
                 width: Math.round(root.dot + (root.slot - root.dot) * cell.full)
                 height: Math.round(root.dot + (parent.height - root.dot) * cell.full)
@@ -557,11 +559,13 @@ Item {
 
                 color: Appearance.colour.fill
 
-                Behavior on full {
-                    NumberAnimation {
-                        duration: Appearance.animation.normal
-                        easing.type: Easing.OutCubic
-                    }
+                Follow {
+                    id: fullness
+
+                    target: cell.fullTarget
+                    speed: Appearance.animation.trackSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
                 }
 
                 Repeater {
@@ -585,12 +589,15 @@ Item {
                         y: (root.slot - root.pitch) / 2 + (row.modelData.row ?? row.index) * root.pitch
                         width: root.slot
                         height: root.pitch
-                        opacity: slotItem.covered ? 0 : 1
+                        opacity: coverFade.value
 
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: Appearance.animation.fade.normal
-                            }
+                        Follow {
+                            id: coverFade
+
+                            target: slotItem.covered ? 0 : 1
+                            speed: Appearance.animation.trackSpeed
+                            epsilon: Appearance.animation.fadeEpsilon
+                            startsAtTarget: true
                         }
 
                         AppMark {
@@ -601,12 +608,13 @@ Item {
                             onMeasured: (path, box) => AppIcons.recordFit(path, box)
                             fallback: Apps.iconFor(row.appClass)
 
-                            color: row.lit ? Appearance.colour.text : Appearance.colour.textDim
+                            color: markTone.value
 
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: Appearance.animation.fast
-                                }
+                            FollowColour {
+                                id: markTone
+
+                                target: row.lit ? Appearance.colour.text : Appearance.colour.textDim
+                                speed: Appearance.animation.revealSpeed
                             }
                         }
 
@@ -680,7 +688,7 @@ Item {
             readonly property real barW: root.barWidth(pad.entry)
             readonly property var classes: root.barClasses(pad.entry)
 
-            property real shown: pad.open ? 1 : 0
+            readonly property real shown: reveal.value
 
             function reach(from: real, to: real): real {
                 return from + (to - from) * pad.shown;
@@ -692,11 +700,13 @@ Item {
             y: pad.reach(root.barY(pad.index), pad.cardY)
             visible: pad.shown > 0
 
-            Behavior on shown {
-                NumberAnimation {
-                    duration: Appearance.animation.normal
-                    easing.type: Easing.OutCubic
-                }
+            Follow {
+                id: reveal
+
+                target: pad.open ? 1 : 0
+                speed: Appearance.animation.trackSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
             MouseArea {

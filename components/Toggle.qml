@@ -13,13 +13,14 @@ Item {
 
     SquircleRect {
         anchors.fill: parent
-        radius: height / 2
-        color: root.checked ? Appearance.colour.accent : Appearance.colour.fillStrong
+        pill: "place"
+        color: trackTone.value
 
-        Behavior on color {
-            ColorAnimation {
-                duration: Appearance.animation.fast
-            }
+        FollowColour {
+            id: trackTone
+
+            target: root.checked ? Appearance.colour.accent : Appearance.colour.fillStrong
+            speed: Appearance.animation.revealSpeed
         }
     }
 
@@ -29,19 +30,18 @@ Item {
         readonly property real gap: Math.max(2, Math.round(root.height / 9))
 
         y: knob.gap
-        x: knob.gap + slide.value * (knob.parent.width - knob.width - knob.gap * 2)
+        x: slide.value
         width: root.height - knob.gap * 2
         height: width
-        radius: height / 2
+        pill: "object"
         color: root.checked ? Appearance.colour.accentText : Appearance.colour.text
 
         Follow {
             id: slide
 
-            target: root.checked ? 1 : 0
-            speed: Appearance.animation.revealSpeed
-            epsilon: 0.005
-            Component.onCompleted: slide.snap()
+            target: root.checked ? root.width - knob.width - knob.gap : knob.gap
+            speed: Appearance.animation.snapSpeed
+            startsAtTarget: true
         }
     }
 

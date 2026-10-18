@@ -41,12 +41,10 @@ Item {
 
             root.seed = Math.random() * 6.283;
 
-            if (Wallpaper.previewOn(root.output) === slot.path) {
-                sweep.stop();
-                root.reveal = 1;
-            } else {
-                sweep.restart();
-            }
+            if (Wallpaper.previewOn(root.output) === slot.path)
+                sweep.value = 1;
+            else
+                root.restartSweep();
             retire.restart();
         }
     }
@@ -56,7 +54,7 @@ Item {
             return;
         back.path = "";
         root.seed = Math.random() * 6.283;
-        sweep.restart();
+        root.restartSweep();
     }
 
     Timer {
@@ -74,19 +72,21 @@ Item {
 
     onWantedChanged: root.load()
 
-    property real reveal: 1
+    readonly property real reveal: sweep.value
+
+    function restartSweep(): void {
+        sweep.value = Appearance.lessMotion ? 1 : 0;
+    }
 
     property real seed: 0
 
-    NumberAnimation on reveal {
+    Follow {
         id: sweep
 
-        running: false
-        from: 0
-        to: 1
-        duration: Appearance.sizes.wallpaperReveal
-
-        easing.type: Easing.OutCubic
+        target: 1
+        speed: 5000 / Math.max(1, Appearance.sizes.wallpaperReveal)
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
     }
 
     WallpaperSource {
@@ -98,7 +98,7 @@ Item {
         playing: root.playing && root.front === a
         audible: root.audible
 
-        layer.enabled: root.front === a && sweep.running
+        layer.enabled: root.front === a && !sweep.settled
         layer.effect: RevealMask {
             progress: root.reveal
             aspect: root.width / Math.max(1, root.height)
@@ -118,7 +118,7 @@ Item {
         playing: root.playing && root.front === b
         audible: root.audible
 
-        layer.enabled: root.front === b && sweep.running
+        layer.enabled: root.front === b && !sweep.settled
         layer.effect: RevealMask {
             progress: root.reveal
             aspect: root.width / Math.max(1, root.height)

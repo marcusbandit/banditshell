@@ -148,9 +148,6 @@ Item {
         return out;
     }
 
-    property real sweep: 0
-    property real turn: root.colourful ? 1 : 0
-
     readonly property real spread: 0.25
 
     function phase(i: int, progress: real): real {
@@ -162,33 +159,30 @@ Item {
     }
 
     onFiguresChanged: {
-        root.sweep = 0;
-        if (root.figures.length)
-            wave.restart();
+        wave.value = 0;
     }
 
-    NumberAnimation {
+    Follow {
         id: wave
 
-        target: root
-        property: "sweep"
-        from: 0
-        to: 1
-        duration: Appearance.animation.slow * 3
-        easing.type: Easing.OutSine
+        target: root.figures.length ? 1 : 0
+        speed: Appearance.animation.settleSpeed * 0.5
+        epsilon: Appearance.animation.fadeEpsilon
     }
 
-    Behavior on turn {
-        NumberAnimation {
-            duration: Appearance.animation.slow * 2
-            easing.type: Easing.InOutSine
-        }
+    Follow {
+        id: tide
+
+        target: root.colourful ? 1 : 0
+        speed: Appearance.animation.settleSpeed * 0.5
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
     }
 
     function hue(i: int): color {
         const n = root.figures.length;
         const at = n > 1 ? i / (n - 1) : 0;
-        return Appearance.blend(Appearance.colour.ink, Appearance.blend(root.pine, Appearance.colour.spectrum[0], at / 3), root.phase(i, root.turn));
+        return Appearance.blend(Appearance.colour.ink, Appearance.blend(root.pine, Appearance.colour.spectrum[0], at / 3), root.phase(i, tide.value));
     }
 
     Item {
@@ -203,19 +197,23 @@ Item {
         SquircleRect {
             anchors.fill: parent
             radius: Appearance.rounding.large
-            color: root.plate
-            opacity: root.ready ? 1 : 0
+            color: plateTone.value
+            opacity: plateFade.value
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.animation.fade.normal
-                }
+            Follow {
+                id: plateFade
+
+                target: root.ready ? 1 : 0
+                speed: Appearance.animation.trackSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.slow * 2
-                }
+            FollowColour {
+                id: plateTone
+
+                target: root.plate
+                speed: Appearance.animation.settleSpeed * 0.5
             }
         }
 
@@ -232,7 +230,7 @@ Item {
                 preferredRendererType: Shape.CurveRenderer
                 asynchronous: true
 
-                opacity: root.phase(band.index, root.sweep)
+                opacity: root.phase(band.index, wave.value)
 
                 ShapePath {
                     fillColor: root.hue(band.index)
@@ -256,12 +254,15 @@ Item {
             anchors.right: parent.right
             anchors.rightMargin: root.quiet * root.module
 
-            opacity: root.ready ? 1 : 0
+            opacity: wordsFade.value
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.animation.fade.normal
-                }
+            Follow {
+                id: wordsFade
+
+                target: root.ready ? 1 : 0
+                speed: Appearance.animation.trackSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
             StyledText {
@@ -269,14 +270,15 @@ Item {
                 visible: !!root.caption
                 text: root.caption
 
-                color: root.pen
+                color: captionTone.value
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideMiddle
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.slow * 2
-                    }
+                FollowColour {
+                    id: captionTone
+
+                    target: root.pen
+                    speed: Appearance.animation.settleSpeed * 0.5
                 }
             }
 
@@ -284,14 +286,15 @@ Item {
                 width: parent.width
                 visible: !!root.detail
                 text: root.detail
-                color: Appearance.shade(root.pen, 1)
+                color: detailTone.value
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideMiddle
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.slow * 2
-                    }
+                FollowColour {
+                    id: detailTone
+
+                    target: Appearance.shade(root.pen, 1)
+                    speed: Appearance.animation.settleSpeed * 0.5
                 }
             }
         }

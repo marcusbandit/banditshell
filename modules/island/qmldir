@@ -1,14 +1,15 @@
 module qs.modules.island
 ActivityBubble 1.0 ActivityBubble.qml
+ActivityIpc 1.0 ActivityIpc.qml
 ActivityLook 1.0 ActivityLook.qml
 ActivityMark 1.0 ActivityMark.qml
 ActivityRow 1.0 ActivityRow.qml
 AlertDeck 1.0 AlertDeck.qml
 DictationWave 1.0 DictationWave.qml
+InspectIpc 1.0 InspectIpc.qml
+Island 1.0 Island.qml
 IslandInspector 1.0 IslandInspector.qml
+IslandIpc 1.0 IslandIpc.qml
 IslandMedia 1.0 IslandMedia.qml
 IslandOverview 1.0 IslandOverview.qml
-Island 1.0 Island.qml
 MockNotification 1.0 MockNotification.qml
-NotificationAlert 1.0 NotificationAlert.qml
-NotificationMark 1.0 NotificationMark.qml

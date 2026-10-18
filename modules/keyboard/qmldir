@@ -1,4 +1,5 @@
 module qs.modules.keyboard
+KeyboardIpc 1.0 KeyboardIpc.qml
 Layouts 1.0 Layouts.qml
 OnScreenKeyboard 1.0 OnScreenKeyboard.qml
 TabletKey 1.0 TabletKey.qml

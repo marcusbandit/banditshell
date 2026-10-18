@@ -141,17 +141,19 @@ Item {
         y: 0
         width: root.stroke
         height: root.band
-        radius: width / 2
+        pill: "object"
         color: root.ink
         visible: root.timed
 
-        scale: pointer.pressed ? 1.15 : root.active ? 1.3 : 1
+        scale: pipScale.value
 
-        Behavior on scale {
-            NumberAnimation {
-                duration: Appearance.animation.fast
-                easing.type: Easing.OutCubic
-            }
+        Follow {
+            id: pipScale
+
+            target: pointer.pressed ? Appearance.press.lift : root.active ? Appearance.press.grab : 1
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
     }
 

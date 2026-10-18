@@ -65,15 +65,15 @@ Item {
 
         width: parent.width
         height: root.rail
-        radius: height / 2
+        pill: "place"
         color: Appearance.colour.fill
 
         SquircleRect {
             width: root.beadCentre
             height: parent.height
-            radius: height / 2
+            pill: "place"
             color: root.lit
-            opacity: 0.55
+            opacity: Appearance.opacity.trail
         }
 
         SquircleRect {
@@ -81,9 +81,9 @@ Item {
             x: root.beadSize / 2 + ((root.warnAbove - root.from) / Math.max(0.0001, root.to - root.from)) * root.travel - width / 2
             width: Math.max(2, Math.round(root.rail / 3))
             height: parent.height
-            radius: width / 2
+            pill: "object"
             color: Appearance.colour.accentText
-            opacity: 0.55
+            opacity: Appearance.opacity.trail
         }
     }
 
@@ -94,16 +94,18 @@ Item {
         y: (root.height - height) / 2
         width: root.beadSize
         height: width
-        radius: width / 2
+        pill: "object"
         color: root.lit
 
-        scale: pointer.pressed ? 1.15 : root.active ? 1.3 : 1
+        scale: swell.value
 
-        Behavior on scale {
-            NumberAnimation {
-                duration: Appearance.animation.fast
-                easing.type: Easing.OutCubic
-            }
+        Follow {
+            id: swell
+
+            target: pointer.pressed ? Appearance.press.lift : root.active ? Appearance.press.grab : 1
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
     }
 

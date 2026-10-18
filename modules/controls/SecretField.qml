@@ -82,8 +82,8 @@ Item {
         color: Appearance.colour.fill
         stroke: root.alarm ? Appearance.colour.alarm : field.activeFocus ? Appearance.colour.accent : Appearance.colour.seam
 
-        strokeWidth: Appearance.sizes.seam * (1 + focusIn.value)
-        opacity: root.busy ? 0.5 : 1
+        strokeWidth: Appearance.stroke.ring * (1 + focusIn.value)
+        opacity: root.busy ? Appearance.opacity.disabled : 1
     }
 
     TextInput {
@@ -141,15 +141,17 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
 
         text: root.placeholder
-        color: Appearance.colour.textGhost
+        color: Appearance.colour.textFaint
 
-        opacity: root.empty ? 1 : 0
+        opacity: placeholderFade.value
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Appearance.animation.fade.fast
-                easing.type: Easing.OutCubic
-            }
+        Follow {
+            id: placeholderFade
+
+            target: root.empty ? 1 : 0
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
     }
 
@@ -204,24 +206,27 @@ Item {
 
             preferredRendererType: Shape.CurveRenderer
 
-            visible: mark.opacity > 0.004
+            visible: markFade.value > 0.004
 
-            opacity: mark.ready && mark.standing ? 1 : 0
-            scale: mark.ready && mark.standing ? 1 : 0
+            opacity: markFade.value
+            scale: markGrow.value
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.animation.fade.normal
-                    easing.type: Easing.OutCubic
-                }
+            Follow {
+                id: markFade
+
+                target: mark.ready && mark.standing ? 1 : 0
+                speed: Appearance.animation.trackSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
-            Behavior on scale {
-                NumberAnimation {
-                    duration: Appearance.animation.normal
+            Follow {
+                id: markGrow
 
-                    easing.type: Easing.OutCubic
-                }
+                target: mark.ready && mark.standing ? 1 : 0
+                speed: Appearance.animation.trackSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
             ShapePath {
@@ -272,7 +277,7 @@ Item {
 
             width: Math.max(2, Math.round(root.markSize / 6))
             height: root.markSize
-            radius: width / 2
+            pill: "object"
             color: root.alarm ? Appearance.colour.alarm : Appearance.colour.accent
             visible: field.activeFocus && !root.empty
         }

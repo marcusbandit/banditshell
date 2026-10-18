@@ -20,7 +20,7 @@ Column {
         count: LayoutDraft.count
         shape: LayoutDraft.shape
         selected: LayoutDraft.selected
-        opacity: LayoutDraft.running.index === LayoutDraft.arrangement ? 1 : 0.55
+        opacity: LayoutDraft.running.index === LayoutDraft.arrangement ? 1 : Appearance.opacity.trail
         onPicked: id => LayoutDraft.selected = id
     }
 

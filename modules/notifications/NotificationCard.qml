@@ -1,49 +1,67 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell.Services.Notifications
 import qs.config
 import qs.components
 import qs.services
 import qs.modules.controls
-import Quickshell.Services.Notifications
 
 Item {
     id: root
 
     required property var entry
-    required property real fullWidth
 
-    property bool roomy: false
+    property string density: "alert"
+    property bool collapses: false
+    property bool keepLeaves: true
+    property string family: Appearance.font.family
+    property int count: 1
+    property bool countOpen: false
 
-    signal dismissed
+    signal countTapped
+    signal released
+    signal kept
+    signal scrolled(real by)
+    signal scrollEnded(real speed)
 
-    readonly property var notification: entry?.notification ?? null
+    readonly property bool alert: root.density === "alert"
+    readonly property bool page: root.density === "page"
+    readonly property bool row: root.density === "row"
+    readonly property bool line: root.density === "line"
+    readonly property bool roomy: root.alert || root.page
+    readonly property bool interactive: !root.line
 
-    readonly property bool live: entry?.live ?? false
+    readonly property var notification: root.entry?.notification ?? null
+    readonly property bool live: root.entry?.live ?? false
+    readonly property bool urgent: root.entry?.urgency === NotificationUrgency.Critical
+    readonly property bool wordless: !root.entry?.appName && !root.entry?.summary && !root.entry?.body
+    readonly property bool pinned: root.entry?.pinned ?? false
+    readonly property bool unfolded: root.entry?.unfolded ?? false
+    readonly property string age: Notifications.ageOf(root.entry?.time ?? 0)
 
-    readonly property bool urgent: entry?.urgency === NotificationUrgency.Critical
+    readonly property var actions: root.live && root.roomy ? (root.entry?.pressable(root.notification?.actions) ?? []) : []
 
-    readonly property bool wordless: !entry?.appName && !entry?.summary && !entry?.body
+    readonly property real pad: root.roomy ? Appearance.padding.card : root.row ? Appearance.padding.small : 0
+    readonly property real gap: Appearance.padding.normal
+    readonly property real closeSize: Appearance.font.line.small + Appearance.padding.small
+    readonly property real closeRoom: root.roomy ? root.closeSize + Appearance.padding.small : 0
+    readonly property real markSize: root.line ? Appearance.font.line.small : root.row ? Appearance.font.line.small + Appearance.padding.small * 2 : Appearance.sizes.notificationBadge * (root.page && (root.entry?.picture ?? "") !== "" ? 2 : 1)
+    readonly property real radius: Math.max(Appearance.rounding.small, Appearance.rounding.large - Appearance.padding.normal)
 
-    property real reveal: 0
+    readonly property real textX: root.pad + root.markSize + root.gap
+    readonly property real textWidth: root.width - root.textX - root.pad - root.closeRoom
 
-    property real leave: 0
-    readonly property bool leaving: entry?.leaving ?? false
+    readonly property bool hovered: swipe.hovered
+    readonly property bool handling: swipe.handling
+    readonly property bool flinging: swipe.flinging
+    readonly property real shiftFade: swipe.fade
 
-    readonly property real open: Math.max(0, reveal - leave)
+    readonly property bool leaving: root.entry?.leaving ?? false
 
-    property real dragX: 0
-    property real pulled: 0
+    readonly property real open: root.collapses ? Math.max(0, arrive.value - depart.value) : 1
 
-    property int flung: 0
-
-    readonly property real throwDistance: fullWidth * Config.values.control.dragDismissFraction
-
-    readonly property bool committed: Math.abs(pulled) >= throwDistance || (pulled * drag.velocity > 0 && Math.abs(drag.velocity) >= Config.values.control.flickVelocity)
-
-    readonly property real throwX: dragX + flung * leave * Math.max(0, fullWidth - Math.abs(dragX))
-
-    readonly property bool held: hover.hovered || drag.pressed || root.pinned
+    readonly property bool held: root.interactive && (swipe.hovered || swipe.pressed || root.pinned)
 
     property var holding: null
 
@@ -51,7 +69,6 @@ Item {
         const want = root.held ? root.entry : null;
         if (root.holding === want)
             return;
-
         root.holding?.release(root);
         root.holding = want;
         root.holding?.hold(root);
@@ -60,502 +77,504 @@ Item {
     onHeldChanged: root.holdEntry()
     onEntryChanged: root.holdEntry()
 
-    readonly property bool pinned: entry?.pinned ?? false
-
     function pin(on: bool): void {
         if (root.entry)
             root.entry.pinned = on;
     }
-
-    readonly property bool unfolded: entry?.unfolded ?? false
 
     function unfold(on: bool): void {
         if (root.entry)
             root.entry.unfolded = on;
     }
 
-    width: fullWidth
-    implicitHeight: body.implicitHeight + Appearance.padding.normal * 2
-    height: implicitHeight * open
-
-    clip: true
-
-    x: throwX
-
-    opacity: open * Math.max(0.1, 1 - Math.max(0, throwX - throwDistance * Config.values.control.dragResistance) / (fullWidth * 0.6))
-
-    HoverHandler {
-        id: hover
+    function fling(direction: int): void {
+        swipe.fling(direction);
     }
 
-    Component.onCompleted: grow.target = 1
-
-    onLeavingChanged: {
-        if (leaving) {
-            exit.start();
-        } else {
-            exit.stop();
-            leave = 0;
-            flung = 0;
-        }
+    function dismissAfter(act: var): void {
+        if (root.live)
+            act();
+        Notifications.dismiss(root.entry);
     }
 
-    NumberAnimation {
-        id: exit
+    implicitHeight: (root.compact ? slim.height : full.implicitHeight) + root.pad * 2
+    height: root.collapses ? implicitHeight * root.open : implicitHeight
 
-        target: root
-        property: "leave"
-        to: 1
-        duration: Notifications.exitMs
+    readonly property bool compact: root.row || root.line
 
-        easing.type: Easing.OutCubic
-    }
+    clip: root.collapses && root.open < 0.999
+    opacity: root.open * (1 - swipe.fade * 0.9)
+
+    onLeavingChanged: if (!root.leaving)
+        swipe.reset()
+
+    Component.onCompleted: arrive.target = 1
+    Component.onDestruction: root.holding?.release(root)
 
     Follow {
-        id: grow
+        id: arrive
 
         speed: Appearance.animation.revealSpeed
         epsilon: 0.005
-        onValueChanged: root.reveal = value
     }
 
     Follow {
-        id: settle
+        id: depart
 
         speed: Appearance.animation.revealSpeed
-        target: 0
-        onValueChanged: if (!drag.throwing)
-            root.dragX = value
+        epsilon: 0.005
+        target: root.leaving ? 1 : 0
     }
 
-    function resist(delta: real): real {
-        const commit = root.throwDistance;
-        const k = Config.values.control.dragResistance;
-        const m = Math.abs(delta);
-        const held = m < commit ? m * k : commit * k + (m - commit);
-        return delta < 0 ? -held : held;
+    Follow {
+        id: glow
+
+        speed: Appearance.animation.revealSpeed * 1.5
+        epsilon: 0.005
+        target: root.interactive && swipe.hovered && !swipe.moved ? 1 : 0
     }
 
-    readonly property real radius: Math.max(Appearance.rounding.small, Appearance.rounding.large - Appearance.padding.normal)
-
-    SquircleRect {
-        anchors.fill: parent
-        radius: root.radius
-
-        color: root.held ? Appearance.colour.fillStrong : Appearance.colour.fill
-
-        Behavior on color {
-            ColorAnimation {
-                duration: Appearance.animation.fast
-            }
-        }
-    }
-
-    SquircleRect {
-        id: spine
-
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.margins: Appearance.padding.normal
-        width: Math.max(2, Appearance.padding.small / 2)
-        radius: width / 2
-        color: Appearance.colour.accent
-        visible: root.urgent
-    }
-
-    readonly property real spineRoom: root.urgent ? spine.width + Appearance.padding.small : 0
-
-    Item {
-        id: body
-
-        x: Appearance.padding.normal + root.spineRoom
-        y: Appearance.padding.normal
-        width: root.fullWidth - Appearance.padding.normal * 2 - root.spineRoom
-
-        implicitHeight: Math.max(badge.height + (fold.visible ? Appearance.padding.small + fold.height : 0), text.implicitHeight)
-
-        Item {
-            id: badge
-
-            readonly property string picture: root.entry?.picture ?? ""
-            readonly property string mark: root.entry?.mark ?? ""
-
-            readonly property bool marked: mark !== "" && sign.ready
-
-            readonly property bool hasImage: badge.pictured || badge.marked
-
-            readonly property bool pictured: picture !== "" && art.ready
-
-            width: Appearance.sizes.notificationBadge * (badge.pictured ? 2 : 1)
-            height: width
-
-            SquircleRect {
-                anchors.fill: parent
-                radius: Appearance.rounding.small
-                color: Appearance.colour.fillStrong
-                visible: !badge.hasImage
-            }
-
-            Icon {
-                anchors.centerIn: parent
-                visible: !badge.hasImage
-
-                size: Math.round(badge.width / 2)
-                name: root.urgent ? "priority_high" : "notifications"
-                color: root.urgent ? Appearance.colour.accent : Appearance.colour.textDim
-            }
-
-            SquircleImage {
-                id: sign
-
-                anchors.left: parent.left
-                anchors.top: parent.top
-                width: Appearance.sizes.notificationBadge
-                height: width
-
-                source: badge.mark
-                fillMode: Image.PreserveAspectCrop
-                radius: Appearance.rounding.small
-
-                visible: !badge.pictured
-            }
-
-            SquircleImage {
-                id: art
-
-                anchors.left: parent.left
-                anchors.top: parent.top
-                width: Appearance.sizes.notificationBadge * (badge.picture ? 2 : 1)
-                height: width
-
-                source: badge.picture
-                fillMode: Image.PreserveAspectFit
-                radius: Appearance.rounding.small
-            }
-        }
-
-        Expander {
-            id: fold
-
-            anchors.horizontalCenter: badge.horizontalCenter
-            anchors.top: badge.bottom
-            anchors.topMargin: Appearance.padding.small
-
-            visible: message.foldable || headline.foldable
-            open: root.unfolded
-
-            onToggled: root.unfold(!root.unfolded)
-        }
-
-        Column {
-            id: text
-
-            anchors.left: badge.right
-            anchors.leftMargin: Appearance.padding.normal
-            anchors.right: parent.right
-
-            anchors.rightMargin: root.pinned ? pinMark.width + Appearance.padding.small : 0
-            anchors.top: parent.top
-            spacing: 0
-
-            StyledText {
-                width: parent.width
-                visible: !!root.entry?.appName
-                text: root.entry?.appName ?? ""
-                font.pixelSize: Appearance.font.size.small
-                color: Appearance.colour.textFaint
-                elide: Text.ElideRight
-            }
-
-            FoldedText {
-                id: headline
-
-                width: parent.width
-
-                visible: !!full
-                full: root.wordless ? "(no message)" : (root.entry?.summary ?? "")
-                color: root.wordless ? Appearance.colour.textFaint : Appearance.colour.text
-                unfolded: root.unfolded
-
-                lines: root.roomy ? 4 : 2
-            }
-
-            Item {
-                id: meter
-
-                readonly property real pct: root.entry?.progress ?? -1
-
-                width: parent.width
-                visible: pct >= 0
-
-                height: visible ? row.implicitHeight + Appearance.padding.small : 0
-
-                Follow {
-                    id: chase
-
-                    target: meter.pct
-                    speed: Appearance.animation.revealSpeed
-                }
-
-                Component.onCompleted: chase.snap()
-
-                Item {
-                    id: row
-
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    implicitHeight: Math.max(gauge.implicitHeight, figure.implicitHeight)
-                    height: implicitHeight
-
-                    Gauge {
-                        id: gauge
-
-                        anchors.left: parent.left
-                        anchors.right: figure.left
-                        anchors.rightMargin: Appearance.padding.small
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        value: chase.value / 100
-                    }
-
-                    StyledText {
-                        id: figure
-
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        text: `${Math.round(meter.pct)}%`
-                        font.pixelSize: Appearance.font.size.small
-                        color: Appearance.colour.textDim
-                    }
-                }
-            }
-
-            FoldedText {
-                id: message
-
-                width: parent.width
-                visible: !!root.entry?.body
-
-                full: root.entry?.body ?? ""
-                brief: root.entry?.brief ?? ""
-                textFormat: Text.StyledText
-                unfolded: root.unfolded
-
-                font.pixelSize: Appearance.font.size.small
-                color: Appearance.colour.textDim
-                topPadding: Appearance.padding.small
-
-                lines: root.roomy ? 12 : 3
-            }
-
-            Flow {
-                id: actions
-
-                width: parent.width
-
-                visible: root.live && (root.entry?.hasActions ?? false)
-                topPadding: Appearance.padding.normal
-                spacing: Appearance.padding.small
-
-                Repeater {
-
-                    model: root.live ? (root.entry?.pressable(root.notification?.actions) ?? []) : []
-
-                    delegate: Button {
-                        required property var modelData
-
-                        text: modelData.text
-                        width: Math.min(implicitWidth, actions.width)
-
-                        onClicked: {
-
-                            if (root.live)
-                                modelData.invoke();
-                            root.dismissed();
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Icon {
-        id: pinMark
-
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.margins: Appearance.padding.normal
-
-        name: "push_pin"
-        size: Appearance.font.size.small
-        fill: 1
-        color: Appearance.colour.accent
-        opacity: root.pinned ? 1 : Math.min(1, Math.max(0, -root.pulled / root.throwDistance))
-        visible: opacity > 0.01
-    }
-
-    Component.onDestruction: root.holding?.release(root)
-
-    MouseArea {
-        id: drag
-
-        property real anchorX: 0
-        property real anchorY: 0
-        property real startedAt: 0
-        property bool throwing: false
-
-        property real velocity: 0
-        property real lastDx: 0
-
-        property real lastEvent: 0
-
-        property bool holding: false
-
-        property bool scrolling: false
-
-        property bool wandered: false
+    NotificationSwipe {
+        id: swipe
 
         anchors.fill: parent
         z: -1
-        hoverEnabled: true
-        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+        enabled: root.interactive
+        keepLeaves: root.keepLeaves
 
-        preventStealing: drag.throwing
+        onTapped: Notifications.activate(root.entry)
+        onHeld: root.pin(true)
+        onReleased: root.released()
+        onKept: root.kept()
+        onScrolled: by => root.scrolled(by)
+        onScrollEnded: speed => root.scrollEnded(speed)
+    }
 
-        cursorShape: drag.pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+    Item {
+        id: content
 
-        function begin(): void {
-            drag.startedAt = root.dragX;
-            drag.throwing = false;
-            drag.scrolling = false;
-            drag.holding = false;
-            drag.wandered = false;
-            drag.velocity = 0;
-            drag.lastDx = 0;
-            drag.lastEvent = Date.now();
+        x: swipe.shift
+        width: root.width
+        height: root.height
+
+        SquircleRect {
+            anchors.fill: parent
+            anchors.margins: root.alert ? Appearance.padding.small : 0
+            radius: root.radius
+            color: swipe.pressed && !swipe.moved || root.pinned ? Appearance.colour.fillStrong : Appearance.colour.fill
+            opacity: root.page ? 1 : glow.value
+            visible: root.interactive && opacity > 0.01
         }
 
-        onPressed: mouse => {
+        Item {
+            id: slim
 
-            scroll.finish();
+            x: root.pad
+            y: root.pad
+            width: root.width - root.pad * 2
+            height: root.markSize
+            visible: root.compact
 
-            drag.anchorX = root.x + mouse.x;
-            drag.anchorY = root.y + mouse.y;
-            drag.begin();
-        }
+            NotificationMark {
+                id: slimMark
 
-        onPositionChanged: mouse => {
-            if (!drag.pressed)
-                return;
-
-            drag.advance(root.x + mouse.x - drag.anchorX, root.y + mouse.y - drag.anchorY);
-        }
-
-        function advance(dx: real, dy: real): void {
-
-            const now = Date.now();
-            const dt = Math.max(1, Math.min(100, now - drag.lastEvent));
-            drag.lastEvent = now;
-            const step = dx - drag.lastDx;
-            drag.lastDx = dx;
-            drag.velocity += (step / dt - drag.velocity) * 0.4;
-
-            if (!drag.throwing) {
-                if (Math.abs(dy) >= Config.values.control.dragThreshold)
-                    drag.wandered = true;
-                if (Math.abs(dy) > Math.abs(dx))
-                    return;
-                if (Math.abs(dx) < Config.values.control.dragThreshold)
-                    return;
-                drag.throwing = true;
+                size: root.markSize
+                radius: Appearance.rounding.small
+                entry: root.entry
             }
 
-            root.pulled = dx;
-            root.dragX = root.resist(drag.startedAt + dx);
+            StyledText {
+                id: slimTail
+
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                visible: root.row
+                text: root.entry?.appName ? (root.age ? `${root.entry.appName} · ${root.age}` : root.entry.appName) : root.age
+                color: Appearance.colour.textFaint
+                font.family: root.family
+                elide: Text.ElideRight
+                width: Math.min(implicitWidth, parent.width / 3)
+                horizontalAlignment: Text.AlignRight
+            }
+
+            StyledText {
+                anchors.left: slimMark.right
+                anchors.leftMargin: root.gap
+                anchors.right: slimTail.visible ? slimTail.left : parent.right
+                anchors.rightMargin: slimTail.visible ? root.gap : 0
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.wordless ? "(no message)" : (root.entry?.summary || root.entry?.body || "")
+                color: root.wordless ? Appearance.colour.textFaint : Appearance.colour.text
+                font.family: root.family
+                elide: Text.ElideRight
+            }
         }
 
-        function stream(dx: real, dy: real): void {
-            if (!drag.throwing) {
-                if (drag.scrolling)
-                    return;
+        Item {
+            id: full
 
-                if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) >= Config.values.control.dragThreshold) {
-                    drag.scrolling = true;
-                    return;
+            x: root.pad
+            y: root.pad
+            width: root.width - root.pad * 2
+            implicitHeight: Math.max(mark.height + (fold.visible ? Appearance.padding.small + fold.height : 0), words.implicitHeight)
+            visible: root.roomy
+
+            NotificationMark {
+                id: mark
+
+                size: root.markSize
+                entry: root.entry
+                scale: 1 + 0.06 * glow.value
+            }
+
+            Expander {
+                id: fold
+
+                anchors.horizontalCenter: mark.horizontalCenter
+                anchors.top: mark.bottom
+                anchors.topMargin: Appearance.padding.small
+
+                visible: root.page && (message.foldable || headline.foldable)
+                open: root.unfolded
+
+                onToggled: root.unfold(!root.unfolded)
+            }
+
+            Column {
+                id: words
+
+                x: root.markSize + root.gap
+                y: Math.max(0, (root.markSize - Math.min(root.markSize, implicitHeight)) / 2)
+                width: root.textWidth
+                spacing: Appearance.padding.small / 2
+
+                Item {
+                    id: who
+
+                    width: parent.width
+                    height: Appearance.font.line.small
+                    visible: !!root.entry?.appName || root.age !== "" || root.count > 1
+
+                    StyledText {
+                        id: ageText
+
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.age
+                        color: Appearance.colour.textFaint
+                        font.family: root.family
+                    }
+
+                    Icon {
+                        id: pinMark
+
+                        anchors.right: ageText.text ? ageText.left : parent.right
+                        anchors.rightMargin: ageText.text ? Appearance.padding.small : 0
+                        anchors.verticalCenter: parent.verticalCenter
+                        name: "push_pin"
+                        size: Appearance.font.size.small
+                        fill: 1
+                        color: Appearance.colour.accent
+                        opacity: root.pinned ? 1 : root.keepLeaves ? 0 : Math.min(1, Math.max(0, -swipe.pulled / Math.max(1, swipe.throwDistance)))
+                        visible: opacity > 0.01
+                    }
+
+                    Item {
+                        id: tally
+
+                        anchors.right: pinMark.visible ? pinMark.left : ageText.text ? ageText.left : parent.right
+                        anchors.rightMargin: tally.visible ? Appearance.padding.small : 0
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: tally.visible ? tallyCount.implicitWidth + tallyMark.width + Appearance.padding.small * 2 : 0
+                        height: parent.height
+                        visible: root.count > 1
+
+                        SquircleRect {
+                            anchors.fill: parent
+                            pill: "object"
+                            color: tallyArea.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
+                        }
+
+                        StyledText {
+                            id: tallyCount
+
+                            x: Appearance.padding.small
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: root.count
+                            font.family: root.family
+                        }
+
+                        Icon {
+                            id: tallyMark
+
+                            anchors.left: tallyCount.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: "expand_more"
+                            size: Appearance.font.size.small
+                            rotation: root.countOpen ? 180 : 0
+                            color: Appearance.colour.textDim
+                        }
+
+                        MouseArea {
+                            id: tallyArea
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+
+                            onClicked: root.countTapped()
+                        }
+                    }
+
+                    StyledText {
+                        anchors.left: parent.left
+                        anchors.right: tally.visible ? tally.left : pinMark.visible ? pinMark.left : ageText.text ? ageText.left : parent.right
+                        anchors.rightMargin: Appearance.padding.small
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.entry?.appName ?? ""
+                        color: root.urgent ? Appearance.colour.alarm : Appearance.colour.textFaint
+                        font.family: root.family
+                        elide: Text.ElideRight
+                    }
+                }
+
+                FoldedText {
+                    id: headline
+
+                    width: parent.width
+                    visible: root.page && !!full
+                    full: root.wordless ? "(no message)" : (root.entry?.summary ?? "")
+                    color: root.wordless ? Appearance.colour.textFaint : Appearance.colour.text
+                    font.pixelSize: Appearance.font.size.normal
+                    font.family: root.family
+                    unfolded: root.unfolded
+                    lines: 4
+                }
+
+                StyledText {
+                    width: parent.width
+                    visible: root.alert && text !== ""
+                    text: root.entry?.summary || (!root.entry?.body ? "(no message)" : "")
+                    font.family: root.family
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 2
+                    elide: Text.ElideRight
+                }
+
+                Item {
+                    id: meter
+
+                    readonly property real pct: root.entry?.progress ?? -1
+
+                    width: parent.width
+                    visible: pct >= 0
+                    height: visible ? gaugeRow.implicitHeight + Appearance.padding.small : 0
+
+                    Follow {
+                        id: chase
+
+                        target: meter.pct
+                        speed: Appearance.animation.revealSpeed
+                    }
+
+                    Component.onCompleted: chase.snap()
+
+                    Item {
+                        id: gaugeRow
+
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        implicitHeight: Math.max(gauge.implicitHeight, figure.implicitHeight)
+                        height: implicitHeight
+
+                        Gauge {
+                            id: gauge
+
+                            anchors.left: parent.left
+                            anchors.right: figure.left
+                            anchors.rightMargin: Appearance.padding.small
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            value: chase.value / 100
+                        }
+
+                        StyledText {
+                            id: figure
+
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            text: `${Math.round(meter.pct)}%`
+                            color: Appearance.colour.textDim
+                            font.family: root.family
+                        }
+                    }
+                }
+
+                FoldedText {
+                    id: message
+
+                    width: parent.width
+                    visible: !!root.entry?.body
+
+                    full: root.entry?.body ?? ""
+                    brief: root.entry?.brief ?? ""
+                    textFormat: Text.StyledText
+                    unfolded: root.page && root.unfolded
+
+                    font.pixelSize: Appearance.font.size.small
+                    font.family: root.family
+                    color: Appearance.colour.textDim
+                    topPadding: Appearance.padding.small / 2
+
+                    lines: root.page ? 12 : 2
+                }
+
+                Flow {
+                    id: buttons
+
+                    width: parent.width
+                    visible: root.actions.length > 0
+                    topPadding: Appearance.padding.normal
+                    spacing: Appearance.padding.small
+
+                    Repeater {
+                        model: root.actions
+
+                        delegate: Button {
+                            required property var modelData
+
+                            size: 0
+                            text: modelData.text
+                            width: Math.min(implicitWidth, buttons.width)
+
+                            onClicked: root.dismissAfter(() => modelData.invoke())
+                        }
+                    }
+                }
+
+                Item {
+                    id: reply
+
+                    readonly property bool shown: root.page && root.live && (root.entry?.canReply ?? false)
+
+                    function submit(): void {
+                        const said = input.text.trim();
+                        if (said && Notifications.reply(root.entry, said))
+                            input.text = "";
+                    }
+
+                    width: parent.width
+                    visible: reply.shown
+                    height: reply.shown ? send.height + Appearance.padding.normal : 0
+
+                    SquircleRect {
+                        anchors.left: parent.left
+                        anchors.right: send.left
+                        anchors.rightMargin: Appearance.padding.small
+                        anchors.bottom: parent.bottom
+                        height: send.height
+                        radius: Appearance.rounding.small
+                        color: Appearance.colour.fillStrong
+
+                        TextInput {
+                            id: input
+
+                            anchors.fill: parent
+                            anchors.leftMargin: Appearance.padding.normal
+                            anchors.rightMargin: Appearance.padding.normal
+                            verticalAlignment: TextInput.AlignVCenter
+                            clip: true
+
+                            font.family: root.family
+                            font.pixelSize: Appearance.font.size.small
+                            renderType: Text.NativeRendering
+                            color: Appearance.colour.text
+                            selectionColor: Appearance.colour.accent
+                            selectedTextColor: Appearance.colour.accentText
+
+                            onAccepted: reply.submit()
+                            onActiveFocusChanged: if (!input.activeFocus)
+                                Prompts.release(input)
+                            Keys.onEscapePressed: input.focus = false
+                            Component.onDestruction: Prompts.release(input)
+
+                            StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: !input.text && !input.activeFocus
+                                text: root.entry?.replyPlaceholder ?? "Reply"
+                                color: Appearance.colour.textFaint
+                                font.family: root.family
+                            }
+
+                            TapHandler {
+                                onTapped: {
+                                    Prompts.request(input);
+                                    Qt.callLater(input.forceActiveFocus);
+                                }
+                            }
+                        }
+                    }
+
+                    Button {
+                        id: send
+
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        size: 0
+                        icon: "send"
+                        interactive: input.text.trim() !== ""
+
+                        onClicked: reply.submit()
+                    }
                 }
             }
+        }
+    }
 
-            drag.advance(dx, dy);
+    Item {
+        id: close
+
+        x: swipe.shift + root.width - root.pad - width + Appearance.padding.small / 2
+        y: root.pad - Appearance.padding.small / 2
+        width: root.closeSize
+        height: root.closeSize
+        opacity: glow.value
+        visible: root.roomy && opacity > 0.01
+
+        Follow {
+            id: closeScale
+
+            speed: Appearance.animation.revealSpeed * 1.5
+            epsilon: 0.001
+            target: closer.pressed ? Appearance.press.ring : closer.containsMouse ? Appearance.press.ringHover : 1
         }
 
-        onPressAndHold: {
-            if (throwing)
-                return;
-            holding = true;
-            root.pin(true);
+        Component.onCompleted: closeScale.snap()
+
+        SquircleRect {
+            anchors.fill: parent
+            pill: "object"
+            color: closer.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
+            scale: closeScale.value
         }
 
-        onReleased: {
-
-            if (!drag.throwing) {
-                if (!drag.holding && !drag.wandered)
-                    root.dismissed();
-                return;
-            }
-
-            drag.conclude();
+        Icon {
+            anchors.centerIn: parent
+            name: "close"
+            size: Appearance.font.size.small
+            color: closer.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
         }
 
-        function conclude(): void {
-            if (!drag.throwing)
-                return;
+        MouseArea {
+            id: closer
 
-            if (root.committed && root.pulled > 0) {
-                root.flung = 1;
-                return root.dismissed();
-            }
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
 
-            if (root.committed)
-                root.pin(!root.pinned);
-
-            settle.value = root.dragX;
-            settle.target = 0;
-            root.pulled = 0;
-            drag.throwing = false;
-        }
-
-        onCanceled: {
-            settle.value = root.dragX;
-            settle.target = 0;
-            root.pulled = 0;
-            drag.throwing = false;
-            drag.holding = false;
-            drag.wandered = false;
-            drag.scrolling = false;
-        }
-
-        onWheel: wheel => {
-
-            if (drag.pressed) {
-                wheel.accepted = false;
-                return;
-            }
-
-            if (!scroll.feed(wheel))
-                return;
-
-            wheel.accepted = drag.throwing;
-        }
-
-        ScrollGesture {
-            id: scroll
-
-            onBegan: drag.begin()
-            onMoved: (dx, dy) => drag.stream(dx, dy)
-            onEnded: drag.conclude()
+            onClicked: root.fling(1)
         }
     }
 }

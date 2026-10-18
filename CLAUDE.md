@@ -23,6 +23,12 @@ person would search for - no abbreviations, no product-name jokes. Every QML
 folder carries a `qmldir`; after adding, moving or renaming a file run
 `scripts/qmldirs.sh`, or the LSP stops resolving `qs.*` imports.
 
+Every file belongs to one package, named in a `module.json` (see
+`docs/architecture/modules.md`), and packages may only reach for the packages
+they list. A new file needs an owner and a new cross-package reach needs a
+`requires` entry; `banditshell dev modules` runs the check and `--explain
+<package>` shows what a package reaches for.
+
 ## Worktrees
 
 Agents work in worktrees, headless; the user feels the result on the live

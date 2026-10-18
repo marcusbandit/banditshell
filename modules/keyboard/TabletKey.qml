@@ -48,13 +48,13 @@ Item {
         bottomLeftRadius: root.radius
         bottomRightRadius: root.radius
 
-        color: root.fill
+        color: tone.value
 
-        Behavior on color {
-            enabled: !root.down
-            ColorAnimation {
-                duration: Appearance.animation.fast
-            }
+        FollowColour {
+            id: tone
+
+            target: root.fill
+            speed: root.down ? 0 : Appearance.animation.revealSpeed
         }
 
         StyledText {

@@ -77,12 +77,12 @@ Singleton {
     }
 
     function notify(urgency: string, summary: string, body: string): void {
-        warner.command = ["notify-send", "-a", "banditshell", "-u", urgency, "-c", Notifications.categoryFor("battery"), summary, body ?? ""];
-        warner.running = true;
-    }
-
-    Process {
-        id: warner
+        Notify.post({
+            urgency,
+            summary,
+            body,
+            kind: "battery"
+        });
     }
 
     Timer {
@@ -93,10 +93,10 @@ Singleton {
     }
 
     Connections {
-        target: Lock
+        target: SessionControl
 
         function onSleepingChanged(): void {
-            if (Lock.sleeping)
+            if (SessionControl.sleeping)
                 return;
             root.stage = LowBattery.afterResume(root.stage);
             root.considerWarning();

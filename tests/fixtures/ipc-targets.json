@@ -1,0 +1,249 @@
+{
+  "activity": [
+    "end(id: string, outcome: string): string",
+    "list(): string",
+    "push(id: string, text: string, detail: string, progress: string, icon: string, until: string, priority: string, run: string): string",
+    "reply(error: string, done: string): string",
+    "update(id: string, text: string, detail: string, progress: string, icon: string, until: string): string"
+  ],
+  "alarm": [
+    "add(time: string, days: string, label: string, mode: string, payload: string): string",
+    "disable(handle: string): string",
+    "enable(handle: string): string",
+    "list(): string",
+    "remove(handle: string): string",
+    "snooze(): string",
+    "status(): string",
+    "stop(): string"
+  ],
+  "border": [
+    "off(): string",
+    "on(): string",
+    "status(): string",
+    "toggle(): string"
+  ],
+  "calculator": [
+    "answer(expression: string): string",
+    "app(): string",
+    "close(): string",
+    "open(): string",
+    "panel(): string",
+    "status(): string",
+    "toggle(): string"
+  ],
+  "clipboard": [
+    "clear(): string",
+    "close(): string",
+    "list(): string",
+    "open(): string",
+    "pin(index: string): string",
+    "remove(index: string): string",
+    "status(): string",
+    "toggle(): string",
+    "use(index: string): string"
+  ],
+  "files": [
+    "close(): string",
+    "open(path: string): string",
+    "status(): string",
+    "toggle(path: string): string"
+  ],
+  "hotkeys": [
+    "close(): string",
+    "open(screen: string): string",
+    "status(screen: string): string",
+    "toggle(screen: string): string"
+  ],
+  "inspect": [
+    "close(): string",
+    "island(screen: string): string"
+  ],
+  "island": [
+    "close(): string",
+    "open(screen: string): string",
+    "status(screen: string): string",
+    "toggle(screen: string): string"
+  ],
+  "keyboard": [
+    "close(): string",
+    "dock(): string",
+    "float(): string",
+    "open(screen: string): string",
+    "page(name: string, screen: string): string",
+    "status(screen: string): string",
+    "toggle(screen: string): string"
+  ],
+  "keyring": [
+    "demo(): string",
+    "refuse(): string",
+    "status(): string"
+  ],
+  "launcher": [
+    "close(): string",
+    "open(query: string): string",
+    "query(): string",
+    "run(id: string): string",
+    "scrub(fraction: string): string",
+    "status(): string",
+    "toggle(): string"
+  ],
+  "media": [
+    "close(): string",
+    "open(): string",
+    "status(): string",
+    "toggle(): string"
+  ],
+  "menu": [
+    "close(): string",
+    "current(): string",
+    "hover(): string",
+    "list(): string",
+    "open(key: string, screen: string): string",
+    "toggle(key: string, screen: string): string"
+  ],
+  "migration": [
+    "migrate(): string",
+    "status(): string"
+  ],
+  "mode": [
+    "choose(id: string): string",
+    "list(): string",
+    "status(): string"
+  ],
+  "notifications": [
+    "act(): string",
+    "clear(): string",
+    "close(): string",
+    "dismiss(which: string): string",
+    "held(app: string): string",
+    "list(filter: string, app: string): string",
+    "mute(app: string, duration: string): string",
+    "open(screen: string): string",
+    "reply(text: string): string",
+    "search(query: string): string",
+    "snooze(duration: string): string",
+    "status(screen: string): string",
+    "toggle(screen: string): string",
+    "unmute(app: string): string"
+  ],
+  "output": [
+    "assign(role: string, name: string): string",
+    "headphones(): string",
+    "list(): string",
+    "speakers(): string",
+    "status(): string",
+    "toggle(): string"
+  ],
+  "panels": [
+    "closeAll(): string"
+  ],
+  "penmap": [
+    "aspect(): string",
+    "cancel(): string",
+    "centre(): string",
+    "commit(): string",
+    "follow(): string",
+    "open(): string",
+    "set(x: string, y: string, w: string, h: string): string",
+    "status(): string"
+  ],
+  "picker": [
+    "clip(): string",
+    "close(): string",
+    "freeze(): string",
+    "freezeclip(): string",
+    "open(): string",
+    "taken(path: string): string"
+  ],
+  "polkit": [
+    "demo(): string",
+    "refuse(): string",
+    "status(): string"
+  ],
+  "quickcontrols": [
+    "close(): string",
+    "open(): string",
+    "status(): string",
+    "toggle(): string"
+  ],
+  "quiet": [
+    "off(): string",
+    "on(ends: string): string",
+    "status(): string",
+    "toggle(ends: string): string"
+  ],
+  "screen": [
+    "brightness(value: string): string",
+    "status(): string",
+    "temperature(value: string): string"
+  ],
+  "session": [
+    "close(): string",
+    "open(): string",
+    "status(): string",
+    "toggle(): string"
+  ],
+  "settings": [
+    "close(): string",
+    "open(page: string, screen: string): string",
+    "page(key: string): string",
+    "status(): string",
+    "toggle(): string"
+  ],
+  "shell": [
+    "get(key: string): string",
+    "set(key: string, value: string): string",
+    "status(): string",
+    "themes(): string"
+  ],
+  "sidebar": [
+    "off(screen: string): string",
+    "on(screen: string): string",
+    "status(): string",
+    "toggle(screen: string): string"
+  ],
+  "stream": [
+    "off(): string",
+    "on(screen: string): string",
+    "status(): string"
+  ],
+  "tablet": [
+    "lid(state: string, from: string): string",
+    "off(from: string): string",
+    "on(from: string): string",
+    "status(): string",
+    "toggle(from: string): string"
+  ],
+  "timer": [
+    "cancel(handle: string): string",
+    "pause(handle: string): string",
+    "resume(handle: string): string",
+    "start(spec: string, label: string): string",
+    "status(): string",
+    "toggle(handle: string): string"
+  ],
+  "wallpaper": [
+    "clear(screen: string): string",
+    "list(screen: string): string",
+    "next(screen: string): string",
+    "off(): string",
+    "on(): string",
+    "palette(): string",
+    "prev(screen: string): string",
+    "set(path: string, screen: string): string",
+    "status(): string",
+    "toggle(): string"
+  ],
+  "wallpapers": [
+    "close(): string",
+    "open(screen: string): string",
+    "status(): string",
+    "toggle(screen: string): string"
+  ],
+  "zone": [
+    "add(place: string): string",
+    "find(text: string): string",
+    "list(): string",
+    "remove(place: string): string"
+  ]
+}

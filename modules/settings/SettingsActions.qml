@@ -39,7 +39,7 @@ Singleton {
             }
         case "lockNow":
             Settings.hide();
-            return Lock.lock();
+            return SessionControl.requestLock();
         case "reload":
             return Quickshell.reload(true);
         case "rules":

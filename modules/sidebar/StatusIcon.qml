@@ -14,6 +14,7 @@ Item {
     property Component mark: null
 
     signal activated
+    signal scrolled(var wheel)
 
     readonly property bool hovered: mouse.containsMouse
 
@@ -33,12 +34,13 @@ Item {
             anchors.centerIn: parent
             visible: !root.mark
             name: root.icon
-            color: root.markColour
+            color: markTone.value
 
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.fast
-                }
+            FollowColour {
+                id: markTone
+
+                target: root.markColour
+                speed: Appearance.animation.revealSpeed
             }
         }
 
@@ -60,6 +62,11 @@ Item {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.activated()
+
+        onWheel: wheel => {
+            root.scrolled(wheel);
+            wheel.accepted = true;
+        }
     }
 
 }

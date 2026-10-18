@@ -1,0 +1,62 @@
+{
+  "name": "launcher",
+  "summary": "the launcher: search, concepts, edge and hotkeys",
+  "layer": 3,
+  "owns": {
+    "qml": [
+      "modules/launcher/AlphabetLauncher.qml",
+      "modules/launcher/AlphabetRow.qml",
+      "modules/launcher/AnswerRow.qml",
+      "modules/launcher/ColourPicker.qml",
+      "modules/launcher/LaunchEdge.qml",
+      "modules/launcher/Launcher.qml",
+      "modules/launcher/LauncherConcept.qml",
+      "modules/launcher/LauncherIpc.qml",
+      "modules/launcher/LauncherSearch.qml",
+      "modules/launcher/ListLauncher.qml",
+      "modules/launcher/Peek.qml",
+      "modules/launcher/module.json",
+      "modules/launcher/qmldir",
+      "modules/launcher/search.js",
+      "modules/launcher/shellcli.js",
+      "modules/launcher/sources/FallbackSource.qml",
+      "modules/launcher/sources/MediaSource.qml",
+      "modules/launcher/sources/qmldir",
+      "modules/launcher/system-asks.js"
+    ],
+    "services": [
+      "LauncherHotkeys"
+    ],
+    "tests": [
+      "tests/launcher-actions.test.js",
+      "tests/launcher-calculator.test.js",
+      "tests/launcher-phrases.test.js",
+      "tests/launcher-search-bar.test.js",
+      "tests/launcher-search.test.js",
+      "tests/launcher-shellcli.test.js",
+      "tests/launcher-windows.test.js"
+    ]
+  },
+  "requires": {
+    "packages": [
+      "core",
+      "compositor",
+      "apps"
+    ],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": [
+      "launcher"
+    ]
+  },
+  "config": {
+    "namespace": [
+      "launcher"
+    ],
+    "reads": [
+      "control"
+    ]
+  }
+}

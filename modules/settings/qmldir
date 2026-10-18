@@ -2,22 +2,25 @@ module qs.modules.settings
 AppPicker 1.0 AppPicker.qml
 KeyCaps 1.0 KeyCaps.qml
 MiniWorkspaces 1.0 MiniWorkspaces.qml
+ModeIpc 1.0 ModeIpc.qml
 ScreenCanvas 1.0 ScreenCanvas.qml
 singleton SettingsActions 1.0 SettingsActions.qml
 SettingsBars 1.0 SettingsBars.qml
 SettingsCell 1.0 SettingsCell.qml
 SettingsChip 1.0 SettingsChip.qml
 SettingsContent 1.0 SettingsContent.qml
+SettingsCorner 1.0 SettingsCorner.qml
 SettingsEntry 1.0 SettingsEntry.qml
 SettingsFacts 1.0 SettingsFacts.qml
 SettingsField 1.0 SettingsField.qml
 SettingsFilePicker 1.0 SettingsFilePicker.qml
 SettingsHub 1.0 SettingsHub.qml
+SettingsIpc 1.0 SettingsIpc.qml
 singleton SettingsKeys 1.0 SettingsKeys.qml
-SettingsPanel 1.0 SettingsPanel.qml
 SettingsPane 1.0 SettingsPane.qml
-SettingsPathEdit 1.0 SettingsPathEdit.qml
+SettingsPanel 1.0 SettingsPanel.qml
 SettingsPath 1.0 SettingsPath.qml
+SettingsPathEdit 1.0 SettingsPathEdit.qml
 SettingsRail 1.0 SettingsRail.qml
 singleton SettingsRestore 1.0 SettingsRestore.qml
 SettingsRowFrame 1.0 SettingsRowFrame.qml

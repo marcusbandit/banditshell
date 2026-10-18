@@ -110,66 +110,34 @@ test("every row number from the settings list 1 to 121 has a row", () => {
         assert.ok(covered.has(n), `#${n} has no row`);
 });
 
-test("every config key the panel names exists in Config defaults, unless the row is planned", () => {
+test("every config key the panel names exists in Config defaults", () => {
     for (const r of Catalogue.ROWS)
-        if (r.cfg && !r.isNew)
+        if (r.cfg)
             assert.notStrictEqual(lookup(DEFAULTS, r.cfg), undefined, `${r.page}/${r.k}: ${r.cfg}`);
     for (const k in CONFIG_BACKED)
         assert.notStrictEqual(lookup(DEFAULTS, CONFIG_BACKED[k]), undefined, `${k}: ${CONFIG_BACKED[k]}`);
 });
 
+test("nothing waits in the planned store: no default and no row flagged new", () => {
+    assert.deepStrictEqual(PLAN_DEFAULTS, {});
+    assert.ok(!/\bisNew\b/.test(fs.readFileSync(path.join(SETTINGS, "catalogue.js"), "utf8")));
+});
+
 test("rows that name a config key write that same key", () => {
     const special = new Set(["scr:bar", "wallTarget", "level", "warmth", "sheetKeyboard", "sidebar", "autoZone"]);
     for (const r of Catalogue.ROWS)
-        if (r.k && r.cfg && !r.isNew && !special.has(r.k))
+        if (r.k && r.cfg && !special.has(r.k))
             assert.strictEqual(CONFIG_BACKED[r.k], r.cfg, `${r.k} shows ${r.cfg} but writes ${CONFIG_BACKED[r.k]}`);
 });
 
-test("settings with nothing behind them yet keep a value of their own", () => {
-    for (const r of Catalogue.ROWS)
-        if (r.isNew && r.k)
-            assert.ok(r.k in PLAN_DEFAULTS, `${r.k} is new but has no planned default`);
-});
-
-test("every planned setting has a ticket in the backend plan", () => {
-    const dir = path.join(ROOT, ".scratch/settings-backends");
-    const plan = [fs.readFileSync(path.join(dir, "spec.md"), "utf8")].concat(fs.readdirSync(path.join(dir, "issues")).map(f => fs.readFileSync(path.join(dir, "issues", f), "utf8"))).join("\n");
-    for (const r of Catalogue.ROWS) {
-        if (!r.isNew)
-            continue;
-        const names = r.k ? [`\`${r.k}\``] : r.kind === "w" ? [`\`${r.w}\``, Catalogue.labelOf(r)] : [r.label];
-        assert.ok(names.some(n => plan.includes(n)), `${r.page}: ${names[0]} is planned but no ticket names it`);
-    }
-});
-
-test("a setting is either planned or written to config, never both", () => {
-    for (const k in CONFIG_BACKED)
-        assert.ok(!(k in PLAN_DEFAULTS), `${k} has a planned default and a config key`);
-});
-
-test("what NetworkManager owns is never kept as a planned value, and no password is stored", () => {
-    for (const k of ["hotspot", "hotspotName", "hotspotPass", "hotspotBand", "tunnels"])
-        assert.ok(!(k in PLAN_DEFAULTS), `${k} is NetworkManager's, not a planned value`);
+test("what NetworkManager owns is never written to config, and no password is stored", () => {
     for (const k of ["hotspot", "hotspotName", "hotspotPass", "hotspotBand", "vpnFirst"])
         assert.ok(!(k in CONFIG_BACKED), `${k} must not be written to config.json`);
 });
 
-test("planned settings are not config keys yet", () => {
-    for (const r of Catalogue.ROWS)
-        if (r.isNew && r.k)
-            assert.ok(!(r.k in CONFIG_BACKED), `${r.k} is planned but SettingsState writes it to config`);
-});
-
-test("night light, region and accessibility rows are live: config-backed or owned by a service, never planned", () => {
-    for (const k of ["nightSched", "warmFrom", "warmTo", "clock24", "dateFormat", "reduceMotion", "largerText", "contrast"]) {
+test("night light, region and accessibility rows write to config", () => {
+    for (const k of ["nightSched", "warmFrom", "warmTo", "clock24", "dateFormat", "reduceMotion", "largerText", "contrast"])
         assert.ok(k in CONFIG_BACKED, `${k} writes to config`);
-        assert.ok(!(k in PLAN_DEFAULTS), `${k} is no longer planned`);
-        assert.ok(!Catalogue.ROW_BY_KEY[k].isNew, `${k} is no longer marked new`);
-    }
-    for (const k of ["autoZone", "zone", "lang", "region"]) {
-        assert.ok(!(k in PLAN_DEFAULTS), `${k} is no longer planned`);
-        assert.ok(!Catalogue.ROW_BY_KEY[k].isNew, `${k} is no longer marked new`);
-    }
 });
 
 test("the new config keys start where the panel's planned values did, and dates keep the shell's old look", () => {
@@ -260,8 +228,7 @@ test("steps stay inside the range and off the float crumbs", () => {
 });
 
 test("pages count the settings they cover and the new ones among them", () => {
-    assert.deepStrictEqual(Catalogue.pagesCovered(Catalogue.PAGE_BY_ID.wifi), { settings: 7, fresh: 0 });
-    assert.strictEqual(Catalogue.pagesCovered(Catalogue.PAGE_BY_ID.vpn).fresh, 0);
+    assert.deepStrictEqual(Catalogue.pagesCovered(Catalogue.PAGE_BY_ID.wifi), { settings: 7 });
 });
 
 test("sidebar rows point the replica at the part they change", () => {
@@ -269,6 +236,21 @@ test("sidebar rows point the replica at the part they change", () => {
     assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.trayMax), "tray");
     assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.sidebarW), "");
     assert.strictEqual(Catalogue.zoneOf(null), "");
+});
+
+test("the sidebar style row offers full and rail and defaults to rail", () => {
+    const row = Catalogue.ROW_BY_KEY.sbStyle;
+    assert.strictEqual(row.cfg, "sidebar.style");
+    assert.deepStrictEqual(row.o, ["full", "rail"]);
+    assert.strictEqual(lookup(DEFAULTS, "sidebar.style"), "rail");
+    assert.strictEqual(lookup(DEFAULTS, "sidebar.status.brightness"), false);
+    assert.strictEqual(CONFIG_BACKED.sbStyle, "sidebar.style");
+    assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.sbBright), "status");
+});
+
+test("notifications in search is a row and stays off by default", () => {
+    assert.strictEqual(Catalogue.ROW_BY_KEY.notificationsInSearch.cfg, "launcher.typing.notifications");
+    assert.strictEqual(lookup(DEFAULTS, "launcher.typing.notifications"), false);
 });
 
 test("modes only change settings that exist", () => {
@@ -313,15 +295,13 @@ test("bound keys light up on the board", () => {
     assert.ok(on.includes("super") && on.includes("v") && on.includes("shift") && on.includes("s"));
 });
 
-test("the sheet shape lives in config, not in planned state", () => {
+test("the sheet shape lives in config", () => {
     assert.strictEqual(CONFIG_BACKED.sheetShape, "cheatsheet.shape");
     assert.strictEqual(lookup(DEFAULTS, "cheatsheet.shape"), "iso");
     assert.strictEqual(lookup(DEFAULTS, "cheatsheet.keymap"), "");
-    assert.ok(!("sheetShape" in PLAN_DEFAULTS));
     const row = Catalogue.ROW_BY_KEY.sheetKeyboard;
     assert.deepStrictEqual(row.o.map(o => o[0]), ["iso", "ansi", "file"]);
     assert.deepStrictEqual(row.o.map(o => o[1]), ["ISO", "ANSI", "Custom"]);
-    assert.ok(!row.isNew);
 });
 
 test("keyframe curves start at 0, end at 1 and hold between frames", () => {
@@ -438,22 +418,20 @@ test("screens that are off or mirrored take no room on the desk", () => {
     assert.deepStrictEqual(Screens.snap([wide, off], "HDMI-A-1", 590, 0, 20), { x: 590, y: 0, guides: [], corner: null });
 });
 
-test("the power rows are served by config or by the system, not planned", () => {
+test("the power rows are served by config or by the system", () => {
     const backed = { chargeLimit: "battery.holdCharge", chargeMax: "battery.holdAt", lowWarn: "battery.warnAt", lowAction: "battery.nearlyEmpty", lidBattery: "power.lid.onBattery", lidPlugged: "power.lid.pluggedIn", lidDocked: "power.lid.docked" };
     for (const [k, cfg] of Object.entries(backed)) {
         const row = Catalogue.ROW_BY_KEY[k];
-        assert.ok(!row.isNew, k);
         assert.strictEqual(row.cfg, cfg, k);
         assert.strictEqual(CONFIG_BACKED[k], cfg, k);
-        assert.ok(!(k in PLAN_DEFAULTS), k);
     }
     assert.deepStrictEqual([DEFAULTS.battery.holdCharge, DEFAULTS.battery.holdAt, DEFAULTS.battery.warnAt, DEFAULTS.battery.nearlyEmpty], [true, 80, 15, "nothing"]);
     assert.deepStrictEqual(DEFAULTS.idle, { lock: 0, screensOff: 0, sleep: 0 });
     assert.strictEqual(DEFAULTS.startup.runAutostart, false);
     assert.deepStrictEqual(DEFAULTS.power.lid, { onBattery: "suspend", pluggedIn: "suspend", docked: "nothing" });
     const profile = Catalogue.ROW_BY_KEY.profile;
-    assert.ok(!profile.isNew && !profile.cfg);
-    assert.ok(!("profile" in CONFIG_BACKED) && !("profile" in PLAN_DEFAULTS));
+    assert.ok(!profile.cfg);
+    assert.ok(!("profile" in CONFIG_BACKED));
 });
 
 test("hibernate is greyed where the machine cannot do it", () => {
@@ -491,12 +469,10 @@ test("rules are opaque to the schema merge and start empty", () => {
     assert.deepStrictEqual(lookup(DEFAULTS, "notifications.rules"), {});
 });
 
-test("quiet, rules and alert sounds are written to config, not kept as plans", () => {
+test("quiet, rules and alert sounds are written to config", () => {
     for (const k of ["dnd", "dndUntil", "dndAlarms", "dndNightly", "rules", "alerts", "alertSet", "alertVol"]) {
         assert.ok(k in CONFIG_BACKED, `${k} is config backed`);
-        assert.ok(!(k in PLAN_DEFAULTS), `${k} is no longer planned`);
     }
-    assert.ok(!("mode" in PLAN_DEFAULTS));
     assert.deepStrictEqual(lookup(DEFAULTS, "sound"), { alerts: false, alertSet: "soft", alertVolume: 0.5 });
 });
 
@@ -504,25 +480,17 @@ test("every mode setting can be written by the panel", () => {
     const served = new Set(["profile", "warmth", "level"]);
     for (const m of Catalogue.MODES)
         for (const k of Object.keys(m.set))
-            assert.ok(k in CONFIG_BACKED || served.has(k) || k in PLAN_DEFAULTS, `${m.id} sets ${k}, which nothing writes`);
+            assert.ok(k in CONFIG_BACKED || served.has(k), `${m.id} sets ${k}, which nothing writes`);
 });
 
-test("settings Hyprland owns are served by the state: not planned, not stored, read and written by case", () => {
+test("settings Hyprland owns are served by the state: not stored, read and written by case", () => {
     const state = fs.readFileSync(STATE, "utf8");
     for (const k of ["kbDelay", "kbRate", "mouseSpeed", "padSpeed", "naturalScroll", "tapClick", "layout"]) {
-        assert.ok(!(k in PLAN_DEFAULTS), `${k} still has a planned default`);
         assert.ok(!(k in CONFIG_BACKED), `${k} is stored in config.json`);
         assert.strictEqual(state.split(`case "${k}":`).length - 1, 2, `${k} should be one case in v() and one in write()`);
     }
     for (const k of ["kbDelay", "kbRate", "mouseSpeed", "padSpeed", "naturalScroll", "tapClick"])
-        assert.ok(Catalogue.ROW_BY_KEY[k] && !Catalogue.ROW_BY_KEY[k].isNew, `${k} row is live`);
-    assert.ok(!PLAN_DEFAULTS.layouts, "the keyboard layout list is read from Hyprland");
-});
-
-test("the layout and keyboard rows are live, and the custom layout stays an entry point", () => {
-    for (const r of Catalogue.ROWS.filter(x => ["winLayouts", "kbLayouts"].includes(x.w)))
-        assert.ok(!r.isNew, `${r.w} is still marked new`);
-    assert.strictEqual(PLAN_DEFAULTS.customLayout, "");
+        assert.ok(Catalogue.ROW_BY_KEY[k], `${k} has a row`);
 });
 
 test("pen buttons are shell keys that default to what the pen already does", () => {
@@ -532,7 +500,6 @@ test("pen buttons are shell keys that default to what the pen already does", () 
     assert.strictEqual(lookup(DEFAULTS, "pen.upperButton"), "middle click");
     for (const k of ["penBtn1", "penBtn2"]) {
         const row = Catalogue.ROW_BY_KEY[k];
-        assert.ok(!row.isNew, k);
         assert.ok(Catalogue.options(row, fakeState()).some(o => o[0] === lookup(DEFAULTS, CONFIG_BACKED[k])), `${k}'s default is one of its choices`);
     }
 });

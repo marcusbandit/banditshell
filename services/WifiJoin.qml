@@ -18,7 +18,10 @@ Singleton {
         Network.clearEnroll(name);
         root.screenName = screenName;
         if (Network.enterprise(n) && !n.known) {
-            Settings.openAt(screenName, "wifi", "");
+            Panels.open("settings", {
+                screen: screenName,
+                page: "wifi"
+            });
             return;
         }
         if (n.known || !Network.secured(n)) {

@@ -19,7 +19,6 @@ Item {
         root.accepted = onAccept;
         field.text = initial;
         root.up = true;
-        root.opacity = 1;
 
         Qt.callLater(() => {
             field.forceActiveFocus();
@@ -33,7 +32,6 @@ Item {
 
     function close(): void {
         root.up = false;
-        root.opacity = 0;
         root.accepted = null;
         root.dismissed();
     }
@@ -46,14 +44,16 @@ Item {
             run(answer);
     }
 
-    visible: root.up || root.opacity > 0
-    opacity: 0
+    visible: root.up || fade.value > 0
+    opacity: fade.value
 
-    Behavior on opacity {
-        NumberAnimation {
-            duration: Appearance.animation.fade.fast
-            easing.type: Easing.OutQuad
-        }
+    Follow {
+        id: fade
+
+        target: root.up ? 1 : 0
+        speed: Appearance.animation.revealSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
     }
 
     Rectangle {
@@ -75,7 +75,7 @@ Item {
         radius: Appearance.rounding.large
         color: Appearance.colour.surfaceSolid
         stroke: Appearance.colour.separator
-        strokeWidth: Appearance.font.stem
+        strokeWidth: Appearance.stroke.ring
 
         Column {
             id: body

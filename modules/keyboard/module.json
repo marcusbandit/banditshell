@@ -1,0 +1,28 @@
+{
+  "name": "keyboard",
+  "summary": "the on-screen keyboard",
+  "layer": 3,
+  "owns": {
+    "qml": ["modules/keyboard"],
+    "services": ["Keystrokes"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "display"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": ["keyboard"]
+  },
+  "config": {
+    "namespace": [
+      "tablet.autoKeyboard",
+      "tablet.height",
+      "tablet.seam",
+      "tablet.repeat",
+      "tablet.repeatDelay",
+      "tablet.repeatInterval"
+    ],
+    "reads": []
+  }
+}

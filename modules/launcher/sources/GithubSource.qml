@@ -130,7 +130,7 @@ QtObject {
                     icon: "content_copy",
                     label: "Copy clone URL",
                     short: "Clone URL",
-                    run: () => root.search.leave(() => Files.copyText(`${repo.url}.git`))
+                    run: () => root.search.leave(() => System.copyText(`${repo.url}.git`))
                 },
                 {
                     icon: "merge",
@@ -146,7 +146,7 @@ QtObject {
                 label: "Copy link",
                 run: () => {
                     const url = row.url;
-                    root.search.leave(() => Files.copyText(url));
+                    root.search.leave(() => System.copyText(url));
                 }
             }
         ];

@@ -1,6 +1,6 @@
 # TODO
 
-One step at a time. Each item gets looked at, understood, then handled —
+One step at a time. Each item gets looked at, understood, then handled -
 not batched. Update this file as work happens: notes, decisions, and
 done-marks go under the item they belong to.
 
@@ -10,14 +10,9 @@ done-marks go under the item they belong to.
     sidebar now, not a floating window; ten categories with hubs; every row of the
     121-item list plus the extras (modes, screen time, recent changes, layouts,
     sidebar clock/date/update/status options, VIA import).
-  - Scope is the panel only. Rows marked new in the pane ("nothing behind it in
-    the shell yet") keep their value in state/settings.json and do nothing
-    else; .scratch/settings-backends/ is the plan for each (spec.md, then one
-    ticket per backend), and tests/settings.test.js fails if a planned row has
-    no ticket. The sidebar options (clock style, date, status icons, tray,
-    specials rack, mode glyph), volume past 100%, board shapes and the
-    on-screen keyboard's repeat switch are planned too, not built. The update
-    button is real: it drives sidebar.update.
+  - Scope is the panel only. .scratch/settings-backends/ is the plan for each
+    backend (spec.md, then one ticket per backend); all thirty are built and no
+    row is planned any more. The update button drives sidebar.update.
   - 2026-10-14: no catcher any more. The panel stays put while the desktop is
     used; the X or the corner closes it (Escape too, when it holds the keys).
     It holds the keyboard only while the pointer is over it, and steps aside
@@ -33,18 +28,18 @@ done-marks go under the item they belong to.
     the QR scanner in the pane, the stage corner mask (GPU only).
 - [ ] Peak
 - [ ] Media Viewer
-  - 2026-09-24: empty state reworked — no MPRIS player at all now keeps the
+  - 2026-09-24: empty state reworked - no MPRIS player at all now keeps the
     card's track layout in ghost tones instead of a collapsed card with a
     lone apology. "nothing is playing" is the headline; a music quip ("enjoy
     the silence", "the tape ran out", 60 in the book) rides beneath it as a
-    quoted subtitle, rolled fresh per summon. No instruction line — the user
+    quoted subtitle, rolled fresh per summon. No instruction line - the user
     was explicit. Chords strip only promises what works with no player
     (volume, mute, esc). Card widened 420 -> 560 so nothing wraps hard.
-    Next: user is mid-thought about the small subtitles — item still open.
+    Next: user is mid-thought about the small subtitles - item still open.
   - RULE from the user, standing: no small subtitles that do nothing but
     clutter. Every faint line must earn its place by doing work. Applies to
     the whole shell, not just this card.
-  - Header is gone entirely (user: "just don't have a header") — the card
+  - Header is gone entirely (user: "just don't have a header") - the card
     opens straight onto the track, or onto the empty state's fact + quip.
     App name survives as the track's third line. Chords strip also removed
     (cheatsheet carries the binds). Empty card = ghost art, the fact, the
@@ -56,29 +51,27 @@ done-marks go under the item they belong to.
     elapsed only, no pip/total/drag. Timed tracks unchanged (total shows,
     pip scrubs). Verified against the real zen-firefox bridge.
   - Title wraps to two lines (maximumLineCount 2, then elide) and the track
-    block grows to its text — "The Greatest Episode Yet" reads whole now.
+    block grows to its text - "The Greatest Episode Yet" reads whole now.
     Notch keeps its elide; it has no room.
   - Transport: spread-to-edges was REVERTED (user invoked Gestalt proximity,
-    rightly — a skip at the edge groups with the edge, not the ring). The
+    rightly - a skip at the edge groups with the edge, not the ring). The
     whole transport group now scales up on the card (zoom 1.4): width spent
     on presence, not distance. Notch/menu keep zoom 1.
   - Position is a LOCAL CLOCK now (user's design, 2026-09-24): adopted from
     the player once per track, advanced 1s/s while playing, seeks jump it
     and expect acceptance, clamped at a timed track's end, free-running for
     live. No polling between adoptions. This killed the arrow-key thrash
-    for good — the pip and end time hold still.
+    for good - the pip and end time hold still.
   - Length hold made unconditional: the track-key check let a metadata
     blip mid-seek invalidate the cache, so the total still forgot itself.
     Last positive length now stands until the next real one.
   - ROOT of the length chaos, measured live on the bus: the zen bridge
     reports the true duration ONLY while paused, nothing while playing, and
     a WRONG number while buffering after a seek (a pause indistinguishable
-    from a hand's). Fix: length is adopted, never streamed — boot, track
+    from a hand's). Fix: length is adopted, never streamed - boot, track
     change, or playing-stops->2s-after-a-seek (the buffer's signature).
     Sub-5s reports rejected as noise. Verified: total holds 4:54 through a
     seek storm on a real video.
 - [ ] Notifications rehaul
-- [ ] Sidepanel — simplified mode, and expand-mode changes
+- [ ] Sidepanel - simplified mode, and expand-mode changes
 - [ ] Keybind previewer rehaul
-
-# Test

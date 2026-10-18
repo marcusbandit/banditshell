@@ -29,20 +29,21 @@ Item {
 
         height: Appearance.sizes.minTarget
 
-        Rectangle {
+        SquircleRect {
             anchors.centerIn: parent
 
-            width: grip.hovered || resize.active ? parent.width * 0.08 : parent.width
-            height: Appearance.font.stem
-            radius: height / 2
+            width: gripWidth.value
+            height: Appearance.stroke.ring
+            pill: "object"
             color: grip.hovered || resize.active ? Appearance.colour.text : Appearance.colour.separator
+        }
 
-            Behavior on width {
-                NumberAnimation {
-                    duration: Appearance.animation.fast
-                    easing.type: Easing.OutQuad
-                }
-            }
+        Follow {
+            id: gripWidth
+
+            target: grip.hovered || resize.active ? handle.width * 0.08 : handle.width
+            speed: Appearance.animation.revealSpeed
+            startsAtTarget: true
         }
 
         HoverHandler {
@@ -79,7 +80,7 @@ Item {
 
         radius: Appearance.rounding.small
         stroke: root.focused ? Appearance.colour.accent : "transparent"
-        strokeWidth: root.focused ? Appearance.font.stem : 0
+        strokeWidth: root.focused ? Appearance.stroke.ring : 0
     }
 
     TerminalView {
@@ -96,6 +97,8 @@ Item {
         term: Files.term
         revision: Files.revision
         focused: root.focused
+        zoom: Appearance.sizes.filesZoom
+        face: Appearance.sizes.filesTerminalFont
 
         onSend: bytes => Files.send(bytes)
         onResized: (cols, rows) => Files.resizeTerminal(cols, rows)

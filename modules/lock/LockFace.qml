@@ -286,7 +286,7 @@ Item {
                         text: TimeFormat.dateText(clock.date, "headline")
                         color: Appearance.colour.textDim
                         font.family: root.family
-                        font.pixelSize: Math.round(time.size * 0.2)
+                        font.pixelSize: Appearance.font.size.small
                         font.variableAxes: ({ "wght": 300 + 160 * presence.value })
                         renderType: Text.NativeRendering
                     }
@@ -310,7 +310,7 @@ Item {
                             text: Weather.temperature
                             color: Appearance.colour.textDim
                             font.family: root.family
-                            font.pixelSize: Math.round(Appearance.font.size.small * 0.9)
+                            font.pixelSize: Appearance.font.size.small
                             font.variableAxes: ({ "wght": 600 })
                             font.features: ({ "tnum": 1 })
                             renderType: Text.NativeRendering
@@ -321,7 +321,7 @@ Item {
                             text: Weather.summary.toLowerCase()
                             color: Appearance.colour.textFaint
                             font.family: root.family
-                            font.pixelSize: Math.round(Appearance.font.size.small * 0.9)
+                            font.pixelSize: Appearance.font.size.small
                             renderType: Text.NativeRendering
                         }
                     }
@@ -363,7 +363,7 @@ Item {
                 text: root.shownStatus
                 color: root.warning ? Appearance.colour.alarm : Appearance.colour.textDim
                 font.family: root.family
-                font.pixelSize: Math.round(Appearance.font.size.small * 0.9)
+                font.pixelSize: Appearance.font.size.small
                 font.variableAxes: ({ "wght": 500 })
                 renderType: Text.NativeRendering
             }

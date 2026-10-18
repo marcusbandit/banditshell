@@ -35,17 +35,18 @@ Item {
     readonly property real radius: Appearance.rounding.small
 
     readonly property color fill: root.blocked ? "transparent" : root.latched ? Appearance.colour.accentFill : root.lit ? Appearance.colour.fillStronger : Appearance.colour.fill
-    readonly property color ink: root.latched || root.lit ? Appearance.colour.text : Appearance.colour.textGhost
+    readonly property color ink: root.latched || root.lit ? Appearance.colour.text : Appearance.colour.textFaint
 
     readonly property color edge: root.selected ? Appearance.colour.accent : root.blocked ? Appearance.colour.separator : "transparent"
-    readonly property real edgeWidth: root.selected || root.blocked ? Appearance.font.stem : 0
+    readonly property real edgeWidth: root.selected || root.blocked ? Appearance.stroke.ring : 0
 
-    property color paint: root.fill
+    readonly property color paint: paintTone.value
 
-    Behavior on paint {
-        ColorAnimation {
-            duration: Appearance.animation.fast
-        }
+    FollowColour {
+        id: paintTone
+
+        target: root.fill
+        speed: Appearance.animation.revealSpeed
     }
 
     function steppedPath(w: real, h: real, head: real, leg: real, r: real, inset: real): string {
@@ -134,7 +135,7 @@ Item {
         Item {
             id: pair
 
-            readonly property real gap: Appearance.padding.small / 2
+            readonly property real gap: Appearance.padding.hair
 
             anchors.centerIn: parent
             width: Math.min(sigil.implicitWidth + pair.gap + word.implicitWidth, head.width - root.margin * 2)

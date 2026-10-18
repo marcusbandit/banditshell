@@ -27,7 +27,7 @@ Item {
     readonly property int distance: root.current < 0 ? root.index + 1 : Math.abs(root.index - root.current)
 
     readonly property real padX: Appearance.padding.normal
-    readonly property real padY: Appearance.padding.small / 2
+    readonly property real padY: Appearance.padding.hair
 
     width: parent?.width ?? 0
     height: root.gap ? opening.value * (dots.height + root.padY * 2) : stack.height + root.padY * 2
@@ -64,7 +64,7 @@ Item {
         x: root.padX
         y: root.padY
         width: root.width - root.padX * 2
-        spacing: Appearance.padding.small / 2
+        spacing: Appearance.padding.hair
         visible: !root.gap
 
         LyricBlock {
@@ -129,7 +129,7 @@ Item {
                 y: (dots.height - height) / 2
                 width: dots.size
                 height: dots.size
-                radius: dots.size / 2
+                pill: "object"
                 color: Appearance.colour.text
                 opacity: 0.22 + 0.78 * lit
                 scale: 0.75 + 0.3 * lit

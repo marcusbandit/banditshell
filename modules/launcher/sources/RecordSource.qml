@@ -108,7 +108,7 @@ QtObject {
             kind: "recordlast",
             path: file,
             label: file.slice(cut + 1),
-            detail: file.slice(0, cut).replace(Files.home, "~"),
+            detail: file.slice(0, cut).replace(System.home, "~"),
             icon: "movie",
             score: score
         };
@@ -245,7 +245,7 @@ QtObject {
                         icon: "folder_open",
                         label: "Show in folder",
                         short: "Folder",
-                        run: () => root.search.leave(() => Files.reveal(path))
+                        run: () => root.search.leave(() => System.reveal(path))
                     }
                 ];
             }

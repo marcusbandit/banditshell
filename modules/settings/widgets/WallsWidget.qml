@@ -48,13 +48,16 @@ Item {
 
                 width: root.tile
                 height: Math.round(root.tile * 10 / 16)
-                opacity: root.usable ? 1 : 0.35
-                scale: hover.hovered && root.usable ? 0.97 : 1
+                opacity: root.usable ? 1 : Appearance.opacity.disabled
+                scale: lift.value
 
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                Follow {
+                    id: lift
+
+                    target: hover.hovered && root.usable ? 0.97 : 1
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
                 }
 
                 SquircleRect {
@@ -92,8 +95,8 @@ Item {
                     anchors.margins: 4
                     visible: wp.moving
                     name: SettingsState.v("wallAnim") ? "animation" : "pause"
-                    size: 16
-                    color: "white"
+                    size: Appearance.icon.small
+                    color: Appearance.colour.paper
                 }
 
                 HoverHandler {

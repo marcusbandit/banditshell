@@ -10,8 +10,8 @@ Singleton {
     id: root
 
     readonly property var folders: ({
-            screenshots: String(Config.values.picker.dir ?? "~/Pictures/Screenshots").replace(/^~(?=\/|$)/, Files.home),
-            downloads: Downloads.dir || `${Files.home}/Downloads`
+            screenshots: String(Config.values.picker.dir ?? "~/Pictures/Screenshots").replace(/^~(?=\/|$)/, System.home),
+            downloads: Downloads.dir || `${System.home}/Downloads`
         })
     readonly property var patterns: ({
             screenshots: ["-iname", "*.png", "-o", "-iname", "*.jpg", "-o", "-iname", "*.jpeg", "-o", "-iname", "*.webp"],

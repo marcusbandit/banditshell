@@ -8,6 +8,7 @@ import qs.components
 import qs.services
 import qs.modules.controls
 import "search.js" as Search
+import "../../services/chords.js" as Chords
 import "../../services/colours.js" as Colours
 
 LauncherConcept {
@@ -73,6 +74,7 @@ LauncherConcept {
             root.input.text = text;
             root.input.cursorPosition = text.length;
         }
+        onInquire: row => root.startCapture("ask", row)
     }
 
     readonly property int pinnedLimit: 12
@@ -411,7 +413,7 @@ LauncherConcept {
         if (LauncherHotkeys.possible && search.keyable(row))
             acts.push({
                 icon: "keyboard",
-                label: hotkey ? `Change hotkey · ${Search.chordText(hotkey)}` : "Set hotkey",
+                label: hotkey ? `Change hotkey · ${Chords.chordText(hotkey)}` : "Set hotkey",
                 tucked: true,
                 run: () => root.startCapture("hotkey", row)
             });
@@ -944,7 +946,7 @@ LauncherConcept {
                                     spacing: Appearance.padding.small
 
                                     Repeater {
-                                        model: line.modelData.armed ? [] : [line.modelData.alias, Search.chordText(line.modelData.hotkey ?? "")].filter(Boolean)
+                                        model: line.modelData.armed ? [] : [line.modelData.alias, Chords.chordText(line.modelData.hotkey ?? "")].filter(Boolean)
 
                                         delegate: Item {
                                             id: tag

@@ -142,7 +142,7 @@ Item {
         color: root.color
         opacity: 0.6
         font.family: root.family
-        font.pixelSize: Math.round(root.size * 0.2)
+        font.pixelSize: Appearance.font.size.small
         font.variableAxes: ({ "wght": root.weight })
     }
 }

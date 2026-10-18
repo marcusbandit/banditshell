@@ -12,7 +12,14 @@ QtObject {
 
     property real longestFrame: Infinity
 
+    property bool startsAtTarget: false
+
     readonly property bool settled: value === target
+
+    Component.onCompleted: {
+        if (root.startsAtTarget)
+            root.snap();
+    }
 
     function snap(): void {
         root.value = root.target;

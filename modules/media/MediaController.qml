@@ -120,8 +120,7 @@ Item {
     }
 
     function tone(a: color, b: color): color {
-        const t = root.flown;
-        return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t);
+        return Appearance.blend(a, b, root.flown);
     }
 
     function rest(item: Item): point {
@@ -349,7 +348,7 @@ Item {
             width: hull.width
             height: hull.height
             radius: hull.radius
-            opacity: 0.8 * (1 - root.flown)
+            opacity: Appearance.opacity.glow * (1 - root.flown)
             visible: opacity > 0.01
         }
 
@@ -378,7 +377,7 @@ Item {
                 radius: hull.radius
                 cornerPower: hull.power
                 stroke: Appearance.colour.seam
-                strokeWidth: Appearance.sizes.seam
+                strokeWidth: Appearance.stroke.ring
                 opacity: 1 - root.flown
                 visible: opacity > 0.01
             }
@@ -437,8 +436,8 @@ Item {
                                 anchors.fill: art
                                 radius: artBox.corner
                                 blur: Appearance.padding.normal / artBox.size
-                                offset.y: Appearance.padding.small / 2 / artBox.size
-                                opacity: art.ready ? 0.7 : 0
+                                offset.y: Appearance.padding.hair / artBox.size
+                                opacity: art.ready ? Appearance.opacity.glow : 0
                             }
 
                             SquircleRect {
@@ -468,12 +467,15 @@ Item {
                                 visible: Media.canRaise
                                 radius: artBox.corner
                                 color: Appearance.colour.scrim
-                                opacity: raise.containsMouse ? 1 : 0
+                                opacity: raiseFade.value
 
-                                Behavior on opacity {
-                                    NumberAnimation {
-                                        duration: Appearance.animation.fast
-                                    }
+                                Follow {
+                                    id: raiseFade
+
+                                    target: raise.containsMouse ? 1 : 0
+                                    speed: Appearance.animation.revealSpeed
+                                    epsilon: Appearance.animation.fadeEpsilon
+                                    startsAtTarget: true
                                 }
 
                                 Column {
@@ -482,7 +484,7 @@ Item {
 
                                     Icon {
                                         anchors.horizontalCenter: parent.horizontalCenter
-                                        size: Appearance.font.iconSize * 1.6
+                                        size: Appearance.icon.large
                                         name: "open_in_new"
                                     }
 
@@ -514,7 +516,7 @@ Item {
                             id: lines
 
                             width: parent.width
-                            spacing: Appearance.padding.small / 2
+                            spacing: Appearance.padding.hair
 
                             Item {
                                 id: titleLine
@@ -735,13 +737,15 @@ Item {
                             width: Math.max(Appearance.sizes.minTarget, lyricsIcon.implicitWidth + Appearance.padding.small * 2)
                             height: width
 
-                            scale: lyricsPress.pressed ? Appearance.press.ring : lyricsPress.containsMouse ? Appearance.press.ringHover : 1
+                            scale: lyricsScale.value
 
-                            Behavior on scale {
-                                NumberAnimation {
-                                    duration: Appearance.animation.fast
-                                    easing.type: Easing.OutCubic
-                                }
+                            Follow {
+                                id: lyricsScale
+
+                                target: lyricsPress.pressed ? Appearance.press.ring : lyricsPress.containsMouse ? Appearance.press.ringHover : 1
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: Appearance.animation.fadeEpsilon
+                                startsAtTarget: true
                             }
 
                             Icon {
@@ -750,7 +754,7 @@ Item {
                                 anchors.centerIn: parent
                                 name: "lyrics"
                                 fill: Lyrics.enabled && Lyrics.ready ? 1 : 0
-                                color: !Lyrics.enabled ? Appearance.colour.textFaint : Lyrics.ready ? Appearance.colour.text : Appearance.colour.textGhost
+                                color: Lyrics.enabled && Lyrics.ready ? Appearance.colour.text : Appearance.colour.textFaint
 
                                 SequentialAnimation on opacity {
                                     running: Lyrics.loading && root.open && !Appearance.lessMotion
@@ -809,7 +813,7 @@ Item {
                                     anchors.centerIn: parent
                                     size: Math.round(root.artSize / 4)
                                     name: "music_off"
-                                    color: Appearance.colour.textGhost
+                                    color: Appearance.colour.textFaint
                                 }
                             }
 

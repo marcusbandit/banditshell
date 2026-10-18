@@ -16,11 +16,15 @@ SettingsRowFrame {
         case "checking":
             return ["sync", "Looking", `on ${Update.branch}`, "Look now", false, "", ""];
         case Update.available:
-            return ["system_update_alt", `${Update.behind} new on ${Update.branch}`, Update.remoteHead ? `up to ${Update.remoteHead.slice(0, 7)}` : "ready to get", "Get it", true, "filled", Appearance.colour.updateAvailable];
+            return ["system_update_alt", `${Update.behind} new on ${Update.branch}`, Update.summaryText || (Update.remoteHead ? `up to ${Update.remoteHead.slice(0, 7)}` : "ready to get"), Update.buttonText, true, "filled", Appearance.colour.updateAvailable];
         case Update.downloading:
-            return ["cloud_download", "Getting it", "a moment", "Get it", false, "", Appearance.colour.updateAvailable];
-        case Update.downloaded:
-            return ["download_done", "It is here", "windows stay open", "Restart", true, "filled", Appearance.colour.updateReady];
+        case Update.verifying:
+        case Update.restarting:
+            return ["cloud_download", Update.phaseText || "Getting it", "a moment", "Working", false, "", Appearance.colour.updateAvailable];
+        case Update.updated:
+            return ["download_done", "Updated", Update.resultText, "Look now", true, "", Appearance.colour.updateReady];
+        case Update.rolledback:
+            return ["sync_problem", "Went back", Update.resultText, "Look now", true, "", Appearance.colour.updateFailed];
         case Update.failed:
             return ["sync_problem", "Could not look", Update.error || "the remote did not answer", "Again", true, "", Appearance.colour.updateFailed];
         }
@@ -44,9 +48,7 @@ SettingsRowFrame {
         interactive: root.look[4]
         onClicked: {
             if (root.phase === Update.available)
-                Update.download();
-            else if (root.phase === Update.downloaded)
-                Update.restart();
+                Update.apply();
             else
                 Update.check();
         }

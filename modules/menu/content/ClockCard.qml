@@ -182,12 +182,15 @@ Item {
             radius: Appearance.rounding.normal
             color: Appearance.colour.fill
 
-            opacity: pointer.containsMouse || pointer.pressed ? 1 : 0
+            opacity: hoverFade.value
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.animation.fade.fast
-                }
+            Follow {
+                id: hoverFade
+
+                target: pointer.containsMouse || pointer.pressed ? 1 : 0
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
         }
 
@@ -206,19 +209,22 @@ Item {
 
             width: root.discSize
             height: width
-            opacity: pointer.containsMouse || discPress.containsMouse ? 1 : 0
+            opacity: discFade.value
 
-            visible: opacity > 0
+            visible: discFade.value > 0.01 || discFade.target > 0
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.animation.fade.fast
-                }
+            Follow {
+                id: discFade
+
+                target: pointer.containsMouse || discPress.containsMouse ? 1 : 0
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
             SquircleRect {
                 anchors.fill: parent
-                radius: height / 2
+                pill: "object"
                 color: discPress.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
             }
 

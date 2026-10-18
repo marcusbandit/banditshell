@@ -37,7 +37,7 @@ Row {
             radius: Appearance.rounding.normal
             color: Appearance.colour.fill
             stroke: input.activeFocus ? Appearance.colour.accent : "transparent"
-            strokeWidth: input.activeFocus ? 2 : 0
+            strokeWidth: input.activeFocus ? Appearance.stroke.ring : 0
         }
 
         Item {
@@ -59,21 +59,16 @@ Row {
 
                         width: 9
                         height: 9
-                        radius: 4.5
-                        cornerPower: 2
+                        pill: "object"
                         color: root.alarm ? Appearance.colour.alarm : Appearance.colour.accent
-                        scale: 0
+                        scale: grow.value
 
-                        Component.onCompleted: grow.start()
-
-                        NumberAnimation on scale {
+                        Follow {
                             id: grow
 
-                            running: false
-                            from: 0
-                            to: 1
-                            duration: Appearance.animation.normal
-                            easing.type: Easing.OutCubic
+                            target: 1
+                            speed: Appearance.animation.trackSpeed
+                            epsilon: Appearance.animation.fadeEpsilon
                         }
                     }
                 }
@@ -92,7 +87,7 @@ Row {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: input.length === 0
                 text: "password"
-                color: Appearance.colour.textGhost
+                color: Appearance.colour.textFaint
             }
         }
 

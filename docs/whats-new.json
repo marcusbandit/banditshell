@@ -1,6 +1,72 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-5",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "major",
+          "text": "The notification list in the top right corner is gone. New notifications show in the island at the top of the screen, and the ones you have had are in the launcher: type notifications, or press the island's notifications row. banditshell panel notifications toggle (Super+N in the example binds) now opens that list in the launcher. If you want pop-ups in the corner again, set notifications.placement to corner; the corner then shows new ones only."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The sidebar now rests as a rail: small workspace marks until you point at it, and a status icon only when something needs you, such as a low battery or a VPN that is on. Point at it and the full column grows out. Settings, Sidebar, Style switches back to the full column. Scrolling on the sound icon changes the volume in both styles."
+        },
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "The shell now keeps a small file called banditshell.lua next to your hyprland.lua, and a note of where the shell lives under ~/.local/state/banditshell. Nothing else in your Hyprland setup is touched. Your binds keep working as they are; the file is what lets them be written as local bs = require(\"banditshell\") and hl.bind(\"SUPER + SPACE\", bs.launcher.toggle), which keeps working whatever the banditshell command looks like after future updates."
+        },
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "Which What's new entries you have seen is kept outside config.json now. The first start copies the old updates.seen value over; the key stays in config.json as it was and the shell stops changing it."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Notification history survives a restart, every notification shows how long ago it came, a chat that sends several messages shows as one entry with a count, pressing a notification opens its app, and chat apps that support it get a reply field. Critical notifications come through quiet hours, and quiet hours show in the sidebar and the island while they are on."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The update button checks first and tells you what the update is: a restart or not, commands that changed, programs it needs. It tries the new version before switching to it and goes back on its own if the new version does not start. banditshell update check, apply, rollback and status do the same from a terminal."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The island shows running timers with the time left, a ringing alarm with Snooze and Stop, the volume, brightness and microphone when they change, the screenshot you just took with Copy, Edit, Folder and Delete, a dot while the microphone, camera or screen sharing is in use, Copied when the shell copies something, and headphones with their battery when they connect. Scripts can put their own progress there with banditshell island push."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher answers keys followed by what a shortcut does, lists the tray with tray, toggles special workspaces with scratchpad or special, runs anything a keybind can with action, and opens recent documents with recent."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell version says which version you run, banditshell action runs any of the shell's stable actions by name, banditshell events prints what the shell does as it happens, and banditshell doctor --report collects what a bug report needs with passwords and keys left out."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings, Launcher has Notifications in search, off by default: when it is on, words you type also find the text of recent notifications. Settings, Sidebar can show a brightness icon you scroll to change the brightness."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Movements across the shell follow the same smooth curve and no longer overshoot, and the lock screen uses the shell's three text sizes."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "When a program the shell needs for a theme, an alert sound or OBS is not installed, settings now says so instead of silently doing nothing."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-2",
       "date": "2026-10-18",
       "changes": [

@@ -20,19 +20,21 @@ Item {
     implicitWidth: root.size
     implicitHeight: root.size
 
-    opacity: root.enabled ? 1 : 0.3
+    opacity: root.enabled ? 1 : Appearance.opacity.disabled
 
     SquircleRect {
         anchors.fill: parent
-        radius: height / 2
-        cornerPower: 2
+        pill: "object"
         color: root.on ? Appearance.colour.accentFill : Appearance.colour.fill
-        opacity: root.on || root.hovered ? 1 : 0
+        opacity: backdrop.value
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Appearance.animation.fade.fast
-            }
+        Follow {
+            id: backdrop
+
+            target: root.on || root.hovered ? 1 : 0
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
     }
 
@@ -40,29 +42,34 @@ Item {
         anchors.centerIn: parent
         name: root.icon
         fill: root.on ? 1 : 0
-        color: root.on ? Appearance.colour.accent : root.hovered ? Appearance.colour.text : root.tint
-        rotation: root.turned ? 180 : 0
+        color: glyphTone.value
+        rotation: flip.value
 
-        Behavior on rotation {
-            NumberAnimation {
-                duration: Appearance.animation.normal
-                easing.type: Easing.OutCubic
-            }
+        Follow {
+            id: flip
+
+            target: root.turned ? 180 : 0
+            speed: Appearance.animation.trackSpeed
+            startsAtTarget: true
         }
 
-        Behavior on color {
-            ColorAnimation {
-                duration: Appearance.animation.fast
-            }
+        FollowColour {
+            id: glyphTone
+
+            target: root.on ? Appearance.colour.accent : root.hovered ? Appearance.colour.text : root.tint
+            speed: Appearance.animation.revealSpeed
         }
     }
 
-    scale: pointer.pressed && root.enabled ? 0.92 : 1
+    scale: press.value
 
-    Behavior on scale {
-        NumberAnimation {
-            duration: Appearance.animation.fast
-        }
+    Follow {
+        id: press
+
+        target: pointer.pressed && root.enabled ? 0.92 : 1
+        speed: Appearance.animation.revealSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
     }
 
     MouseArea {

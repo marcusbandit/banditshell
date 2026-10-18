@@ -141,12 +141,13 @@ MouseArea {
             anchors.fill: parent
             radius: Appearance.rounding.normal
 
-            color: cancel.containsMouse ? Appearance.colour.fill : Appearance.colour.surface
+            color: tone.value
 
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.fast
-                }
+            FollowColour {
+                id: tone
+
+                target: cancel.containsMouse ? Appearance.colour.fill : Appearance.colour.surface
+                speed: Appearance.animation.revealSpeed
             }
         }
 

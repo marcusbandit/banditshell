@@ -13,7 +13,7 @@ Singleton {
     function perform(action: string): void {
         const chosen = Logic.resolve(action, root.hibernatePossible);
         if (chosen === "lock") {
-            Lock.lock();
+            SessionControl.requestLock();
             return;
         }
         const command = Logic.commandFor(chosen);

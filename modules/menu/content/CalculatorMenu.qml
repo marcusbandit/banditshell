@@ -346,25 +346,28 @@ Column {
         width: implicitWidth
         height: implicitHeight
 
-        scale: press.pressed ? Appearance.press.plate : 1
+        scale: pressScale.value
 
-        Behavior on scale {
-            NumberAnimation {
-                duration: Appearance.animation.fast
-                easing.type: Easing.OutCubic
-            }
+        Follow {
+            id: pressScale
+
+            target: press.pressed ? Appearance.press.plate : 1
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
 
         SquircleRect {
             anchors.fill: parent
             radius: Appearance.rounding.normal
 
-            color: key.lit ? Appearance.colour.accentFill : press.containsMouse || press.pressed ? key.raised : key.rest
+            color: plateTone.value
 
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.fast
-                }
+            FollowColour {
+                id: plateTone
+
+                target: key.lit ? Appearance.colour.accentFill : press.containsMouse || press.pressed ? key.raised : key.rest
+                speed: Appearance.animation.revealSpeed
             }
         }
 
@@ -388,12 +391,13 @@ Column {
             visible: !key.spec.icon
             text: key.spec.label ?? ""
             font.pixelSize: Appearance.font.size.normal
-            color: key.lit ? Appearance.colour.accent : key.ink
+            color: labelTone.value
 
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.fast
-                }
+            FollowColour {
+                id: labelTone
+
+                target: key.lit ? Appearance.colour.accent : key.ink
+                speed: Appearance.animation.revealSpeed
             }
         }
 
@@ -423,24 +427,27 @@ Column {
             width: root.expandable ? Appearance.sizes.minTarget : 0
             height: root.expandable ? Appearance.sizes.minTarget : 0
 
-            scale: grab.pressed ? Appearance.press.plate : 1
+            scale: grabScale.value
 
-            Behavior on scale {
-                NumberAnimation {
-                    duration: Appearance.animation.fast
-                    easing.type: Easing.OutCubic
-                }
+            Follow {
+                id: grabScale
+
+                target: grab.pressed ? Appearance.press.plate : 1
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
             SquircleRect {
                 anchors.fill: parent
                 radius: Appearance.rounding.normal
-                color: grab.containsMouse || grab.pressed ? Appearance.colour.fillStrong : "transparent"
+                color: grabPlateTone.value
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                FollowColour {
+                    id: grabPlateTone
+
+                    target: grab.containsMouse || grab.pressed ? Appearance.colour.fillStrong : "transparent"
+                    speed: Appearance.animation.revealSpeed
                 }
             }
 
@@ -451,12 +458,13 @@ Column {
 
                 name: root.expanded ? "close_fullscreen" : "open_in_full"
                 size: Appearance.font.size.normal
-                color: grab.containsMouse || grab.pressed ? Appearance.colour.text : Appearance.colour.textDim
+                color: grabInkTone.value
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                FollowColour {
+                    id: grabInkTone
+
+                    target: grab.containsMouse || grab.pressed ? Appearance.colour.text : Appearance.colour.textDim
+                    speed: Appearance.animation.revealSpeed
                 }
             }
 

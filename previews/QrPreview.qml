@@ -14,7 +14,7 @@ ShellRoot {
             right: true
         }
 
-        color: "#16211c"
+        color: Appearance.colour.surfaceSolid
         exclusiveZone: 0
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
@@ -40,7 +40,7 @@ ShellRoot {
         StyledText {
             x: 200
             y: 20
-            color: "#eaf6f0"
+            color: Appearance.colour.paper
             text: `menu height ${Math.round(menu.implicitHeight)}`
         }
 

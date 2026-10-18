@@ -99,7 +99,7 @@ Column {
                 radius: Appearance.rounding.small
                 color: Appearance.colour.fillStrong
                 stroke: body.activeFocus ? Appearance.colour.accent : "transparent"
-                strokeWidth: body.activeFocus ? 2 : 0
+                strokeWidth: body.activeFocus ? Appearance.stroke.ring : 0
             }
 
             TextEdit {

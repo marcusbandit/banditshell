@@ -49,14 +49,17 @@ Item {
 
             SquircleRect {
                 anchors.fill: parent
-                radius: height / 2
+                pill: "object"
                 color: Appearance.colour.fill
-                opacity: backPress.containsMouse ? 1 : 0
+                opacity: backFade.value
 
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Appearance.animation.fade.fast
-                    }
+                Follow {
+                    id: backFade
+
+                    target: backPress.containsMouse ? 1 : 0
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
                 }
             }
 
@@ -64,12 +67,13 @@ Item {
                 anchors.centerIn: parent
                 name: "chevron_left"
                 size: Appearance.font.iconSize
-                color: backPress.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
+                color: backTone.value
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                FollowColour {
+                    id: backTone
+
+                    target: backPress.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
+                    speed: Appearance.animation.revealSpeed
                 }
             }
 
@@ -96,7 +100,7 @@ Item {
             anchors.right: useIt.left
             anchors.rightMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Appearance.padding.small / 2
+            spacing: Appearance.padding.hair
 
             StyledText {
                 width: parent.width
@@ -181,7 +185,7 @@ Item {
                 radius: Appearance.rounding.large
                 color: root.isColour ? root.swatch : "transparent"
                 stroke: Appearance.colour.separator
-                strokeWidth: Appearance.font.stem
+                strokeWidth: Appearance.stroke.ring
             }
 
             StyledText {
@@ -217,7 +221,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     name: parent.gone ? "help" : parent.mime.startsWith("image/") ? "image" : parent.mime.startsWith("audio/") ? "graphic_eq" : parent.mime.startsWith("video/") ? "movie" : "draft"
                     size: Appearance.font.iconSize
-                    color: parent.gone ? Appearance.colour.textGhost : Appearance.colour.textFaint
+                    color: parent.gone ? Appearance.colour.textFaint : Appearance.colour.textFaint
                 }
 
                 Column {
@@ -227,7 +231,7 @@ Item {
                     anchors.leftMargin: Appearance.padding.normal
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: Appearance.padding.small / 2
+                    spacing: Appearance.padding.hair
 
                     StyledText {
                         width: parent.width

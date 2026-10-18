@@ -6,6 +6,7 @@ LyricBlock 1.0 LyricBlock.qml
 LyricLine 1.0 LyricLine.qml
 LyricsView 1.0 LyricsView.qml
 MediaController 1.0 MediaController.qml
+MediaIpc 1.0 MediaIpc.qml
 MediaTransport 1.0 MediaTransport.qml
 PlayerChips 1.0 PlayerChips.qml
 Scrubber 1.0 Scrubber.qml

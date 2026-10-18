@@ -1,0 +1,28 @@
+{
+  "name": "cheatsheet",
+  "summary": "the hotkey cheat sheet and keyboard models",
+  "layer": 2,
+  "owns": {
+    "qml": ["modules/cheatsheet"],
+    "services": ["Keyboards"],
+    "js": ["services/keyboards.js"],
+    "tests": [
+      "tests/fixtures/Epomaker_Galaxy100.json",
+      "tests/fixtures/via_bandit_mini.json",
+      "tests/fixtures/via_bandit_mini.layout.json",
+      "tests/keyboards.test.js"
+    ]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": ["hotkeys"]
+  },
+  "config": {
+    "namespace": ["cheatsheet"],
+    "reads": ["control"]
+  }
+}

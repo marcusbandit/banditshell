@@ -10,16 +10,18 @@ Item {
 
     readonly property string state: Update.state
 
+    readonly property bool busy: Update.busy
+
     readonly property bool stale: CliMigration.stale
 
     readonly property bool quiet: root.state === Update.idle && !root.stale
 
-    readonly property bool stuck: root.state === Update.failed || (root.state === Update.available && Update.diverged)
+    readonly property bool stuck: root.state === Update.failed || root.state === Update.rolledback || (root.state === Update.available && Update.diverged)
 
     readonly property string glyph: {
-        if (root.state === Update.downloaded)
+        if (root.state === Update.updated)
             return "download_done";
-        if (root.state === Update.downloading)
+        if (root.busy)
             return "cloud_download";
         if (root.stuck)
             return "sync_problem";
@@ -33,7 +35,7 @@ Item {
     readonly property real markSize: root.quiet ? Math.round(Appearance.font.iconSize * 0.8) : Appearance.font.iconSize
 
     readonly property color tint: {
-        if (root.state === Update.downloaded)
+        if (root.state === Update.updated)
             return Appearance.colour.updateReady;
         if (root.stuck)
             return Appearance.colour.updateFailed;
@@ -58,21 +60,24 @@ Item {
         name: root.glyph
         fill: 1
         size: root.markSize
-        color: root.tint
+        color: tintTone.value
 
-        scale: press.pressed ? Appearance.press.glyph : 1
+        scale: pressScale.value
 
-        Behavior on scale {
-            NumberAnimation {
-                duration: Appearance.animation.fast
-                easing.type: Easing.OutCubic
-            }
+        Follow {
+            id: pressScale
+
+            target: press.pressed ? Appearance.press.glyph : 1
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
 
-        Behavior on color {
-            ColorAnimation {
-                duration: Appearance.animation.normal
-            }
+        FollowColour {
+            id: tintTone
+
+            target: root.tint
+            speed: Appearance.animation.trackSpeed
         }
     }
 
