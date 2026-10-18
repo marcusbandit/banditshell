@@ -14,14 +14,13 @@ Item {
 
         property string label: ""
         property color base: Appearance.colour.text
-        property bool square: false
 
         width: Appearance.sizes.minTarget
         height: width
 
         SquircleRect {
             anchors.fill: parent
-            pill: marker.square ? "" : "object"
+            pill: "object"
             color: marker.base
         }
 
@@ -40,14 +39,12 @@ Item {
         property string mark: ""
         property string label: ""
         property color tint: Appearance.colour.text
-        property bool square: false
 
         spacing: Appearance.padding.small
 
         Marker {
             label: leg.mark
             base: leg.tint
-            square: leg.square
         }
 
         StyledText {
@@ -60,7 +57,7 @@ Item {
     component StateCell: Item {
         id: cell
 
-        property string style: "tonal"
+        property string style: "plate"
         property string wordOff: ""
         property string wordOn: ""
         property bool latched: false
@@ -114,27 +111,22 @@ Item {
 
                     LegendRow {
                         mark: "A"
-                        label: "Elevated"
+                        label: "Accent"
                         tint: Appearance.colour.spectrum[1]
                     }
                     LegendRow {
                         mark: "B"
-                        label: "Filled"
+                        label: "Plate"
                         tint: Appearance.colour.spectrum[1]
                     }
                     LegendRow {
                         mark: "C"
-                        label: "Tonal"
+                        label: "Ring"
                         tint: Appearance.colour.spectrum[1]
                     }
                     LegendRow {
                         mark: "D"
-                        label: "Outlined"
-                        tint: Appearance.colour.spectrum[1]
-                    }
-                    LegendRow {
-                        mark: "E"
-                        label: "Text"
+                        label: "Bare"
                         tint: Appearance.colour.spectrum[1]
                     }
                 }
@@ -153,7 +145,6 @@ Item {
                     LegendRow {
                         mark: "3"
                         label: "Toggle: selected"
-                        square: true
                     }
                 }
             }
@@ -188,19 +179,19 @@ Item {
                 }
 
                 Button {
-                    text: "Elevated button"
-                    style: "elevated"
+                    text: "Accent button"
+                    style: "accent"
                 }
 
                 StateCell {
-                    wordOff: "Elevated unselected"
-                    wordOn: "Elevated selected"
-                    style: "elevated"
+                    wordOff: "Accent off"
+                    wordOn: "Accent on"
+                    style: "accent"
                 }
                 StateCell {
-                    wordOff: "Elevated unselected"
-                    wordOn: "Elevated selected"
-                    style: "elevated"
+                    wordOff: "Accent off"
+                    wordOn: "Accent on"
+                    style: "accent"
                     latched: true
                 }
 
@@ -210,19 +201,19 @@ Item {
                 }
 
                 Button {
-                    text: "Filled button"
-                    style: "filled"
+                    text: "Plate button"
+                    style: "plate"
                 }
 
                 StateCell {
-                    wordOff: "Filled unselected"
-                    wordOn: "Filled selected"
-                    style: "filled"
+                    wordOff: "Plate off"
+                    wordOn: "Plate on"
+                    style: "plate"
                 }
                 StateCell {
-                    wordOff: "Filled unselected"
-                    wordOn: "Filled selected"
-                    style: "filled"
+                    wordOff: "Plate off"
+                    wordOn: "Plate on"
+                    style: "plate"
                     latched: true
                 }
 
@@ -232,19 +223,19 @@ Item {
                 }
 
                 Button {
-                    text: "Tonal button"
-                    style: "tonal"
+                    text: "Ring button"
+                    style: "ring"
                 }
 
                 StateCell {
-                    wordOff: "Tonal unselected"
-                    wordOn: "Tonal selected"
-                    style: "tonal"
+                    wordOff: "Ring off"
+                    wordOn: "Ring on"
+                    style: "ring"
                 }
                 StateCell {
-                    wordOff: "Tonal unselected"
-                    wordOn: "Tonal selected"
-                    style: "tonal"
+                    wordOff: "Ring off"
+                    wordOn: "Ring on"
+                    style: "ring"
                     latched: true
                 }
 
@@ -254,30 +245,8 @@ Item {
                 }
 
                 Button {
-                    text: "Outlined button"
-                    style: "outlined"
-                }
-
-                StateCell {
-                    wordOff: "Outlined unselected"
-                    wordOn: "Outlined selected"
-                    style: "outlined"
-                }
-                StateCell {
-                    wordOff: "Outlined unselected"
-                    wordOn: "Outlined selected"
-                    style: "outlined"
-                    latched: true
-                }
-
-                Marker {
-                    label: "E"
-                    base: Appearance.colour.spectrum[1]
-                }
-
-                Button {
-                    text: "Text button"
-                    style: "text"
+                    text: "Bare button"
+                    style: "bare"
                 }
             }
         }
@@ -403,7 +372,7 @@ Item {
                 }
 
                 Marker {
-                    label: "B"
+                    label: "A"
                     base: Appearance.colour.spectrum[1]
                 }
 
@@ -438,7 +407,7 @@ Item {
                 }
 
                 Marker {
-                    label: "C"
+                    label: "B"
                     base: Appearance.colour.spectrum[1]
                 }
 

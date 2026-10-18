@@ -473,7 +473,7 @@ Item {
             anchors.leftMargin: Appearance.padding.card
             y: (root.footerHeight - Appearance.padding.card - height) / 2
             size: 0
-            style: "outlined"
+            style: "ring"
             icon: "notifications"
             text: "all notifications"
             opacity: root.fanned
@@ -488,7 +488,7 @@ Item {
             anchors.rightMargin: Appearance.padding.card
             y: (root.footerHeight - Appearance.padding.card - height) / 2
             size: 0
-            style: "outlined"
+            style: "ring"
             icon: "clear_all"
             text: "clear all"
             onClicked: root.clearAll(null)

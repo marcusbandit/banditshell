@@ -49,7 +49,7 @@ Column {
             visible: !!root.note?.set
             anchors.verticalCenter: parent.verticalCenter
             size: 0
-            style: "filled"
+            style: "accent"
             text: "Do it"
             onClicked: root.follow(root.note)
         }

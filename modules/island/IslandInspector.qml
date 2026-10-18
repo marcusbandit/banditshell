@@ -1034,7 +1034,7 @@ Scope {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             icon: "close"
-                            style: "outlined"
+                            style: "ring"
                             onClicked: root.close()
                         }
                     }
@@ -1060,7 +1060,7 @@ Scope {
                                 Button {
                                     icon: "play_arrow"
                                     text: "play the story"
-                                    style: "tonal"
+                                    style: "plate"
                                     onClicked: {
                                         card.forceActiveFocus();
                                         root.playStory();
@@ -1161,13 +1161,13 @@ Scope {
 
                                 Button {
                                     text: "one more"
-                                    style: "outlined"
+                                    style: "ring"
                                     onClicked: root.notify(root.pool[root.drawn++ % root.pool.length], false)
                                 }
 
                                 Button {
                                     text: "90 more"
-                                    style: "outlined"
+                                    style: "ring"
                                     onClicked: {
                                         for (let i = 0; i < 90; i++)
                                             root.notify(root.pool[root.drawn++ % root.pool.length], false);
@@ -1176,20 +1176,20 @@ Scope {
 
                                 Button {
                                     text: "critical"
-                                    style: "outlined"
+                                    style: "ring"
                                     onClicked: root.notify(root.alarm, true)
                                 }
 
                                 Button {
                                     text: "flick away"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.frontIsMine
                                     onClicked: root.island.flickFront(1)
                                 }
 
                                 Button {
                                     text: "clear all"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.standing.length > 0
                                     onClicked: root.island.clearNotifications(root.standing)
                                 }
@@ -1225,28 +1225,28 @@ Scope {
 
                                 Button {
                                     text: "open one"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.launches.length < root.apps.length
                                     onClicked: root.openApp()
                                 }
 
                                 Button {
                                     text: "one opens"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.opening
                                     onClicked: root.settleApp("here")
                                 }
 
                                 Button {
                                     text: "one fails"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.opening
                                     onClicked: root.settleApp("lost")
                                 }
 
                                 Button {
                                     text: "clear"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.launches.length > 0
                                     onClicked: root.setLaunches([])
                                 }
@@ -1268,7 +1268,7 @@ Scope {
                                         required property string modelData
 
                                         text: modelData
-                                        style: "outlined"
+                                        style: "ring"
                                         checkable: true
                                         checked: root.notices.includes(modelData)
                                         onToggled: root.flipNotice(modelData)
@@ -1292,7 +1292,7 @@ Scope {
                                         required property string modelData
 
                                         text: modelData
-                                        style: "outlined"
+                                        style: "ring"
                                         checkable: true
                                         checked: root.stagedKinds.includes(modelData)
                                         onToggled: root.flipStaged(modelData)
@@ -1316,7 +1316,7 @@ Scope {
                                         required property string modelData
 
                                         text: modelData
-                                        style: "outlined"
+                                        style: "ring"
                                         checkable: true
                                         checked: root.taskKinds.includes(modelData)
                                         onToggled: root.flipTask(modelData)
@@ -1369,7 +1369,7 @@ Scope {
                                     anchors.right: parent.right
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: "let go"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.island?.pulling ?? false
                                     onClicked: root.island.dragEnd(false)
                                 }

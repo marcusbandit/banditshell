@@ -634,7 +634,7 @@ FocusScope {
             Button {
                 visible: footer.asking || footer.pending
                 size: 0
-                style: "filled"
+                style: "accent"
                 text: footer.asking ? "Keep" : "Apply"
                 interactive: footer.asking || !footer.clash
                 onClicked: footer.asking ? SettingsState.keepApplied() : SettingsState.applyStage()

@@ -756,7 +756,7 @@ LauncherConcept {
                             required property var modelData
 
                             text: key.modelData.label
-                            style: "tonal"
+                            style: "plate"
 
                             onClicked: root.insert(key.modelData.insert)
                             onHoveredChanged: root.tip(key, key.modelData.tip ?? key.modelData.insert, key.height, key.hovered && !!key.modelData.tip)
@@ -986,7 +986,7 @@ LauncherConcept {
                                             icon: button.modelData.icon
                                             iconFill: button.modelData.fill ? 1 : 0
                                             text: button.modelData.short ?? button.modelData.label
-                                            style: "outlined"
+                                            style: "ring"
                                             alarm: button.modelData.alarm ?? false
                                             size: 0
 

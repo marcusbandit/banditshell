@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Effects
 import qs.config
 
 Item {
@@ -37,111 +36,39 @@ Item {
     opacity: root.interactive ? 1 : Appearance.opacity.disabled
 
     readonly property var skins: ({
-            "default": {
-                filled: {
-                    bg: Appearance.colour.accent,
-                    fg: Appearance.colour.accentText,
-                    ring: "transparent",
-                    ringW: 0,
-                    shape: "round"
-                },
-                elevated: {
-                    bg: Appearance.colour.surfaceSolid,
-                    fg: Appearance.colour.text,
-                    ring: "transparent",
-                    ringW: 0,
-                    shape: "round"
-                },
-                tonal: {
-                    bg: Appearance.colour.accentFill,
-                    fg: Appearance.colour.text,
-                    ring: "transparent",
-                    ringW: 0,
-                    shape: "round"
-                },
-                outlined: {
-                    bg: "transparent",
-                    fg: Appearance.colour.text,
-                    ring: Appearance.colour.fillStrong,
-                    ringW: Appearance.stroke.ring,
-                    shape: "round"
-                },
-                text: {
-                    bg: "transparent",
-                    fg: Appearance.colour.text,
-                    ring: "transparent",
-                    ringW: 0,
-                    shape: "round"
-                }
+            accent: {
+                bg: Appearance.colour.accent,
+                fg: Appearance.colour.accentText,
+                ring: "transparent",
+                ringW: 0
             },
-            unselected: {
-                filled: {
-                    bg: Appearance.blend(
-                        Appearance.colour.surfaceSolid,
-                        Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.accent, Appearance.colour.veilWeight),
-                        0.5),
-                    fg: Appearance.colour.text,
-                    ring: "transparent",
-                    ringW: 0,
-                    shape: "round"
-                },
-                elevated: {
-                    bg: Appearance.colour.surfaceSolid,
-                    fg: Appearance.colour.text,
-                    ring: "transparent",
-                    ringW: 0,
-                    shape: "round"
-                },
-                tonal: {
-                    bg: Appearance.colour.accentFillDull,
-                    fg: Appearance.colour.text,
-                    ring: "transparent",
-                    ringW: 0,
-                    shape: "round"
-                },
-                outlined: {
-                    bg: "transparent",
-                    fg: Appearance.colour.text,
-                    ring: Appearance.colour.fillStrong,
-                    ringW: Appearance.stroke.ring,
-                    shape: "round"
-                }
+            plate: {
+                bg: Appearance.colour.accentFill,
+                fg: Appearance.colour.text,
+                ring: "transparent",
+                ringW: 0
             },
-            selected: {
-                filled: {
-                    bg: Appearance.colour.accent,
-                    fg: Appearance.colour.accentText,
-                    ring: "transparent",
-                    ringW: 0,
-                    shape: "square"
-                },
-                elevated: {
-                    bg: Appearance.colour.accent,
-                    fg: Appearance.colour.accentText,
-                    ring: "transparent",
-                    ringW: 0,
-                    shape: "square"
-                },
-                tonal: {
-                    bg: Appearance.colour.accentFill,
-                    fg: Appearance.colour.text,
-                    ring: "transparent",
-                    ringW: 0,
-                    shape: "square"
-                },
-                outlined: {
-                    bg: Appearance.colour.fillStrong,
-                    fg: Appearance.colour.text,
-                    ring: "transparent",
-                    ringW: 0,
-                    shape: "square"
-                }
+            ring: {
+                bg: "transparent",
+                fg: Appearance.colour.text,
+                ring: Appearance.colour.fillStrong,
+                ringW: Appearance.stroke.ring
+            },
+            bare: {
+                bg: "transparent",
+                fg: Appearance.colour.text,
+                ring: "transparent",
+                ringW: 0
             }
         })
 
     readonly property var skin: {
-        const tier = root.checkable ? (root.checked ? root.skins.selected : root.skins.unselected) : root.skins["default"];
-        return tier[root.style] ?? root.skins["default"][root.style] ?? root.skins["default"].tonal;
+        const own = root.skins[root.style] ?? root.skins.plate;
+        if (!root.checkable)
+            return own;
+        if (root.checked)
+            return root.skins.accent;
+        return own === root.skins.accent ? root.skins.plate : own;
     }
 
     property var paint
@@ -167,81 +94,28 @@ Item {
     readonly property color ring: root.skin.ring
     readonly property real ringW: root.skin.ringW
 
-    readonly property string skinShape: root.skin.shape ?? "round"
-    readonly property real targetRadius: root.pressed ? (skinShape === "round" ? Appearance.rounding.normal : Appearance.rounding.large) : skinShape === "round" ? height / 2 : Appearance.rounding.normal
-
-    readonly property real platePower: skinShape === "round" ? 2 : Appearance.rounding.power
+    readonly property real pillRadius: height / 2
 
     implicitWidth: root.hasText ? label.implicitWidth + markSpan + padX * 2 : implicitHeight
     implicitHeight: Math.max(Appearance.sizes.minTarget, Appearance.button.height(root.size))
     width: implicitWidth
     height: implicitHeight
 
-    Loader {
-        anchors.fill: parent
-
-        active: root.style === "elevated"
-
-        sourceComponent: Item {
-            SquircleRect {
-                id: cast
-
-                visible: false
-                anchors.fill: parent
-                radius: radiusGlide.value
-                topLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : radiusGlide.value
-                bottomLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : radiusGlide.value
-                topRightRadius: root.radiusRight >= 0 ? root.radiusRight : radiusGlide.value
-                bottomRightRadius: root.radiusRight >= 0 ? root.radiusRight : radiusGlide.value
-                cornerPower: powerGlide.value
-                color: "black"
-            }
-
-            MultiEffect {
-                source: cast
-                anchors.fill: cast
-
-                shadowEnabled: true
-                shadowColor: Appearance.colour.scrim
-                shadowBlur: 0.55
-                shadowVerticalOffset: Math.max(2, Math.round(root.height / 10))
-            }
-        }
-    }
-
     SquircleRect {
         id: plate
 
         anchors.fill: parent
-        radius: radiusGlide.value
-        topLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : radiusGlide.value
-        bottomLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : radiusGlide.value
-        topRightRadius: root.radiusRight >= 0 ? root.radiusRight : radiusGlide.value
-        bottomRightRadius: root.radiusRight >= 0 ? root.radiusRight : radiusGlide.value
-        cornerPower: powerGlide.value
+        pill: "object"
+        topLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.pillRadius
+        bottomLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.pillRadius
+        topRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.pillRadius
+        bottomRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.pillRadius
         color: tone.value
         stroke: root.ring
         strokeWidth: root.ringW
     }
 
     scale: pressGlide.value
-
-    Follow {
-        id: radiusGlide
-
-        target: root.targetRadius
-        speed: Appearance.animation.revealSpeed
-        startsAtTarget: true
-    }
-
-    Follow {
-        id: powerGlide
-
-        target: root.platePower
-        speed: Appearance.animation.revealSpeed
-        epsilon: Appearance.animation.fadeEpsilon
-        startsAtTarget: true
-    }
 
     Follow {
         id: pressGlide

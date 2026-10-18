@@ -16,7 +16,7 @@ SettingsRowFrame {
         case "checking":
             return ["sync", "Looking", `on ${Update.branch}`, "Look now", false, "", ""];
         case Update.available:
-            return ["system_update_alt", `${Update.behind} new on ${Update.branch}`, Update.summaryText || (Update.remoteHead ? `up to ${Update.remoteHead.slice(0, 7)}` : "ready to get"), Update.buttonText, true, "filled", Appearance.colour.updateAvailable];
+            return ["system_update_alt", `${Update.behind} new on ${Update.branch}`, Update.summaryText || (Update.remoteHead ? `up to ${Update.remoteHead.slice(0, 7)}` : "ready to get"), Update.buttonText, true, "accent", Appearance.colour.updateAvailable];
         case Update.downloading:
         case Update.verifying:
         case Update.restarting:
@@ -43,7 +43,7 @@ SettingsRowFrame {
     Button {
         anchors.verticalCenter: parent.verticalCenter
         size: 0
-        style: root.look[5] || "tonal"
+        style: root.look[5] || "plate"
         text: root.look[3]
         interactive: root.look[4]
         onClicked: {
