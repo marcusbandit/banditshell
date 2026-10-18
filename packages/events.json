@@ -1,0 +1,22 @@
+{
+  "name": "events",
+  "summary": "the event stream that banditshell events follows",
+  "layer": 6,
+  "owns": {
+    "services": ["Events"],
+    "js": ["services/events.js"],
+    "tests": ["tests/events.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "host", "settings", "files", "media", "notifications", "updates", "island"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["events"],
+    "reads": []
+  }
+}

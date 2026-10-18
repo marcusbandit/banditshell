@@ -2,7 +2,6 @@ import QtQuick
 import qs.config
 import qs.modules.media
 import qs.services
-import "../../services/obs.js" as Durations
 
 QtObject {
     id: root
@@ -47,16 +46,6 @@ QtObject {
                 trailing: "icon",
                 trailingIcon: "stop_circle",
                 trailingTone: Appearance.colour.alarm
-            };
-        case "timer":
-            return {
-                icon: a.timer?.paused ? "timer_pause" : "timer",
-                tone: Appearance.colour.accent,
-                text: `${a.timer?.label || "Timer"} ${Durations.duration(Clock.remainingOf(a.timer, Math.max(Clock.tick, Date.now() - Clock.tickMs)))}`,
-                dim: !!a.timer?.paused,
-                trailing: "icon",
-                trailingIcon: a.timer?.paused ? "play_circle" : "pause_circle",
-                trailingTone: Appearance.colour.accent
             };
         case "download":
             return {
@@ -107,12 +96,113 @@ QtObject {
                 trailing: "icon",
                 trailingIcon: "power_settings_new"
             };
+        case "external": {
+            const ended = a.state === "ended";
+            if (a.style === "screenshot")
+                return {
+                    art: a.data?.picture,
+                    icon: a.icon,
+                    tone: Appearance.colour.accent,
+                    text: ended ? "Done" : a.text,
+                    detail: a.detail,
+                    trailing: ended ? "icon" : "actions",
+                    trailingIcon: "check_circle",
+                    trailingTone: Appearance.colour.accent,
+                    actions: a.actions ?? []
+                };
+            if (a.style === "copied")
+                return {
+                    icon: a.data?.secret ? "visibility_off" : a.icon,
+                    tone: a.data?.secret ? Appearance.colour.textDim : Appearance.colour.accent,
+                    text: a.text
+                };
+            if (a.style === "bluetooth") {
+                const battery = a.data?.battery ?? -1;
+                return {
+                    icon: a.icon,
+                    tone: Appearance.colour.accent,
+                    text: a.text,
+                    detail: a.detail,
+                    trailing: battery >= 0 ? "text" : "",
+                    trailingText: `${battery}%`,
+                    trailingSample: "100%",
+                    trailingTone: Appearance.colour.textDim
+                };
+            }
+            const tone = !ended ? Appearance.colour.accent : a.outcome === "failed" ? Appearance.colour.alarm : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent;
+            return {
+                app: a.mark,
+                icon: a.icon || "bolt",
+                tone: tone,
+                text: a.text,
+                detail: a.detail,
+                dim: ended && a.outcome === "cancelled",
+                trailing: ended ? "icon" : a.progress < 0 ? "spin" : "ring",
+                trailingIcon: a.outcome === "failed" ? "error" : a.outcome === "cancelled" ? "cancel" : "check_circle",
+                trailingTone: tone,
+                ringValue: Math.max(0, a.progress)
+            };
+        }
+        case "privacy": {
+            const tone = a.data?.privacy === "mic" ? Appearance.colour.accent : Appearance.colour.alarm;
+            return {
+                icon: a.icon,
+                tone: tone,
+                text: a.text,
+                detail: a.detail,
+                trailing: "icon",
+                trailingIcon: "fiber_manual_record",
+                trailingTone: tone
+            };
+        }
+        case "timer":
+            return {
+                icon: a.paused ? "pause" : "timer",
+                tone: a.ending ? Appearance.colour.alarm : Appearance.colour.accent,
+                text: a.text,
+                markRing: a.progress,
+                trailing: "text",
+                trailingText: a.clock,
+                trailingSample: a.sample,
+                trailingTone: a.ending ? Appearance.colour.alarm : a.paused ? Appearance.colour.textFaint : Appearance.colour.textDim
+            };
+        case "alarm":
+            return {
+                icon: "alarm",
+                tone: Appearance.colour.alarm,
+                text: a.text,
+                trailing: "actions",
+                actions: a.actions ?? []
+            };
+        case "level":
+            return {
+                icon: a.icon,
+                tone: a.muted ? Appearance.colour.textFaint : Appearance.colour.accent,
+                text: a.text,
+                meter: a.meter,
+                trailing: a.readout ? "text" : "",
+                trailingText: a.readout,
+                trailingSample: "100%",
+                trailingTone: Appearance.colour.textDim
+            };
         case "notifications":
             return {
                 icon: "notifications",
                 text: `${a.count} notification${a.count === 1 ? "" : "s"}`,
                 trailing: "icon",
                 trailingIcon: "chevron_right"
+            };
+        case "held":
+            return {
+                icon: "notifications_paused",
+                text: `${a.count} held while quiet`,
+                trailing: "icon",
+                trailingIcon: "chevron_right"
+            };
+        case "quiet":
+            return {
+                icon: "do_not_disturb_on",
+                text: a.text
             };
         case "notification":
             return {

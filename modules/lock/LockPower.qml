@@ -33,6 +33,9 @@ Item {
     readonly property real bubble: Appearance.font.line.small + Appearance.padding.normal * 2
     readonly property real ringWidth: Math.max(2, Math.round(root.bubble / 16))
 
+    readonly property real holdSpeed: 3.5
+    readonly property int holdMs: Math.round(1000 * Math.log(20) / root.holdSpeed)
+
     property int pointed: -1
     property int held: -1
 
@@ -95,7 +98,7 @@ Item {
             color: Appearance.colour.textDim
             opacity: telling.value
             font.family: root.family
-            font.pixelSize: Math.round(Appearance.font.size.small * 0.9)
+            font.pixelSize: Appearance.font.size.small
             renderType: Text.NativeRendering
         }
 
@@ -116,8 +119,10 @@ Item {
                     required property int index
 
                     property bool fired: false
+                    property real pressedAt: 0
+                    property real elapsed: 0
 
-                    readonly property real filled: Math.min(1, hold.value / 0.95)
+                    readonly property real filled: Appearance.lessMotion ? choice.elapsed : Math.min(1, hold.value / 0.95)
 
                     width: root.bubble
                     height: root.bubble
@@ -136,10 +141,20 @@ Item {
                         id: hold
 
                         target: press.pressed ? 1 : 0
-                        speed: press.pressed ? 3.5 : Appearance.animation.revealSpeed
+                        speed: press.pressed ? root.holdSpeed : Appearance.animation.revealSpeed
+                    }
 
-                        onValueChanged: {
-                            if (press.pressed && !choice.fired && hold.value >= 0.95) {
+                    FrameAnimation {
+                        running: press.pressed && !choice.fired
+                        onTriggered: choice.elapsed = Math.min(1, (Date.now() - choice.pressedAt) / root.holdMs)
+                    }
+
+                    Timer {
+                        id: guard
+
+                        interval: root.holdMs
+                        onTriggered: {
+                            if (press.pressed && !choice.fired) {
                                 choice.fired = true;
                                 root.run(choice.modelData.key);
                             }
@@ -149,18 +164,16 @@ Item {
                     SquircleRect {
                         anchors.fill: parent
                         anchors.margins: -root.ringWidth
-                        radius: width / 2
-                        cornerPower: 2
+                        pill: "object"
                         color: Appearance.colour.ink
                     }
 
                     SquircleRect {
                         anchors.fill: parent
-                        radius: width / 2
-                        cornerPower: 2
-                        color: press.containsMouse ? Appearance.colour.surfaceSolid : Qt.rgba(Appearance.colour.ink.r, Appearance.colour.ink.g, Appearance.colour.ink.b, 0.85)
+                        pill: "object"
+                        color: press.containsMouse ? Appearance.colour.surfaceSolid : Appearance.withAlpha(Appearance.colour.ink, 0.85)
                         stroke: Appearance.colour.seam
-                        strokeWidth: 1
+                        strokeWidth: Appearance.stroke.line
                     }
 
                     ProgressRing {
@@ -190,10 +203,21 @@ Item {
                         onContainsMouseChanged: root.pointed = press.containsMouse ? choice.index : (root.pointed === choice.index ? -1 : root.pointed)
                         onPressed: {
                             choice.fired = false;
+                            choice.pressedAt = Date.now();
+                            choice.elapsed = 0;
+                            guard.restart();
                             root.held = choice.index;
                         }
-                        onReleased: root.held = -1
-                        onCanceled: root.held = -1
+                        onReleased: {
+                            guard.stop();
+                            choice.elapsed = 0;
+                            root.held = -1;
+                        }
+                        onCanceled: {
+                            guard.stop();
+                            choice.elapsed = 0;
+                            root.held = -1;
+                        }
                     }
                 }
             }

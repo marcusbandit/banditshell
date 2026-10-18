@@ -16,7 +16,14 @@ Item {
     property bool streamed: StreamState.shows(root.screen)
 
     readonly property real band: root.bare ? 0 : Appearance.sizes.border
-    readonly property real barWidth: root.sidebar ? root.band + Appearance.sizes.sidebarWidth : root.band
+    readonly property bool rail: root.sidebar && Appearance.sizes.sidebarRail
+    property bool railWanted: false
+
+    readonly property real railOpen: root.rail ? railGrowth.value : 1
+    readonly property real sidebarSpan: Appearance.sizes.railWidth + (Appearance.sizes.sidebarWidth - Appearance.sizes.railWidth) * root.railOpen
+
+    readonly property real fullBarWidth: root.sidebar ? root.band + Appearance.sizes.sidebarWidth : root.band
+    readonly property real barWidth: root.sidebar ? root.band + (root.rail ? root.sidebarSpan : Appearance.sizes.sidebarWidth) : root.band
 
     readonly property real streamReach: reach.value
     readonly property real topBand: Math.max(root.band, root.streamReach)
@@ -33,6 +40,14 @@ Item {
     readonly property real streamFlare: Math.min(Appearance.sizes.gap, root.streamReach)
 
     property var panels: []
+
+    Follow {
+        id: railGrowth
+
+        target: root.rail && root.railWanted ? 1 : 0
+        speed: Appearance.animation.resizeSpeed
+        epsilon: 0.002
+    }
 
     Follow {
         id: reach

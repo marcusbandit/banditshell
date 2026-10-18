@@ -162,19 +162,20 @@ Item {
                     anchors.left: time.right
                     anchors.baseline: time.baseline
                     text: Qt.formatDateTime(clock.date, ":ss")
-                    color: dateHover.hovered ? Appearance.colour.textDim : Appearance.colour.textFaint
+                    color: secondsTone.value
 
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: Appearance.animation.fast
-                        }
+                    FollowColour {
+                        id: secondsTone
+
+                        target: dateHover.hovered ? Appearance.colour.textDim : Appearance.colour.textFaint
+                        speed: Appearance.animation.revealSpeed
                     }
                 }
 
                 Follow {
                     id: longDate
 
-                    speed: Appearance.animation.revealSpeed * 1.5
+                    speed: Appearance.animation.snapSpeed
                     epsilon: 0.004
                     target: dateHover.hovered ? 1 : 0
                 }
@@ -221,7 +222,7 @@ Item {
                     anchors.right: parent.right
                     anchors.rightMargin: -(weatherInk.advanceWidth - weatherInk.tightBoundingRect.x - weatherInk.tightBoundingRect.width)
                     y: clockBox.line - weatherText.baselineOffset
-                    spacing: Appearance.padding.small / 2
+                    spacing: Appearance.padding.hair
                     visible: Weather.ready
 
                     Icon {
@@ -265,6 +266,9 @@ Item {
                     enabled: !root.carried.includes(modelData.key)
 
                     onChosen: root.chosen(modelData)
+                    onActed: name => root.chosen(Object.assign({}, modelData, {
+                            action: name
+                        }))
                 }
             }
         }

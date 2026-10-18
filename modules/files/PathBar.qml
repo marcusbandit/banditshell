@@ -66,7 +66,7 @@ Item {
 
                 SquircleRect {
                     anchors.fill: parent
-                    anchors.margins: Appearance.padding.small / 2
+                    anchors.margins: Appearance.padding.hair
 
                     radius: Appearance.rounding.small
                     color: press.containsMouse && button.modelData.enabled ? Appearance.colour.fill : "transparent"
@@ -80,7 +80,7 @@ Item {
                     anchors.verticalCenterOffset: glyph.inkOffsetY
 
                     name: button.modelData.icon
-                    color: button.modelData.enabled ? Appearance.colour.text : Appearance.colour.textGhost
+                    color: button.modelData.enabled ? Appearance.colour.text : Appearance.colour.textFaint
                 }
 
                 MouseArea {
@@ -146,7 +146,7 @@ Item {
                     radius: Appearance.rounding.small
                     color: root.receiving === crumb.index ? Appearance.colour.accentFill : hover.hovered ? Appearance.colour.fill : "transparent"
                     stroke: root.receiving === crumb.index ? Appearance.colour.accent : "transparent"
-                    strokeWidth: root.receiving === crumb.index ? Appearance.font.stem : 0
+                    strokeWidth: root.receiving === crumb.index ? Appearance.stroke.ring : 0
                 }
 
                 StyledText {
@@ -208,7 +208,7 @@ Item {
         radius: Appearance.rounding.small
         color: Appearance.colour.fill
         stroke: Appearance.colour.accent
-        strokeWidth: Appearance.font.stem
+        strokeWidth: Appearance.stroke.ring
 
         TextInput {
             id: entry
@@ -231,7 +231,7 @@ Item {
             function resolve(text: string): string {
                 let out = text.trim();
                 if (out.startsWith("~"))
-                    out = Files.home + out.slice(1);
+                    out = System.home + out.slice(1);
                 if (out.length > 1 && out.endsWith("/"))
                     out = out.slice(0, -1);
                 return out;
@@ -273,7 +273,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
 
             name: "search"
-            color: Files.searching ? Appearance.colour.text : Appearance.colour.textGhost
+            color: Files.searching ? Appearance.colour.text : Appearance.colour.textFaint
         }
 
         TextInput {

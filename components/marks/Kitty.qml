@@ -37,7 +37,7 @@ Item {
             preferredRendererType: Shape.CurveRenderer
 
             ShapePath {
-                fillColor: Qt.rgba(root.colour.r, root.colour.g, root.colour.b, root.colour.a * root.behind)
+                fillColor: Appearance.withAlpha(root.colour, root.colour.a * root.behind)
                 fillRule: ShapePath.OddEvenFill
                 strokeColor: "transparent"
 
@@ -57,7 +57,7 @@ Item {
             }
 
             ShapePath {
-                fillColor: Qt.rgba(root.colour.r, root.colour.g, root.colour.b, root.colour.a * root.between)
+                fillColor: Appearance.withAlpha(root.colour, root.colour.a * root.between)
                 fillRule: ShapePath.OddEvenFill
                 strokeColor: "transparent"
 

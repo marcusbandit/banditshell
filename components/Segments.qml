@@ -48,7 +48,7 @@ Item {
 
     SquircleRect {
         anchors.fill: parent
-        radius: height / 2
+        pill: "place"
         color: Appearance.colour.fillStrong
     }
 
@@ -56,7 +56,7 @@ Item {
         x: slide.value
         width: root.segment
         height: parent.height
-        radius: height / 2
+        pill: "place"
         color: Appearance.colour.accentFill
         visible: root.count > 0
     }

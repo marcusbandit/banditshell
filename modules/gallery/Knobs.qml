@@ -24,7 +24,7 @@ Column {
         visible: root.shown.length === 0
         width: Math.min(parent.width, 220)
         text: "no knobs yet - this page has no demo to drive"
-        color: Appearance.colour.textGhost
+        color: Appearance.colour.textFaint
         wrapMode: Text.Wrap
     }
 

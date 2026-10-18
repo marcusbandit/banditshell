@@ -534,7 +534,7 @@ Item {
                         radius: Appearance.rounding.normal
                         color: "transparent"
                         stroke: Appearance.colour.accent
-                        strokeWidth: Appearance.font.stem * 2
+                        strokeWidth: Appearance.stroke.ring * 2
                         visible: root.keyboardNavigating && card.entry === Math.round(strip.goal)
                     }
                 }
@@ -665,13 +665,12 @@ Item {
 
             DropShadow {
                 anchors.fill: parent
-                radius: height / 2
+                pill: "place"
             }
 
             SquircleRect {
                 anchors.fill: parent
-                radius: height / 2
-                cornerPower: 2
+                pill: "place"
                 color: Appearance.colour.surface
             }
 
@@ -697,11 +696,10 @@ Item {
 
                         SquircleRect {
                             anchors.fill: parent
-                            radius: width / 2
-                            cornerPower: 2
+                            pill: "object"
                             color: "transparent"
                             stroke: Appearance.colour.text
-                            strokeWidth: Appearance.font.stem
+                            strokeWidth: Appearance.stroke.ring
                             visible: swatch.picked
                         }
 
@@ -709,17 +707,19 @@ Item {
                             anchors.centerIn: parent
                             width: Math.round(parent.width * 0.6)
                             height: width
-                            radius: width / 2
-                            cornerPower: 2
+                            pill: "object"
                             color: swatch.modelData.colour
                             stroke: Appearance.colour.textGhost
-                            strokeWidth: 1
-                            scale: tap.containsMouse ? 1.15 : 1
+                            strokeWidth: Appearance.stroke.line
+                            scale: swell.value
 
-                            Behavior on scale {
-                                NumberAnimation {
-                                    duration: Appearance.animation.fast
-                                }
+                            Follow {
+                                id: swell
+
+                                target: tap.containsMouse ? Appearance.press.lift : 1
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: Appearance.animation.fadeEpsilon
+                                startsAtTarget: true
                             }
                         }
 
@@ -744,7 +744,7 @@ Item {
 
                     anchors.verticalCenter: parent.verticalCenter
                     size: 0
-                    style: "text"
+                    style: "bare"
                     icon: "search"
                     iconFill: root.searching ? 1 : 0
                     onClicked: root.searching ? root.stopSearch() : root.startSearch()
@@ -765,8 +765,7 @@ Item {
 
                     SquircleRect {
                         anchors.fill: parent
-                        radius: height / 2
-                        cornerPower: 2
+                        pill: "place"
                         color: Appearance.colour.fill
                     }
 
@@ -801,7 +800,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
                             text: "Search by name"
-                            color: Appearance.colour.textGhost
+                            color: Appearance.colour.textFaint
                         }
                     }
                 }
@@ -824,13 +823,12 @@ Item {
 
             DropShadow {
                 anchors.fill: parent
-                radius: height / 2
+                pill: "place"
             }
 
             SquircleRect {
                 anchors.fill: parent
-                radius: height / 2
-                cornerPower: 2
+                pill: "place"
                 color: Appearance.colour.surface
             }
 
@@ -884,7 +882,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: root.entries.length > 2
                     size: 0
-                    style: "text"
+                    style: "bare"
                     icon: "shuffle"
                     onClicked: {
                         const n = root.entries.length;
@@ -943,7 +941,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     interactive: !!strip.currentPath
                     size: 0
-                    style: "filled"
+                    style: "accent"
                     icon: "check"
                     text: "Set"
                     onClicked: root.acceptAt(null)

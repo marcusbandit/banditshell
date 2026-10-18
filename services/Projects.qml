@@ -10,7 +10,7 @@ Singleton {
     id: root
 
     readonly property var settings: Config.values.launcher.powerTools
-    readonly property var roots: Logic.listFrom(root.settings.projectFolders, Files.home)
+    readonly property var roots: Logic.listFrom(root.settings.projectFolders, System.home)
     readonly property int depth: root.settings.projectDepth
     readonly property string skip: root.settings.projectSkip
 

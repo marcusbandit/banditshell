@@ -12,8 +12,8 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Model = lib("modules/workshop/layout-model.js", ["normalise", "arrange", "message", "problems", "dealing", "split", "remove", "moveRegion", "setRegion", "setOrder", "setWhen", "addFallback", "removeArrangement", "rename", "nameProblem", "cleanName", "holderIds", "stage", "blank", "columns", "STARTERS", "MESSAGES", "describeSize", "whenText"]);
-const Lua = lib("modules/workshop/layout-lua.js", ["generate", "bindLines", "loader", "failedNames", "luaString"]);
+const Model = lib("services/layout-model.js", ["normalise", "arrange", "message", "problems", "dealing", "split", "remove", "moveRegion", "setRegion", "setOrder", "setWhen", "addFallback", "removeArrangement", "rename", "nameProblem", "cleanName", "holderIds", "stage", "blank", "columns", "STARTERS", "MESSAGES", "describeSize", "whenText"]);
+const Lua = lib("services/layout-lua.js", ["generate", "bindLines", "loader", "failedNames", "luaString"]);
 
 const LUA = ["lua", "lua5.4"].find(bin => spawnSync(bin, ["-v"]).status === 0);
 

@@ -9,7 +9,8 @@ Singleton {
 
     readonly property var settings: Config.values.sound
 
-    readonly property bool enabled: root.settings.alerts
+    readonly property bool available: !ToolInstaller.probed || ToolInstaller.has("pw-play")
+    readonly property bool enabled: root.settings.alerts && root.available
     readonly property real volume: Math.max(0, Math.min(1, root.settings.alertVolume))
 
     readonly property var sets: ["soft", "clear", "wood"]

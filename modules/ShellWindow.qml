@@ -15,6 +15,7 @@ import qs.modules.menu
 import qs.modules.quickcontrols
 import qs.modules.launcher
 import qs.modules.notifications
+import qs.modules.panel
 import qs.modules.session
 import qs.modules.settings
 import qs.modules.sidebar
@@ -45,7 +46,6 @@ PanelWindow {
 
     readonly property LazyPanel settings: settingsLayer
 
-    readonly property NotificationTray notifications: popups
     readonly property Island island: islandLayer
     readonly property QuickControls quickControls: quickLayer
 
@@ -102,7 +102,6 @@ PanelWindow {
             menu: menuLayer.pinned ? menuLayer.currentKey : "",
             keyboard: keyboardLayer.open,
             quickControls: quickLayer.pinned,
-            notifications: popups.pinned,
             island: islandLayer.pinned
         })
 
@@ -127,7 +126,6 @@ PanelWindow {
                 if (resumer.was?.keyboard)
                     keyboardLayer.show();
                 quickLayer.pinned = !!resumer.was?.quickControls;
-                popups.pinned = !!resumer.was?.notifications;
                 islandLayer.pinned = !!resumer.was?.island;
                 win.resumed = true;
             }
@@ -155,7 +153,6 @@ PanelWindow {
             menuLayer.hide();
         if (here)
             return;
-        popups.pinned = false;
         islandLayer.pinned = false;
         islandLayer.task = "";
     }
@@ -190,8 +187,14 @@ PanelWindow {
         case "recording":
             ScreenRecorder.stop();
             return;
+        case "external":
         case "timer":
-            Clock.toggleTimer(notice.timer.id);
+        case "alarm":
+            Activities.activate(notice);
+            return;
+        case "privacy":
+            if (notice.data?.menu)
+                win.openMenu(notice.data.menu, true);
             return;
         case "music":
             if (notice.origin && !mediaLayer.open) {
@@ -202,6 +205,10 @@ PanelWindow {
                 mediaLayer.show();
             }
             break;
+        case "held":
+            islandLayer.close();
+            launcherLayer.show("notifications held ");
+            break;
         case "kernel":
             if (!SystemUpgrade.start())
                 Pacman.upgrade();
@@ -210,7 +217,7 @@ PanelWindow {
             sessionLayer.show();
             break;
         case "download":
-            Files.reveal(notice.path);
+            System.reveal(notice.path);
             break;
         }
         if (notice.key)
@@ -228,7 +235,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: win.underFullscreen ? WlrKeyboardFocus.None : (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || popups.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: win.underFullscreen ? WlrKeyboardFocus.None : (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -328,12 +335,7 @@ PanelWindow {
 
         Region {
             intersection: Intersection.Combine
-            item: popups.any ? popups.maskItem : null
-        }
-
-        Region {
-            intersection: Intersection.Combine
-            item: Appearance.bare ? null : popups.grabItem
+            item: corner.any ? corner.maskItem : null
         }
 
         Region {
@@ -390,6 +392,7 @@ PanelWindow {
             if (event.key !== Qt.Key_Escape)
                 return;
 
+            Appearance.instantly();
             const open = win.panels.find(panel => panel.open);
             if (open)
                 open.hide();
@@ -399,8 +402,6 @@ PanelWindow {
                 menuLayer.hide();
             else if (islandLayer.wantsEscape)
                 islandLayer.back();
-            else if (popups.wantsEscape)
-                popups.pinned = false;
             else
                 return;
 
@@ -448,7 +449,9 @@ PanelWindow {
 
             anchors.fill: parent
 
-            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...popups.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs)]
+            railWanted: sidebar.railWanted
+
+            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs)]
         }
 
         Sidebar {
@@ -462,7 +465,11 @@ PanelWindow {
             width: chassis.barWidth
             visible: chassis.sidebar
 
+            fullWidth: chassis.fullBarWidth
+            expansion: chassis.railOpen
+
             menusShown: menuLayer.open
+            openKey: menuLayer.currentKey
 
             pullSpan: Math.hypot(win.width, win.height)
 
@@ -546,16 +553,14 @@ PanelWindow {
             }
         }
 
-        NotificationTray {
-            id: popups
+        NotificationCorner {
+            id: corner
+
+            onStage: !win.screen?.name || !Focus.offStageScreen || win.screen.name === Focus.offStageScreen
 
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
             inset: win.border + Appearance.sizes.gap
-
-            edgeInset: win.border
-
-            keyboardHeld: win.panelOpen || menuLayer.needsKeyboard
         }
 
         Menus {
@@ -624,9 +629,7 @@ PanelWindow {
             onOpenChanged: if (open)
                 win.closeOthers(sessionLayer)
 
-            panel: SessionMenu {
-                border: win.border
-            }
+            panel: SessionMenu {}
         }
 
         LazyPanel {

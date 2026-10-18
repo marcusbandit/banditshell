@@ -54,7 +54,7 @@ MenuRow {
             anchors.verticalCenter: parent.verticalCenter
             icon: "download"
             text: Calculator.installing === "terminal" ? "Open again" : "Install"
-            style: "outlined"
+            style: "ring"
             size: 0
             onClicked: root.copied()
         }
@@ -64,7 +64,7 @@ MenuRow {
             anchors.verticalCenter: parent.verticalCenter
             icon: "function"
             text: "Symbols"
-            style: "outlined"
+            style: "ring"
             size: 0
             checkable: true
             checked: root.symbolsOpen

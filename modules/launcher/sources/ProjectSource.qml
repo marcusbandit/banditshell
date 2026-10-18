@@ -85,7 +85,7 @@ QtObject {
                 icon: "content_copy",
                 label: "Copy path",
                 short: "Copy",
-                run: () => root.search.leave(() => Files.copyText(path))
+                run: () => root.search.leave(() => System.copyText(path))
             }
         ];
     }

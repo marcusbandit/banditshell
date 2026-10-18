@@ -6,8 +6,8 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.settings
-import "layout-model.js" as LayoutModel
-import "layout-lua.js" as LayoutLua
+import "../../services/layout-model.js" as LayoutModel
+import "../../services/layout-lua.js" as LayoutLua
 
 Column {
     id: root
@@ -78,7 +78,7 @@ Column {
                 required property var modelData
 
                 size: 0
-                style: "outlined"
+                style: "ring"
                 icon: "auto_awesome_mosaic"
                 text: modelData.label
                 onClicked: LayoutDraft.open("", modelData.id)
@@ -408,7 +408,7 @@ Column {
                         required property int index
 
                         size: 0
-                        style: "filled"
+                        style: "accent"
                         icon: "close"
                         text: modelData
                         onClicked: LayoutDraft.orderDrop(orderRow.list, index)
@@ -422,7 +422,7 @@ Column {
                         required property string modelData
 
                         size: 0
-                        style: "outlined"
+                        style: "ring"
                         icon: "add"
                         text: modelData
                         onClicked: LayoutDraft.orderAdd(orderRow.list, modelData)
@@ -529,7 +529,7 @@ Column {
             }
 
             Button {
-                style: "filled"
+                style: "accent"
                 icon: "play_arrow"
                 text: WindowLayouts.current === `lua:${LayoutDraft.model.name}` ? "Use again" : "Use now"
                 interactive: WorkshopLayouts.possible && !WorkshopLayouts.working

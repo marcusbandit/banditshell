@@ -17,7 +17,7 @@ Item {
     readonly property real pad: Appearance.padding.card
     readonly property real natural: Appearance.padding.large + column.implicitHeight + root.pad
 
-    readonly property color tone: Update.state === Update.failed ? Appearance.colour.updateFailed : Update.state === Update.downloaded ? Appearance.colour.updateReady : Update.state === Update.available ? Appearance.colour.updateAvailable : Appearance.colour.accent
+    readonly property color tone: Update.state === Update.failed ? Appearance.colour.updateFailed : Update.restartNeeded ? Appearance.colour.updateReady : Update.state === Update.available ? Appearance.colour.updateAvailable : Appearance.colour.accent
 
     implicitHeight: root.maxHeight > 0 ? Math.min(root.natural, root.maxHeight) : root.natural
 
@@ -48,7 +48,7 @@ Item {
 
             TaskHeader {
                 width: parent.width
-                icon: Update.state === Update.failed ? "error" : Update.state === Update.downloaded ? "restart_alt" : "system_update_alt"
+                icon: Update.state === Update.failed ? "error" : Update.restartNeeded ? "restart_alt" : "system_update_alt"
                 tone: root.tone
                 title: "BanditShell"
                 subtitle: Update.checking ? "Checking GitHub" : Update.checkedAt.getTime() > 0 ? `${Update.branch} · checked ${Update.ago(Update.checkedAt)}` : Update.branch

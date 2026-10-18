@@ -1,0 +1,20 @@
+{
+  "name": "session",
+  "summary": "the session power panel",
+  "layer": 5,
+  "owns": {
+    "qml": ["modules/session"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "power"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": ["session"]
+  },
+  "config": {
+    "namespace": ["session"],
+    "reads": []
+  }
+}

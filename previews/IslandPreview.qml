@@ -4,6 +4,9 @@ import Quickshell.Services.Notifications
 import qs.services
 import qs.modules.island
 import "../modules/island/upgrade-samples.js" as Samples
+import "../services/activities.js" as Logic
+import "../services/moments.js" as MomentLogic
+import "../services/privacy.js" as PrivacyLogic
 
 ShellRoot {
     id: preview
@@ -11,6 +14,137 @@ ShellRoot {
     readonly property string shots: Quickshell.env("BANDITSHELL_SHOTS") ?? ""
 
     readonly property var steps: [
+        {
+            name: "a timer runs: a row with a ring and the time left",
+            run: () => Activities.staged = [preview.timer("tea", "Tea", 450000, 600000, false)],
+            expect: "timer"
+        },
+        {
+            name: "a second timer, paused: two lines, the paused ring holds",
+            run: () => Activities.staged = [preview.timer("tea", "Tea", 450000, 600000, false), preview.timer("laundry", "Laundry", 1500000, 3000000, true)],
+            expect: "2 timers"
+        },
+        {
+            name: "dictation starts while a timer runs: it shows below first",
+            run: () => {
+                Activities.staged = [preview.timer("tea", "Tea", 450000, 600000, false)];
+                preview.speak("listening");
+            },
+            expect: "timer, below it: dictation"
+        },
+        {
+            name: "then dictation takes the big spot and the timer is a ring bubble with its time",
+            run: () => {},
+            wait: 2600,
+            expect: "dictation, beside it: timer"
+        },
+        {
+            name: "the timer enters its last seconds: it grows to a row in the big spot",
+            run: () => Activities.staged = [preview.timer("tea", "Tea", 8000, 600000, false)],
+            expect: "timer, beside it: dictation"
+        },
+        {
+            name: "the timer is done: the alarm takes the big spot with Stop",
+            run: () => Activities.staged = [Logic.alarmItem("timer:tea", "Tea is done", Logic.alarmActions(false))],
+            expect: "alarm, beside it: dictation"
+        },
+        {
+            name: "an alarm rings: Snooze and Stop in the big spot",
+            run: () => Activities.staged = [Logic.alarmItem("wake", "07:30  Wake up", Logic.alarmActions(true))],
+            expect: "alarm, beside it: dictation"
+        },
+        {
+            name: "stopped, and dictation ends: nothing left",
+            run: () => {
+                Activities.staged = [];
+                preview.speak("idle");
+            },
+            expect: "hidden"
+        },
+        {
+            name: "a script pushes a build at 40 percent",
+            run: () => Activities.push({
+                    id: "build",
+                    text: "Building",
+                    detail: "compiling shaders",
+                    progress: 0.4,
+                    icon: "hardware"
+                }),
+            expect: "activity"
+        },
+        {
+            name: "it moves on, and a second task with no progress starts",
+            run: () => {
+                Activities.update("build", {
+                    progress: 0.8
+                });
+                Activities.push({
+                    id: "sync",
+                    text: "Syncing photos",
+                    icon: "sync"
+                });
+            },
+            expect: "2 activities"
+        },
+        {
+            name: "the build is done and the sync failed: each shows its mark",
+            run: () => {
+                Activities.end("build", "done");
+                Activities.end("sync", "failed");
+            },
+            expect: "2 activities"
+        },
+        {
+            name: "the marks go and so do the rows",
+            run: () => {},
+            wait: 3600,
+            expect: "hidden"
+        },
+        {
+            name: "the volume changes: a level row for a second",
+            run: () => Notices.pass(Logic.levelMoment("volume", 0.45, false, 1)),
+            wait: 400,
+            expect: "level"
+        },
+        {
+            name: "the volume is muted",
+            run: () => Notices.pass(Logic.levelMoment("volume", 0.45, true, 1)),
+            wait: 400,
+            expect: "level"
+        },
+        {
+            name: "the brightness changes",
+            run: () => Notices.pass(Logic.levelMoment("brightness", 0.7, false, 1)),
+            wait: 400,
+            expect: "level"
+        },
+        {
+            name: "the microphone is muted",
+            run: () => Notices.pass(Logic.levelMoment("mic", 1, true, 1)),
+            wait: 400,
+            expect: "level"
+        },
+        {
+            name: "the level row is gone",
+            run: () => {},
+            wait: 1500,
+            expect: "hidden"
+        },
+        {
+            name: "the volume changes while dictating: the level row sits below the bars",
+            run: () => {
+                preview.speak("listening");
+                Notices.pass(Logic.levelMoment("volume", 0.8, false, 1));
+            },
+            wait: 400,
+            expect: "dictation, below it: level"
+        },
+        {
+            name: "dictation ends and the level row is gone",
+            run: () => preview.speak("idle"),
+            wait: 1500,
+            expect: "hidden"
+        },
         {
             name: "dictating",
             run: () => preview.speak("listening"),
@@ -210,6 +344,7 @@ ShellRoot {
         {
             name: "ninety more pile up: one card in front, the rest behind it",
             run: () => {
+                Notices.settle("music");
                 for (let i = 0; i < 90; i++)
                     preview.notify(["Discord", "Firefox", "Steam"][i % 3], `message ${i + 1}`, "the same old story", false);
             },
@@ -394,6 +529,127 @@ ShellRoot {
             },
             wait: 1500,
             expect: "hidden"
+        },
+        {
+            name: "everything is dismissed before the moments",
+            run: () => {
+                island.fanning = false;
+                for (const e of [...Notifications.popups])
+                    Notifications.dismiss(e);
+                Launching.shown = [];
+                for (const n of [...Notices.passing])
+                    Notices.settle(n.key);
+                preview.speak("idle");
+            },
+            wait: 1500,
+            expect: "hidden"
+        },
+        {
+            name: "a screenshot is taken: the picture with Copy, Edit, Folder and Delete",
+            run: () => Activities.push(preview.shot(9000)),
+            expect: "activity"
+        },
+        {
+            name: "the microphone goes live: a privacy row shows below it first",
+            run: () => Activities.push(PrivacyLogic.usageSpec({
+                    kind: "mic",
+                    apps: ["Firefox"]
+                })),
+            expect: "activity, below it: privacy"
+        },
+        {
+            name: "then the privacy dot settles into a bubble beside the screenshot",
+            run: () => {},
+            wait: 2600,
+            expect: "activity, beside it: privacy"
+        },
+        {
+            name: "the screenshot leaves: the privacy row is alone",
+            run: () => {},
+            wait: 2600,
+            expect: "privacy"
+        },
+        {
+            name: "the camera and a screen share join: one privacy group with a count",
+            run: () => {
+                Activities.push(PrivacyLogic.usageSpec({
+                    kind: "camera",
+                    apps: ["Zoom"]
+                }));
+                Activities.push(PrivacyLogic.usageSpec({
+                    kind: "screen",
+                    apps: ["OBS Studio", "Firefox"]
+                }));
+            },
+            expect: "privacy"
+        },
+        {
+            name: "text is copied: a Copied row with the first twenty characters",
+            run: () => Activities.push(MomentLogic.copiedSpec(["wl-copy", "-n"], "the quick brown fox jumps over the lazy dog")),
+            wait: 400,
+            expect: "privacy, below it: activity"
+        },
+        {
+            name: "a secret is copied: the text is masked",
+            run: () => Activities.push(MomentLogic.copiedSpec(["wl-copy", "--sensitive", "-n"], "hunter2")),
+            wait: 400,
+            expect: "privacy, below it: activity"
+        },
+        {
+            name: "the copied row is gone",
+            run: () => {},
+            wait: 1500,
+            expect: "privacy"
+        },
+        {
+            name: "headphones connect: their name and battery",
+            run: () => Activities.push(MomentLogic.bluetoothSpec("WH-1000XM5", "headphones", 64)),
+            wait: 400,
+            expect: "privacy, below it: activity"
+        },
+        {
+            name: "the Bluetooth moment is gone after three seconds",
+            run: () => {},
+            wait: 3200,
+            expect: "privacy"
+        },
+        {
+            name: "every stream stops: the privacy row goes",
+            run: () => {
+                Activities.remove("privacy:mic");
+                Activities.remove("privacy:camera");
+                Activities.remove("privacy:screen");
+            },
+            wait: 600,
+            expect: "hidden"
+        },
+        {
+            name: "dictating, then a screenshot: it shows below the bars first",
+            run: () => {
+                preview.speak("listening");
+                Activities.push(preview.shot(7000));
+            },
+            wait: 1200,
+            expect: "dictation, below it: activity"
+        },
+        {
+            name: "the microphone is in use while dictating: the privacy dot waits beside",
+            run: () => Activities.push(PrivacyLogic.usageSpec({
+                    kind: "mic",
+                    apps: ["gvoice"]
+                })),
+            wait: 3000,
+            expect: "activity, beside it: dictation, privacy"
+        },
+        {
+            name: "all of it ends",
+            run: () => {
+                preview.speak("idle");
+                Activities.remove("privacy:mic");
+                Activities.remove("moment:screenshot");
+            },
+            wait: 1500,
+            expect: "hidden"
         }
     ]
 
@@ -423,6 +679,26 @@ ShellRoot {
                 levels.push(Math.abs(Math.sin(i * 0.37)) * (0.35 + 0.65 * Math.abs(Math.sin(i * 0.11))));
             Dictation.levels = levels;
         }
+    }
+
+    function shot(ms: int): var {
+        return Object.assign(MomentLogic.screenshotSpec(Quickshell.shellPath("assets/inspector/screenshot.svg")), {
+            until: ms
+        });
+    }
+
+    function timer(id: string, label: string, left: real, total: real, paused: bool): var {
+        const now = Date.now();
+        return Logic.timerItem({
+            id: id,
+            label: label,
+            total: total,
+            deadline: now + left,
+            left: left,
+            paused: paused,
+            finished: false,
+            quiet: false
+        }, now);
     }
 
     function launch(id: string, name: string, state: string): void {
@@ -467,7 +743,7 @@ ShellRoot {
     FloatingWindow {
         implicitWidth: 200
         implicitHeight: 100
-        color: "#16211c"
+        color: Appearance.colour.surfaceSolid
 
         Island {
             id: island

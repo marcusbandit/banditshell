@@ -124,16 +124,14 @@ Item {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     width: root.barWidth
                                     height: parent.height
-                                    radius: height / 2
-                                    cornerPower: 2
+                                    pill: "place"
                                     color: Appearance.colour.fillStrong
 
                                     SquircleRect {
                                         width: parent.width
                                         height: cell.fillHeight
                                         y: Math.min(parent.height - height, (1 - cell.bar.to) * parent.height)
-                                        radius: height / 2
-                                        cornerPower: 2
+                                        pill: "place"
                                         color: Appearance.colour.accent
                                     }
                                 }

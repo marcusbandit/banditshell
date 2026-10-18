@@ -9,7 +9,7 @@ Item {
 
     property bool playing: false
     property color color: Appearance.colour.text
-    property real size: Appearance.font.iconSize * 0.7
+    property real size: Appearance.icon.small
 
     readonly property real bar: Math.max(2, Math.round(root.size / 5))
 
@@ -37,7 +37,7 @@ Item {
         to: Math.PI * 2
         duration: 1400
         loops: Animation.Infinite
-        running: root.visible && root.playing
+        running: root.visible && root.playing && !Appearance.lessMotion
     }
 
     Repeater {
@@ -53,7 +53,7 @@ Item {
             y: root.height - height
             width: root.bar
             height: Math.max(root.bar, root.height * reach)
-            radius: root.bar / 2
+            pill: "object"
             color: root.color
         }
     }

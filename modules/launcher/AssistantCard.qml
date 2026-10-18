@@ -184,7 +184,7 @@ Item {
                 visible: root.replacing && Assistant.finished
                 icon: "find_replace"
                 text: "Replace selection"
-                style: root.holds ? "tonal" : "outlined"
+                style: root.holds ? "plate" : "ring"
                 size: 0
                 onClicked: root.replaced()
             }
@@ -193,7 +193,7 @@ Item {
                 visible: Assistant.finished
                 icon: "content_copy"
                 text: "Copy"
-                style: root.holds && !root.replacing ? "tonal" : "outlined"
+                style: root.holds && !root.replacing ? "plate" : "ring"
                 size: 0
                 onClicked: root.copied()
             }
@@ -202,7 +202,7 @@ Item {
                 visible: !root.rewriting && Assistant.finished
                 icon: "forum"
                 text: "Continue in chat"
-                style: "outlined"
+                style: "ring"
                 size: 0
                 onClicked: root.continued()
             }
@@ -211,7 +211,7 @@ Item {
                 visible: Assistant.streaming
                 icon: "stop"
                 text: "Stop"
-                style: "outlined"
+                style: "ring"
                 size: 0
                 onClicked: Assistant.stop()
             }
@@ -220,7 +220,7 @@ Item {
                 visible: !root.rewriting && !Assistant.streaming && Assistant.answeredTurns > 1
                 icon: "restart_alt"
                 text: "New chat"
-                style: "outlined"
+                style: "ring"
                 size: 0
                 onClicked: Assistant.newChat()
             }

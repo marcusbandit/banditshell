@@ -1,0 +1,23 @@
+{
+  "name": "screentime",
+  "summary": "screen time usage and limits",
+  "layer": 5,
+  "owns": {
+    "services": ["Usage", "UsageApps", "UsageLimits"],
+    "js": ["services/usage-apps.js", "services/usage-limits.js"],
+    "assets": ["assets/shaders"],
+    "tests": ["tests/screen-time.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "power"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["usage"],
+    "reads": []
+  }
+}

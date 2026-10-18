@@ -19,6 +19,11 @@ SettingsRowFrame {
     interactive: false
     onPointed: SettingsView.hovered = root.row
 
+    LevelCover {
+        active: root.visible
+        kinds: ["volume"]
+    }
+
     SettingsTool {
         anchors.verticalCenter: parent.verticalCenter
         icon: Audio.muted ? "volume_off" : "volume_mute"

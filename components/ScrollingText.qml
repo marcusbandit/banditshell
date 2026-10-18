@@ -32,7 +32,7 @@ Item {
     SequentialAnimation {
         id: marquee
 
-        running: root.running && root.overflows && root.visible
+        running: root.running && root.overflows && root.visible && !Appearance.lessMotion
         loops: Animation.Infinite
 
         PauseAnimation {

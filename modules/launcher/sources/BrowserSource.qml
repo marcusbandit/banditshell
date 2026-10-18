@@ -71,7 +71,7 @@ QtObject {
                 label: "Copy link",
                 run: () => {
                     const url = row.url;
-                    root.search.leave(() => Files.copyText(url));
+                    root.search.leave(() => System.copyText(url));
                 }
             }
         ];

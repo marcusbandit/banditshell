@@ -1,0 +1,24 @@
+{
+  "name": "island",
+  "summary": "the dynamic island and its activities",
+  "layer": 5,
+  "owns": {
+    "qml": ["modules/island", "previews/IslandPreview.qml"],
+    "services": ["Activities", "Levels", "Moments", "Notices", "Privacy"],
+    "js": ["services/activities.js", "services/moments.js", "services/privacy.js"],
+    "assets": ["assets/inspector"],
+    "tests": ["tests/activities.test.js", "tests/moments.test.js", "tests/privacy.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "notifications", "media", "apps", "clock", "audio", "display", "bar", "calculator"],
+    "optional": ["clipboard", "capture", "updates", "files"]
+  },
+  "provides": {
+    "singletons": ["Activities"],
+    "ipc": ["island", "inspect", "activity"]
+  },
+  "config": {
+    "namespace": ["island"],
+    "reads": ["control", "picker"]
+  }
+}

@@ -84,7 +84,7 @@ Item {
     }
 
     function step(dt: real): void {
-        const f = Appearance.lessMotion ? 1 : 1 - Math.exp(-Appearance.animation.trackSpeed * dt);
+        const f = Appearance.still ? 1 : 1 - Math.exp(-Appearance.animation.trackSpeed * dt);
         const n = Math.max(root.live.length, root.slots.length);
 
         const last = root.slots[root.slots.length - 1];

@@ -463,15 +463,15 @@ Column {
                 anchors.bottomMargin: Appearance.padding.small
 
                 height: Appearance.sizes.sliderHeight
-                radius: height / 2
+                pill: "place"
                 color: Appearance.colour.fill
 
                 SquircleRect {
                     width: drain.value
                     height: parent.height
-                    radius: height / 2
+                    pill: "place"
                     color: Appearance.colour.text
-                    opacity: 0.55
+                    opacity: Appearance.opacity.trail
                 }
             }
 

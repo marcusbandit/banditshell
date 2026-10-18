@@ -8,7 +8,6 @@ Item {
     property real radius: 0
     property real power: Appearance.rounding.power
     property bool moving: true
-    property int fade: Appearance.animation.fade.slow * 3
 
     property real drift: 0
 
@@ -25,62 +24,87 @@ Item {
     readonly property int period: 40000
 
     FrameAnimation {
-        running: root.moving && root.visible
+        running: root.moving && root.visible && !Appearance.lessMotion
         onTriggered: root.drift = (Date.now() % root.period) / root.period
+    }
+
+    readonly property real fadeSpeed: Appearance.animation.settleSpeed * 0.5
+
+    FollowColour {
+        id: tone0
+
+        target: root.colourAt(0)
+        speed: root.fadeSpeed
+    }
+
+    FollowColour {
+        id: tone1
+
+        target: root.colourAt(1)
+        speed: root.fadeSpeed
+    }
+
+    FollowColour {
+        id: tone2
+
+        target: root.colourAt(2)
+        speed: root.fadeSpeed
+    }
+
+    FollowColour {
+        id: tone3
+
+        target: root.colourAt(3)
+        speed: root.fadeSpeed
+    }
+
+    Follow {
+        id: share0
+
+        target: Math.max(0.01, root.shareAt(0))
+        speed: root.fadeSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
+    }
+
+    Follow {
+        id: share1
+
+        target: root.shareAt(1)
+        speed: root.fadeSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
+    }
+
+    Follow {
+        id: share2
+
+        target: root.shareAt(2)
+        speed: root.fadeSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
+    }
+
+    Follow {
+        id: share3
+
+        target: root.shareAt(3)
+        speed: root.fadeSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
     }
 
     ShaderEffect {
         anchors.fill: parent
 
-        property color first: root.colourAt(0)
-        property color second: root.colourAt(1)
-        property color third: root.colourAt(2)
-        property color fourth: root.colourAt(3)
-        property real w0: Math.max(0.01, root.shareAt(0))
-        property real w1: root.shareAt(1)
-        property real w2: root.shareAt(2)
-        property real w3: root.shareAt(3)
-
-        Behavior on first {
-            ColorAnimation {
-                duration: root.fade
-            }
-        }
-        Behavior on second {
-            ColorAnimation {
-                duration: root.fade
-            }
-        }
-        Behavior on third {
-            ColorAnimation {
-                duration: root.fade
-            }
-        }
-        Behavior on fourth {
-            ColorAnimation {
-                duration: root.fade
-            }
-        }
-        Behavior on w0 {
-            NumberAnimation {
-                duration: root.fade
-            }
-        }
-        Behavior on w1 {
-            NumberAnimation {
-                duration: root.fade
-            }
-        }
-        Behavior on w2 {
-            NumberAnimation {
-                duration: root.fade
-            }
-        }
-        Behavior on w3 {
-            NumberAnimation {
-                duration: root.fade
-            }
-        }
+        property color first: tone0.value
+        property color second: tone1.value
+        property color third: tone2.value
+        property color fourth: tone3.value
+        property real w0: share0.value
+        property real w1: share1.value
+        property real w2: share2.value
+        property real w3: share3.value
 
         readonly property vector4d size: Qt.vector4d(width, height, root.drift, root.radius)
         readonly property color c0: first

@@ -12,6 +12,8 @@ Singleton {
     readonly property real interval: Math.max(0, Config.values.packages.interval) * 60 * 1000
     readonly property string upgradeCommand: Config.values.packages.upgrade
 
+    readonly property bool live: !Quickshell.env("BANDITSHELL_PREVIEW")
+
     property bool present: false
 
     property string kernel: ""
@@ -55,6 +57,8 @@ Singleton {
     }
 
     function probe(fetch: bool): void {
+        if (!root.live)
+            return;
         if (root.probing) {
             root.queued = root.queued || fetch;
             return;
@@ -165,7 +169,7 @@ Singleton {
     FileView {
         id: memory
 
-        path: root.statePath
+        path: root.live ? root.statePath : ""
         printErrors: false
 
         onLoaded: {

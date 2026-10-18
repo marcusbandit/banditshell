@@ -22,7 +22,7 @@ Scope {
             top: StreamState.shows(root.screenName) ? StreamState.reserve : root.bare ? 0 : Appearance.sizes.border,
             right: root.bare ? 0 : Appearance.sizes.border,
             bottom: root.bare ? root.keyboard : Math.max(Appearance.sizes.border, root.keyboard),
-            left: root.bare ? 0 : Appearance.sizes.border + (SidebarState.visibleOn(root.screenName) ? Appearance.sizes.sidebarWidth : 0)
+            left: root.bare ? 0 : Appearance.sizes.border + (SidebarState.visibleOn(root.screenName) ? Appearance.sizes.sidebarReserve : 0)
         })
 
     Variants {

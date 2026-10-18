@@ -48,6 +48,11 @@ Singleton {
     onPageChanged: root.remember()
 
     Component.onCompleted: {
+        Panels.claim("settings", {
+            open: args => root.openAt(args.screen ?? "", args.page ?? "", args.row ?? ""),
+            toggle: args => root.toggle(args.screen ?? ""),
+            isOpen: () => root.open
+        });
         const was = Relaunch.recall("settings");
         if (!was)
             return;

@@ -5,8 +5,9 @@ AnswerRow 1.0 AnswerRow.qml
 AssistantCard 1.0 AssistantCard.qml
 ColourPicker 1.0 ColourPicker.qml
 LaunchEdge 1.0 LaunchEdge.qml
-LauncherConcept 1.0 LauncherConcept.qml
 Launcher 1.0 Launcher.qml
+LauncherConcept 1.0 LauncherConcept.qml
+LauncherIpc 1.0 LauncherIpc.qml
 LauncherSearch 1.0 LauncherSearch.qml
 ListLauncher 1.0 ListLauncher.qml
 Peek 1.0 Peek.qml

@@ -12,7 +12,7 @@ ShellRoot {
         implicitWidth: 560
         implicitHeight: 500
 
-        color: "#12161c"
+        color: Appearance.colour.surfaceSolid
         exclusiveZone: 0
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay

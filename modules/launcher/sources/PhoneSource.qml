@@ -36,7 +36,7 @@ QtObject {
     function suggestedFile(): string {
         const copied = (root.clipboardTop?.paths ?? [])[0] ?? "";
         const latest = (LatestFiles.lists.downloads ?? []).find(f => !f.dir)?.path ?? "";
-        return Search.shortPath(copied || latest, Files.home);
+        return Search.shortPath(copied || latest, System.home);
     }
 
     function suggestedLink(): string {
@@ -93,7 +93,7 @@ QtObject {
                 icon: "upload_file",
                 suggestion: root.suggestedFile(),
                 take: text => {
-                    const path = Logic.expandPath(text.trim(), Files.home);
+                    const path = Logic.expandPath(text.trim(), System.home);
                     const id = device.id;
                     root.search.launch(() => Phone.run(id, "share", {
                             kind: "file",
@@ -122,7 +122,7 @@ QtObject {
 
     function shareRow(device: var, payload: var): var {
         const shown = Logic.payloadLabel(payload);
-        const value = payload.kind === "file" ? Logic.expandPath(payload.value, Files.home) : payload.value;
+        const value = payload.kind === "file" ? Logic.expandPath(payload.value, System.home) : payload.value;
         return root.made(device, "share", payload.kind === "link" ? `Share ${shown} with ${device.name}` : payload.kind === "file" ? `Send ${shown} to ${device.name}` : `Send “${shown}” to ${device.name}`, payload.kind === "link" ? "link" : payload.kind === "file" ? "upload_file" : "text_fields", {
             key: `phone:share:${device.id}:${payload.kind}`,
             detail: "",

@@ -89,7 +89,7 @@ Item {
                 root.wiped = false;
             }
             for (const p of root.pending) {
-                ctx.fillStyle = Qt.rgba(p.value, p.value, p.value, 1);
+                ctx.fillStyle = Appearance.grey(p.value);
                 ctx.fillRect(p.slot, 0, 1, 1);
             }
             root.pending = [];

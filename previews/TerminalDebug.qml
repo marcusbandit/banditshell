@@ -28,6 +28,8 @@ ShellRoot {
             term: Files.term
             revision: Files.revision
             focused: true
+            zoom: Appearance.sizes.filesZoom
+            face: Appearance.sizes.filesTerminalFont
 
             onSend: bytes => Files.send(bytes)
             onResized: (cols, rows) => {

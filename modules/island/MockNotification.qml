@@ -13,8 +13,15 @@ QtObject {
     property int urgency: NotificationUrgency.Normal
     property var actions: []
     property var hints: ({})
+    property bool hasInlineReply: false
+    property string inlineReplyPlaceholder: ""
+    property var replies: []
 
     signal closed
+
+    function sendInlineReply(text: string): void {
+        root.replies = [...root.replies, text];
+    }
 
     function dismiss(): void {
         root.closed();

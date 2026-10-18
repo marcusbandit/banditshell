@@ -1,5 +1,7 @@
 const TYPES = ["issues", "bugs", "features", "ui", "config"];
 
+const IMPACT_KEYS = ["restart", "cli", "binds", "deps"];
+
 function change(raw) {
     if (!raw || typeof raw !== "object")
         return null;
@@ -12,6 +14,21 @@ function change(raw) {
     };
 }
 
+function names(list) {
+    return Array.isArray(list) ? list.filter(s => typeof s === "string" && s.trim()).map(s => s.trim()) : [];
+}
+
+function impact(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+        return null;
+    return {
+        restart: raw.restart === true,
+        cli: raw.cli === true,
+        binds: names(raw.binds),
+        deps: names(raw.deps)
+    };
+}
+
 function entry(raw) {
     if (!raw || typeof raw !== "object")
         return null;
@@ -21,6 +38,7 @@ function entry(raw) {
         id: raw.id.trim(),
         date: typeof raw.date === "string" ? raw.date.trim() : "",
         example: raw.example === true,
+        impact: impact(raw.impact),
         changes: Array.isArray(raw.changes) ? raw.changes.map(change).filter(c => c) : []
     };
 }
@@ -53,4 +71,29 @@ function accumulated(entries, seen) {
 
 function severityOf(e) {
     return e && e.changes.some(c => c.severity === "major") ? "major" : "minor";
+}
+
+function readSeen(text) {
+    return String(text ?? "").split("\n")[0].trim();
+}
+
+function lastSeen(stored, legacy) {
+    const own = readSeen(stored);
+    return own !== "" ? own : readSeen(legacy);
+}
+
+function legacyToMove(stored, legacy) {
+    return readSeen(stored) === "" ? readSeen(legacy) : "";
+}
+
+function newestId(entries) {
+    for (const e of Array.isArray(entries) ? entries : [])
+        if (e && !e.example && typeof e.id === "string" && e.id.trim())
+            return e.id.trim();
+    return "";
+}
+
+function tagFor(id) {
+    const hit = /^(\d{4})-(\d{2})-(\d{2})(-\d+)?$/.exec(String(id ?? "").trim());
+    return hit ? `v${hit[1]}.${hit[2]}.${hit[3]}${hit[4] ?? ""}` : "";
 }

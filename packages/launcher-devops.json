@@ -1,0 +1,47 @@
+{
+  "name": "launcher-devops",
+  "summary": "the launcher's developer operations sources",
+  "layer": 4,
+  "owns": {
+    "qml": [
+      "modules/launcher/sources/ContainerSource.qml",
+      "modules/launcher/sources/MonitorSource.qml",
+      "modules/launcher/sources/PhoneSource.qml",
+      "modules/launcher/sources/PortSource.qml",
+      "modules/launcher/sources/ServiceSource.qml",
+      "modules/launcher/sources/SshSource.qml"
+    ],
+    "services": [
+      "Containers",
+      "Device",
+      "ListeningPorts",
+      "Phone",
+      "SshHosts",
+      "SystemInfo",
+      "SystemMonitor",
+      "SystemdUnits"
+    ],
+    "js": [
+      "services/containers.js",
+      "services/listening-ports.js",
+      "services/phone.js",
+      "services/ssh-hosts.js",
+      "services/system-monitor.js",
+      "services/systemd-units.js"
+    ],
+    "scripts": ["scripts/cpu-temperature.sh"],
+    "tests": ["tests/launcher-dev-ops.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "launcher", "files"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["launcher.devOps"],
+    "reads": []
+  }
+}

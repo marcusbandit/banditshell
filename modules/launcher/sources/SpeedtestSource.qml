@@ -111,7 +111,7 @@ QtObject {
                     label: "Copy",
                     run: () => {
                         const text = Speed.summary(SpeedTest.last);
-                        root.search.leave(() => Files.copyText(text));
+                        root.search.leave(() => System.copyText(text));
                     }
                 }
             ] : []);

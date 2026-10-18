@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/quiet-hours.js"), "utf8");
-const Quiet = new Function(src + "\nreturn { minutesOf, nightlyActive, holding, deadlineFor, endsLabel, clockTime, parseEnds };")();
+const Quiet = new Function(src + "\nreturn { minutesOf, nightlyActive, holding, deadlineFor, endsLabel, clockTime, parseEnds, quietLine };")();
 
 function inZone(zone, body) {
     const before = process.env.TZ;
@@ -101,4 +101,19 @@ test("the command line says its choices short, and anything else is refused", ()
     assert.strictEqual(Quiet.parseEnds("never"), "off by hand");
     assert.strictEqual(Quiet.parseEnds("constructor"), "");
     assert.strictEqual(Quiet.parseEnds("soon"), "");
+});
+
+test("the quiet line names when it ends, and says nothing while it is not quiet", () => {
+    inZone("UTC", () => {
+        const at = new Date(2026, 9, 17, 14, 0, 0).getTime();
+        const until = new Date(2026, 9, 17, 18, 0, 0).getTime();
+        const off = { quiet: false, until: 0, nightly: false, from: "22:00", to: "07:30" };
+        assert.strictEqual(Quiet.quietLine(off, at), "");
+        assert.strictEqual(Quiet.quietLine(Object.assign({}, off, { quiet: true, until }), at), "Quiet until 18:00");
+        assert.strictEqual(Quiet.quietLine(Object.assign({}, off, { quiet: true }), at), "Quiet until you turn it off");
+        assert.strictEqual(Quiet.quietLine(Object.assign({}, off, { quiet: true, until }), until + 1), "");
+        const night = new Date(2026, 9, 17, 23, 0, 0).getTime();
+        assert.strictEqual(Quiet.quietLine(Object.assign({}, off, { nightly: true }), night), "Quiet until 07:30");
+        assert.strictEqual(Quiet.quietLine(Object.assign({}, off, { nightly: true }), at), "");
+    });
 });

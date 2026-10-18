@@ -195,12 +195,10 @@ Item {
         }
     }
 
-    Follow {
+    Travel {
         id: centre
 
         target: root.clampCentre(root.requestedCentre)
-
-        speed: Appearance.animation.trackSpeed
     }
 
     Follow {
@@ -268,6 +266,7 @@ Item {
 
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Escape && root.open) {
+                Appearance.instantly();
                 root.hide();
                 event.accepted = true;
             }

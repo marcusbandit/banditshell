@@ -12,7 +12,14 @@ QtObject {
 
     property real longestFrame: Infinity
 
+    property bool startsAtTarget: false
+
     readonly property bool settled: value === target
+
+    Component.onCompleted: {
+        if (root.startsAtTarget)
+            root.snap();
+    }
 
     function snap(): void {
         root.value = root.target;
@@ -24,7 +31,7 @@ QtObject {
         onTriggered: {
             const d = root.target - root.value;
 
-            root.value = root.speed <= 0 || Appearance.lessMotion || Math.abs(d) < root.epsilon ? root.target : root.value + d * (1 - Math.exp(-root.speed * Math.min(root.driver.frameTime, root.longestFrame)));
+            root.value = root.speed <= 0 || Appearance.still || Math.abs(d) < root.epsilon ? root.target : root.value + d * (1 - Math.exp(-root.speed * Math.min(root.driver.frameTime, root.longestFrame)));
         }
     }
 }

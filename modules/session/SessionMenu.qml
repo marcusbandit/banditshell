@@ -9,8 +9,6 @@ import qs.services
 Item {
     id: root
 
-    required property real border
-
     readonly property bool open: root.shown
     property bool shown: false
 
@@ -45,7 +43,7 @@ Item {
     readonly property real contentWidth: root.groupWidth
     readonly property real contentHeight: root.groupHeight
 
-    readonly property real panelWidth: root.border + root.contentWidth + root.pad * 2
+    readonly property real panelWidth: root.contentWidth + root.pad * 2
     readonly property real panelHeight: root.contentHeight + root.pad * 2
 
     readonly property real slide: (root.panelWidth + Appearance.sizes.melt) * (1 - reveal.value)
@@ -135,9 +133,10 @@ Item {
         Keys.onPressed: event => {
             const ctrl = event.modifiers & Qt.ControlModifier;
 
-            if (event.key === Qt.Key_Escape)
+            if (event.key === Qt.Key_Escape) {
+                Appearance.instantly();
                 root.hide();
-            else if (event.key === Qt.Key_Up || (ctrl && (event.key === Qt.Key_K || event.key === Qt.Key_P)))
+            } else if (event.key === Qt.Key_Up || (ctrl && (event.key === Qt.Key_K || event.key === Qt.Key_P)))
                 root.move(-1);
             else if (event.key === Qt.Key_Down || (ctrl && (event.key === Qt.Key_J || event.key === Qt.Key_N)))
                 root.move(1);
@@ -185,12 +184,13 @@ Item {
                 height: root.button
                 radius: root.cellRadius
 
-                color: root.arming ? Appearance.colour.accentFill : Appearance.colour.fillStronger
+                color: markerTone.value
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                FollowColour {
+                    id: markerTone
+
+                    target: root.arming ? Appearance.colour.accentFill : Appearance.colour.fillStronger
+                    speed: Appearance.animation.revealSpeed
                 }
             }
 
@@ -220,12 +220,13 @@ Item {
                             name: cell.armed ? "check" : cell.modelData.icon
                             size: Appearance.sizes.sessionIcon
 
-                            color: cell.armed ? Appearance.colour.accent : cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                            color: glyphTone.value
 
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: Appearance.animation.normal
-                                }
+                            FollowColour {
+                                id: glyphTone
+
+                                target: cell.armed ? Appearance.colour.accent : cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                                speed: Appearance.animation.trackSpeed
                             }
                         }
 

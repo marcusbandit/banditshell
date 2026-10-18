@@ -77,7 +77,7 @@ Item {
     signal hidden
     signal dropped(stayedOpen: bool)
 
-    function show(): void {
+    function show(text = ""): void {
         if (!root.shown)
             root.restoreTo = Hypr.focusedOn(root.screenName);
         if (!Calculator.qalcFound)
@@ -85,7 +85,8 @@ Item {
 
         root.showing();
         root.shown = true;
-        root.input.text = "";
+        root.input.text = text;
+        root.input.cursorPosition = text.length;
         root.cleared();
 
         Qt.callLater(root.input.forceActiveFocus);
@@ -176,10 +177,12 @@ Item {
 
         switch (event.key) {
         case Qt.Key_Escape:
+            Appearance.instantly();
             root.back();
             break;
         case Qt.Key_Return:
         case Qt.Key_Enter:
+            Appearance.instantly();
             root.accept();
             break;
         case Qt.Key_Down:

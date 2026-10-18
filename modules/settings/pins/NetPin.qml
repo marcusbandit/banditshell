@@ -150,7 +150,7 @@ Column {
         Button {
             visible: root.on && Network.captive
             size: 0
-            style: "filled"
+            style: "accent"
             text: "Sign in"
             onClicked: Network.openPortal()
         }
@@ -168,7 +168,7 @@ Column {
         Button {
             visible: !root.on
             size: 0
-            style: "filled"
+            style: "accent"
             text: root.busy ? "Joining" : "Join"
             interactive: !root.busy
             onClicked: root.join()
@@ -177,7 +177,7 @@ Column {
         Button {
             visible: root.saved
             size: 0
-            style: "outlined"
+            style: "ring"
             alarm: true
             text: "Forget"
             onClicked: {

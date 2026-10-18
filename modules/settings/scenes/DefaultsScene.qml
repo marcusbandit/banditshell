@@ -34,13 +34,13 @@ Item {
 
     Timer {
         interval: 2000
-        running: root.visible
+        running: root.visible && !Appearance.lessMotion
         repeat: true
         triggeredOnStart: true
         onTriggered: {
             if (!root.pinned)
                 root.turn++;
-            if (SettingsView.reduceMotion)
+            if (SettingsView.reduceMotion || Appearance.lessMotion)
                 root.t = 1;
             else
                 fly.restart();
@@ -107,7 +107,7 @@ Item {
             ShapePath {
                 fillColor: "transparent"
                 strokeColor: Appearance.colour.fillStronger
-                strokeWidth: 2
+                strokeWidth: Appearance.stroke.ring
                 strokeStyle: ShapePath.DashLine
                 dashPattern: [1.5, 2.5]
                 startX: 0.08 * opens.width
@@ -177,8 +177,8 @@ Item {
                     anchors.fill: parent
                     radius: Appearance.rounding.large
                     color: Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.accent, 0.22)
-                    stroke: Qt.alpha(Appearance.colour.accent, 0.5)
-                    strokeWidth: 2
+                    stroke: Qt.alpha(Appearance.colour.accent, Appearance.opacity.trail)
+                    strokeWidth: Appearance.stroke.ring
                 }
 
                 AppMark {

@@ -1,0 +1,23 @@
+{
+  "name": "clipboard",
+  "summary": "clipboard history and dictation",
+  "layer": 2,
+  "owns": {
+    "qml": ["modules/clipboard"],
+    "services": ["Clipboard", "Dictation"],
+    "js": ["services/clipboard-search.js"],
+    "scripts": ["scripts/clip-record.sh"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Clipboard", "Dictation"],
+    "ipc": ["clipboard"]
+  },
+  "config": {
+    "namespace": ["clipboard"],
+    "reads": ["control"]
+  }
+}

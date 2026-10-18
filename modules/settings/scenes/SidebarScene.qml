@@ -55,7 +55,7 @@ Item {
             radius: Appearance.rounding.normal
             color: Appearance.colour.surfaceSolid
             stroke: Appearance.colour.seam
-            strokeWidth: 1
+            strokeWidth: Appearance.stroke.line
         }
 
         SidebarReplica {

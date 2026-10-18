@@ -1,0 +1,29 @@
+{
+  "name": "files",
+  "summary": "the file browser and its terminal",
+  "layer": 2,
+  "owns": {
+    "qml": ["modules/files", "previews/FilesPreview.qml", "previews/TerminalDebug.qml"],
+    "services": ["Downloads", "Files"],
+    "tests": [
+      "tests/keys.test.js",
+      "tests/markdown.test.js",
+      "tests/marks.test.js",
+      "tests/urls.test.js",
+      "tests/vt.test.js"
+    ],
+    "src": ["src/bs-b64.h", "src/bs-ls.c", "src/bs-pty.c"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Downloads", "Files"],
+    "ipc": ["files"]
+  },
+  "config": {
+    "namespace": ["files"],
+    "reads": ["control"]
+  }
+}

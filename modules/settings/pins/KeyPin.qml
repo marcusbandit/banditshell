@@ -122,7 +122,7 @@ Column {
 
     Button {
         size: 0
-        style: "filled"
+        style: "accent"
         text: root.listening ? "Listening" : "Change"
         interactive: !root.listening
         onClicked: {

@@ -8,6 +8,7 @@ import qs.modules.island
 import qs.modules.lock
 import qs.modules.pen
 import qs.modules.picker
+import qs.modules.wallpaper
 
 ShellRoot {
     readonly property var compositorSync: CompositorSync
@@ -21,6 +22,13 @@ ShellRoot {
     readonly property var penButtons: PenButtons
     readonly property var currency: Currency
     readonly property var calculator: Calculator
+    readonly property var hyprConfig: HyprConfig
+    readonly property var modes: Modes
+    readonly property var launcherHotkeys: LauncherHotkeys
+    readonly property var workspaceSlide: WorkspaceSlide
+    readonly property var activities: Activities
+    readonly property var levels: Levels
+    readonly property var events: Events
 
     LockScreen {}
 
@@ -34,7 +42,7 @@ ShellRoot {
         id: islandInspector
     }
 
-    Cli {
+    Ipc {
         picker: picker
         inspector: islandInspector
     }

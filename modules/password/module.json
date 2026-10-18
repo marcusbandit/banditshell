@@ -1,0 +1,22 @@
+{
+  "name": "password",
+  "summary": "the keyring and polkit password prompts",
+  "layer": 2,
+  "owns": {
+    "qml": ["modules/password"],
+    "services": ["Keyring", "PasswordRequest"],
+    "scripts": ["scripts/keyring-prompter.py", "scripts/polkit-takeover.sh"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": ["keyring", "polkit"]
+  },
+  "config": {
+    "namespace": [],
+    "reads": []
+  }
+}

@@ -100,8 +100,37 @@ test("after a panel's name, its own actions sit beside the shared ones", () => {
 
 test("a command that ends here is not also read as a placeholder", () => {
     assert.deepStrictEqual(bashComplete("panel", "close", ""), []);
-    assert.deepStrictEqual(bashComplete("doctor", ""), ["binds"]);
+    assert.deepStrictEqual(bashComplete("doctor", ""), ["--json", "--report", "api", "binds"]);
     assert.deepStrictEqual(bashComplete("doctor", "binds", ""), ["rewrite"]);
+});
+
+test("action, api and version complete: ids after action, the three api words, --json", () => {
+    const ids = table.find(r => r[0] === "values" && r[1] === "id")[2].split(" ").sort();
+    assert.ok(ids.includes("launcher.toggle") && ids.includes("panel.clipboard.toggle") && ids.includes("panel.close"));
+    assert.ok(!ids.some(id => id.includes("*")));
+    assert.deepStrictEqual(bashComplete("action", ""), ids);
+    assert.deepStrictEqual(bashComplete("action", "launcher.toggle", ""), []);
+    assert.deepStrictEqual(bashComplete("api", ""), ["check", "list", "show"]);
+    assert.deepStrictEqual(bashComplete("api", "show", ""), ids);
+    assert.deepStrictEqual(bashComplete("api", "list", "x", ""), ["--json"]);
+    assert.deepStrictEqual(bashComplete("version", ""), ["--json"]);
+    assert.deepStrictEqual(bashComplete("status", ""), ["--json"]);
+    assert.ok(bashComplete("", ).includes("action") && bashComplete("", ).includes("api") && bashComplete("", ).includes("version"));
+});
+
+test("the offered ids are the table's, wildcard rows spelled out once per panel", () => {
+    const rows = fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8").split("\n").filter(l => l && !l.startsWith("#")).map(l => l.split("\t")[0]);
+    const ids = table.find(r => r[0] === "values" && r[1] === "id")[2].split(" ");
+    const panels = table.find(r => r[0] === "values" && r[1] === "panel")[2].split(" ");
+    for (const id of rows.filter(r => !r.includes("*")))
+        assert.ok(ids.includes(id), id);
+    for (const panel of panels)
+        assert.ok(ids.includes(`panel.${panel}.toggle`), panel);
+});
+
+test("cli/commands.tsv is exactly what the parser prints now", () => {
+    const committed = fs.readFileSync(path.join(ROOT, "cli/commands.tsv"), "utf8");
+    assert.strictEqual(committed, run("bash", ["scripts/completion-rules.sh"]), "run: scripts/completion-rules.sh --write");
 });
 
 test("help offers the commands", () => {
@@ -118,18 +147,56 @@ test("each group offers its parts, and each part its actions", () => {
     assert.deepStrictEqual(bashComplete("screen", "border", ""), ["off", "on", "toggle"]);
     assert.deepStrictEqual(bashComplete("output", ""), ["assign", "headphones", "list", "speakers", "toggle"]);
     assert.deepStrictEqual(bashComplete("clock", ""), ["alarm", "timer", "zone"]);
+    assert.deepStrictEqual(bashComplete("island", ""), ["end", "list", "push", "update"]);
+    assert.deepStrictEqual(bashComplete("island", "end", "build", ""), ["cancelled", "done", "failed"]);
     assert.deepStrictEqual(bashComplete("clock", "timer", ""), ["cancel", "pause", "resume", "start", "toggle"]);
     assert.deepStrictEqual(bashComplete("tablet", ""), ["lid", "off", "on", "pen", "probe", "toggle"]);
     assert.deepStrictEqual(bashComplete("tablet", "lid", ""), ["closed", "open", "toggle"]);
     assert.deepStrictEqual(bashComplete("dev", "preview", ""), ["files", "gallery", "lock", "menu", "settings"]);
-    assert.deepStrictEqual(bashComplete("dev", "check", ""), ["island"]);
+    assert.deepStrictEqual(bashComplete("dev", "check", ""), ["boot", "island"]);
+    assert.deepStrictEqual(bashComplete("dev", "check", "boot", "out", ""), ["--shots"]);
     assert.deepStrictEqual(bashComplete("dev", "inspect", ""), ["close", "island"]);
     assert.deepStrictEqual(bashComplete("dev", "keyring", ""), ["close", "demo", "status"]);
+});
+
+test("dev modules offers its flags, then the packages after --explain", () => {
+    const packages = table.find(r => r[0] === "values" && r[1] === "package")[2].split(" ").sort();
+    assert.ok(packages.includes("core") && packages.includes("launcher"));
+    assert.deepStrictEqual(bashComplete("dev", "modules", ""), ["--explain", "--matrix"]);
+    assert.deepStrictEqual(bashComplete("dev", "modules", "--explain", ""), packages);
+    assert.deepStrictEqual(bashComplete("dev", "modules", "--explain", "launcher-"), packages.filter(p => p.startsWith("launcher-")));
+});
+
+test("events offers its filter flag", () => {
+    assert.deepStrictEqual(bashComplete("events", ""), ["--filter"]);
+});
+
+test("update offers its verbs, and each verb its flags", () => {
+    assert.deepStrictEqual(bashComplete("update", ""), ["apply", "check", "rollback", "status"]);
+    assert.deepStrictEqual(bashComplete("update", "check", ""), ["--json", "--no-fetch"]);
+    assert.deepStrictEqual(bashComplete("update", "apply", ""), ["--detach", "--json", "--to"]);
+    assert.deepStrictEqual(bashComplete("update", "status", ""), ["--json"]);
+    assert.deepStrictEqual(bashComplete("update", "rollback", ""), []);
+});
+
+test("dev lint offers its flags, then the rule ids after --rule", () => {
+    const ids = table.find(r => r[0] === "values" && r[1] === "rule")[2].split(" ").sort();
+    assert.deepStrictEqual(ids, ["L1", "L10", "L11", "L12", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9"]);
+    assert.deepStrictEqual(bashComplete("dev", "lint", ""), ["--all", "--rule", "--write-baseline"]);
+    assert.deepStrictEqual(bashComplete("dev", "lint", "--rule", ""), ids);
+    assert.deepStrictEqual(bashComplete("dev", "lint", "--rule", "L1"), ["L1", "L10", "L11", "L12"]);
+});
+
+test("dev promote offers its two flags and no push", () => {
+    assert.deepStrictEqual(bashComplete("dev", "promote", ""), ["--no-fetch", "--remote"]);
+    assert.ok(bashComplete("dev", "").includes("promote"));
 });
 
 test("flags complete after the words they belong to", () => {
     assert.deepStrictEqual(bashComplete("clock", "alarm", "add", "7:00", ""), ["--ask", "--days", "--label", "--run"]);
     assert.deepStrictEqual(bashComplete("screenshot", "copy", ""), ["--freeze"]);
+    assert.deepStrictEqual(bashComplete("island", "push", ""), ["--detail", "--icon", "--id", "--priority", "--progress", "--run", "--text", "--until"]);
+    assert.deepStrictEqual(bashComplete("island", "update", "build", ""), ["--detail", "--icon", "--progress", "--text", "--until"]);
 });
 
 test("config offers the theme and the config keys", () => {
@@ -173,6 +240,13 @@ _banditshell`;
     assert.deepStrictEqual(complete("clock", "timer", ""), ["cancel", "pause", "resume", "start", "toggle"]);
     assert.deepStrictEqual(complete("panel", "launcher", ""), ["close", "open", "run", "status", "toggle"]);
     assert.deepStrictEqual(complete("panel", "close", ""), []);
+    assert.deepStrictEqual(complete("dev", "modules", ""), ["--explain", "--matrix"]);
+    assert.ok(complete("dev", "modules", "--explain", "").includes("compositor"));
+    assert.ok(complete("action", "").includes("launcher.toggle"));
+    assert.deepStrictEqual(complete("api", ""), ["check", "list", "show"]);
+    assert.deepStrictEqual(complete("version", ""), ["--json"]);
+    assert.deepStrictEqual(complete("dev", "lint", ""), ["--all", "--rule", "--write-baseline"]);
+    assert.deepStrictEqual(complete("dev", "lint", "--rule", ""), ["L1", "L10", "L11", "L12", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9"]);
     assert.deepStrictEqual(complete("", ).sort(), tableVerbs);
 });
 

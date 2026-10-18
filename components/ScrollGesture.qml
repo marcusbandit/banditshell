@@ -6,6 +6,8 @@ Item {
 
     property bool armed: true
 
+    property bool naturalScroll: ControlTuning.naturalScroll
+
     readonly property int phaseNone: 0
     readonly property int phaseBegin: 1
     readonly property int phaseUpdate: 2
@@ -51,7 +53,7 @@ Item {
         if (phase === root.phaseBegin && root.active)
             root.finish();
 
-        const natural = wheel.inverted || Compositor.naturalScrollTouchpad;
+        const natural = wheel.inverted || root.naturalScroll;
 
         const now = Date.now();
         const fresh = !root.active;

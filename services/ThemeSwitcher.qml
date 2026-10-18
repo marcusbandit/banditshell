@@ -10,9 +10,17 @@ Singleton {
 
     property bool switching: false
 
+    readonly property bool available: !ToolInstaller.probed || ToolInstaller.has("theme-set")
+    readonly property string unavailableWhy: "themes are switched by theme-set, which is not installed on this machine"
+
     function apply(name: string): void {
         if (root.switching || name === Themes.activeName)
             return;
+
+        if (!root.available) {
+            console.warn(`ThemeSwitcher: ${root.unavailableWhy}.`);
+            return;
+        }
 
         if (!Themes.availableNames.includes(name)) {
             console.warn(`ThemeSwitcher: nothing on this machine renders a theme called ${name}.`);

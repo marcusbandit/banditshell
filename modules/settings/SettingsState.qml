@@ -12,9 +12,7 @@ import "screens.js" as Screens
 Singleton {
     id: root
 
-    readonly property var planDefaults: ({
-            customLayout: ""
-        })
+    readonly property var planDefaults: ({})
 
     readonly property var uiDefaults: ({
             wallTarget: "everywhere",
@@ -147,7 +145,10 @@ Singleton {
             pushBorders: "compositor.pushBorders",
             bare: "edge.bare",
             anim: "anim.base",
+            workspaceSlide: "anim.workspaceSlide",
             sidebarW: "sidebar.width",
+            sbStyle: "sidebar.style",
+            sbBright: "sidebar.status.brightness",
             wsStyle: "sidebar.workspaces.style",
             iconMode: "sidebar.workspaces.iconMode",
             persistent: "sidebar.workspaces.persistent",
@@ -183,6 +184,7 @@ Singleton {
             fallbackTerminal: "launcher.fallbacks.terminal",
             skinTone: "launcher.typing.skinTone",
             clipboardInSearch: "launcher.typing.clipboard",
+            notificationsInSearch: "launcher.typing.notifications",
             onlineTranslate: "launcher.online.translate",
             onlineTranslateTo: "launcher.online.translateTo",
             onlineDefine: "launcher.online.define",
@@ -508,6 +510,11 @@ Singleton {
         case "region":
             return root.setLocale(value, Localisation.formats, Localisation.setFormats);
         case "theme":
+            if (!ThemeSwitcher.available) {
+                root.denied = true;
+                root.refused(ThemeSwitcher.unavailableWhy, "");
+                return;
+            }
             return ThemeSwitcher.apply(value);
         case "sidebar":
             return SidebarState.setAll(value);
@@ -1228,6 +1235,7 @@ Singleton {
     readonly property string vpnOn: Tunnels.activeName
 
     readonly property string hotspotStatus: Hotspot.status
+    readonly property string alertsDetail: AlertSounds.available ? "notifications · low battery · errors" : "pw-play is not installed, so alerts stay silent"
     readonly property bool hotspotBlocked: Hotspot.blocker !== "" && !Hotspot.on
     readonly property string hotspotPasswordTrouble: Hotspot.passwordTrouble
     readonly property string wifiState: Hotspot.active ? "running your hotspot" : root.wifiNet || "not connected"
@@ -1875,7 +1883,9 @@ Singleton {
         return out;
     }
 
-    readonly property string version: Device.version || "dev"
+    readonly property string version: Update.version || Device.version || "dev"
+
+    readonly property string followedBranch: Update.branch
 
     readonly property string updateStatus: {
         switch (Update.state) {
@@ -1883,8 +1893,14 @@ Singleton {
             return `${Update.behind} new on ${Update.branch}`;
         case Update.downloading:
             return "getting it";
-        case Update.downloaded:
-            return "restart to finish";
+        case Update.verifying:
+            return "checking it loads";
+        case Update.restarting:
+            return "restarting";
+        case Update.updated:
+            return "updated";
+        case Update.rolledback:
+            return "went back";
         case Update.failed:
             return "could not look";
         }

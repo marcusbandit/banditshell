@@ -198,16 +198,14 @@ Item {
 
                         SquircleRect {
                             anchors.fill: parent
-                            radius: height / 2
-                            cornerPower: 2
+                            pill: "place"
                             color: Appearance.colour.fillStrong
                         }
 
                         SquircleRect {
                             width: piece.height + (piece.width - piece.height) * grown.value
                             height: piece.height
-                            radius: height / 2
-                            cornerPower: 2
+                            pill: "place"
                             color: root.tone
                             opacity: Math.min(1, grown.value * 20)
                             visible: opacity > 0.01

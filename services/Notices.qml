@@ -7,12 +7,16 @@ import qs.config
 Singleton {
     id: root
 
+    readonly property bool live: !Quickshell.env("BANDITSHELL_PREVIEW")
+
     readonly property int glanceMs: Math.max(1, Config.values.island.glanceSeconds) * 1000
 
-    readonly property bool updateShown: Update.state === Update.available && Config.values.sidebar.update !== "never"
+    readonly property bool updateShown: root.live && Update.state === Update.available && Config.values.sidebar.update !== "never"
 
     readonly property var standing: {
         const out = [];
+        if (!root.live)
+            return out;
         if (root.updateShown)
             out.push({
                 key: `update:${Update.target}`,
@@ -56,8 +60,8 @@ Singleton {
         root.holders = root.holders.filter(h => h && h !== who);
     }
 
-    function glance(key: string): void {
-        root.left[key] = root.glanceMs;
+    function glance(key: string, ms: var): void {
+        root.left[key] = ms > 0 ? ms : root.glanceMs;
         if (!root.glancing.includes(key))
             root.glancing = [...root.glancing, key];
     }
@@ -72,7 +76,7 @@ Singleton {
 
     function pass(notice: var): void {
         root.passing = [notice, ...root.passing.filter(n => n.key !== notice.key)].slice(0, root.passingMax);
-        root.glance(notice.key);
+        root.glance(notice.key, notice.ms);
         root.prune();
     }
 
@@ -171,6 +175,7 @@ Singleton {
 
     Connections {
         target: Downloads
+        enabled: root.live
 
         function onArrived(names: var, dir: string): void {
             const at = Date.now();
@@ -180,6 +185,18 @@ Singleton {
                 name: names[0],
                 path: `${dir}/${names[0]}`,
                 more: names.length - 1
+            });
+        }
+    }
+
+    Connections {
+        target: Notifications
+
+        function onHeldReleased(count: int): void {
+            root.pass({
+                key: `held:${Date.now()}`,
+                kind: "held",
+                count: count
             });
         }
     }

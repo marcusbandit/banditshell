@@ -1,3 +1,5 @@
+const GENERATION = 1;
+
 const SINK = "@DEFAULT_AUDIO_SINK@";
 
 function percent(value) {
@@ -144,8 +146,196 @@ function scanFiles(files) {
     return hits;
 }
 
+const LUA_KEYWORDS = ["and", "break", "do", "else", "elseif", "end", "false", "for", "function", "goto", "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while"];
+
+function parseActions(text) {
+    const rows = [];
+    for (const line of String(text ?? "").split("\n")) {
+        if (!line || line[0] === "#")
+            continue;
+        const [id, status, since, argv, description] = line.split("\t");
+        if (!id || !argv)
+            continue;
+        rows.push({ id, status, since: Number(since) || 1, words: argv.split(" "), description: description ?? "" });
+    }
+    return rows;
+}
+
+function actionFor(words, rows) {
+    let best = null;
+    let tie = false;
+    for (const row of rows) {
+        if (row.status !== "stable" || row.words.length > words.length)
+            continue;
+        const captures = [];
+        let fits = true;
+        for (let i = 0; i < row.words.length && fits; i++) {
+            const want = row.words[i];
+            if (/^\$[1-9]$/.test(want))
+                captures[Number(want[1]) - 1] = words[i];
+            else
+                fits = want === words[i];
+        }
+        if (!fits)
+            continue;
+        let at = 0;
+        const segments = row.id.split(".").map(segment => segment === "*" ? captures[at++] : segment);
+        if (!segments.every(segment => /^[a-z0-9_]+$/.test(segment)))
+            continue;
+        const found = { id: segments.join("."), length: row.words.length, stars: captures.length, args: words.slice(row.words.length) };
+        if (!best || found.length > best.length || (found.length === best.length && found.stars < best.stars)) {
+            best = found;
+            tie = false;
+        } else if (found.length === best.length && found.stars === best.stars && found.id !== best.id) {
+            tie = true;
+        }
+    }
+    return best && !tie ? best : null;
+}
+
+const SAFE_WORD = /^[A-Za-z0-9_@%+=:,.\/-]+$/;
+
+function luaString(text) {
+    return `"${String(text).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+function dotted(id) {
+    const segments = id.split(".");
+    return segments.every(segment => /^[a-z_][a-z0-9_]*$/.test(segment) && !LUA_KEYWORDS.includes(segment));
+}
+
+function stableForm(found, run) {
+    if (run)
+        return `bs.run(${[luaString(found.id)].concat(found.args.map(luaString)).join(", ")})`;
+    if (!found.args.length && dotted(found.id))
+        return `bs.${found.id}`;
+    return `bs.action(${[luaString(found.id)].concat(found.args.map(luaString)).join(", ")})`;
+}
+
+function commandWords(literal) {
+    const words = literal.trim().split(/[ \t]+/);
+    if (words[0] !== "banditshell" || words.length < 2 || !words.slice(1).every(word => SAFE_WORD.test(word)))
+        return null;
+    const rest = words.slice(1).join(" ");
+    const hit = migrateArgs(rest);
+    if (hit && hit.run)
+        return null;
+    return (hit ? hit.args : rest).split(" ");
+}
+
+const EXEC_CALL = /(hl\.dsp\.exec_cmd|hl\.exec_cmd)\(\s*(["'])((?:(?!\2)[^\\\n])*)\2\s*\)/g;
+
+const REQUIRE_ANY = /require\s*\(?\s*["']banditshell["']/;
+
+const REQUIRE_AS_BS = /\blocal\s+bs\s*=\s*require\s*\(?\s*["']banditshell["']\s*\)?/;
+
+function withRequire(original, text) {
+    if (REQUIRE_ANY.test(original))
+        return REQUIRE_AS_BS.test(original) ? { text } : { text, unsafe: "it loads banditshell under another name" };
+    if (/\bbs\b/.test(original))
+        return { text, unsafe: "it already uses the name bs" };
+    const lines = text.split("\n");
+    let at = 0;
+    while (at < lines.length && (/^\s*$/.test(lines[at]) || COMMENT_LINE.test(lines[at]) || /^#!/.test(lines[at])))
+        at++;
+    lines.splice(at, 0, 'local bs = require("banditshell")');
+    return { text: lines.join("\n") };
+}
+
+function rewriteStable(text, rows) {
+    const changes = [];
+    const lines = String(text ?? "").split("\n").map(line => COMMENT_LINE.test(line) ? line : line.replace(EXEC_CALL, (whole, call, _quote, literal) => {
+        const words = commandWords(literal);
+        const found = words ? actionFor(words, rows) : null;
+        if (!found)
+            return whole;
+        const to = stableForm(found, call === "hl.exec_cmd");
+        changes.push({ from: whole, to, id: found.id });
+        return to;
+    }));
+    if (!changes.length)
+        return { text: String(text ?? ""), changes, skipped: "" };
+    const joined = lines.join("\n");
+    const needed = withRequire(String(text ?? ""), joined);
+    if (needed.unsafe)
+        return { text: String(text ?? ""), changes: [], skipped: needed.unsafe };
+    return { text: needed.text, changes, skipped: "" };
+}
+
+function stamp(now) {
+    const pad = n => String(n).padStart(2, "0");
+    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+}
+
+function backupName(file, now, exists) {
+    const base = `${file}.bak-${stamp(now)}`;
+    if (!exists(base))
+        return base;
+    for (let n = 2; ; n++)
+        if (!exists(`${base}-${n}`))
+            return `${base}-${n}`;
+}
+
+function backup(file, before) {
+    const fs = require("node:fs");
+    const name = backupName(file, new Date(), fs.existsSync);
+    fs.writeFileSync(name, before);
+    return name;
+}
+
+function loadActions(argv) {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const at = argv.indexOf("--actions");
+    const file = at >= 0 ? argv[at + 1] : path.join(__dirname, "..", "api", "actions.tsv");
+    if (at >= 0)
+        argv.splice(at, 2);
+    return parseActions(fs.readFileSync(file, "utf8"));
+}
+
+function stableMain(mode, argv) {
+    const fs = require("node:fs");
+    const rows = loadActions(argv);
+    const files = argv.filter(a => a !== "--write");
+    const write = mode === "--stable-write";
+    if (!files.length) {
+        process.stderr.write("usage: node cli-migration.js --stable-scan|--stable-check|--stable-write [--actions <file>] <file...>\n");
+        return 2;
+    }
+    let found = 0;
+    for (const file of files) {
+        let before = "";
+        try {
+            before = fs.readFileSync(file, "utf8");
+        } catch {
+            continue;
+        }
+        const { text, changes, skipped } = rewriteStable(rewriteText(before).text, rows);
+        if (skipped)
+            process.stderr.write(`${file}: left alone, ${skipped}\n`);
+        if (mode === "--stable-scan") {
+            if (changes.length)
+                process.stdout.write(`${changes.length}\t${file}\n`);
+        } else {
+            for (const c of changes)
+                process.stdout.write(`${file}: ${c.from}  ->  ${c.to}\n`);
+        }
+        found += changes.length;
+        if (write && changes.length) {
+            backup(file, before);
+            fs.writeFileSync(file, text);
+        }
+    }
+    return mode === "--stable-scan" || found ? 0 : 2;
+}
+
 function main(argv) {
     const mode = argv[0];
+    if (mode === "--generation") {
+        process.stdout.write(`${GENERATION}\n`);
+        return 0;
+    }
+
     if (mode === "--cmd") {
         const hit = migrateArgs(argv.slice(1).join(" "));
         if (hit)
@@ -159,10 +349,13 @@ function main(argv) {
         return 0;
     }
 
+    if (mode === "--stable-scan" || mode === "--stable-check" || mode === "--stable-write")
+        return stableMain(mode, argv.slice(1));
+
     const dry = mode === "--check";
     const files = argv.slice(dry ? 1 : 0).filter(a => a !== "--write");
     if (!files.length) {
-        process.stderr.write("usage: node cli-migration.js --check <file...> | --write <file...> | --scan <file...> | --cmd '<old command>'\n");
+        process.stderr.write("usage: node cli-migration.js --check <file...> | --write <file...> | --scan <file...> | --cmd '<old command>' | --stable-scan|--stable-check|--stable-write <file...>\n");
         return 2;
     }
 
@@ -175,7 +368,7 @@ function main(argv) {
             process.stdout.write(`${file}: ${c.from}  ->  ${c.to}\n`);
         found += changes.length;
         if (!dry && changes.length) {
-            fs.writeFileSync(file + ".bak", before);
+            backup(file, before);
             fs.writeFileSync(file, text);
         }
     }
