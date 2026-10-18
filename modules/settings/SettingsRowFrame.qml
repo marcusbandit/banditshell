@@ -17,8 +17,10 @@ Item {
     property bool interactive: true
     property bool notice: false
     property bool flashing: false
+    property real flashStamp: 0
     property real minHeight: Appearance.sizes.rowHeight
     property Component lead: null
+    property Component under: null
 
     default property alias trailing: trail.data
 
@@ -85,11 +87,17 @@ Item {
         }
     }
 
-    onFlashingChanged: if (root.flashing) {
+    function pulse(): void {
         flashLevel.target = 1;
         flashLevel.snap();
         flashHold.restart();
     }
+
+    onFlashingChanged: if (root.flashing)
+        root.pulse()
+
+    onFlashStampChanged: if (root.flashStamp > 0)
+        root.pulse()
 
     HoverHandler {
         id: hover
@@ -155,6 +163,13 @@ Item {
             maximumLineCount: root.detailLines
             color: root.notice ? Appearance.colour.textDim : root.detailColour
             visible: root.detail !== ""
+        }
+
+        Loader {
+            width: parent.width
+            active: !!root.under
+            visible: active
+            sourceComponent: root.under
         }
     }
 

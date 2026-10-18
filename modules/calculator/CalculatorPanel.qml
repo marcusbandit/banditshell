@@ -183,6 +183,7 @@ Item {
 
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Escape) {
+                Appearance.instantly();
                 root.hide();
                 event.accepted = true;
                 return;

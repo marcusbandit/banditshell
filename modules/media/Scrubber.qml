@@ -36,7 +36,7 @@ Item {
     property real hoverX: 0
     readonly property real shown: pointer.pressed ? root.dragged : glide.value
 
-    property real live: Media.progress
+    property real live: 0
 
     implicitWidth: Appearance.sizes.menuWidth / 2
     implicitHeight: root.band + Appearance.padding.small + elapsed.implicitHeight
@@ -47,11 +47,22 @@ Item {
         onTriggered: root.live = Math.max(0, Math.min(1, Media.now() / Media.length))
     }
 
+    function catchUp(): void {
+        root.live = Media.progress;
+        glide.snap();
+    }
+
+    onWatchedChanged: if (root.watched)
+        root.catchUp()
+
+    Component.onCompleted: root.catchUp()
+
     Connections {
         target: Media
+        enabled: root.watched
 
         function onPositionChanged(): void {
-            if (!Media.playing || !root.watched)
+            if (!Media.playing)
                 root.live = Media.progress;
         }
 

@@ -247,7 +247,7 @@ Singleton {
 
     function type(text: string): void {
         root.stir();
-        if (!root.active || root.opening || !/^[^\x00-\x1F\x7F-\x9F]+$/.test(text))
+        if (!root.active || root.opening || !text || /[\u0000-\u001f\u007f-\u009f]/.test(text))
             return;
         entry.secret += text;
     }

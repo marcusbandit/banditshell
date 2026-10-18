@@ -46,7 +46,7 @@ PanelWindow {
         opacity: shown.value
 
         output: win.output
-        playing: Wallpaper.enabled && Config.values.wallpaper.animate && win.bare
+        playing: Wallpaper.enabled && Config.values.wallpaper.animate && win.bare && !Appearance.lessMotion
         audible: Config.values.wallpaper.audio
 
         Follow {

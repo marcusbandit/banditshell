@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import Quickshell
 import Quickshell.Io
+import qs.config
 import qs.services
 import qs.modules.panel
 import "catalogue.js" as SettingsCatalogue
@@ -21,11 +22,13 @@ Scope {
         target: "settings"
 
         function toggle(): string {
+            Appearance.instantly();
             Settings.toggle(root.settingsScreen(""));
             return Settings.open ? "open" : "closed";
         }
 
         function open(page: string, screen: string): string {
+            Appearance.instantly();
             const wrong = root.unknownSetting(page);
             if (wrong)
                 return wrong;
@@ -37,6 +40,7 @@ Scope {
         }
 
         function close(): string {
+            Appearance.instantly();
             Settings.hide();
             return "closed";
         }

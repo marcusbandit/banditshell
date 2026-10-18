@@ -116,7 +116,7 @@ ListView {
     Timer {
         id: coast
 
-        interval: Appearance.animation.fade.fast
+        interval: Appearance.animation.wait.fast
         onTriggered: root.coastOn()
     }
 }

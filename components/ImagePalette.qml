@@ -106,6 +106,7 @@ Item {
             ctx.clearRect(0, 0, probe.width, probe.height);
             ctx.drawImage(root.source, 0, 0, probe.width, probe.height);
             const data = ctx.getImageData(0, 0, probe.width, probe.height).data;
+            probe.unloadImage(root.source);
             const px = [];
             for (let i = 0; i < data.length; i += 4)
                 if (data[i + 3] > 128)

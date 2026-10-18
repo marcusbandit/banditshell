@@ -25,6 +25,7 @@ ShellRoot {
     readonly property var hyprConfig: HyprConfig
     readonly property var modes: Modes
     readonly property var launcherHotkeys: LauncherHotkeys
+    readonly property var workspaceSlide: WorkspaceSlide
     readonly property var activities: Activities
     readonly property var levels: Levels
     readonly property var events: Events

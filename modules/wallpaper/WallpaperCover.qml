@@ -12,8 +12,7 @@ Item {
 
     property bool wanted: false
 
-    property real goal: 0
-    readonly property real progress: sweep.value
+    readonly property real progress: cover.value
     property real seed: 0
     property bool waited: false
 
@@ -21,14 +20,12 @@ Item {
     readonly property bool showing: root.wanted && (root.ready || root.waited)
 
     function open(): void {
-        if (root.progress === 0)
+        if (cover.value === 0)
             root.seed = Math.random() * 6.283;
-        root.goal = 1;
     }
 
     function close(): void {
         root.waited = false;
-        root.goal = 0;
     }
 
     onShowingChanged: if (root.showing)
@@ -52,11 +49,11 @@ Item {
     }
 
     Follow {
-        id: sweep
+        id: cover
 
-        target: root.goal
-        speed: 5000 / Math.max(1, Appearance.sizes.wallpaperReveal) / (root.goal > 0 ? 1 : 0.6)
-        epsilon: Appearance.animation.fadeEpsilon
+        target: root.showing ? 1 : 0
+        speed: Appearance.animation.revealSpeed
+        epsilon: 0.002
     }
 
     Timer {
@@ -81,7 +78,7 @@ Item {
             opacity: Wallpaper.enabled ? 1 : 0
 
             output: root.output
-            playing: Wallpaper.enabled && Config.values.wallpaper.animate
+            playing: Wallpaper.enabled && Config.values.wallpaper.animate && !Appearance.lessMotion
         }
     }
 }

@@ -41,7 +41,10 @@ Item {
 
             root.seed = Math.random() * 6.283;
 
-            root.restartSweep();
+            if (Wallpaper.previewOn(root.output) === slot.path)
+                sweep.value = 1;
+            else
+                root.restartSweep();
             retire.restart();
         }
     }

@@ -145,6 +145,7 @@ Singleton {
             pushBorders: "compositor.pushBorders",
             bare: "edge.bare",
             anim: "anim.base",
+            workspaceSlide: "anim.workspaceSlide",
             sidebarW: "sidebar.width",
             wsStyle: "sidebar.workspaces.style",
             iconMode: "sidebar.workspaces.iconMode",

@@ -398,6 +398,7 @@ PanelWindow {
             if (event.key !== Qt.Key_Escape)
                 return;
 
+            Appearance.instantly();
             const open = win.panels.find(panel => panel.open);
             if (open)
                 open.hide();
@@ -634,9 +635,7 @@ PanelWindow {
             onOpenChanged: if (open)
                 win.closeOthers(sessionLayer)
 
-            panel: SessionMenu {
-                border: win.border
-            }
+            panel: SessionMenu {}
         }
 
         LazyPanel {

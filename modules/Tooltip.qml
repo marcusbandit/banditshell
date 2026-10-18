@@ -54,7 +54,7 @@ Item {
         epsilon: 0.001
     }
 
-    onShownChanged: if (root.shown) {
+    onShownChanged: if (root.shown && grow.value < 0.05) {
         glideX.snap();
         glideY.snap();
     }

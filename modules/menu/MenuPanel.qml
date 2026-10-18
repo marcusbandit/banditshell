@@ -174,7 +174,7 @@ Item {
 
                 implicitHeight: view.y + view.contentHeight
 
-                opacity: current ? 1 : leaving ? (1 - fade.value) * (1 - fade.value) : 0
+                opacity: current ? fade.value : leaving ? (1 - fade.value) * (1 - fade.value) : 0
 
                 visible: opacity > 0
 

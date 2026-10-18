@@ -24,7 +24,7 @@ Item {
     readonly property int period: 40000
 
     FrameAnimation {
-        running: root.moving && root.visible
+        running: root.moving && root.visible && !Appearance.lessMotion
         onTriggered: root.drift = (Date.now() % root.period) / root.period
     }
 

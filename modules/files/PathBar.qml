@@ -72,7 +72,7 @@ Item {
                     color: press.containsMouse && button.modelData.enabled ? Appearance.colour.fill : "transparent"
                 }
 
-                Icon {
+                InkIcon {
                     id: glyph
 
                     anchors.centerIn: parent

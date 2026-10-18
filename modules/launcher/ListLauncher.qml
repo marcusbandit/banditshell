@@ -25,7 +25,6 @@ LauncherConcept {
 
     readonly property real panelWidth: Appearance.sizes.launcherWidth
 
-    property bool collapseToCentre: false
 
     property var capture: null
     property string beforeCapture: ""
@@ -125,14 +124,10 @@ LauncherConcept {
 
     readonly property real longestFrame: 1 / 60
 
-    property real wave: 0
-    readonly property real waveTarget: (root.shown || root.dragging) && root.quick ? root.tiles.length : 0
-
     onQuickChanged: root.tile = 0
     onTilesChanged: root.tile = Math.min(root.tile, Math.max(0, root.tiles.length - 1))
 
     onShowing: {
-        root.collapseToCentre = false;
         root.unsized = true;
         root.symbolsOpen = false;
         FileSearch.forget();
@@ -150,6 +145,7 @@ LauncherConcept {
     }
 
     onHidden: {
+        FileSearch.halt();
         sheet.close();
         Assistant.following = false;
         if (!Assistant.inPlace)
@@ -157,12 +153,6 @@ LauncherConcept {
         root.capture = null;
         search.armed = "";
         search.colourEdit = null;
-        root.collapseToCentre = !panel.bottomAnchored;
-    }
-
-    onDropped: stayedOpen => {
-        if (!stayedOpen)
-            root.collapseToCentre = false;
     }
 
     function accept(): void {
@@ -615,15 +605,6 @@ LauncherConcept {
         longestFrame: root.longestFrame
     }
 
-    FrameAnimation {
-        running: root.wave !== root.waveTarget
-
-        onTriggered: {
-            const step = Math.min(frameTime, root.longestFrame) * 1000 / Math.max(1, Appearance.animation.normal) * Math.max(1, root.tiles.length);
-            root.wave = Appearance.lessMotion ? root.waveTarget : root.wave < root.waveTarget ? Math.min(root.waveTarget, root.wave + step) : Math.max(root.waveTarget, root.wave - step);
-        }
-    }
-
     property bool unsized: false
 
     Item {
@@ -634,11 +615,10 @@ LauncherConcept {
         readonly property real restY: root.height / 2 - barOffset
 
         readonly property real bandY: root.height - root.inset
-        readonly property bool bottomAnchored: restY + grow.value >= bandY - 1
 
         x: (root.width - width) / 2
 
-        y: root.collapseToCentre ? restY + (grow.value - height) / 2 : bandY + (restY - bandY) * root.revealed
+        y: bandY + (restY - bandY) * root.revealed
 
         width: root.panelWidth
 
@@ -829,18 +809,6 @@ LauncherConcept {
                                 y: cell.modelData.row * quickLaunch.cell + (cell.modelData.pinned ? 0 : quickLaunch.gap)
                                 width: quickLaunch.cell
                                 height: quickLaunch.cell
-
-                                opacity: pop.value
-                                scale: 0.6 + 0.4 * pop.value
-
-                                Follow {
-                                    id: pop
-
-                                    target: root.wave > cell.index ? 1 : 0
-                                    speed: Appearance.animation.revealSpeed
-                                    epsilon: 0.002
-                                    longestFrame: root.longestFrame
-                                }
 
                                 SquircleRect {
                                     anchors.centerIn: parent
@@ -1036,22 +1004,30 @@ LauncherConcept {
                                         color: line.modelData.toggle === false ? Appearance.colour.textFaint : Appearance.colour.textDim
                                     }
 
-                                    Slider {
+                                    Loader {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        visible: !!line.modelData.slider && !line.modelData.slider.bare
-                                        width: root.panelWidth * 0.22
-                                        to: line.modelData.slider?.to ?? 1
-                                        warnAbove: line.modelData.slider?.warnAbove ?? 1
-                                        value: line.modelData.slider ? line.modelData.slider.value() : 0
-                                        dimmed: line.modelData.toggle === false
-                                        onMoved: v => line.modelData.slider.set(v)
+                                        active: !!line.modelData.slider && !line.modelData.slider.bare
+                                        visible: active
+
+                                        sourceComponent: Slider {
+                                            width: root.panelWidth * 0.22
+                                            to: line.modelData.slider?.to ?? 1
+                                            warnAbove: line.modelData.slider?.warnAbove ?? 1
+                                            value: line.modelData.slider ? line.modelData.slider.value() : 0
+                                            dimmed: line.modelData.toggle === false
+                                            onMoved: v => line.modelData.slider.set(v)
+                                        }
                                     }
 
-                                    Toggle {
+                                    Loader {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        visible: line.modelData.toggle !== undefined
-                                        checked: !!line.modelData.toggle
-                                        onToggled: search.activate(line.modelData)
+                                        active: line.modelData.toggle !== undefined
+                                        visible: active
+
+                                        sourceComponent: Toggle {
+                                            checked: !!line.modelData.toggle
+                                            onToggled: search.activate(line.modelData)
+                                        }
                                     }
                                 }
                             }
@@ -1109,7 +1085,7 @@ LauncherConcept {
                             id: empty
 
                             visible: !root.results.length && !root.answer && !assistantCard.shown
-                            text: query.text ? "nothing matches" : "no applications found"
+                            text: query.text ? (search.contentNote ? `nothing matches, inside files ${search.contentNote}` : "nothing matches") : "no applications found"
                             color: Appearance.colour.textFaint
                             font.pixelSize: Appearance.font.size.small
                         }

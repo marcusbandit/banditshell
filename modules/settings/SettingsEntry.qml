@@ -56,7 +56,7 @@ Column {
         label: Catalogue.labelOf(root.row)
         detail: root.detailText
         off: root.off
-        flashing: root.flashing
+        flashStamp: root.flashing ? SettingsView.flash.at : 0
         interactive: root.kind === "toggle" || root.kind === "choice" || root.hasLayer
         onActivated: root.activate()
         onPointed: SettingsView.hovered = root.row

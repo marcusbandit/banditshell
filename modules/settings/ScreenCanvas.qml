@@ -78,7 +78,8 @@ FocusScope {
         const name = Monitors.selected;
         const to = Screens.nudge(root.rects, name, dx, dy);
         if (!to) {
-            root.bump();
+            if (!Appearance.lessMotion)
+                root.bump();
             return;
         }
         SettingsState.stageScreen(name, {

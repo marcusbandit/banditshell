@@ -65,6 +65,7 @@ Item {
             ctx.clearRect(0, 0, width, height);
             ctx.drawImage(root.source, 0, 0, width, height);
             const data = ctx.getImageData(0, 0, width, height).data;
+            unloadImage(root.source);
             let sum = 0;
             for (let i = 0; i < data.length; i += 4)
                 sum += (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;

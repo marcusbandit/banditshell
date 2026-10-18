@@ -126,3 +126,4 @@ singleton WhatsNew 1.0 WhatsNew.qml
 singleton WifiJoin 1.0 WifiJoin.qml
 singleton WindowLayouts 1.0 WindowLayouts.qml
 singleton WorkshopLayouts 1.0 WorkshopLayouts.qml
+singleton WorkspaceSlide 1.0 WorkspaceSlide.qml

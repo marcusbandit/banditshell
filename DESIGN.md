@@ -52,9 +52,9 @@ Rationale for staying on Quickshell rather than going lower-level (Rust/GTK/etc.
 how my whole system works" is satisfied by writing *every widget myself*. I don't also
 have to reimplement the compositor bindings to earn that. Quickshell keeps the project
 about *my shell*, not about fighting a new toolkit. I can always drop to C (or lower) for
-a specific widget that demands it. **caelestia stays on disk as a reference implementation**
-- a working, readable answer for the hard parts (wallpaper backend, lock screen, IPC
-face-unlock pill), not something to delete.
+a specific widget that demands it. **caelestia stays on disk as something to learn from.**
+It shows that the hard parts can be done (wallpaper backend, lock screen, IPC face-unlock
+pill). Read it for the idea, then close it and write ours. No code crosses over.
 
 ---
 
@@ -115,8 +115,9 @@ come back in.
 
 This is deliberately close to caelestia's construction. **We are rebuilding caelestia's main
 parts, with more control, because they are ours.** The point was never that caelestia is wrong;
-it is that I want the whole mental model. Where caelestia solved something well, copy the
-solution and understand it, don't invent a worse one to be different.
+it is that I want the whole mental model. Where caelestia solved something well, learn why
+the idea works and build our own version of it from scratch. Don't invent a worse idea to be
+different, and never copy its code: every line here is written here.
 
 **But it MAY reveal itself through interaction.** The direction I like: the border
 *deforms* near the cursor, so the reveal and the reaction are the same event. It isn't "a
@@ -167,20 +168,29 @@ The feel to chase: **as if the intent of using the computer makes the computer c
 Alive, responsive, compliant to intent. Nothing is static. Nothing is dead. The computer
 answers the *intent* of use, and only when asked.
 
-Animation implementation for all this motion/summon/tracking: **exponential smoothing, always**
-(see `~/.claude/rules/animation-smoothing.md`) -
-`position += (target - position) * (1 - Math.exp(-speed * dt))`. Moves fast when far, settles
-gently when close, safe at any dt.
+Animation implementation for all this motion/summon/tracking comes in two curves, both chased
+every frame so either can be caught and retargeted mid-flight:
+
+- **Follow (`components/Follow.qml`), ease-out**, for anything that answers an input: a reveal,
+  a press, a panel arriving. Exponential smoothing,
+  `position += (target - position) * (1 - Math.exp(-speed * dt))` (see
+  `~/.claude/rules/animation-smoothing.md`): it moves the moment it is asked, fast when far,
+  gentle when close, safe at any dt.
+- **Travel (`components/Travel.qml`), ease-in-out**, for something already on screen moving to a
+  new place: the workspace marker, a menu gliding between sidebar icons, rows closing up, the
+  next notification stepping forward. A critically damped follower: it starts gently, arrives
+  gently, keeps its speed when the target moves, and never crosses past the target.
 
 **This is a rule, not a default.** Anything in this shell that moves, tracks, reveals, resizes
-or follows goes through `components/Follow.qml`. A `NumberAnimation` or a `Behavior` on a
-position is a bug, with exactly one exception: a **looping clock** with no target being chased
-at all. The whole list: the mic indicator's processing ripple and typing caret, the battery
-charge sweep and low-charge throb, the scrolling-text marquee, the scrubber's wave phase, the
-equalizer, the lyric line's sung-gap clock, the lyrics loading pulse, the activity bubble's and
-the settings keyboard widget's spinners, and the demo clocks of the
-settings scenes. Every one of them stops or freezes when `Appearance.lessMotion` is true.
-Spring and bounce are not in this shell.
+or follows goes through one of those two. A `NumberAnimation` or a `Behavior` on a position is a
+bug, with exactly one exception: a **looping clock** with no target being chased at all. The
+whole list: the mic indicator's processing ripple and typing caret, the battery charge sweep and
+low-charge throb, the scrolling-text marquee, the scrubber's wave phase, the equalizer, the lyric
+line's sung-gap clock, the lyrics loading pulse, the activity bubble's and the settings keyboard
+widget's spinners, and the demo clocks of the settings scenes. Every one of them stops or freezes
+when `Appearance.lessMotion` is true. No overshoot, bounce or flourish anywhere, for now: the
+shell starts from no play at all, and anything playful comes back later one deliberate piece at
+a time.
 
 **Fades are motion too.** An opacity or a colour that changes goes through `Follow`
 (`epsilon: Appearance.animation.fadeEpsilon`, since the default epsilon is in pixels) or
@@ -188,6 +198,14 @@ Spring and bounce are not in this shell.
 motion setting now stills the fades as well. Speeds come from `Appearance.animation`:
 `revealSpeed` for what used to be a fast fade, `trackSpeed` for normal, `settleSpeed` for slow,
 `snapSpeed` for small knobs.
+
+**A key gets an instant answer.** Anything a hotkey opens appears in its first frame, and a
+hotkey, Esc or Enter that puts it away takes it at once: the key already announced the outcome.
+`Appearance.instantly()` opens a window of a few frames in which both curves snap and the
+duration tokens collapse; the IPC entry points and the surfaces' Esc and Enter handlers call it.
+The pointer, touch and touchpad keep their origin: a surface grows out of what was clicked, and
+a drag follows the finger. Reduced motion is the same switch held on: no motion at all, fades
+included.
 
 Three corollaries, each of them learned by shipping the mistake:
 
@@ -222,6 +240,64 @@ This implies a **hierarchy of prominence** driven by current context/intent:
 
 So a widget isn't "shown or hidden" - it has a *role* in the current context (focus vs
 ambient vs absent), and that role changes as intent moves around the screen.
+
+### 2.5 Motion: animate to teach, never to decorate
+
+Source: "The Ridiculous Engineering Of Animations" (Enrico Tartarotti, 18:36). Every frame of
+animation sits between the user's intent and the result, so it costs them time. Only information
+they do not already have earns that time.
+
+The rules, in the order the video builds them:
+
+- Motion is a map. An animation teaches where a thing lives and where it came from: an app grows
+  out of its icon, the volume slider slides out of the volume buttons, the island opens from
+  itself. The same object should leave and return through the same place every time. A panel that
+  enters from the top once and from the side the next time breaks the map, and the user feels it
+  before they can say why.
+- Copying nature is the starting point, not the goal. Physics (slow in, slow out, follow-through)
+  makes motion read as real. Once the motion is copied, the next question is whether it should run
+  at all.
+- Animate what the user did not start, or what they have not yet learned. The first time an action
+  happens, motion can teach. The thousandth time it only waits. A surface opened all day should
+  not animate in at all, because a keyboard action already announces its own outcome.
+- Animate what the user must find again. The video keeps a sidebar animated even when it hides by
+  default, because the user can summon it and has to learn that it exists. Rarity and
+  discoverability decide, not the kind of thing.
+- The curve sets the speed as much as the duration does. Enter and exit use ease-out: progress is
+  front-loaded, so the thing arrives fast and settles. Ease-in starts slow and is wrong for enter
+  and exit. Something already on screen that moves to a new place uses ease-in-out.
+- Motion can hide latency, but a result that arrives instantly can still be distrusted. A launch
+  animation buys time while an app starts. A short settle at the end of an instant transfer
+  convinced users the money had moved. Where the work is real, as with an upload, show the real
+  progress instead.
+- Every motion must be interruptible. A swipe can reverse mid-flight. A motion the user cannot
+  retarget feels like lag even when it is short. Section 2.3's smoothing retargets by construction.
+- When motion is switched off, the signal must survive. The game keeps its screen shake and its
+  throw animation with animations disabled, because the shake is the only sign that damage landed.
+  An animation that carries information needs a second channel for when it is removed: a state
+  change, a colour, a blink on the item that was acted on.
+- Tune against the thousandth repetition. macOS's desktop-switch slide shows where full-screen apps
+  live, and it is disliked enough that people fake a trackpad swipe to suppress it. A spatial
+  lesson that turns into friction gets switched off, and then it teaches nothing. Multiply each
+  duration by how often it runs: 400 ms on something opened a thousand times a day is about
+  6.7 minutes of waiting.
+- Personality comes from timing. Bounce, overshoot and a long ease-in-out read as playful or
+  premium. Work tools lean rigid and fast. This shell takes the rigid end: spring and bounce are
+  excluded by section 2.3, and the character comes from the pixel type and the chassis (section 6),
+  not from overshoot.
+
+Applied to this shell:
+
+- A keyboard-summoned surface (the launcher, a workspace switch) appears without travel. Its first
+  frame already shows it. Its response is the state change itself.
+- Section 2.3 asks for a visible or felt response to every interaction. That response does not have
+  to be movement. A colour, a dim, a blink or a fill can answer an action that should not travel.
+- Anything the pointer or the island summons grows from its source, so the eye can follow it back.
+  Section 18 holds the island's anatomy.
+- Hover reveals keep a dwell timer on the first hover. Once a tooltip is open, neighbouring
+  targets show theirs at once, because the user is already searching.
+- A surface that is not summoned by the user keeps its motion, because the user has not yet
+  learned it exists.
 
 ---
 
@@ -317,6 +393,11 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   (a squircle drawn with `QtQuick.Shapes`). `Rectangle.radius` is banned in this project: it's
   a circular arc, so curvature jumps at the corner and the eye reads a pinch.
   Portable rule: `~/.claude/rules/g2-corners.md`.
+  - **A convex SquircleRect is a fragment shader, not a path.** Fill and inside stroke draw through
+    `squirclefill.frag`, the same p-norm corner as the Shape's outline, so a size that animates
+    costs a few uniform updates per frame instead of a new SVG path, a JS string and a curve
+    tessellation. A concave corner keeps the `QtQuick.Shapes` path, which is the only one that
+    can draw it. `shaded: false` forces the Shape for one instance.
   - **Where a panel meets a screen edge, the corner is CONCAVE** (a negative radius in
     `SquircleRect`). A convex corner there curls the panel away from the edge and leaves a notch of
     dead space, which is wrong: nothing is floating, the panel is part of the edge. Concave
@@ -488,6 +569,7 @@ banditshell/
 │   ├── wave.js                  a sine polyline, fixed at its START: the scrubber's played part
 │   ├── SquircleRect.qml               the ONE rounded-rect primitive; fill and/or outline;
 │   │                                  `pill: "object"|"place"` sets radius and corner power
+│   ├── squirclefill.frag        the convex path of it, drawn by a shader (+ .qsb)
 │   ├── SquircleImage.qml              a picture cut to that same corner, by mask
 │   ├── BlurredImage.qml         the same cut, the picture blurred to colour
 │   ├── ImagePalette.qml         a picture's main colours and how much of it each
@@ -2590,13 +2672,14 @@ Consequences worth knowing:
   shader looks like the surface has quietly lost its colour: the tint goes dark and desaturated
   while still obviously being there. Cost an hour; written down so it costs nothing next time.
 
-This is the same technique as caelestia's compiled `Caelestia.Blobs` plugin. Ours is a fragment
-shader instead, which is the answer to "why not C++": the maths is identical, and a shader is
-where per-pixel maths belongs anyway.
+caelestia's compiled `Caelestia.Blobs` plugin is where the idea came from: SDF panels melting
+into a frame. The maths here is our own, a polynomial smooth-min and superellipse corners, and
+it lives in a fragment shader, which is the answer to "why not C++": a shader is where
+per-pixel maths belongs anyway.
 
-**Still to come:** caelestia's blobs also carry spring physics (`damping`, `stiffness`,
-`deformMatrix`), so a panel squashes as it moves and settles. That is the next step, and the
-field is what makes it possible.
+**Still to come:** spring physics, so a panel squashes as it moves and settles. caelestia's
+blobs do this; ours gets worked out from the physics, not ported. That is the next step, and
+the field is what makes it possible.
 
 ### The workspace column: three attempts
 
@@ -3831,8 +3914,10 @@ row, builds the card and asks for its lyrics before anything is clicked, so the
 click only starts the move: the cover is already decoded and the card already
 knows how wide its lyrics make it.
 
-The card is not the island. Closing it fades it where it is, nothing flies
-back, and the island stays usable while the card is up: the card's click-away
+The card is not the island. Closing it fades it near where it is and nothing
+flies back, but it drifts toward where it came from: up toward the island when
+the island opened it, down when a key raised it from below. The island stays
+usable while the card is up: the card's click-away
 catcher leaves the island's shape and the strip above it alone, and the card
 only briefly holds the keyboard exclusively (see the keyboard section), so the
 pointer on the island is on the island. An island that just handed its body

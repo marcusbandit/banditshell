@@ -4,7 +4,7 @@
   "layer": 1,
   "owns": {
     "qml": ["modules/ipc/CompositorIpc.qml"],
-    "services": ["CliMigration", "CompositorSync", "Hypr", "HyprConfig", "Keymap", "Monitors"],
+    "services": ["CliMigration", "CompositorSync", "Hypr", "HyprConfig", "Keymap", "Monitors", "WorkspaceSlide"],
     "js": [
       "services/chords.js",
       "services/cli-migration.js",
@@ -18,11 +18,11 @@
     "optional": []
   },
   "provides": {
-    "singletons": ["Hypr", "HyprConfig", "Keymap", "Monitors"],
+    "singletons": ["Hypr", "HyprConfig", "Keymap", "Monitors", "WorkspaceSlide"],
     "ipc": ["migration"]
   },
   "config": {
     "namespace": ["compositor", "cli"],
-    "reads": []
+    "reads": ["anim"]
   }
 }

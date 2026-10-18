@@ -1,6 +1,7 @@
 pragma Singleton
 
 import Quickshell
+import qs.config
 import qs.services
 
 Singleton {
@@ -9,6 +10,7 @@ Singleton {
     }
 
     function toggle(part: string, screen: string): string {
+        Appearance.instantly();
         const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w[part].open);
         if (!win)
             return "";
@@ -17,6 +19,7 @@ Singleton {
     }
 
     function open(part: string, screen: string): string {
+        Appearance.instantly();
         const win = Shell.forScreen(screen);
         if (!win)
             return "";
@@ -25,12 +28,14 @@ Singleton {
     }
 
     function close(part: string): string {
+        Appearance.instantly();
         for (const win of Shell.windows)
             win[part]?.hide();
         return "closed";
     }
 
     function pin(win: var, part: string, on: bool): string {
+        Appearance.instantly();
         if (!win)
             return "";
         win[part].pinned = on;
@@ -38,6 +43,7 @@ Singleton {
     }
 
     function unpin(part: string): string {
+        Appearance.instantly();
         for (const win of Shell.windows)
             if (win[part])
                 win[part].pinned = false;

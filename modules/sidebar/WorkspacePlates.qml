@@ -226,17 +226,15 @@ Item {
         epsilon: 0.005
     }
 
-    Follow {
+    Travel {
         id: markY
 
-        speed: Appearance.animation.trackSpeed
         target: root.heldGeom.y
     }
 
-    Follow {
+    Travel {
         id: markH
 
-        speed: Appearance.animation.trackSpeed
         target: root.heldGeom.h
     }
 
@@ -658,7 +656,7 @@ Item {
                 visible: layout.active === layout.idAt(root.heldSlot) && !layout.eclipsed
             }
 
-            StyledText {
+            InkText {
                 anchors.centerIn: parent
 
                 anchors.horizontalCenterOffset: inkOffsetX

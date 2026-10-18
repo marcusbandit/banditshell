@@ -93,7 +93,8 @@ Item {
 
     readonly property bool ready: root.carded || root.picking || (root.toplevel ? shot.ready : root.pictureSource ? image.ready : root.textReady)
     readonly property bool loading: !root.toplevel && !root.picking && !!root.pictureSource && image.status === Image.Loading
-    readonly property bool shown: root.wanted && (root.carded || root.picking || !!root.toplevel || !!root.pictureSource || !!root.listed) && (root.ready || root.loading && root.visible)
+    readonly property bool reading: !!root.readKey && root.linesOf !== root.readKey && root.lines.length > 0
+    readonly property bool shown: root.wanted && (root.carded || root.picking || !!root.toplevel || !!root.pictureSource || !!root.listed) && (root.ready || (root.loading || root.reading) && root.visible)
 
     readonly property real frame: Appearance.padding.small
     readonly property real span: Appearance.sizes.launcherWidth * 0.7
@@ -262,8 +263,6 @@ Item {
                             SquircleRect {
                                 visible: textLine.hit
                                 anchors.fill: parent
-                                anchors.leftMargin: -Appearance.padding.small
-                                anchors.rightMargin: -Appearance.padding.small
                                 radius: Appearance.rounding.small
                                 color: Appearance.colour.accentFill
                             }
@@ -271,7 +270,8 @@ Item {
                             StyledText {
                                 id: lineText
 
-                                width: parent.width
+                                x: Appearance.padding.small
+                                width: parent.width - Appearance.padding.small * 2
                                 text: textLine.modelData || " "
                                 wrapMode: root.clipText ? Text.Wrap : Text.NoWrap
                                 elide: root.clipText ? Text.ElideNone : Text.ElideRight

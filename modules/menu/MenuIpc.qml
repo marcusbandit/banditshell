@@ -1,4 +1,5 @@
 import Quickshell.Io
+import qs.config
 import qs.services
 import qs.modules.panel
 
@@ -11,6 +12,7 @@ IpcHandler {
     }
 
     function open(key: string, screen: string): string {
+        Appearance.instantly();
         const win = Shell.forScreen(screen);
         if (!win)
             return PanelWindows.missing(screen);
@@ -18,6 +20,7 @@ IpcHandler {
     }
 
     function close(): string {
+        Appearance.instantly();
         for (const win of Shell.windows)
             win.menus.hide();
         return "closed";

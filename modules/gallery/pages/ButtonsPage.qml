@@ -25,7 +25,7 @@ Item {
             color: marker.base
         }
 
-        StyledText {
+        InkText {
             anchors.centerIn: parent
             anchors.horizontalCenterOffset: inkOffsetX
             anchors.verticalCenterOffset: inkOffsetY

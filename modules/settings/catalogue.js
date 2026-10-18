@@ -302,7 +302,9 @@ const PAGES_SOURCE = {
             ] },
             { t: "Motion", rows: [
                 { n: 57, icon: "motion_blur", label: "Pace", k: "anim", kind: "slider", min: 80, max: 500, step: 10, fmt: v => `${v} ms`, cfg: "anim.base", dis: s => s.v("reduceMotion"), kw: "animation speed",
-                    why: "The normal animation length. Fast and slow scale from it." }
+                    why: "The normal animation length. Fast and slow scale from it." },
+                { n: 57, icon: "swipe_vertical", label: "Workspace slide", k: "workspaceSlide", kind: "slider", min: 0, max: 250, step: 10, fmt: v => v > 0 ? `${v} ms` : "off", cfg: "anim.workspaceSlide", dis: s => s.v("reduceMotion"), kw: "workspace switch animation hyprland slide",
+                    why: "How long Hyprland slides the desktop when you change workspace. Off switches at once. The shell sets it live, so your Hyprland config is not edited." }
             ] }
         ]
     },
@@ -385,7 +387,7 @@ const PAGES_SOURCE = {
                 { n: [], icon: "currency_exchange", label: "Currency", k: "currency", kind: "choice", o: s => s.currencies, cfg: "launcher.currency", detail: s => s.ratesNote, kw: "currency money exchange rates convert",
                     why: "Typing an amount like 5 eur shows it in this currency. Rates come from the European Central Bank once a day and are kept for when you are offline." },
                 { n: [], icon: "find_in_page", label: "Inside files", k: "contents", kind: "toggle", cfg: "launcher.contents", kw: "search inside files contents text ripgrep grep",
-                    why: "Words you type are also looked for inside the files in your home folder, and inside .config when Hidden files lets it in. Other hidden files, node_modules, caches and anything that looks like a key are skipped." },
+                    why: "Words you type are also looked for inside the files in your home folder, and inside .config when Hidden files lets it in. Other hidden files, node_modules, caches, Python environments, the Android SDK, images, audio, archives and anything that looks like a key are skipped. A search that takes more than 2 seconds is stopped, and the results say so." },
                 { n: [], icon: "travel_explore", label: "Search engine", k: "webSearch", kind: "choice", o: [["https://duckduckgo.com/?q=%s", "DuckDuckGo"], ["https://www.google.com/search?q=%s", "Google"], ["https://www.bing.com/search?q=%s", "Bing"], ["https://search.brave.com/search?q=%s", "Brave"], ["https://www.startpage.com/do/search?q=%s", "Startpage"], ["https://www.ecosia.org/search?q=%s", "Ecosia"], ["https://kagi.com/search?q=%s", "Kagi"]], cfg: "launcher.webSearch", kw: "web search engine google duckduckgo bing" }
             ] },
             { t: "When nothing fits", rows: [
@@ -778,7 +780,7 @@ const PAGES_SOURCE = {
         status: s => [s.v("reduceMotion") && "less motion", s.v("largerText") && "larger text", s.v("contrast") && "more contrast"].filter(Boolean).join(" · ") || "nothing on",
         groups: [
             { rows: [
-                { n: 113, icon: "animation", label: "Less motion", k: "reduceMotion", kind: "toggle", cfg: "access.lessMotion", detail: "fades instead of slides", kw: "accessibility reduce motion" },
+                { n: 113, icon: "animation", label: "Less motion", k: "reduceMotion", kind: "toggle", cfg: "access.lessMotion", detail: "no motion at all", kw: "accessibility reduce motion" },
                 { n: 113, icon: "format_size", label: "Larger text", k: "largerText", kind: "toggle", cfg: "access.largerText", detail: s => `base ${s.v("fontBase")} becomes ${s.largerBase}`, kw: "accessibility larger text" },
                 { n: 113, icon: "contrast", label: "More contrast", k: "contrast", kind: "toggle", cfg: "access.moreContrast", detail: "faint text gets brighter", kw: "accessibility contrast" }
             ] }

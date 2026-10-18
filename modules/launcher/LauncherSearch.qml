@@ -936,7 +936,7 @@ QtObject {
         };
     }
 
-    readonly property var fileRows: root.path || root.text.length < FileSearch.least ? [] : Search.fileRows(FileSearch.lines, root.text, Ranking.place).map(f => root.fileRow(Object.assign({}, f, {
+    readonly property var fileRows: root.path || root.text.length < FileSearch.least ? [] : Search.fileRows(FileSearch.lines, root.text, Ranking.place).slice(0, root.limits.files).map(f => root.fileRow(Object.assign({}, f, {
                 score: f.score - Ranking.EXACT
             }), "file"))
 
@@ -951,6 +951,8 @@ QtObject {
                 icon: Marks.iconFor(hit.path, hit.name, false, System.home) || "draft",
                 score: -Ranking.EXACT * 3
             }))
+
+    readonly property string contentNote: root.grepFor ? FileSearch.noteFor(root.text) : ""
 
     readonly property string cli: `${Quickshell.shellDir}/cli/banditshell`
     readonly property var cliLine: ShellCli.ask(root.query)
@@ -1348,13 +1350,12 @@ QtObject {
             return Object.assign({}, r, {
                 id: r.key,
                 alias: alias,
-                hotkey: hotkey,
-                key: `${r.key}|${r.label}|${r.toggle}|${r.detail}|${alias}|${hotkey}`
+                hotkey: hotkey
             });
         });
     }
 
-    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.sourceGroupLists, root.limits]
+    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, root.sourceGroupLists, root.limits]
 
     property var arranged: []
     property bool arrangePending: false
@@ -1451,6 +1452,7 @@ QtObject {
         }, {
             key: "contents",
             title: "Inside files",
+            note: root.contentNote,
             items: root.contentRows
         }, ...root.sourceGroupLists.reduce((out, list) => out.concat(list), []));
         return Search.arrange(Search.remembered(groups, key => LauncherMemory.bonusOf(key, Date.now())), root.limits);

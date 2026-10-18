@@ -20,14 +20,14 @@ Column {
 
     spacing: Appearance.padding.small
 
-    StyledText {
+    InkText {
         width: parent.width
         alignInk: true
         text: Update.headline
         color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.text
     }
 
-    StyledText {
+    InkText {
         width: parent.width
         alignInk: true
         text: Update.version === "" ? Update.channelLabel : `Version ${Update.version}, ${Update.channelLabel}`
@@ -47,14 +47,14 @@ Column {
             onClicked: Update.check()
         }
 
-        StyledText {
+        InkText {
             anchors.verticalCenter: parent.verticalCenter
             alignInk: true
             text: "|"
             color: Appearance.colour.textFaint
         }
 
-        StyledText {
+        InkText {
             anchors.verticalCenter: parent.verticalCenter
             alignInk: true
             text: Update.checkedAt.getTime() === 0 ? "Never checked" : `Last checked ${Update.ago(Update.checkedAt)}`
@@ -95,7 +95,7 @@ Column {
         visible: Update.resultPending
         spacing: Appearance.padding.small
 
-        StyledText {
+        InkText {
             width: parent.width
             alignInk: true
             text: Update.resultText
@@ -252,7 +252,7 @@ Column {
         visible: CliMigration.stale
         spacing: Appearance.padding.small
 
-        StyledText {
+        InkText {
             width: parent.width
             alignInk: true
             text: "Your keybinds are deprecated"
@@ -274,7 +274,7 @@ Column {
             }
         }
 
-        StyledText {
+        InkText {
             width: parent.width
             visible: root.declineConfirm
             alignInk: true

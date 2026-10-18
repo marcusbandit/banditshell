@@ -371,7 +371,7 @@ Column {
             }
         }
 
-        Icon {
+        InkIcon {
             anchors.centerIn: parent
             anchors.horizontalCenterOffset: inkOffsetX
             anchors.verticalCenterOffset: inkOffsetY
@@ -383,7 +383,7 @@ Column {
             color: key.ink
         }
 
-        StyledText {
+        InkText {
             anchors.centerIn: parent
             anchors.horizontalCenterOffset: inkOffsetX
             anchors.verticalCenterOffset: inkOffsetY
@@ -451,7 +451,7 @@ Column {
                 }
             }
 
-            Icon {
+            InkIcon {
                 anchors.centerIn: parent
                 anchors.horizontalCenterOffset: inkOffsetX
                 anchors.verticalCenterOffset: inkOffsetY

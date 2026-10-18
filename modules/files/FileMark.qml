@@ -87,7 +87,7 @@ Item {
         return Appearance.hsl(turn, accent.hslSaturation * 0.62, Math.max(0.62, accent.hslLightness));
     }
 
-    Icon {
+    InkIcon {
         id: glyph
 
         anchors.centerIn: parent
