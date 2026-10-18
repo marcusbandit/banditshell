@@ -257,7 +257,7 @@ Item {
             anchors.fill: parent
             anchors.margins: -Math.max(1, Math.round(root.thickness / 2))
             pill: "object"
-            color: Appearance.colour.ink
+            color: Appearance.colour.island
         }
 
         SquircleRect {

@@ -72,6 +72,13 @@ Item {
     }
 
     readonly property bool voice: root.focused && Dictation.live
+    readonly property var voiceActivity: ({
+            key: "dictation",
+            kind: "dictation"
+        })
+    readonly property bool voiceAside: root.voice && root.tasking
+    readonly property real voiceShown: voiceOut.value
+    readonly property real voiceRoom: voiceOut.value > 0.001 ? root.taskWidth + (voiceRow.implicitWidth + root.budGap + root.shadowRoom) * 2 : 0
 
     readonly property bool banded: root.border > 0 && root.edge >= root.border
     readonly property bool lifting: root.offStage && root.banded && SystemUpgrade.quiet
@@ -108,6 +115,12 @@ Item {
 
     readonly property var alerts: root.deckEntries.filter(e => !e.leaving)
 
+    readonly property int recentMax: 3
+    readonly property var appGroups: root.offStage ? Notifications.byApp(Notifications.history.filter(e => !root.deckEntries.includes(e))) : []
+    readonly property var recentGroups: root.appGroups.slice(0, root.recentMax)
+    readonly property var recent: root.recentGroups.map(g => g.entries[0])
+    readonly property int unlisted: root.appGroups.slice(root.recentMax).reduce((sum, g) => sum + g.entries.filter(e => !e.leaving).length, 0)
+
     readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music" && a.kind !== "level"), ...(root.lifting ? [
                 {
                     key: "upgrade",
@@ -119,11 +132,12 @@ Item {
                     kind: "quiet",
                     text: Notifications.quietLine
                 }
-            ] : []), ...(Notifications.unread > 0 ? [
+            ] : []), ...(root.unlisted > 0 ? [
                 {
                     key: "notifications",
                     kind: "notifications",
-                    count: Notifications.unread
+                    count: root.unlisted,
+                    more: root.recent.length > 0
                 }
             ] : [])]
 
@@ -188,6 +202,7 @@ Item {
     property bool pinned: false
     property string task: ""
     property string heldTask: ""
+    property var reading: null
     property bool backToOverview: false
     readonly property bool tasking: root.task !== ""
     readonly property bool upgradeOpen: root.task === "upgrade"
@@ -198,12 +213,14 @@ Item {
             timers: "the timers",
             weather: "the weather",
             calendar: "the calendar",
-            microphone: "the microphone"
+            microphone: "the microphone",
+            reading: "a notification"
         })
     readonly property var taskViews: ({
             upgrade: upgradeView,
             update: updateView,
             notifications: notificationsView,
+            reading: readingView,
             timers: timersView,
             weather: weatherView,
             calendar: calendarView,
@@ -211,6 +228,7 @@ Item {
         })
     property bool pulling: false
     property real pullProgress: 0
+    property real pullFrom: 0
 
     readonly property bool hovering: stripHover.hovered || islandHover.hovered || deck.handling
     property bool dwelt: false
@@ -356,14 +374,16 @@ Item {
     readonly property real restWidth: root.deckRest ? root.largeWidth : root.rest === "compact" ? root.rowsWidth + swell.value * 2 : root.compactHeight
     readonly property real restHeight: root.deckRest ? root.cardHeight + root.stackItems.length * root.compactHeight : root.compactHeight * Math.max(1, root.stackItems.length)
 
-    readonly property real fieldWidth: Math.ceil(Math.max(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2, root.taskWidth + root.shadowRoom * 2))
+    readonly property real fieldWidth: Math.ceil(Math.max(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2, root.taskWidth + root.shadowRoom * 2, root.voiceRoom))
     readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), overview.implicitHeight - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2, root.taskHeight) + root.shadowRoom) / root.fieldStep) * root.fieldStep
     readonly property real centreX: scene.width / 2
     readonly property real surfaceX: Math.round((root.width - root.fieldWidth) / 2 + trail.value)
 
-    readonly property real widening: Math.min(1, glide.value * 1.8)
+    readonly property real overshoot: 0.06
+    readonly property real opened: Math.max(0, Math.min(1 + root.overshoot, glide.value))
+    readonly property real widening: Math.min(1, root.opened * 1.8)
     readonly property real pillWidth: wide.value + (span.value - wide.value) * root.widening
-    readonly property real pillHeight: tall.value + (overviewTall.value - tall.value) * glide.value
+    readonly property real pillHeight: tall.value + (overviewTall.value - tall.value) * root.opened
     readonly property real pillX: root.centreX - root.pillWidth / 2
     readonly property real tuckedY: root.edge - root.pillHeight - Appearance.padding.small
     readonly property real lipY: root.edge + Appearance.padding.small - root.pillHeight
@@ -375,7 +395,7 @@ Item {
     readonly property real pillPower: 2 + (Appearance.rounding.power - 2) * root.squared
 
     readonly property real chainRight: root.pillX + root.pillWidth + root.bubbleKeys.length * root.bubblePitch
-    readonly property real deckY: root.pillY + overview.arrivalsTop * Math.min(1, glide.value * 1.6)
+    readonly property real deckY: root.pillY + overview.arrivalsTop * Math.min(1, root.opened * 1.6)
     readonly property real dealY: -(1 - deal.value) * (root.pillY + root.pillHeight - root.edge + Appearance.padding.small)
 
     property var ghost: null
@@ -679,24 +699,37 @@ Item {
             root.close();
     }
 
-    function dragTo(fraction: real): void {
+    function dragTo(delta: real): void {
+        if (!root.pulling)
+            root.pullFrom = Math.max(0, Math.min(glide.value, 1));
         root.pulling = true;
-        root.pullProgress = Math.max(0, Math.min(fraction, 1));
+        root.pullProgress = Math.max(0, Math.min(root.pullFrom + delta, 1));
+        glide.hold(root.pullProgress);
     }
 
     function dragEnd(open: bool): void {
-        if (!root.pulling)
+        if (!root.pulling) {
+            glide.release();
             return;
+        }
         root.pulling = false;
         root.pullProgress = 0;
         if (root.tasking) {
             if (!open)
                 root.close();
-            return;
+        } else {
+            root.pinned = open;
+            if (!open)
+                root.dwelt = false;
         }
-        root.pinned = open;
-        if (!open)
-            root.dwelt = false;
+        glide.release();
+    }
+
+    function catchGlide(down: bool): void {
+        if (down && !glide.settled)
+            glide.grab();
+        else if (!down && !root.pulling)
+            glide.release();
     }
 
     function claimKeys(): void {
@@ -753,6 +786,20 @@ Item {
     onUpgradeOpenChanged: SystemUpgrade.watchers += root.upgradeOpen ? 1 : -1
     onTaskChanged: if (root.task)
         root.heldTask = root.task
+
+    Connections {
+        target: Notifications
+
+        function onReading(entry: var): void {
+            if (!root.offStage)
+                return;
+            Notifications.markSeenOf([entry]);
+            if (Notifications.popups.includes(entry))
+                Notifications.expire(entry);
+            root.reading = entry;
+            root.openTask("reading");
+        }
+    }
 
     Connections {
         target: SystemUpgrade
@@ -944,7 +991,7 @@ Item {
     Follow {
         id: tall
 
-        speed: root.deckRest && root.fanLeads || deck.raised > 0 ? 0 : root.morphSpeed
+        speed: root.deckRest && root.fanLeads || deck.raised !== 0 ? 0 : root.morphSpeed
         target: root.out ? root.restHeight : root.compactHeight
     }
 
@@ -974,10 +1021,9 @@ Item {
             root.heldTask = ""
     }
 
-    Follow {
+    Spring {
         id: glide
 
-        speed: root.morphSpeed
         epsilon: 0.002
         target: root.openness
     }
@@ -1107,6 +1153,7 @@ Item {
                 root.dragTo(fraction);
         }
         onFinished: open => root.dragEnd(open)
+        onPressedChanged: root.catchGlide(zone.pressed)
 
         HoverHandler {
             id: stripHover
@@ -1204,7 +1251,7 @@ Item {
                     readonly property bool tucked: layer.index === 2
                     readonly property real depth: layer.tucked ? 2 - 0.6 * roll.value : layer.index + roll.value
                     readonly property real kept: layer.tucked ? (root.thirdLayer ? 1 - roll.value : 0) : Math.max(0, Math.min(1, backs.value + 1 - layer.depth))
-                    readonly property real shown: peek.value * presence.value * (1 - glide.value)
+                    readonly property real shown: peek.value * presence.value * (1 - root.opened)
                     readonly property real ghostness: layer.index === 0 && root.ghost ? (1 - roll.value) * (1 - fan.value) * presence.value : 0
                     readonly property real strip: root.pillRadius * 2 + Appearance.padding.small
                     readonly property real stand: root.ghost && layer.index === 0 ? root.ghostHeight + (root.pillHeight - root.ghostHeight) * roll.value : root.pillHeight
@@ -1217,7 +1264,7 @@ Item {
                     y: root.pillY + layer.stand - height + layer.reach
                     radius: root.pillRadius
                     cornerPower: root.pillPower
-                    color: Appearance.blend(Appearance.colour.ink, Appearance.colour.paper, layer.depth < 1 ? 0.06 * layer.depth : 0.09 - 0.03 * layer.depth)
+                    color: Appearance.blend(Appearance.colour.island, Appearance.colour.paper, layer.depth < 1 ? 0.06 * layer.depth : 0.09 - 0.03 * layer.depth)
                     stroke: Appearance.colour.seam
                     strokeWidth: Appearance.stroke.line
                     opacity: Math.max(layer.shown * layer.kept, layer.ghostness)
@@ -1295,13 +1342,57 @@ Item {
                             width: under.twin?.width ?? 0
                             height: width
                             pill: "object"
-                            color: Appearance.blend(Appearance.colour.ink, Appearance.colour.paper, 0.06 * behind.d)
+                            color: Appearance.blend(Appearance.colour.island, Appearance.colour.paper, 0.06 * behind.d)
                             stroke: Appearance.colour.seam
                             strokeWidth: Appearance.stroke.line
                             opacity: under.fade * behindShown.value
                             visible: opacity > 0.01
                         }
                     }
+                }
+            }
+
+            Item {
+                id: voiceCapsule
+
+                readonly property real shown: voiceOut.value * presence.value
+
+                x: root.pillX + root.pillWidth - voiceCapsule.width + (voiceCapsule.width + root.budGap) * voiceOut.value
+                y: root.pillY
+                width: voiceRow.implicitWidth
+                height: root.compactHeight
+                opacity: Math.min(1, voiceCapsule.shown * 1.5)
+                visible: voiceCapsule.shown > 0.01
+
+                Follow {
+                    id: voiceOut
+
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: 0.004
+                    target: root.voiceAside ? 1 : 0
+                }
+
+                DropShadow {
+                    anchors.fill: parent
+                    pill: "object"
+                    opacity: settle.value * Appearance.opacity.glow * voiceCapsule.shown
+                }
+
+                SquircleRect {
+                    anchors.fill: parent
+                    pill: "object"
+                    color: Appearance.colour.island
+                    stroke: Appearance.colour.seam
+                    strokeWidth: Appearance.stroke.line
+                }
+
+                ActivityRow {
+                    id: voiceRow
+
+                    width: parent.width
+                    height: parent.height
+                    activity: root.voiceActivity
+                    live: voiceCapsule.visible
                 }
             }
 
@@ -1366,6 +1457,8 @@ Item {
                 }
 
                 Pull {
+                    id: shut
+
                     x: root.pillX
                     y: root.pillY
                     width: root.pillWidth
@@ -1377,8 +1470,9 @@ Item {
                     angle: Config.values.control.pullAngleEdge
                     travel: Math.max(1, (root.tasking ? root.taskHeight : overview.implicitHeight) - root.compactHeight)
 
-                    onPulled: fraction => root.dragTo(1 - fraction)
+                    onPulled: fraction => root.dragTo(-fraction)
                     onFinished: open => root.dragEnd(!open)
+                    onPressedChanged: root.catchGlide(shut.pressed)
                 }
 
                 IslandOverview {
@@ -1388,6 +1482,8 @@ Item {
                     y: root.pillY
                     width: root.largeWidth
                     activities: root.overviewRows
+                    notifications: root.recentGroups
+                    room: root.taskRoom
                     watched: overviewFade.value > 0.01 && taskFade.value < 0.99
                     arrivals: root.deckEntries.length > 0 ? deck.implicitHeight : 0
                     carried: root.stackKeys
@@ -1397,6 +1493,7 @@ Item {
                     enabled: root.expanded && !root.tasking
 
                     onChosen: activity => root.choose(activity)
+                    onLifted: root.close()
                 }
 
                 Loader {
@@ -1498,7 +1595,7 @@ Item {
                         readonly property real liveTop: root.tasking ? -1 : overview.rowTop(row.key)
                         readonly property real toY: row.liveTop >= 0 ? row.liveTop : row.heldTop
                         readonly property bool carried: row.here && !root.tasking && row.toY >= 0
-                        readonly property real t: row.carried ? glide.value : 0
+                        readonly property real t: row.carried ? root.opened : 0
                         readonly property real fromWidth: root.pillWidth - swell.value * 2
                         readonly property real toX: overview.x + overview.pad
                         readonly property real toWidth: overview.width - overview.pad * 2
@@ -1555,7 +1652,7 @@ Item {
                         activity: row.item
                         lights: row.t > 0.5
                         live: root.focused && row.visible
-                        opacity: presence.value * appear.value * (1 - tuck.value) * (row.carried ? 1 : Math.max(0, 1 - glide.value * 2.5))
+                        opacity: presence.value * appear.value * (1 - tuck.value) * (row.carried ? 1 : Math.max(0, 1 - root.opened * 2.5))
                         visible: opacity > 0.005
                         enabled: row.here && (root.openness === 0 || row.carried)
 
@@ -1590,7 +1687,7 @@ Item {
                     readonly property real lean: root.stackStep * depthShown.value / 2
                     readonly property real full: root.compactHeight * (0.6 + 0.4 * grow.value) * (1 + 0.12 * hoverGlow.value)
 
-                    readonly property real travel: Math.min(1, glide.value * 2.2)
+                    readonly property real travel: Math.min(1, root.opened * 2.2)
                     readonly property real restCx: root.pillX + root.pillWidth + slide.value - bubble.full + (bubble.full + root.budGap) * grow.value + bubble.full / 2
                     readonly property real restCy: root.pillY + root.compactHeight / 2 - bubble.lean
                     readonly property real cx: bubble.restCx + (root.pillX + root.pillWidth - bubble.full / 2 - bubble.restCx) * bubble.travel
@@ -1679,7 +1776,7 @@ Item {
                         width: label.implicitWidth + Appearance.padding.normal * 2
                         height: label.implicitHeight + Appearance.padding.small
                         pill: "object"
-                        color: Appearance.colour.ink
+                        color: Appearance.colour.island
                         opacity: hoverGlow.value
                         visible: opacity > 0.01 && !!face.label
 
@@ -1700,7 +1797,7 @@ Item {
                     return root.rowOfKind("music");
                 }
                 readonly property rect to: overview.coverRect
-                readonly property real t: glide.value
+                readonly property real t: root.opened
                 readonly property real startX: from ? from.markX : root.centreX
                 readonly property real startY: from ? from.markY : root.pillY
 
@@ -1755,6 +1852,14 @@ Item {
         id: notificationsView
 
         IslandNotifications {}
+    }
+
+    Component {
+        id: readingView
+
+        IslandNotificationPage {
+            entry: root.reading
+        }
     }
 
     Component {

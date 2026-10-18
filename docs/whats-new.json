@@ -1,13 +1,94 @@
 {
   "entries": [
     {
-      "id": "2026-10-18-12",
+      "id": "2026-10-18-13",
       "date": "2026-10-18",
       "changes": [
         {
           "type": "issues",
           "severity": "minor",
           "text": "Browsing wallpapers in the picker reveals each one again instead of snapping to it. Press on while one is still sweeping in and the next sweeps over it, from the side you are browsing towards, without the half-shown picture jumping."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-18-12",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "major",
+          "text": "Clicking a notification opens it and keeps it. The app's own action runs, or its window comes forward, and the notification stays in your history as read. It used to be deleted on every click, even when there was nothing to open. Swipe it sideways or press its close mark to get rid of one."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A notification with no app behind it, such as one from a script, opens big in the island when you click it: the whole text, its buttons and reply, and a dismiss button."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Opening the island shows your three newest notifications under the music, as full cards you can read, click or swipe away. A row under them says how many more there are and opens the rest."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Everything you can grab in the island now moves like a spring. A notification you drag follows your finger, swings back to the middle with a small bounce if you let go early, and can be caught again while it is flying. Pulling the island open or shut follows your finger exactly and carries the speed of your swipe."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Swiping a notification away in the history closes its row up. A swipe to the left used to leave an empty gap where the card had been."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Pausing music keeps it in the island. It used to switch to whatever else had media, often an old video in a browser tab that nothing was playing. A player you never played is not shown at all now, even when it is the only one."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Notifications fold by app. The app that sent something last is on top, as one card with a count beside its name. Click it to see all of them, click the count to fold them again, and swipe a folded card sideways to clear that whole app at once."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Dictation stays in sight while a view fills the island. With the notifications, the player, the timers or the calendar open, your voice bars step out into a small capsule beside the island instead of disappearing behind the view."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The island wears your theme's surface colour, the same as the panels, instead of near-black."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Every notification in the island's lists is its own tile now, joined to its neighbours in one column like on Android: the app's icon large on the left, the title and time on top, the text under it, and the app's name with its count at the bottom. Start swiping one and its corners round off as it comes loose from the column."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The notifications next to the one you swipe are tugged along a little and spring back once it comes free."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Notification cards take on the colour of the playing song's cover, like the rest of the island, instead of staying plain grey."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Swiping notifications away quickly no longer leaves cards stacked on top of each other or an empty gap in the list."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Opening the notification history no longer freezes the island for a moment when you have many notifications. It now builds one card per app, and app icons are measured once rather than once per card."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "control.spring in config.json sets how the springs feel: stiffness for how hard they pull back, damping for how quickly the bounce dies out, and mass. control.dragResistance is still how much a card resists your finger at first."
         }
       ]
     },

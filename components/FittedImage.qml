@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Effects
 import qs.config
+import "fitted-boxes.js" as Boxes
 
 Item {
     id: root
@@ -33,9 +34,15 @@ Item {
     implicitWidth: Appearance.font.iconSize
     implicitHeight: implicitWidth
 
+    readonly property bool lasting: root.source.startsWith("image://")
+
     onSourceChanged: {
-        root.probed = null;
-        if (source && !root.fit)
+        root.probed = root.lasting ? Boxes.known(root.source) : null;
+        if (!root.source || root.fit)
+            return;
+        if (root.probed)
+            root.measured(root.probed);
+        else
             probe.measure();
     }
 
@@ -55,7 +62,7 @@ Item {
         smooth: true
         visible: !root.tinted && root.ready
 
-        onStatusChanged: if (status === Image.Ready && root.source && !root.fit)
+        onStatusChanged: if (status === Image.Ready && root.source && !root.fit && !root.probed)
             probe.measure()
     }
 
@@ -121,6 +128,8 @@ Item {
             const w = x1 - x0 + 1;
             const h = y1 - y0 + 1;
             const box = [x0 / width, y0 / height, w / width, h / height, opaque / (w * h)];
+            if (root.lasting)
+                Boxes.remember(root.source, box);
             root.probed = box;
             root.measured(box);
         }
