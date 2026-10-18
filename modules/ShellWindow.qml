@@ -629,9 +629,7 @@ PanelWindow {
             onOpenChanged: if (open)
                 win.closeOthers(sessionLayer)
 
-            panel: SessionMenu {
-                border: win.border
-            }
+            panel: SessionMenu {}
         }
 
         LazyPanel {
