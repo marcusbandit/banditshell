@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-12",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type define in the launcher and it offers Define a word. Choose it, type the word, and its meanings show up right there. Dictionary and meaning find it too."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-11",
       "date": "2026-10-18",
       "changes": [

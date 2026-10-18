@@ -11,7 +11,7 @@ function lib(file, names) {
 }
 
 const Translation = lib("services/translation.js", ["ask", "languageCode", "languageName", "readAnswer", "keyOf", "splitKey", "pageUrl", "localeCode"]);
-const Dictionary = lib("services/dictionary.js", ["ask", "readAnswer", "plain", "pageUrl"]);
+const Dictionary = lib("services/dictionary.js", ["ask", "started", "readAnswer", "plain", "pageUrl"]);
 const Packages = lib("services/packages.js", ["ask", "readSystem", "readAur", "readFlatpakIndex", "readFlatpakInstalled", "searchFlatpaks", "rank", "installToken", "removalOf", "pageUrl", "detailOf"]);
 const Github = lib("services/github.js", ["ask", "readSummary", "matches", "ago", "numberUrl"]);
 const Browsing = lib("services/browsing.js", ["ask", "hostOf", "prepare", "match"]);
@@ -92,6 +92,14 @@ test.describe("define", () => {
         assert.strictEqual(Dictionary.ask("define"), "");
         assert.strictEqual(Dictionary.ask("define 42"), "");
         assert.strictEqual(Dictionary.ask("defined"), "");
+    });
+
+    test.it("knows when the ask is waiting for its word", () => {
+        assert.strictEqual(Dictionary.started("define "), true);
+        assert.strictEqual(Dictionary.started("  meaning of  "), true);
+        assert.strictEqual(Dictionary.started("define"), false);
+        assert.strictEqual(Dictionary.started("define word"), false);
+        assert.strictEqual(Dictionary.started("defined "), false);
     });
 
     test.it("reads dictionaryapi.dev senses in order", () => {
