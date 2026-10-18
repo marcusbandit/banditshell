@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-11",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "If the shell freezes, banditshell unstick brings it back. It keeps a trace of where it hung in ~/.local/state/banditshell/hangs, and a locked session gets its lock screen back instead of Hyprland's red screen. Run it from another tty or over ssh."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell watchdog does the same on its own: it unsticks a shell that has stopped answering for 30 seconds, or one that is gone while the session is locked. Turn it on with the banditshell-watchdog user service in systemd/."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-10",
       "date": "2026-10-18",
       "changes": [
