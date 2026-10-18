@@ -95,7 +95,7 @@ build_table() {
     add_step monocraft                     "font_present Monocraft"                  @monocraft                    1 "the shell's face, and its pixel grid"
 
     add_step hyprland                      "command -v hyprctl"                      hyprland                      2 "the compositor it talks to"
-    add_step qt6-declarative               "qt_present module QtQuick"               qt6-declarative               2 "QtQuick, Shapes, Effects"
+    add_step qt6-declarative               "qt_present module QtQuick.Effects && qt_present module QtQuick.Shapes" qt6-declarative 2 "QtQuick, Shapes, Effects"
     add_step qt6-multimedia                "qt_present module QtMultimedia"          qt6-multimedia                2 "sound in the notifications"
     add_step qt6-websockets                "qt_present module QtWebSockets"          qt6-websockets                2 "talking to OBS while you stream"
     add_step qt6-shadertools               "qt_present tool qsb"                     qt6-shadertools               2 "qsb, to compile the chassis shader"
@@ -103,6 +103,11 @@ build_table() {
     add_step ttf-nerd-fonts-symbols        "font_present 'Symbols Nerd Font'"        ttf-nerd-fonts-symbols        2 "per-application marks"
     add_step nodejs                        "command -v node"                         nodejs                        2 "the old-bind rewriter and the tests"
     add_step rsync                         "command -v rsync"                        rsync                         2 "the last known good copy"
+    add_step diffutils                     "command -v cmp"                          diffutils                     2 "cmp, which checks the Lua shim beside hyprland.lua is current"
+    add_step tar                           "command -v tar"                          tar                           2 "unpacking a new version during an update"
+    add_step util-linux                    "command -v flock && command -v setsid"   util-linux                    2 "flock and setsid, which keep updates and the trial watcher apart"
+    add_step procps                        "command -v pgrep"                        procps-ng                     2 "ps and pgrep, for the launcher's process list"
+    add_step tzdata                        "test -e \"\${TZDIR:-/usr/share/zoneinfo}/zone.tab\"" tzdata             2 "the time zone names for the clock and the region page"
     add_step wl-clipboard                  "command -v wl-paste"                     wl-clipboard                  2 "what was copied, and its types"
     add_step jq                            "command -v jq"                           jq                            2 "the clipboard recorder's json"
     add_step grim                          "command -v grim"                         grim                          2 "screenshots and the freeze picker"
@@ -369,49 +374,52 @@ PKG_MANAGER=""
 APT_REFRESHED=0
 
 PACKAGE_TABLE='
-pacman                    apt-get                     dnf                      zypper                   xbps-install          apk
-quickshell                -                           -                        =                        -                     =
-curl                      =                           =                        =                        =                     =
-unzip                     =                           =                        =                        =                     =
-fontconfig                =                           =                        =                        =                     =
-hyprland                  =                           =                        =                        -                     =
-qt6-declarative           qml6-module-qtquick+qml6-module-qtquick-shapes+qml6-module-qtquick-effects qt6-qtdeclarative qt6-declarative-imports qt6-declarative qt6-qtdeclarative
-qt6-multimedia            qml6-module-qtmultimedia    qt6-qtmultimedia         qt6-multimedia-imports   qt6-multimedia        qt6-qtmultimedia
-qt6-websockets            qml6-module-qtwebsockets    qt6-qtwebsockets         qt6-websockets-imports   qt6-websockets        qt6-qtwebsockets
-qt6-shadertools           qt6-shader-baker            qt6-qtshadertools-devel  qt6-shadertools-devel    qt6-shadertools-devel qt6-qtshadertools-dev
-ttf-nerd-fonts-symbols    @nerd-symbols               @nerd-symbols            @nerd-symbols            @nerd-symbols         @nerd-symbols
-nodejs                    =                           =                        nodejs-default           =                     =
-rsync                     =                           =                        =                        =                     =
-wl-clipboard              =                           =                        =                        =                     =
-jq                        =                           =                        =                        =                     =
-grim                      =                           =                        =                        =                     =
-slurp                     =                           =                        =                        =                     =
-swappy                    =                           =                        =                        =                     =
-ffmpeg                    =                           ffmpeg-free              =                        =                     =
-libnotify                 libnotify-bin               =                        libnotify-tools          =                     =
-xdg-utils                 =                           =                        =                        =                     =
-fd                        fd-find                     fd-find                  =                        =                     =
-libqalculate              qalc                        qalculate                qalculate                =                     =
-ripgrep                   =                           =                        =                        =                     =
-networkmanager            network-manager             NetworkManager           NetworkManager           NetworkManager        networkmanager-cli
-ddcutil                   =                           =                        =                        =                     =
-pciutils                  =                           =                        =                        =                     =
-wtype                     =                           =                        =                        =                     =
-ydotool                   =                           =                        =                        =                     =
-python                    python3                     python3                  python3                  python3               python3
-python-gobject            python3-gi                  python3-gobject          python3-gobject          python3-gobject       py3-gobject3
-python-cryptography       python3-cryptography        python3-cryptography     python3-cryptography     python3-cryptography  py3-cryptography
-python-evdev              python3-evdev               python3-evdev            python3-evdev            python3-evdev         py3-evdev
-glib2                     libglib2.0-bin              =                        glib2-tools              glib                  glib
-zenity                    =                           =                        =                        =                     =
-qrencode                  =                           =                        =                        =                     =
-zxing-cpp                 zxing-cpp-tools             =                        =                        =                     =
-librsvg                   librsvg2-bin                librsvg2-tools           rsvg-convert             librsvg-utils         rsvg-convert
-gcc                       gcc+libc6-dev               =                        =                        =                     build-base
-pkgconf                   =                           pkgconf-pkg-config       pkgconf-pkg-config       =                     =
-wayland                   libwayland-dev              wayland-devel            wayland-devel            wayland-devel         wayland-dev
-polkit                    pkexec                      =                        =                        =                     =
-gnu-userland              -                           -                        -                        -                     coreutils+findutils+grep+sed+gawk+procps-ng+util-linux-misc
+pacman                  apt-get                   dnf                     zypper                   xbps-install           apk
+quickshell              =                         =                       =                        =                      -
+curl                    =                         =                       =                        =                      =
+unzip                   =                         =                       =                        =                      =
+fontconfig              =                         =                       =                        =                      =
+hyprland                =                         -                       =                        -                      =
+qt6-declarative         qml6-module-qtquick+qml6-module-qtquick-shapes+qml6-module-qtquick-effects  qt6-qtdeclarative       qt6-declarative-imports  qt6-declarative        qt6-qtdeclarative
+qt6-multimedia          qml6-module-qtmultimedia  qt6-qtmultimedia        qt6-multimedia-imports   qt6-multimedia         qt6-qtmultimedia
+qt6-websockets          qml6-module-qtwebsockets  qt6-qtwebsockets-devel  qt6-websockets-imports   qt6-websockets         qt6-qtwebsockets
+qt6-shadertools         qt6-shader-baker          qt6-qtshadertools       qt6-shadertools-devel    qt6-shadertools-devel  qt6-qtshadertools-dev
+ttf-nerd-fonts-symbols  @nerd-symbols             @nerd-symbols           @nerd-symbols            @nerd-symbols          @nerd-symbols
+nodejs                  =                         =                       nodejs-default           =                      =
+rsync                   =                         =                       =                        =                      =
+wl-clipboard            =                         =                       =                        =                      =
+jq                      =                         =                       =                        =                      =
+grim                    =                         =                       =                        =                      =
+slurp                   =                         =                       =                        =                      =
+swappy                  =                         =                       =                        =                      -
+ffmpeg                  =                         ffmpeg-free             =                        =                      =
+libnotify               libnotify-bin             =                       libnotify-tools          =                      =
+xdg-utils               =                         =                       =                        =                      =
+fd                      fd-find                   fd-find                 =                        =                      =
+libqalculate            qalc                      qalculate               qalculate                qalculate              qalc
+ripgrep                 =                         =                       =                        =                      =
+networkmanager          network-manager           NetworkManager          NetworkManager           NetworkManager         networkmanager-cli
+ddcutil                 =                         =                       =                        =                      =
+pciutils                =                         =                       =                        =                      =
+wtype                   =                         =                       =                        =                      =
+ydotool                 =                         =                       =                        -                      -
+python                  python3                   python3                 python3                  python3                python3
+python-gobject          python3-gi                python3-gobject         python3-gobject          python3-gobject        py3-gobject3
+python-cryptography     python3-cryptography      python3-cryptography    python3-cryptography     python3-cryptography   py3-cryptography
+python-evdev            python3-evdev             python3-evdev           python3-evdev            python3-evdev          py3-evdev
+glib2                   libglib2.0-bin            =                       glib2-tools              glib                   glib
+zenity                  =                         =                       =                        =                      =
+qrencode                =                         =                       =                        =                      libqrencode-tools
+zxing-cpp               zxing-cpp-tools           -                       zxing-cpp-examples       zxing-cpp-progs        zxing
+librsvg                 librsvg2-bin              librsvg2-tools          rsvg-convert             librsvg-utils          rsvg-convert
+gcc                     gcc+libc6-dev             =                       =                        =                      build-base
+pkgconf                 =                         pkgconf-pkg-config      pkgconf-pkg-config       =                      =
+util-linux              =                         =                       =                        =                      util-linux-misc
+procps-ng               procps                    =                       procps                   =                      =
+tzdata                  =                         =                       timezone                 =                      =
+wayland                 libwayland-dev            wayland-devel           wayland-devel            wayland-devel          wayland-dev
+polkit                  pkexec                    =                       pkexec                   =                      =
+gnu-userland            -                         -                       -                        -                      coreutils+findutils+grep+sed+gawk+procps-ng+util-linux-misc
 '
 
 detect_manager() {
@@ -477,7 +485,14 @@ install_pkg() {
         if [ "$APT_REFRESHED" -eq 0 ]; then
             sudo -n apt-get update >/dev/null 2>&1 && APT_REFRESHED=1
         fi
-        STEP_OUTPUT="$(sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y "${list[@]}" 2>&1)"
+        STEP_OUTPUT="$(sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y "${list[@]}" 2>&1)" && return 0
+        local backports
+        backports="$(. /etc/os-release 2>/dev/null && printf '%s' "${VERSION_CODENAME:-}")-backports"
+        if ! apt-cache policy 2>/dev/null | grep -q " $backports/"; then
+            STEP_OUTPUT="$STEP_OUTPUT"$'\n'"not in the main archive; $backports may carry it: add it to your apt sources and run this again"
+            return 1
+        fi
+        STEP_OUTPUT="$(sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y -t "$backports" "${list[@]}" 2>&1)"
         ;;
     dnf) STEP_OUTPUT="$(sudo -n dnf install -y "${list[@]}" 2>&1)" ;;
     zypper) STEP_OUTPUT="$(sudo -n zypper --non-interactive install "${list[@]}" 2>&1)" ;;
@@ -761,6 +776,12 @@ run_step() {
         @charge-limit) install_charge_limit && ok=0 ;;
         *) install_pkg "$pkg" && ok=0 ;;
         esac
+    fi
+
+    if [ "$ok" -eq 0 ] && [ "$DRY_RUN" -eq 0 ] && [ "${pkg#@}" = "$pkg" ] && ! eval "$probe" >/dev/null 2>&1; then
+        ok=1
+        STEP_OUTPUT="${STEP_OUTPUT:+$STEP_OUTPUT
+}installed, but the check still fails: $probe"
     fi
 
     if [ "$ok" -eq 0 ]; then

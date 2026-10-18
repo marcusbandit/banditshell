@@ -683,9 +683,10 @@ cached_pid() {
 }
 
 absolute_path() {
-    local path=$1
+    local path=$1 resolved
     [[ $path == /* ]] || path=$PWD/$path
-    realpath -s -m -- "$path" 2>/dev/null || printf '%s\n' "$path"
+    resolved=$(realpath -s -m -- "$path" 2>/dev/null) || resolved=$path
+    printf '%s\n' "$resolved"
 }
 
 remember_pid() {
@@ -1926,7 +1927,7 @@ api_list() {
     fi
     printf '%s\n' "$rows" | awk -F'\t' '
         { id[NR] = $1; status[NR] = $2; about[NR] = $5; if (length($1) > width) width = length($1) }
-        END { for (i = 1; i <= NR; i++) printf "%-*s  %-16s %s\n", width, id[i], status[i], about[i] }
+        END { for (i = 1; i <= NR; i++) printf "%-" width "s  %-16s %s\n", id[i], status[i], about[i] }
     '
 }
 
@@ -3101,7 +3102,7 @@ update_check() {
 update_label() {
     local label=""
     [ -n "$1" ] || return 0
-    label=$(ugit show "$1:docs/whats-new.json" 2>/dev/null | sed -n 's/^[[:space:]]*"id":[[:space:]]*"\([^"]*\)".*/\1/p' | head -1) || label=""
+    label=$(ugit show "$1:docs/whats-new.json" 2>/dev/null | awk -F'"' '!found && /^[[:space:]]*"id":[[:space:]]*"/ { print $4; found = 1 }') || label=""
     printf '%s' "${label:-${1:0:7}}"
 }
 
@@ -3122,6 +3123,7 @@ update_result() {
 update_lock() {
     mkdir -p "$UPDATE_STATE"
     exec 8>"$UPDATE_STATE/lock"
+    command -v flock >/dev/null || update_fail "fatal: flock is missing; install util-linux"
     flock "$@" 8 || update_fail "fatal: another update is already running"
 }
 

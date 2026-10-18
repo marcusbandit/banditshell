@@ -75,7 +75,7 @@ test("a refusal that used to be sniffed by three verbs now comes out of one plac
 test("the pid is cached, validated with kill -0, and rescanned when it goes stale", async () => {
     const stub = stubs();
     const fake = directory("instance");
-    fs.symlinkSync("/usr/bin/sleep", path.join(fake, "qs"));
+    fs.symlinkSync(spawnSync("sh", ["-c", "command -v sleep"], { encoding: "utf8" }).stdout.trim(), path.join(fake, "qs"));
     const child = spawn(path.join(fake, "qs"), ["60"], { stdio: "ignore" });
     try {
         await new Promise(resolve => setTimeout(resolve, 100));
