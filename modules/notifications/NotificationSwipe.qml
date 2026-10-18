@@ -16,23 +16,27 @@ Item {
     signal scrolled(real by)
     signal scrollEnded(real speed)
 
-    property real dragX: 0
     property real pulled: 0
     property bool dragging: false
     property bool flinging: false
     property int flung: 0
 
-    readonly property real shift: root.dragging ? root.dragX : slide.value
+    readonly property real shift: slide.value
     readonly property real fade: Math.min(1, Math.abs(root.shift) / Math.max(1, root.width))
 
     readonly property bool pressed: press.pressed
     readonly property bool moved: press.throwing || press.scrolling
     readonly property bool hovered: pointer.hovered
-    readonly property bool handling: press.pressed || root.dragging || root.flinging
+    readonly property bool handling: press.pressed || root.dragging || root.flinging || slide.moving
 
     readonly property real throwDistance: root.width * Config.values.control.dragDismissFraction
+    readonly property real flick: Config.values.control.flickVelocity
 
-    readonly property bool committed: Math.abs(root.pulled) >= root.throwDistance || (root.pulled * press.velocity > 0 && Math.abs(press.velocity) >= Config.values.control.flickVelocity)
+    function committed(speed: real): bool {
+        const outward = root.pulled * speed > 0;
+        const fast = Math.abs(speed) >= root.flick;
+        return outward && fast || Math.abs(root.pulled) >= root.throwDistance && !(fast && !outward);
+    }
 
     function resist(delta: real): real {
         const commit = root.throwDistance;
@@ -42,9 +46,17 @@ Item {
         return delta < 0 ? -resisted : resisted;
     }
 
+    function unresist(offset: real): real {
+        const commit = root.throwDistance;
+        const k = Math.max(0.01, Config.values.control.dragResistance);
+        const m = Math.abs(offset);
+        const free = m < commit * k ? m / k : m - commit * k + commit;
+        return offset < 0 ? -free : free;
+    }
+
     function springBack(): void {
-        slide.value = root.shift;
         slide.target = 0;
+        slide.release();
         root.dragging = false;
         root.pulled = 0;
         press.throwing = false;
@@ -58,13 +70,13 @@ Item {
             root.kept();
             return;
         }
-        slide.value = root.shift;
         root.dragging = false;
         root.pulled = 0;
         press.throwing = false;
         root.flung = direction;
         root.flinging = true;
         slide.target = direction * root.width * 1.15;
+        slide.release();
     }
 
     function reset(): void {
@@ -80,19 +92,17 @@ Item {
         id: pointer
     }
 
-    Follow {
+    Spring {
         id: slide
 
-        speed: Appearance.animation.trackSpeed
         epsilon: 0.5
 
         onValueChanged: if (root.flinging && Math.abs(slide.value) >= root.width) {
-            const direction = root.flung;
-            root.flinging = false;
-            if (direction > 0)
+            if (root.flung > 0)
                 root.released();
             else
                 root.kept();
+            root.flinging = false;
         }
     }
 
@@ -112,6 +122,7 @@ Item {
         property bool scrolling: false
         property bool holding: false
         property bool wandered: false
+        property bool caught: false
 
         anchors.fill: parent
         hoverEnabled: true
@@ -121,8 +132,9 @@ Item {
         cursorShape: press.throwing ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
         function begin(): void {
-            press.startedAt = root.shift;
-            press.throwing = false;
+            press.caught = root.flinging || slide.moving && Math.abs(slide.value) >= Config.values.control.dragThreshold;
+            press.startedAt = press.caught ? root.unresist(slide.value) : 0;
+            press.throwing = press.caught;
             press.scrolling = false;
             press.holding = false;
             press.wandered = false;
@@ -131,6 +143,13 @@ Item {
             press.lastDy = 0;
             press.trail = [];
             press.lastEvent = Date.now();
+            if (!press.caught)
+                return;
+            root.flinging = false;
+            root.flung = 0;
+            root.pulled = press.startedAt;
+            root.dragging = true;
+            slide.grab();
         }
 
         function advance(dx: real, dy: real): void {
@@ -160,8 +179,8 @@ Item {
                 press.throwing = true;
             }
 
-            root.pulled = dx;
-            root.dragX = root.resist(press.startedAt + dx);
+            root.pulled = press.startedAt + dx;
+            slide.hold(root.resist(root.pulled));
             root.dragging = true;
         }
 
@@ -178,7 +197,8 @@ Item {
         function conclude(): void {
             if (!press.throwing)
                 return;
-            if (root.committed)
+            const speed = Date.now() - press.lastEvent > slide.stillAfter ? 0 : press.velocity;
+            if (root.committed(speed))
                 root.fling(root.pulled > 0 ? 1 : -1);
             else
                 root.springBack();

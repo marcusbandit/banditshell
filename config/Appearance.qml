@@ -310,6 +310,12 @@ Singleton {
         readonly property int settle: root.config.anim.settle
     }
 
+    readonly property QtObject spring: QtObject {
+        readonly property real stiffness: root.config.control.spring.stiffness
+        readonly property real damping: root.config.control.spring.damping
+        readonly property real mass: root.config.control.spring.mass
+    }
+
     readonly property QtObject sizes: QtObject {
 
         readonly property int border: root.follows ? Compositor.gapsOut : root.config.edge.border

@@ -10,6 +10,7 @@ Item {
     id: root
 
     property var activities: []
+    property var notifications: []
     property bool watched: false
 
     property real arrivals: 0
@@ -17,6 +18,7 @@ Item {
     property real carriedOpacity: 0
 
     signal chosen(var activity)
+    signal lifted
 
     readonly property real pad: Appearance.padding.card
     readonly property real spotPad: Appearance.padding.small
@@ -283,6 +285,20 @@ Item {
             onExpand: root.chosen({
                 kind: "music"
             })
+        }
+
+        AlertDeck {
+            x: -root.pad
+            width: root.width
+            visible: root.notifications.length > 0
+            entries: root.notifications
+            fanned: 1
+            footed: false
+            liftsAway: false
+
+            onDismissed: entry => Notifications.forget(entry)
+            onKept: entry => Notifications.forget(entry)
+            onLifted: root.lifted()
         }
 
         ActivityRow {

@@ -176,8 +176,8 @@ The feel to chase: **as if the intent of using the computer makes the computer c
 Alive, responsive, compliant to intent. Nothing is static. Nothing is dead. The computer
 answers the *intent* of use, and only when asked.
 
-Animation implementation for all this motion/summon/tracking comes in two curves, both chased
-every frame so either can be caught and retargeted mid-flight:
+Animation implementation for all this motion/summon/tracking comes in three curves, all chased
+every frame so any of them can be caught and retargeted mid-flight:
 
 - **Follow (`components/Follow.qml`), ease-out**, for anything that answers an input: a reveal,
   a press, a panel arriving. Exponential smoothing,
@@ -188,17 +188,25 @@ every frame so either can be caught and retargeted mid-flight:
   new place: the workspace marker, a menu gliding between sidebar icons, rows closing up, the
   next notification stepping forward. A critically damped follower: it starts gently, arrives
   gently, keeps its speed when the target moves, and never crosses past the target.
+- **Spring (`components/Spring.qml`)**, for anything the hand can hold: a notification card, the
+  island when it is pulled open or shut, a stack lifted away. A mass on a spring, solved exactly
+  each frame (`components/spring.js`), with stiffness, damping and mass in `control.spring`. A
+  finger holds it 1:1 (`hold`), a press catches it wherever it is in flight (`grab`), and letting
+  go hands it the finger's speed (`release`), so a throw carries on the way it was thrown. Short
+  of a throw it goes back to the middle with a little bounce, about four percent past it, by the
+  owner's call on 2026-10-18. `control.dragResistance` is the give: how much a card resists the
+  finger before it commits.
 
 **This is a rule, not a default.** Anything in this shell that moves, tracks, reveals, resizes
-or follows goes through one of those two. A `NumberAnimation` or a `Behavior` on a position is a
+or follows goes through one of those three. A `NumberAnimation` or a `Behavior` on a position is a
 bug, with exactly one exception: a **looping clock** with no target being chased at all. The
 whole list: the mic indicator's processing ripple and typing caret, the battery charge sweep and
 low-charge throb, the scrolling-text marquee, the equalizer, the lyric
 line's sung-gap clock, the lyrics loading pulse, the activity bubble's and the settings keyboard
 widget's spinners, and the demo clocks of the settings scenes. Every one of them stops or freezes
-when `Appearance.lessMotion` is true. No overshoot, bounce or flourish anywhere, for now: the
-shell starts from no play at all, and anything playful comes back later one deliberate piece at
-a time.
+when `Appearance.lessMotion` is true. No overshoot, bounce or flourish anywhere except under the
+hand: the shell starts from no play at all, and anything playful comes back one deliberate piece
+at a time. The first piece is the Spring's small bounce on what can be grabbed.
 
 **Fades are motion too.** An opacity or a colour that changes goes through `Follow`
 (`epsilon: Appearance.animation.fadeEpsilon`, since the default epsilon is in pixels) or
@@ -290,9 +298,11 @@ The rules, in the order the video builds them:
   duration by how often it runs: 400 ms on something opened a thousand times a day is about
   6.7 minutes of waiting.
 - Personality comes from timing. Bounce, overshoot and a long ease-in-out read as playful or
-  premium. Work tools lean rigid and fast. This shell takes the rigid end: spring and bounce are
-  excluded by section 2.3, and the character comes from the pixel type and the chassis (section 6),
-  not from overshoot.
+  premium. Work tools lean rigid and fast. This shell takes the rigid end. The one place a bounce
+  lives is under the hand: whatever can be grabbed is a spring (section 2.3), so a card let go
+  short of a throw swings a little past the middle and settles, the way a held object would.
+  Nothing else overshoots, and the character comes from the pixel type and the chassis (section
+  6).
 
 Applied to this shell:
 
@@ -608,6 +618,9 @@ banditshell/
 │   ├── AppMark.qml             one window's mark, from a spec: symbol/glyph/mono/image
 │   ├── Follow.qml               a value that chases a target by exponential smoothing
 │   ├── FollowColour.qml         the same for a colour; every colour fade goes through it
+│   ├── Spring.qml               a value on a spring, for whatever the hand holds: held 1:1,
+│   │                            caught mid-flight, thrown with the finger's speed; spring.js
+│   │                            is its exact step (tests/spring.test.js)
 │   ├── Pull.qml                 a directional swipe; the way in, and back out, that needs no hover
 │   ├── ScrollGesture.qml        two fingers on a touchpad, delivered as that same swipe
 │   ├── GlideList.qml            a list that scrolls by pixels and coasts when let go
@@ -1270,6 +1283,9 @@ banditshell/
 │   │   │                        name, a line under it and a close mark
 │   │   ├── IslandShellUpdate.qml the shell update, around the update menu
 │   │   ├── IslandNotifications.qml the history as AlertDeck cards, fanned
+│   │   ├── IslandNotificationPage.qml one notification at full size: the whole
+│   │   │                        text, its actions and reply; where a tap goes
+│   │   │                        when there is no app to open
 │   │   ├── IslandTimers.qml     timers and alarms, around the clock menu
 │   │   ├── IslandCalendar.qml   the month, around the calendar menu
 │   │   ├── IslandWeather.qml    the week ahead, a day per column with its range
@@ -4032,8 +4048,12 @@ something to say, and the pointer may well be going for it.
 ### Summoning, and what passes through
 
 Cursor to the top centre with a dwell, a tap on the strip to pin, a pull down to
-drag the overview out of whatever size it is, a pull up to put it back. While
-the pointer is on it, every timer inside it stops. Hovering a notification never
+drag the overview out of whatever size it is, a pull up to put it back. The
+island is a spring while it opens and closes: a pull holds it exactly under the
+finger instead of chasing it, a press on the strip or the open island catches
+it wherever it is on the way, and letting go throws it open or shut with the
+finger's speed, the open edge swinging a little past its place before it
+settles. While the pointer is on it, every timer inside it stops. Hovering a notification never
 opens the overview over it, it spreads a stack instead; a tap or a pull still
 opens it.
 
@@ -4049,20 +4069,33 @@ appearing and that would fight the island's own bloom.
 because moving everyone's notifications is a big change for people who did not ask
 for it; it moved once the corner no longer held the history, since a corner that
 only shows popups has nothing the island does not do better. Set to `island`, a
-notification takes the island at its large size. Tap runs its default action,
-its actions sit under the text from the start, and on hover a close mark appears
-in its corner. Nothing about a card's height depends on the pointer: when actions
+notification takes the island at its large size. Its actions sit under the text
+from the start, and on hover a close mark appears in its corner.
+
+**A tap opens, it never dismisses.** It used to run the default action and then
+delete the notification, and when there was no app to open the tap simply threw
+it away, which is the opposite of what a press means everywhere else in the
+shell. Now a tap runs the app's own default action, or brings its window forward,
+or starts it, and the notification steps back into the history marked read.
+With nothing to open (a script's `notify-send`, an app with no desktop entry) the
+island becomes the notification: the whole text, its actions and reply, and a
+dismiss button. Only a sideways swipe, the close mark, a right click or dismiss
+lets one go. Nothing about a card's height depends on the pointer: when actions
 came out on hover, moving down a spread list grew and shrank the card under the
 pointer, so everything below it jumped up and down.
 
 **History is reached by intent, not by a corner.** The launcher is the shell's
 keyboard home and the island its pointer home, and the old corner tray was neither:
-it opened when the cursor swept past on the way to a window's close button. Now the
-history is the launcher with `notifications ` already typed (section 19, and
-`banditshell notifications open`). Three doors lead there from the island: the
-overview's "N notifications" row, the "all notifications" button at the foot of a
-spread stack, and the "N held while quiet" notice that shows for a moment when quiet
-ends and something was kept back, which opens `notifications held `. `Launcher.show`
+it opened when the cursor swept past on the way to a window's close button. The
+overview shows the newest three notifications as real cards under the player, so
+opening the island shows what came in without a second press; a notification used
+to be visible there only while it was still arriving. A row under the three says
+how many more there are and opens the island's history. The whole history is also
+the launcher with `notifications ` already typed (section 19, and
+`banditshell notifications open`). Other doors lead there from the island: the
+"all notifications" button at the foot of a spread stack, and the "N held while
+quiet" notice that shows for a moment when quiet ends and something was kept back,
+which opens `notifications held `. `Launcher.show`
 takes the text to start with. A person who chooses `corner` still gets the live
 popups in a slim `NotificationCorner` at the top right, with no history, no arms
 and no pin; reading the history is the launcher either way.
@@ -4078,11 +4111,17 @@ are not offered at all.
 
 Letting one go is a sideways gesture, animated before anything changes
 underneath. Flick it either way and it follows the pointer, fading as it goes;
-past a third of its width, or thrown fast, it flies off that side and is gone,
-and only then does the stack close up or the island fold away. Short of that it
-springs back. The close mark and a right click do the same flick to the right.
+past a fifth of its width, or thrown fast, it flies off that side and is gone,
+and only then does its row close up or the island fold away. Every list does
+this, the history included: a left swipe there used to fly the card off and
+leave its empty row behind. Short of a throw the card springs back to the
+middle with the finger's speed and a small bounce, and a press catches it
+anywhere on the way, flying off included, which takes the throw back. The close
+mark and a right click do the same flick to the right.
 Up and down never dismiss: a vertical drag on a card scrolls a spread list the
-way a finger scrolls a phone, and a throw keeps it gliding. Swiping up to put a
+way a finger scrolls a phone, and a throw keeps it gliding. Past the top of the
+list the stack gives, stretching down under the finger with growing
+resistance, and springs back when let go. Swiping up to put a
 card away used to share that direction, and it read as the card vanishing
 instead of the list moving, so it is gone; a card that times out still lands in
 the history. A stack carries "clear all" at its foot, folded or spread and
@@ -4223,9 +4262,9 @@ overview opens width first: the island reaches its full width in the first half
 of the way, then grows down, and its contents fade in only in the second half,
 so nothing is ever laid out wider than the island holding it. A row that has no
 place in the overview fades where it is rather than drifting through the player.
-Live rows sit right under the clock, the player under them and the notifications
-row last, so the rows travelling in from the capsule have the shortest way to
-go.
+Live rows sit right under the clock, the player under them, then the newest
+notifications and the row for the rest last, so the rows travelling in from the
+capsule have the shortest way to go.
 
 ### Hover
 

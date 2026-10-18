@@ -16,6 +16,10 @@ Item {
 
     property real maxHeight: 100000
 
+    property bool footed: true
+
+    property bool liftsAway: true
+
     signal dismissed(var entry)
     signal kept(var entry)
     signal history
@@ -80,19 +84,45 @@ Item {
     }
 
     property real lift: 0
-    property bool lifting: false
     property var liftedAway: []
 
+    readonly property bool lifting: rise.held
     readonly property real naturalView: root.foldedHeight + (root.spreadHeight - root.foldedHeight) * root.fanned
     readonly property real liftTravel: Math.max(1, root.naturalView + root.footerHeight * footing.value)
-    readonly property real raised: root.lifting ? root.lift : rise.value
-    readonly property real liftFade: 1 - Math.min(1, root.raised / root.liftTravel)
+    readonly property real raised: rise.value
+    readonly property real liftFade: 1 - Math.min(1, Math.max(0, root.raised) / root.liftTravel)
+    readonly property real giveRoom: Appearance.padding.huge * 2
+
+    function give(reach: real): real {
+        const k = Config.values.control.dragResistance;
+        const m = Math.abs(reach);
+        const given = root.giveRoom * (1 - 1 / (1 + m * k / root.giveRoom));
+        return reach < 0 ? -given : given;
+    }
+
+    function ungive(raised: real): real {
+        const k = Math.max(0.01, Config.values.control.dragResistance);
+        const m = Math.min(Math.abs(raised), root.giveRoom * 0.99);
+        const reach = root.giveRoom * (1 / (1 - m / root.giveRoom) - 1) / k;
+        return raised < 0 ? -reach : reach;
+    }
+
+    function holdLift(): void {
+        rise.hold(root.lift >= 0 && root.liftsAway ? root.lift : root.give(root.lift));
+    }
 
     function dragBy(by: real): void {
+        if (!rise.held)
+            root.lift = rise.value >= 0 && root.liftsAway ? rise.value : root.ungive(rise.value);
         const canScroll = root.scrollMax > 0 && root.fanned >= 0.5;
         let rest = Math.abs(by);
         if (by < 0) {
-            if (canScroll && root.lift <= 0) {
+            if (root.lift < 0) {
+                const used = Math.min(-root.lift, rest);
+                root.lift += used;
+                rest -= used;
+            }
+            if (rest > 0 && canScroll && root.lift >= 0) {
                 const from = Math.min(scroll.target, root.scrollMax);
                 const used = Math.min(root.scrollMax - from, rest);
                 if (used > 0) {
@@ -101,32 +131,44 @@ Item {
                     rest -= used;
                 }
             }
-            if (rest > 0) {
-                root.lifting = true;
-                root.lift += rest;
-            }
+            root.lift += rest;
         } else if (by > 0) {
-            const used = Math.min(root.lift, rest);
-            root.lift -= used;
-            rest -= used;
-            if (rest > 0 && root.lift <= 0)
-                root.scrollBy(rest);
+            if (root.lift > 0) {
+                const used = Math.min(root.lift, rest);
+                root.lift -= used;
+                rest -= used;
+            }
+            if (rest > 0 && canScroll && root.lift <= 0) {
+                const from = Math.min(scroll.target, root.scrollMax);
+                const used = Math.min(from, rest);
+                if (used > 0) {
+                    scroll.target = from - used;
+                    scroll.snap();
+                    rest -= used;
+                }
+            }
+            root.lift -= rest;
         }
+        root.holdLift();
     }
 
     function dragEnd(speed: real): void {
-        if (!root.lifting) {
+        if (!rise.held) {
             root.scrollGlide(speed);
             return;
         }
+        const up = root.lift > 0;
         const thrown = speed < -root.throwSpeed;
-        const gone = thrown || root.lift > root.liftTravel * Config.values.control.pullCommit;
-        rise.value = root.lift;
-        rise.target = gone ? root.liftTravel : 0;
+        const gone = up && !(speed > root.throwSpeed) && (thrown || root.lift > root.liftTravel * Config.values.control.pullCommit);
+        rise.target = gone && root.liftsAway ? root.liftTravel : 0;
+        rise.release();
+        const settledScroll = Math.abs(root.lift) < 0.5;
         root.lift = 0;
-        root.lifting = false;
+        if (settledScroll)
+            root.scrollGlide(speed);
         if (gone) {
-            root.liftedAway = [...root.standing];
+            if (root.liftsAway)
+                root.liftedAway = [...root.standing];
             root.lifted();
         }
     }
@@ -140,6 +182,7 @@ Item {
     }
 
     property var outgoing: []
+    property var recalled: null
 
     readonly property var standing: root.entries.filter(e => !e.leaving && !root.outgoing.includes(e))
     readonly property var front: root.standing[0] ?? null
@@ -189,7 +232,7 @@ Item {
             if (slot && !slot.leaving)
                 sum += slot.cardHeight;
         }
-        return Math.min(sum, Math.max(0, root.maxHeight - root.footerHeight)) + (root.behind.length > 0 ? root.footerHeight : 0);
+        return Math.min(sum, Math.max(0, root.maxHeight - root.footerHeight)) + (root.footed && root.behind.length > 0 ? root.footerHeight : 0);
     }
 
     readonly property bool handling: {
@@ -213,7 +256,8 @@ Item {
         root.lastFront = root.front;
         if (!previous || !root.front || root.fanned > 0 || root.sweeping)
             return;
-        const forward = root.standing.includes(previous);
+        const forward = root.standing.includes(previous) && root.front !== root.recalled;
+        root.recalled = null;
         if (forward) {
             root.slotFor(root.front)?.settle();
             root.slotFor(previous)?.settle();
@@ -249,10 +293,9 @@ Item {
 
     implicitHeight: view.height + footer.height
 
-    Follow {
+    Spring {
         id: rise
 
-        speed: Appearance.animation.revealSpeed
         epsilon: 0.5
     }
 
@@ -280,7 +323,7 @@ Item {
 
         speed: Appearance.animation.revealSpeed
         epsilon: 0.004
-        target: root.behind.length > 0 ? 1 : 0
+        target: root.footed && root.behind.length > 0 ? 1 : 0
     }
 
     Follow {
@@ -366,8 +409,14 @@ Item {
                 readonly property bool inView: slot.y < view.height && slot.y + slot.height > 0
                 readonly property bool onScreen: slot.inView && slot.opacity > 0.005
 
-                onOutgoingChanged: if (slot.outgoing && !root.outgoing.includes(slot.modelData))
-                    root.outgoing = [...root.outgoing, slot.modelData]
+                onOutgoingChanged: {
+                    if (slot.outgoing && !root.outgoing.includes(slot.modelData)) {
+                        root.outgoing = [...root.outgoing, slot.modelData];
+                    } else if (!slot.outgoing && !slot.leaving && root.outgoing.includes(slot.modelData)) {
+                        root.recalled = slot.modelData;
+                        root.outgoing = root.outgoing.filter(e => e !== slot.modelData);
+                    }
+                }
                 onLeavingChanged: if (slot.leaving)
                     slot.leftAt = promotion.value
 

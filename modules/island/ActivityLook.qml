@@ -188,7 +188,7 @@ QtObject {
         case "notifications":
             return {
                 icon: "notifications",
-                text: `${a.count} notification${a.count === 1 ? "" : "s"}`,
+                text: `${a.count}${a.more ? " more" : ""} notification${a.count === 1 ? "" : "s"}`,
                 trailing: "icon",
                 trailingIcon: "chevron_right"
             };

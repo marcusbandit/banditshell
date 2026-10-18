@@ -323,15 +323,22 @@ Singleton {
         return true;
     }
 
-    function activate(entry: var): void {
+    signal reading(var entry)
+
+    function activate(entry: var): bool {
         if (!entry || entry.leaving)
-            return;
+            return false;
         const primary = entry.live ? (entry.notification?.actions ?? []).find(a => a.identifier === "default") : null;
         if (primary)
             primary.invoke();
-        else
-            root.openApp(entry);
-        root.dismiss(entry);
+        else if (!root.openApp(entry)) {
+            root.reading(entry);
+            return false;
+        }
+        root.markSeenOf([entry]);
+        if (root.popups.includes(entry))
+            root.expire(entry);
+        return true;
     }
 
     function reply(entry: var, text: string): bool {

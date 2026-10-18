@@ -526,8 +526,8 @@ function isShellCode(file) {
 const RULES = [
     { id: "L1", reason: "No comments in code. None. Clear names instead.", appliesTo: isQmlOrJs, check: ruleL1 },
     { id: "L2", reason: "Every rounded shape is components/SquircleRect.qml, never Rectangle.radius.", appliesTo: f => f.endsWith(".qml"), check: ruleL2 },
-    { id: "L3", reason: "Anything that moves goes through components/Follow.qml; a Behavior or an Animation node is a bug unless it is a looping clock (DESIGN 2.3).", appliesTo: f => f.endsWith(".qml"), check: ruleL3 },
-    { id: "L4", reason: "Spring and bounce are not in this shell (DESIGN 2.3).", appliesTo: isQmlOrJs, check: ruleL4 },
+    { id: "L3", reason: "Anything that moves goes through Follow, Travel or Spring in components/; a Behavior or an Animation node is a bug unless it is a looping clock (DESIGN 2.3).", appliesTo: f => f.endsWith(".qml"), check: ruleL3 },
+    { id: "L4", reason: "No bouncing easing curves; the only bounce is components/Spring.qml on something the hand holds (DESIGN 2.3).", appliesTo: isQmlOrJs, check: ruleL4 },
     { id: "L5", reason: "Font sizes only from Appearance: small, normal, large, and display for the island clock.", appliesTo: f => f.endsWith(".qml"), check: ruleL5 },
     { id: "L6", reason: "Colours only from Appearance.colour.* tokens; literals and Qt.rgba live in config/.", appliesTo: f => isShellCode(f) && !PALETTE_HOMES.some(dir => f.startsWith(dir)), check: ruleL6 },
     { id: "L7", reason: "textGhost is for decorative rules, never the colour of text.", appliesTo: f => f.endsWith(".qml"), check: ruleL7 },

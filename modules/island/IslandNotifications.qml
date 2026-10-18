@@ -108,8 +108,11 @@ Item {
             entries: Notifications.history
             fanned: 1
             maxHeight: root.deckRoom
+            liftsAway: false
 
             onDismissed: entry => Notifications.forget(entry)
+            onKept: entry => Notifications.forget(entry)
+            onLifted: root.hide()
         }
     }
 }

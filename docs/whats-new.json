@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-12",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "major",
+          "text": "Clicking a notification opens it and keeps it. The app's own action runs, or its window comes forward, and the notification stays in your history as read. It used to be deleted on every click, even when there was nothing to open. Swipe it sideways or press its close mark to get rid of one."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A notification with no app behind it, such as one from a script, opens big in the island when you click it: the whole text, its buttons and reply, and a dismiss button."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Opening the island shows your three newest notifications under the music, as full cards you can read, click or swipe away. A row under them says how many more there are and opens the rest."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Everything you can grab in the island now moves like a spring. A notification you drag follows your finger, swings back to the middle with a small bounce if you let go early, and can be caught again while it is flying. Pulling the island open or shut follows your finger exactly and carries the speed of your swipe."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Swiping a notification away in the history closes its row up. A swipe to the left used to leave an empty gap where the card had been."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "control.spring in config.json sets how the springs feel: stiffness for how hard they pull back, damping for how quickly the bounce dies out, and mass. control.dragResistance is still how much a card resists your finger at first."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-11",
       "date": "2026-10-18",
       "changes": [

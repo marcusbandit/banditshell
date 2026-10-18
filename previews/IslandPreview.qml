@@ -534,6 +534,55 @@ ShellRoot {
             expect: "the notifications"
         },
         {
+            name: "a left swipe in the history closes its row up",
+            run: () => {
+                preview.before = Notifications.history.length;
+                preview.cardOf(Notifications.history[0])?.fling(-1);
+            },
+            wait: 1500,
+            expect: "the notifications",
+            holds: () => Notifications.history.length === preview.before - 1 && preview.gapless()
+        },
+        {
+            name: "back in the overview, the newest sit under the clock with a row for the rest",
+            run: () => {
+                preview.remember("Steam", "Download complete", "Hollow Knight: Silksong");
+                preview.remember("Thunderbird", "Invoice", "your invoice for October is ready");
+                island.back();
+            },
+            wait: 1500,
+            expect: "overview",
+            holds: () => island.recent.length === 3 && island.unlisted === Notifications.history.length - 3
+        },
+        {
+            name: "a swipe away in the overview closes its row and the next one comes up",
+            run: () => {
+                preview.before = Notifications.history.length;
+                preview.cardOf(island.recent[1])?.fling(1);
+            },
+            wait: 1500,
+            expect: "overview",
+            holds: () => Notifications.history.length === preview.before - 1 && island.recent.length === Math.min(3, preview.before - 1) && preview.gapless()
+        },
+        {
+            name: "a click on one with nothing to open shows it big in the island",
+            run: () => {
+                preview.remember("notify-send", "Backup finished", "412 files, 3.1 GB, nothing failed. The next run is tomorrow at 03:00, and the old snapshots from last month were pruned.");
+                preview.before = Notifications.history.length;
+                Notifications.activate(Notifications.history[0]);
+            },
+            wait: 1500,
+            expect: "a notification",
+            holds: () => island.reading === Notifications.history[0] && Notifications.history.length === preview.before
+        },
+        {
+            name: "swiping it away closes the view and it is gone",
+            run: () => preview.cardOf(island.reading)?.fling(1),
+            wait: 1500,
+            expect: "overview",
+            holds: () => Notifications.history.length === preview.before - 1
+        },
+        {
             name: "escape goes back, and again closes",
             run: () => {
                 island.back();
@@ -730,6 +779,25 @@ ShellRoot {
     }
 
 
+    function cards(from: Item): var {
+        const out = [];
+        for (const child of from?.children ?? []) {
+            if (child.visible && child.density !== undefined && typeof child.fling === "function" && child.entry)
+                out.push(child);
+            out.push(...preview.cards(child));
+        }
+        return out;
+    }
+
+    function cardOf(entry: var): Item {
+        return preview.cards(island.stage).find(c => c.entry === entry && c.opacity > 0.01) ?? null;
+    }
+
+    function gapless(): bool {
+        return preview.cards(island.stage).every(c => c.shiftFade < 0.5 || c.entry.leaving);
+    }
+
+    property int before: 0
     property int step: 0
     property int made: 0
     property int failures: 0
