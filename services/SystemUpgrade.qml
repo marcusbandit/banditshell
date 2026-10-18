@@ -44,6 +44,10 @@ Singleton {
     readonly property int expected: Pacman.updates.length
     readonly property string headline: Upgrade.headline(root.work, root.state)
     readonly property bool asking: !!root.question && root.question.id !== root.answered
+    readonly property bool needsAnswer: root.asking && root.question.text !== "Proceed with installation?"
+
+    property bool glanced: false
+    readonly property bool quiet: root.running && root.glanced && root.phase !== "auth" && !root.needsAnswer
 
     readonly property var plan: Upgrade.plan(Config.values.packages.upgrade)
 
@@ -100,6 +104,7 @@ Singleton {
         proceed.id = 0;
         root.work = Upgrade.create();
         root.answered = 0;
+        root.glanced = false;
         root.cancelling = false;
         root.reason = "";
         root.code = -1;
@@ -216,6 +221,9 @@ Singleton {
         }
     }
 
+    onNeedsAnswerChanged: if (root.needsAnswer)
+        root.glanced = false
+
     Component.onCompleted: root.attach()
 
     Timer {
@@ -233,6 +241,12 @@ Singleton {
         repeat: true
         running: root.dirty
         onTriggered: root.publish()
+    }
+
+    Timer {
+        interval: root.lingerMs
+        running: root.running && !root.glanced && root.phase !== "auth" && !root.needsAnswer
+        onTriggered: root.glanced = true
     }
 
     Timer {

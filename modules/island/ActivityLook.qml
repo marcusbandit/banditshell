@@ -76,7 +76,7 @@ QtObject {
         case "upgrade": {
             const state = SystemUpgrade.state;
             const failed = state === "failed";
-            const asking = SystemUpgrade.running && SystemUpgrade.asking && SystemUpgrade.question?.text !== "Proceed with installation?";
+            const asking = SystemUpgrade.running && SystemUpgrade.needsAnswer;
             return {
                 glyph: SystemUpgrade.kernelTo ? "\u{f31a}" : "",
                 icon: SystemUpgrade.kernelTo ? "" : "system_update_alt",

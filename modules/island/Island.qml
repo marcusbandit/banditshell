@@ -61,7 +61,7 @@ Item {
                     state: rec.state,
                     rec: rec
                 });
-        if (root.offStage && SystemUpgrade.shown)
+        if (root.offStage && SystemUpgrade.shown && !root.lifting)
             out.push({
                 key: "upgrade",
                 kind: "upgrade"
@@ -72,6 +72,10 @@ Item {
     }
 
     readonly property bool voice: root.focused && Dictation.live
+
+    readonly property bool banded: root.border > 0 && root.edge >= root.border
+    readonly property bool lifting: root.offStage && root.banded && SystemUpgrade.quiet
+    readonly property real lifted: root.lifting && !root.upgradeOpen && !root.yielded ? SystemUpgrade.progress : -1
 
     readonly property bool trailing: root.voice && root.centreKey === "dictation" && root.openness === 0
     readonly property bool alone: root.trailing && root.rest === "compact" && root.stackKeys.length === 1 && root.bubbleKeys.length === 0
@@ -104,7 +108,12 @@ Item {
 
     readonly property var alerts: root.deckEntries.filter(e => !e.leaving)
 
-    readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music" && a.kind !== "level"), ...(Privacy.micRow && !root.activities.some(a => a.key === Privacy.micRow.key) ? [Privacy.micRow] : []), ...(root.offStage ? Notices.settled : []), ...(Notifications.quieted ? [
+    readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music" && a.kind !== "level"), ...(root.lifting ? [
+                {
+                    key: "upgrade",
+                    kind: "upgrade"
+                }
+            ] : []), ...(Privacy.micRow && !root.activities.some(a => a.key === Privacy.micRow.key) ? [Privacy.micRow] : []), ...(root.offStage ? Notices.settled : []), ...(Notifications.quieted ? [
                 {
                     key: "quiet",
                     kind: "quiet",

@@ -381,13 +381,27 @@ ShellRoot {
             expect: "upgrade"
         },
         {
+            name: "after one glance it goes up into the band",
+            run: () => {},
+            wait: SystemUpgrade.lingerMs,
+            expect: "hidden",
+            holds: () => island.lifted > 0 && island.overviewRows.some(r => r.key === "upgrade")
+        },
+        {
+            name: "opening the island lists it again",
+            run: () => island.pinned = true,
+            expect: "overview",
+            holds: () => island.lifted > 0
+        },
+        {
             name: "pressing it turns the island into the update",
             run: () => island.choose({
                     key: "upgrade",
                     kind: "upgrade"
                 }),
             wait: 300,
-            expect: "the system update"
+            expect: "the system update",
+            holds: () => island.lifted < 0
         },
         {
             name: "the update view while it downloads",

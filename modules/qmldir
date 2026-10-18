@@ -1,4 +1,5 @@
 module qs.modules
+BandProgress 1.0 BandProgress.qml
 Chassis 1.0 Chassis.qml
 FrameExclusions 1.0 FrameExclusions.qml
 FullscreenBorder 1.0 FullscreenBorder.qml
