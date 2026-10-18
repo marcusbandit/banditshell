@@ -537,7 +537,7 @@ ShellRoot {
             name: "a left swipe in the history closes its row up",
             run: () => {
                 preview.before = Notifications.history.length;
-                preview.cardOf(Notifications.history[0])?.fling(-1);
+                preview.cards(island.stage).find(c => c.count === 1 && !c.entry.leaving)?.fling(-1);
             },
             wait: 1500,
             expect: "the notifications",
@@ -558,11 +558,11 @@ ShellRoot {
             name: "a swipe away in the overview closes its row and the next one comes up",
             run: () => {
                 preview.before = Notifications.history.length;
-                preview.cardOf(island.recent[1])?.fling(1);
+                preview.cardOf(island.recentGroups.find(g => g.entries.length === 1)?.entries[0])?.fling(1);
             },
             wait: 1500,
             expect: "overview",
-            holds: () => Notifications.history.length === preview.before - 1 && island.recent.length === Math.min(3, preview.before - 1) && preview.gapless()
+            holds: () => Notifications.history.length === preview.before - 1 && island.recent.length === 3 && preview.gapless() && preview.tidy()
         },
         {
             name: "a click on one with nothing to open shows it big in the island",
@@ -581,6 +581,88 @@ ShellRoot {
             wait: 1500,
             expect: "overview",
             holds: () => Notifications.history.length === preview.before - 1
+        },
+        {
+            name: "one app's notifications fold into one card with a count",
+            run: () => {
+                for (const n of [11, 12, 13])
+                    preview.arrive("qBittorrent", "Download completed", `Mairimashita Iruma-kun 4th Season - ${n}.mkv`);
+            },
+            wait: 1500,
+            expect: "overview",
+            holds: () => island.recentGroups[0]?.entries.length === 3 && preview.torrents().length === 1 && preview.torrents()[0].count === 3 && preview.tidy()
+        },
+        {
+            name: "a click on the folded group opens it up to all of them",
+            run: () => preview.areaOf(preview.torrents()[0])?.parent.tapped(),
+            wait: 1500,
+            expect: "overview",
+            holds: () => preview.torrents().length === 3 && Notifications.history.filter(e => e.appName === "qBittorrent").length === 3 && preview.tidy()
+        },
+        {
+            name: "a click on its count folds it again",
+            run: () => preview.torrents().find(c => c.count > 1)?.countTapped(),
+            wait: 1500,
+            expect: "overview",
+            holds: () => preview.torrents().length === 1 && preview.tidy()
+        },
+        {
+            name: "swiping the folded group away clears every one of them",
+            run: () => preview.torrents()[0]?.fling(1),
+            wait: 1800,
+            expect: "overview",
+            holds: () => Notifications.history.every(e => e.appName !== "qBittorrent") && preview.torrents().length === 0 && preview.tidy()
+        },
+        {
+            name: "two quick swipes in a row leave no gap and no overlap",
+            run: () => {
+                for (const n of [1, 2, 3, 4])
+                    preview.arrive(`App ${n}`, "Something happened", "a line of text");
+                for (const entry of [island.recent[0], island.recent[1]]) {
+                    const area = preview.drag(entry, 140);
+                    area?.advance(300, 0);
+                    area?.conclude();
+                }
+            },
+            wait: 2500,
+            expect: "overview",
+            holds: () => island.recent.length === 3 && preview.tidy()
+        },
+        {
+            name: "the history folds by app too",
+            run: () => {
+                preview.arrive("Discord", "marcus", "are you coming tonight?");
+                preview.arrive("Discord", "marcus", "we leave at eight");
+                island.choose({
+                    kind: "notifications"
+                });
+            },
+            wait: 1500,
+            expect: "the notifications",
+            holds: () => {
+                const shown = preview.cards(island.stage).filter(c => c.entry.appName === "Discord" && !c.entry.leaving);
+                return shown.length === 1 && shown[0].count === 2;
+            }
+        },
+        {
+            name: "dictating with a view open steps out beside the island",
+            run: () => preview.speak("listening"),
+            wait: 1500,
+            expect: "the notifications",
+            holds: () => island.voiceShown > 0.99
+        },
+        {
+            name: "back in the overview it is a row again",
+            run: () => island.back(),
+            wait: 1500,
+            expect: "overview",
+            holds: () => island.voiceShown < 0.01
+        },
+        {
+            name: "dictation ends",
+            run: () => preview.speak("idle"),
+            wait: 1200,
+            expect: "overview"
         },
         {
             name: "escape goes back, and again closes",
@@ -795,6 +877,52 @@ ShellRoot {
 
     function gapless(): bool {
         return preview.cards(island.stage).every(c => c.shiftFade < 0.5 || c.entry.leaving);
+    }
+
+    function torrents(): var {
+        return preview.cards(island.stage).filter(c => c.entry.appName === "qBittorrent" && c.opacity > 0.01 && !c.entry.leaving);
+    }
+
+    function areaOf(item: Item): var {
+        for (const child of item?.children ?? []) {
+            if (typeof child.conclude === "function" && typeof child.advance === "function")
+                return child;
+            const deeper = preview.areaOf(child);
+            if (deeper)
+                return deeper;
+        }
+        return null;
+    }
+
+    function drag(entry: var, dx: real): var {
+        const area = preview.areaOf(preview.cardOf(entry));
+        if (!area)
+            return null;
+        area.begin();
+        area.advance(dx / 2, 0);
+        area.advance(dx, 0);
+        return area;
+    }
+
+    function tidy(): bool {
+        const rows = preview.cards(island.stage).filter(c => c.opacity > 0.01 && !c.entry.leaving).map(c => ({
+                    y: c.mapToItem(island.stage, 0, 0).y,
+                    h: c.height
+                })).sort((p, q) => p.y - q.y);
+        return rows.every((r, i) => i === 0 || Math.abs(r.y - (rows[i - 1].y + rows[i - 1].h)) < 2);
+    }
+
+    function arrive(app: string, summary: string, body: string): void {
+        const entry = entryComponent.createObject(preview, {
+            appName: app,
+            summary: summary,
+            body: body,
+            urgency: NotificationUrgency.Normal,
+            timeout: 0,
+            live: false,
+            time: Date.now() + preview.made++
+        });
+        Notifications.history = [entry, ...Notifications.history];
     }
 
     property int before: 0

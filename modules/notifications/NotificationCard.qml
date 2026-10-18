@@ -18,6 +18,7 @@ Item {
     property string family: Appearance.font.family
     property int count: 1
     property bool countOpen: false
+    property bool folded: false
 
     signal countTapped
     signal released
@@ -142,7 +143,12 @@ Item {
         enabled: root.interactive
         keepLeaves: root.keepLeaves
 
-        onTapped: Notifications.activate(root.entry)
+        onTapped: {
+            if (root.folded)
+                root.countTapped();
+            else
+                Notifications.activate(root.entry);
+        }
         onHeld: root.pin(true)
         onReleased: root.released()
         onKept: root.kept()

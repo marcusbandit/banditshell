@@ -72,6 +72,13 @@ Item {
     }
 
     readonly property bool voice: root.focused && Dictation.live
+    readonly property var voiceActivity: ({
+            key: "dictation",
+            kind: "dictation"
+        })
+    readonly property bool voiceAside: root.voice && root.tasking
+    readonly property real voiceShown: voiceOut.value
+    readonly property real voiceRoom: voiceOut.value > 0.001 ? root.taskWidth + (voiceRow.implicitWidth + root.budGap + root.shadowRoom) * 2 : 0
 
     readonly property bool banded: root.border > 0 && root.edge >= root.border
     readonly property bool lifting: root.offStage && root.banded && SystemUpgrade.quiet
@@ -109,8 +116,9 @@ Item {
     readonly property var alerts: root.deckEntries.filter(e => !e.leaving)
 
     readonly property int recentMax: 3
-    readonly property var recent: root.offStage ? Notifications.history.filter(e => !root.deckEntries.includes(e)).slice(0, root.recentMax) : []
-    readonly property int unlisted: Notifications.history.filter(e => !e.leaving && !root.recent.includes(e) && !root.deckEntries.includes(e)).length
+    readonly property var recentGroups: root.offStage ? Notifications.byApp(Notifications.history.filter(e => !root.deckEntries.includes(e))).slice(0, root.recentMax) : []
+    readonly property var recent: root.recentGroups.map(g => g.entries[0])
+    readonly property int unlisted: Notifications.history.filter(e => !e.leaving && !root.deckEntries.includes(e) && !root.recentGroups.some(g => g.entries.includes(e))).length
 
     readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music" && a.kind !== "level"), ...(root.lifting ? [
                 {
@@ -365,7 +373,7 @@ Item {
     readonly property real restWidth: root.deckRest ? root.largeWidth : root.rest === "compact" ? root.rowsWidth + swell.value * 2 : root.compactHeight
     readonly property real restHeight: root.deckRest ? root.cardHeight + root.stackItems.length * root.compactHeight : root.compactHeight * Math.max(1, root.stackItems.length)
 
-    readonly property real fieldWidth: Math.ceil(Math.max(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2, root.taskWidth + root.shadowRoom * 2))
+    readonly property real fieldWidth: Math.ceil(Math.max(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2, root.taskWidth + root.shadowRoom * 2, root.voiceRoom))
     readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), overview.implicitHeight - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2, root.taskHeight) + root.shadowRoom) / root.fieldStep) * root.fieldStep
     readonly property real centreX: scene.width / 2
     readonly property real surfaceX: Math.round((root.width - root.fieldWidth) / 2 + trail.value)
@@ -1254,7 +1262,7 @@ Item {
                     y: root.pillY + layer.stand - height + layer.reach
                     radius: root.pillRadius
                     cornerPower: root.pillPower
-                    color: Appearance.blend(Appearance.colour.ink, Appearance.colour.paper, layer.depth < 1 ? 0.06 * layer.depth : 0.09 - 0.03 * layer.depth)
+                    color: Appearance.blend(Appearance.colour.island, Appearance.colour.paper, layer.depth < 1 ? 0.06 * layer.depth : 0.09 - 0.03 * layer.depth)
                     stroke: Appearance.colour.seam
                     strokeWidth: Appearance.stroke.line
                     opacity: Math.max(layer.shown * layer.kept, layer.ghostness)
@@ -1332,13 +1340,57 @@ Item {
                             width: under.twin?.width ?? 0
                             height: width
                             pill: "object"
-                            color: Appearance.blend(Appearance.colour.ink, Appearance.colour.paper, 0.06 * behind.d)
+                            color: Appearance.blend(Appearance.colour.island, Appearance.colour.paper, 0.06 * behind.d)
                             stroke: Appearance.colour.seam
                             strokeWidth: Appearance.stroke.line
                             opacity: under.fade * behindShown.value
                             visible: opacity > 0.01
                         }
                     }
+                }
+            }
+
+            Item {
+                id: voiceCapsule
+
+                readonly property real shown: voiceOut.value * presence.value
+
+                x: root.pillX + root.pillWidth - voiceCapsule.width + (voiceCapsule.width + root.budGap) * voiceOut.value
+                y: root.pillY
+                width: voiceRow.implicitWidth
+                height: root.compactHeight
+                opacity: Math.min(1, voiceCapsule.shown * 1.5)
+                visible: voiceCapsule.shown > 0.01
+
+                Follow {
+                    id: voiceOut
+
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: 0.004
+                    target: root.voiceAside ? 1 : 0
+                }
+
+                DropShadow {
+                    anchors.fill: parent
+                    pill: "object"
+                    opacity: settle.value * Appearance.opacity.glow * voiceCapsule.shown
+                }
+
+                SquircleRect {
+                    anchors.fill: parent
+                    pill: "object"
+                    color: Appearance.colour.island
+                    stroke: Appearance.colour.seam
+                    strokeWidth: Appearance.stroke.line
+                }
+
+                ActivityRow {
+                    id: voiceRow
+
+                    width: parent.width
+                    height: parent.height
+                    activity: root.voiceActivity
+                    live: voiceCapsule.visible
                 }
             }
 
@@ -1428,7 +1480,8 @@ Item {
                     y: root.pillY
                     width: root.largeWidth
                     activities: root.overviewRows
-                    notifications: root.recent
+                    notifications: root.recentGroups
+                    room: root.taskRoom
                     watched: overviewFade.value > 0.01 && taskFade.value < 0.99
                     arrivals: root.deckEntries.length > 0 ? deck.implicitHeight : 0
                     carried: root.stackKeys
@@ -1721,7 +1774,7 @@ Item {
                         width: label.implicitWidth + Appearance.padding.normal * 2
                         height: label.implicitHeight + Appearance.padding.small
                         pill: "object"
-                        color: Appearance.colour.ink
+                        color: Appearance.colour.island
                         opacity: hoverGlow.value
                         visible: opacity > 0.01 && !!face.label
 

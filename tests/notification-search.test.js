@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/notification-search.js"), "utf8");
-const Search = new Function(src + "\nreturn { age, threads, threadKey, ask, find, apps, line, appMatches };")();
+const Search = new Function(src + "\nreturn { age, threads, threadKey, ask, find, apps, line, appMatches, byApp };")();
 
 const NOW = new Date(2026, 9, 17, 14, 30, 0).getTime();
 const ago = ms => NOW - ms;
@@ -69,6 +69,26 @@ test("the input order does not decide the thread order, time does", () => {
     assert.deepStrictEqual(groups.map(g => g.entries.length), [1, 2]);
     assert.strictEqual(groups[0].newest, b);
     assert.strictEqual(groups[1].newest, c);
+});
+
+test("one app is one group whatever it says, newest first inside", () => {
+    const groups = Search.byApp([note("qBittorrent", "Download completed", 1), note("qBittorrent", "Torrent added", 9), note("qBittorrent", "Download completed", 300)]);
+    assert.strictEqual(groups.length, 1);
+    assert.deepStrictEqual(groups[0].entries.map(e => e.summary), ["Download completed", "Torrent added", "Download completed"]);
+});
+
+test("the app that spoke last is on top, however many it sent before", () => {
+    const torrent = [note("qBittorrent", "Download completed", 1), note("qBittorrent", "Download completed", 40)];
+    const chat = note("Discord", "marcus", 5);
+    const groups = Search.byApp([chat, ...torrent]);
+    assert.deepStrictEqual(groups.map(g => g.entries[0]), [torrent[0], chat]);
+    assert.strictEqual(groups[0].entries[1], torrent[1]);
+});
+
+test("the same moment keeps the order it came in", () => {
+    const a = note("Signal", "Ida", 0);
+    const b = note("Mail", "Invoice", 0);
+    assert.deepStrictEqual(Search.byApp([a, b]).map(g => g.entries[0]), [a, b]);
 });
 
 test("another sender or another app is another thread", () => {

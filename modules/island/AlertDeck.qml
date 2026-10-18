@@ -12,6 +12,24 @@ Item {
 
     property var entries: []
 
+    property var groups: null
+    property var unfolded: []
+    property var folding: []
+
+    readonly property bool grouped: root.groups !== null
+    readonly property var cards: {
+        if (!root.grouped)
+            return root.entries;
+        const out = [];
+        for (const group of root.groups) {
+            const open = root.unfolded.includes(group.key);
+            for (const entry of group.entries)
+                if (entry === group.entries[0] || open || root.folding.includes(entry))
+                    out.push(entry);
+        }
+        return out;
+    }
+
     property real fanned: 0
 
     property real maxHeight: 100000
@@ -33,6 +51,38 @@ Item {
     property var clearing: []
     property var swept: []
     property bool sweeping: false
+
+    function groupOf(entry: var): var {
+        return root.grouped ? root.groups.find(g => g.entries.includes(entry)) ?? null : null;
+    }
+
+    function toggle(group: var): void {
+        if (!group)
+            return;
+        if (root.unfolded.includes(group.key)) {
+            root.unfolded = root.unfolded.filter(k => k !== group.key);
+            root.folding = [...root.folding, ...group.entries.slice(1).filter(e => !root.folding.includes(e))];
+        } else {
+            root.unfolded = [...root.unfolded, group.key];
+            root.folding = root.folding.filter(e => !group.entries.includes(e));
+        }
+    }
+
+    function foldAll(): void {
+        root.unfolded = [];
+        root.folding = [];
+    }
+
+    function part(entry: var, keep: bool): void {
+        const group = root.groupOf(entry);
+        const all = group && group.entries[0] === entry && !root.unfolded.includes(group.key) ? group.entries : [entry];
+        for (const e of all) {
+            if (keep)
+                root.kept(e);
+            else
+                root.dismissed(e);
+        }
+    }
 
     function slotFor(entry: var): Item {
         for (let i = 0; i < slots.count; i++) {
@@ -184,7 +234,7 @@ Item {
     property var outgoing: []
     property var recalled: null
 
-    readonly property var standing: root.entries.filter(e => !e.leaving && !root.outgoing.includes(e))
+    readonly property var standing: root.cards.filter(e => !e.leaving && !root.outgoing.includes(e))
     readonly property var front: root.standing[0] ?? null
     readonly property var behind: root.standing.slice(1)
 
@@ -204,14 +254,20 @@ Item {
 
     readonly property real footerHeight: clearButton.implicitHeight + Appearance.padding.card
 
-    readonly property real listHeight: {
-        let sum = 0;
+    property int reshaped: 0
+
+    readonly property var tops: {
+        root.reshaped;
+        const out = [0];
         for (let i = 0; i < slots.count; i++)
-            sum += slots.itemAt(i)?.room ?? 0;
-        return sum;
+            out.push(out[i] + (slots.itemAt(i)?.room ?? 0));
+        return out;
     }
 
+    readonly property real listHeight: root.tops[root.tops.length - 1]
+
     readonly property real foldedHeight: {
+        root.reshaped;
         for (let i = 0; i < slots.count; i++) {
             const slot = slots.itemAt(i);
             if (slot?.isFront)
@@ -226,6 +282,7 @@ Item {
     readonly property real scrolled: Math.min(scroll.value, root.scrollMax)
 
     readonly property real fullHeight: {
+        root.reshaped;
         let sum = 0;
         for (let i = 0; i < slots.count; i++) {
             const slot = slots.itemAt(i);
@@ -236,6 +293,7 @@ Item {
     }
 
     readonly property bool handling: {
+        root.reshaped;
         for (let i = 0; i < slots.count; i++)
             if (slots.itemAt(i)?.handling)
                 return true;
@@ -265,14 +323,17 @@ Item {
         root.advanced(forward, root.standing.length, previous);
     }
 
-    onEntriesChanged: {
-        if (root.entries.length === 0) {
+    onCardsChanged: {
+        if (root.cards.length === 0) {
             root.liftedAway = [];
             rise.target = 0;
             rise.snap();
         }
-        root.outgoing = root.outgoing.filter(e => root.entries.includes(e) && !e.leaving);
-        if (root.sweeping && root.swept.every(e => !root.entries.includes(e)))
+        root.outgoing = root.outgoing.filter(e => root.cards.includes(e) && !e.leaving);
+        const folding = root.folding.filter(e => root.cards.includes(e) && !e.leaving);
+        if (folding.length !== root.folding.length)
+            Qt.callLater(() => root.folding = root.folding.filter(e => root.cards.includes(e) && !e.leaving));
+        if (root.sweeping && root.swept.every(e => !root.cards.includes(e)))
             root.sweeping = false;
     }
 
@@ -369,8 +430,11 @@ Item {
             id: slots
 
             model: ScriptModel {
-                values: root.entries
+                values: root.cards
             }
+
+            onItemAdded: root.reshaped++
+            onItemRemoved: root.reshaped++
 
             Item {
                 id: slot
@@ -388,6 +452,11 @@ Item {
 
                 readonly property bool leaving: slot.modelData?.leaving ?? false
                 readonly property bool isFront: slot.modelData === root.front
+                readonly property var group: root.groupOf(slot.modelData)
+                readonly property bool head: !!slot.group && slot.group.entries[0] === slot.modelData
+                readonly property bool spread: !!slot.group && root.unfolded.includes(slot.group.key)
+                readonly property bool folding: root.folding.includes(slot.modelData)
+                readonly property int tally: slot.head ? slot.group.entries.filter(e => !e.leaving).length : 1
                 readonly property bool handling: card.handling
                 readonly property bool outgoing: card.flinging
                 readonly property real open: Math.max(0, arrival.value - departure.value)
@@ -399,12 +468,7 @@ Item {
                 readonly property real step: slot.leaving ? slot.leftAt : promotion.value
                 readonly property real away: 1 - slot.step
 
-                readonly property real spreadTop: {
-                    let sum = 0;
-                    for (let i = 0; i < slot.index; i++)
-                        sum += slots.itemAt(i)?.room ?? 0;
-                    return sum;
-                }
+                readonly property real spreadTop: root.tops[slot.index] ?? 0
                 readonly property real spreadY: slot.spreadTop - root.scrolled
                 readonly property bool inView: slot.y < view.height && slot.y + slot.height > 0
                 readonly property bool onScreen: slot.inView && slot.opacity > 0.005
@@ -449,7 +513,10 @@ Item {
 
                     speed: Appearance.animation.snapSpeed
                     epsilon: 0.004
-                    target: slot.leaving ? 1 : 0
+                    target: slot.leaving || slot.folding ? 1 : 0
+
+                    onValueChanged: if (slot.folding && departure.value >= 0.999)
+                        root.folding = root.folding.filter(e => e !== slot.modelData)
                 }
 
                 NotificationCard {
@@ -457,9 +524,13 @@ Item {
 
                     width: slot.width
                     entry: slot.modelData
+                    count: slot.tally
+                    countOpen: slot.spread
+                    folded: slot.tally > 1 && !slot.spread
 
-                    onReleased: root.dismissed(slot.modelData)
-                    onKept: root.kept(slot.modelData)
+                    onCountTapped: root.toggle(slot.group)
+                    onReleased: root.part(slot.modelData, false)
+                    onKept: root.part(slot.modelData, true)
                     onScrolled: by => root.dragBy(by)
                     onScrollEnded: speed => root.dragEnd(speed)
                 }

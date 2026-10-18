@@ -3901,9 +3901,12 @@ the eye already is.
 
 The first version melted out of the band like the notch it replaced and stacked
 cards inside it. It read as a notch with things in it, and that is what it was.
-The island is its own object: the darkest stop of the ramp, opaque, floating a
-gap below the band with a soft shadow and the chassis' sheen along its edge. It
-is not part of the chassis field, so it never bridges into the band.
+The island is its own object: the theme's surface colour, the one the panels
+wear, opaque, floating a gap below the band with a soft shadow and the chassis'
+sheen along its edge. It is not part of the chassis field, so it never bridges
+into the band. It was the darkest stop of the ramp until 2026-10-18, and against
+a coloured theme that read as a black hole cut out of the screen rather than a
+thing of ours; `colour.island` names the surface it wears now.
 
 It has three sizes and no others. Compact is a capsule as tall as a button.
 Large is one width, `island.width`, for a notification or for the overview. A
@@ -3925,7 +3928,7 @@ So the island is born in the band: it swells out of it as a bulge, drops on one
 Follow while a second, slower one shortens the reach of the smooth union between
 the two, and the neck stretches nearly to the resting place before it snaps. On
 the way back the reach grows fast and the pill sinks into the band and is
-absorbed. The neck shades from the band's colour to the island's black, and the
+absorbed. The neck shades from the band's colour to the island's own, and the
 shadow only arrives once it floats, because a drop still attached to the band
 casts nothing.
 
@@ -4049,6 +4052,13 @@ times a second, only while dictation is alone. Anything else in the island, a
 notification, an app opening, a bubble, keeps it where it is: then it has
 something to say, and the pointer may well be going for it.
 
+When a view fills the island, the notifications, the media, the timers, the
+calendar, dictation steps out of it: its row slides out from behind the island's
+right edge into a capsule of its own beside the top of the view, mark, live bars
+and language, in the island's colour with the same sheen and shadow. Before, a
+view simply covered it, and dictating into a window with the history open gave
+no sign the microphone was listening. Back in the overview it is a row again.
+
 ### Summoning, and what passes through
 
 Cursor to the top centre with a dwell, a tap on the strip to pin, a pull down to
@@ -4091,7 +4101,7 @@ pointer, so everything below it jumped up and down.
 **History is reached by intent, not by a corner.** The launcher is the shell's
 keyboard home and the island its pointer home, and the old corner tray was neither:
 it opened when the cursor swept past on the way to a window's close button. The
-overview shows the newest three notifications as real cards under the player, so
+overview shows the three apps that spoke last as real cards under the player, so
 opening the island shows what came in without a second press; a notification used
 to be visible there only while it was still arriving. A row under the three says
 how many more there are and opens the island's history. The whole history is also
@@ -4103,6 +4113,19 @@ which opens `notifications held `. `Launcher.show`
 takes the text to start with. A person who chooses `corner` still gets the live
 popups in a slim `NotificationCorner` at the top right, with no history, no arms
 and no pin; reading the history is the launcher either way.
+
+**One card per app.** The overview and the history fold notifications by app:
+the app that spoke last is on top, and its card is its newest notification with
+a count beside the name. A click on a folded card opens the group up to all of
+them, newest first, instead of opening the notification, and the count folds it
+again. A sideways swipe on a folded card clears the whole app, so forty finished
+downloads go in one gesture; unfold the group to let one go. Folding is also what
+keeps the history quick: it built a full card for every notification on the
+click that opened it, a quarter of a second with forty of them, and now it
+builds one per app. The rows of the list are placed from one running sum that is
+redone whenever a row comes or goes; each row used to add up the rows above it
+on its own, and a row born while another was being removed kept a stale sum and
+sat on top of its neighbour or left a gap.
 
 Message text on a screen is private, so the rows appear only when the query is
 clearly about notifications (`notifications`, `unread`, `held`, with `from <app>` and

@@ -168,6 +168,8 @@ Singleton {
         readonly property color seam: Qt.rgba(root.colour.paper.r, root.colour.paper.g, root.colour.paper.b, 0.08)
 
         readonly property color pane: root.blend(root.colour.surfaceSolid, root.colour.paper, 0.12)
+
+        readonly property color island: root.colour.surfaceSolid
     }
 
     readonly property QtObject opacity: QtObject {

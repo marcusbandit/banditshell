@@ -41,6 +41,10 @@ Singleton {
         return Search.threads(list);
     }
 
+    function byApp(list: var): var {
+        return Search.byApp(list);
+    }
+
     readonly property int heldCount: root.history.filter(e => e.withheld && !e.leaving).length
 
     function asking(text: string): bool {
