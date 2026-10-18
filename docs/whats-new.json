@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-7",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The microphone no longer stays in the island and the rail all the time. It shows for a few seconds when a program starts listening and then goes, so a voice assistant that always listens stops keeping it on screen. It comes back when another program starts listening. The camera and screen sharing still show for as long as they run."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-6",
       "date": "2026-10-18",
       "changes": [

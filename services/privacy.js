@@ -104,6 +104,21 @@ function usageSpec(usage) {
     };
 }
 
+function micNews(heard, apps) {
+    const known = heard || [];
+    return (apps || []).some(app => !known.includes(app));
+}
+
+function micStep(heard, usage, showing) {
+    const apps = usage ? usage.apps : [];
+    const known = (heard || []).filter(app => apps.includes(app));
+    if (!usage)
+        return { post: false, announce: false, heard: [] };
+    const announce = micNews(known, apps);
+    const post = announce || showing;
+    return { post: post, announce: announce, heard: post ? apps.slice() : known };
+}
+
 function sameUsage(a, b) {
     return a.kind === b.kind && a.apps.join("\n") === b.apps.join("\n");
 }

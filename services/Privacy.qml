@@ -32,11 +32,21 @@ Singleton {
 
     property var posted: []
 
+    property var heard: []
+
     function settle(): void {
         const diff = Logic.changes(root.posted, root.usages);
         root.posted = root.usages;
+        const mic = root.usages.find(u => u.kind === "mic") ?? null;
+        const step = Logic.micStep(root.heard, mic, micMoment.running);
+        root.heard = step.heard;
+        if (!mic)
+            micMoment.stop();
+        else if (step.announce)
+            micMoment.restart();
         for (const usage of diff.push)
-            Activities.push(Logic.usageSpec(usage));
+            if (usage.kind !== "mic" || step.post)
+                Activities.push(Logic.usageSpec(usage));
         for (const id of diff.end)
             Activities.remove(id);
     }
@@ -44,6 +54,13 @@ Singleton {
     onUsagesChanged: root.settle()
 
     Component.onCompleted: root.settle()
+
+    Timer {
+        id: micMoment
+
+        interval: Notices.glanceMs
+        onTriggered: Activities.remove("privacy:mic")
+    }
 
     PwObjectTracker {
         objects: [...Pipewire.nodes.values, ...Pipewire.links.values]

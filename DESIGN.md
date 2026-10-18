@@ -4251,6 +4251,15 @@ shell records. What counts as a camera, a microphone or a cast is in
 `privacy.js`: a stream that an active link feeds from a device. A program that
 reads the camera without PipeWire (a raw video4linux grab) is not seen.
 
+The microphone is announced, not kept on show. A voice assistant listening for
+its wake word holds the microphone all day, and a dot that never leaves tells
+nothing, so the microphone's activity stays for one glance
+(`island.glanceSeconds`) when a program starts listening and then goes. It
+comes back only when a program that was not listening before starts; one
+leaving changes nothing. The rail's microphone mark follows the same rule,
+except that a muted microphone something still listens to stays marked. The
+camera and a screen cast are rare and stay up for as long as they run.
+
 ### The kernel
 
 `services/Pacman.qml` runs checkupdates every `packages.interval` minutes. Only

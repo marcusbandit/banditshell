@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/privacy.js"), "utf8");
-const P = new Function(src + "\nreturn { usages, usageSpec, changes, appsLine };")();
+const P = new Function(src + "\nreturn { usages, usageSpec, changes, appsLine, micNews, micStep };")();
 const act = fs.readFileSync(path.join(ROOT, "services/activities.js"), "utf8");
 const A = new Function(act + "\nreturn { push, itemOf };")();
 
@@ -125,6 +125,35 @@ test.describe("posting", () => {
     test.it("only the microphone opens a menu", () => {
         assert.strictEqual(P.usageSpec({ kind: "camera", apps: ["a"] }).pressable, false);
         assert.strictEqual(P.usageSpec({ kind: "screen", apps: ["a"] }).pressable, false);
+    });
+
+    test.it("a listener is news once; one that keeps listening is not", () => {
+        assert.strictEqual(P.micNews([], ["voice"]), true);
+        assert.strictEqual(P.micNews(["voice"], ["voice"]), false);
+        assert.strictEqual(P.micNews(["voice", "Discord"], ["voice"]), false);
+        assert.strictEqual(P.micNews(["voice"], ["Discord", "voice"]), true);
+        assert.strictEqual(P.micNews(null, []), false);
+    });
+
+    test.it("an always-on listener is announced once, then stays quiet until someone new listens", () => {
+        const voice = { kind: "mic", apps: ["voice"] };
+        const call = { kind: "mic", apps: ["Discord", "voice"] };
+        let s = P.micStep([], voice, false);
+        assert.deepStrictEqual(s, { post: true, announce: true, heard: ["voice"] });
+        s = P.micStep(s.heard, voice, false);
+        assert.strictEqual(s.post, false);
+        s = P.micStep(s.heard, call, false);
+        assert.deepStrictEqual(s, { post: true, announce: true, heard: ["Discord", "voice"] });
+        s = P.micStep(s.heard, voice, false);
+        assert.deepStrictEqual(s, { post: false, announce: false, heard: ["voice"] });
+        s = P.micStep(s.heard, null, false);
+        assert.deepStrictEqual(s, { post: false, announce: false, heard: [] });
+        assert.strictEqual(P.micStep(s.heard, voice, false).announce, true);
+    });
+
+    test.it("while the announcement shows, a listener leaving updates it without starting it again", () => {
+        const s = P.micStep(["Discord", "voice"], { kind: "mic", apps: ["voice"] }, true);
+        assert.deepStrictEqual(s, { post: true, announce: false, heard: ["voice"] });
     });
 
     test.it("posts what changed and ends what stopped", () => {
