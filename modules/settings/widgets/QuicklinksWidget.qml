@@ -121,14 +121,14 @@ Column {
 
                 Button {
                     text: "Cancel"
-                    style: "text"
+                    style: "bare"
                     size: 0
                     onClicked: root.editing = -1
                 }
 
                 Button {
                     text: "Save"
-                    style: "filled"
+                    style: "accent"
                     size: 0
                     interactive: !form.problem
                     onClicked: form.save()

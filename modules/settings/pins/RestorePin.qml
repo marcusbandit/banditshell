@@ -129,7 +129,7 @@ Column {
         Button {
             visible: root.changes.length > 0
             size: 0
-            style: "filled"
+            style: "accent"
             text: "Apply"
             onClicked: root.apply()
         }

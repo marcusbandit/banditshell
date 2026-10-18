@@ -185,7 +185,7 @@ every frame so either can be caught and retargeted mid-flight:
 or follows goes through one of those two. A `NumberAnimation` or a `Behavior` on a position is a
 bug, with exactly one exception: a **looping clock** with no target being chased at all. The
 whole list: the mic indicator's processing ripple and typing caret, the battery charge sweep and
-low-charge throb, the scrolling-text marquee, the scrubber's wave phase, the equalizer, the lyric
+low-charge throb, the scrolling-text marquee, the equalizer, the lyric
 line's sung-gap clock, the lyrics loading pulse, the activity bubble's and the settings keyboard
 widget's spinners, and the demo clocks of the settings scenes. Every one of them stops or freezes
 when `Appearance.lessMotion` is true. No overshoot, bounce or flourish anywhere, for now: the
@@ -425,6 +425,13 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
     thing is an object; something lives in it or slides along it is a place. That is why a
     toggle is two shapes, a place (the track) holding an object (the knob), and why the
     island's capsule eases from round ends into the shell's corner as it grows into a card.
+  - **A button is an object, whatever it is doing.** Decided 2026-10-18, retiring the
+    Material 3 button: it keeps its round ends at rest, pressed and switched on, and nothing
+    squares off. A press answers with the fill step and the press scale. A toggle that is on
+    becomes the accent plate, so its state is a colour and survives reduced motion. Four
+    emphases, named for what they are: `accent` for the one action a view is about, `plate`
+    (the default), `ring` for a boundary without a fill, and `bare` for a label that lights on
+    contact. No drop shadow under any of them: depth is material, not decoration.
 - **At most three font sizes, shell-wide.** `small` / `normal` / `large` in
   `config/Appearance.qml` and nothing else. Hierarchy is carried by colour, weight and
   spacing instead. The one exception is `display` (one and a half times `large`), and
@@ -566,7 +573,6 @@ banditshell/
 │   └── Appearance.qml           SINGLETON. Config x Compositor x Themes -> the tokens.
 ├── components/                  generic, reusable, know nothing about the shell
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
-│   ├── wave.js                  a sine polyline, fixed at its START: the scrubber's played part
 │   ├── SquircleRect.qml               the ONE rounded-rect primitive; fill and/or outline;
 │   │                                  `pill: "object"|"place"` sets radius and corner power
 │   ├── squirclefill.frag        the convex path of it, drawn by a shader (+ .qsb)
@@ -612,9 +618,9 @@ banditshell/
 │   ├── MenuLayer.qml            the rest of a row, folded up under it
 │   ├── Segments.qml             a row of choices of which exactly one is taken;
 │   │                            the sheet's two questions and the clipboard's tabs
-│   ├── Button.qml                 THE one button: five emphases, two variants,
-│   │                            two shapes, the five-rung size ladder; the
-│   │                            toggle's colour and shape ARE its state
+│   ├── Button.qml                 THE one button: four emphases (accent, plate,
+│   │                            ring, bare), always the object pill, the
+│   │                            five-rung size ladder; a toggle's colour IS its state
 │   ├── ButtonGroup.qml           several presses joined as ONE plate; a member
 │   │                            lights inside it, the group asks who was pressed
 │   ├── vt.js                    a terminal as a DATA STRUCTURE: the byte stream
@@ -631,13 +637,13 @@ banditshell/
 │   ├── SecretField.qml          THE field you type a secret into: the
 │   │                            keyring's and the wifi row's.
 │   │                            One mark per character rather than an
-│   │                            asterisk, each a different shape from
-│   │                            lobes.js, and only the NEW one ever moves.
+│   │                            asterisk, each a different object pill from
+│   │                            secret-marks.js, and only the NEW one moves.
 │   │                            The secret leaves through `accepted` and by
 │   │                            no other door: there is no readable text
 │   │                            property, on purpose
-│   ├── lobes.js                 the mark family, as maths: one polar curve,
-│   │                            r = 1 - depth*cos(lobes*t), at six settings.
+│   ├── secret-marks.js          the mark family: a dot and a grain at four
+│   │                            angles, all of them the object pill.
 │   │                            Shape comes from the POSITION and never from
 │   │                            the character, which would be the password
 │   │                            written on screen in a code
@@ -1231,7 +1237,7 @@ banditshell/
 │   │   │                        shadow and words that cross-fade; the title on
 │   │   │                        the cover's top, artist and album one tight
 │   │   │                        group on its bottom, each one line that scrolls
-│   │   │                        when it does not fit; the wave; the transport
+│   │   │                        when it does not fit; the seek bar; the transport
 │   │   │                        between the two times on one line; its words
 │   │   │                        and its expand mark open the card
 │   │   └── DictationWave.qml    the voice, as one curve that glides
@@ -1248,7 +1254,8 @@ banditshell/
 │   │   │                        kind of guest
 │   │   ├── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs,
 │   │   │                        shuffle and repeat at its ends on the card
-│   │   ├── Scrubber.qml         the ONE seek bar: a wave up to the pip, a straight run after it
+│   │   ├── Scrubber.qml         the ONE seek bar: a straight run up to the pip, bright while it plays
+│   │   │                        and dim when paused, and a quieter run after it
 │   │   ├── ArtCrossfade.qml     the cover, sharp or blurred, fading into the next one
 │   │   │                        only once the next one has loaded
 │   │   ├── LyricsView.qml       the card's right half: the sung line held a third of
@@ -3901,10 +3908,10 @@ the island rather than the island turning into the card. Now the island's own
 body detaches: its outline, edge, shadow and colour wash move and grow into the
 card's, and every part of the player travels from where it sat in the island to
 its place on the card, the cover, the title, artist and album, the equalizer,
-the progress wave and the buttons. The card is laid out at its final size the
+the seek bar and the buttons. The card is laid out at its final size the
 whole way and the travelling body cuts it to shape, so what the island had no
 place for, the lyrics and the player chips, is uncovered by the growing edge
-and fades in over the last part. A compact row has no artist, album or wave, so
+and fades in over the last part. A compact row has no artist, album or seek bar, so
 those ride with its title and with the body. At that moment the island lets go
 of its body and drips out of the band afresh, and both colour washes run on one
 clock, so the hand-over shows no seam.
@@ -3926,10 +3933,10 @@ over and re-forms under a pointer that has not moved does not open by itself.
 ### How the overview is laid out
 
 Everything sits on two lines, one per side: the clock, the cover, the start of
-the progress wave and the elapsed time on the left; the date, the weather, the
-expand mark, the level meter, the end of the wave and the length on the right.
+the seek bar and the elapsed time on the left; the date, the weather, the
+expand mark, the level meter, the end of the seek bar and the length on the right.
 They are aligned by ink, not by text boxes, so a digit's side bearing or a round
-cap on the wave never pokes out past the line. The top margin is larger than the
+cap on the seek bar never pokes out past the line. The top margin is larger than the
 sides (24 against 16), because a clock that large needs room above it. Sections
 are 16 apart and rows inside a list 8, so what belongs together reads together.
 The title is the thing that matters while a song plays, so it takes the top of

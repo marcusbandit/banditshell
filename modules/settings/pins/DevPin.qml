@@ -64,7 +64,7 @@ Column {
         Button {
             visible: root.st !== "blocked"
             size: 0
-            style: "filled"
+            style: "accent"
             interactive: !root.busy
             text: root.st === "on" ? "Disconnect" : root.st === "near" ? "Pair" : "Connect"
             onClicked: {
@@ -86,7 +86,7 @@ Column {
         Button {
             visible: root.st === "on" || root.st === "paired"
             size: 0
-            style: "outlined"
+            style: "ring"
             text: "Forget"
             onClicked: {
                 const name = root.d.name;
@@ -99,7 +99,7 @@ Column {
         Button {
             visible: root.st !== "blocked"
             size: 0
-            style: "outlined"
+            style: "ring"
             alarm: true
             text: "Block"
             onClicked: {

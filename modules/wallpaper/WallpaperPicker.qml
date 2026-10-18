@@ -744,7 +744,7 @@ Item {
 
                     anchors.verticalCenter: parent.verticalCenter
                     size: 0
-                    style: "text"
+                    style: "bare"
                     icon: "search"
                     iconFill: root.searching ? 1 : 0
                     onClicked: root.searching ? root.stopSearch() : root.startSearch()
@@ -882,7 +882,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: root.entries.length > 2
                     size: 0
-                    style: "text"
+                    style: "bare"
                     icon: "shuffle"
                     onClicked: {
                         const n = root.entries.length;
@@ -941,7 +941,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     interactive: !!strip.currentPath
                     size: 0
-                    style: "filled"
+                    style: "accent"
                     icon: "check"
                     text: "Set"
                     onClicked: root.acceptAt(null)

@@ -165,7 +165,7 @@ Column {
                 return "refresh";
             return Update.restartNeeded ? "restart_alt" : "download";
         }
-        style: "filled"
+        style: "accent"
         interactive: !Update.busy
 
         onClicked: Update.apply()

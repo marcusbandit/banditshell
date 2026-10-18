@@ -150,7 +150,7 @@ Column {
                     required property string modelData
 
                     text: modelData
-                    style: "tonal"
+                    style: "plate"
                     size: 0
                     onClicked: {
                         body.insert(body.cursorPosition, `{${modelData}}`);
@@ -183,14 +183,14 @@ Column {
 
                 Button {
                     text: "Cancel"
-                    style: "text"
+                    style: "bare"
                     size: 0
                     onClicked: root.editing = ""
                 }
 
                 Button {
                     text: "Save"
-                    style: "filled"
+                    style: "accent"
                     size: 0
                     interactive: form.ready
                     onClicked: form.save()

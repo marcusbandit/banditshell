@@ -38,7 +38,7 @@ Column {
         Button {
             anchors.verticalCenter: parent.verticalCenter
             size: 0
-            style: root.phase === "ready" ? "tonal" : "filled"
+            style: root.phase === "ready" ? "plate" : "accent"
             text: root.phase === "ready" ? "Let go" : root.phase === "refused" ? "Again" : "Connect"
             onClicked: {
                 if (root.phase === "ready")

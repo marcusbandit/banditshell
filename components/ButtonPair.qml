@@ -25,7 +25,7 @@ Row {
 
             text: member.modelData.text ?? ""
             icon: member.modelData.icon ?? ""
-            style: member.index === root.primary ? "filled" : "tonal"
+            style: member.index === root.primary ? "accent" : "plate"
             radiusLeft: member.index > 0 ? Appearance.button.seamRadius : -1
             radiusRight: member.index < root.actions.length - 1 ? Appearance.button.seamRadius : -1
 
