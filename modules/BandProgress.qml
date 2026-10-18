@@ -9,7 +9,7 @@ Item {
     property real span: 0
 
     readonly property bool active: root.progress >= 0
-    readonly property real thickness: Math.max(2, Math.round(root.height * 0.4))
+    readonly property real thickness: Math.max(2, Math.round(root.height * 0.3))
     property real last: 0
 
     visible: opened.value > 0 && root.height >= root.thickness
@@ -38,23 +38,23 @@ Item {
         epsilon: 0.001
     }
 
-    SquircleRect {
-        id: track
-
+    Item {
         anchors.centerIn: parent
-        width: root.thickness + (root.span - root.thickness) * opened.value
+        width: root.span
         height: root.thickness
-        pill: "place"
-        color: Appearance.colour.fillStrong
-        opacity: Math.min(1, opened.value * 3)
-    }
+        opacity: opened.value
 
-    SquircleRect {
-        anchors.centerIn: parent
-        width: Math.min(track.width, root.thickness + (root.span - root.thickness) * filled.value)
-        height: root.thickness
-        pill: "place"
-        color: Appearance.colour.accent
-        opacity: track.opacity
+        SquircleRect {
+            anchors.fill: parent
+            pill: "place"
+            color: Appearance.colour.fillStrong
+        }
+
+        SquircleRect {
+            width: root.thickness + (parent.width - root.thickness) * filled.value
+            height: parent.height
+            pill: "place"
+            color: Appearance.colour.accent
+        }
     }
 }

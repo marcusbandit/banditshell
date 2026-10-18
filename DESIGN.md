@@ -4399,9 +4399,9 @@ puts the island back and leaves the update running.
 Once the update has had its glance, the island lets go of the row and sinks
 into the band, and the band itself becomes the progress bar: a line at its top
 centre, inside the band's own thickness, so the frame gets no wider or
-thicker. The line is as long as the large island, a faint track with the
-accent filling out from the middle, and it spreads out from the spot the pill
-sank into, so the eye follows the update up. Opening the island lists the row
+thicker. The line is half as long as the large island, a faint track that
+the accent fills from left to right, and it fades in where the pill sank, so
+the eye follows the update up. Opening the island lists the row
 again with its ring, and pressing it opens the update as before; the line
 steps aside while the update view is open. Whatever needs me brings the row
 back down: the password prompt keeps it until it is answered, a question from

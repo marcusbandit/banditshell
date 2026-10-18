@@ -7,7 +7,7 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "A system update no longer sits in the island the whole time it runs. After a few seconds the island lets it go and the top of the frame becomes its progress bar: a thin line in your accent colour that fills out from the middle. The frame does not get any thicker."
+          "text": "A system update no longer sits in the island the whole time it runs. After a few seconds the island lets it go and the top of the frame becomes its progress bar: a short, thin line in your accent colour that fills from left to right. The frame does not get any thicker."
         },
         {
           "type": "ui",

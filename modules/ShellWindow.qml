@@ -460,7 +460,7 @@ PanelWindow {
             width: parent.width
             height: islandLayer.edge
 
-            span: islandLayer.largeWidth
+            span: Math.round(islandLayer.largeWidth / 2)
             progress: islandLayer.lifted
         }
 
