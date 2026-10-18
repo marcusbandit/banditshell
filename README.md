@@ -35,7 +35,9 @@ text is set in Monocraft, a pixel font. I use it every day, so it changes
 almost every day.
 
 > [!NOTE]
-> Arch Linux and Hyprland only, for now. This is a personal shell that a few
+> Made on Arch with Hyprland, and used there every day. Other distros get the
+> same installer, which knows six package managers, but so far the shell has
+> only been seen running on Arch. This is a personal shell that a few
 > other people run too. Things move around, and the What's new card tells you
 > when they do.
 
@@ -65,10 +67,28 @@ almost every day.
 
 ## Install
 
-You need Arch Linux and Hyprland. The installer brings the rest: Quickshell,
-the Monocraft font, every tool the shell calls, its small C helpers and tab
-completion for zsh and bash. It asks for sudo only when a package needs
-installing, and a second run retries only the steps that failed.
+You need Hyprland and Quickshell. The installer brings them where your distro
+packages them, along with the Monocraft font, the icon fonts, every tool the
+shell calls, its small C helpers and tab completion for zsh and bash. It uses
+whichever of pacman, apt, dnf, zypper, xbps or apk the machine has, asks for
+sudo only when a package needs installing, and a second run retries only the
+steps that failed.
+
+Where each distro stood when the installer last ran in a fresh container of it:
+
+| Distro | Quickshell | Hyprland | What to know |
+| --- | --- | --- | --- |
+| Arch | yes | yes | Everything installs. |
+| Debian 13 | backports | backports | Add `trixie-backports` to your apt sources first. |
+| Fedora 44 | yes, 0.2 | COPR | Hyprland comes from a COPR. Quickshell 0.2 is older than the 0.3 this is built on. |
+| openSUSE Tumbleweed | yes | yes | |
+| Void | yes | no | Build Hyprland yourself. |
+| Alpine | no | yes | Build Quickshell yourself, and `apk add bash` before the installer. |
+| Ubuntu 24.04 | no | no | Its Qt 6.4 is too old. A newer Ubuntu may work. |
+
+On NixOS, Gentoo or anything else, `./install.sh --list` names every package
+the shell needs, by its Arch name, for you to install your own way. The
+installer then still sets up the fonts, the helpers and the rest.
 
 ```sh
 git clone https://github.com/marcusbandit/banditshell.git

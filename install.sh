@@ -804,13 +804,25 @@ main() {
 
     if [ "$LIST_ONLY" -eq 1 ]; then
         local i names
-        printf 'packages from: %s\n' "${PKG_MANAGER:-nothing this installer drives}"
+        if package_names curl >/dev/null; then
+            printf 'packages from: %s\n' "$PKG_MANAGER"
+        else
+            printf "packages from: nothing this installer drives%s; the names below are Arch's\n" "${PKG_MANAGER:+ ($PKG_MANAGER is here)}"
+        fi
         printf '%-32s %-6s %s\n' NAME PHASE WHAT
         for ((i = 0; i < total; i++)); do
             names=""
             case "${STEP_PKG[$i]}" in
             @*) ;;
-            *) names="$(package_names "${STEP_PKG[$i]}")" && names="  [$names]" || names="  [not packaged here]" ;;
+            *)
+                if names="$(package_names "${STEP_PKG[$i]}")"; then
+                    case "$names" in @*) names="  [downloaded]" ;; *) names="  [$names]" ;; esac
+                elif [ $? -eq 2 ]; then
+                    names="  [${STEP_PKG[$i]} on Arch]"
+                else
+                    names="  [not packaged here]"
+                fi
+                ;;
             esac
             printf '%-32s %-6s %s%s\n' "${STEP_NAME[$i]}" "${STEP_PHASE[$i]}" "${STEP_WHAT[$i]}" "$names"
         done
