@@ -378,6 +378,7 @@ Item {
             property real scrubSpent: 0
 
             property real goal: 0
+            property real previewedGoal: 0
             property bool placing: false
 
             onGoalChanged: if (!strip.placing)
@@ -405,6 +406,7 @@ Item {
             function jumpTo(i: int): void {
                 strip.placing = true;
                 strip.goal = strip.wrapped(i);
+                strip.previewedGoal = strip.goal;
                 glide.value = strip.goal;
                 strip.placing = false;
             }
@@ -460,8 +462,13 @@ Item {
                 interval: 90
 
                 onTriggered: {
-                    if (root.open && strip.currentPath)
-                        Wallpaper.setPreview(root.screen, strip.currentPath);
+                    if (!root.open || !strip.currentPath)
+                        return;
+                    const heading = strip.goal - strip.previewedGoal;
+                    strip.previewedGoal = strip.goal;
+                    if (heading !== 0)
+                        Wallpaper.setOrigin(root.screen, heading > 0 ? 1 : 0, 0.5);
+                    Wallpaper.setPreview(root.screen, strip.currentPath);
                 }
             }
 
