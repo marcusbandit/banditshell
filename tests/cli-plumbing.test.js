@@ -293,6 +293,20 @@ test("install.sh lists the path and lua-api steps", () => {
     assert.match(run.stdout, /^lua-api\s+2\s+the Lua module for binds/m);
 });
 
+test("install.sh names each package the way the machine's package manager does", () => {
+    const home = directory("home");
+    const names = (manager, pkg) => installer(`PKG_MANAGER=${manager}; package_names ${pkg}; echo "status $?"`, home).stdout.trim();
+    assert.strictEqual(names("pacman", "fd"), "fd\nstatus 0");
+    assert.strictEqual(names("apt-get", "fd"), "fd-find\nstatus 0");
+    assert.strictEqual(names("apt-get", "gcc"), "gcc libc6-dev\nstatus 0");
+    assert.strictEqual(names("dnf", "networkmanager"), "NetworkManager\nstatus 0");
+    assert.strictEqual(names("apk", "python-gobject"), "py3-gobject3\nstatus 0");
+    assert.strictEqual(names("xbps-install", "hyprland"), "status 1");
+    assert.strictEqual(names("zypper", "ttf-nerd-fonts-symbols"), "@nerd-symbols\nstatus 0");
+    assert.strictEqual(names("emerge", "fd"), "status 2");
+    assert.strictEqual(names("apt-get", "something-new"), "something-new\nstatus 0");
+});
+
 test("the path step links ~/.local/bin/banditshell to this checkout's CLI and nothing else", () => {
     const home = directory("home");
     const before = installer("path_present && echo yes || echo no", home);
