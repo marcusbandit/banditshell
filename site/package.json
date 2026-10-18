@@ -1,0 +1,10 @@
+{
+  "name": "banditshell-site",
+  "private": true,
+  "type": "module",
+  "description": "banditshell.marcusrosado.com: the front page, and the roadmap built from docs/roadmap.md",
+  "scripts": {
+    "build": "node build.mjs",
+    "deploy": "node build.mjs && npx --yes wrangler@4 deploy"
+  }
+}

@@ -61,6 +61,11 @@ Item {
                     state: rec.state,
                     rec: rec
                 });
+        if (root.offStage && SystemUpgrade.shown)
+            out.push({
+                key: "upgrade",
+                kind: "upgrade"
+            });
         if (root.offStage)
             out.push(...Notices.fresh, ...Activities.shown);
         return out;
@@ -172,6 +177,27 @@ Item {
     }
 
     property bool pinned: false
+    property string task: ""
+    property string heldTask: ""
+    property bool backToOverview: false
+    readonly property bool tasking: root.task !== ""
+    readonly property bool upgradeOpen: root.task === "upgrade"
+    readonly property var taskNames: ({
+            upgrade: "the system update",
+            update: "the shell update",
+            notifications: "the notifications",
+            timers: "the timers",
+            weather: "the weather",
+            calendar: "the calendar"
+        })
+    readonly property var taskViews: ({
+            upgrade: upgradeView,
+            update: updateView,
+            notifications: notificationsView,
+            timers: timersView,
+            weather: weatherView,
+            calendar: calendarView
+        })
     property bool pulling: false
     property real pullProgress: 0
 
@@ -191,7 +217,7 @@ Item {
     property bool fanning: false
 
     readonly property bool fronting: root.centreKey === "notification" && !root.deferred.includes("notification")
-    readonly property bool expanded: root.pinned || (root.dwelt && !root.fronting)
+    readonly property bool expanded: root.pinned || root.tasking || (root.dwelt && !root.fronting)
     readonly property bool alerting: root.fronting && !root.expanded
     readonly property real openness: root.pulling ? root.pullProgress : root.expanded ? 1 : 0
 
@@ -221,7 +247,7 @@ Item {
 
     readonly property bool deckRest: root.rest === "alert" || root.rest === "stack" || root.rest === "spread"
 
-    readonly property string presentation: root.openness > 0.5 ? "overview" : root.rest
+    readonly property string presentation: root.openness > 0.5 ? (root.tasking ? "task" : "overview") : root.rest
 
     readonly property var bubbleKeys: root.out ? root.liveOrder.filter(k => k !== root.centreKey && (root.viewOf(k)?.items.length ?? 0) > 0).slice(0, root.bubbleMax) : []
     property var shownBubbles: []
@@ -245,6 +271,8 @@ Item {
     }
 
     readonly property string situation: {
+        if (root.presentation === "task")
+            return root.taskNames[root.task] ?? "a task";
         if (root.presentation === "overview")
             return root.alerts.length > 0 ? "overview, notifications arriving inside it" : "overview";
         const kinds = [...new Set(root.passing.map(p => p.kind))];
@@ -274,7 +302,7 @@ Item {
 
     readonly property bool attending: root.hovering || root.openness > 0
 
-    readonly property bool wantsEscape: root.pinned
+    readonly property bool wantsEscape: root.pinned || root.tasking
 
     readonly property Item grabItem: zone
 
@@ -284,7 +312,7 @@ Item {
 
     function pressable(activity: var): bool {
         const kind = activity?.kind ?? "";
-        return ["music", "download", "update", "kernel", "restart", "held", "notification", "recording", "timer", "alarm"].includes(kind) || ((kind === "external" || kind === "privacy") && !!activity.pressable);
+        return ["music", "download", "update", "kernel", "restart", "upgrade", "held", "notification", "recording", "timer", "alarm"].includes(kind) || ((kind === "external" || kind === "privacy") && !!activity.pressable);
     }
 
     readonly property bool whole: root.openness > 0 || root.deckRest || root.stackItems.some(i => root.pressable(i))
@@ -294,6 +322,10 @@ Item {
     readonly property real compactHeight: Appearance.font.line.small + Appearance.padding.small * 2
     readonly property real slot: Appearance.font.line.small
     readonly property real largeWidth: Config.values.island.width
+    readonly property real taskSpan: taskView.item?.span ?? 1
+    readonly property real taskWidth: Math.min(Math.round(root.largeWidth * root.taskSpan), (root.host?.width ?? root.largeWidth * 2) - (root.border + Appearance.padding.large) * 2)
+    readonly property real taskRoom: Math.max(root.compactHeight * 6, ((root.host?.height ?? 1080) - root.islandTop) * 0.7)
+    readonly property real taskHeight: taskView.item?.implicitHeight ?? 0
     readonly property real islandTop: root.edge + Appearance.padding.small
     readonly property real budGap: Appearance.padding.normal
     readonly property real bubblePitch: root.compactHeight + root.budGap
@@ -313,13 +345,13 @@ Item {
     readonly property real restWidth: root.deckRest ? root.largeWidth : root.rest === "compact" ? root.rowsWidth + swell.value * 2 : root.compactHeight
     readonly property real restHeight: root.deckRest ? root.cardHeight + root.stackItems.length * root.compactHeight : root.compactHeight * Math.max(1, root.stackItems.length)
 
-    readonly property real fieldWidth: Math.ceil(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2)
-    readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), overview.implicitHeight - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2) + root.shadowRoom) / root.fieldStep) * root.fieldStep
+    readonly property real fieldWidth: Math.ceil(Math.max(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2, root.taskWidth + root.shadowRoom * 2))
+    readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), overview.implicitHeight - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2, root.taskHeight) + root.shadowRoom) / root.fieldStep) * root.fieldStep
     readonly property real centreX: scene.width / 2
     readonly property real surfaceX: Math.round((root.width - root.fieldWidth) / 2 + trail.value)
 
     readonly property real widening: Math.min(1, glide.value * 1.8)
-    readonly property real pillWidth: wide.value + (root.largeWidth - wide.value) * root.widening
+    readonly property real pillWidth: wide.value + (span.value - wide.value) * root.widening
     readonly property real pillHeight: tall.value + (overviewTall.value - tall.value) * glide.value
     readonly property real pillX: root.centreX - root.pillWidth / 2
     readonly property real tuckedY: root.edge - root.pillHeight - Appearance.padding.small
@@ -340,7 +372,7 @@ Item {
 
     property var holding: []
 
-    readonly property var waiting: !root.expanded && (!root.alerting || root.pulling) ? root.alerts : []
+    readonly property var waiting: root.tasking || (!root.expanded && (!root.alerting || root.pulling)) ? root.alerts : []
 
 
     function sizeOf(key: string): int {
@@ -455,6 +487,12 @@ Item {
     }
 
     function choose(activity: var): void {
+        if (root.taskViews[activity?.kind ?? ""]) {
+            if (activity.kind === "update" && activity.key)
+                Notices.settle(activity.key);
+            root.openTask(activity.kind);
+            return;
+        }
         if (activity?.kind === "notification") {
             root.summon = "notification";
             Qt.callLater(root.arrange);
@@ -596,8 +634,34 @@ Item {
 
     function close(): void {
         root.pinned = false;
+        root.task = "";
+        root.backToOverview = false;
         root.dwelt = false;
         root.spent = root.hovering;
+    }
+
+    function openTask(key: string): void {
+        if (!root.tasking)
+            root.backToOverview = root.openness > 0.5;
+        root.pinned = false;
+        root.task = key;
+    }
+
+    function leaveTask(): void {
+        if (!root.backToOverview) {
+            root.close();
+            return;
+        }
+        root.backToOverview = false;
+        root.task = "";
+        root.pinned = true;
+    }
+
+    function back(): void {
+        if (root.tasking)
+            root.leaveTask();
+        else
+            root.close();
     }
 
     function dragTo(fraction: real): void {
@@ -610,6 +674,11 @@ Item {
             return;
         root.pulling = false;
         root.pullProgress = 0;
+        if (root.tasking) {
+            if (!open)
+                root.close();
+            return;
+        }
         root.pinned = open;
         if (!open)
             root.dwelt = false;
@@ -666,6 +735,19 @@ Item {
             Notifications.markSeen();
     }
 
+    onUpgradeOpenChanged: SystemUpgrade.watchers += root.upgradeOpen ? 1 : -1
+    onTaskChanged: if (root.task)
+        root.heldTask = root.task
+
+    Connections {
+        target: SystemUpgrade
+
+        function onShownChanged(): void {
+            if (!SystemUpgrade.shown && root.task === "upgrade")
+                root.task = "";
+        }
+    }
+
     onHoveringChanged: {
         if (!root.hovering && !root.reforming)
             root.spent = false;
@@ -708,6 +790,8 @@ Item {
     }
 
     Component.onDestruction: {
+        if (root.upgradeOpen)
+            SystemUpgrade.watchers -= 1;
         for (const entry of root.holding)
             entry.release(root);
         Notices.release(root);
@@ -853,7 +937,26 @@ Item {
         id: overviewTall
 
         speed: root.morphSpeed
-        target: overview.implicitHeight
+        target: root.tasking ? root.taskHeight : overview.implicitHeight
+    }
+
+    Follow {
+        id: span
+
+        speed: root.morphSpeed
+        value: root.largeWidth
+        target: root.tasking ? root.taskWidth : root.largeWidth
+    }
+
+    Follow {
+        id: taskFade
+
+        speed: root.fadeSpeed(taskFade)
+        epsilon: 0.004
+        target: root.tasking ? 1 : 0
+
+        onSettledChanged: if (taskFade.settled && !root.tasking)
+            root.heldTask = ""
     }
 
     Follow {
@@ -885,7 +988,7 @@ Item {
 
         speed: root.fadeSpeed(deckFade)
         epsilon: 0.004
-        target: root.deckEntries.length > 0 && (root.alerting || root.openness > 0) ? 1 : 0
+        target: root.deckEntries.length > 0 && !root.tasking && (root.alerting || root.openness > 0) ? 1 : 0
     }
 
     property bool fanLeads: false
@@ -959,7 +1062,7 @@ Item {
 
         speed: Appearance.animation.revealSpeed * 0.6
         epsilon: 0.004
-        target: !Media.hasTrack ? 0 : root.openness > 0 ? 0.62 * root.openness : root.rest === "compact" && root.passing.some(p => p.kind === "music") ? 0.45 : 0
+        target: !Media.hasTrack || root.tasking ? 0 : root.openness > 0 ? 0.62 * root.openness : root.rest === "compact" && root.passing.some(p => p.kind === "music") ? 0.45 : 0
     }
 
     Pull {
@@ -978,8 +1081,16 @@ Item {
         angle: Config.values.control.pullAngleEdge
         travel: Math.max(1, overview.implicitHeight - root.compactHeight)
 
-        onTapped: root.pinned = !root.pinned
-        onPulled: fraction => root.dragTo(fraction)
+        onTapped: {
+            if (root.tasking)
+                root.close();
+            else
+                root.pinned = !root.pinned;
+        }
+        onPulled: fraction => {
+            if (!root.tasking)
+                root.dragTo(fraction);
+        }
         onFinished: open => root.dragEnd(open)
 
         HoverHandler {
@@ -993,7 +1104,7 @@ Item {
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Escape) {
                 Appearance.instantly();
-                root.pinned = false;
+                root.back();
                 event.accepted = true;
             }
         }
@@ -1044,7 +1155,7 @@ Item {
 
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: root.tasking ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         WlrLayershell.namespace: "banditshell-island"
 
         mask: Region {
@@ -1054,7 +1165,15 @@ Item {
         Item {
             id: scene
 
+            focus: true
             visible: !root.yielded
+
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_Escape && root.tasking) {
+                    root.back();
+                    event.accepted = true;
+                }
+            }
             width: root.fieldWidth
             height: root.fieldHeight
             anchors.horizontalCenter: parent.horizontalCenter
@@ -1241,7 +1360,7 @@ Item {
                     dirX: 0
                     dirY: -1
                     angle: Config.values.control.pullAngleEdge
-                    travel: Math.max(1, overview.implicitHeight - root.compactHeight)
+                    travel: Math.max(1, (root.tasking ? root.taskHeight : overview.implicitHeight) - root.compactHeight)
 
                     onPulled: fraction => root.dragTo(1 - fraction)
                     onFinished: open => root.dragEnd(!open)
@@ -1254,15 +1373,50 @@ Item {
                     y: root.pillY
                     width: root.largeWidth
                     activities: root.overviewRows
-                    watched: overviewFade.value > 0.01
+                    watched: overviewFade.value > 0.01 && taskFade.value < 0.99
                     arrivals: root.deckEntries.length > 0 ? deck.implicitHeight : 0
                     carried: root.stackKeys
                     carriedOpacity: 1
-                    opacity: Math.max(0, (overviewFade.value - 0.4) / 0.6) * presence.value
+                    opacity: Math.max(0, (overviewFade.value - 0.4) / 0.6) * presence.value * (1 - taskFade.value)
                     visible: opacity > 0.005
-                    enabled: root.expanded
+                    enabled: root.expanded && !root.tasking
 
                     onChosen: activity => root.choose(activity)
+                }
+
+                Loader {
+                    id: taskView
+
+                    x: root.centreX - root.taskWidth / 2
+                    y: root.pillY
+                    width: root.taskWidth
+                    active: root.heldTask !== ""
+                    sourceComponent: root.taskViews[root.heldTask] ?? null
+                    opacity: Math.max(0, (overviewFade.value - 0.4) / 0.6) * presence.value * taskFade.value
+                    visible: opacity > 0.005
+                    enabled: root.tasking && root.expanded
+
+                    onLoaded: {
+                        taskView.item.watched = Qt.binding(() => root.tasking && taskFade.value > 0.01);
+                        taskView.item.maxHeight = Qt.binding(() => root.taskRoom);
+                    }
+
+                    Connections {
+                        target: taskView.item
+
+                        function onHide(): void {
+                            root.leaveTask();
+                        }
+
+                        function onAct(notice: var): void {
+                            root.close();
+                            root.chosen(notice);
+                        }
+
+                        function onOpen(key: string): void {
+                            root.openTask(key);
+                        }
+                    }
                 }
 
                 AlertDeck {
@@ -1276,14 +1430,11 @@ Item {
                     maxHeight: Math.max(root.compactHeight * 4, ((root.host?.height ?? 1080) - root.islandTop) * 0.55)
                     opacity: deckFade.value * presence.value
                     visible: opacity > 0.005
-                    enabled: root.deckRest || root.openness > 0
+                    enabled: (root.deckRest || root.openness > 0) && !root.tasking
 
                     onDismissed: entry => Notifications.dismiss(entry)
                     onKept: entry => Notifications.expire(entry)
-                    onHistory: root.chosen({
-                        key: "notifications",
-                        kind: "notifications"
-                    })
+                    onHistory: root.openTask("notifications")
                     onLifted: {
                         for (const entry of root.alerts)
                             Notifications.expire(entry);
@@ -1329,9 +1480,9 @@ Item {
                         readonly property real shown: appear.value
 
                         property real heldTop: -1
-                        readonly property real liveTop: overview.rowTop(row.key)
+                        readonly property real liveTop: root.tasking ? -1 : overview.rowTop(row.key)
                         readonly property real toY: row.liveTop >= 0 ? row.liveTop : row.heldTop
-                        readonly property bool carried: row.here && row.toY >= 0
+                        readonly property bool carried: row.here && !root.tasking && row.toY >= 0
                         readonly property real t: row.carried ? glide.value : 0
                         readonly property real fromWidth: root.pillWidth - swell.value * 2
                         readonly property real toX: overview.x + overview.pad
@@ -1543,7 +1694,7 @@ Item {
                 width: root.slot + (to.width - root.slot) * t
                 height: width
                 source: Media.hasTrack ? Media.artUrl : ""
-                opacity: presence.value * (from?.shown ?? 0) * Math.min(1, t * 6) * (1 - Math.max(0, (t - 0.8) / 0.2))
+                opacity: presence.value * (from?.shown ?? 0) * Math.min(1, t * 6) * (1 - Math.max(0, (t - 0.8) / 0.2)) * (1 - taskFade.value)
                 visible: !!from && to.width > 0 && opacity > 0.01
             }
 
@@ -1571,5 +1722,41 @@ Item {
                 height: root.compactHeight
             }
         }
+    }
+
+    Component {
+        id: upgradeView
+
+        IslandUpgrade {}
+    }
+
+    Component {
+        id: updateView
+
+        IslandShellUpdate {}
+    }
+
+    Component {
+        id: notificationsView
+
+        IslandNotifications {}
+    }
+
+    Component {
+        id: timersView
+
+        IslandTimers {}
+    }
+
+    Component {
+        id: weatherView
+
+        IslandWeather {}
+    }
+
+    Component {
+        id: calendarView
+
+        IslandCalendar {}
     }
 }

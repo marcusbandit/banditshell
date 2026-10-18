@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}}</title>
+<meta name="description" content="{{description}}">
+<meta name="theme-color" content="#0f1114">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{title}}">
+<meta property="og:description" content="{{description}}">
+<meta property="og:url" content="{{url}}">
+<meta property="og:image" content="https://banditshell.marcusrosado.com/images/hero-still.webp">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/Monocraft.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="{{page}}">
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar">
+<nav class="bar-inner" aria-label="Site">
+<a class="brand" href="/"><img src="/favicon.svg" width="24" height="24" alt=""><span>banditshell</span></a>
+<a href="/#features">Features</a>
+<a href="/#install">Install</a>
+<a href="/roadmap/"{{roadmapCurrent}}>Roadmap</a>
+<a href="{{repo}}">GitHub</a>
+</nav>
+</header>
+<main id="main">
+{{main}}
+</main>
+<footer class="foot">
+<div class="foot-inner">
+<p class="brand"><img src="/favicon.svg" width="24" height="24" alt=""><span>banditshell</span></p>
+<p>A desktop shell for Hyprland, written from scratch in Quickshell and QML. Free software under the GPL-3.0.</p>
+<nav aria-label="Elsewhere">
+<a href="{{repo}}">GitHub</a>
+<a href="/roadmap/">Roadmap</a>
+<a href="{{repo}}/issues">Report a bug</a>
+<a href="https://ko-fi.com/marcusbandit">Ko-fi</a>
+<a href="https://quickshell.org">Quickshell</a>
+<a href="https://hypr.land">Hyprland</a>
+</nav>
+<p class="build">Built at {{commit}}. Headings are set in Monocraft by Idrees Hassan, under the <a href="/fonts/OFL.txt">SIL Open Font License</a>.</p>
+</div>
+</footer>
+<script src="/site.js" defer></script>
+{{scripts}}
+</body>
+</html>

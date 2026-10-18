@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Services.Notifications
 import qs.services
 import qs.modules.island
+import "../modules/island/upgrade-samples.js" as Samples
 import "../services/activities.js" as Logic
 import "../services/moments.js" as MomentLogic
 import "../services/privacy.js" as PrivacyLogic
@@ -358,6 +359,178 @@ ShellRoot {
             holds: () => island.restHeight <= (island.host?.height ?? 900) * 0.62
         },
         {
+            name: "clear the stage for the system update",
+            run: () => {
+                island.fanning = false;
+                for (const e of [...Notifications.popups])
+                    Notifications.dismiss(e);
+                preview.speak("idle");
+                Launching.shown = [];
+            },
+            wait: 1500,
+            expect: "hidden"
+        },
+        {
+            name: "the kernel update starts and waits for the password",
+            run: () => SystemUpgrade.mock("", -2, "7.2.10"),
+            expect: "upgrade"
+        },
+        {
+            name: "downloading, a ring and the stage in words",
+            run: () => SystemUpgrade.mock(Samples.download, -2, "7.2.10"),
+            expect: "upgrade"
+        },
+        {
+            name: "pressing it turns the island into the update",
+            run: () => island.choose({
+                    key: "upgrade",
+                    kind: "upgrade"
+                }),
+            wait: 300,
+            expect: "the system update"
+        },
+        {
+            name: "the update view while it downloads",
+            run: () => {},
+            expect: "the system update",
+            holds: () => island.presentation === "task" && SystemUpgrade.cancellable
+        },
+        {
+            name: "installing, too late to cancel",
+            run: () => SystemUpgrade.mock(Samples.install, -2, "7.2.10"),
+            expect: "the system update",
+            holds: () => !SystemUpgrade.cancellable && SystemUpgrade.stage === 2
+        },
+        {
+            name: "the hooks run",
+            run: () => SystemUpgrade.mock(Samples.hooks, -2, "7.2.10"),
+            expect: "the system update",
+            holds: () => SystemUpgrade.stage === 3
+        },
+        {
+            name: "pacman asks a question",
+            run: () => SystemUpgrade.mock(Samples.question, -2, "7.2.10"),
+            expect: "the system update",
+            holds: () => SystemUpgrade.asking
+        },
+        {
+            name: "done, with a restart to do",
+            run: () => {
+                Pacman.stale = true;
+                SystemUpgrade.mock(Samples.done, 0, "7.2.10");
+            },
+            expect: "the system update",
+            holds: () => SystemUpgrade.state === "done"
+        },
+        {
+            name: "failed, plain words and a way out",
+            run: () => {
+                Pacman.stale = false;
+                SystemUpgrade.mock(Samples.failed, 1, "7.2.10");
+            },
+            expect: "the system update",
+            holds: () => SystemUpgrade.state === "failed"
+        },
+        {
+            name: "hidden, the failure waits as a row",
+            run: () => island.close(),
+            wait: 400,
+            expect: "upgrade"
+        },
+        {
+            name: "a notification still takes the island over the row",
+            run: () => preview.notify("Discord", "marcus", "did the update go through?", false),
+            wait: 400,
+            expect: "one notification, below it: upgrade"
+        },
+        {
+            name: "seen and dismissed, the island is empty",
+            run: () => {
+                for (const e of [...Notifications.popups])
+                    Notifications.dismiss(e);
+                SystemUpgrade.acknowledge();
+            },
+            wait: 1500,
+            expect: "hidden"
+        },
+        {
+            name: "the overview, where the clock, the date and the weather can be pressed",
+            run: () => {
+                Clock.startTimer(25 * 60, "Focus");
+                Clock.startTimer(4 * 60, "Tea");
+                island.pinned = true;
+            },
+            wait: 1200,
+            expect: "overview"
+        },
+        {
+            name: "the clock opens the timers",
+            run: () => island.choose({
+                    kind: "timers"
+                }),
+            wait: 1200,
+            expect: "the timers"
+        },
+        {
+            name: "back goes to the overview it came from",
+            run: () => island.back(),
+            wait: 900,
+            expect: "overview"
+        },
+        {
+            name: "the date opens the calendar",
+            run: () => island.choose({
+                    kind: "calendar"
+                }),
+            wait: 1200,
+            expect: "the calendar"
+        },
+        {
+            name: "the weather opens the forecast",
+            run: () => {
+                island.back();
+                island.choose({
+                    kind: "weather"
+                });
+            },
+            wait: 4000,
+            expect: "the weather"
+        },
+        {
+            name: "the shell update opens in the island, not the sidebar",
+            run: () => island.choose({
+                    kind: "update",
+                    key: "update:mock",
+                    mock: true
+                }),
+            wait: 1200,
+            expect: "the shell update"
+        },
+        {
+            name: "the notifications row opens the history",
+            run: () => {
+                preview.remember("Discord", "marcus", "are you coming tonight?");
+                preview.remember("Firefox", "Download finished", "linux-zen-6.17.tar.zst");
+                preview.remember("Signal", "Mum", "call me when you get a minute");
+                island.choose({
+                    kind: "notifications"
+                });
+            },
+            wait: 1200,
+            expect: "the notifications"
+        },
+        {
+            name: "escape goes back, and again closes",
+            run: () => {
+                island.back();
+                island.back();
+                for (const t of [...Clock.timers])
+                    Clock.removeTimer(t.id);
+            },
+            wait: 1500,
+            expect: "hidden"
+        },
+        {
             name: "everything is dismissed before the moments",
             run: () => {
                 island.fanning = false;
@@ -479,6 +652,20 @@ ShellRoot {
             expect: "hidden"
         }
     ]
+
+    function remember(app: string, summary: string, body: string): void {
+        const entry = entryComponent.createObject(preview, {
+            appName: app,
+            summary: summary,
+            body: body,
+            urgency: NotificationUrgency.Normal,
+            timeout: 0,
+            live: false,
+            time: Date.now() - 60000 * (preview.made + 1) + preview.made++
+        });
+        Notifications.history = [entry, ...Notifications.history];
+    }
+
 
     property int step: 0
     property int made: 0

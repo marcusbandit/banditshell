@@ -104,6 +104,7 @@
     "R3 modules/ShellWindow.qml uses PasswordRequest of password without requiring it",
     "R3 modules/ShellWindow.qml uses ScreenRecorder of capture without requiring it",
     "R3 modules/ShellWindow.qml uses Settings of settings without requiring it",
+    "R3 modules/ShellWindow.qml uses SystemUpgrade of updates without requiring it",
     "R3 modules/ShellWindow.qml uses SettingsState of settings without requiring it",
     "R3 modules/ShellWindow.qml uses Tablet of display without requiring it",
     "R3 modules/ShellWindow.qml uses Usage of screentime without requiring it",

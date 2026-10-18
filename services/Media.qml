@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.Mpris
 
@@ -88,6 +89,68 @@ Singleton {
 
     readonly property string source: root.sourceOf(root.active)
     readonly property var choices: root.players.filter(p => root.rank(p) > 0)
+
+    property var owners: ({})
+
+    function namesOf(player: MprisPlayer): var {
+        const bus = /^org\.mpris\.MediaPlayer2\.([^.]+)/.exec(player?.dbusName ?? "");
+        return [player?.desktopEntry, player?.identity, bus?.[1]].map(n => String(n ?? "").toLowerCase()).filter(n => n.length > 1);
+    }
+
+    function frontness(player: MprisPlayer): string {
+        const win = Hypr.activeClient ?? Hyprland.toplevels.values.find(t => t.lastIpcObject?.focusHistoryID === 0) ?? null;
+        if (!player || !win)
+            return "back";
+        const box = win.lastIpcObject ?? {};
+        const owner = root.owners[player.dbusName ?? ""] ?? 0;
+        const cls = String(box.class || box.initialClass || "").toLowerCase();
+        const kin = !!cls && root.namesOf(player).some(n => cls === n || cls.endsWith(`.${n}`) || cls.startsWith(`${n}-`));
+        if (!(owner > 0 && owner === box.pid) && !kin)
+            return root.owners[player.dbusName ?? ""] === undefined ? "unsure" : "back";
+        if (!root.isBrowser(player))
+            return "front";
+        const title = String(win.title || box.title || "").toLowerCase();
+        const track = String(player.trackTitle ?? "").toLowerCase();
+        return track && title.includes(track) ? "front" : "unsure";
+    }
+
+    onPlayersChanged: owning.ask()
+
+    Process {
+        id: owning
+
+        property bool again: false
+
+        function ask(): void {
+            if (owning.running) {
+                owning.again = true;
+                return;
+            }
+            const names = root.players.map(p => p.dbusName ?? "").filter(n => n);
+            if (names.length === 0) {
+                root.owners = {};
+                return;
+            }
+            owning.command = ["sh", "-c", "for n do printf '%s ' \"$n\"; busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus GetConnectionUnixProcessID s \"$n\" 2>/dev/null || echo; done", "sh", ...names];
+            owning.running = true;
+        }
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const next = {};
+                for (const line of text.split("\n")) {
+                    const m = /^(\S+) u (\d+)$/.exec(line.trim());
+                    if (m)
+                        next[m[1]] = Number(m[2]);
+                }
+                root.owners = next;
+                if (owning.again) {
+                    owning.again = false;
+                    owning.ask();
+                }
+            }
+        }
+    }
 
     readonly property bool available: !!active
     readonly property bool playing: !!active?.isPlaying
@@ -230,6 +293,7 @@ Singleton {
         root.recent = root.players.find(p => p.isPlaying && root.rank(p) > 1) ?? null;
         root.adoptLength();
         root.place(root.active?.position ?? 0);
+        owning.ask();
     }
 
     property real heldLength: 0

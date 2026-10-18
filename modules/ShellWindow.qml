@@ -154,6 +154,7 @@ PanelWindow {
         if (here)
             return;
         islandLayer.pinned = false;
+        islandLayer.task = "";
     }
 
     function openMenu(key: string, pin = true): bool {
@@ -204,20 +205,13 @@ PanelWindow {
                 mediaLayer.show();
             }
             break;
-        case "notifications":
-            islandLayer.close();
-            launcherLayer.show("notifications ");
-            return;
         case "held":
             islandLayer.close();
             launcherLayer.show("notifications held ");
             break;
-        case "update":
-            if (!win.openMenu("update", true))
-                Settings.show(win.screen?.name ?? "", "updates");
-            break;
         case "kernel":
-            Pacman.upgrade();
+            if (!SystemUpgrade.start())
+                Pacman.upgrade();
             break;
         case "restart":
             sessionLayer.show();
@@ -408,7 +402,7 @@ PanelWindow {
             else if (menuLayer.wantsEscape)
                 menuLayer.hide();
             else if (islandLayer.wantsEscape)
-                islandLayer.pinned = false;
+                islandLayer.back();
             else
                 return;
 
