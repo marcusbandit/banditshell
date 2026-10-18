@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-4",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Updating Linux happens in the island now instead of a terminal. Pressing the kernel notice asks for your password in the shell's own prompt, then the island shows the update as it goes: downloading, checking, installing, finishing. Press it to open the update in full, where you can cancel while that is still safe, answer pacman's questions with buttons, or watch it in a terminal. Closing that terminal or restarting the shell leaves the update running."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A new song only pops up in the island when it plays somewhere you are not looking. Music or a video in the window you are using stays quiet; Spotify in the background or a video in another tab still shows."
+        }
+      ]
+    },
+    {
       "id": "2026-10-17-5",
       "date": "2026-10-17",
       "changes": [
