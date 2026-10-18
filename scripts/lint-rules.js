@@ -447,6 +447,27 @@ function ruleL6(ctx) {
     return found;
 }
 
+function ruleL13(ctx) {
+    const { code, at } = ctx.scanned;
+    const found = [];
+    const style = /(?:^|[;{])[ \t]*style[ \t]*:/gm;
+    for (const block of objectBlocks(code, "Button", at)) {
+        const own = ownLevel(code, block);
+        style.lastIndex = 0;
+        let m;
+        while ((m = style.exec(own)) !== null) {
+            let from = block.open + m.index + m[0].length;
+            while (code[from] === " " || code[from] === "\t")
+                from++;
+            const value = ctx.text.slice(from, from + readValue(code, from).length);
+            const retired = /"(filled|elevated|tonal|outlined|text)"/.exec(value);
+            if (retired)
+                found.push({ line: at(block.open + m.index + m[0].search(/\S/)), detail: `Button style "${retired[1]}" is Material 3's; use accent, plate, ring or bare` });
+        }
+    }
+    return found;
+}
+
 function ruleL7(ctx) {
     const { code, at } = ctx.scanned;
     const found = [];
@@ -514,7 +535,8 @@ const RULES = [
     { id: "L9", reason: "Quickshell's JS engine lacks matchAll, flat, flatMap, Object.fromEntries, at, structuredClone and regex lookbehind, and replaceAll is risky.", appliesTo: isShellCode, check: ruleL9 },
     { id: "L10", reason: "Every QML folder carries a qmldir that matches scripts/qmldirs.sh; run it after adding, moving or renaming a file.", appliesTo: () => false, check: null, whole: true },
     { id: "L11", reason: "Name.member on a singleton must name a member that singleton declares; a renamed or moved member reads as undefined at runtime.", appliesTo: () => false, check: null, whole: true },
-    { id: "L12", reason: "A pill is an object (round ends) or a place (the shell's corner): a SquircleRect or shadow with a half-size radius says pill: \"object\" or pill: \"place\" instead (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL12 }
+    { id: "L12", reason: "A pill is an object (round ends) or a place (the shell's corner): a SquircleRect or shadow with a half-size radius says pill: \"object\" or pill: \"place\" instead (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL12 },
+    { id: "L13", reason: "A Button's emphasis is accent, plate, ring or bare; filled, elevated, tonal, outlined and text were Material 3's and are retired (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL13 }
 ];
 
 function ruleById(id) {

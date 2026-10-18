@@ -318,6 +318,21 @@ function memberHits(files) {
     })).map(hit => `${hit.file}:${hit.line}`);
 }
 
+test("L13 flags a Button that asks for a Material 3 emphasis", () => {
+    const text = [
+        "Item {",
+        "    Button { style: \"filled\" }",
+        "    Button {",
+        "        style: root.on ? \"tonal\" : \"accent\"",
+        "    }",
+        "    Button { style: \"plate\" }",
+        "    Button { text: \"text\"; style: \"bare\" }",
+        "    Repeater { delegate: Button { style: \"outlined\" } }",
+        "}"
+    ].join("\n");
+    assert.deepStrictEqual(lines("modules/a.qml", text, "L13"), [2, 4, 8]);
+});
+
 test("L12 flags a half-size radius on a SquircleRect or a shadow that names no pill role", () => {
     const text = [
         "Item {",
@@ -523,7 +538,7 @@ test("--all lists every violation and the options are checked", () => {
 });
 
 test("every rule has an id in order and a reason", () => {
-    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 12 }, (_, i) => `L${i + 1}`));
+    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 13 }, (_, i) => `L${i + 1}`));
     for (const rule of lintRules.RULES)
         assert.ok(rule.reason.length > 20, rule.id);
 });

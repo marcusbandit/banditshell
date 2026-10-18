@@ -7,6 +7,7 @@ import Quickshell.Services.Notifications
 import qs.config
 import qs.components
 import qs.services
+import "upgrade-samples.js" as Samples
 import "../../services/activities.js" as Logic
 import "../../services/moments.js" as MomentLogic
 import "../../services/privacy.js" as PrivacyLogic
@@ -254,10 +255,11 @@ Scope {
             alarm: "stops or snoozes the alarm from its buttons",
             level: "nothing, it only shows",
             privacy: "opens the sound menu for the microphone, nothing for the camera or a screen share",
-            notifications: "opens the launcher on the notification history",
+            notifications: "turns the island into the notification history",
             held: "opens the launcher on what was held while quiet",
-            update: "opens the update menu",
+            update: "turns the island into the shell update",
             kernel: "starts the kernel upgrade",
+            upgrade: "opens the system update",
             restart: "opens the session menu",
             download: "shows the file in Files"
         })
@@ -333,6 +335,55 @@ Scope {
             launches: ["waiting", "waiting"],
             notices: ["music"],
             notes: 1
+        },
+        {
+            name: "The system update, downloading",
+            upgrade: "download"
+        },
+        {
+            name: "The system update, opened",
+            upgrade: "download",
+            task: "upgrade"
+        },
+        {
+            name: "The system update, installing",
+            upgrade: "install",
+            task: "upgrade"
+        },
+        {
+            name: "The system update asks a question",
+            upgrade: "question",
+            task: "upgrade"
+        },
+        {
+            name: "The system update, done",
+            upgrade: "done",
+            task: "upgrade"
+        },
+        {
+            name: "The system update failed",
+            upgrade: "failed",
+            task: "upgrade"
+        },
+        {
+            name: "The timers, from the clock",
+            task: "timers"
+        },
+        {
+            name: "The calendar, from the date",
+            task: "calendar"
+        },
+        {
+            name: "The weather, from the temperature",
+            task: "weather"
+        },
+        {
+            name: "The shell update",
+            task: "update"
+        },
+        {
+            name: "The notifications",
+            task: "notifications"
         },
         {
             name: "A timer running",
@@ -667,9 +718,26 @@ Scope {
         root.setStaged([]);
         root.setTasks([]);
         root.setNotes(0, false);
+        root.setUpgrade("");
         root.island?.dragEnd(false);
-        if (root.island)
+        if (root.island) {
             root.island.pinned = false;
+            root.island.task = "";
+        }
+    }
+
+    function setUpgrade(sample: string): void {
+        if (SystemUpgrade.shown && !SystemUpgrade.mocked)
+            return;
+        if (!sample) {
+            SystemUpgrade.unmock();
+            return;
+        }
+        const codes = {
+            done: 0,
+            failed: 1
+        };
+        SystemUpgrade.mock(Samples[sample], codes[sample] ?? -2, "7.2.10");
     }
 
     function apply(index: int): void {
@@ -684,9 +752,11 @@ Scope {
         root.setVoice(s.voice ?? "off");
         root.setLaunches(s.launches ?? []);
         root.setNotices(s.notices ?? []);
+        root.setUpgrade(s.upgrade ?? "");
         root.setStaged(s.staged ?? []);
         root.setTasks(s.tasks ?? []);
         root.island.pinned = s.pinned ?? false;
+        root.island.task = s.task && (s.task !== "upgrade" || SystemUpgrade.mocked) ? s.task : "";
         root.setNotes(s.notes ?? 0, s.urgent ?? false);
         root.island.arrange(true);
     }

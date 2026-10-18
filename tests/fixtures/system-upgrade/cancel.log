@@ -1,0 +1,60 @@
+Script started on 2026-10-18 01:38:35+02:00 [COMMAND="stty cols 80 rows 24; exec pkexec /usr/bin/pacman -Syu --color always" <not executed on terminal>]
+[?25l[1;34m::[0;1m Synchronizing package databases...
+[0m core
+ extra
+ multilib
+[2F extra is up to date[K[1F core is up to date[K[2E multilib is up to date[K[1E[1;34m::[0;1m Starting full system upgrade...
+[0mresolving dependencies...
+looking for conflicting packages...
+
+[0;1mPackages (86)[0m acl[38;5;243m-2.4.0-1[0m  attr[38;5;243m-2.6.0-1[0m  audit[38;5;243m-4.2.1-1[0m  bash[38;5;243m-5.3.20-1[0m
+              brotli[38;5;243m-1.2.0-1[0m  bzip2[38;5;243m-1.0.8-6[0m  ca-certificates[38;5;243m-20240618-1[0m
+              ca-certificates-mozilla[38;5;243m-3.131-1[0m  ca-certificates-utils[38;5;243m-20240618-1[0m
+              coreutils[38;5;243m-9.12-2[0m  curl[38;5;243m-8.23.0-1[0m  e2fsprogs[38;5;243m-1.47.4-1[0m  feh[38;5;243m-3.13.1-1[0m
+              file[38;5;243m-5.48-1[0m  filesystem[38;5;243m-2025.10.12-1[0m  findutils[38;5;243m-4.11.0-1[0m
+              freetype2[38;5;243m-2.15.0-1[0m  gdbm[38;5;243m-1.26-2[0m  giflib[38;5;243m-6.1.3-2[0m
+              glibc[38;5;243m-2.44+r50+g1848099f063e-1[0m  gmp[38;5;243m-6.3.0-3[0m  gnutls[38;5;243m-3.8.13-3[0m
+              hicolor-icon-theme[38;5;243m-0.18-1[0m  iana-etc[38;5;243m-20260617-1[0m  imlib2[38;5;243m-1.12.7-3[0m
+              jbigkit[38;5;243m-2.2-1[0m  keyutils[38;5;243m-1.6.3-4[0m  krb5[38;5;243m-1.22.2-1[0m
+              leancrypto[38;5;243m-1.9.1-1[0m  less[38;5;243m-1:710-1[0m  libcap[38;5;243m-2.78-1[0m
+              libcap-ng[38;5;243m-0.9.6-1[0m  libdeflate[38;5;243m-1.26-1[0m  libevent[38;5;243m-2.1.13-2[0m
+              libexif[38;5;243m-0.6.26-1[0m  libffi[38;5;243m-3.8.0-1[0m
+              libgcc[38;5;243m-16.2.1+r23+gd564253eb6c8-1[0m  libgcrypt[38;5;243m-1.12.4-1[0m
+              libgpg-error[38;5;243m-1.61-1[0m  libidn2[38;5;243m-2.3.8-1[0m  libjpeg-turbo[38;5;243m-3.2.0-2[0m
+              libldap[38;5;243m-2.7.1-1[0m  libnghttp2[38;5;243m-1.70.0-1[0m  libnghttp3[38;5;243m-1.18.0-1[0m
+              libngtcp2[38;5;243m-1.25.0-1[0m  libnsl[38;5;243m-2.0.1-2[0m  libp11-kit[38;5;243m-0.26.5-1[0m
+              libpng[38;5;243m-1.6.59-1[0m  libpsl[38;5;243m-0.21.5-2[0m  libsasl[38;5;243m-2.1.28-5[0m
+              libseccomp[38;5;243m-2.6.0-1[0m  libssh2[38;5;243m-1.11.1-7[0m
+              libstdc++[38;5;243m-16.2.1+r23+gd564253eb6c8-1[0m  libtasn1[38;5;243m-4.21.0-1[0m
+              libtiff[38;5;243m-4.7.2-2[0m  libtirpc[38;5;243m-1.3.8-1[0m  libunistring[38;5;243m-1.4.2-1[0m
+              libverto[38;5;243m-0.3.2-6[0m  libwebp[38;5;243m-1.6.0-2[0m  libx11[38;5;243m-1.8.13-2[0m
+              libxau[38;5;243m-1.0.12-1[0m  libxcb[38;5;243m-1.17.0-1[0m  libxcrypt[38;5;243m-4.5.2-1[0m
+              libxdmcp[38;5;243m-1.1.5-2[0m  libxext[38;5;243m-1.3.7-1[0m  libxinerama[38;5;243m-1.1.6-1[0m
+              linux-api-headers[38;5;243m-7.2-1[0m  lmdb[38;5;243m-0.9.35-1[0m  lz4[38;5;243m-1:1.10.0-2[0m
+              ncurses[38;5;243m-6.6-2[0m  nettle[38;5;243m-4.0-1[0m  openssl[38;5;243m-3.6.5-1[0m  p11-kit[38;5;243m-0.26.5-1[0m
+              pam[38;5;243m-1.7.3-1[0m  pambase[38;5;243m-20260616-1[0m  pcre2[38;5;243m-10.49-1[0m  readline[38;5;243m-8.3.6-1[0m
+              sqlite[38;5;243m-3.54.0-1[0m  systemd-libs[38;5;243m-262-1[0m  tzdata[38;5;243m-2026e-1[0m
+              util-linux-libs[38;5;243m-2.42.4-1[0m  xcb-proto[38;5;243m-1.17.0-4[0m  xorgproto[38;5;243m-2026.1-1[0m
+              xz[38;5;243m-5.8.4-1[0m  zlib[38;5;243m-1:1.3.2-4[0m  zstd[38;5;243m-1.5.7-3[0m
+
+[0;1mTotal Download Size: [0m   57.69 MiB
+[0;1mTotal Installed Size:[0m  245.31 MiB
+[0;1mNet Upgrade Size:    [0m  243.96 MiB
+
+[1;34m::[0;1m Proceed with installation? [Y/n] [0m[?25hy
+[?25l[1;34m::[0;1m Retrieving packages...
+[0m glibc-2.44+r50+g1848099f063e-1-x86_64
+ Total ( 0/86)           0.0   B  0.00   B/s 00:00 [----------------------]   0%
+[1F openssl-3.6.5-1-x86_64
+ Total ( 0/86)           0.0   B  0.00   B/s 00:00 [----------------------]   0%
+[1F coreutils-9.12-2-x86_64
+ Total ( 0/86)           0.0   B  0.00   B/s 00:00 [----------------------]   0%
+[1F sqlite-3.54.0-1-x86_64
+ Total ( 0/86)           0.0   B  0.00   B/s 00:00 [----------------------]   0%
+[1F libx11-1.8.13-2-x86_64
+ Total ( 0/86)           0.0   B  0.00   B/s 00:00 [----------------------]   0%
+^C[1F
+Interrupt signal received
+[?25h
+
+Script done on 2026-10-18 01:38:36+02:00 [COMMAND_EXIT_CODE="130"]
