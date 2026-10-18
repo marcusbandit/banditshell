@@ -178,7 +178,7 @@ const PAGES_SOURCE = {
             { t: "The island", rows: [
                 { n: [], icon: "download_done", label: "Downloads", k: "islandDownloads", kind: "toggle", cfg: "island.downloads", detail: s => s.v("islandDownloads") ? "says when a file lands" : "says nothing", kw: "island finished downloads announce",
                     why: "Watches your downloads folder and says when a file has finished arriving. Needs inotifywait (inotify-tools)." },
-                { n: [], icon: "music_note", label: "Now playing", k: "islandMusic", kind: "toggle", cfg: "island.nowPlaying", detail: s => s.v("islandMusic") ? "shows each new track" : "only when you go up to it", kw: "island now playing track change music song",
+                { n: [], icon: "music_note", label: "Now playing", k: "islandMusic", kind: "toggle", cfg: "island.nowPlaying", detail: s => s.v("islandMusic") ? "shows a new track unless its app is in front" : "only when you go up to it", kw: "island now playing track change music song",
                     why: "When the track changes, the island shows the cover, the title and a moving equalizer for a few seconds. Pressing it opens the media card." },
                 { n: [], icon: "hourglass_bottom", label: "Says it for", k: "islandGlance", kind: "step", min: 2, max: 30, unit: " s", cfg: "island.glanceSeconds", kw: "island notice glance time",
                     why: "How long a new track, a download, an update or a new kernel shows by itself. Updates and kernels then wait in the island, under the clock, until you deal with them." }
