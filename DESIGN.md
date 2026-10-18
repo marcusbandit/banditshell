@@ -1185,6 +1185,7 @@ banditshell/
 ├── modules/                     actual shell UI
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
 │   ├── Chassis.qml              the band + sidebar as ONE shape
+│   ├── BandProgress.qml         a long job's progress, drawn inside the top band
 │   ├── FrameExclusions.qml      invisible; reserves the room the chassis occupies
 │   ├── Ipc.qml                  the control surface the CLI talks to, as a flat
 │   │                            list: one line per <Name>Ipc.qml, no logic.
@@ -4384,13 +4385,35 @@ asks nothing.
 
 While it runs, the island carries it as a row: the kernel's mark, the stage in
 words ("Downloading 12 of 87", "Installing 34 of 87") and a ring for how far it
-has come. The row stays for the whole update, the way a timer does. Pressing it
-turns the island into the update: it widens to half again its usual width,
+has come. An update can take a while, so the row stays for one glance
+(`island.glanceSeconds`) and then goes up into the band, where it takes no
+room. Pressing it turns the island into the update: it widens to half again its usual width,
 everything else in it fades or melts away, and its notifications wait with
 their timers held. The update shows four stages, download, verify, install and
 finish, as one bar cut into four, with what is happening under it and the
 overall share on the right. Hiding it, a tap on the strip, Escape or a pull up
 puts the island back and leaves the update running.
+
+### A long job goes up into the band
+
+Once the update has had its glance, the island lets go of the row and sinks
+into the band, and the band itself becomes the progress bar: a line at its top
+centre, inside the band's own thickness, so the frame gets no wider or
+thicker. The line is as long as the large island, a faint track with the
+accent filling out from the middle, and it spreads out from the spot the pill
+sank into, so the eye follows the update up. Opening the island lists the row
+again with its ring, and pressing it opens the update as before; the line
+steps aside while the update view is open. Whatever needs me brings the row
+back down: the password prompt keeps it until it is answered, a question from
+pacman drops it back into the island, and the end of the update comes back as
+a row, a good one for its glance and a failed one until it is seen. A band too
+thin to hold a line (no band, or the stream band covering it) keeps the row in
+the island the way it was.
+
+The island decides what goes up and the band only draws it: `Island.lifted` is
+the share of the job, or -1 for nothing, and `BandProgress` draws it. One job
+holds the band at a time. Only the system update goes up today; the next long
+job that should follow it gets a line in `lifting` and nothing else.
 
 pacman runs in a pty, so it draws its own progress bars, and the shell reads
 those. It also means a question pacman asks reaches the island: a conflict, a

@@ -455,6 +455,15 @@ PanelWindow {
             panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs)]
         }
 
+        BandProgress {
+            y: chassis.streamReach
+            width: parent.width
+            height: islandLayer.edge
+
+            span: islandLayer.largeWidth
+            progress: islandLayer.lifted
+        }
+
         Sidebar {
             id: sidebar
 

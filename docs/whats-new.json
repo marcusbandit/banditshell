@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-10",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A system update no longer sits in the island the whole time it runs. After a few seconds the island lets it go and the top of the frame becomes its progress bar: a thin line in your accent colour that fills out from the middle. The frame does not get any thicker."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Open the island to see the update's row again, and press it for the full view. If pacman has a question, or the update finishes or fails, it comes back down into the island by itself."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-9",
       "date": "2026-10-18",
       "changes": [

@@ -4,6 +4,7 @@
   "layer": 2,
   "owns": {
     "qml": [
+      "modules/BandProgress.qml",
       "modules/Chassis.qml",
       "modules/FrameExclusions.qml",
       "modules/FullscreenBorder.qml",
