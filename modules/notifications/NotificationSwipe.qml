@@ -21,6 +21,8 @@ Item {
     property bool flinging: false
     property int flung: 0
 
+    readonly property bool spent: root.flung !== 0 && !root.flinging
+
     readonly property real shift: slide.value
     readonly property real fade: Math.min(1, Math.abs(root.shift) / Math.max(1, root.width))
 
@@ -63,7 +65,7 @@ Item {
     }
 
     function fling(direction: int): void {
-        if (root.flinging)
+        if (root.flinging || root.spent)
             return;
         if (direction < 0 && !root.keepLeaves) {
             root.springBack();
@@ -132,7 +134,7 @@ Item {
         cursorShape: press.throwing ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
         function begin(): void {
-            press.caught = root.flinging || slide.moving && Math.abs(slide.value) >= Config.values.control.dragThreshold;
+            press.caught = !root.spent && (root.flinging || slide.moving && Math.abs(slide.value) >= Config.values.control.dragThreshold);
             press.startedAt = press.caught ? root.unresist(slide.value) : 0;
             press.throwing = press.caught;
             press.scrolling = false;
@@ -153,6 +155,8 @@ Item {
         }
 
         function advance(dx: real, dy: real): void {
+            if (root.spent)
+                return;
             const now = Date.now();
             const dt = Math.max(1, Math.min(100, now - press.lastEvent));
             press.lastEvent = now;
@@ -195,7 +199,7 @@ Item {
         }
 
         function conclude(): void {
-            if (!press.throwing)
+            if (!press.throwing || root.spent)
                 return;
             const speed = Date.now() - press.lastEvent > slide.stillAfter ? 0 : press.velocity;
             if (root.committed(speed))

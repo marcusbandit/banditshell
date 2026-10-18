@@ -34,8 +34,10 @@ Item {
     implicitWidth: Appearance.font.iconSize
     implicitHeight: implicitWidth
 
+    readonly property bool lasting: root.source.startsWith("image://")
+
     onSourceChanged: {
-        root.probed = Boxes.known(root.source);
+        root.probed = root.lasting ? Boxes.known(root.source) : null;
         if (!root.source || root.fit)
             return;
         if (root.probed)
@@ -126,7 +128,8 @@ Item {
             const w = x1 - x0 + 1;
             const h = y1 - y0 + 1;
             const box = [x0 / width, y0 / height, w / width, h / height, opaque / (w * h)];
-            Boxes.remember(root.source, box);
+            if (root.lasting)
+                Boxes.remember(root.source, box);
             root.probed = box;
             root.measured(box);
         }

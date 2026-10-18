@@ -136,7 +136,6 @@ Item {
     property real lift: 0
     property var liftedAway: []
 
-    readonly property bool lifting: rise.held
     readonly property real naturalView: root.foldedHeight + (root.spreadHeight - root.foldedHeight) * root.fanned
     readonly property real liftTravel: Math.max(1, root.naturalView + root.footerHeight * footing.value)
     readonly property real raised: rise.value
@@ -199,8 +198,17 @@ Item {
             }
             root.lift -= rest;
         }
-        root.holdLift();
+        if (root.lift !== 0 || rise.held)
+            root.holdLift();
     }
+
+    function letGo(): void {
+        if (rise.held && !root.handling)
+            root.dragEnd(0);
+    }
+
+    onHandlingChanged: if (!root.handling)
+        Qt.callLater(root.letGo)
 
     function dragEnd(speed: real): void {
         if (!rise.held) {
@@ -208,7 +216,7 @@ Item {
             return;
         }
         const up = root.lift > 0;
-        const thrown = speed < -root.throwSpeed;
+        const thrown = speed < -root.throwSpeed && root.lift > Config.values.control.dragThreshold;
         const gone = up && !(speed > root.throwSpeed) && (thrown || root.lift > root.liftTravel * Config.values.control.pullCommit);
         rise.target = gone && root.liftsAway ? root.liftTravel : 0;
         rise.release();
@@ -313,11 +321,12 @@ Item {
 
     onFrontChanged: {
         const previous = root.lastFront;
+        const recalled = root.recalled;
         root.lastFront = root.front;
+        root.recalled = null;
         if (!previous || !root.front || root.fanned > 0 || root.sweeping)
             return;
-        const forward = root.standing.includes(previous) && root.front !== root.recalled;
-        root.recalled = null;
+        const forward = root.standing.includes(previous) && root.front !== recalled;
         if (forward) {
             root.slotFor(root.front)?.settle();
             root.slotFor(previous)?.settle();
@@ -491,6 +500,7 @@ Item {
                     } else if (!slot.outgoing && !slot.leaving && root.outgoing.includes(slot.modelData)) {
                         root.recalled = slot.modelData;
                         root.outgoing = root.outgoing.filter(e => e !== slot.modelData);
+                        Qt.callLater(() => root.recalled = null);
                     }
                 }
                 onLeavingChanged: if (slot.leaving)

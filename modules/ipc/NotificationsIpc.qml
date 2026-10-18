@@ -100,8 +100,9 @@ Scope {
             const entry = Notifications.front();
             if (!entry)
                 return "refused: no alert is showing";
-            Notifications.activate(entry);
-            return `opened ${entry.appName}`;
+            if (Notifications.activate(entry))
+                return `opened ${entry.appName}`;
+            return `nothing to open for ${entry.appName || "it"}, showing it in the island`;
         }
 
         function dismiss(which: string): string {

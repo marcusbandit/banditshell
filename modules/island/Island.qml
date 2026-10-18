@@ -116,9 +116,10 @@ Item {
     readonly property var alerts: root.deckEntries.filter(e => !e.leaving)
 
     readonly property int recentMax: 3
-    readonly property var recentGroups: root.offStage ? Notifications.byApp(Notifications.history.filter(e => !root.deckEntries.includes(e))).slice(0, root.recentMax) : []
+    readonly property var appGroups: root.offStage ? Notifications.byApp(Notifications.history.filter(e => !root.deckEntries.includes(e))) : []
+    readonly property var recentGroups: root.appGroups.slice(0, root.recentMax)
     readonly property var recent: root.recentGroups.map(g => g.entries[0])
-    readonly property int unlisted: Notifications.history.filter(e => !e.leaving && !root.deckEntries.includes(e) && !root.recentGroups.some(g => g.entries.includes(e))).length
+    readonly property int unlisted: root.appGroups.slice(root.recentMax).reduce((sum, g) => sum + g.entries.filter(e => !e.leaving).length, 0)
 
     readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music" && a.kind !== "level"), ...(root.lifting ? [
                 {
@@ -378,7 +379,8 @@ Item {
     readonly property real centreX: scene.width / 2
     readonly property real surfaceX: Math.round((root.width - root.fieldWidth) / 2 + trail.value)
 
-    readonly property real opened: Math.max(0, glide.value)
+    readonly property real overshoot: 0.06
+    readonly property real opened: Math.max(0, Math.min(1 + root.overshoot, glide.value))
     readonly property real widening: Math.min(1, root.opened * 1.8)
     readonly property real pillWidth: wide.value + (span.value - wide.value) * root.widening
     readonly property real pillHeight: tall.value + (overviewTall.value - tall.value) * root.opened
