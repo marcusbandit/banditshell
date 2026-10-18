@@ -125,6 +125,7 @@ FocusScope {
 
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Escape) {
+            Appearance.instantly();
             if (SettingsView.pin)
                 SettingsView.unpin();
             else if (SettingsView.paneOut && root.compact)

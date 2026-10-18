@@ -73,7 +73,7 @@ Row {
                             from: 0
                             to: 1
                             duration: Appearance.animation.normal
-                            easing.type: Easing.OutBack
+                            easing.type: Easing.OutCubic
                         }
                     }
                 }

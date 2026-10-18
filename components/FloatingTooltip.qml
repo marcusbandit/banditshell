@@ -1,5 +1,6 @@
 import QtQuick
 import qs.config
+import "tooltip-warmth.js" as Warmth
 
 Item {
     id: root
@@ -21,8 +22,17 @@ Item {
     scale: root.up ? 1 : 0.94
     transformOrigin: Item.Bottom
 
-    onShownChanged: if (!root.shown)
-        root.up = false
+    onShownChanged: {
+        if (!root.shown)
+            root.up = false;
+        else if (root.text !== "" && Warmth.warm(Appearance.animation.grace))
+            root.up = true;
+    }
+
+    onUpChanged: root.up ? Warmth.opened() : Warmth.closed()
+
+    Component.onDestruction: if (root.up)
+        Warmth.closed()
 
     Behavior on opacity {
         NumberAnimation {

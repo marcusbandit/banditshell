@@ -41,4 +41,5 @@ SquircleRect 1.0 SquircleRect.qml
 StyledText 1.0 StyledText.qml
 TerminalView 1.0 TerminalView.qml
 Toggle 1.0 Toggle.qml
+Travel 1.0 Travel.qml
 Waveform 1.0 Waveform.qml

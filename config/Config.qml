@@ -80,6 +80,10 @@ Singleton {
 
                 trackSpeed: 14,
 
+                travelSpeed: 22,
+
+                workspaceSlide: 200,
+
                 revealSpeed: 18,
 
                 railSpeed: 7,

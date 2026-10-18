@@ -23,6 +23,8 @@ Scope {
 
     readonly property bool bootsLauncherHotkeys: LauncherHotkeys.possible
 
+    readonly property bool bootsWorkspaceSlide: WorkspaceSlide.ready
+
     function penmapStatus(): string {
         const r = PenMap.region;
         const lock = PenMap.aspectLocked ? "locked" : "free";
@@ -52,6 +54,7 @@ Scope {
     }
 
     function togglePanel(part: string, screen: string): string {
+        Appearance.instantly();
         const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w[part].open);
         if (!win)
             return "";
@@ -60,6 +63,7 @@ Scope {
     }
 
     function openPanel(part: string, screen: string): string {
+        Appearance.instantly();
         const win = Shell.forScreen(screen);
         if (!win)
             return "";
@@ -68,12 +72,14 @@ Scope {
     }
 
     function closePanel(part: string): string {
+        Appearance.instantly();
         for (const win of Shell.windows)
             win[part].hide();
         return "closed";
     }
 
     function pin(win: var, part: string, on: bool): string {
+        Appearance.instantly();
         if (!win)
             return "";
         win[part].pinned = on;
@@ -81,6 +87,7 @@ Scope {
     }
 
     function unpin(part: string): string {
+        Appearance.instantly();
         for (const win of Shell.windows)
             win[part].pinned = false;
         return "closed";
@@ -99,6 +106,7 @@ Scope {
         }
 
         function open(key: string, screen: string): string {
+            Appearance.instantly();
             const win = Shell.forScreen(screen);
             if (!win)
                 return root.missing(screen);
@@ -106,6 +114,7 @@ Scope {
         }
 
         function close(): string {
+            Appearance.instantly();
             for (const win of Shell.windows)
                 win.menus.hide();
             return "closed";
@@ -621,11 +630,13 @@ Scope {
         target: "settings"
 
         function toggle(): string {
+            Appearance.instantly();
             Settings.toggle(root.settingsScreen(""));
             return Settings.open ? "open" : "closed";
         }
 
         function open(page: string, screen: string): string {
+            Appearance.instantly();
             const wrong = root.unknownSetting(page);
             if (wrong)
                 return wrong;
@@ -637,6 +648,7 @@ Scope {
         }
 
         function close(): string {
+            Appearance.instantly();
             Settings.hide();
             return "closed";
         }

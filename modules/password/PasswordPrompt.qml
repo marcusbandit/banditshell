@@ -73,6 +73,7 @@ Item {
         Keys.onPressed: event => {
             if (event.key !== Qt.Key_Escape)
                 return;
+            Appearance.instantly();
             root.source.refuse();
             event.accepted = true;
         }

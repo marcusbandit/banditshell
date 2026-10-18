@@ -322,6 +322,7 @@ Item {
             switch (event.key) {
 
             case Qt.Key_Escape:
+                Appearance.instantly();
                 if (root.expanded)
                     root.collapse();
                 else

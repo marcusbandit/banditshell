@@ -17,6 +17,7 @@ Item {
     property bool interactive: true
     property bool notice: false
     property bool flashing: false
+    property real flashStamp: 0
     property real minHeight: Appearance.sizes.rowHeight
     property Component lead: null
     property Component under: null
@@ -83,12 +84,15 @@ Item {
                 target: flash
                 property: "opacity"
                 to: 0
-                duration: 840
+                duration: Appearance.lessMotion ? Appearance.animation.fade.fast : 840
             }
         }
     }
 
     onFlashingChanged: if (root.flashing)
+        flashRun.restart()
+
+    onFlashStampChanged: if (root.flashStamp > 0)
         flashRun.restart()
 
     HoverHandler {

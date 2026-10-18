@@ -24,7 +24,6 @@ LauncherConcept {
 
     readonly property real panelWidth: Appearance.sizes.launcherWidth
 
-    property bool collapseToCentre: false
 
     property var capture: null
     property string beforeCapture: ""
@@ -123,14 +122,10 @@ LauncherConcept {
 
     readonly property real longestFrame: 1 / 60
 
-    property real wave: 0
-    readonly property real waveTarget: (root.shown || root.dragging) && root.quick ? root.tiles.length : 0
-
     onQuickChanged: root.tile = 0
     onTilesChanged: root.tile = Math.min(root.tile, Math.max(0, root.tiles.length - 1))
 
     onShowing: {
-        root.collapseToCentre = false;
         root.unsized = true;
         root.symbolsOpen = false;
         FileSearch.forget();
@@ -156,12 +151,6 @@ LauncherConcept {
         root.capture = null;
         search.armed = "";
         search.colourEdit = null;
-        root.collapseToCentre = !panel.bottomAnchored;
-    }
-
-    onDropped: stayedOpen => {
-        if (!stayedOpen)
-            root.collapseToCentre = false;
     }
 
     function accept(): void {
@@ -614,15 +603,6 @@ LauncherConcept {
         longestFrame: root.longestFrame
     }
 
-    FrameAnimation {
-        running: root.wave !== root.waveTarget
-
-        onTriggered: {
-            const step = Math.min(frameTime, root.longestFrame) * 1000 / Math.max(1, Appearance.animation.normal) * Math.max(1, root.tiles.length);
-            root.wave = Appearance.lessMotion ? root.waveTarget : root.wave < root.waveTarget ? Math.min(root.waveTarget, root.wave + step) : Math.max(root.waveTarget, root.wave - step);
-        }
-    }
-
     property bool unsized: false
 
     Item {
@@ -633,11 +613,10 @@ LauncherConcept {
         readonly property real restY: root.height / 2 - barOffset
 
         readonly property real bandY: root.height - root.inset
-        readonly property bool bottomAnchored: restY + grow.value >= bandY - 1
 
         x: (root.width - width) / 2
 
-        y: root.collapseToCentre ? restY + (grow.value - height) / 2 : bandY + (restY - bandY) * root.revealed
+        y: bandY + (restY - bandY) * root.revealed
 
         width: root.panelWidth
 
@@ -828,18 +807,6 @@ LauncherConcept {
                                 y: cell.modelData.row * quickLaunch.cell + (cell.modelData.pinned ? 0 : quickLaunch.gap)
                                 width: quickLaunch.cell
                                 height: quickLaunch.cell
-
-                                opacity: pop.value
-                                scale: 0.6 + 0.4 * pop.value
-
-                                Follow {
-                                    id: pop
-
-                                    target: root.wave > cell.index ? 1 : 0
-                                    speed: Appearance.animation.revealSpeed
-                                    epsilon: 0.002
-                                    longestFrame: root.longestFrame
-                                }
 
                                 SquircleRect {
                                     anchors.centerIn: parent

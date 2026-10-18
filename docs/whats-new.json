@@ -1,6 +1,82 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-2",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Push a notification in the island back up to put it away. One card or the whole stack goes back into the island and stays in your history. Swiping sideways still dismisses one."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Anything you open with a shortcut appears at once, and Esc or the shortcut puts it away at once. Clicking still opens things from where they live, like the music card growing out of the island."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings, Look, Motion has a Workspace slide: how long the desktop slides when you change workspace, up to 250 ms, or off. It defaults to 200 ms, shorter than before, and needs no Hyprland edits."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Things that move across the screen, like the workspace marker or a menu gliding between sidebar icons, now ease in as well as out."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "With reduced motion on, sleep, restart and shut down on the lock screen need the full hold again. A tap could set them off."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The launcher goes back down into the bottom edge when it closes, and your pinned apps arrive with it instead of one by one."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Once a tooltip is showing, the ones next to it show at once instead of making you wait again."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Quick controls at the right edge wait a moment before opening and before closing, so moving the pointer past the edge no longer flashes them open."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Nothing bounces any more: toggles, sliders, arrows and password dots move straight to where they go, and the lock screen clock no longer leans toward the pointer."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Switching between sidebar menus fades the new page in instead of laying it over the old one."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The wallpaper picker arrives in one quick rise, and browsing changes the preview at once instead of sweeping each time."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The music card drifts back up toward the island when the island opened it."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Reduced motion now means no motion at all: fades and looping animations stop too (equaliser, scrubber wave, spinners, scrolling titles, animated wallpapers), and the lock screen still shows when music is playing."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Picking the same settings search result twice flashes its row both times, and the launcher's file preview no longer blinks as you arrow between text files."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18",
       "date": "2026-10-18",
       "changes": [

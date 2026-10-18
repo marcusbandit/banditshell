@@ -102,6 +102,7 @@ Item {
     property bool holding: false
 
     property var origin: null
+    property bool fromIsland: false
     readonly property bool grown: !!root.origin
     readonly property real flown: root.grown ? reveal.value : 1
     readonly property real late: Math.max(0, (root.flown - 0.4) / 0.6)
@@ -154,6 +155,7 @@ Item {
         if (root.shown)
             return;
 
+        root.fromIsland = !!root.origin;
         root.quip = root.quips[Math.floor(Math.random() * root.quips.length)];
         root.restoreTo = Hypr.focusedOn(root.screenName);
         root.shown = true;
@@ -244,6 +246,7 @@ Item {
 
             switch (event.key) {
             case Qt.Key_Escape:
+                Appearance.instantly();
                 root.hide();
                 break;
             case Qt.Key_Space:
@@ -320,7 +323,7 @@ Item {
         readonly property real restTop: root.border + panel.restY
 
         x: panel.restX
-        y: panel.restTop + (root.grown ? 0 : (1 - reveal.value) * Appearance.padding.huge * 2)
+        y: panel.restTop + (root.grown ? 0 : (1 - reveal.value) * Appearance.padding.huge * 2 * (root.fromIsland ? -1 : 1))
         width: root.pad * 2 + root.artSize + stage.value * (root.gutter + root.lyricsWidth)
         height: tall.value + root.pad * 2
         visible: reveal.value > 0.001
@@ -750,7 +753,7 @@ Item {
                                 color: !Lyrics.enabled ? Appearance.colour.textFaint : Lyrics.ready ? Appearance.colour.text : Appearance.colour.textGhost
 
                                 SequentialAnimation on opacity {
-                                    running: Lyrics.loading && root.open
+                                    running: Lyrics.loading && root.open && !Appearance.lessMotion
                                     loops: Animation.Infinite
                                     alwaysRunToEnd: true
 

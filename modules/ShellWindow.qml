@@ -395,6 +395,7 @@ PanelWindow {
             if (event.key !== Qt.Key_Escape)
                 return;
 
+            Appearance.instantly();
             const open = win.panels.find(panel => panel.open);
             if (open)
                 open.hide();

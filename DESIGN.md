@@ -168,16 +168,33 @@ The feel to chase: **as if the intent of using the computer makes the computer c
 Alive, responsive, compliant to intent. Nothing is static. Nothing is dead. The computer
 answers the *intent* of use, and only when asked.
 
-Animation implementation for all this motion/summon/tracking: **exponential smoothing, always**
-(see `~/.claude/rules/animation-smoothing.md`) -
-`position += (target - position) * (1 - Math.exp(-speed * dt))`. Moves fast when far, settles
-gently when close, safe at any dt.
+Animation implementation for all this motion/summon/tracking comes in two curves, both chased
+every frame so either can be caught and retargeted mid-flight:
+
+- **Follow (`components/Follow.qml`), ease-out**, for anything that answers an input: a reveal,
+  a press, a panel arriving. Exponential smoothing,
+  `position += (target - position) * (1 - Math.exp(-speed * dt))` (see
+  `~/.claude/rules/animation-smoothing.md`): it moves the moment it is asked, fast when far,
+  gentle when close, safe at any dt.
+- **Travel (`components/Travel.qml`), ease-in-out**, for something already on screen moving to a
+  new place: the workspace marker, a menu gliding between sidebar icons, rows closing up, the
+  next notification stepping forward. A critically damped follower: it starts gently, arrives
+  gently, keeps its speed when the target moves, and never crosses past the target.
 
 **This is a rule, not a default.** Anything in this shell that moves, tracks, reveals, resizes
-or follows goes through `components/Follow.qml`. A `NumberAnimation` or a `Behavior` on a
-position is a bug, with exactly one exception: a **looping clock** with no target being chased
-at all (the mic indicator's processing ripple and typing caret are the whole list). Spring and
-bounce are not in this shell.
+or follows goes through one of those two. A `NumberAnimation` or a `Behavior` on a position is a
+bug, with exactly one exception: a **looping clock** with no target being chased at all (the
+mic indicator's processing ripple and typing caret are the whole list). No overshoot, bounce or
+flourish anywhere, for now: the shell starts from no play at all, and anything playful comes
+back later one deliberate piece at a time.
+
+**A key gets an instant answer.** Anything a hotkey opens appears in its first frame, and a
+hotkey, Esc or Enter that puts it away takes it at once: the key already announced the outcome.
+`Appearance.instantly()` opens a window of a few frames in which both curves snap and the
+duration tokens collapse; the IPC entry points and the surfaces' Esc and Enter handlers call it.
+The pointer, touch and touchpad keep their origin: a surface grows out of what was clicked, and
+a drag follows the finger. Reduced motion is the same switch held on: no motion at all, fades
+included.
 
 Three corollaries, each of them learned by shipping the mistake:
 
@@ -3408,8 +3425,10 @@ row, builds the card and asks for its lyrics before anything is clicked, so the
 click only starts the move: the cover is already decoded and the card already
 knows how wide its lyrics make it.
 
-The card is not the island. Closing it fades it where it is, nothing flies
-back, and the island stays usable while the card is up: the card's click-away
+The card is not the island. Closing it fades it near where it is and nothing
+flies back, but it drifts toward where it came from: up toward the island when
+the island opened it, down when a key raised it from below. The island stays
+usable while the card is up: the card's click-away
 catcher leaves the island's shape and the strip above it alone, and the card
 only briefly holds the keyboard exclusively (see the keyboard section), so the
 pointer on the island is on the island. An island that just handed its body

@@ -133,9 +133,10 @@ Item {
         Keys.onPressed: event => {
             const ctrl = event.modifiers & Qt.ControlModifier;
 
-            if (event.key === Qt.Key_Escape)
+            if (event.key === Qt.Key_Escape) {
+                Appearance.instantly();
                 root.hide();
-            else if (event.key === Qt.Key_Up || (ctrl && (event.key === Qt.Key_K || event.key === Qt.Key_P)))
+            } else if (event.key === Qt.Key_Up || (ctrl && (event.key === Qt.Key_K || event.key === Qt.Key_P)))
                 root.move(-1);
             else if (event.key === Qt.Key_Down || (ctrl && (event.key === Qt.Key_J || event.key === Qt.Key_N)))
                 root.move(1);

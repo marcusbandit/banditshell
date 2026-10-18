@@ -220,8 +220,7 @@ Item {
                 NumberAnimation {
                     duration: Appearance.animation.normal
 
-                    easing.type: Easing.OutBack
-                    easing.overshoot: 2.2
+                    easing.type: Easing.OutCubic
                 }
             }
 
