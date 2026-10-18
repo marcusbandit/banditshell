@@ -171,7 +171,7 @@ Singleton {
 
         readonly property color island: root.colour.surfaceSolid
 
-        readonly property color tile: root.blend(root.colour.island, root.colour.paper, 0.075)
+        readonly property color tile: root.veil(0.075)
     }
 
     readonly property QtObject opacity: QtObject {

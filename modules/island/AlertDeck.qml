@@ -224,6 +224,8 @@ Item {
     }
 
     readonly property real throwSpeed: 0.6
+    readonly property real tugNear: 0.18
+    readonly property real tugFar: 0.06
 
     function scrollGlide(speed: real): void {
         if (root.scrollMax <= 0 || root.fanned < 0.5)
@@ -458,6 +460,7 @@ Item {
                 readonly property bool folding: root.folding.includes(slot.modelData)
                 readonly property int tally: slot.head ? slot.group.entries.filter(e => !e.leaving).length : 1
                 readonly property bool loose: card.loose
+                readonly property real pull: card.pull
                 readonly property Item above: {
                     root.reshaped;
                     return slot.index > 0 ? slots.itemAt(slot.index - 1) : null;
@@ -541,6 +544,7 @@ Item {
                     joinedBelow: root.grouped && !!slot.below
                     aboveLoose: slot.above?.loose ?? false
                     belowLoose: slot.below?.loose ?? false
+                    tug: root.grouped ? ((slot.above?.pull ?? 0) + (slot.below?.pull ?? 0)) * root.tugNear + ((slot.above?.above?.pull ?? 0) + (slot.below?.below?.pull ?? 0)) * root.tugFar : 0
 
                     onCountTapped: root.toggle(slot.group)
                     onReleased: root.part(slot.modelData, false)

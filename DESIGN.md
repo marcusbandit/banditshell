@@ -4115,14 +4115,21 @@ popups in a slim `NotificationCorner` at the top right, with no history, no arms
 and no pin; reading the history is the launcher either way.
 
 **Each notification is its own tile, and the tiles are joined.** In the
-overview and the history a notification is a tile of `colour.tile`, the
-island's surface a step toward paper, set a small padding in from the island's
+overview and the history a notification is a tile of `colour.tile`, a veil of
+paper over whatever the island shows, so the cover's colour field behind the
+overview comes through the cards as it does through the rest of the island;
+they were solid at first and read as grey slabs on a coloured island. A tile is
+set a small padding in from the island's
 edge so the column's corners are concentric with the island's. Tiles that
 border each other are joined into one column, as on Android: a hairline seam
 between them and nearly square corners where they meet, full corners only at
 the column's two ends. A tile comes loose when it is touched: dragging it
 sideways rounds all four of its corners, and the corners of its neighbours that
-faced it round too, so it reads as a card lifted out of the column. Let go
+faced it round too, so it reads as a card lifted out of the column. The
+neighbours are tugged a little after it, the next ones a fifth of its travel
+and the ones beyond less, each on its own spring, and once it is pulled past
+the throw point they let go and swing home, the way Android 16 lets a swiped
+notification come off its column. Let go
 early and it springs back and joins again; throw it and the column closes up
 behind it and its neighbours square their corners as they meet. The anatomy
 borrows the phone's: the app's mark large on the left, the title first with the

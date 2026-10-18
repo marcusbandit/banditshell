@@ -55,6 +55,16 @@
           "text": "Every notification in the island's lists is its own tile now, joined to its neighbours in one column like on Android: the app's icon large on the left, the title and time on top, the text under it, and the app's name with its count at the bottom. Start swiping one and its corners round off as it comes loose from the column."
         },
         {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The notifications next to the one you swipe are tugged along a little and spring back once it comes free."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Notification cards take on the colour of the playing song's cover, like the rest of the island, instead of staying plain grey."
+        },
+        {
           "type": "bugs",
           "severity": "minor",
           "text": "Swiping notifications away quickly no longer leaves cards stacked on top of each other or an empty gap in the list."

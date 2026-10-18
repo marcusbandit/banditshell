@@ -25,7 +25,11 @@ Item {
     property bool aboveLoose: false
     property bool belowLoose: false
 
+    property real tug: 0
+
     readonly property bool loose: swipe.dragging || swipe.flinging || root.leaving || Math.abs(swipe.shift) > Appearance.padding.hair
+    readonly property real pull: swipe.dragging && Math.abs(swipe.pulled) < swipe.throwDistance ? swipe.shift : 0
+    readonly property real drift: swipe.shift + tugged.value
 
     signal countTapped
     signal released
@@ -140,6 +144,13 @@ Item {
         target: root.leaving ? 1 : 0
     }
 
+    Spring {
+        id: tugged
+
+        target: root.tug
+        epsilon: 0.25
+    }
+
     Follow {
         id: topOpen
 
@@ -190,7 +201,7 @@ Item {
     Item {
         id: content
 
-        x: swipe.shift
+        x: root.drift
         width: root.width
         height: root.height
 
@@ -604,7 +615,7 @@ Item {
     Item {
         id: close
 
-        x: swipe.shift + root.width - root.tileInset - root.pad - width + Appearance.padding.small / 2
+        x: root.drift + root.width - root.tileInset - root.pad - width + Appearance.padding.small / 2
         y: root.tileGap + root.pad - Appearance.padding.small / 2
         width: root.closeSize
         height: root.closeSize
