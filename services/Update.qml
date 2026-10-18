@@ -159,7 +159,7 @@ Singleton {
     }
 
     function restart(): void {
-        Quickshell.execDetached(["setsid", "-f", "bash", root.cli, "restart"]);
+        Quickshell.execDetached(["setsid", "bash", root.cli, "restart"]);
     }
 
     function dismissResult(): void {

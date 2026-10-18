@@ -13,7 +13,7 @@ esac
 [ -n "$id" ] || exit 2
 
 data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
-IFS=: read -r -a data_dirs <<<"$data_home:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share"
+IFS=: read -r -a data_dirs <<<"$data_home:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:$data_home/flatpak/exports/share:/var/lib/flatpak/exports/share"
 
 candidates() {
     local dir name="$id.desktop" i
@@ -197,7 +197,7 @@ plan)
     ;;
 remove)
     if [ "${command[0]}" = pkexec ]; then
-        trusted=$(PATH="${BANDITSHELL_SYSTEM_PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin}" command -v -- "${command[1]}") || exit 4
+        trusted=$(PATH="${BANDITSHELL_SYSTEM_PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/run/wrappers/bin:/run/current-system/sw/bin}" command -v -- "${command[1]}") || exit 4
         command=(pkexec "$trusted" "${command[@]:2}")
     fi
     "${command[@]}" </dev/null

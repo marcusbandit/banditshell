@@ -2,8 +2,8 @@
 
 var ADDRESS = /^[0-9A-Fa-f.:]+$/;
 var USER = /^[A-Za-z_][A-Za-z0-9_.-]{0,31}$/;
-var SYSTEM_BINARY = /^\/(?:usr\/)?(?:local\/)?s?bin\/tailscale$/;
-var SYSTEM_PKEXEC = /^\/(?:usr\/)?s?bin\/pkexec$/;
+var SYSTEM_BINARY = /^\/(?:(?:usr\/)?(?:local\/)?s?bin|run\/current-system\/sw\/bin)\/tailscale$/;
+var SYSTEM_PKEXEC = /^\/(?:(?:usr\/)?s?bin|run\/wrappers\/bin)\/pkexec$/;
 
 function label(node) {
     var dns = String(node && node.DNSName || "");

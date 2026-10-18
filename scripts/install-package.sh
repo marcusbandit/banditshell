@@ -105,7 +105,7 @@ for want in "$@"; do
         [ "$(id -u)" -eq 0 ] && finish "${base[@]}"
         command -v pkexec >/dev/null 2>&1 || exit 4
         [ "$tool" = apt-get ] && base=(env DEBIAN_FRONTEND=noninteractive "${base[@]}")
-        trusted=$(PATH="${BANDITSHELL_SYSTEM_PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin}" command -v -- "${base[0]}") || exit 4
+        trusted=$(PATH="${BANDITSHELL_SYSTEM_PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/run/wrappers/bin:/run/current-system/sw/bin}" command -v -- "${base[0]}") || exit 4
         finish pkexec "$trusted" "${base[@]:1}"
         ;;
     ask)

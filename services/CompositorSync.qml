@@ -63,7 +63,7 @@ Singleton {
     FileView {
         id: niriConfig
 
-        path: `${Quickshell.env("HOME")}/.config/niri/config.kdl`
+        path: Quickshell.env("NIRI_CONFIG") || `${Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`}/niri/config.kdl`
         printErrors: false
 
         onLoaded: {

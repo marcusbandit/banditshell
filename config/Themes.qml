@@ -7,8 +7,9 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string palettePath: `${Quickshell.env("HOME")}/.config/theme/current/palette.json`
-    readonly property string cataloguePath: `${Quickshell.env("HOME")}/.config/theme/current/themes.json`
+    readonly property string themeDir: `${Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`}/theme/current`
+    readonly property string palettePath: `${themeDir}/palette.json`
+    readonly property string cataloguePath: `${themeDir}/themes.json`
 
     property var parsed: null
     readonly property bool live: root.parsed !== null

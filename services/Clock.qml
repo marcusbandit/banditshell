@@ -518,7 +518,7 @@ Singleton {
 
         running: true
 
-        command: ["sh", "-c", `z=$(timedatectl show -p Timezone --value 2>/dev/null); [ -n "$z" ] || z=$(readlink -f /etc/localtime 2>/dev/null | sed 's|.*/zoneinfo/||'); [ -n "$z" ] || z=UTC; printf '%s\\n' "$z"`]
+        command: ["sh", "-c", `z=$(timedatectl show -p Timezone --value 2>/dev/null); [ -n "$z" ] || z=$(readlink -f /etc/localtime 2>/dev/null | sed 's|.*/zoneinfo/||'); [ -n "$z" ] || z=$(cat /etc/timezone 2>/dev/null); [ -n "$z" ] || z=UTC; printf '%s\\n' "$z"`]
 
         stdout: StdioCollector {
             onStreamFinished: {
@@ -532,7 +532,7 @@ Singleton {
     Process {
         id: zoneList
 
-        command: ["sh", "-c", "timedatectl list-timezones 2>/dev/null || (cd /usr/share/zoneinfo 2>/dev/null && find . -type f ! -path './posix/*' ! -path './right/*' ! -name '*.tab' ! -name '*.zi' ! -name '*.list' ! -name 'leapseconds' ! -name 'Factory' ! -name 'localtime' | sed 's|^\\./||' | sort)"]
+        command: ["sh", "-c", "timedatectl list-timezones 2>/dev/null || (cd \"${TZDIR:-/usr/share/zoneinfo}\" 2>/dev/null && find . -type f ! -path './posix/*' ! -path './right/*' ! -name '*.tab' ! -name '*.zi' ! -name '*.list' ! -name 'leapseconds' ! -name 'Factory' ! -name 'localtime' | sed 's|^\\./||' | sort)"]
 
         stdout: StdioCollector {
             onStreamFinished: {

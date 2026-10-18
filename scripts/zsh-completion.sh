@@ -136,7 +136,7 @@ _bs_desktop_ids() {
 }
 
 _bs_places() {
-    local root=/usr/share/zoneinfo file
+    local root=${TZDIR:-/usr/share/zoneinfo} file
     [[ -d $root ]] || return 1
     for file in $root/*/**/*(N.); do
         print -r -- ${file#$root/}

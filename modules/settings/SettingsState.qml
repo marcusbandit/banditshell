@@ -1923,7 +1923,7 @@ Singleton {
     property bool completionsInstalled: false
 
     function setCompletions(on: bool): void {
-        completer.command = ["banditshell", "completions", on ? "install" : "remove"];
+        completer.command = [`${Quickshell.shellDir}/cli/banditshell`, "completions", on ? "install" : "remove"];
         completer.running = true;
     }
 
@@ -1940,7 +1940,7 @@ Singleton {
     Process {
         id: completionProbe
 
-        command: ["banditshell", "completions", "status"]
+        command: [`${Quickshell.shellDir}/cli/banditshell`, "completions", "status"]
         onExited: code => root.completionsInstalled = code < 2
     }
 

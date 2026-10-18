@@ -124,7 +124,7 @@ _bs_desktop_ids() {
 }
 
 _bs_places() {
-    local root=/usr/share/zoneinfo
+    local root=${TZDIR:-/usr/share/zoneinfo}
     [[ -d $root ]] || return 1
     (cd "$root" && find . -mindepth 2 -type f | sed 's|^\./||')
 }

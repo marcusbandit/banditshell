@@ -677,9 +677,15 @@ cached_pid() {
     [[ $pid =~ ^[0-9]+$ ]] || return 1
     kill -0 "$pid" 2>/dev/null || return 1
     case "$(cat "/proc/$pid/comm" 2>/dev/null)" in
-    qs | quickshell*) echo "$pid" ;;
+    qs | quickshell* | .quickshell-wra* | .qs-wrapped) echo "$pid" ;;
     *) return 1 ;;
     esac
+}
+
+absolute_path() {
+    local path=$1
+    [[ $path == /* ]] || path=$PWD/$path
+    realpath -s -m -- "$path" 2>/dev/null || printf '%s\n' "$path"
 }
 
 remember_pid() {
@@ -960,7 +966,7 @@ try_worktree() {
     stop_shell || true
     if launch "$target"; then
         echo "${green}trying $name$plain$dim - back to the checkout on its own once merged, or banditshell dev back$plain"
-        (cd "$HOME" && setsid -f "$(readlink -f "${BASH_SOURCE[0]}")" dev watch </dev/null >/dev/null 2>&1) || true
+        (cd "$HOME" && setsid "$(readlink -f "${BASH_SOURCE[0]}")" dev watch </dev/null >/dev/null 2>&1 &) || true
         return 0
     fi
     complain "$name failed to load - back on the checkout (errors: $FAILED_LOG)"
@@ -1481,7 +1487,7 @@ route_wallpaper() {
     on | off | toggle | palette) ipc wallpaper "$1" ;;
     next | prev | clear) ipc wallpaper "$1" "${2:-}" ;;
     set) [ $# -ge 2 ] || say_usage "wallpaper set <file> [screen|all]"
-        ipc wallpaper set "$(realpath -s -m -- "$2")" "${3:-}" ;;
+        ipc wallpaper set "$(absolute_path "$2")" "${3:-}" ;;
     list) ipc wallpaper list "${2:-}" ;;
     *) nope wallpaper "$1" ;;
     esac
@@ -2291,7 +2297,7 @@ doctor() {
     if command -v dkms >/dev/null 2>&1 && dkms status 2>/dev/null | grep -q . && ! dkms status 2>/dev/null | grep -q "$(uname -r)"; then
         complain "no dkms module built for the running kernel $(uname -r); a reboot may come up without graphics (update again, or boot the older kernel)"
     fi
-    failed=$(systemctl --failed --no-pager 2>/dev/null | sed -n 's/^\(.*\.service\).*/\1/p' | tr '\n' ' ')
+    failed=$(systemctl --failed --no-pager 2>/dev/null | sed -n 's/^\(.*\.service\).*/\1/p' | tr '\n' ' ' || true)
     if [ -n "$failed" ]; then
         echo "failed units (machine state, not the shell): $failed"
     fi
@@ -2310,12 +2316,13 @@ doctor() {
 }
 
 build_helpers() {
-    local cc="${CC:-gcc}"
+    local cc="${CC:-}"
     local -a cflags ldflags wayland
+    [ -n "$cc" ] || for cc in cc gcc clang; do command -v "$cc" >/dev/null && break; done
     command -v "$cc" >/dev/null || { echo "banditshell: no C compiler (set \$CC, or install gcc)" >&2; exit 1; }
     read -ra cflags <<<"-O2 -Wall -Wextra -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fPIE ${CFLAGS:-}"
     read -ra ldflags <<<"-pie -Wl,-z,relro,-z,now ${LDFLAGS:-}"
-    read -ra wayland <<<"$(pkg-config --libs wayland-client 2>/dev/null || echo -lwayland-client)"
+    read -ra wayland <<<"$(pkg-config --cflags --libs wayland-client 2>/dev/null || echo -lwayland-client)"
     mkdir -p "$SHELL_DIR/bin"
     "$cc" "${cflags[@]}" -o "$SHELL_DIR/bin/bs-pty" "$SHELL_DIR/src/bs-pty.c" "${ldflags[@]}" -lutil
     echo "src/bs-pty.c -> bin/bs-pty"
@@ -2326,8 +2333,8 @@ build_helpers() {
 }
 
 build_shaders() {
-    local qsb="${QSB:-/usr/lib/qt6/bin/qsb}" f
-    [ -x "$qsb" ] || { echo "banditshell: qsb not found (install qt6-shadertools)" >&2; exit 1; }
+    local qsb="${QSB:-$("$SHELL_DIR/scripts/find-qt.sh" tool qsb)}" f
+    [ -x "$qsb" ] || { echo "banditshell: qsb not found (install Qt 6 shader tools, or set \$QSB)" >&2; exit 1; }
     while IFS= read -r f; do
         "$qsb" --glsl "100es,120,150" --hlsl 50 --msl 12 -o "$f.qsb" "$f"
         echo "${f#"$SHELL_DIR/"} -> ${f#"$SHELL_DIR/"}.qsb"
@@ -2338,7 +2345,7 @@ check_everything() {
     local status=0
     "$SHELL_DIR/scripts/qml-compile-check.sh" "$SHELL_DIR" || status=1
     if command -v node >/dev/null; then
-        (cd "$SHELL_DIR" && node --test 'tests/*.test.js') || status=1
+        (cd "$SHELL_DIR" && node --test tests/*.test.js) || status=1
     else
         echo "banditshell: node not found" >&2
         status=1
@@ -2475,7 +2482,7 @@ EOF
 
 check_island() {
     local out tally
-    out=$(realpath -m "${1:-$SHOT_DIR/island}")
+    out=$(absolute_path "${1:-$SHOT_DIR/island}")
     echo "walking the island through its situations, about two minutes; ctrl-c stops"
     headless_preview IslandPreview "$out" 240 '.notifications.placement = "island" | .packages.interval = 0 | .sidebar.update = "never"'
     tally=$(sed 's/\x1b\[[0-9;]*m//g' "$preview_log" | grep -oE 'DONE [0-9]+/[0-9]+' | tail -1)
@@ -2566,7 +2573,7 @@ check_boot() {
         case "$argument" in
         --shots) shots=1 ;;
         -*) say_usage "dev check boot [--shots] [dir]" ;;
-        *) out=$(realpath -m "$argument") ;;
+        *) out=$(absolute_path "$argument") ;;
         esac
     done
     out="${out:-$SHOT_DIR/boot}"
@@ -2734,7 +2741,7 @@ route_dev() {
     test)
         command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
         cd "$SHELL_DIR" || exit 1
-        exec node --test 'tests/*.test.js' "$@"
+        exec node --test tests/*.test.js "$@"
         ;;
     modules)
         command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
@@ -3239,7 +3246,7 @@ update_apply() {
     if [ "$detach" = 1 ] && ! dry; then
         mkdir -p "$UPDATE_STATE"
         : >"$UPDATE_STATE/progress.log"
-        (cd "$HOME" && setsid -f "$(readlink -f "${BASH_SOURCE[0]}")" update apply --json ${to:+--to "$to"} 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log")
+        (cd "$HOME" && setsid "$(readlink -f "${BASH_SOURCE[0]}")" update apply --json ${to:+--to "$to"} 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log" &)
         return 0
     fi
     update_prepare

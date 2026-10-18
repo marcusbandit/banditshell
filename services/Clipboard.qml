@@ -13,6 +13,8 @@ Singleton {
 
     readonly property string blobs: `${Config.stateDir}/clipboard`
 
+    readonly property string clipseDir: `${Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`}/clipse`
+
     property var entries: []
 
     property bool loaded: false
@@ -710,7 +712,7 @@ Singleton {
     FileView {
         id: clipse
 
-        path: `${Quickshell.env("HOME")}/.config/clipse/clipboard_history.json`
+        path: `${root.clipseDir}/clipboard_history.json`
         printErrors: false
 
         watchChanges: false
@@ -809,7 +811,7 @@ Singleton {
                     cp -n -- "$f" "$dir/imported-$(basename "$f")" 2>/dev/null
                 done
                 exit 0
-            `, "sh", root.blobs, ...pics.map(e => `${Quickshell.env("HOME")}/.config/clipse/tmp_files/${root.basename(e.file).replace("imported-", "")}`)];
+            `, "sh", root.blobs, ...pics.map(e => `${root.clipseDir}/tmp_files/${root.basename(e.file).replace("imported-", "")}`)];
             adopter.running = true;
         }
 

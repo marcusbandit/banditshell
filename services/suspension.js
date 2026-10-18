@@ -28,6 +28,6 @@ function resolve(action, hibernatePossible) {
 
 function commandFor(action) {
     if (action === "suspend" || action === "hibernate")
-        return ["systemctl", action];
+        return ["sh", "-c", 'if command -v systemctl >/dev/null 2>&1; then exec systemctl "$1"; fi; exec loginctl "$1"', "sh", action];
     return [];
 }

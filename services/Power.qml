@@ -7,20 +7,24 @@ import Quickshell.Io
 Singleton {
     id: root
 
+    function logind(verb: string): var {
+        return ["sh", "-c", 'if command -v systemctl >/dev/null 2>&1; then exec systemctl "$1"; fi; exec loginctl "$1"', "sh", verb];
+    }
+
     readonly property var actions: [
         {
             key: "poweroff",
             icon: "power_settings_new",
             label: "Shut down",
             detail: "",
-            command: ["systemctl", "poweroff"]
+            command: root.logind("poweroff")
         },
         {
             key: "reboot",
             icon: "restart_alt",
             label: "Restart",
             detail: "",
-            command: ["systemctl", "reboot"]
+            command: root.logind("reboot")
         },
         {
             key: "logout",
