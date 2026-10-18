@@ -47,7 +47,7 @@ Item {
         SquircleRect {
             anchors.fill: parent
             pill: "place"
-            color: Appearance.colour.fillStrong
+            color: Appearance.colour.accentFill
         }
 
         SquircleRect {
