@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-12",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "install.sh runs on Debian, Fedora, openSUSE, Void and Alpine as well as Arch. It finds the package manager and installs each tool under that distro's own name, and ./install.sh --list shows the names it will use. On Debian 13 it takes Quickshell and Hyprland from trixie-backports."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A fresh install now also gets the Material Symbols icon font, which used to need an AUR helper, the Qt module the OBS deck talks through, and a few base tools small systems leave out, such as cmp, flock and the time zone list."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The update menu names an update by its version every time. About one check in five showed a commit hash instead."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Shut down, restart and sleep work on systems without systemd, through elogind's loginctl. The shell also finds the clipboard history it imports and the niri config when XDG_CONFIG_HOME moves them."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-11",
       "date": "2026-10-18",
       "changes": [
