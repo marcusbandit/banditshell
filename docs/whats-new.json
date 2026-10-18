@@ -30,6 +30,11 @@
           "text": "Swiping a notification away in the history closes its row up. A swipe to the left used to leave an empty gap where the card had been."
         },
         {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Pausing music keeps it in the island. It used to switch to whatever else had media, often an old video in a browser tab that nothing was playing. A player you never played is not shown at all now, even when it is the only one."
+        },
+        {
           "type": "config",
           "severity": "minor",
           "text": "control.spring in config.json sets how the springs feel: stiffness for how hard they pull back, damping for how quickly the bounce dies out, and mass. control.dragResistance is still how much a card resists your finger at first."

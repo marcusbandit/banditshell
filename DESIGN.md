@@ -839,8 +839,11 @@ banditshell/
 │   │                            a hibernate the machine cannot do is a suspend
 │   ├── Network.qml              NetworkManager: the wire and the radio, one entry per SSID
 │   ├── Bluetooth.qml            bluez: adapter and devices
-│   ├── Media.qml                MPRIS, with a stable choice of player: the one that
-│   │                            last STARTED playing, or the one you picked. Keeps
+│   ├── Media.qml                MPRIS, with a stable choice of player: the one
+│   │                            playing, else the one you last played and paused,
+│   │                            or the one you picked. A paused player you never
+│   │                            played, an old video in a browser tab, is never
+│   │                            shown, even when it is the only one. Keeps
 │   │                            its own clock, re-anchored on every honest report
 │   │                            (seeks made in the app, pause, a new track, a
 │   │                            rate change), deaf for 2.5s after its own seek and
@@ -860,6 +863,7 @@ banditshell/
 │   │                            timed words, a parenthesis lifted onto a backing
 │   │                            line of its own, the music between lines as a
 │   │                            break; line-only lyrics get their words paced
+│   ├── player-choice.js         which player Media shows, as a plain function
 │   ├── SystemInfo.qml            /proc and /sys: cpu, memory, temperature
 │   ├── Display.qml              the screen's comfort: brightness over DDC/CI
 │   │                            (ddcutil, one strictly serial queue,

@@ -5,9 +5,9 @@
   "owns": {
     "qml": ["modules/media"],
     "services": ["Lyrics", "Media"],
-    "js": ["services/lyrics.js"],
+    "js": ["services/lyrics.js", "services/player-choice.js"],
     "scripts": ["scripts/spicy-lyrics.py"],
-    "tests": ["tests/lyrics.test.js"]
+    "tests": ["tests/lyrics.test.js", "tests/player-choice.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor"],
