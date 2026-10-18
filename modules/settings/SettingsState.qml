@@ -142,6 +142,7 @@ Singleton {
             power: "rounding.power",
             border: "edge.border",
             roundOuter: "edge.roundOuter",
+            fullscreenEdge: "edge.fullscreen",
             pushBorders: "compositor.pushBorders",
             bare: "edge.bare",
             anim: "anim.base",

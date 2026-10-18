@@ -117,6 +117,8 @@ Singleton {
                 roundOuter: true,
                 outerExtra: 0,
 
+                fullscreen: true,
+
                 outerColour: "#000000"
             },
 

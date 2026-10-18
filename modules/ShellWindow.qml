@@ -370,6 +370,8 @@ PanelWindow {
 
         screen: win.screen
         chassis: chassis
+        covering: win.underFullscreen && Appearance.sizes.fullscreenEdge
+        window: Hypr.fullscreenWindowOn(win.screen?.name ?? "")
         hosting: win.launcherAbove
         taking: win.launcherAbove && launcherLayer.open
         hostedBlobs: body.lowered(launcherLayer.blobs)
