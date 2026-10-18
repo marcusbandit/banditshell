@@ -539,13 +539,17 @@ Singleton {
         for (const mon of Hyprland.monitors.values) {
             const special = mon.lastIpcObject?.specialWorkspace;
             const shown = [mon.activeWorkspace?.id, special?.name ? special.id : undefined].filter(id => id !== undefined);
-            out[mon.name] = Hyprland.toplevels.values.some(c => shown.includes(c.workspace?.id) && (c.lastIpcObject?.fullscreen & 2) !== 0);
+            out[mon.name] = Hyprland.toplevels.values.find(c => shown.includes(c.workspace?.id) && (c.lastIpcObject?.fullscreen & 2) !== 0) ?? null;
         }
         return out;
     }
 
     function fullscreenOn(screen: string): bool {
-        return root.fullscreenByMonitor[screen] ?? false;
+        return !!root.fullscreenByMonitor[screen];
+    }
+
+    function fullscreenWindowOn(screen: string): var {
+        return root.fullscreenByMonitor[screen] ?? null;
     }
 
     function switchTo(id: int): void {

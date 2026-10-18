@@ -419,6 +419,7 @@ Singleton {
         readonly property int menuMaxHeight: root.config.menu.maxHeight
 
         readonly property bool roundOuter: root.config.edge.roundOuter
+        readonly property bool fullscreenEdge: root.config.edge.fullscreen
 
         readonly property real windowRadius: root.rounding.base + (root.follows ? Compositor.borderSize : 0) + root.config.edge.outerExtra
         readonly property real gap: border

@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-8",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The rounded edge round a fullscreen window is back, and it now takes its colour from the picture. Black bars in a film give a black edge you cannot see; a bright game or page gets a soft, darker edge in its own colours."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings, Shape and motion has an Edge over fullscreen switch. Turn it off and a fullscreen window gets the whole screen with nothing drawn over it. It is edge.fullscreen in config.json."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-7",
       "date": "2026-10-18",
       "changes": [

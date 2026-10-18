@@ -296,6 +296,8 @@ const PAGES_SOURCE = {
                     why: "Corners are superellipses. Power 2 is a plain circle; higher keeps the edge straight longer before it turns." },
                 { n: 52, icon: "border_outer", label: "Frame", k: "border", kind: "slider", min: 0, max: 24, fmt: v => `${v} px`, cfg: "edge.border", dis: s => s.v("follow"), kw: "gaps window border band" },
                 { n: 53, icon: "rounded_corner", label: "Round the screen", k: "roundOuter", kind: "toggle", cfg: "edge.roundOuter", kw: "outer screen corners" },
+                { n: 53, icon: "fit_screen", label: "Edge over fullscreen", k: "fullscreenEdge", kind: "toggle", cfg: "edge.fullscreen", detail: s => s.v("fullscreenEdge") ? "takes the colour of the picture" : "plain fullscreen", dis: s => s.v("bare"), kw: "fullscreen border ring film letterbox",
+                    why: "Keeps the screen's rounded edge round a fullscreen window, coloured from the window's own edge so black bars stay black. Off gives the window the whole screen." },
                 { n: 56, icon: "border_color", label: "Paint window borders", k: "pushBorders", kind: "toggle", cfg: "compositor.pushBorders", detail: s => s.v("sourceEdits") ? "writes the accent to Hyprland" : "needs Hyprland edits on", dis: s => !s.v("sourceEdits"), kw: "push theme window borders" },
                 { n: 54, icon: "crop_free", label: "Bare", k: "bare", kind: "toggle", cfg: "edge.bare", detail: "no frame, no band", kw: "bare mode",
                     why: "Drops the frame and the sidebar’s band. Panels float on their own." }
