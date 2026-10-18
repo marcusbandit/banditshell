@@ -26,17 +26,31 @@ Item {
 
     readonly property real contentWidth: root.iconColumn + root.columnGap + root.sliderWidth + root.columnGap + root.valueWidth
 
-    readonly property real panelWidth: root.border + root.contentWidth + Appearance.padding.large * 2
+    readonly property real panelWidth: root.contentWidth + Appearance.padding.large * 2
 
     readonly property real panelHeight: root.contentHeight + Appearance.padding.large * 2
 
-    readonly property real contentHeight: root.rowHeight * 3 + root.rowGap * 2
+    readonly property int rowCount: Display.brightnessReady ? 3 : 2
+
+    readonly property real contentHeight: root.rowHeight * root.rowCount + root.rowGap * (root.rowCount - 1)
 
     readonly property real rowHeight: Math.max(root.iconColumn, Appearance.sizes.sliderHeight * 2.2 * 1.35)
 
-    readonly property bool active: rail.containsMouse || rail.pressed || cardZone.containsMouse || root.pinned || linger.running
+    readonly property bool active: root.pinned || linger.running || rail.pressed || root.dwelt && (root.held || grace.running)
 
     readonly property bool held: rail.containsMouse || rail.pressed || cardZone.containsMouse
+
+    property bool dwelt: false
+
+    onHeldChanged: {
+        if (!root.held) {
+            grace.restart();
+            return;
+        }
+        grace.stop();
+        if (reveal.value > 0.5)
+            root.dwelt = true;
+    }
 
     readonly property Item maskItem: root.pinned ? catcher : cardZone
 
@@ -82,7 +96,7 @@ Item {
         else
             b = 138.5177312231 * Math.log(t - 10) - 305.0447927307;
         const m = Math.max(r, g, b);
-        return Qt.rgba(r / m * 0.7 + 0.3, g / m * 0.7 + 0.3, b / m * 0.7 + 0.3, 1);
+        return Appearance.rgb(r / m * 0.7 + 0.3, g / m * 0.7 + 0.3, b / m * 0.7 + 0.3);
     }
 
     Follow {
@@ -91,6 +105,26 @@ Item {
         speed: Appearance.animation.revealSpeed
         target: root.active ? 1 : 0
         epsilon: 0.005
+    }
+
+    LevelCover {
+        active: reveal.value > 0.2
+        kinds: ["volume", "brightness"]
+    }
+
+    Timer {
+        id: dwell
+
+        interval: Appearance.animation.dwell
+        running: rail.containsMouse && !root.dwelt
+        onTriggered: root.dwelt = true
+    }
+
+    Timer {
+        id: grace
+
+        interval: Appearance.animation.grace
+        onTriggered: root.dwelt = false
     }
 
     Timer {

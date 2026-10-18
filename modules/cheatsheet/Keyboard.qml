@@ -124,10 +124,10 @@ Item {
         return key.mod ? root.sheet.modSymbol(key.mod) : "";
     }
 
-    readonly property real legendMargin: Appearance.padding.small / 2
+    readonly property real legendMargin: Appearance.padding.hair
 
     function legendWidth(cap: string, glyph: string): real {
-        const sigil = glyph ? Appearance.font.size.small + (cap ? Appearance.padding.small / 2 : 0) : 0;
+        const sigil = glyph ? Appearance.font.size.small + (cap ? Appearance.padding.hair : 0) : 0;
         return cap.length * root.advance + sigil + root.legendMargin * 2 + root.seam;
     }
 
@@ -429,7 +429,7 @@ Item {
                         visible: !!root.picked && root.picked.note !== undefined
 
                         text: root.picked ? `${root.picked.cap}: ${root.picked.note || "struck"}` : ""
-                        color: Appearance.colour.textGhost
+                        color: Appearance.colour.textFaint
                     }
 
                     StyledText {
@@ -438,7 +438,7 @@ Item {
                         visible: !!root.picked && root.picked.note === undefined && root.chosen.length === 0
 
                         text: root.picked ? `${root.picked.cap}: nothing bound` : ""
-                        color: Appearance.colour.textGhost
+                        color: Appearance.colour.textFaint
                     }
 
                     Repeater {
@@ -479,7 +479,7 @@ Item {
             visible: root.inModes > 0
 
             text: `${root.inModes} binds in submaps`
-            color: Appearance.colour.textGhost
+            color: Appearance.colour.textFaint
         }
 
         StyledText {
@@ -487,7 +487,7 @@ Item {
             elide: Text.ElideRight
 
             text: root.footer
-            color: Appearance.colour.textGhost
+            color: Appearance.colour.textFaint
         }
     }
 }

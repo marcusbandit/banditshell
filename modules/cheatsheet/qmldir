@@ -2,5 +2,6 @@ module qs.modules.cheatsheet
 BindList 1.0 BindList.qml
 CheatSheet 1.0 CheatSheet.qml
 Chord 1.0 Chord.qml
-Keyboard 1.0 Keyboard.qml
+HotkeysIpc 1.0 HotkeysIpc.qml
 KeyCap 1.0 KeyCap.qml
+Keyboard 1.0 Keyboard.qml

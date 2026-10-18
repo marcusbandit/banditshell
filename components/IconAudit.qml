@@ -17,7 +17,7 @@ Item {
     Timer {
         id: timer
 
-        interval: Appearance.animation.slow
+        interval: Appearance.animation.wait.slow
 
         onTriggered: {
             const icons = root.pending;

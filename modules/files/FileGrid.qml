@@ -151,7 +151,7 @@ Item {
         radius: Appearance.rounding.small
         color: Appearance.colour.accentFill
         stroke: Appearance.colour.accent
-        strokeWidth: Appearance.font.stem
+        strokeWidth: Appearance.stroke.ring
     }
 
     Column {
@@ -163,8 +163,8 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
 
             name: Files.error ? "lock" : "folder_open"
-            size: Appearance.font.iconSize * 2
-            color: Files.error ? Appearance.colour.alarm : Appearance.colour.textGhost
+            size: Appearance.icon.huge
+            color: Files.error ? Appearance.colour.alarm : Appearance.colour.textFaint
         }
 
         StyledText {

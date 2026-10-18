@@ -12,6 +12,200 @@
       ]
     },
     {
+      "id": "2026-10-18-6",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "media.waveLength, media.waveAmplitude and media.waveSpeed are gone from config.json, together with the wave they tuned. The shell removes them on its next start, and nothing else in your config changes."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Buttons keep their round ends when you press them or switch them on. A button that is switched on shows it in colour, as the accent plate, instead of turning square, and no button casts a shadow any more."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The music seek bar is a straight line instead of a wave. The played part is bright while the music plays and dims when it is paused."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The password fields in the keyring prompt and the Wi-Fi menu mark each character with a dot or a small grain at an angle, instead of clover and flower shapes."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-18-5",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "major",
+          "text": "The notification list in the top right corner is gone. New notifications show in the island at the top of the screen, and the ones you have had are in the launcher: type notifications, or press the island's notifications row. banditshell panel notifications toggle (Super+N in the example binds) now opens that list in the launcher. If you want pop-ups in the corner again, set notifications.placement to corner; the corner then shows new ones only."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The sidebar now rests as a rail: small workspace marks until you point at it, and a status icon only when something needs you, such as a low battery or a VPN that is on. Point at it and the full column grows out. Settings, Sidebar, Style switches back to the full column. Scrolling on the sound icon changes the volume in both styles."
+        },
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "The shell now keeps a small file called banditshell.lua next to your hyprland.lua, and a note of where the shell lives under ~/.local/state/banditshell. Nothing else in your Hyprland setup is touched. Your binds keep working as they are; the file is what lets them be written as local bs = require(\"banditshell\") and hl.bind(\"SUPER + SPACE\", bs.launcher.toggle), which keeps working whatever the banditshell command looks like after future updates."
+        },
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "Which What's new entries you have seen is kept outside config.json now. The first start copies the old updates.seen value over; the key stays in config.json as it was and the shell stops changing it."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Notification history survives a restart, every notification shows how long ago it came, a chat that sends several messages shows as one entry with a count, pressing a notification opens its app, and chat apps that support it get a reply field. Critical notifications come through quiet hours, and quiet hours show in the sidebar and the island while they are on."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The update button checks first and tells you what the update is: a restart or not, commands that changed, programs it needs. It tries the new version before switching to it and goes back on its own if the new version does not start. banditshell update check, apply, rollback and status do the same from a terminal."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The island shows running timers with the time left, a ringing alarm with Snooze and Stop, the volume, brightness and microphone when they change, the screenshot you just took with Copy, Edit, Folder and Delete, a dot while the microphone, camera or screen sharing is in use, Copied when the shell copies something, and headphones with their battery when they connect. Scripts can put their own progress there with banditshell island push."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher answers keys followed by what a shortcut does, lists the tray with tray, toggles special workspaces with scratchpad or special, runs anything a keybind can with action, and opens recent documents with recent."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell version says which version you run, banditshell action runs any of the shell's stable actions by name, banditshell events prints what the shell does as it happens, and banditshell doctor --report collects what a bug report needs with passwords and keys left out."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings, Launcher has Notifications in search, off by default: when it is on, words you type also find the text of recent notifications. Settings, Sidebar can show a brightness icon you scroll to change the brightness."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Movements across the shell follow the same smooth curve and no longer overshoot, and the lock screen uses the shell's three text sizes."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "When a program the shell needs for a theme, an alert sound or OBS is not installed, settings now says so instead of silently doing nothing."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-18-2",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Push a notification in the island back up to put it away. One card or the whole stack goes back into the island and stays in your history. Swiping sideways still dismisses one."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Anything you open with a shortcut appears at once, and Esc or the shortcut puts it away at once. Clicking still opens things from where they live, like the music card growing out of the island."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings, Look, Motion has a Workspace slide: how long the desktop slides when you change workspace, up to 250 ms, or off. It defaults to 200 ms, shorter than before, and needs no Hyprland edits."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Things that move across the screen, like the workspace marker or a menu gliding between sidebar icons, now ease in as well as out."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "With reduced motion on, sleep, restart and shut down on the lock screen need the full hold again. A tap could set them off."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The launcher goes back down into the bottom edge when it closes, and your pinned apps arrive with it instead of one by one."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Once a tooltip is showing, the ones next to it show at once instead of making you wait again."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Quick controls at the right edge wait a moment before opening and before closing, so moving the pointer past the edge no longer flashes them open."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Nothing bounces any more: toggles, sliders, arrows and password dots move straight to where they go, and the lock screen clock no longer leans toward the pointer."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Switching between sidebar menus fades the new page in instead of laying it over the old one."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The wallpaper picker arrives in one quick rise, and browsing changes the preview at once instead of sweeping each time."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The music card drifts back up toward the island when the island opened it."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Reduced motion now means no motion at all: fades and looping animations stop too (equaliser, scrubber wave, spinners, scrolling titles, animated wallpapers), and the lock screen still shows when music is playing."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Picking the same settings search result twice flashes its row both times, and the launcher's file preview no longer blinks as you arrow between text files."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-18",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "PageUp and PageDown in the clipboard move one screen of rows at a time, instead of jumping past entries you never saw."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "When the launcher previews a file, the highlight on the matching line leaves room around the text instead of sitting flush on it."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Quick controls and the power menu sit centred in their panels. Quick controls no longer leaves extra space when there is no brightness slider."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "In a narrow settings window, the details pane sits inside the panel with even margins. Screen time shows each app's bar under its name."
+        }
+      ]
+    },
+    {
       "id": "2026-10-17-5",
       "date": "2026-10-17",
       "changes": [

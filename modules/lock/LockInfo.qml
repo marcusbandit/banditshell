@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.modules.media
+import qs.modules.notifications
 import qs.services
 
 Column {
@@ -18,8 +19,6 @@ Column {
     readonly property bool noticed: alerts.total > 0
 
     readonly property real artSize: Appearance.font.line.small + Appearance.padding.small * 2
-    readonly property int textSize: Math.round(Appearance.font.size.small * 0.9)
-    readonly property int captionSize: Math.round(Appearance.font.size.small * 0.72)
 
     readonly property real reach: root.implicitHeight + (root.music ? (deck.height + Appearance.padding.normal) * (1 - open.value) : 0)
     readonly property real deckWidth: Appearance.sizes.lockField * 0.8
@@ -53,9 +52,28 @@ Column {
             text: alerts.total === 1 ? "1 notification" : `${alerts.total} notifications`
             color: Appearance.colour.textDim
             font.family: root.family
-            font.pixelSize: root.textSize
+            font.pixelSize: Appearance.font.size.small
             font.variableAxes: ({ "wght": 500 })
             renderType: Text.NativeRendering
+        }
+    }
+
+    Column {
+        anchors.horizontalCenter: parent.horizontalCenter
+        visible: alerts.readable.length > 0
+        spacing: Appearance.padding.small
+
+        Repeater {
+            model: alerts.readable
+
+            NotificationCard {
+                required property var modelData
+
+                width: root.deckWidth
+                entry: modelData
+                density: "line"
+                family: root.family
+            }
         }
     }
 
@@ -77,7 +95,7 @@ Column {
             text: root.remaining !== "" ? `${Battery.percent}%, ${root.remaining}` : `${Battery.percent}%`
             color: Appearance.colour.textDim
             font.family: root.family
-            font.pixelSize: root.textSize
+            font.pixelSize: Appearance.font.size.small
             font.features: ({ "tnum": 1 })
             renderType: Text.NativeRendering
         }
@@ -139,7 +157,7 @@ Column {
                     color: Appearance.colour.text
                     elide: Text.ElideRight
                     font.family: root.family
-                    font.pixelSize: root.textSize
+                    font.pixelSize: Appearance.font.size.small
                     font.variableAxes: ({ "wght": 550 })
                     renderType: Text.NativeRendering
                 }
@@ -151,14 +169,14 @@ Column {
                     color: Appearance.colour.textDim
                     elide: Text.ElideRight
                     font.family: root.family
-                    font.pixelSize: root.captionSize
+                    font.pixelSize: Appearance.font.size.small
                     renderType: Text.NativeRendering
                 }
             }
 
             Equalizer {
                 anchors.verticalCenter: parent.verticalCenter
-                playing: Media.playing && !Appearance.lessMotion
+                playing: Media.playing
                 color: Appearance.colour.accent
             }
         }

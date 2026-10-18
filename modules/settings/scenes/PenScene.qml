@@ -76,7 +76,7 @@ Item {
             radius: 10
             color: "transparent"
             stroke: Appearance.colour.fillStronger
-            strokeWidth: 2
+            strokeWidth: Appearance.stroke.ring
         }
 
         Item {
@@ -92,7 +92,7 @@ Item {
                 radius: 6
                 color: Appearance.colour.accentFill
                 stroke: Appearance.colour.accent
-                strokeWidth: 2
+                strokeWidth: Appearance.stroke.ring
             }
 
             Shape {

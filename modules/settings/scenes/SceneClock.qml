@@ -1,4 +1,5 @@
 import QtQuick
+import qs.config
 import qs.modules.settings
 
 QtObject {
@@ -8,7 +9,7 @@ QtObject {
     property bool live: true
     property real still: 1
 
-    readonly property bool moving: root.live && !SettingsView.reduceMotion
+    readonly property bool moving: root.live && !SettingsView.reduceMotion && !Appearance.lessMotion
 
     property real t: 0
 

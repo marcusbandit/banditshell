@@ -171,7 +171,7 @@ Item {
 
         Button {
             anchors.verticalCenter: parent.verticalCenter
-            visible: Obs.phase === "closed"
+            visible: Obs.phase === "closed" && Obs.installed
             icon: "open_in_new"
             text: "Open OBS"
 

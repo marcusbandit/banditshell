@@ -168,16 +168,44 @@ The feel to chase: **as if the intent of using the computer makes the computer c
 Alive, responsive, compliant to intent. Nothing is static. Nothing is dead. The computer
 answers the *intent* of use, and only when asked.
 
-Animation implementation for all this motion/summon/tracking: **exponential smoothing, always**
-(see `~/.claude/rules/animation-smoothing.md`) -
-`position += (target - position) * (1 - Math.exp(-speed * dt))`. Moves fast when far, settles
-gently when close, safe at any dt.
+Animation implementation for all this motion/summon/tracking comes in two curves, both chased
+every frame so either can be caught and retargeted mid-flight:
+
+- **Follow (`components/Follow.qml`), ease-out**, for anything that answers an input: a reveal,
+  a press, a panel arriving. Exponential smoothing,
+  `position += (target - position) * (1 - Math.exp(-speed * dt))` (see
+  `~/.claude/rules/animation-smoothing.md`): it moves the moment it is asked, fast when far,
+  gentle when close, safe at any dt.
+- **Travel (`components/Travel.qml`), ease-in-out**, for something already on screen moving to a
+  new place: the workspace marker, a menu gliding between sidebar icons, rows closing up, the
+  next notification stepping forward. A critically damped follower: it starts gently, arrives
+  gently, keeps its speed when the target moves, and never crosses past the target.
 
 **This is a rule, not a default.** Anything in this shell that moves, tracks, reveals, resizes
-or follows goes through `components/Follow.qml`. A `NumberAnimation` or a `Behavior` on a
-position is a bug, with exactly one exception: a **looping clock** with no target being chased
-at all (the mic indicator's processing ripple and typing caret are the whole list). Spring and
-bounce are not in this shell.
+or follows goes through one of those two. A `NumberAnimation` or a `Behavior` on a position is a
+bug, with exactly one exception: a **looping clock** with no target being chased at all. The
+whole list: the mic indicator's processing ripple and typing caret, the battery charge sweep and
+low-charge throb, the scrolling-text marquee, the equalizer, the lyric
+line's sung-gap clock, the lyrics loading pulse, the activity bubble's and the settings keyboard
+widget's spinners, and the demo clocks of the settings scenes. Every one of them stops or freezes
+when `Appearance.lessMotion` is true. No overshoot, bounce or flourish anywhere, for now: the
+shell starts from no play at all, and anything playful comes back later one deliberate piece at
+a time.
+
+**Fades are motion too.** An opacity or a colour that changes goes through `Follow`
+(`epsilon: Appearance.animation.fadeEpsilon`, since the default epsilon is in pixels) or
+`components/FollowColour.qml`, never a `Behavior`. Both snap under `lessMotion`, so a reduced
+motion setting now stills the fades as well. Speeds come from `Appearance.animation`:
+`revealSpeed` for what used to be a fast fade, `trackSpeed` for normal, `settleSpeed` for slow,
+`snapSpeed` for small knobs.
+
+**A key gets an instant answer.** Anything a hotkey opens appears in its first frame, and a
+hotkey, Esc or Enter that puts it away takes it at once: the key already announced the outcome.
+`Appearance.instantly()` opens a window of a few frames in which both curves snap and the
+duration tokens collapse; the IPC entry points and the surfaces' Esc and Enter handlers call it.
+The pointer, touch and touchpad keep their origin: a surface grows out of what was clicked, and
+a drag follows the finger. Reduced motion is the same switch held on: no motion at all, fades
+included.
 
 Three corollaries, each of them learned by shipping the mistake:
 
@@ -212,6 +240,64 @@ This implies a **hierarchy of prominence** driven by current context/intent:
 
 So a widget isn't "shown or hidden" - it has a *role* in the current context (focus vs
 ambient vs absent), and that role changes as intent moves around the screen.
+
+### 2.5 Motion: animate to teach, never to decorate
+
+Source: "The Ridiculous Engineering Of Animations" (Enrico Tartarotti, 18:36). Every frame of
+animation sits between the user's intent and the result, so it costs them time. Only information
+they do not already have earns that time.
+
+The rules, in the order the video builds them:
+
+- Motion is a map. An animation teaches where a thing lives and where it came from: an app grows
+  out of its icon, the volume slider slides out of the volume buttons, the island opens from
+  itself. The same object should leave and return through the same place every time. A panel that
+  enters from the top once and from the side the next time breaks the map, and the user feels it
+  before they can say why.
+- Copying nature is the starting point, not the goal. Physics (slow in, slow out, follow-through)
+  makes motion read as real. Once the motion is copied, the next question is whether it should run
+  at all.
+- Animate what the user did not start, or what they have not yet learned. The first time an action
+  happens, motion can teach. The thousandth time it only waits. A surface opened all day should
+  not animate in at all, because a keyboard action already announces its own outcome.
+- Animate what the user must find again. The video keeps a sidebar animated even when it hides by
+  default, because the user can summon it and has to learn that it exists. Rarity and
+  discoverability decide, not the kind of thing.
+- The curve sets the speed as much as the duration does. Enter and exit use ease-out: progress is
+  front-loaded, so the thing arrives fast and settles. Ease-in starts slow and is wrong for enter
+  and exit. Something already on screen that moves to a new place uses ease-in-out.
+- Motion can hide latency, but a result that arrives instantly can still be distrusted. A launch
+  animation buys time while an app starts. A short settle at the end of an instant transfer
+  convinced users the money had moved. Where the work is real, as with an upload, show the real
+  progress instead.
+- Every motion must be interruptible. A swipe can reverse mid-flight. A motion the user cannot
+  retarget feels like lag even when it is short. Section 2.3's smoothing retargets by construction.
+- When motion is switched off, the signal must survive. The game keeps its screen shake and its
+  throw animation with animations disabled, because the shake is the only sign that damage landed.
+  An animation that carries information needs a second channel for when it is removed: a state
+  change, a colour, a blink on the item that was acted on.
+- Tune against the thousandth repetition. macOS's desktop-switch slide shows where full-screen apps
+  live, and it is disliked enough that people fake a trackpad swipe to suppress it. A spatial
+  lesson that turns into friction gets switched off, and then it teaches nothing. Multiply each
+  duration by how often it runs: 400 ms on something opened a thousand times a day is about
+  6.7 minutes of waiting.
+- Personality comes from timing. Bounce, overshoot and a long ease-in-out read as playful or
+  premium. Work tools lean rigid and fast. This shell takes the rigid end: spring and bounce are
+  excluded by section 2.3, and the character comes from the pixel type and the chassis (section 6),
+  not from overshoot.
+
+Applied to this shell:
+
+- A keyboard-summoned surface (the launcher, a workspace switch) appears without travel. Its first
+  frame already shows it. Its response is the state change itself.
+- Section 2.3 asks for a visible or felt response to every interaction. That response does not have
+  to be movement. A colour, a dim, a blink or a fill can answer an action that should not travel.
+- Anything the pointer or the island summons grows from its source, so the eye can follow it back.
+  Section 18 holds the island's anatomy.
+- Hover reveals keep a dwell timer on the first hover. Once a tooltip is open, neighbouring
+  targets show theirs at once, because the user is already searching.
+- A surface that is not summoned by the user keeps its motion, because the user has not yet
+  learned it exists.
 
 ---
 
@@ -327,6 +413,25 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
     contour that joins another shape reads as a seam through one object. A ring around a
     button joins nothing, and it is how to give a control a boundary without a solid fill.
     It is stroked INSIDE the item's bounds, because a ring is laid out as a target.
+  - **A pill is an object or a place, and the two have different ends.** Decided 2026-10-17:
+    both shapes stay, and every pill says which it is (`SquircleRect { pill: "object" }` or
+    `pill: "place"`; radius and corner power follow from that, and a pill drawn any other way
+    is a lint failure). An OBJECT gets true round ends (power 2): something you grab, press as
+    one round target, or that marks a count or a state. Knobs and beads, drag handles, dots,
+    badges and counts, round icon buttons, chips, the island's compact capsule and its
+    bubbles. A PLACE gets the shell's own corner power: something sits in it or moves along
+    it. Tracks, gauges and meters, text fields, rails, the highlight plate behind a row or a
+    segment, cards. When unsure, ask what the hand does with it: dragged or tapped as one
+    thing is an object; something lives in it or slides along it is a place. That is why a
+    toggle is two shapes, a place (the track) holding an object (the knob), and why the
+    island's capsule eases from round ends into the shell's corner as it grows into a card.
+  - **A button is an object, whatever it is doing.** Decided 2026-10-18, retiring the
+    Material 3 button: it keeps its round ends at rest, pressed and switched on, and nothing
+    squares off. A press answers with the fill step and the press scale. A toggle that is on
+    becomes the accent plate, so its state is a colour and survives reduced motion. Four
+    emphases, named for what they are: `accent` for the one action a view is about, `plate`
+    (the default), `ring` for a boundary without a fill, and `bare` for a label that lights on
+    contact. No drop shadow under any of them: depth is material, not decoration.
 - **At most three font sizes, shell-wide.** `small` / `normal` / `large` in
   `config/Appearance.qml` and nothing else. Hierarchy is carried by colour, weight and
   spacing instead. The one exception is `display` (one and a half times `large`), and
@@ -346,6 +451,26 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
     `rounding = 15`. Hyprland is already drawing superellipse corners there
     (`rounding_power = 4.0`), the same idea as our G2 smoothing.
   - If the theme conf changes, the render changes, and the shell follows it. One direction.
+- **One state recipe.** Hover, press, selection and disabled look the same everywhere, built from
+  the palette's fill steps and nothing else. Colour changes between states fade through
+  `FollowColour`.
+
+  | State | List row | Card or tile |
+  |---|---|---|
+  | rest | transparent | `fill` |
+  | hover | `fill` | `fillStrong` |
+  | pressed | `fillStrong` | `fillStronger` |
+  | selected | `fillStrong`, label in `text` | `accentFill`, glyph in `accent` |
+  | disabled | `Appearance.opacity.disabled` | `Appearance.opacity.disabled` |
+  | focus | `Appearance.stroke.ring` in `accent` | `Appearance.stroke.ring` in `accent` |
+
+  Applied in `MenuRow`, `Button` (a transparent plate takes the row column, an opaque one blends
+  toward its label colour by the same fill step) and the settings tiles. `textGhost` is for
+  decorative rules only; readable text, placeholders and disabled glyphs use `textFaint`.
+- **Small constants have names.** `Appearance.padding.hair` (4), `Appearance.stroke.line` (1) and
+  `ring` (the font stem), `Appearance.opacity.disabled` / `trail` / `glow`, the icon ladder
+  `Appearance.icon.small` to `hero`, `Appearance.press.lift` and `grab`, and
+  `Appearance.colour.pane` for the mock panels in settings scenes.
 - **Distinctive, not generic.** Never trade a distinctive look for a generic "clean" one.
   Since I'm establishing the style from scratch, commit to an idiom early (the clock sets it)
   and build every later widget in that idiom.
@@ -391,8 +516,9 @@ banditshell/
 ├── previews/                    the shell's pieces, opened alone in a window of
 │                                their own - battery, calculator, files, the
 │                                island, the lock face, notifications, qr,
-│                                settings, the terminal workbench, windows, the
-│                                gallery (`banditshell
+│                                the quick controls panel, settings, the
+│                                sidebar in both styles, the terminal
+│                                workbench, windows, the gallery (`banditshell
 │                                dev preview gallery`, `... preview lock`). They
 │                                sit in a folder so the root stays just the two
 │                                entry points, and the folder holds because a
@@ -407,15 +533,48 @@ banditshell/
 │                                qs.services, ...) and every type in it; what lets
 │                                the LSP resolve `import qs.config`. Regenerate
 │                                with scripts/qmldirs.sh after adding files
+├── packages/                    one module.json per package that has no folder of its
+│                                own under modules/ (core, compositor, clock, ...);
+│                                the others keep theirs at modules/<name>/module.json.
+│                                docs/architecture/modules.md has the map
+├── modules.baseline.json        the module boundary violations that exist today;
+│                                `banditshell dev modules` fails on any not in it
+├── cli/
+│   ├── banditshell              the CLI; bin/banditshell links to it
+│   └── commands.tsv             the command table scripts/completion-rules.sh
+│                                parses out of the CLI's help header: verbs, rules,
+│                                value lists. GENERATED and committed (`scripts/
+│                                completion-rules.sh --write`); a test fails when
+│                                it is stale. `banditshell api check` walks it
+├── api/                         the stable API a user's binds are written against
+│   ├── actions.tsv              the contract: one row per action id, its status,
+│   │                            the API number it appeared in, the command it
+│   │                            stands for today, one line of description
+│   ├── released.txt             every id ever shipped, sorted. Append only; a test
+│   │                            fails if the table loses one
+│   └── shim.lua                 copied beside hyprland.lua as banditshell.lua. It
+│                                never names an action or a verb and carries a
+│                                format number, so it is replaced only by a newer
+│                                format. Finds the checkout, loads lua/banditshell.lua
+├── lua/
+│   └── banditshell.lua          what a user's config requires: the ids as callable
+│                                names, bs.bind, bs.describe, bs.run. At press time
+│                                it does one hl.exec_cmd and nothing else
+├── rules.baseline.json          how many violations of each house rule each file holds
+│                                today; `banditshell dev lint` fails on any more
 ├── config/
 │   ├── Config.qml               SINGLETON. ~/.config/banditshell/config.json, live.
 │   ├── Compositor.qml           SINGLETON. What Hyprland/niri say about rounding + gaps.
 │   ├── Themes.qml               SINGLETON. Named palettes (ramp + accents).
+│   ├── ControlTuning.qml        SINGLETON. The gesture tunables (`control.*`) and the
+│   │                            compositor's touchpad scroll direction, as the defaults
+│   │                            Pull, GlideList, ScrollGesture and SignalBars take; a
+│   │                            caller overrides them with the component's own property
 │   └── Appearance.qml           SINGLETON. Config x Compositor x Themes -> the tokens.
 ├── components/                  generic, reusable, know nothing about the shell
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
-│   ├── wave.js                  a sine polyline, fixed at its START: the scrubber's played part
-│   ├── SquircleRect.qml               the ONE rounded-rect primitive; fill and/or outline
+│   ├── SquircleRect.qml               the ONE rounded-rect primitive; fill and/or outline;
+│   │                                  `pill: "object"|"place"` sets radius and corner power
 │   ├── squirclefill.frag        the convex path of it, drawn by a shader (+ .qsb)
 │   ├── SquircleImage.qml              a picture cut to that same corner, by mask
 │   ├── BlurredImage.qml         the same cut, the picture blurred to colour
@@ -440,6 +599,7 @@ banditshell/
 │   ├── ProgressRing.qml         a ring that fills: an app on its way
 │   ├── AppMark.qml             one window's mark, from a spec: symbol/glyph/mono/image
 │   ├── Follow.qml               a value that chases a target by exponential smoothing
+│   ├── FollowColour.qml         the same for a colour; every colour fade goes through it
 │   ├── Pull.qml                 a directional swipe; the way in, and back out, that needs no hover
 │   ├── ScrollGesture.qml        two fingers on a touchpad, delivered as that same swipe
 │   ├── GlideList.qml            a list that scrolls by pixels and coasts when let go
@@ -458,9 +618,9 @@ banditshell/
 │   ├── MenuLayer.qml            the rest of a row, folded up under it
 │   ├── Segments.qml             a row of choices of which exactly one is taken;
 │   │                            the sheet's two questions and the clipboard's tabs
-│   ├── Button.qml                 THE one button: five emphases, two variants,
-│   │                            two shapes, the five-rung size ladder; the
-│   │                            toggle's colour and shape ARE its state
+│   ├── Button.qml                 THE one button: four emphases (accent, plate,
+│   │                            ring, bare), always the object pill, the
+│   │                            five-rung size ladder; a toggle's colour IS its state
 │   ├── ButtonGroup.qml           several presses joined as ONE plate; a member
 │   │                            lights inside it, the group asks who was pressed
 │   ├── vt.js                    a terminal as a DATA STRUCTURE: the byte stream
@@ -477,13 +637,13 @@ banditshell/
 │   ├── SecretField.qml          THE field you type a secret into: the
 │   │                            keyring's and the wifi row's.
 │   │                            One mark per character rather than an
-│   │                            asterisk, each a different shape from
-│   │                            lobes.js, and only the NEW one ever moves.
+│   │                            asterisk, each a different object pill from
+│   │                            secret-marks.js, and only the NEW one moves.
 │   │                            The secret leaves through `accepted` and by
 │   │                            no other door: there is no readable text
 │   │                            property, on purpose
-│   ├── lobes.js                 the mark family, as maths: one polar curve,
-│   │                            r = 1 - depth*cos(lobes*t), at six settings.
+│   ├── secret-marks.js          the mark family: a dot and a grain at four
+│   │                            angles, all of them the object pill.
 │   │                            Shape comes from the POSITION and never from
 │   │                            the character, which would be the password
 │   │                            written on screen in a code
@@ -497,13 +657,11 @@ banditshell/
 │   │                            picture solid inside it, both fitted to one box
 │   ├── DropShadow.qml           the soft shadow under a floating thing, drawn
 │   │                            from its shape rather than its pixels, so it
-│   │                            costs nothing when the thing resizes every frame
+│   │                            costs nothing when the thing resizes every frame;
+│   │                            takes the same `pill` role as the shape it mirrors
 │   ├── FloatingTooltip.qml      a plain label floating above whatever it is
 │   │                            dropped into, after the tooltip delay; for
 │   │                            surfaces with no chassis to melt a tip out of
-│   ├── PathField.qml            a MenuRow until you press it, then a place to
-│   │                            type; the keyboard is claimed on the edit, not
-│   │                            on being visible
 │   ├── QrScanner.qml            the camera, and whatever code it finds; needs
 │   │                            zxing-cpp's `ZXingReader` on PATH to decode
 │   └── QrCode.qml               the same square the other way round: a string as
@@ -522,6 +680,30 @@ banditshell/
 │   │                            hyprctl eval, so the files keep their own;
 │   │                            apply_layout_binds(name) runs after, when the
 │   │                            config defines one
+│   ├── keybind-search.js        the parsed binds as "which chord does this":
+│   │                            the chord written out, one entry per chord of
+│   │                            a bind, and the words that find it
+│   ├── tray-search.js           asking for the tray, and a tray item found by
+│   │                            name or id
+│   ├── special-workspaces.js    asking for the scratchpad or a special workspace
+│   │                            and what its row says
+│   ├── shell-actions.js         api/actions.tsv as launcher rows: wildcard ids
+│   │                            expanded per panel, ids that only print or would
+│   │                            recurse left out, arguments read from the
+│   │                            description, and the command an id runs
+│   ├── ShellActions.qml         api/actions.tsv and cli/commands.tsv, read once
+│   ├── recent-documents.js      recently-used.xbel read into documents, secret
+│   │                            names dropped, newest first
+│   ├── RecentDocuments.qml      those documents, kept to the ones that still exist
+│   ├── chords.js                hotkey chords as pure functions: same chord,
+│   │                            legacy keyword form, readable form and the
+│   │                            command a launcher hotkey runs; the launcher,
+│   │                            the settings shortcuts list and LauncherHotkeys
+│   │                            all read it from here
+│   ├── layout-model.js          the window layout workshop's model: arrangements,
+│   │                            regions, rules, the edits and their problems
+│   ├── layout-lua.js            that model written as Lua for hyprland.lua, and
+│   │                            the loader and bind lines around it
 │   ├── HyprConfig.qml           the Hyprland config as a model: the tree
 │   │                            (the file this compositor was handed with
 │   │                            -c, else hyprland.lua, else hyprland.conf,
@@ -568,12 +750,21 @@ banditshell/
 │   │                            in it, tested in node
 │   ├── whatsnew.js               the What's new log as DATA: entries parsed
 │   │                            tolerantly and accumulated past the
-│   │                            last-shown marker. No QML in it, the way
+│   │                            last-shown marker, the newest id as the
+│   │                            version and the git tag for it. No QML in it, the way
 │   │                            hyprgen.js has none, tested the same way
 │   ├── update.js                the update's words: git's answer read into
-│   │                            values, and a failure said plainly with the
-│   │                            files in the way named, never git's last
-│   │                            line alone. No QML in it, tested in node
+│   │                            values, a failure said plainly with the
+│   │                            files in the way named, and classify() and
+│   │                            summary(), which read `git diff
+│   │                            --name-status` (plus api/actions.tsv,
+│   │                            install.sh and the incoming What's new
+│   │                            entries) into restart or reload, commands,
+│   │                            helpers, deps and edits in the way. The CLI
+│   │                            runs it under node (`node update.js report`).
+│   │                            It also says which branch a channel
+│   │                            (stable or main) and an updates.branch
+│   │                            override follow. No QML in it, tested in node
 │   ├── Tray.qml                 StatusNotifierItem host: what runs without a window
 │   ├── AppIcons.qml             what each app looks like: seen, picked, suggested
 │   ├── DesktopIndex.qml         every installed desktop entry read once: its
@@ -684,7 +875,18 @@ banditshell/
 │   ├── Notifications.qml        the notification DAEMON (a server, not a reader);
 │   │                            also where quiet lives: a notification always
 │   │                            lands in history, and quiet, the night window
-│   │                            and the sender's rule decide popup and sound
+│   │                            and the sender's rule decide popup and sound.
+│   │                            History is saved to the state directory and
+│   │                            comes back as dead entries (no buttons, no
+│   │                            reply); notification-store.js,
+│   │                            notification-search.js (the launcher's
+│   │                            query, threads, ages) and
+│   │                            notification-timing.js (mute and snooze
+│   │                            spans) hold the pure parts. A rule can mute
+│   │                            an app for a while (muteUntil); snooze puts
+│   │                            a popup away and brings it back; an entry
+│   │                            that arrives while quiet is marked withheld,
+│   │                            and the end of quiet tells Notices how many
 │   ├── AppNotifications.qml     the index over it: which application each one
 │   │                            came from, so a launcher row can carry its own
 │   ├── AlertSounds.qml          plays the three alert sounds (notification, low
@@ -815,7 +1017,9 @@ banditshell/
 │   │                            Keys.onPressed in the repo
 │   ├── Files.qml                the file browser's whole mind: where it is,
 │   │                            what is there, and the shell session it is
-│   │                            having. THE SHELL OWNS THE DIRECTORY; see 17
+│   │                            having. THE SHELL OWNS THE DIRECTORY; see 17.
+│   │                            home and openWith forward to System, and a
+│   │                            reveal request from System lands here
 │   ├── FileSearch.qml           files by name under home (fd), words inside
 │   │                            them (ripgrep, one line a file, eight files,
 │   │                            stopped the moment the line changes; never
@@ -823,21 +1027,25 @@ banditshell/
 │   │                            folder listed for a typed path, for the
 │   │                            launcher; which hidden ones count is a setting
 │   ├── Update.qml               whether the public repo is ahead of this
-│   │                            checkout, found by fetching the tracked
-│   │                            branch at every launch and counting what it
-│   │                            has that HEAD does not. Four states, one
-│   │                            direction: idle -> available (red) ->
-│   │                            downloading -> downloaded (blue, and
-│   │                            terminal until a restart). The download is a
-│   │                            fast-forward to THE COMMIT THE CHECK SHOWED
-│   │                            or nothing, the restart goes through the
-│   │                            CLI, and the branch tracked is a config
-│   │                            choice, never a menu one. "Downloaded"
-│   │                            outlives the hot reload the pull itself
-│   │                            sets off. A copy with commits of its own, or
-│   │                            on another branch (a tried worktree), is
-│   │                            told so, not offered a button that cannot
-│   │                            work. A failed fetch is not a check
+│   │                            checkout, and the one update in flight. It
+│   │                            runs nothing of its own: `banditshell
+│   │                            update check --json` finds what is waiting
+│   │                            and what kind of change it is, and
+│   │                            `update apply --detach` does the update in a
+│   │                            session of its own, so a restart or a hot
+│   │                            reload cannot kill it. Its progress is read
+│   │                            back from update/progress.log and its
+│   │                            outcome from update/result.json, which a
+│   │                            fresh shell reads on start too. States: idle
+│   │                            -> available -> downloading -> verifying ->
+│   │                            restarting -> updated, or rolledback when
+│   │                            the new shell did not start, or failed. A
+│   │                            copy with commits of its own, or on another
+│   │                            branch (a tried worktree), is told so, not
+│   │                            offered a button that cannot work. Knows the
+│   │                            channel it follows and the version of both
+│   │                            sides; docs/architecture/updates.md tells the
+│   │                            whole loop
 │   ├── Notices.qml              what the shell itself has to say, as opposed
 │   │                            to an application's notification: an update on
 │   │                            GitHub, a new kernel, a restart it wants, a
@@ -845,6 +1053,44 @@ banditshell/
 │   │                            for a few seconds, held while you look; the
 │   │                            standing ones then wait under the clock until
 │   │                            they are dealt with
+│   ├── Activities.qml           the island's front door: a registry any source
+│   │                            posts to (`push`, `update`, `end`), plus the
+│   │                            running timers and the ringing alarm read from
+│   │                            Clock. The island draws `shown`; a press goes
+│   │                            to `activate`. In memory only
+│   ├── activities.js            the registry's rules: ids, spans, progress,
+│   │                            ordering, expiry, outcomes, the timer and
+│   │                            alarm items, the level moments. No QML,
+│   │                            tested in node
+│   ├── Events.qml               the event stream: watches the workspace, panels,
+│   │                            mode, quiet, media, activities, notifications and
+│   │                            update state, and appends one JSON line per change
+│   │                            to $XDG_RUNTIME_DIR/banditshell/events.jsonl for
+│   │                            `banditshell events` (docs/events.md)
+│   ├── events.js                the stream's rules: snapshot, diff into events,
+│   │                            filter match, the rotating writer script. No QML,
+│   │                            tested in node
+│   ├── Levels.qml               volume, mute, brightness and mic mute as a
+│   │                            second in the island, unless an open surface
+│   │                            already shows that level
+│   ├── LevelCover.qml           what a surface declares while it shows a
+│   │                            level, so Levels stays quiet about it
+│   ├── Moments.qml              the island's short moments, posted through
+│   │                            Activities: a screenshot thumbnail, a Copied
+│   │                            line, a Bluetooth audio device connecting.
+│   │                            `island.moments.*` switches each one off
+│   ├── moments.js               what those moments say and how long they last,
+│   │                            the copy masking, the screenshot actions.
+│   │                            No QML, tested in node
+│   ├── Privacy.qml              reads the PipeWire graph and posts a privacy
+│   │                            activity for each of microphone, camera and
+│   │                            screen share that is in use, and removes it
+│   │                            when the stream stops
+│   ├── privacy.js               which PipeWire nodes and links mean a camera,
+│   │                            a microphone or a screen share, and which
+│   │                            apps own them. No QML, tested in node
+│   ├── Screenshots.qml          the `captured(path)` signal the picker and
+│   │                            `screenshot full` raise when a picture exists
 │   ├── Downloads.qml            inotifywait on the XDG download folder. A name
 │   │                            counts once it is a non-empty file with no
 │   │                            .part or .crdownload beside it, which is what
@@ -893,12 +1139,61 @@ banditshell/
 │   │                            (SHA-256, since QML has no crypto), which
 │   │                            sources are camera, screen, mic or desktop
 │   │                            audio, and the stream's rate and drops
-│   └── Shell.qml                which ShellWindows exist
+│   ├── Shell.qml                which ShellWindows exist, and the host end of
+│   │                            Panels (open, toggle and isOpen by panel name)
+│   ├── SessionControl.qml       core interface: lockRequested() and sleeping, so
+│   │                            idle, suspend and the battery services never
+│   │                            name Lock; Lock answers the request and
+│   │                            publishes sleeping
+│   ├── Notify.qml               core interface: alert(kind) and post(spec) for
+│   │                            services that raise a sound or a notification;
+│   │                            Notifications answers. notify.js builds the
+│   │                            notify-send command and the category
+│   ├── Focus.qml                core interface: focusedScreen (Hypr publishes
+│   │                            it) and offStageScreen, the screen the
+│   │                            streamer is not on (StreamState pins it)
+│   ├── Panels.qml               core interface: open(name, args), toggle(name)
+│   │                            and isOpen(name); Shell answers for the window
+│   │                            panels, Settings claims its own name
+│   └── System.qml               core interface: home, copyText, openWith and
+│                                reveal, the helpers that used to live on Files
 ├── modules/                     actual shell UI
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
 │   ├── Chassis.qml              the band + sidebar as ONE shape
 │   ├── FrameExclusions.qml      invisible; reserves the room the chassis occupies
-│   ├── Cli.qml                   the control surface the CLI talks to
+│   ├── Ipc.qml                  the control surface the CLI talks to, as a flat
+│   │                            list: one line per <Name>Ipc.qml, no logic.
+│   │                            Each module keeps its own `qs ipc` handlers in
+│   │                            its folder (CalculatorIpc, ClipboardIpc, FilesIpc,
+│   │                            HotkeysIpc, KeyboardIpc, LauncherIpc, MediaIpc,
+│   │                            MenuIpc, ModeIpc, PasswordIpc, PenIpc, PickerIpc,
+│   │                            QuickControlsIpc, SessionIpc, SettingsIpc,
+│   │                            SidebarIpc, StreamIpc, WallpaperIpc). Target
+│   │                            names and function signatures are frozen by
+│   │                            tests/ipc-targets.test.js against
+│   │                            tests/fixtures/ipc-targets.json
+│   ├── panel/                   the panel contract, owned by core
+│   │   ├── LazyPanel.qml        a panel built the first time it is asked for
+│   │   ├── PanelIpc.qml         the handler base for a panel with no screen
+│   │   │                        argument: toggle, open, close on the panel named
+│   │   │                        by its target. A module subclasses it and adds
+│   │   │                        status and its own verbs
+│   │   ├── ScreenPanelIpc.qml   the same, with a screen argument on toggle and open
+│   │   ├── PinnedPanelIpc.qml   the same for panels that are pinned rather than
+│   │   │                        shown (island)
+│   │   └── PanelWindows.qml     what those bases share, and what any handler asks
+│   │                            of the shell windows: the window on a screen,
+│   │                            toggle, open, close, pin, and the screen a verb
+│   │                            means. A handler's own helpers cannot live on
+│   │                            its root, since every function there is a verb
+│   ├── cli.js                   the words the CLI speaks: durations, times of
+│   │                            day, repeat days, columns
+│   ├── ipc/                     the handlers that have no module folder of
+│   │                            their own, grouped by package: ClockIpc (timer,
+│   │                            alarm, zone), AudioIpc (output), DisplayIpc
+│   │                            (screen, tablet), NotificationsIpc (notifications,
+│   │                            quiet), CompositorIpc (migration), HostIpc
+│   │                            (border), CoreIpc (shell)
 │   ├── Tooltip.qml              the one tooltip, drawn wherever it was asked for
 │   ├── island/                  the top centre, where everything that pops up
 │   │   │                        now arrives (see 18)
@@ -919,14 +1214,13 @@ banditshell/
 │   │   │                        bubble
 │   │   ├── ActivityBubble.qml   a kind beside the centre: its mark, plus the
 │   │   │                        ring and badge that keep its state readable
+│   │   ├── ActivityIpc.qml      the `activity` IPC target behind
+│   │   │                        `banditshell island push|update|end|list`
 │   │   ├── AlertDeck.qml        the notifications that are up: the newest in
 │   │   │                        front with the rest peeking, spread into a list
 │   │   │                        on hover and inside the overview
-│   │   ├── NotificationAlert.qml a notification as the island tells it: tap for
-│   │   │                        its default action, flick it sideways to let
-│   │   │                        it go, drag it up or down to scroll the list,
-│   │   │                        its actions always there, a close mark on hover
-│   │   ├── NotificationMark.qml its picture, else its app's mark, else a bell
+│   │   ├── IslandIpc.qml        the island's `qs ipc` handler; InspectIpc.qml
+│   │   │                        holds the inspector's
 │   │   ├── IslandInspector.qml  `banditshell dev inspect island`: a panel that
 │   │   │                        makes up each situation on the live island,
 │   │   │                        so it can be looked at, hovered and clicked;
@@ -943,7 +1237,7 @@ banditshell/
 │   │   │                        shadow and words that cross-fade; the title on
 │   │   │                        the cover's top, artist and album one tight
 │   │   │                        group on its bottom, each one line that scrolls
-│   │   │                        when it does not fit; the wave; the transport
+│   │   │                        when it does not fit; the seek bar; the transport
 │   │   │                        between the two times on one line; its words
 │   │   │                        and its expand mark open the card
 │   │   └── DictationWave.qml    the voice, as one curve that glides
@@ -960,7 +1254,8 @@ banditshell/
 │   │   │                        kind of guest
 │   │   ├── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs,
 │   │   │                        shuffle and repeat at its ends on the card
-│   │   ├── Scrubber.qml         the ONE seek bar: a wave up to the pip, a straight run after it
+│   │   ├── Scrubber.qml         the ONE seek bar: a straight run up to the pip, bright while it plays
+│   │   │                        and dim when paused, and a quieter run after it
 │   │   ├── ArtCrossfade.qml     the cover, sharp or blurred, fading into the next one
 │   │   │                        only once the next one has loaded
 │   │   ├── LyricsView.qml       the card's right half: the sung line held a third of
@@ -999,9 +1294,6 @@ banditshell/
 │   │                            seconds; camera, screen and the audio toggles
 │   │                            act on the scene on air, and a muted mic or a
 │   │                            hidden screen stays red until it is undone
-│   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press
-│   ├── WallpaperWindow.qml      background layer, below every window; a
-│   │                            WallpaperView, motion only on an empty workspace
 │   ├── launcher/                grows out of the sidebar; the one keyboard grab
 │   │   ├── Launcher.qml         which of the two concepts is live; forwards to it
 │   │   ├── ListLauncher.qml     a search field that answers what you type;
@@ -1030,13 +1322,24 @@ banditshell/
 │   │   │                        the launcher runs any command and completes
 │   │   │                        the next word the way the terminal's Tab does
 │   │   ├── sources/             one file per newer kind of result, plugged into
-│   │   │                        LauncherSearch's `sources` list (section 19)
+│   │   │                        LauncherSearch's `sources` list (section 19).
+│   │   │                        NotificationSource.qml is the notification
+│   │   │                        history: `notifications`, `unread`, `held`,
+│   │   │                        `from <app>` and free text, one row per
+│   │   │                        thread, with the card as its Peek
+│   │   │                        The shell's own state is five of them: `keys
+│   │   │                        <words>` (which chord does it, from the parsed
+│   │   │                        binds), `tray` or an app name (Enter opens the
+│   │   │                        item's menu), `scratchpad` and `special <name>`,
+│   │   │                        `action <words>` (every stable action id) and
+│   │   │                        `recent` (recently-used.xbel, secret names hidden).
+│   │   │                        Each answers below 0.5 for a plain word and
+│   │   │                        has a switch under `launcher.shell`
 │   │   ├── search.js            the pure part of it: paths, links, sections,
 │   │   │                        reading timer, reminder, volume, zone and
 │   │   │                        kill phrases, a time moved between places
 │   │   │                        (5pm ldn in sf, which date(1) converts so
-│   │   │                        daylight saving is right), aliases, chords,
-│   │   │                        fallbacks
+│   │   │                        daylight saving is right), aliases, fallbacks
 │   │   ├── AlphabetLauncher.qml  text before icons; the alphabet on a rail.
 │   │   │                        Folders live in the favourites, a row carries
 │   │   │                        its application's notifications, and a swipe
@@ -1131,6 +1434,8 @@ banditshell/
 │   │                            is a TapHandler rather than a MouseArea so that
 │   │                            two thumbs can be down at once
 │   ├── wallpaper/               the picker: the bottom edge's SECOND swipe up
+│   │   ├── WallpaperWindow.qml  background layer, below every window; a
+│   │   │                        WallpaperView, motion only on an empty workspace
 │   │   ├── WallpaperPicker.qml  no panel at all, and kept low: the wallpaper
 │   │   │                        you are on as a hero 30% of the height, the
 │   │   │                        rest cropped to strips either side that never
@@ -1151,7 +1456,10 @@ banditshell/
 │   │   └── WallpaperView.qml    what the desktop shows on one output: two slots
 │   │                            that cross-fade through the reveal blob; the
 │   │                            wallpaper window and the picker share it
-│   ├── picker/                  screenshot: hover a window or drag a region
+│   ├── picker/                  screenshot: hover a window or drag a region. A
+│   │                            finished picture raises `Screenshots.captured`;
+│   │                            `picker taken <path>` does the same for
+│   │                            `screenshot full`, which never reaches the shell
 │   ├── settings/                the settings panel: a blob that melts out of the
 │   │   │                        sidebar's edge like the menus do, ported from the
 │   │   │                        settings-demo mockup. Rail, content and pane side
@@ -1160,6 +1468,7 @@ banditshell/
 │   │   │                        has no catcher: the desktop stays usable, the X
 │   │   │                        or the corner closes it, and it steps aside while
 │   │   │                        another panel or a menu is up on its screen
+│   │   ├── SettingsCorner.qml   the bottom-right corner as a way in: hover, press
 │   │   ├── catalogue.js         every setting as data: ten categories, their hubs
 │   │   │                        (tiles, one suggestion, page rows) and pages of
 │   │   │                        grouped rows; search, aliases, formats. No QML
@@ -1199,7 +1508,23 @@ banditshell/
 │   │   └── scenes/              the preview in the pane, one per page. Each loop is
 │   │                            one clock over keyframes copied from the mockup's
 │   │                            CSS (keyframes.js)
-│   ├── notifications/           discrete cards; NOT part of the blob field
+│   ├── notifications/           discrete cards; none of it is part of the blob
+│   │   │                        field, and the history is not here: it is a
+│   │   │                        launcher mode (NotificationSource)
+│   │   ├── NotificationCard.qml the one card, in four densities: alert (the
+│   │   │                        island and the corner), page (the launcher's
+│   │   │                        Peek, with the reply field), row and line (the
+│   │   │                        lock screen)
+│   │   ├── NotificationSwipe.qml the gesture under every card: tap, hold to
+│   │   │                        pin, flick right to let go, flick left to keep,
+│   │   │                        drag up or down to scroll, touchpad scroll
+│   │   ├── NotificationMark.qml its picture with the app's mark as a corner
+│   │   │                        badge, else the app's mark, else a bell
+│   │   ├── NotificationCorner.qml  the opt-in host for placement `corner`: live
+│   │   │                        popups at the top right on a plain plate, no
+│   │   │                        history and no arms. It also runs the copier
+│   │   └── NotificationCopier.qml keeps a copy of a borrowed or temporary
+│   │                            picture so history outlives the sender
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
 │   │   ├── MenuPanel.qml        one panel: geometry and contents, NOT a shape
@@ -1209,20 +1534,16 @@ banditshell/
 │   │       ├── CalendarMenu.qml a month; the clock's date is its opener
 │       ├── CalculatorMenu.qml the keypad. A menu BODY, so the panel above and
 │       │                    a menu are one object; the answer stays on the line
-│   │       ├── MediaMenu.qml    SystemMenu.qml    parked for the dashboard,
-│   │       ├── PowerMenu.qml    NotificationMenu.qml   not reachable from the bar
 │   │       ├── TrayMenu.qml     one tray item: what it says, and "show it"
 │   │       ├── TrayEntries.qml  its own menu, off the bus. CONTAINS ITSELF
-│   │       └── UpdateMenu.qml   the update's menu: what the check found and
-│   │                            the one deed the state asks for - download
-│   │                            in the red state, restart in the blue one,
-│   │                            search in the quiet one, and none at all
-│   │                            when the deed could not work. The branch is
-│   │                            named, not chosen: it is a config choice.
-│   │                            The What's new card lives here too, every
-│   │                            entry accumulated past the marker, and it
-│   │                            is marked seen only once the panel
-│   │                            believes it has been read
+│   │       └── UpdateMenu.qml   the update's menu: the one-line summary of
+│   │                            what is coming ("5 changes, restart
+│   │                            needed, commands changed"), the What's new
+│   │                            entries of the change BEFORE it is taken,
+│   │                            one button that says Update or Update and
+│   │                            restart, and the outcome of the last
+│   │                            update, a rollback included. The What's
+│   │                            new card is marked seen when dismissed
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)
 │   │   ├── FilesWindow.qml      the body: a real window, kept alive, because
@@ -1270,7 +1591,7 @@ banditshell/
 │   │                             draws as a placeholder, not an error
 │   └── sidebar/
 │       ├── Sidebar.qml          layout of what sits in the chassis's left band
-│       ├── Clock.qml            stacked HH / mm / date; the date opens the calendar
+│       ├── SidebarClock.qml     stacked HH / mm / date; the date opens the calendar
 │       ├── Workspaces.qml       picks which workspace style the sidebar wears
 │       ├── WorkspaceModel.qml   the column's layout + motion, shared by all of them
 │       ├── WorkspacePlates.qml  style: index tabs, length as state (`plates`/`icons`)
@@ -1293,8 +1614,43 @@ banditshell/
 │       │                        stands where the eye already goes, wearing
 │       │                        colours no ramp supplies
 │       ├── TrayIcons.qml        the tray, at the TOP: what runs without a window
-│       └── TrayIcon.qml         one of them; StatusIcon's drawing, three buttons
+│       ├── TrayIcon.qml         one of them; StatusIcon's drawing, three buttons
+│       ├── RailPips.qml         the rail at rest: one mark per workspace, drawn from
+│       │                        WorkspaceModel, a bar as long as the windows it holds
+│       ├── RailAnomalies.qml    the rail at rest: a status icon only while it is unusual
+│       ├── anomalies.js         which marks are unusual, in what order, and how a gone
+│       │                        one is held while it fades (tests/sidebar-anomalies)
+│       └── scrolling.js         a wheel turn as a step of volume or brightness
 ├── scripts/
+│   ├── check-modules.js         the module boundary check: reads every module.json,
+│   │                            decides who owns each file, and lists what imports,
+│   │                            singletons, config keys and IPC targets cross a
+│   │                            boundary the manifests do not allow; --matrix and
+│   │                            --explain <package> show the edges (node, no
+│   │                            dependencies; `banditshell dev modules`)
+│   ├── lint-rules.js            the house rules as twelve checks (L1 to L12: comments,
+│   │                            Rectangle radius, motion outside Follow, spring easing,
+│   │                            font sizes, colour literals, textGhost text, dashes,
+│   │                            JS the engine lacks, qmldir drift, Name.member reads
+│   │                            of a member the singleton does not declare, a pill
+│   │                            drawn without an object or place role), counted
+│   │                            per rule and file against rules.baseline.json (node, no
+│   │                            dependencies; `banditshell dev lint`)
+│   ├── boot-check.js            the pure half of `banditshell dev check boot`: which
+│   │                            ipc targets have a no-argument status call, and which
+│   │                            log lines are runtime errors (node, no dependencies)
+│   ├── boot-check-inner.sh      the other half: runs inside the private headless
+│   │                            session beside the shell, makes the calls, writes
+│   │                            PASS/FAIL rows to calls.tsv
+│   ├── promote-stable.sh        checks that main may become the stable channel (node
+│   │                            tests, check-modules, lint-rules, compile check, the
+│   │                            boot check when gamescope is there, a
+│   │                            what's-new id) on a clean export of it, then PRINTS
+│   │                            the git push and git tag commands; pushes only with
+│   │                            --push (`banditshell dev promote`)
+│   ├── redact-config.js         config.json with every key named like a token, key,
+│   │                            secret, password or cookie left out (node, no
+│   │                            dependencies; `banditshell doctor --report`)
 │   ├── qmldirs.sh               regenerates every */qmldir after a QML file
 │   │                            is added, moved or renamed; run it, the LSP
 │   │                            reads what it writes
@@ -1306,6 +1662,10 @@ banditshell/
 │   ├── zsh-completion.sh        the CLI's tab completion, GENERATED by parsing
 │   │                            bin/banditshell's own `--help` block, so there is
 │   │                            no second list of verbs to fall out of date
+│   ├── bash-completion.sh       the same table for bash
+│   ├── completion-rules.sh      the one parser of the help header; both of the above
+│   │                            read its table, and `--write` saves it as
+│   │                            cli/commands.tsv
 │   ├── palette.py               a wallpaper's dominant colours
 │   ├── spicy-lyrics.py          reads one track's lyrics out of Spicy Lyrics'
 │   │                            cache in Spotify's own profile, by the cache's
@@ -1356,11 +1716,13 @@ banditshell/
 │   │                            stat, and `ls` is output for a person
 │   └── bs-b64.h                 the wire codec's other half
 ├── bin/
-│   ├── banditshell              the CLI (linked into ~/bin)
+│   ├── banditshell              the CLI, a link to cli/banditshell
 │   └── bs-pty, bs-ls            build output; NOT committed, unlike the .qsb
 │                                shaders, because they are ELF for one machine
 └── docs/
-    ├── hyprland-binds.example.conf   the CLI as keybinds: a worked set to copy
+    ├── hyprland-binds.example.lua    the stable API as keybinds: a worked set to copy
+    ├── hyprland-binds.example.conf   the same set for the legacy .conf parser, as
+    │                                 `banditshell action <id>` lines
     └── whats-new.json                the What's new log, read out by the
                                        shell itself: one entry per push,
                                        newest first, written for the
@@ -1445,7 +1807,10 @@ events force a refresh, id arithmetic) in one place, and leaves widgets purely v
 `services/` is state that outlives any one widget. Mostly that is the outside world, but it
 also holds `Shell.qml`, the registry of which windows exist: the things that need it (the IPC
 handler, later keybinds) sit outside the window tree entirely, and threading a reference down
-to them would couple files with nothing else to say to each other.
+to them would couple files with nothing else to say to each other. A service that wants a window
+or a screen does not name `Shell`, `Lock` or `Notifications`; it calls the small core
+singletons `Panels`, `Focus`, `SessionControl` and `Notify`, which the package that owns the
+thing answers (`docs/architecture/modules.md`).
 
 **One surface, one field. REVISED TWICE on 2026-08-01.**
 
@@ -1486,6 +1851,27 @@ things are still honest scaffolding: the change
 is instant rather than the promised slide behind the left edge, which is still to come, and an
 entry that agrees with the default is deleted rather than kept, so `sidebar.perScreen` stays
 what its name says.
+
+**THE RAIL, 2026-10-17: `sidebar.style` is `full` or `rail`.** The launcher and the island now
+answer most of what the column used to be asked, so the column is allowed to be quiet. `full` is
+the sidebar as it was. `rail` is the default since 2026-10-18 and rests as a thin strip of the band
+(`sidebar.railWidth`, which is also what `FrameExclusions` reserves, so windows tile against the
+rail and not against the full column): one mark per workspace, and below them a status icon for
+whatever is unusual and nothing for what is normal. Unusual is decided in `anomalies.js`: a
+battery under 20 percent, the microphone live or muted while something records from it, a
+screen recording, a VPN, airplane mode (every radio off), quiet or a mode, an update waiting or
+stuck. A cap of four keeps the alarms and drops the quietest, and a mark that goes leaves by
+shrinking, not by blinking out.
+
+Pointing at the rail for `anim.dwell` grows it into the full column: the clock, tray, status
+icons and mode icon, with the workspaces turning from marks into plates. It is not a new panel.
+`Chassis` smooths one number (`railOpen`, through `Follow`) and the cutout's left edge simply
+moves, so the growth is the band swelling over the windows, and the content fades in as the
+edge passes it. Leaving for `anim.grace` collapses it, and it holds open while a menu opened
+from one of its icons is up, so every door the full column has is still there. The windows do
+not re-tile: the reservation stays at the rail, and the column only overlaps them while you are
+pointing at it. Scrolling the sound icon changes the volume in both styles, and the optional
+brightness icon (`sidebar.status.brightness`) does the same for the screen.
 
 **BARE, same day, the rest of the promise.** `edge.bare` is the chrome's master switch: the
 chassis draws nothing on any screen (a full-window hole, zero inset, zero radius, no
@@ -1539,9 +1925,13 @@ bare or not; a shell reduced to a wallpaper runner is still the machine looking 
 
 ## 9. Driving it from a terminal
 
-`bin/banditshell` (linked into `~/bin`) wraps a Quickshell `IpcHandler`. It is a symlink to
-`cli/banditshell`, never a copy: every start, restart and `doctor` recreates the link, so a
-merge that changes the CLI cannot leave Hyprland's binds running an old copy (issue #20).
+`bin/banditshell` wraps a Quickshell `IpcHandler`. It is a symlink to `cli/banditshell`, never a
+copy: every start, restart and `doctor` recreates that link inside the checkout, so a merge that
+changes the CLI cannot leave Hyprland's binds running an old copy (issue #20). The link in
+`~/bin` is made by `doctor` alone, and `doctor` leaves a `~/bin/banditshell` that is a real file
+(a wrapper someone wrote) as it is. Nothing used to put `banditshell` on a PATH, so `install.sh`
+now links `~/.local/bin/banditshell` to `cli/banditshell` when no other `banditshell` is found,
+and `doctor api` says whether the one on the PATH is this checkout.
 
 It exists because **menus open on hover, and hover is impossible to assert**. You cannot script
 a cursor into a corner and check what happened, so the gesture and the thing it opens have to
@@ -1554,14 +1944,16 @@ banditshell                        the commands, one line each
 banditshell <command> help         one command's page
 banditshell panel                  every panel and menu by name
 banditshell panel <name> [toggle|open|close|status] [screen]
-banditshell panel close            every panel away - the rescue
+banditshell panel close            every panel away - the rescue; one `panels closeAll`
+                                   call, the old per-panel loop when the shell lacks it
 banditshell panel <name> <action>  a panel's own: launcher run <app>; settings
-                                   open [page]|page <page>|float; files open
+                                   open [page]|page <page>; files open
                                    [dir]; keyboard dock|float|page <layer>;
                                    clipboard list|use|pin|remove <n>|clear;
                                    calculator full|compact|answer <expression>;
-                                   notifications clear
-banditshell output [speakers|headphones|toggle|list]|assign <role> <device>
+                                   launcher open [<query>]; notifications
+                                   clear|open|toggle|close
+banditshell output [speakers|headphones|toggle|list]|assign speakers|headphones <device>
 banditshell screen [brightness [<pct>|+n|-n]|temperature [<kelvin>|off]
                    |border [on|off|toggle]|sidebar [on|off|toggle] [screen|all]
                    |stream on [screen]|stream off]
@@ -1572,18 +1964,41 @@ banditshell clock [timer start <duration> [label]|pause|resume|toggle|cancel
                   [handle]]|[alarm add <time> [--days ..] [--label ..] [--run
                   ..|--ask ..]|list|snooze|stop|enable|disable|remove <handle>]
                   |[zone list|find|add|remove <place>]
+banditshell notifications [list [unread|held] [<app>]|open [<query>]|act
+                          |dismiss [front|all]|reply <text>|snooze [<span>]
+                          |mute <app> [hour|day|never]|unmute <app>|clear]
 banditshell tablet [on|off|toggle [caller]|lid open|closed|toggle [caller]
                    |probe [lid]|pen [edit|commit|cancel|aspect|centre|follow
                    |area <x> <y> <w> <h>]]
 banditshell config get <key>|set <key> <value>|theme [<name>|list]
-banditshell start|stop|restart|status|log|doctor [binds [rewrite]]
+banditshell start|stop|restart|status|log|doctor [--report|api|binds [rewrite]]
+banditshell action <id> [args...]  a stable id, resolved when it runs (see below)
+banditshell api [list [pattern]|show <id>|check]   the table of ids
+banditshell version                which build is installed
+banditshell events [--filter <names>]   one JSON line per event (docs/events.md)
 banditshell completions install|print|status|remove [zsh|bash]
 banditshell dev try [worktree]|back|worktrees|run|build|shaders|test
-                |check [island [dir]]|inspect island [screen]|inspect close
+                |check [island [dir]|boot [--shots] [dir]]|inspect island [screen]|inspect close
 banditshell dev preview lock|settings [WxH] [page]|files [dir]|gallery|menu <key>
-banditshell dev menu current|hover|list|launcher scrub <0..1>
-                                   |keyring [status|demo|close]
+banditshell dev menu [current|hover|list]
+banditshell dev launcher scrub <fraction>
+banditshell dev keyring|polkit [status|demo|close]
 ```
+
+**The boot check, 2026-10-17.** Two bugs got past the compile check and every node test: a read of
+a property that had moved (`Shell.offStageScreen` became `Focus.offStageScreen`), and
+`win["notifications"]` after the tray was removed, a TypeError on every `banditshell panel close`.
+Both fail only when the shell runs. `banditshell dev check boot [--shots] [dir]` runs it: the real
+`shell.qml` of the checkout, in a private headless gamescope with its own D-Bus, fake home and
+XDG directories, so nothing reaches the live session. It waits until `qs ipc show` lists
+targets, calls the no-argument `status` of every target in `tests/fixtures/ipc-targets.json`
+(a new target is covered without editing a list), drives a round of verbs through the
+checkout's own CLI, and then fails on any TypeError, ReferenceError, "is not defined",
+"Cannot read property", "Failed to load", "Unable to assign" or binding loop in the shell log.
+The lines a headless box always prints (no Hyprland signature, pipewire, ext-idle-notify, a
+wallpaper file missing under the fake home) are ignored; the classifier is `scripts/boot-check.js`
+and has node tests. `--shots` also photographs the shell at rest and with the launcher open.
+`banditshell dev promote` runs it as a last check when gamescope is installed.
 
 **REVISED 2026-10-14: the thing first, in groups.** The verb-first grammar of 2026-10-01
 fixed the noun-first one's inconsistency, and it paid for that by sorting every feature by
@@ -1643,10 +2058,14 @@ work: the wrapper rewrites any old form through the map on the way in. A command
 another program is rewritten to that program (`banditshell set volume +` becomes `wpctl
 set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+`), and the fallback runs it and says so on stderr. The
 sidebar's update icon wears a "published_with_changes" glyph in the accent colour while old
-binds exist (any update state wins over it), and its menu offers the one-click rewrite (a .bak beside the file); `banditshell doctor binds` lists
-them and `banditshell doctor binds rewrite` is the same rewrite. Refusing is a two-click path - the second
-asks, because "no" means "I will fix the config by hand" - and a confirmed refusal is written
-to `cli.bindsDeclined` and never nagged about again.
+binds exist (any update state wins over it), and its menu offers the one-click rewrite (a dated
+`.bak-YYYYMMDD-HHMMSS` beside the file, one per rewrite, never replacing an earlier one);
+`banditshell doctor binds` lists them and `banditshell doctor binds rewrite` is the same rewrite.
+Refusing is a two-click path - the second asks, because "no" means "I will fix the config by
+hand" - and a confirmed refusal is written to `cli.bindsDeclinedGeneration` as the rules
+generation it was made against (`CliMigration.generation`, mirrored by `GENERATION` in
+`cli-migration.js`, a test holds them equal), so a later regroup asks again; a `true` left in
+the old `cli.bindsDeclined` counts as generation 1.
 
 The table maps the verb-first forms only. The noun-first rules were retired with this
 revision, because every bind had already been through them and three of their nouns
@@ -1695,15 +2114,20 @@ anything, so an unpinned menu opened from here would be taken away by the grace 
 of a second after the command printed `open`.
 
 The panels each follow a rule already stated elsewhere rather than inventing one.
-`notifications` and `notch` write the **pin** and nothing else: presence on both is a derived
-union (section 15), so a keybind and a hand land in the same state and leave by the same doors.
+`notch` writes the **pin** and nothing else: presence is a derived union (section 15), so a
+keybind and a hand land in the same state and leave by the same doors. `notifications` has no
+pin any more: its history is the launcher on `notifications `, so `open` and `toggle` open the
+launcher there and `close` closes it when it is showing a notification query.
 `settings` drives the service rather than any window, because the panel lives in each screen's
 shell window and the service says which one shows it; `open` takes an optional page or any
 setting's key, and `page` switches it without touching presence, so a keybind can walk the
 panel while it stays put. A menu answers to the same words as a built-in panel: `panel calendar
 toggle` toggles an ordinary menu registered in the sidebar, and `panel calendar` says whether it
 is the open one.
-`docs/hyprland-binds.example.conf` is a worked set of Hyprland binds onto all of it.
+`docs/hyprland-binds.example.lua` is a worked set of Hyprland binds onto all of it, written
+against the stable API below; `docs/hyprland-binds.example.conf` is the same set for a Hyprland
+still on the legacy parser. Neither is installed by the shell: the Settings action that the
+old example promised never existed, and the example no longer says it does.
 
 `wallpaper` is the one group whose whole job is **reading before writing**. Every action on it
 is a write to `config.json` that `config set wallpaper.enabled` or `config set
@@ -1720,6 +2144,70 @@ an ink floor of its own.
 `panel wallpaper`, the picker, is a **surface** rather than a setting: everything on it opens
 and closes something on the screen and writes nothing, where everything on `wallpaper` writes
 something and draws nothing.
+
+### A stable API for binds
+
+The command line was the interface binds were written against, and it was regrouped twice in
+thirteen days. Every regroup needed a rule table, an offer in the sidebar and a run-time shim,
+and a bind written two generations back had no path at all. So a bind no longer names the
+command line. It names an **action id**, and ids are the one thing promised never to change.
+
+`api/actions.tsv` is the contract: `id`, `status`, `since` (the API number it appeared in), the
+`argv` the id stands for today, and a description. `*` in an id matches one segment and shows up
+as `$1`, `$2` in the argv, so `panel.*.toggle` is every panel at once. An id is never deleted:
+a rename adds the new row and turns the old one into `deprecated=<new id>`, a removal turns it
+into `removed=<new id>` and keeps it mapping to the closest replacement. `api/released.txt`
+lists every id ever shipped and a test fails when the table loses one. The first line, `# api N`,
+changes only when the module's own calling convention does.
+
+`banditshell action <id> [args...]` is the one command line that is frozen. It looks the id up
+when it runs, so a key pressed after an update resolves against the files that update left on
+disk; a deprecated or removed id prints one notice per session and still works. `banditshell api
+list|show|check` read the same table, and `check` holds every row against the help header the
+completion is generated from. `tests/actions.test.js` also runs every row in a dry mode that
+prints the `qs ipc` call instead of making it, and holds that target and function against the
+handlers in `modules/Cli.qml`; that is the check that would have caught `panel settings float`,
+which no handler answered for two weeks and which is gone now.
+
+`lua/banditshell.lua` is what a Hyprland config requires. The ids are nested names that are
+plain functions, so `hl.bind(keys, bs.launcher.toggle)` works as it stands, and a name with
+arguments is called once to get the function to bind: `bs.wallpaper.set("/path")`. Pass an
+action, never call it: `bs.launcher.toggle()` runs it at load. At press time the module does
+one `hl.exec_cmd` and reads no file, because a bind callback has 100 ms before the compositor
+gives up on it; everything else, the table and the checkout's path, is read when the config
+loads. The command it runs finds the checkout again by itself (the load-time root, then the
+pointer file, then the PATH), so a checkout that moved or updated after the config loaded still
+answers. A name that does not exist, a removed id, a half id like `bs.panel.clipboard`, or a
+missing table never raise: they give a function that does nothing and shows a notice once, and
+the module wraps `hl.bind` so even a chain like `bs.volume.up` binds as that function. `bs.bind`
+is `hl.bind` that also fills the description from the table, `bs.describe` reads one, and
+`services/hyprland-lua.js` reads the same table so the hotkey sheet says "Open or close the
+launcher" for a plain `hl.bind(keys, bs.launcher.toggle)`.
+
+`api/shim.lua` is the only file placed in the user's config tree, as `<hypr dir>/banditshell.lua`,
+so `require("banditshell")` works. It is frozen: no action, no verb, a format number in its first
+line, replaced only by a higher format, and a `banditshell.lua` that is not ours (no such first
+line, or a link) is never touched. It finds the checkout through `$BANDITSHELL_DIR`, then the
+pointer file `$XDG_STATE_HOME/banditshell/root`, then the two usual homes of a clone, and with
+none it returns a hollow object that never raises. A pointer file, because the repo is not always
+where the owner keeps it, and a link would dangle after a move and make `require` raise in a
+config we do not own. `ensure_lua` writes the pointer and the shim on `start`, `restart`,
+`doctor` and a tried worktree (`dev try`, `dev back`), atomically, and never from the last good
+copy. `banditshell doctor api` reports it, the table, the user's own binds and the PATH.
+
+The rest of the CLI gives scripts the same footing. Exit codes are written in the header: 0 done,
+1 failed, 2 usage, 3 the shell is not running, 4 the shell refused (a handler that answers
+`refused:`, `no shell window` or `no such ...` is a 4, and a running shell that did not take the
+call is a 4 that says so instead of claiming it is not running). `--json` after a status
+command prints an object. `banditshell version` names the newest what's-new id, the commit, the
+checkout, the API number and the Quickshell and Hyprland versions. The instance pid is cached in
+`$XDG_RUNTIME_DIR/banditshell/pid` and checked with `kill -0`, so a bind no longer pays for
+`qs list --all` first.
+
+`cli-migration.js` can rewrite `exec_cmd("banditshell ...")` strings onto ids where exactly one
+id fits (`--stable-scan`, `--stable-check`, `--stable-write`). Nothing calls those modes yet; the
+write path wants the `Hyprland --verify-config` step `HyprConfig.commit` already has before it
+touches a real file.
 
 ### One wallpaper per monitor: a default, plus the screens that disagree
 
@@ -1897,7 +2385,7 @@ repeats because two links to one picture are one wallpaper.
 `wallpaper.dir` is also the first setting in this shell that is **a piece of text**. Everything
 else on a settings page is a switch, a slider or a list of names, where the whole range is on
 the screen; a folder path is unbounded, and the only honest control for one is a place to type.
-`components/PathField.qml` is a MenuRow until you press it, so a page does not grow a
+The settings `path` row is a MenuRow until you press it, so a page does not grow a
 permanently open text box for a setting changed twice a year. The keyboard is claimed on the
 **edit** rather than on becoming visible, which is what `PasswordField` does and what would
 have made the settings panel hold the keyboard for as long as the page was open: a password
@@ -2119,6 +2607,29 @@ Three things worth keeping in mind, all learned the hard way:
   that a machine is in this world.
 
 ---
+
+### How an update works
+
+`banditshell update check` fetches and classifies the incoming change from facts: `restart` when
+any qmldir changed, a QML file was added or removed, or `shell.qml` changed (a hot reload misses a
+new qmldir entry), otherwise `reload`. The whats-new entries may carry an `impact` object that
+can add a restart, a commands change, binds and packages; it never removes what the diff found.
+`update apply` stages the target with `git archive` into `~/.cache/banditshell/staged`, runs
+`scripts/qml-compile-check.sh` on it and builds the helpers there, and refuses when either fails,
+so the live checkout is untouched until the new tree is known to load. Only then does it record the
+previous HEAD in `~/.local/state/banditshell/update/previous`, set aside the edits the update also
+touches (a fixed identity, so a fresh machine can stash), `git merge --ff-only`, copy the helpers,
+refresh the completions and restart when the class says so. `launch()` counts a shell as up only
+when it answers `shell status` over IPC within `BANDITSHELL_HEALTH_WAIT` seconds (8) and its log
+shows no ReferenceError or "Failed to load" for `BANDITSHELL_HEALTH_SCAN` seconds (3); the last
+good copy is refreshed after that and not before. A failed check goes back by itself: `git reset
+--keep` to the recorded commit, relaunch, `update/result.json` for the next shell to read, and
+`update/skip` plus `updates.skip` so the same commit is not offered again; a newer one is.
+
+`BANDITSHELL_DRY=1` makes `stop`, `start`, `restart`, `update apply` and `update rollback` print
+what they would do (`dry: ...`) and change nothing. `tests/update-cli.test.js` runs the whole loop
+against a throwaway bare origin and clone with a fake `qs` (`tests/fixtures/update/fake-qs`), never
+the real checkout or home.
 
 ## 10. The metaball chassis
 
@@ -2384,9 +2895,8 @@ it whenever the live object changes, keeping the handle itself only for talking
 back to the sender, so a notification whose sender dies simply stops updating.
 **A sender's death is not the shell's amnesia.**
 
-**Still placeholder: nothing.** Every menu in the sidebar is live. Notifications
-and the launcher (DESIGN.md sections 4 and 5) are the remaining capstones and
-have not been started.
+**Still placeholder: nothing.** Every menu in the sidebar is live, and the
+notification daemon and the launcher (DESIGN.md sections 4 and 5) are built.
 
 ---
 
@@ -2535,7 +3045,10 @@ next begins.
 **Peers have to be individually legible, and that is worth more than consistency
 with a technique.** They are discrete cards now, each with its own background, in
 a plain spaced stack, which is what caelestia does and what every other shell
-does, for this reason.
+does, for this reason. The island's deck and the optional corner host both draw
+them that way, and the corner host sits on a plate of its own that is not part of
+the blob field. The history is not drawn in the corner at all: it is rows in the
+launcher, so there is no panel for the cards to melt into or out of.
 
 The rule: melt where one thing emerges from another. Never between siblings.
 
@@ -2554,22 +3067,22 @@ Clicking still dismisses. A mouse user who expects that should not be told they
 are holding it wrong.
 
 **And the other direction is the opposite decision, not a second dismissal.** A
-notification card is dragged *right*, out through the edge the tray hangs off, to
-throw it away, and *left* to **pin** it. Pinning stops the countdown and buys the
-notification one dismissal's worth of protection: thrown away afterwards it only
-leaves the *screen*, and it is still in the hub when you go looking. A press and
-hold pins it too, because a finger has no other way of saying "I am reading this",
-and a swipe left again takes the pin back off.
+notification card is dragged *right*, out through the edge it hangs off, to
+throw it away, and *left* to **keep** it. Keeping stops the countdown and lets the
+card leave the *screen* while the notification stays in the history, which is the
+launcher on `notifications `. A press and hold pins it, because a finger has no
+other way of saying "I am reading this": a pinned card survives one dismissal, and
+a swipe left again takes the pin back off.
 
 The two gestures differ by direction alone, so the card has to say which one is
 happening before you let go: a rightward pull fades the card out, a leftward one
-deliberately does *not*, and the pin's own mark rides in with the pull so it is
-fully drawn exactly at the commit line. A dismissal that looked identical to a
+deliberately does *not*. A dismissal that looked identical to a
 keep until the instant it committed would be a coin toss with a hand on it.
 
-In the hub the pin means nothing, and a swipe there forgets. The hub is where a
-pin was keeping the notification in the first place; honouring one there would
-answer a deliberate swipe by putting the row straight back.
+In the history the pin means nothing, because the history is launcher rows and a
+row is let go with its Dismiss action or the card's close mark. A pin was only ever
+keeping a notification on screen; honouring one there would answer a deliberate
+dismissal by putting the row straight back.
 
 The touch-friendliness that follows is mostly free, and the rest is arithmetic:
 targets meet WCAG 2.2 SC 2.5.8's 24px floor, and the drag threshold is 6px rather
@@ -2591,7 +3104,7 @@ that does not exist on the machine this shell is used on most.
 `components/ScrollGesture.qml` is a non-visual item you feed wheel events to, and
 what it reports back is a gesture: `began` is the press, `moved(dx, dy)` is the
 delta, `ended` is the release. `Pull` adopts it once, so the settings corner, the
-notch and its push-back, the notification tray both ways, both launcher panels,
+notch and its push-back, both launcher panels,
 the wallpaper picker, the cheatsheet, the menus and the clock's summon all answer
 two fingers without a line changing at any of those call sites. That is exactly
 why it is a component and not a paragraph in this document: the rule is about
@@ -2752,7 +3265,7 @@ every one of them, so they are written down here once rather than a sixth time.
 **Where the rule holds today, honestly.**
 
 Free, through `Pull`, with nothing at the call site: the settings corner, the
-notch's pull-down and its push-back, the notification tray's corner and its push,
+notch's pull-down and its push-back,
 both launcher panels' put-away, the wallpaper picker's put-away, the cheatsheet's
 push, the menus' put-back, and the clock's summon of the calendar.
 
@@ -2853,7 +3366,7 @@ corner.** Putting a panel away is not a second gesture to design: it is this one
 pointed the other direction. So the rule for the whole shell is that **everything
 goes back into the edge or corner it came out of, by the gesture that brought it
 out, reversed.** The settings page pushes back down into its corner, the
-notification tray back up into its own, the launcher back down into the bottom
+launcher back down into the bottom
 edge it rose from, a menu back into the sidebar. Nothing has to be learned twice,
 and nothing needs a close button drawn on it, which matters because a close
 button is exactly the sort of small permanent control this shell is trying not to
@@ -2875,12 +3388,12 @@ back where it came from.
 nothing that will take it away on its own, so the push back into its edge is one
 way out and the keyboard is the other: **Escape closes whatever is open, however
 it was opened.** One sentence covers the launcher, the power panel, the hotkey
-sheet, a pinned menu, a pinned notification tray and a pinned notch, and it has
+sheet, a pinned menu and a pinned notch, and it has
 to hold for the routes that have no pointer in them at all, because a keybind
 running `banditshell panel notch open` leaves the cursor resting on somebody else's
 window.
 
-**Pinned is the whole set, and hover is deliberately not in it.** A tray the
+**Pinned is the whole set, and hover is deliberately not in it.** A panel the
 cursor is merely resting in is closed by the cursor leaving; it needs no key, and
 giving it one would cost far more than it saves. A layer surface receives no keys
 at all unless its window asks the compositor for them, and asking is not free:
@@ -2895,9 +3408,9 @@ The cost of a grab is that a pinned thing left up while you go back to typing
 swallows the keystrokes, and clicking the other window does not win the keyboard
 back, because an exclusive layer surface keeps it. For the panels that cover the
 work (the launcher, the power panel, the hotkey sheet) that is the point, and they
-still grab. For the island and the notification tray it was not: both sit beside
-the work, they stay pinned while you go on using the screen, and a pinned island
-made the whole screen feel dead until it was put away. So those two ask for keys
+still grab. For the island it was not: it sits beside
+the work, it stays pinned while you go on using the screen, and a pinned island
+made the whole screen feel dead until it was put away. So it asks for keys
 only once the shell has been clicked (on demand). The price is the case the old
 rule existed for: one summoned by a keybind has never been clicked, so Escape does
 nothing until it has been touched; the strip, the gesture reversed and the CLI
@@ -3395,10 +3908,10 @@ the island rather than the island turning into the card. Now the island's own
 body detaches: its outline, edge, shadow and colour wash move and grow into the
 card's, and every part of the player travels from where it sat in the island to
 its place on the card, the cover, the title, artist and album, the equalizer,
-the progress wave and the buttons. The card is laid out at its final size the
+the seek bar and the buttons. The card is laid out at its final size the
 whole way and the travelling body cuts it to shape, so what the island had no
 place for, the lyrics and the player chips, is uncovered by the growing edge
-and fades in over the last part. A compact row has no artist, album or wave, so
+and fades in over the last part. A compact row has no artist, album or seek bar, so
 those ride with its title and with the body. At that moment the island lets go
 of its body and drips out of the band afresh, and both colour washes run on one
 clock, so the hand-over shows no seam.
@@ -3408,8 +3921,10 @@ row, builds the card and asks for its lyrics before anything is clicked, so the
 click only starts the move: the cover is already decoded and the card already
 knows how wide its lyrics make it.
 
-The card is not the island. Closing it fades it where it is, nothing flies
-back, and the island stays usable while the card is up: the card's click-away
+The card is not the island. Closing it fades it near where it is and nothing
+flies back, but it drifts toward where it came from: up toward the island when
+the island opened it, down when a key raised it from below. The island stays
+usable while the card is up: the card's click-away
 catcher leaves the island's shape and the strip above it alone, and the card
 only briefly holds the keyboard exclusively (see the keyboard section), so the
 pointer on the island is on the island. An island that just handed its body
@@ -3418,10 +3933,10 @@ over and re-forms under a pointer that has not moved does not open by itself.
 ### How the overview is laid out
 
 Everything sits on two lines, one per side: the clock, the cover, the start of
-the progress wave and the elapsed time on the left; the date, the weather, the
-expand mark, the level meter, the end of the wave and the length on the right.
+the seek bar and the elapsed time on the left; the date, the weather, the
+expand mark, the level meter, the end of the seek bar and the length on the right.
 They are aligned by ink, not by text boxes, so a digit's side bearing or a round
-cap on the wave never pokes out past the line. The top margin is larger than the
+cap on the seek bar never pokes out past the line. The top margin is larger than the
 sides (24 against 16), because a clock that large needs room above it. Sections
 are 16 apart and rows inside a list 8, so what belongs together reads together.
 The title is the thing that matters while a song plays, so it takes the top of
@@ -3437,7 +3952,7 @@ screen.
 ### Which screen answers
 
 Launches and dictation go to the focused screen. Notifications and notices go to
-`Shell.offStageScreen`, the rule the corner tray already followed, so streamer
+`Shell.offStageScreen`, the rule the corner host and the launcher rows follow, so streamer
 mode keeps them off the streamed screen. Every screen keeps its own clock.
 
 ### While I dictate
@@ -3484,14 +3999,36 @@ appearing and that would fight the island's own bloom.
 
 ### Notifications are a choice
 
-`notifications.placement` defaults to `corner`. Moving everyone's notifications
-is a big change to make for people who did not ask for it. Set to `island`, a
+`notifications.placement` defaults to `island`. The first version defaulted to `corner`,
+because moving everyone's notifications is a big change for people who did not ask
+for it; it moved once the corner no longer held the history, since a corner that
+only shows popups has nothing the island does not do better. Set to `island`, a
 notification takes the island at its large size. Tap runs its default action,
 its actions sit under the text from the start, and on hover a close mark appears
 in its corner. Nothing about a card's height depends on the pointer: when actions
 came out on hover, moving down a spread list grew and shrank the card under the
-pointer, so everything below it jumped up and down. The corner still opens the
-history either way, and the overview carries a row that opens it.
+pointer, so everything below it jumped up and down.
+
+**History is reached by intent, not by a corner.** The launcher is the shell's
+keyboard home and the island its pointer home, and the old corner tray was neither:
+it opened when the cursor swept past on the way to a window's close button. Now the
+history is the launcher with `notifications ` already typed (section 19, and
+`banditshell notifications open`). Three doors lead there from the island: the
+overview's "N notifications" row, the "all notifications" button at the foot of a
+spread stack, and the "N held while quiet" notice that shows for a moment when quiet
+ends and something was kept back, which opens `notifications held `. `Launcher.show`
+takes the text to start with. A person who chooses `corner` still gets the live
+popups in a slim `NotificationCorner` at the top right, with no history, no arms
+and no pin; reading the history is the launcher either way.
+
+Message text on a screen is private, so the rows appear only when the query is
+clearly about notifications (`notifications`, `unread`, `held`, with `from <app>` and
+free words after them). A plain word never finds a message unless
+`launcher.typing.notifications` is on, the same opt-in that
+`launcher.typing.clipboard` is for copied text; it is off by default. Free words
+list single messages, and a query with none lists one row per conversation, whose
+Enter drills into that conversation. On a screen the stream keeps private the rows
+are not offered at all.
 
 Letting one go is a sideways gesture, animated before anything changes
 underneath. Flick it either way and it follows the pointer, fading as it goes;
@@ -3576,6 +4113,9 @@ headlessly, checks each and photographs it.
 | Dictation or an app, while something else has the big spot | appears as a row below it for a moment, then takes the big spot; the old one glides into the nearest bubble and the newcomer slides up |
 | Another of a kind that already has the big spot (a second app) | another line, at the bottom |
 | Another of a kind that sits in a bubble | only the newcomer has its moment below; the bubble keeps the others |
+| An activity someone posted, or a running timer | the same as an app opening: below the big spot for a moment, then in it, and a bubble once something newer takes over |
+| A timer in its last ten seconds | comes to the big spot at once, whatever it was in |
+| An alarm, or a timer that ended | takes the big spot whatever is happening, even from a critical notification, with its buttons |
 | A music change, a download, an update, the kernel | a row at the bottom of the big spot, or the big spot itself if nothing else is live, for as long as its moment lasts; then it is gone, never a bubble |
 | Anything while the pointer is on the island | has its moment below and then waits as the nearest bubble, its timer held; nothing moves under the pointer, and it takes the big spot once the pointer leaves |
 | A critical notification | takes the big spot whatever is happening |
@@ -3653,6 +4193,64 @@ plate always means a click. A finished launch focuses its window, the dictation
 row opens the transcription history, and a waiting notification comes out when
 pressed.
 
+### Anything can post to it
+
+The island used to know ten kinds, all written into it. Now it has a front door.
+`Activities` is a registry: a script, a build, an agent or a download manager
+posts `{id, text, detail, progress, icon, priority, until, act}` and the island
+draws it with the anatomy everything else has, a mark, words and a sign.
+`banditshell island push --id build --text "Building" --progress 0.4` does it
+from a terminal, `update` moves the progress or the words, `end` finishes it,
+`list` says what is up. The same four verbs are the `activity` IPC target
+(`ActivityIpc.qml`), so a program that can run a command can use the island.
+
+Progress is a ring in the row and around the bubble; left out, the ring spins.
+Ending is a mark, not a disappearance: a check, a red mark or a cross takes the
+ring's place for a moment, then the row goes. `until` is how long a forgotten
+activity may stay. Posting an id again replaces it, twelve is the most, and the
+thirteenth pushes out a finished one first, then the weakest. Pressing the row
+runs the command it was given, and a row with none does nothing, so it never
+gets a plate. The rules are in `activities.js`.
+
+A timer from the clock menu shows as a ring around a small timer mark with the
+time left on the right, always as wide as its longest reading so the capsule
+does not breathe every second. Beside something else it is a bubble with its
+ring around the edge and the time as its badge. In its last ten seconds it
+comes to the big spot, and pressing it pauses or resumes. When it ends, and
+when an alarm rings, the island holds an alarm row: Stop, and Snooze for a real
+alarm. That row takes the big spot from everything, a critical notification
+included, which waits in a bubble; the clock's own notification still lands in
+the history. Quiet timers, the pomodoro's, stay out.
+
+Volume, mute, brightness and mic mute are a moment, not a thing that stays: a
+row with a mark, a bar and the number, for a second, at the bottom of whatever
+holds the big spot. Nothing in the shell answered the volume keys before, which
+read as dead. `Levels` watches Audio, Display and Backlight and keeps quiet when
+a surface that already shows that level is open (the sound menu, the quick
+controls, the settings volume row declare it with `LevelCover`), when the device
+just changed, and for the first seconds after the shell starts.
+`island.levels` turns it off.
+
+Four more things post through the same door, as `Moments` and `Privacy`, and each
+has its own switch under `island.moments`. A screenshot shows the picture small
+through `SquircleImage`, with Copy, Edit (the picker's editor), Folder and Delete,
+for six seconds; pressing the row opens the picture, and Delete moves it to the
+trash. It runs after `screenshot save`, `copy` and `full`. Copying anything from
+the shell gives a short Copied row with the first twenty characters; text that
+was copied as sensitive shows eight dots instead of the text. An audio device
+that connects over Bluetooth gets its name and battery for three seconds. The
+fourth is not a moment but a state: while a program holds the microphone, the
+camera or a screen cast open in PipeWire, a privacy activity stays up, coloured
+(the camera and the screen alarm red, the microphone accent), naming the app. It
+is kind `privacy`, so it sits in the island like dictation does, but it joins
+the others as a bubble and never takes the big spot from what is already
+there; hovering the bubble names the apps, and pressing the microphone's opens
+the sound menu. Dictation and the screen recorder already show themselves, so
+the microphone is left out while dictation runs, and the screen share while the
+shell records. What counts as a camera, a microphone or a cast is in
+`privacy.js`: a stream that an active link feeds from a device. A program that
+reads the camera without PipeWire (a raw video4linux grab) is not seen.
+
 ### The kernel
 
 `services/Pacman.qml` runs checkupdates every `packages.interval` minutes. Only
@@ -3706,7 +4304,15 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
   picker; what is picked there lands in `search.colourEdit` under the row's
   key. The card sits level with the launcher's top edge. With Animate
   preview on, its frame grows or shrinks to the next preview over content
-  already laid out at its final size.
+  already laid out at its final size. `peekCard` is a
+  Component whose root has an `entry` property; the card hosts it with the
+  row's `entry` set, for a row whose preview is a live item rather than text
+  (the notification rows show their card at page density this way). An action
+  can start the same one-line question as `ask` through `search.inquire(row)`,
+  where the row carries `ask`; the notification Reply, Snooze and Mute use it.
+  `search.onStage` is false on a screen the stream keeps private, and a source
+  whose rows carry message text returns nothing there; `search.copyText(text)`
+  closes the launcher and copies.
   `columns` (`[{ text, chars, tone }]`) replaces the detail with fixed
   columns `chars` digits wide, so the same fields line up from row to row;
   `tone` is `"lit"` (accent) or `"dim"`. `swatch` (a colour) draws a colour
@@ -3750,6 +4356,15 @@ The result list is not a binding: `arrangeInputs` lists everything
 turn. Key handlers call `arrangeNow()` first. A source whose groups read a
 property the hub does not already list must still expose it through
 `groups`, which is in `arrangeInputs`.
+
+Five sources read the shell's own state and live in the `launcher-shell` package
+(`packages/launcher-shell.json`), switched under `launcher.shell`: `keys`,
+`tray`, `workspaces`, `actions` and `recent`, each true by default. `ActionsSource`
+turns an action row with a required argument into an `ask` row and arms the ones
+that empty something (clear, remove, cancel) before they run through
+`banditshell action <id>`; ids under `launcher.` and `shell.` are never rows, and
+neither are ids that only print. The hotkey sheet has no open-at call, so Enter
+on a keybind copies the chord and the sheet is a second button.
 
 A hotkey runs a row through a LauncherSearch that the CLI makes and throws
 away at once, so anything that outlives the call (a Process, a timer) belongs

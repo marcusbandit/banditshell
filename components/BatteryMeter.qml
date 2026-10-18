@@ -14,7 +14,7 @@ Item {
 
     property color trackColour: Appearance.colour.fillStronger
 
-    readonly property color well: root.low ? Qt.rgba(root.colour.r, root.colour.g, root.colour.b, 0.18 + 0.34 * root.throb) : root.trackColour
+    readonly property color well: root.low ? Appearance.withAlpha(root.colour, 0.18 + 0.34 * root.throb) : root.trackColour
 
     property color boltColour: Appearance.colour.accent
 

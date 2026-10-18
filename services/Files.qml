@@ -11,7 +11,7 @@ import "quoting.js" as Quoting
 Singleton {
     id: root
 
-    readonly property string home: Quickshell.env("HOME") ?? "/home"
+    readonly property string home: System.home
 
     function helper(name: string): string {
         return `${Quickshell.shellDir}/bin/${name}`;
@@ -186,7 +186,7 @@ Singleton {
         if (entry.kind === "dir")
             root.go(path);
         else
-            root.openWith(path);
+            System.openWith(path);
     }
 
     onCwdChanged: {
@@ -844,12 +844,15 @@ Singleton {
     }
 
     function openWith(path: string): void {
-        opener.command = ["xdg-open", path];
-        opener.startDetached();
+        System.openWith(path);
     }
 
-    Process {
-        id: opener
+    Connections {
+        target: System
+
+        function onRevealRequested(path: string): void {
+            root.reveal(path);
+        }
     }
 
     function show(path: string): void {

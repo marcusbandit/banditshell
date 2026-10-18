@@ -1,0 +1,63 @@
+{
+  "name": "host",
+  "summary": "the shell window, chassis, window registry and the IPC front",
+  "layer": 2,
+  "owns": {
+    "qml": [
+      "modules/Chassis.qml",
+      "modules/FrameExclusions.qml",
+      "modules/FullscreenBorder.qml",
+      "modules/Ipc.qml",
+      "modules/ShellWindow.qml",
+      "modules/Tooltip.qml",
+      "modules/ipc/HostIpc.qml",
+      "modules/ipc/qmldir",
+      "modules/qmldir",
+      "preview.qml",
+      "previews/qmldir",
+      "shell.qml"
+    ],
+    "services": [
+      "Shell"
+    ],
+    "scripts": [
+      "scripts/bash-completion.sh",
+      "scripts/boot-check-inner.sh",
+      "scripts/boot-check.js",
+      "scripts/completion-rules.sh",
+      "scripts/redact-config.js",
+      "scripts/zsh-completion.sh"
+    ],
+    "tests": [
+      "tests/actions.test.js",
+      "tests/boot-check.test.js",
+      "tests/cli-plumbing.test.js",
+      "tests/completion.test.js",
+      "tests/fixtures/cli-stubs.js",
+      "tests/fixtures/ipc-targets.json",
+      "tests/ipc-targets.test.js",
+      "tests/lua",
+      "tests/lua-api.test.js"
+    ]
+  },
+  "requires": {
+    "packages": [
+      "core",
+      "compositor"
+    ],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Shell"],
+    "ipc": [
+      "border",
+      "panels"
+    ]
+  },
+  "config": {
+    "namespace": [],
+    "reads": [
+      "edge"
+    ]
+  }
+}

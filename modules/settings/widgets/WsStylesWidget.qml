@@ -41,10 +41,17 @@ Item {
                 width: root.cell
                 height: Appearance.padding.normal * 2 + 104 + Appearance.padding.small + Appearance.font.line.small
 
+                FollowColour {
+                    id: tone
+
+                    target: tap.pressed && !card.on ? Appearance.colour.fillStronger : tap.containsMouse && !card.on ? Appearance.colour.fillStrong : Appearance.colour.fill
+                    speed: Appearance.animation.revealSpeed
+                }
+
                 SquircleRect {
                     anchors.fill: parent
                     radius: Appearance.rounding.normal
-                    color: card.on ? Appearance.colour.fillStrong : Appearance.colour.fill
+                    color: tone.value
 
                     SquircleRect {
                         anchors.fill: parent
@@ -80,7 +87,10 @@ Item {
                 }
 
                 MouseArea {
+                    id: tap
+
                     anchors.fill: parent
+                    hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: SettingsState.set("wsStyle", card.modelData)
                 }

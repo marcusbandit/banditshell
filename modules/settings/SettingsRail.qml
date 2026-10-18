@@ -53,7 +53,7 @@ Item {
             radius: Appearance.rounding.small
             color: Appearance.colour.fillStrong
             stroke: query.activeFocus ? Appearance.colour.accent : "transparent"
-            strokeWidth: query.activeFocus ? 2 : 0
+            strokeWidth: query.activeFocus ? Appearance.stroke.ring : 0
         }
 
         Icon {
@@ -220,16 +220,18 @@ Item {
                             y: 4
                             width: 2
                             height: Math.max(0, column.implicitHeight - 8)
-                            radius: 1
-                            cornerPower: 2
+                            pill: "place"
                             color: Appearance.colour.fillStronger
                             visible: !root.tiny
-                            opacity: cat.open ? 1 : 0
+                            opacity: stem.value
 
-                            Behavior on opacity {
-                                NumberAnimation {
-                                    duration: Appearance.animation.fade.fast
-                                }
+                            Follow {
+                                id: stem
+
+                                target: cat.open ? 1 : 0
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: Appearance.animation.fadeEpsilon
+                                startsAtTarget: true
                             }
                         }
 
@@ -373,13 +375,14 @@ Item {
             name: rr.icon
             size: Math.round(Appearance.font.iconSize * rr.iconScale)
             fill: rr.on ? 1 : 0
-            color: rr.on || rr.lit || hover.hovered ? Appearance.colour.text : Appearance.colour.textDim
-            opacity: rr.dimmed ? 0.4 : 1
+            color: markTone.value
+            opacity: rr.dimmed ? Appearance.opacity.disabled : 1
 
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.fast
-                }
+            FollowColour {
+                id: markTone
+
+                target: rr.on || rr.lit || hover.hovered ? Appearance.colour.text : Appearance.colour.textDim
+                speed: Appearance.animation.revealSpeed
             }
         }
 
@@ -391,7 +394,7 @@ Item {
             text: rr.label
             elide: Text.ElideRight
             color: mark.color
-            opacity: rr.dimmed ? 0.4 : 1
+            opacity: rr.dimmed ? Appearance.opacity.disabled : 1
         }
 
         HoverHandler {

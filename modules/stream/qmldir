@@ -1,3 +1,4 @@
 module qs.modules.stream
+StreamIpc 1.0 StreamIpc.qml
 StreamPanel 1.0 StreamPanel.qml
 StudioControls 1.0 StudioControls.qml

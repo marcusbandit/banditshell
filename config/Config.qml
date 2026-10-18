@@ -80,6 +80,10 @@ Singleton {
 
                 trackSpeed: 14,
 
+                travelSpeed: 22,
+
+                workspaceSlide: 200,
+
                 revealSpeed: 18,
 
                 railSpeed: 7,
@@ -119,6 +123,10 @@ Singleton {
             sidebar: {
 
                 width: 52,
+
+                style: "rail",
+
+                railWidth: 22,
 
                 enabled: true,
 
@@ -171,7 +179,8 @@ Singleton {
                     sound: true,
                     network: true,
                     bluetooth: true,
-                    battery: true
+                    battery: true,
+                    brightness: false
                 },
 
                 tray: {
@@ -322,6 +331,14 @@ Singleton {
 
                 folders: ({}),
 
+                shell: {
+                    keys: true,
+                    tray: true,
+                    workspaces: true,
+                    actions: true,
+                    recent: true
+                },
+
                 devOps: {
                     ssh: true,
                     ports: true,
@@ -392,6 +409,8 @@ Singleton {
                     skinTone: "none",
 
                     clipboard: false,
+
+                    notifications: false,
 
                     snippets: [],
 
@@ -527,13 +546,15 @@ Singleton {
 
                 cornerZone: 120,
 
-                placement: "corner",
+                placement: "island",
 
                 quiet: false,
 
                 quietUntil: 0,
 
                 letAlarms: true,
+
+                criticalThrough: true,
 
                 nightly: false,
 
@@ -561,7 +582,20 @@ Singleton {
 
                 downloads: true,
 
-                nowPlaying: true
+                nowPlaying: true,
+
+                levels: true,
+
+                moments: {
+
+                    screenshot: true,
+
+                    privacy: true,
+
+                    copied: true,
+
+                    bluetooth: true
+                }
             },
 
             weather: {
@@ -585,12 +619,6 @@ Singleton {
             media: {
 
                 stroke: 4,
-
-                waveLength: 28,
-
-                waveAmplitude: 4,
-
-                waveSpeed: 24,
 
                 wheelSeek: 5,
 
@@ -943,10 +971,19 @@ Singleton {
 
             cli: {
 
-                bindsDeclined: false
+                bindsDeclined: false,
+
+                bindsDeclinedGeneration: 0
+            },
+
+            events: {
+
+                notificationText: false
             },
 
             updates: {
+
+                channel: "main",
 
                 branch: "main",
 
@@ -956,9 +993,11 @@ Singleton {
 
                 seen: "",
 
-                availableColour: "#ff5252",
-                failedColour: "#ffb454",
-                readyColour: "#4da3ff"
+                skip: "",
+
+                availableColour: "alarm",
+                failedColour: "bright",
+                readyColour: "accent"
             }
         })
 

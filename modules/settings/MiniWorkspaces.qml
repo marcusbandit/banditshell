@@ -30,7 +30,7 @@ Item {
         to: 1
         duration: 6000
         loops: Animation.Infinite
-        running: root.walking && root.visible && !SettingsView.reduceMotion
+        running: root.walking && root.visible && !SettingsView.reduceMotion && !Appearance.lessMotion
     }
 
     readonly property var sample: [
@@ -156,7 +156,7 @@ Item {
                                     width: 25
                                     height: 25
                                     name: modelData.ic
-                                    size: Math.round(Appearance.font.iconSize * 1.25)
+                                    size: Appearance.icon.large
                                     color: root.colourful ? modelData.app : modelData.focus ? Appearance.colour.text : Appearance.colour.textDim
                                 }
                             }

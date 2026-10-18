@@ -20,7 +20,7 @@ Item {
     readonly property real drawnHeight: root.size.rows * root.unit
     readonly property real inset: root.flat ? 1 : 1.5
 
-    readonly property color plain: Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.paper, 0.13)
+    readonly property color plain: Appearance.colour.pane
     readonly property color lit: Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.accent, 0.45)
     readonly property color pointed: Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.paper, 0.3)
 

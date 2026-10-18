@@ -15,6 +15,8 @@ Singleton {
 
     readonly property bool shown: !!anchor && !!text
 
+    property bool warm: false
+
     function request(item: Item, label: string, now: bool): void {
         if (!item || !label) {
             root.release(item);
@@ -24,7 +26,7 @@ Singleton {
         root.pending = item;
         root.pendingText = label;
 
-        if (now || root.shown) {
+        if (now || root.shown || root.warm) {
             root.anchor = item;
             root.text = label;
             delay.stop();
@@ -42,7 +44,16 @@ Singleton {
         if (root.anchor === item) {
             root.anchor = null;
             root.text = "";
+            root.warm = true;
+            cool.restart();
         }
+    }
+
+    Timer {
+        id: cool
+
+        interval: Appearance.animation.grace
+        onTriggered: root.warm = false
     }
 
     Timer {

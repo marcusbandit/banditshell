@@ -21,7 +21,7 @@ Singleton {
     readonly property string stateDir: Quickshell.env("XDG_RUNTIME_DIR") ? `${Quickshell.env("XDG_RUNTIME_DIR")}/banditshell` : `${Config.cacheDir}/run`
 
     property string videosDir: ""
-    readonly property string folder: Logic.folderFor(root.settings.recordingFolder, root.videosDir, Files.home)
+    readonly property string folder: Logic.folderFor(root.settings.recordingFolder, root.videosDir, System.home)
 
     property var current: null
     property string starting: ""
@@ -241,7 +241,7 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 const dir = text.trim();
-                root.videosDir = dir && dir !== Files.home ? dir : "";
+                root.videosDir = dir && dir !== System.home ? dir : "";
             }
         }
     }

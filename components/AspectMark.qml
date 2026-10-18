@@ -32,7 +32,7 @@ Item {
         radius: Appearance.rounding.small / 2
         color: "transparent"
         stroke: Appearance.colour.textFaint
-        strokeWidth: Appearance.font.stem
+        strokeWidth: Appearance.stroke.ring
     }
 
     SquircleRect {

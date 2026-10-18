@@ -21,10 +21,10 @@ Item {
         from: 0
         to: 1
         duration: 1300
-        running: !SettingsView.reduceMotion
+        running: !SettingsView.reduceMotion && !Appearance.lessMotion
     }
 
-    Component.onCompleted: if (SettingsView.reduceMotion)
+    Component.onCompleted: if (SettingsView.reduceMotion || Appearance.lessMotion)
         root.grown = 1
 
     Column {

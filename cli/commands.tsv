@@ -1,0 +1,158 @@
+verb	panel	the launcher, menus and every other panel
+rule	panel
+rule	panel close
+rule	panel @panel toggle,open,close,status @screen
+rule	panel files toggle,open @dir
+rule	panel settings open @page @screen
+rule	panel settings page @page
+rule	panel launcher open *
+rule	panel launcher run app,row
+rule	panel keyboard dock,float
+rule	panel keyboard page @layer @screen
+rule	panel clipboard list
+rule	panel clipboard use,pin,remove @index
+rule	panel clipboard clear
+rule	panel calculator full,compact
+rule	panel calculator answer *
+rule	panel notifications clear
+rule	panel notifications open,toggle,close
+values	panel	launcher session clipboard media calculator quickcontrols keyboard settings notifications island hotkeys files wallpaper
+verb	output	which device plays: the speakers or the headphones
+rule	output
+rule	output speakers,headphones,toggle
+rule	output list
+rule	output assign speakers,headphones *
+verb	screen	brightness, temperature, border, sidebar, stream
+rule	screen
+rule	screen brightness *
+rule	screen temperature *,off
+rule	screen border on,off,toggle
+rule	screen sidebar on,off,toggle @screen,all
+rule	screen stream on @screen
+rule	screen stream off
+verb	wallpaper	the picture: next, previous, a file, on or off
+rule	wallpaper
+rule	wallpaper on,off,toggle
+rule	wallpaper next,prev,clear @screen,all
+rule	wallpaper set @file @screen,all
+rule	wallpaper list @screen
+rule	wallpaper palette
+verb	screenshot	a region saved or copied, or the whole desktop
+rule	screenshot save --freeze
+rule	screenshot copy --freeze
+rule	screenshot full @file
+verb	clock	timers, alarms and world clocks
+rule	clock
+rule	clock timer start * *
+rule	clock timer pause,resume,toggle,cancel *
+rule	clock alarm add * --days,--label,--run,--ask
+rule	clock alarm list,snooze,stop
+rule	clock alarm enable,disable,remove *
+rule	clock zone list
+rule	clock zone find,add,remove @place
+verb	focus	modes, and quiet notifications
+rule	focus
+rule	focus mode none,work,play,stream,sleep,list
+rule	focus quiet on,off,toggle hour,evening,tomorrow,never
+verb	notifications	the history in the launcher, and the alert on screen
+rule	notifications
+rule	notifications list unread,held @app
+rule	notifications open *
+rule	notifications act
+rule	notifications dismiss front,all
+rule	notifications reply *
+rule	notifications snooze *
+rule	notifications mute @app hour,day,never
+rule	notifications unmute @app
+rule	notifications clear
+verb	island	post a task, a timer or a level to the island
+rule	island
+rule	island push --id,--text,--detail,--progress,--icon,--until,--priority,--run
+rule	island update @id --text,--detail,--progress,--icon,--until
+rule	island end @id done,failed,cancelled
+rule	island list
+verb	tablet	tablet mode, the lid and the pen's area
+rule	tablet
+rule	tablet on,off,toggle *
+rule	tablet lid open,closed,toggle *
+rule	tablet probe
+rule	tablet probe lid
+rule	tablet pen edit,commit,cancel,aspect,centre,follow
+rule	tablet pen area * * * *
+verb	config	read and write settings, pick a theme
+rule	config get @key
+rule	config set @key *
+rule	config theme @theme,list
+verb	update	the shell's own version: look, apply, go back
+rule	update
+rule	update check --json,--no-fetch
+rule	update apply --to,--detach,--json
+rule	update rollback
+rule	update status --json
+verb	start	start the shell and wait until it is up
+rule	start
+verb	stop	stop it, a tried worktree included
+rule	stop
+verb	restart	stop it and start it again, a tried worktree included
+rule	restart
+verb	status	what the shell thinks the compositor said
+rule	status --json
+verb	log	the running shell's log
+rule	log *
+verb	doctor	repair bin/, the helpers and ~/bin/banditshell, put the Lua module in place, then report quickshell, dkms, failed units and binds in an old form
+rule	doctor --json
+rule	doctor api
+rule	doctor --report
+rule	doctor binds
+rule	doctor binds rewrite
+verb	action	run a stable action by its id
+rule	action @id *
+verb	api	the table of stable action ids
+rule	api list * --json
+rule	api show @id
+rule	api check
+verb	version	which build is installed
+rule	version --json
+verb	events	follow the shell without polling
+rule	events --filter
+verb	completions	tab completion for zsh and bash
+rule	completions install,status,remove,print zsh,bash
+verb	dev	working on banditshell: try, build, test, preview
+rule	dev try @worktree
+rule	dev back
+rule	dev tidy
+rule	dev watch
+rule	dev worktrees
+rule	dev run
+rule	dev build
+rule	dev shaders
+rule	dev test *
+rule	dev check
+rule	dev modules
+rule	dev modules --matrix
+rule	dev modules --explain @package
+rule	dev lint
+rule	dev lint --all,--write-baseline
+rule	dev lint --rule @rule
+rule	dev promote --remote,--no-fetch
+rule	dev check island @dir
+rule	dev check boot @dir --shots
+rule	dev inspect island @screen
+rule	dev inspect close
+rule	dev preview lock @file
+rule	dev preview settings * @page @file
+rule	dev preview files @dir @file
+rule	dev preview gallery *
+rule	dev preview menu @menu @file
+rule	dev menu current,hover,list
+rule	dev launcher scrub *
+rule	dev keyring status,demo,close
+rule	dev polkit status,demo,close
+verb	help	this list; banditshell help <command> for one
+rule	help @command
+values	theme	rendered slate
+values	page	wifi bluetooth wired vpn output mic mixer notifications alerts screens light colour wallpaper type shape sidebar windows launcher clipboard modes clock screentime keyboard shortcuts pointer tablet pen battery powermode lock defaults startup files terminal capture region access updates shell about connections sound display look desktop focus input power apps system
+values	layer	letters more
+values	package	apps audio bar calculator capture cheatsheet clipboard clock compositor core display events files host island keyboard launcher launcher-ai launcher-devops launcher-online launcher-shell launcher-system launcher-tools lock media network notifications password pen power quickcontrols screentime session settings stream updates wallpaper windows
+values	rule	L1 L2 L3 L4 L5 L6 L7 L8 L9 L10 L11 L12
+values	id	launcher.toggle launcher.open launcher.close launcher.run panel.close panel.launcher.toggle panel.session.toggle panel.clipboard.toggle panel.media.toggle panel.calculator.toggle panel.quickcontrols.toggle panel.keyboard.toggle panel.settings.toggle panel.notifications.toggle panel.island.toggle panel.hotkeys.toggle panel.files.toggle panel.wallpaper.toggle panel.launcher.open panel.session.open panel.clipboard.open panel.media.open panel.calculator.open panel.quickcontrols.open panel.keyboard.open panel.settings.open panel.notifications.open panel.island.open panel.hotkeys.open panel.files.open panel.wallpaper.open panel.launcher.close panel.session.close panel.clipboard.close panel.media.close panel.calculator.close panel.quickcontrols.close panel.keyboard.close panel.settings.close panel.notifications.close panel.island.close panel.hotkeys.close panel.files.close panel.wallpaper.close panel.launcher.status panel.session.status panel.clipboard.status panel.media.status panel.calculator.status panel.quickcontrols.status panel.keyboard.status panel.settings.status panel.notifications.status panel.island.status panel.hotkeys.status panel.files.status panel.wallpaper.status panel.settings.page panel.keyboard.dock panel.keyboard.float panel.keyboard.page panel.clipboard.list panel.clipboard.clear panel.clipboard.use panel.clipboard.pin panel.clipboard.remove panel.calculator.full panel.calculator.compact panel.calculator.answer panel.notifications.clear output.status output.toggle output.speakers output.headphones output.list output.assign screen.status screen.brightness.up screen.brightness.down screen.brightness.set screen.temperature.set screen.temperature.off screen.border.status screen.border.toggle screen.border.on screen.border.off screen.sidebar.status screen.sidebar.toggle screen.sidebar.on screen.sidebar.off screen.stream.status screen.stream.on screen.stream.off wallpaper.status wallpaper.toggle wallpaper.on wallpaper.off wallpaper.next wallpaper.prev wallpaper.clear wallpaper.set wallpaper.list wallpaper.palette screenshot.save screenshot.save_frozen screenshot.copy screenshot.copy_frozen screenshot.full clock.status clock.timer.status clock.timer.start clock.timer.pause clock.timer.resume clock.timer.toggle clock.timer.cancel clock.alarm.status clock.alarm.add clock.alarm.list clock.alarm.snooze clock.alarm.stop clock.alarm.enable clock.alarm.disable clock.alarm.remove clock.zone.list clock.zone.find clock.zone.add clock.zone.remove notifications.status notifications.list notifications.open notifications.act notifications.dismiss notifications.reply notifications.snooze notifications.mute notifications.unmute notifications.clear focus.status focus.mode.list focus.mode.set focus.quiet.status focus.quiet.toggle focus.quiet.on focus.quiet.off tablet.status tablet.toggle tablet.on tablet.off tablet.probe tablet.lid.open tablet.lid.closed tablet.lid.toggle tablet.pen.status tablet.pen.edit tablet.pen.commit tablet.pen.cancel tablet.pen.aspect tablet.pen.centre tablet.pen.follow tablet.pen.area config.get config.set config.theme.get config.theme.set config.theme.list shell.start shell.stop shell.restart shell.status shell.log

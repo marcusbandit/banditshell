@@ -36,14 +36,16 @@ Item {
             "focus:terminal": "focus terminal"
         })
 
-    visible: opacity > 0
-    opacity: root.held !== "" && settle.elapsed ? 1 : 0
+    visible: fade.value > 0
+    opacity: fade.value
 
-    Behavior on opacity {
-        NumberAnimation {
-            duration: Appearance.animation.fade.normal
-            easing.type: Easing.OutQuad
-        }
+    Follow {
+        id: fade
+
+        target: root.held !== "" && settle.elapsed ? 1 : 0
+        speed: Appearance.animation.trackSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
     }
 
     Item {
@@ -60,7 +62,7 @@ Item {
             radius: Appearance.rounding.large
             color: Appearance.colour.surface
             stroke: Appearance.colour.separator
-            strokeWidth: Appearance.font.stem
+            strokeWidth: Appearance.stroke.ring
         }
 
         Grid {

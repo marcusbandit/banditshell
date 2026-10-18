@@ -73,6 +73,7 @@ Item {
         Keys.onPressed: event => {
             if (event.key !== Qt.Key_Escape)
                 return;
+            Appearance.instantly();
             root.source.refuse();
             event.accepted = true;
         }
@@ -124,7 +125,7 @@ Item {
             color: Appearance.colour.surface
 
             stroke: Appearance.colour.seam
-            strokeWidth: Appearance.sizes.seam
+            strokeWidth: Appearance.stroke.ring
 
             Column {
                 id: body

@@ -13,7 +13,7 @@ SceneGauge {
     Icon {
         anchors.horizontalCenter: parent.horizontalCenter
         name: root.mode.icon
-        size: 96
+        size: Appearance.icon.hero
         fill: 1
         color: Appearance.colour.accent
     }

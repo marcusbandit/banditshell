@@ -125,9 +125,9 @@ Item {
         anchors.fill: parent
 
         radius: Appearance.rounding.small
-        color: Appearance.veil(0.07)
-        stroke: Appearance.blend(Appearance.veil(0.14), Appearance.colour.alarm, root.alarm * 0.7)
-        strokeWidth: 1
+        color: Appearance.colour.fill
+        stroke: Appearance.blend(Appearance.colour.fillStrong, Appearance.colour.alarm, root.alarm * 0.7)
+        strokeWidth: Appearance.stroke.line
     }
 
     Item {
@@ -144,7 +144,7 @@ Item {
             color: Appearance.colour.textDim
             opacity: hint.value
             font.family: root.family
-            font.pixelSize: Math.round(Appearance.font.size.small * 0.9)
+            font.pixelSize: Appearance.font.size.small
             renderType: Text.NativeRendering
         }
 
@@ -169,8 +169,7 @@ Item {
                 y: (root.height - height) / 2 + held.fall * root.dot * 1.6
                 width: root.dot
                 height: root.dot
-                radius: root.dot / 2
-                cornerPower: 2
+                pill: "object"
 
                 visible: there.value > 0.01 && held.fall < 1
                 opacity: there.value * (1 - held.fall)
@@ -207,8 +206,7 @@ Item {
                 y: (root.height - height) / 2 + (1 - grow.value) * root.dot * 0.6
                 width: root.dot
                 height: root.dot
-                radius: root.dot / 2
-                cornerPower: 2
+                pill: "object"
 
                 visible: grow.value > 0.01
                 opacity: grow.value
@@ -231,7 +229,7 @@ Item {
 
             width: root.caretWidth
             height: Math.round(Appearance.font.size.small * 1.1)
-            radius: 1
+            pill: "object"
 
             visible: !root.waiting && present.value > 0.01
             color: Appearance.colour.accent
@@ -257,7 +255,7 @@ Item {
             text: Keymap.layout
             color: flip.containsMouse ? Appearance.colour.text : Appearance.colour.textFaint
             font.family: root.family
-            font.pixelSize: Math.round(Appearance.font.size.small * 0.72)
+            font.pixelSize: Appearance.font.size.small
             font.variableAxes: ({ "wght": 600 })
             renderType: Text.NativeRendering
         }

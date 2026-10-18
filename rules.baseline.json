@@ -1,0 +1,20 @@
+{
+  "violations": {
+    "L3": {
+      "modules/launcher/AlphabetLauncher.qml": 8,
+      "modules/launcher/AlphabetRow.qml": 18,
+      "modules/launcher/AnswerRow.qml": 2,
+      "modules/launcher/AssistantCard.qml": 4,
+      "modules/launcher/ListLauncher.qml": 2
+    },
+    "L6": {
+      "modules/launcher/AlphabetRow.qml": 1,
+      "modules/launcher/ColourPicker.qml": 16
+    },
+    "L7": {
+      "modules/controls/MenuRow.qml": 1,
+      "modules/launcher/AlphabetLauncher.qml": 2,
+      "modules/launcher/AnswerRow.qml": 1
+    }
+  }
+}

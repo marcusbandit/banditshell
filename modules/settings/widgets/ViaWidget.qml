@@ -162,7 +162,7 @@ Item {
                 to: 360
                 duration: 900
                 loops: Animation.Infinite
-                running: true
+                running: !Appearance.lessMotion
             }
         }
     }

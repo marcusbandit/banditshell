@@ -71,7 +71,7 @@ QtObject {
         if (row.waiting)
             return;
         const text = row.translated;
-        root.search.leave(() => Files.copyText(text));
+        root.search.leave(() => System.copyText(text));
     }
 
     function actionsFor(row: var): var {

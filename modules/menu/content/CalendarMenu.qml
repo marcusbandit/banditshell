@@ -99,12 +99,15 @@ Column {
             radius: Appearance.rounding.normal
             color: Appearance.colour.fill
 
-            opacity: homeTap.pressed || (homeTap.containsMouse && !todayPill.hovered) ? 1 : 0
+            opacity: homeFade.value
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.animation.fade.fast
-                }
+            Follow {
+                id: homeFade
+
+                target: homeTap.pressed || (homeTap.containsMouse && !todayPill.hovered) ? 1 : 0
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
         }
 
@@ -314,7 +317,7 @@ Column {
 
                     readonly property int todayIndex: pane.first.getFullYear() === root.today.getFullYear() && pane.first.getMonth() === root.today.getMonth() ? pane.lead + root.today.getDate() - 1 : -1
 
-                    property real glow: 1
+                    readonly property real glow: relight.value
 
                     x: pane.modelData * months.width + root.slide
                     width: months.width
@@ -325,18 +328,17 @@ Column {
 
                         function onRelit(): void {
                             if (pane.todayIndex >= 0)
-                                relight.restart();
+                                relight.value = 0;
                         }
                     }
 
-                    NumberAnimation {
+                    Follow {
                         id: relight
 
-                        target: pane
-                        property: "glow"
-                        from: 0
-                        to: 1
-                        duration: Appearance.animation.slow
+                        target: 1
+                        speed: Appearance.animation.settleSpeed
+                        epsilon: Appearance.animation.fadeEpsilon
+                        startsAtTarget: true
                     }
 
                     Repeater {

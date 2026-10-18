@@ -1,0 +1,22 @@
+{
+  "name": "bar",
+  "summary": "the sidebar, status icons and menus",
+  "layer": 3,
+  "owns": {
+    "qml": ["modules/menu", "modules/sidebar", "previews/SidebarPreview.qml"],
+    "services": ["SidebarState", "Tray"],
+    "tests": ["tests/sidebar-anomalies.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "apps", "audio", "network", "display"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Tray"],
+    "ipc": ["menu", "sidebar"]
+  },
+  "config": {
+    "namespace": ["sidebar", "calendar"],
+    "reads": ["control", "volume"]
+  }
+}

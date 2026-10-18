@@ -19,7 +19,7 @@ Item {
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
     readonly property bool focusedHere: {
-        const popup = Shell.offStageScreen;
+        const popup = Focus.offStageScreen;
         const known = !!popup && Quickshell.screens.some(s => s.name === popup);
         return (known ? popup : Quickshell.screens[0]?.name ?? "") === root.screenName;
     }
@@ -174,7 +174,7 @@ Item {
 
                 implicitHeight: view.y + view.contentHeight
 
-                opacity: current ? 1 : leaving ? (1 - fade.value) * (1 - fade.value) : 0
+                opacity: current ? fade.value : leaving ? (1 - fade.value) * (1 - fade.value) : 0
 
                 visible: opacity > 0
 

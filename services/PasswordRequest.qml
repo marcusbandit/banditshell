@@ -37,7 +37,7 @@ Singleton {
         root.taker = request.take ?? null;
         root.dropper = request.cancel ?? null;
         const names = Quickshell.screens.map(screen => screen.name);
-        root.screenName = names.includes(request.screenName) ? request.screenName : names.includes(Shell.offStageScreen) ? Shell.offStageScreen : names[0] ?? "";
+        root.screenName = names.includes(request.screenName) ? request.screenName : names.includes(Focus.offStageScreen) ? Focus.offStageScreen : names[0] ?? "";
         root.asked += 1;
         root.active = true;
     }

@@ -7,7 +7,7 @@ SceneGauge {
     Icon {
         anchors.horizontalCenter: parent.horizontalCenter
         name: "deployed_code"
-        size: 96
+        size: Appearance.icon.hero
         fill: 1
         color: Appearance.colour.accent
     }
@@ -21,7 +21,7 @@ SceneGauge {
     StyledText {
         width: parent.width
         horizontalAlignment: Text.AlignHCenter
-        text: `${Config.values.updates.branch} · ${Config.values.updates.remote}`
+        text: `${SettingsState.followedBranch} · ${Config.values.updates.remote}`
         color: Appearance.colour.textFaint
     }
 }

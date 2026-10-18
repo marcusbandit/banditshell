@@ -4,7 +4,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import "hyprland-lua.js" as HyprlandLua
-import "../modules/launcher/search.js" as Search
+import "chords.js" as Chords
 
 Singleton {
     id: root
@@ -87,7 +87,7 @@ Singleton {
     }
 
     function holderOf(chord: string, id: string): string {
-        const mine = Object.keys(root.keys).find(other => other !== id && Search.sameChord(root.keys[other].chord, chord));
+        const mine = Object.keys(root.keys).find(other => other !== id && Chords.sameChord(root.keys[other].chord, chord));
         if (mine)
             return root.keys[mine].label || mine;
         const bind = HyprConfig.holderOf(chord);
@@ -122,19 +122,19 @@ Singleton {
                 continue;
             }
             lua.push(`hl.unbind("${HyprlandLua.luaString(chord)}")`);
-            legacy.push(`keyword unbind ${Search.legacyChord(chord)}`);
+            legacy.push(`keyword unbind ${Chords.legacyChord(chord)}`);
         }
         for (const id of Object.keys(root.keys)) {
             const want = root.keys[id];
             if (!want?.chord || now[id] === want.chord)
                 continue;
-            const command = Search.hotkeyCommand(id);
+            const command = Chords.hotkeyCommand(id);
             lua.push(`hl.unbind("${HyprlandLua.luaString(want.chord)}")`);
-            legacy.push(`keyword unbind ${Search.legacyChord(want.chord)}`);
+            legacy.push(`keyword unbind ${Chords.legacyChord(want.chord)}`);
             lua.push(HyprlandLua.composeBind(want.chord, `hl.dsp.exec_cmd("${HyprlandLua.luaString(command)}")`, {
                 description: want.label
             }));
-            legacy.push(`keyword bind ${Search.legacyChord(want.chord)}, exec, ${command}`);
+            legacy.push(`keyword bind ${Chords.legacyChord(want.chord)}, exec, ${command}`);
             now[id] = want.chord;
         }
         root.applied = now;

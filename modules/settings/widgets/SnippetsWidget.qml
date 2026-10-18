@@ -99,7 +99,7 @@ Column {
                 radius: Appearance.rounding.small
                 color: Appearance.colour.fillStrong
                 stroke: body.activeFocus ? Appearance.colour.accent : "transparent"
-                strokeWidth: body.activeFocus ? 2 : 0
+                strokeWidth: body.activeFocus ? Appearance.stroke.ring : 0
             }
 
             TextEdit {
@@ -150,7 +150,7 @@ Column {
                     required property string modelData
 
                     text: modelData
-                    style: "tonal"
+                    style: "plate"
                     size: 0
                     onClicked: {
                         body.insert(body.cursorPosition, `{${modelData}}`);
@@ -183,14 +183,14 @@ Column {
 
                 Button {
                     text: "Cancel"
-                    style: "text"
+                    style: "bare"
                     size: 0
                     onClicked: root.editing = ""
                 }
 
                 Button {
                     text: "Save"
-                    style: "filled"
+                    style: "accent"
                     size: 0
                     interactive: form.ready
                     onClicked: form.save()

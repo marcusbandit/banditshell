@@ -7,6 +7,9 @@ import Quickshell.Services.Notifications
 import qs.config
 import qs.components
 import qs.services
+import "../../services/activities.js" as Logic
+import "../../services/moments.js" as MomentLogic
+import "../../services/privacy.js" as PrivacyLogic
 
 Scope {
     id: root
@@ -20,6 +23,8 @@ Scope {
     property int drawn: 0
     property bool timing: false
     property var notices: []
+    property var stagedKinds: []
+    property var taskKinds: []
     property int chosenAt: -1
     property string clicked: ""
 
@@ -133,16 +138,124 @@ Scope {
                 kind: "restart",
                 version: "6.17.3"
             },
+            held: {
+                kind: "held",
+                count: 3
+            },
             music: {
                 kind: "music"
-            }
+            },
+            volume: Logic.levelMoment("volume", 0.45, false, 1),
+            mute: Logic.levelMoment("volume", 0.45, true, 1),
+            brightness: Logic.levelMoment("brightness", 0.7, false, 1),
+            mic: Logic.levelMoment("mic", 1, true, 1)
+        })
+
+    readonly property var stagedLooks: ({
+            timer: {
+                key: "timer:mock-tea",
+                id: "mock-tea",
+                kind: "timer",
+                text: "Tea",
+                remaining: 450000,
+                clock: "7:30",
+                sample: "00:00",
+                progress: 0.75,
+                paused: false,
+                ending: false,
+                mock: true
+            },
+            paused: {
+                key: "timer:mock-paused",
+                id: "mock-paused",
+                kind: "timer",
+                text: "Laundry",
+                remaining: 1500000,
+                clock: "25:00",
+                sample: "00:00",
+                progress: 0.5,
+                paused: true,
+                ending: false,
+                mock: true
+            },
+            ending: {
+                key: "timer:mock-eggs",
+                id: "mock-eggs",
+                kind: "timer",
+                text: "Eggs",
+                remaining: 8000,
+                clock: "0:08",
+                sample: "00:00",
+                progress: 0.04,
+                paused: false,
+                ending: true,
+                mock: true
+            },
+            alarm: Object.assign(Logic.alarmItem("mock-alarm", "07:30  Wake up", Logic.alarmActions(true)), {
+                mock: true
+            }),
+            done: Object.assign(Logic.alarmItem("timer:mock-done", "Tea is done", Logic.alarmActions(false)), {
+                mock: true
+            })
+        })
+
+    readonly property var taskLooks: ({
+            build: {
+                id: "mock-build",
+                text: "Building",
+                detail: "compiling shaders",
+                progress: 0.4,
+                icon: "hardware"
+            },
+            sync: {
+                id: "mock-sync",
+                text: "Syncing photos",
+                icon: "sync"
+            },
+            built: {
+                id: "mock-built",
+                text: "Build",
+                detail: "412 files",
+                icon: "hardware",
+                outcome: "done"
+            },
+            broke: {
+                id: "mock-broke",
+                text: "Deploy",
+                detail: "exit 2",
+                progress: 0.8,
+                icon: "rocket_launch",
+                outcome: "failed"
+            },
+            shot: MomentLogic.screenshotSpec(Quickshell.shellPath("assets/inspector/screenshot.svg")),
+            copied: MomentLogic.copiedSpec(["wl-copy", "-n"], "the quick brown fox jumps over the lazy dog"),
+            secret: MomentLogic.copiedSpec(["wl-copy", "--sensitive", "-n"], "hunter2"),
+            headphones: MomentLogic.bluetoothSpec("WH-1000XM5", "headphones", 64),
+            mic: PrivacyLogic.usageSpec({
+                kind: "mic",
+                apps: ["Firefox"]
+            }),
+            camera: PrivacyLogic.usageSpec({
+                kind: "camera",
+                apps: ["Zoom"]
+            }),
+            screen: PrivacyLogic.usageSpec({
+                kind: "screen",
+                apps: ["OBS Studio", "Firefox"]
+            })
         })
 
     readonly property var verbs: ({
             launch: "focuses the app's window",
             dictation: "opens the transcription history",
             music: "opens the media panel",
-            notifications: "opens the notification list",
+            external: "runs the command it was given, if any",
+            timer: "pauses or resumes the timer",
+            alarm: "stops or snoozes the alarm from its buttons",
+            level: "nothing, it only shows",
+            privacy: "opens the sound menu for the microphone, nothing for the camera or a screen share",
+            notifications: "opens the launcher on the notification history",
+            held: "opens the launcher on what was held while quiet",
             update: "opens the update menu",
             kernel: "starts the kernel upgrade",
             restart: "opens the session menu",
@@ -197,6 +310,10 @@ Scope {
             notices: ["update", "kernel"]
         },
         {
+            name: "Quiet ended with three held back",
+            notices: ["held"]
+        },
+        {
             name: "One notification",
             notes: 1
         },
@@ -216,6 +333,111 @@ Scope {
             launches: ["waiting", "waiting"],
             notices: ["music"],
             notes: 1
+        },
+        {
+            name: "A timer running",
+            staged: ["timer"]
+        },
+        {
+            name: "A timer, paused",
+            staged: ["paused"]
+        },
+        {
+            name: "A timer almost done",
+            staged: ["ending"]
+        },
+        {
+            name: "A timer while dictating",
+            voice: "listening",
+            staged: ["timer"]
+        },
+        {
+            name: "A timer is done",
+            staged: ["done"]
+        },
+        {
+            name: "An alarm rings",
+            staged: ["alarm"]
+        },
+        {
+            name: "An alarm rings over a notification",
+            notes: 1,
+            staged: ["alarm"]
+        },
+        {
+            name: "A build with progress",
+            tasks: ["build"]
+        },
+        {
+            name: "A task with no progress",
+            tasks: ["sync"]
+        },
+        {
+            name: "Two tasks",
+            tasks: ["build", "sync"]
+        },
+        {
+            name: "A task finished and one failed",
+            tasks: ["built", "broke"]
+        },
+        {
+            name: "A build while dictating",
+            voice: "listening",
+            tasks: ["build"]
+        },
+        {
+            name: "The volume changes",
+            notices: ["volume"]
+        },
+        {
+            name: "The volume is muted",
+            notices: ["mute"]
+        },
+        {
+            name: "The brightness changes",
+            notices: ["brightness"]
+        },
+        {
+            name: "The microphone is muted",
+            notices: ["mic"]
+        },
+        {
+            name: "A screenshot was just taken",
+            tasks: ["shot"]
+        },
+        {
+            name: "A screenshot while dictating",
+            voice: "listening",
+            tasks: ["shot"]
+        },
+        {
+            name: "Text was copied",
+            tasks: ["copied"]
+        },
+        {
+            name: "A secret was copied",
+            tasks: ["secret"]
+        },
+        {
+            name: "Headphones connect",
+            tasks: ["headphones"]
+        },
+        {
+            name: "The microphone is in use",
+            tasks: ["mic"]
+        },
+        {
+            name: "Camera, screen share and microphone in use",
+            tasks: ["camera", "screen", "mic"]
+        },
+        {
+            name: "The microphone is in use beside a build",
+            tasks: ["build", "mic"]
+        },
+        {
+            name: "The microphone is in use while dictating",
+            voice: "listening",
+            tasks: ["mic"]
         },
         {
             name: "The overview",
@@ -442,6 +664,8 @@ Scope {
         root.setVoice("off");
         root.setLaunches([]);
         root.setNotices([]);
+        root.setStaged([]);
+        root.setTasks([]);
         root.setNotes(0, false);
         root.island?.dragEnd(false);
         if (root.island)
@@ -460,6 +684,8 @@ Scope {
         root.setVoice(s.voice ?? "off");
         root.setLaunches(s.launches ?? []);
         root.setNotices(s.notices ?? []);
+        root.setStaged(s.staged ?? []);
+        root.setTasks(s.tasks ?? []);
         root.island.pinned = s.pinned ?? false;
         root.setNotes(s.notes ?? 0, s.urgent ?? false);
         root.island.arrange(true);
@@ -592,6 +818,35 @@ Scope {
         root.notices = kinds;
     }
 
+    function setStaged(kinds: var): void {
+        root.stagedKinds = kinds;
+        Activities.staged = kinds.map(k => root.stagedLooks[k]);
+    }
+
+    function flipStaged(kind: string): void {
+        root.setStaged(root.stagedKinds.includes(kind) ? root.stagedKinds.filter(k => k !== kind) : [...root.stagedKinds, kind]);
+    }
+
+    function setTasks(kinds: var): void {
+        for (const k of root.taskKinds.filter(k => !kinds.includes(k)))
+            Activities.remove(root.taskLooks[k].id);
+        for (const k of kinds.filter(k => !root.taskKinds.includes(k))) {
+            const look = root.taskLooks[k];
+            Activities.push(Object.assign({}, look, {
+                source: "inspector",
+                until: 0,
+                act: (entry, action) => root.clicked = action ? `${look.text}: ${action}` : `${look.text}: its own command ran`
+            }));
+            if (look.outcome)
+                Activities.end(look.id, look.outcome, 600000);
+        }
+        root.taskKinds = kinds;
+    }
+
+    function flipTask(kind: string): void {
+        root.setTasks(root.taskKinds.includes(kind) ? root.taskKinds.filter(k => k !== kind) : [...root.taskKinds, kind]);
+    }
+
     function flipNotice(kind: string): void {
         root.setNotices(root.notices.includes(kind) ? root.notices.filter(k => k !== kind) : [...root.notices, kind]);
     }
@@ -667,13 +922,13 @@ Scope {
     }
 
     Timer {
-        interval: 1000
+        interval: 500
         repeat: true
         running: root.open && root.notices.length > 0
 
         onTriggered: {
             for (const k of root.notices)
-                Notices.glance(`mock:${k}`);
+                Notices.glance(`mock:${k}`, root.noticeLooks[k]?.ms);
         }
     }
 
@@ -715,7 +970,7 @@ Scope {
                 height: card.pad * 2 + whole.implicitHeight
                 color: Appearance.colour.surfaceSolid
                 stroke: Appearance.colour.fill
-                strokeWidth: 1
+                strokeWidth: Appearance.stroke.line
 
                 focus: true
                 Keys.onPressed: event => {
@@ -755,7 +1010,7 @@ Scope {
                             anchors.right: closeButton.left
                             anchors.rightMargin: Appearance.padding.normal
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: Appearance.padding.small / 2
+                            spacing: Appearance.padding.hair
 
                             StyledText {
                                 width: parent.width
@@ -779,7 +1034,7 @@ Scope {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             icon: "close"
-                            style: "outlined"
+                            style: "ring"
                             onClicked: root.close()
                         }
                     }
@@ -805,7 +1060,7 @@ Scope {
                                 Button {
                                     icon: "play_arrow"
                                     text: "play the story"
-                                    style: "tonal"
+                                    style: "plate"
                                     onClicked: {
                                         card.forceActiveFocus();
                                         root.playStory();
@@ -859,7 +1114,7 @@ Scope {
                                         anchors.rightMargin: Appearance.padding.normal
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: `${row.index + 1}`
-                                        color: Appearance.colour.textGhost
+                                        color: Appearance.colour.textFaint
                                     }
 
                                     MouseArea {
@@ -906,13 +1161,13 @@ Scope {
 
                                 Button {
                                     text: "one more"
-                                    style: "outlined"
+                                    style: "ring"
                                     onClicked: root.notify(root.pool[root.drawn++ % root.pool.length], false)
                                 }
 
                                 Button {
                                     text: "90 more"
-                                    style: "outlined"
+                                    style: "ring"
                                     onClicked: {
                                         for (let i = 0; i < 90; i++)
                                             root.notify(root.pool[root.drawn++ % root.pool.length], false);
@@ -921,20 +1176,20 @@ Scope {
 
                                 Button {
                                     text: "critical"
-                                    style: "outlined"
+                                    style: "ring"
                                     onClicked: root.notify(root.alarm, true)
                                 }
 
                                 Button {
                                     text: "flick away"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.frontIsMine
                                     onClicked: root.island.flickFront(1)
                                 }
 
                                 Button {
                                     text: "clear all"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.standing.length > 0
                                     onClicked: root.island.clearNotifications(root.standing)
                                 }
@@ -970,28 +1225,28 @@ Scope {
 
                                 Button {
                                     text: "open one"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.launches.length < root.apps.length
                                     onClicked: root.openApp()
                                 }
 
                                 Button {
                                     text: "one opens"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.opening
                                     onClicked: root.settleApp("here")
                                 }
 
                                 Button {
                                     text: "one fails"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.opening
                                     onClicked: root.settleApp("lost")
                                 }
 
                                 Button {
                                     text: "clear"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.launches.length > 0
                                     onClicked: root.setLaunches([])
                                 }
@@ -1007,16 +1262,64 @@ Scope {
                                 spacing: Appearance.padding.small
 
                                 Repeater {
-                                    model: ["download", "update", "kernel", "restart", "music"]
+                                    model: ["download", "update", "kernel", "restart", "held", "music", "volume", "mute", "brightness", "mic"]
 
                                     Button {
                                         required property string modelData
 
                                         text: modelData
-                                        style: "outlined"
+                                        style: "ring"
                                         checkable: true
                                         checked: root.notices.includes(modelData)
                                         onToggled: root.flipNotice(modelData)
+                                    }
+                                }
+                            }
+
+                            StyledText {
+                                text: "timers and alarms"
+                                color: Appearance.colour.textFaint
+                            }
+
+                            Flow {
+                                width: parent.width
+                                spacing: Appearance.padding.small
+
+                                Repeater {
+                                    model: ["timer", "paused", "ending", "done", "alarm"]
+
+                                    Button {
+                                        required property string modelData
+
+                                        text: modelData
+                                        style: "ring"
+                                        checkable: true
+                                        checked: root.stagedKinds.includes(modelData)
+                                        onToggled: root.flipStaged(modelData)
+                                    }
+                                }
+                            }
+
+                            StyledText {
+                                text: "tasks pushed through the activity api"
+                                color: Appearance.colour.textFaint
+                            }
+
+                            Flow {
+                                width: parent.width
+                                spacing: Appearance.padding.small
+
+                                Repeater {
+                                    model: ["build", "sync", "built", "broke", "shot", "copied", "secret", "headphones", "mic", "camera", "screen"]
+
+                                    Button {
+                                        required property string modelData
+
+                                        text: modelData
+                                        style: "ring"
+                                        checkable: true
+                                        checked: root.taskKinds.includes(modelData)
+                                        onToggled: root.flipTask(modelData)
                                     }
                                 }
                             }
@@ -1066,7 +1369,7 @@ Scope {
                                     anchors.right: parent.right
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: "let go"
-                                    style: "outlined"
+                                    style: "ring"
                                     enabled: root.island?.pulling ?? false
                                     onClicked: root.island.dragEnd(false)
                                 }
@@ -1089,7 +1392,7 @@ Scope {
                     StyledText {
                         width: parent.width
                         text: "↑ ↓ step through the situations · R replays the arrival · during the story → jumps to the next beat, space pauses · Esc ends. Hover and click the island itself; everything here is made up and goes away when this closes."
-                        color: Appearance.colour.textGhost
+                        color: Appearance.colour.textFaint
                         wrapMode: Text.Wrap
                     }
                 }

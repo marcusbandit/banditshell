@@ -14,7 +14,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
 
             name: "build"
-            size: Appearance.font.iconSize * 3
+            size: Appearance.icon.hero
             color: Appearance.colour.textFaint
         }
 

@@ -1,0 +1,8 @@
+module qs.modules.ipc
+AudioIpc 1.0 AudioIpc.qml
+ClockIpc 1.0 ClockIpc.qml
+CompositorIpc 1.0 CompositorIpc.qml
+CoreIpc 1.0 CoreIpc.qml
+DisplayIpc 1.0 DisplayIpc.qml
+HostIpc 1.0 HostIpc.qml
+NotificationsIpc 1.0 NotificationsIpc.qml

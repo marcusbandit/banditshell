@@ -190,7 +190,7 @@ const PAGES_SOURCE = {
         status: s => s.v("alerts") ? `${s.v("alertSet")} alerts` : "alerts off",
         groups: [
             { t: "Alerts", rows: [
-                { n: 22, icon: "notifications_active", label: "Alert sounds", k: "alerts", kind: "toggle", cfg: "sound.alerts", detail: "notifications · low battery · errors" },
+                { n: 22, icon: "notifications_active", label: "Alert sounds", k: "alerts", kind: "toggle", cfg: "sound.alerts", detail: s => s.alertsDetail },
                 { n: 22, icon: "music_note", label: "Sound set", k: "alertSet", kind: "seg", o: ["soft", "clear", "wood"], cfg: "sound.alertSet", dis: s => !s.v("alerts") },
                 { n: 22, icon: "volume_down", label: "Alert volume", k: "alertVol", kind: "slider", min: 0, max: 1, step: 0.01, fmt: pct, cfg: "sound.alertVolume", dis: s => !s.v("alerts") }
             ] },
@@ -302,7 +302,9 @@ const PAGES_SOURCE = {
             ] },
             { t: "Motion", rows: [
                 { n: 57, icon: "motion_blur", label: "Pace", k: "anim", kind: "slider", min: 80, max: 500, step: 10, fmt: v => `${v} ms`, cfg: "anim.base", dis: s => s.v("reduceMotion"), kw: "animation speed",
-                    why: "The normal animation length. Fast and slow scale from it." }
+                    why: "The normal animation length. Fast and slow scale from it." },
+                { n: 57, icon: "swipe_vertical", label: "Workspace slide", k: "workspaceSlide", kind: "slider", min: 0, max: 250, step: 10, fmt: v => v > 0 ? `${v} ms` : "off", cfg: "anim.workspaceSlide", dis: s => s.v("reduceMotion"), kw: "workspace switch animation hyprland slide",
+                    why: "How long Hyprland slides the desktop when you change workspace. Off switches at once. The shell sets it live, so your Hyprland config is not edited." }
             ] }
         ]
     },
@@ -312,6 +314,8 @@ const PAGES_SOURCE = {
         groups: [
             { rows: [
                 { n: 58, icon: "side_navigation", label: "Sidebar", k: "sidebar", kind: "toggle", cfg: "sidebar.enabled", detail: s => s.v("sidebar") ? "" : "super + b brings it back" },
+                { n: [], icon: "view_column_2", label: "Style", k: "sbStyle", kind: "seg", o: ["full", "rail"], cfg: "sidebar.style", dis: s => !s.v("sidebar"), kw: "sidebar rail simplified expand hover pips anomalies",
+                    why: "Full keeps everything on show. Rail rests as workspace marks and shows a status icon only when something is unusual; point at it and it grows into the full column." },
                 { n: 59, icon: "width", label: "Width", k: "sidebarW", kind: "slider", min: 40, max: 72, fmt: v => `${v} px`, cfg: "sidebar.width", dis: s => !s.v("sidebar") }
             ] },
             { t: "Workspaces", rows: [
@@ -335,6 +339,7 @@ const PAGES_SOURCE = {
                 { n: [], icon: "volume_up", label: "Sound", k: "sbSound", kind: "toggle", cfg: "sidebar.status.sound", kw: "sidebar status icons" },
                 { n: [], icon: "wifi", label: "Network", k: "sbNet", kind: "toggle", cfg: "sidebar.status.network", kw: "sidebar status icons" },
                 { n: [], icon: "bluetooth", label: "Bluetooth", k: "sbBt", kind: "toggle", cfg: "sidebar.status.bluetooth", kw: "sidebar status icons" },
+                { n: [], icon: "brightness_6", label: "Brightness", k: "sbBright", kind: "toggle", cfg: "sidebar.status.brightness", detail: "scroll it to change brightness", kw: "sidebar status icons screen backlight" },
                 { n: [], icon: "battery_5_bar", label: "Battery", k: "sbBatt", kind: "toggle", cfg: "sidebar.status.battery", detail: s => s.hasBattery ? "" : "no battery in this machine", dis: s => !s.hasBattery, kw: "sidebar status icons" }
             ] },
             { t: "Tray", rows: [
@@ -399,7 +404,9 @@ const PAGES_SOURCE = {
                 { n: [], icon: "front_hand", label: "Skin tone", k: "skinTone", kind: "choice", o: [["none", "✋ default"], ["light", "✋🏻 light"], ["medium-light", "✋🏼 medium light"], ["medium", "✋🏽 medium"], ["medium-dark", "✋🏾 medium dark"], ["dark", "✋🏿 dark"]], cfg: "launcher.typing.skinTone", kw: "emoji skin tone hands people colour",
                     why: "Emoji with people and hands come in this tone. More on an emoji row still offers every tone." },
                 { n: [], icon: "content_paste_search", label: "Clipboard in search", k: "clipboardInSearch", kind: "toggle", cfg: "launcher.typing.clipboard", kw: "clipboard history search results paste",
-                    why: "Words you type also find recent clipboard entries. Typing clip shows them either way." }
+                    why: "Words you type also find recent clipboard entries. Typing clip shows them either way." },
+                { n: [], icon: "notifications", label: "Notifications in search", k: "notificationsInSearch", kind: "toggle", cfg: "launcher.typing.notifications", kw: "notification history search results messages private",
+                    why: "Words you type also find the text of recent notifications. Off by default because message text on screen is private. Typing notifications shows them either way." }
             ] },
             { t: "Snippets", rows: [
                 { n: [], kind: "w", w: "snippets", kw: "snippets saved text expand keyword placeholders" }
@@ -778,7 +785,7 @@ const PAGES_SOURCE = {
         status: s => [s.v("reduceMotion") && "less motion", s.v("largerText") && "larger text", s.v("contrast") && "more contrast"].filter(Boolean).join(" · ") || "nothing on",
         groups: [
             { rows: [
-                { n: 113, icon: "animation", label: "Less motion", k: "reduceMotion", kind: "toggle", cfg: "access.lessMotion", detail: "fades instead of slides", kw: "accessibility reduce motion" },
+                { n: 113, icon: "animation", label: "Less motion", k: "reduceMotion", kind: "toggle", cfg: "access.lessMotion", detail: "no motion at all", kw: "accessibility reduce motion" },
                 { n: 113, icon: "format_size", label: "Larger text", k: "largerText", kind: "toggle", cfg: "access.largerText", detail: s => `base ${s.v("fontBase")} becomes ${s.largerBase}`, kw: "accessibility larger text" },
                 { n: 113, icon: "contrast", label: "More contrast", k: "contrast", kind: "toggle", cfg: "access.moreContrast", detail: "faint text gets brighter", kw: "accessibility contrast" }
             ] }
@@ -1126,14 +1133,10 @@ function pagesCovered(page) {
     for (const g of page.groups)
         visit(g.rows);
     const nums = new Set();
-    const fresh = new Set();
     for (const r of rows)
-        for (const n of numbers(r)) {
+        for (const n of numbers(r))
             nums.add(n);
-            if (r.isNew)
-                fresh.add(n);
-        }
-    return { settings: nums.size, fresh: fresh.size };
+    return { settings: nums.size };
 }
 
 function rowCount(cat) {
@@ -1212,7 +1215,7 @@ const OPENS = [
 
 const ZONES = {
     tray: "tray", trayMax: "tray", wsStyles: "workspaces", iconMode: "workspaces", persistent: "workspaces", specialsShown: "workspaces",
-    sbClock: "clock", sbDate: "clock", sbUpdate: "update", sbSound: "status", sbNet: "status", sbBt: "status", sbBatt: "status"
+    sbClock: "clock", sbDate: "clock", sbUpdate: "update", sbSound: "status", sbNet: "status", sbBt: "status", sbBright: "status", sbBatt: "status"
 };
 
 function zoneOf(row) {

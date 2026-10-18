@@ -20,7 +20,7 @@ ShellRoot {
         implicitWidth: calc.width + Appearance.padding.large * 2
         implicitHeight: calc.implicitHeight + Appearance.padding.large * 2 + 40
 
-        color: "#16211c"
+        color: Appearance.colour.surfaceSolid
         exclusiveZone: 0
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
@@ -37,7 +37,7 @@ ShellRoot {
         StyledText {
             x: Appearance.padding.large
             y: Appearance.padding.large
-            color: "#eaf6f0"
+            color: Appearance.colour.paper
             text: `menu height ${Math.round(calc.implicitHeight)}`
         }
     }

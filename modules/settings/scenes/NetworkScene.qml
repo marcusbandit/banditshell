@@ -47,11 +47,10 @@ SceneGauge {
             anchors.centerIn: parent
             width: 90
             height: 90
-            radius: 45
-            cornerPower: 2
+            pill: "object"
             color: "transparent"
             stroke: Appearance.colour.accent
-            strokeWidth: 2
+            strokeWidth: Appearance.stroke.ring
             visible: root.live && clock.moving
             scale: f.s
             opacity: f.o

@@ -1,4 +1,5 @@
 module qs.modules.launcher.sources
+ActionsSource 1.0 ActionsSource.qml
 AskSource 1.0 AskSource.qml
 BrightnessSource 1.0 BrightnessSource.qml
 BrowserSource 1.0 BrowserSource.qml
@@ -10,17 +11,20 @@ DevSource 1.0 DevSource.qml
 EmojiSource 1.0 EmojiSource.qml
 FallbackSource 1.0 FallbackSource.qml
 GithubSource 1.0 GithubSource.qml
+KeysSource 1.0 KeysSource.qml
 LatestSource 1.0 LatestSource.qml
 LoremSource 1.0 LoremSource.qml
 MediaSource 1.0 MediaSource.qml
 MonitorSource 1.0 MonitorSource.qml
 NotesSource 1.0 NotesSource.qml
+NotificationSource 1.0 NotificationSource.qml
 PackageSource 1.0 PackageSource.qml
 PhoneSource 1.0 PhoneSource.qml
 PomodoroSource 1.0 PomodoroSource.qml
 PortSource 1.0 PortSource.qml
 ProjectSource 1.0 ProjectSource.qml
 QuicklinkSource 1.0 QuicklinkSource.qml
+RecentSource 1.0 RecentSource.qml
 RecordSource 1.0 RecordSource.qml
 RewriteSource 1.0 RewriteSource.qml
 ScriptSource 1.0 ScriptSource.qml
@@ -31,7 +35,9 @@ SpeedtestSource 1.0 SpeedtestSource.qml
 SshSource 1.0 SshSource.qml
 TimerSource 1.0 TimerSource.qml
 TranslateSource 1.0 TranslateSource.qml
+TraySource 1.0 TraySource.qml
 VideoDownloadSource 1.0 VideoDownloadSource.qml
 VpnSource 1.0 VpnSource.qml
 WifiSource 1.0 WifiSource.qml
 WorkshopSource 1.0 WorkshopSource.qml
+WorkspaceSource 1.0 WorkspaceSource.qml

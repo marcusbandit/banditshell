@@ -1,0 +1,30 @@
+{
+  "name": "display",
+  "summary": "brightness, night light, dark mode and tablet state",
+  "layer": 2,
+  "owns": {
+    "qml": ["modules/ipc/DisplayIpc.qml"],
+    "services": ["Backlight", "DarkMode", "Display", "Tablet"],
+    "js": ["services/brightness.js", "services/ddcutil.js", "services/nightlight.js"],
+    "scripts": ["scripts/tablet-state.py"],
+    "tests": ["tests/ddcutil.test.js", "tests/nightlight.test.js"],
+    "src": [
+      "src/bs-gamma.c",
+      "src/gamma-client-protocol.c",
+      "src/gamma-client-protocol.h",
+      "src/wlr-gamma-control-unstable-v1.xml"
+    ]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Backlight", "Display", "Tablet"],
+    "ipc": ["screen", "tablet"]
+  },
+  "config": {
+    "namespace": ["screen", "tablet"],
+    "reads": []
+  }
+}

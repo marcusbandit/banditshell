@@ -500,6 +500,7 @@ Item {
 
             if (event.key !== Qt.Key_Escape)
                 return;
+            Appearance.instantly();
             root.hide();
             event.accepted = true;
         }

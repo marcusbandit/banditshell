@@ -39,7 +39,7 @@ Item {
         color: root.receiving ? Appearance.colour.accentFill : root.picked ? Appearance.colour.fillStrong : hover.hovered ? Appearance.colour.fill : "transparent"
 
         stroke: root.receiving ? Appearance.colour.accent : root.cursored ? Appearance.colour.textFaint : "transparent"
-        strokeWidth: root.receiving || root.cursored ? Appearance.font.stem : 0
+        strokeWidth: root.receiving || root.cursored ? Appearance.stroke.ring : 0
     }
 
     HoverHandler {
@@ -49,7 +49,7 @@ Item {
     Column {
         anchors.centerIn: parent
         width: parent.width - Appearance.padding.small
-        spacing: Appearance.padding.small / 2
+        spacing: Appearance.padding.hair
         visible: !root.row
 
         Item {

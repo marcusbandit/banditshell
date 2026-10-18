@@ -21,7 +21,7 @@ Singleton {
 
     readonly property var binaryTypes: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "icns", "tiff", "heic", "avif", "psd", "xcf", "mp3", "flac", "wav", "ogg", "opus", "m4a", "aac", "mp4", "mkv", "webm", "mov", "avi", "zip", "tar", "gz", "xz", "bz2", "zst", "7z", "rar", "iso", "img", "jar", "apk", "aab", "so", "o", "a", "dll", "exe", "bin", "class", "pyc", "woff", "woff2", "ttf", "otf", "eot", "pdf", "sqlite", "db", "wasm", "blend", "fbx"]
 
-    readonly property string configDir: `${Files.home}/.config`
+    readonly property string configDir: `${System.home}/.config`
     readonly property bool configSearched: root.hidden === ".config" || root.hidden === "all"
 
     readonly property int findLimit: 600
@@ -32,7 +32,7 @@ Singleton {
 
     function commands(text: string): var {
         const base = ["nice", "-n", "10", "fd", "--fixed-strings", "--ignore-case", "--type", "f", "--type", "d", "--max-results", String(root.findLimit), ...(text.indexOf("/") >= 0 ? ["--full-path"] : []), ...root.excluding("--exclude", root.noise, "")];
-        const out = [base.concat(root.hidden === "all" ? ["--hidden", "--exclude", "/.config"] : [], ["--", text, Files.home])];
+        const out = [base.concat(root.hidden === "all" ? ["--hidden", "--exclude", "/.config"] : [], ["--", text, System.home])];
         if (root.configSearched)
             out.push(base.concat(["--no-ignore-vcs"], root.excluding("--exclude", root.appNoise, ""), ["--", text, root.configDir]));
         return out;
@@ -52,7 +52,7 @@ Singleton {
         if (within)
             return [base.concat(["--", text], within)];
         const walk = base.concat(["--threads", "2", "--glob", `!*.{${root.binaryTypes.join(",")}}`]);
-        const out = [walk.concat(root.excluding("--glob", root.grepNoise, "!"), ["--", text, Files.home])];
+        const out = [walk.concat(root.excluding("--glob", root.grepNoise, "!"), ["--", text, System.home])];
         if (root.configSearched)
             out.push(walk.concat(["--no-ignore-vcs"], root.excluding("--glob", root.noise.concat(root.appNoise), "!"), ["--", text, root.configDir]));
         return out;

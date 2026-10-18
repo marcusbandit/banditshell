@@ -1,9 +1,8 @@
 import QtQuick
-import QtQuick.Shapes
 import qs.config
 import qs.components
 import qs.services
-import "lobes.js" as Lobes
+import "secret-marks.js" as SecretMarks
 
 Item {
     id: root
@@ -82,8 +81,8 @@ Item {
         color: Appearance.colour.fill
         stroke: root.alarm ? Appearance.colour.alarm : field.activeFocus ? Appearance.colour.accent : Appearance.colour.seam
 
-        strokeWidth: Appearance.sizes.seam * (1 + focusIn.value)
-        opacity: root.busy ? 0.5 : 1
+        strokeWidth: Appearance.stroke.ring * (1 + focusIn.value)
+        opacity: root.busy ? Appearance.opacity.disabled : 1
     }
 
     TextInput {
@@ -141,15 +140,17 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
 
         text: root.placeholder
-        color: Appearance.colour.textGhost
+        color: Appearance.colour.textFaint
 
-        opacity: root.empty ? 1 : 0
+        opacity: placeholderFade.value
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Appearance.animation.fade.fast
-                easing.type: Easing.OutCubic
-            }
+        Follow {
+            id: placeholderFade
+
+            target: root.empty ? 1 : 0
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
     }
 
@@ -186,12 +187,14 @@ Item {
     Component {
         id: markShape
 
-        Shape {
+        Item {
             id: mark
 
             property int index: 0
 
             readonly property bool standing: mark.index < root.count
+
+            readonly property var form: SecretMarks.shape(mark.index)
 
             property bool ready: false
 
@@ -202,39 +205,36 @@ Item {
             width: root.markSize
             height: root.markSize
 
-            preferredRendererType: Shape.CurveRenderer
+            visible: markFade.value > 0.004
 
-            visible: mark.opacity > 0.004
+            opacity: markFade.value
+            scale: markGrow.value
 
-            opacity: mark.ready && mark.standing ? 1 : 0
-            scale: mark.ready && mark.standing ? 1 : 0
+            Follow {
+                id: markFade
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.animation.fade.normal
-                    easing.type: Easing.OutCubic
-                }
+                target: mark.ready && mark.standing ? 1 : 0
+                speed: Appearance.animation.trackSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
-            Behavior on scale {
-                NumberAnimation {
-                    duration: Appearance.animation.normal
+            Follow {
+                id: markGrow
 
-                    easing.type: Easing.OutBack
-                    easing.overshoot: 2.2
-                }
+                target: mark.ready && mark.standing ? 1 : 0
+                speed: Appearance.animation.trackSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
-            ShapePath {
-
-                fillColor: root.alarm ? Appearance.colour.alarm : Appearance.colour.spectrum[mark.index % Appearance.colour.spectrum.length]
-                strokeWidth: 0
-                strokeColor: "transparent"
-
-                PathSvg {
-
-                    path: Lobes.path(mark.index, root.markSize)
-                }
+            SquircleRect {
+                anchors.centerIn: parent
+                width: root.markSize * mark.form.width
+                height: root.markSize * mark.form.height
+                rotation: mark.form.turn
+                pill: "object"
+                color: root.alarm ? Appearance.colour.alarm : Appearance.colour.spectrum[mark.index % Appearance.colour.spectrum.length]
             }
         }
     }
@@ -273,7 +273,7 @@ Item {
 
             width: Math.max(2, Math.round(root.markSize / 6))
             height: root.markSize
-            radius: width / 2
+            pill: "object"
             color: root.alarm ? Appearance.colour.alarm : Appearance.colour.accent
             visible: field.activeFocus && !root.empty
         }

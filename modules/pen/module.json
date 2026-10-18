@@ -1,0 +1,23 @@
+{
+  "name": "pen",
+  "summary": "pen mapping and pen buttons",
+  "layer": 2,
+  "owns": {
+    "qml": ["modules/pen"],
+    "services": ["PenButtons", "PenMap"],
+    "scripts": ["scripts/pen-buttons.py", "scripts/pen-pad.py"],
+    "tests": ["tests/pen-buttons.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": ["penmap"]
+  },
+  "config": {
+    "namespace": ["pen"],
+    "reads": []
+  }
+}

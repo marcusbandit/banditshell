@@ -1,0 +1,41 @@
+{
+  "name": "launcher-shell",
+  "summary": "the launcher's sources for the shell's own state: keybinds, tray, special workspaces, actions and recent documents",
+  "layer": 5,
+  "owns": {
+    "qml": [
+      "modules/launcher/sources/ActionsSource.qml",
+      "modules/launcher/sources/KeysSource.qml",
+      "modules/launcher/sources/RecentSource.qml",
+      "modules/launcher/sources/TraySource.qml",
+      "modules/launcher/sources/WorkspaceSource.qml"
+    ],
+    "services": ["RecentDocuments", "ShellActions"],
+    "js": [
+      "services/keybind-search.js",
+      "services/recent-documents.js",
+      "services/shell-actions.js",
+      "services/special-workspaces.js",
+      "services/tray-search.js"
+    ],
+    "tests": [
+      "tests/launcher-action-rows.test.js",
+      "tests/launcher-keys.test.js",
+      "tests/launcher-recent.test.js",
+      "tests/launcher-tray.test.js",
+      "tests/launcher-workspaces.test.js"
+    ]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "launcher", "launcher-tools", "bar", "host", "clipboard", "files"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["launcher.shell"],
+    "reads": []
+  }
+}

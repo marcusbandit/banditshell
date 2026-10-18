@@ -286,60 +286,60 @@ Item {
 
                     readonly property real quiet: slot.aimed ? 1 : 0.62
 
-                    opacity: slot.quiet + (1 - slot.quiet) * land.value
+                    readonly property real fadeSpeed: root.landed ? 0 : Appearance.animation.revealSpeed
 
-                    Behavior on opacity {
-                        enabled: !root.landed
+                    readonly property real moveSpeed: root.landed ? 0 : Appearance.animation.trackSpeed
 
-                        NumberAnimation {
-                            duration: Appearance.animation.fade.fast
-                        }
+                    opacity: dim.value
+
+                    Follow {
+                        id: dim
+
+                        target: slot.quiet + (1 - slot.quiet) * land.value
+                        speed: slot.fadeSpeed
+                        epsilon: Appearance.animation.fadeEpsilon
+                        startsAtTarget: true
                     }
 
                     readonly property rect spot: root.place(root.planned(slot.modelData))
 
                     readonly property rect home: root.liveRect(slot.modelData.addr, slot.modelData)
 
-                    x: slot.spot.x + (slot.home.x - slot.spot.x) * land.value
-                    y: slot.spot.y + (slot.home.y - slot.spot.y) * land.value
-                    width: slot.spot.width + (slot.home.width - slot.spot.width) * land.value
-                    height: slot.spot.height + (slot.home.height - slot.spot.height) * land.value
+                    x: slideX.value
+                    y: slideY.value
+                    width: growWidth.value
+                    height: growHeight.value
 
-                    Behavior on x {
+                    Follow {
+                        id: slideX
 
-                        enabled: !root.landed
-
-                        NumberAnimation {
-                            duration: Appearance.animation.normal
-                            easing.type: Easing.OutCubic
-                        }
+                        target: slot.spot.x + (slot.home.x - slot.spot.x) * land.value
+                        speed: slot.moveSpeed
+                        startsAtTarget: true
                     }
 
-                    Behavior on y {
-                        enabled: !root.landed
+                    Follow {
+                        id: slideY
 
-                        NumberAnimation {
-                            duration: Appearance.animation.normal
-                            easing.type: Easing.OutCubic
-                        }
+                        target: slot.spot.y + (slot.home.y - slot.spot.y) * land.value
+                        speed: slot.moveSpeed
+                        startsAtTarget: true
                     }
 
-                    Behavior on width {
-                        enabled: !root.landed
+                    Follow {
+                        id: growWidth
 
-                        NumberAnimation {
-                            duration: Appearance.animation.normal
-                            easing.type: Easing.OutCubic
-                        }
+                        target: slot.spot.width + (slot.home.width - slot.spot.width) * land.value
+                        speed: slot.moveSpeed
+                        startsAtTarget: true
                     }
 
-                    Behavior on height {
-                        enabled: !root.landed
+                    Follow {
+                        id: growHeight
 
-                        NumberAnimation {
-                            duration: Appearance.animation.normal
-                            easing.type: Easing.OutCubic
-                        }
+                        target: slot.spot.height + (slot.home.height - slot.spot.height) * land.value
+                        speed: slot.moveSpeed
+                        startsAtTarget: true
                     }
 
                     SquircleRect {
@@ -349,7 +349,7 @@ Item {
                         radius: Appearance.sizes.windowRadius * root.drawScale
                         color: "transparent"
                         stroke: Appearance.colour.separator
-                        strokeWidth: Appearance.font.stem
+                        strokeWidth: Appearance.stroke.ring
                         opacity: 1 - land.value
                     }
 
@@ -358,12 +358,13 @@ Item {
                         visible: !slot.modelData.held
 
                         radius: Appearance.sizes.windowRadius * root.drawScale
-                        color: slot.aimed ? Appearance.colour.fillStrong : Appearance.colour.fill
+                        color: tone.value
 
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.animation.fast
-                            }
+                        FollowColour {
+                            id: tone
+
+                            target: slot.aimed ? Appearance.colour.fillStrong : Appearance.colour.fill
+                            speed: Appearance.animation.revealSpeed
                         }
                     }
 
@@ -400,12 +401,15 @@ Item {
                             name: root.mode === "swap" ? "swap_horiz" : "low_priority"
                             size: Appearance.font.iconSize
                             color: Appearance.colour.text
-                            opacity: slot.aimed ? 1 - land.value : 0
+                            opacity: hint.value
 
-                            Behavior on opacity {
-                                NumberAnimation {
-                                    duration: Appearance.animation.fade.fast
-                                }
+                            Follow {
+                                id: hint
+
+                                target: slot.aimed ? 1 - land.value : 0
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: Appearance.animation.fadeEpsilon
+                                startsAtTarget: true
                             }
                         }
                     }

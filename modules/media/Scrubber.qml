@@ -1,11 +1,9 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Shapes
 import qs.config
 import qs.components
 import qs.services
-import "../../components/wave.js" as Wave
 
 Item {
     id: root
@@ -17,18 +15,16 @@ Item {
     property string family: Appearance.font.family
 
     readonly property real stroke: Appearance.sizes.scrubStroke
-    readonly property real amp: Appearance.sizes.scrubWaveAmplitude
-    readonly property real wavelength: Appearance.sizes.scrubWaveLength
     readonly property real gap: Appearance.padding.small
 
     readonly property bool timed: Media.length > 0
 
-    readonly property real band: root.amp * 2 + root.stroke * 3
+    readonly property real band: Appearance.padding.hair * 2 + root.stroke * 3
     readonly property real centre: root.band / 2
 
     readonly property real travel: Math.max(1, width - root.stroke)
     readonly property real pipX: root.shown * root.travel
-    readonly property real waveEnd: root.timed ? Math.max(0, root.pipX - root.gap) : width
+    readonly property real playedEnd: root.timed ? Math.max(0, root.pipX - root.gap) : width
 
     readonly property bool active: pointer.pressed || pointer.containsMouse
 
@@ -79,61 +75,55 @@ Item {
         epsilon: 0.0005
     }
 
-    Follow {
-        id: swell
+    FollowColour {
+        id: playedTone
 
-        target: Media.playing ? 1 : 0
-        speed: Appearance.animation.resizeSpeed
-        epsilon: 0.004
+        target: Media.playing ? root.ink : Appearance.colour.textDim
+        speed: Appearance.animation.revealSpeed
     }
 
-    QtObject {
-        id: clock
+    component Stretch: Item {
+        id: stretch
 
-        property real t: 0
-    }
+        property color tone
 
-    NumberAnimation {
-        target: clock
-        property: "t"
-        from: 0
-        to: 1
-        duration: Math.round(root.wavelength / Appearance.sizes.scrubWaveSpeed * 1000)
-        loops: Animation.Infinite
+        readonly property real cap: Math.min(stretch.height, stretch.width) / 2
 
-        running: root.watched && root.visible && Media.playing && swell.value > 0
-    }
-
-    Item {
-        id: waveWindow
-
-        x: 0
-        y: root.centre - height / 2
-        width: root.waveEnd
-        height: root.amp * 2 + root.stroke
-        visible: root.waveEnd > 0
-        clip: true
-
-        Shape {
-            id: wave
-
-            x: (clock.t - 1) * root.wavelength
-            width: root.width + root.wavelength * 2
-            height: parent.height
-            preferredRendererType: Shape.CurveRenderer
-
-            ShapePath {
-                fillColor: "transparent"
-                strokeColor: root.ink
-                strokeWidth: root.stroke
-                capStyle: ShapePath.RoundCap
-                joinStyle: ShapePath.RoundJoin
-
-                PathPolyline {
-                    path: Wave.points(wave.width, root.amp * swell.value, root.wavelength, 0, Math.max(1, root.stroke / 2)).map(p => Qt.point(p[0], wave.height / 2 + p[1]))
-                }
-            }
+        SquircleRect {
+            width: stretch.cap
+            height: stretch.height
+            topLeftRadius: stretch.cap
+            bottomLeftRadius: stretch.cap
+            topRightRadius: 0
+            bottomRightRadius: 0
+            color: stretch.tone
         }
+
+        Rectangle {
+            x: stretch.cap
+            width: Math.max(0, stretch.width - stretch.cap * 2)
+            height: stretch.height
+            color: stretch.tone
+        }
+
+        SquircleRect {
+            x: stretch.width - stretch.cap
+            width: stretch.cap
+            height: stretch.height
+            topLeftRadius: 0
+            bottomLeftRadius: 0
+            topRightRadius: stretch.cap
+            bottomRightRadius: stretch.cap
+            color: stretch.tone
+        }
+    }
+
+    Stretch {
+        y: root.centre - height / 2
+        width: root.playedEnd
+        height: root.stroke
+        visible: width > 0
+        tone: playedTone.value
     }
 
     SquircleRect {
@@ -141,58 +131,29 @@ Item {
         y: 0
         width: root.stroke
         height: root.band
-        radius: width / 2
+        pill: "object"
         color: root.ink
         visible: root.timed
 
-        scale: pointer.pressed ? 1.15 : root.active ? 1.3 : 1
+        scale: pipScale.value
 
-        Behavior on scale {
-            NumberAnimation {
-                duration: Appearance.animation.fast
-                easing.type: Easing.OutCubic
-            }
+        Follow {
+            id: pipScale
+
+            target: pointer.pressed ? Appearance.press.lift : root.active ? Appearance.press.grab : 1
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
     }
 
-    Item {
-        id: rest
-
+    Stretch {
         x: root.pipX + root.stroke + root.gap
         y: root.centre - height / 2
         width: Math.max(0, root.width - x)
         height: root.stroke
         visible: root.timed && width > 0
-
-        readonly property real cap: Math.min(rest.height, rest.width) / 2
-
-        SquircleRect {
-            width: rest.cap
-            height: rest.height
-            topLeftRadius: rest.cap
-            bottomLeftRadius: rest.cap
-            topRightRadius: 0
-            bottomRightRadius: 0
-            color: Appearance.colour.fillStrong
-        }
-
-        Rectangle {
-            x: rest.cap
-            width: Math.max(0, rest.width - rest.cap * 2)
-            height: rest.height
-            color: Appearance.colour.fillStrong
-        }
-
-        SquircleRect {
-            x: rest.width - rest.cap
-            width: rest.cap
-            height: rest.height
-            topLeftRadius: 0
-            bottomLeftRadius: 0
-            topRightRadius: rest.cap
-            bottomRightRadius: rest.cap
-            color: Appearance.colour.fillStrong
-        }
+        tone: Appearance.colour.fillStrong
     }
 
     TextMetrics {

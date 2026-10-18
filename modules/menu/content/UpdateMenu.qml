@@ -10,7 +10,9 @@ Column {
 
     property bool showing: false
 
-    property var card: []
+    readonly property var incoming: Update.behind > 0 && !Update.diverged ? Update.entries : []
+
+    readonly property var card: root.incoming.length > 0 ? root.incoming : WhatsNew.pending
 
     property bool declineConfirm: false
 
@@ -18,28 +20,18 @@ Column {
 
     spacing: Appearance.padding.small
 
-    function offer(): void {
-        if (!root.showing || root.card.length > 0 || WhatsNew.pending.length === 0)
-            return;
-        root.card = WhatsNew.pending;
-        WhatsNew.markSeen(root.card[0].id);
-    }
-
-    onShowingChanged: root.offer()
-
-    Connections {
-        target: WhatsNew
-
-        function onPendingChanged(): void {
-            root.offer();
-        }
-    }
-
     InkText {
         width: parent.width
         alignInk: true
         text: Update.headline
         color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.text
+    }
+
+    InkText {
+        width: parent.width
+        alignInk: true
+        text: Update.version === "" ? Update.channelLabel : `Version ${Update.version}, ${Update.channelLabel}`
+        color: Appearance.colour.textFaint
     }
 
     Row {
@@ -59,7 +51,7 @@ Column {
             anchors.verticalCenter: parent.verticalCenter
             alignInk: true
             text: "|"
-            color: Appearance.colour.textGhost
+            color: Appearance.colour.textFaint
         }
 
         InkText {
@@ -72,9 +64,65 @@ Column {
 
     StyledText {
         width: parent.width
+        visible: Update.behind > 0 && !Update.diverged && Update.summaryText !== ""
+        text: Update.summaryText
+        color: Update.restartNeeded ? Appearance.colour.accent : Appearance.colour.textDim
+        wrapMode: Text.WordWrap
+    }
+
+    StyledText {
+        width: parent.width
         visible: Update.behind > 0 && !!Update.remoteHead
-        text: `latest: ${Update.remoteHead}`
+        text: `latest: ${Update.targetVersion || Update.remoteHead}`
         color: Appearance.colour.textFaint
+    }
+
+    Repeater {
+        model: Update.warnings
+
+        delegate: StyledText {
+            required property string modelData
+
+            width: root.width
+            text: modelData
+            color: Appearance.colour.textFaint
+            wrapMode: Text.WordWrap
+        }
+    }
+
+    Column {
+        width: parent.width
+        visible: Update.resultPending
+        spacing: Appearance.padding.small
+
+        InkText {
+            width: parent.width
+            alignInk: true
+            text: Update.resultText
+            color: Update.result !== null && Update.result.ok ? Appearance.colour.text : Appearance.colour.updateFailed
+            wrapMode: Text.WordWrap
+        }
+
+        StyledText {
+            width: parent.width
+            visible: Update.result !== null && (Update.result.aside ?? []).length > 0
+            text: Update.result === null ? "" : `Your edits to ${(Update.result.aside ?? []).join(", ")} were in the way, so they were set aside in git stash. git stash list shows them; git stash pop brings them back.`
+            color: Appearance.colour.textFaint
+            wrapMode: Text.WordWrap
+        }
+
+        StyledText {
+            width: parent.width
+            visible: Update.result !== null && !Update.result.ok
+            text: "banditshell log shows what went wrong."
+            color: Appearance.colour.textFaint
+            wrapMode: Text.WordWrap
+        }
+
+        Button {
+            text: "Dismiss"
+            onClicked: Update.dismissResult()
+        }
     }
 
     StyledText {
@@ -102,29 +150,25 @@ Column {
     }
 
     Button {
-        visible: Update.state === Update.downloaded || (!Update.diverged && (Update.behind > 0 || Update.state === Update.failed))
+        visible: Update.busy || (!Update.diverged && !Update.paused && (Update.behind > 0 || Update.state === Update.failed))
         text: {
-            if (Update.state === Update.downloaded)
-                return "Restart the shell";
+            if (Update.busy)
+                return Update.phaseText || "Updating...";
             if (Update.state === Update.failed)
-                return "Retry download";
-            return "Download Update";
+                return "Try again";
+            return Update.buttonText;
         }
         icon: {
-            if (Update.state === Update.downloaded)
-                return "restart_alt";
+            if (Update.busy)
+                return "hourglass_top";
             if (Update.state === Update.failed)
                 return "refresh";
-            return "download";
+            return Update.restartNeeded ? "restart_alt" : "download";
         }
-        style: "filled"
+        style: "accent"
+        interactive: !Update.busy
 
-        onClicked: {
-            if (Update.state === Update.downloaded)
-                Update.restart();
-            else
-                Update.download();
-        }
+        onClicked: Update.apply()
     }
 
     Column {
@@ -134,7 +178,7 @@ Column {
 
         StyledText {
             width: parent.width
-            text: "What's new"
+            text: root.incoming.length > 0 ? "In this update" : "What's new"
             color: Appearance.colour.textDim
         }
 
@@ -190,6 +234,12 @@ Column {
                 }
             }
         }
+    }
+
+    Button {
+        visible: root.incoming.length === 0 && root.card.length > 0
+        text: "Got it"
+        onClicked: WhatsNew.markSeen(root.card[0].id)
     }
 
     Separator {
