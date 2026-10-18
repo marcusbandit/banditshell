@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-6",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "media.waveLength, media.waveAmplitude and media.waveSpeed are gone from config.json, together with the wave they tuned. The shell removes them on its next start, and nothing else in your config changes."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Buttons keep their round ends when you press them or switch them on. A button that is switched on shows it in colour, as the accent plate, instead of turning square, and no button casts a shadow any more."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The music seek bar is a straight line instead of a wave. The played part is bright while the music plays and dims when it is paused."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The password fields in the keyring prompt and the Wi-Fi menu mark each character with a dot or a small grain at an angle, instead of clover and flower shapes."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-5",
       "date": "2026-10-18",
       "changes": [
