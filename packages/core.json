@@ -64,8 +64,7 @@
       "tests/quoting.test.js",
       "tests/ranking.test.js",
       "tests/squircle.test.js",
-      "tests/timeformat.test.js",
-      "tests/wave.test.js"
+      "tests/timeformat.test.js"
     ]
   },
   "requires": {

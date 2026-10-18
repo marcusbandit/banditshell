@@ -365,9 +365,6 @@ Singleton {
         readonly property int wallpaperReveal: root.lessMotion ? 0 : root.config.wallpaper.reveal
 
         readonly property int scrubStroke: root.config.media.stroke
-        readonly property int scrubWaveLength: root.config.media.waveLength
-        readonly property int scrubWaveAmplitude: root.config.media.waveAmplitude
-        readonly property real scrubWaveSpeed: root.config.media.waveSpeed
 
         readonly property int mediaPanelWidth: root.config.media.panelWidth
         readonly property int notificationWidth: root.config.notifications.width

@@ -620,12 +620,6 @@ Singleton {
 
                 stroke: 4,
 
-                waveLength: 28,
-
-                waveAmplitude: 4,
-
-                waveSpeed: 24,
-
                 wheelSeek: 5,
 
                 panelWidth: 560,
