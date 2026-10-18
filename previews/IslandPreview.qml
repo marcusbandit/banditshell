@@ -317,8 +317,98 @@ ShellRoot {
             },
             wait: 1500,
             expect: "hidden"
+        },
+        {
+            name: "the overview, where the clock, the date and the weather can be pressed",
+            run: () => {
+                Clock.startTimer(25 * 60, "Focus");
+                Clock.startTimer(4 * 60, "Tea");
+                island.pinned = true;
+            },
+            wait: 1200,
+            expect: "overview"
+        },
+        {
+            name: "the clock opens the timers",
+            run: () => island.choose({
+                    kind: "timers"
+                }),
+            wait: 1200,
+            expect: "the timers"
+        },
+        {
+            name: "back goes to the overview it came from",
+            run: () => island.back(),
+            wait: 900,
+            expect: "overview"
+        },
+        {
+            name: "the date opens the calendar",
+            run: () => island.choose({
+                    kind: "calendar"
+                }),
+            wait: 1200,
+            expect: "the calendar"
+        },
+        {
+            name: "the weather opens the forecast",
+            run: () => {
+                island.back();
+                island.choose({
+                    kind: "weather"
+                });
+            },
+            wait: 4000,
+            expect: "the weather"
+        },
+        {
+            name: "the shell update opens in the island, not the sidebar",
+            run: () => island.choose({
+                    kind: "update",
+                    key: "update:mock",
+                    mock: true
+                }),
+            wait: 1200,
+            expect: "the shell update"
+        },
+        {
+            name: "the notifications row opens the history",
+            run: () => {
+                preview.remember("Discord", "marcus", "are you coming tonight?");
+                preview.remember("Firefox", "Download finished", "linux-zen-6.17.tar.zst");
+                preview.remember("Signal", "Mum", "call me when you get a minute");
+                island.choose({
+                    kind: "notifications"
+                });
+            },
+            wait: 1200,
+            expect: "the notifications"
+        },
+        {
+            name: "escape goes back, and again closes",
+            run: () => {
+                island.back();
+                island.back();
+                for (const t of [...Clock.timers])
+                    Clock.removeTimer(t.id);
+            },
+            wait: 1500,
+            expect: "hidden"
         }
     ]
+
+    function remember(app: string, summary: string, body: string): void {
+        const entry = entryComponent.createObject(preview, {
+            appName: app,
+            summary: summary,
+            body: body,
+            urgency: NotificationUrgency.Normal,
+            timeout: 0,
+            live: false,
+            time: Date.now() - 60000 * (preview.made + 1) + preview.made++
+        });
+        Notifications.history = [entry, ...Notifications.history];
+    }
 
 
     property int step: 0

@@ -19,6 +19,36 @@ Item {
     signal chosen(var activity)
 
     readonly property real pad: Appearance.padding.card
+    readonly property real spotPad: Appearance.padding.small
+
+    component Spot: MouseArea {
+        id: spot
+
+        property string kind: ""
+
+        z: -1
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.chosen({
+            kind: spot.kind
+        })
+
+        Follow {
+            id: lit
+
+            speed: Appearance.animation.revealSpeed * 1.5
+            epsilon: 0.005
+            target: spot.containsMouse ? 1 : 0
+        }
+
+        SquircleRect {
+            anchors.fill: parent
+            radius: Appearance.rounding.normal
+            color: spot.pressed ? Appearance.colour.fillStrong : Appearance.colour.fill
+            opacity: lit.value
+            visible: lit.value > 0.01
+        }
+    }
     readonly property real topInset: Appearance.padding.large
     readonly property real arrivalsTop: column.y + clockBox.height
     readonly property real rowPitch: Appearance.font.line.small + Appearance.padding.small * 2 + rows.spacing
@@ -75,6 +105,33 @@ Item {
                     id: dateHover
                 }
 
+                Spot {
+                    x: -root.spotPad
+                    y: -root.spotPad
+                    width: time.x + time.width + seconds.implicitWidth + root.spotPad * 2
+                    height: clockBox.height + root.spotPad * 2
+                    kind: "timers"
+                }
+
+                Spot {
+                    readonly property real ink: dateHover.hovered ? fullDate.implicitWidth : briefInk.tightBoundingRect.width
+
+                    x: clockBox.width - ink - root.spotPad
+                    y: -root.spotPad
+                    width: ink + root.spotPad * 2
+                    height: -dateCap.tightBoundingRect.y + root.spotPad * 2
+                    kind: "calendar"
+                }
+
+                Spot {
+                    x: weather.x - root.spotPad
+                    y: weather.y - root.spotPad / 2
+                    width: weather.width + root.spotPad * 2
+                    height: weather.height + root.spotPad
+                    visible: Weather.ready
+                    kind: "weather"
+                }
+
                 TextMetrics {
                     id: clockInk
 
@@ -100,6 +157,8 @@ Item {
                 }
 
                 StyledText {
+                    id: seconds
+
                     anchors.left: time.right
                     anchors.baseline: time.baseline
                     text: Qt.formatDateTime(clock.date, ":ss")
@@ -147,6 +206,8 @@ Item {
                 }
 
                 StyledText {
+                    id: fullDate
+
                     anchors.right: parent.right
                     y: briefDate.y
                     text: TimeFormat.dateText(clock.date, "headline") ?? ""

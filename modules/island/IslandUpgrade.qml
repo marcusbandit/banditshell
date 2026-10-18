@@ -9,9 +9,12 @@ Item {
     id: root
 
     property bool watched: false
+    property real maxHeight: 0
+    readonly property real span: 1.5
 
     signal hide
-    signal restart
+    signal act(var notice)
+    signal open(string key)
 
     readonly property real pad: Appearance.padding.card
     readonly property real topInset: Appearance.padding.large
@@ -359,7 +362,10 @@ Item {
                     text: "Restart"
                     icon: "restart_alt"
                     style: "filled"
-                    onClicked: root.restart()
+                    onClicked: root.act({
+                        kind: "restart",
+                        mock: SystemUpgrade.mocked
+                    })
                 }
 
                 Button {

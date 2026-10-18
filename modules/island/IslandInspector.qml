@@ -143,8 +143,8 @@ Scope {
             launch: "focuses the app's window",
             dictation: "opens the transcription history",
             music: "opens the media panel",
-            notifications: "opens the notification list",
-            update: "opens the update menu",
+            notifications: "turns the island into the notification history",
+            update: "turns the island into the shell update",
             kernel: "starts the kernel upgrade",
             upgrade: "opens the system update",
             restart: "opens the session menu",
@@ -226,27 +226,47 @@ Scope {
         {
             name: "The system update, opened",
             upgrade: "download",
-            task: true
+            task: "upgrade"
         },
         {
             name: "The system update, installing",
             upgrade: "install",
-            task: true
+            task: "upgrade"
         },
         {
             name: "The system update asks a question",
             upgrade: "question",
-            task: true
+            task: "upgrade"
         },
         {
             name: "The system update, done",
             upgrade: "done",
-            task: true
+            task: "upgrade"
         },
         {
             name: "The system update failed",
             upgrade: "failed",
-            task: true
+            task: "upgrade"
+        },
+        {
+            name: "The timers, from the clock",
+            task: "timers"
+        },
+        {
+            name: "The calendar, from the date",
+            task: "calendar"
+        },
+        {
+            name: "The weather, from the temperature",
+            task: "weather"
+        },
+        {
+            name: "The shell update",
+            task: "update"
+        },
+        {
+            name: "The notifications",
+            task: "notifications"
         },
         {
             name: "The overview",
@@ -510,7 +530,7 @@ Scope {
         root.setNotices(s.notices ?? []);
         root.setUpgrade(s.upgrade ?? "");
         root.island.pinned = s.pinned ?? false;
-        root.island.task = s.task && SystemUpgrade.mocked ? "upgrade" : "";
+        root.island.task = s.task && (s.task !== "upgrade" || SystemUpgrade.mocked) ? s.task : "";
         root.setNotes(s.notes ?? 0, s.urgent ?? false);
         root.island.arrange(true);
     }

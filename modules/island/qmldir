@@ -5,11 +5,17 @@ ActivityMark 1.0 ActivityMark.qml
 ActivityRow 1.0 ActivityRow.qml
 AlertDeck 1.0 AlertDeck.qml
 DictationWave 1.0 DictationWave.qml
+IslandCalendar 1.0 IslandCalendar.qml
 IslandInspector 1.0 IslandInspector.qml
 IslandMedia 1.0 IslandMedia.qml
+IslandNotifications 1.0 IslandNotifications.qml
 IslandOverview 1.0 IslandOverview.qml
 Island 1.0 Island.qml
+IslandShellUpdate 1.0 IslandShellUpdate.qml
+IslandTimers 1.0 IslandTimers.qml
 IslandUpgrade 1.0 IslandUpgrade.qml
+IslandWeather 1.0 IslandWeather.qml
 MockNotification 1.0 MockNotification.qml
 NotificationAlert 1.0 NotificationAlert.qml
 NotificationMark 1.0 NotificationMark.qml
+TaskHeader 1.0 TaskHeader.qml

@@ -202,13 +202,6 @@ PanelWindow {
                 mediaLayer.show();
             }
             break;
-        case "notifications":
-            popups.pinned = true;
-            return;
-        case "update":
-            if (!win.openMenu("update", true))
-                Settings.show(win.screen?.name ?? "", "updates");
-            break;
         case "kernel":
             if (!SystemUpgrade.start())
                 Pacman.upgrade();
@@ -405,7 +398,7 @@ PanelWindow {
             else if (menuLayer.wantsEscape)
                 menuLayer.hide();
             else if (islandLayer.wantsEscape)
-                islandLayer.close();
+                islandLayer.back();
             else if (popups.wantsEscape)
                 popups.pinned = false;
             else

@@ -877,7 +877,12 @@ banditshell/
 │   ├── Weather.qml              the weather now, from wttr.in (located by the
 │   │                            connection unless `weather.location` names a
 │   │                            place), fetched when the island opens and the
-│   │                            last reading is older than `weather.minutes`
+│   │                            last reading is older than `weather.minutes`;
+│   │                            the week ahead from Open-Meteo at the
+│   │                            coordinates wttr.in returns, else wttr.in's
+│   │                            three days
+│   ├── weather.js               both answers read into days, and WMO codes into
+│   │                            the icons wttr.in's codes already used
 │   ├── WhatsNew.qml              the update's own changelog, read: entries
 │   │                            newer than the marker in the user's config
 │   │                            are what the What's new card shows. The log
@@ -958,6 +963,13 @@ banditshell/
 │   │   │                        when it does not fit; the wave; the transport
 │   │   │                        between the two times on one line; its words
 │   │   │                        and its expand mark open the card
+│   │   ├── TaskHeader.qml       the head every island view shares: a mark, a
+│   │   │                        name, a line under it and a close mark
+│   │   ├── IslandShellUpdate.qml the shell update, around the update menu
+│   │   ├── IslandNotifications.qml the history as AlertDeck cards, fanned
+│   │   ├── IslandTimers.qml     timers and alarms, around the clock menu
+│   │   ├── IslandCalendar.qml   the month, around the calendar menu
+│   │   ├── IslandWeather.qml    the week ahead, a day per column with its range
 │   │   ├── IslandUpgrade.qml    the system update when the island has become
 │   │   │                        it: stages, progress, pacman's questions as
 │   │   │                        buttons, cancel while it is still safe, and a
@@ -3675,7 +3687,41 @@ transport and scrubber keep the hover they already had. A notification card
 lifts a plate and shows its close mark. Rows that do nothing get no plate, so a
 plate always means a click. A finished launch focuses its window, the dictation
 row opens the transcription history, and a waiting notification comes out when
-pressed.
+pressed. The clock, the date and the weather lift a plate too, because each of
+them opens something (see below).
+
+### The island becomes what you press
+
+Pressing something in the island used to send me somewhere else: the shell's
+update notice opened the update menu on the left, and the notifications row
+pinned the tray in the corner. The eye was on the top centre and the answer
+turned up at the edge. Now the island turns into the thing pressed, the way it
+already turned into the media card. The sidebar keeps its menus; this is the
+place I am moving to, things shown when looked at.
+
+| Pressed | The island becomes |
+| --- | --- |
+| The system update row | the update: stages, progress, questions, cancel |
+| The shell's update notice | the shell update: what is new, download, restart |
+| The notifications row | the history, as the island's own stack of cards |
+| The clock | timers and alarms, the same composer the sidebar clock has |
+| The date | the month, the same calendar the sidebar has |
+| The weather | the week ahead |
+
+Each is a view the island hosts in place of the overview: the rows travel out,
+the bubbles melt into its side, notifications wait with their timers held, and
+the island widens to what the view asks for (the update half again its width,
+the week of weather as much, the calendar its usual width) and grows to the
+view's height, capped at seven tenths of the screen with the rest scrolling.
+The views carry a header with their name and a close mark. Escape, the close
+mark, a tap on the strip or a pull up leave the view; a view opened from the
+overview goes back to the overview first, so stepping in and out reads as
+going down a level and back up. While a view is up the island takes the
+keyboard on demand, so the timer composer's fields can be typed into.
+
+The weather shows the next seven days from Open-Meteo, located by the
+coordinates wttr.in already sends with the current weather, and falls back to
+wttr.in's own three days when Open-Meteo cannot be reached.
 
 ### Music I am already looking at
 

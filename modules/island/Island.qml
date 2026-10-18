@@ -178,7 +178,26 @@ Item {
 
     property bool pinned: false
     property string task: ""
+    property string heldTask: ""
+    property bool backToOverview: false
     readonly property bool tasking: root.task !== ""
+    readonly property bool upgradeOpen: root.task === "upgrade"
+    readonly property var taskNames: ({
+            upgrade: "the system update",
+            update: "the shell update",
+            notifications: "the notifications",
+            timers: "the timers",
+            weather: "the weather",
+            calendar: "the calendar"
+        })
+    readonly property var taskViews: ({
+            upgrade: upgradeView,
+            update: updateView,
+            notifications: notificationsView,
+            timers: timersView,
+            weather: weatherView,
+            calendar: calendarView
+        })
     property bool pulling: false
     property real pullProgress: 0
 
@@ -247,7 +266,7 @@ Item {
 
     readonly property string situation: {
         if (root.presentation === "task")
-            return "the system update";
+            return root.taskNames[root.task] ?? "a task";
         if (root.presentation === "overview")
             return root.alerts.length > 0 ? "overview, notifications arriving inside it" : "overview";
         const kinds = [...new Set(root.passing.map(p => p.kind))];
@@ -296,7 +315,10 @@ Item {
     readonly property real compactHeight: Appearance.font.line.small + Appearance.padding.small * 2
     readonly property real slot: Appearance.font.line.small
     readonly property real largeWidth: Config.values.island.width
-    readonly property real taskWidth: Math.min(Math.round(root.largeWidth * 1.5), (root.host?.width ?? root.largeWidth * 2) - (root.border + Appearance.padding.large) * 2)
+    readonly property real taskSpan: taskView.item?.span ?? 1
+    readonly property real taskWidth: Math.min(Math.round(root.largeWidth * root.taskSpan), (root.host?.width ?? root.largeWidth * 2) - (root.border + Appearance.padding.large) * 2)
+    readonly property real taskRoom: Math.max(root.compactHeight * 6, ((root.host?.height ?? 1080) - root.islandTop) * 0.7)
+    readonly property real taskHeight: taskView.item?.implicitHeight ?? 0
     readonly property real islandTop: root.edge + Appearance.padding.small
     readonly property real budGap: Appearance.padding.normal
     readonly property real bubblePitch: root.compactHeight + root.budGap
@@ -317,7 +339,7 @@ Item {
     readonly property real restHeight: root.deckRest ? root.cardHeight + root.stackItems.length * root.compactHeight : root.compactHeight * Math.max(1, root.stackItems.length)
 
     readonly property real fieldWidth: Math.ceil(Math.max(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2, root.taskWidth + root.shadowRoom * 2))
-    readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), overview.implicitHeight - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2, upgrade.implicitHeight) + root.shadowRoom) / root.fieldStep) * root.fieldStep
+    readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), overview.implicitHeight - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2, root.taskHeight) + root.shadowRoom) / root.fieldStep) * root.fieldStep
     readonly property real centreX: scene.width / 2
     readonly property real surfaceX: Math.round((root.width - root.fieldWidth) / 2 + trail.value)
 
@@ -448,8 +470,10 @@ Item {
     }
 
     function choose(activity: var): void {
-        if (activity?.kind === "upgrade") {
-            root.openTask("upgrade");
+        if (root.taskViews[activity?.kind ?? ""]) {
+            if (activity.kind === "update" && activity.key)
+                Notices.settle(activity.key);
+            root.openTask(activity.kind);
             return;
         }
         if (activity?.kind === "notification") {
@@ -583,13 +607,33 @@ Item {
     function close(): void {
         root.pinned = false;
         root.task = "";
+        root.backToOverview = false;
         root.dwelt = false;
         root.spent = root.hovering;
     }
 
     function openTask(key: string): void {
+        if (!root.tasking)
+            root.backToOverview = root.openness > 0.5;
         root.pinned = false;
         root.task = key;
+    }
+
+    function leaveTask(): void {
+        if (!root.backToOverview) {
+            root.close();
+            return;
+        }
+        root.backToOverview = false;
+        root.task = "";
+        root.pinned = true;
+    }
+
+    function back(): void {
+        if (root.tasking)
+            root.leaveTask();
+        else
+            root.close();
     }
 
     function dragTo(fraction: real): void {
@@ -656,7 +700,9 @@ Item {
     onExpandedChanged: if (root.expanded)
         Media.sync()
 
-    onTaskingChanged: SystemUpgrade.watchers += root.tasking ? 1 : -1
+    onUpgradeOpenChanged: SystemUpgrade.watchers += root.upgradeOpen ? 1 : -1
+    onTaskChanged: if (root.task)
+        root.heldTask = root.task
 
     Connections {
         target: SystemUpgrade
@@ -709,7 +755,7 @@ Item {
     }
 
     Component.onDestruction: {
-        if (root.tasking)
+        if (root.upgradeOpen)
             SystemUpgrade.watchers -= 1;
         for (const entry of root.holding)
             entry.release(root);
@@ -856,7 +902,7 @@ Item {
         id: overviewTall
 
         speed: root.morphSpeed
-        target: root.tasking ? upgrade.implicitHeight : overview.implicitHeight
+        target: root.tasking ? root.taskHeight : overview.implicitHeight
     }
 
     Follow {
@@ -873,6 +919,9 @@ Item {
         speed: root.fadeSpeed(taskFade)
         epsilon: 0.004
         target: root.tasking ? 1 : 0
+
+        onSettledChanged: if (taskFade.settled && !root.tasking)
+            root.heldTask = ""
     }
 
     Follow {
@@ -1019,7 +1068,7 @@ Item {
 
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Escape) {
-                root.close();
+                root.back();
                 event.accepted = true;
             }
         }
@@ -1070,7 +1119,7 @@ Item {
 
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: root.tasking ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         WlrLayershell.namespace: "banditshell-island"
 
         mask: Region {
@@ -1080,7 +1129,15 @@ Item {
         Item {
             id: scene
 
+            focus: true
             visible: !root.yielded
+
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_Escape && root.tasking) {
+                    root.back();
+                    event.accepted = true;
+                }
+            }
             width: root.fieldWidth
             height: root.fieldHeight
             anchors.horizontalCenter: parent.horizontalCenter
@@ -1268,7 +1325,7 @@ Item {
                     dirX: 0
                     dirY: -1
                     angle: Config.values.control.pullAngleEdge
-                    travel: Math.max(1, (root.tasking ? upgrade.implicitHeight : overview.implicitHeight) - root.compactHeight)
+                    travel: Math.max(1, (root.tasking ? root.taskHeight : overview.implicitHeight) - root.compactHeight)
 
                     onPulled: fraction => root.dragTo(1 - fraction)
                     onFinished: open => root.dragEnd(!open)
@@ -1292,24 +1349,38 @@ Item {
                     onChosen: activity => root.choose(activity)
                 }
 
-                IslandUpgrade {
-                    id: upgrade
+                Loader {
+                    id: taskView
 
                     x: root.centreX - root.taskWidth / 2
                     y: root.pillY
                     width: root.taskWidth
-                    watched: root.tasking
+                    active: root.heldTask !== ""
+                    sourceComponent: root.taskViews[root.heldTask] ?? null
                     opacity: Math.max(0, (overviewFade.value - 0.4) / 0.6) * presence.value * taskFade.value
                     visible: opacity > 0.005
                     enabled: root.tasking && root.expanded
 
-                    onHide: root.close()
-                    onRestart: {
-                        root.close();
-                        root.chosen({
-                            kind: "restart",
-                            mock: SystemUpgrade.mocked
-                        });
+                    onLoaded: {
+                        taskView.item.watched = Qt.binding(() => root.tasking && taskFade.value > 0.01);
+                        taskView.item.maxHeight = Qt.binding(() => root.taskRoom);
+                    }
+
+                    Connections {
+                        target: taskView.item
+
+                        function onHide(): void {
+                            root.leaveTask();
+                        }
+
+                        function onAct(notice: var): void {
+                            root.close();
+                            root.chosen(notice);
+                        }
+
+                        function onOpen(key: string): void {
+                            root.openTask(key);
+                        }
                     }
                 }
 
@@ -1606,5 +1677,41 @@ Item {
                 height: root.compactHeight
             }
         }
+    }
+
+    Component {
+        id: upgradeView
+
+        IslandUpgrade {}
+    }
+
+    Component {
+        id: updateView
+
+        IslandShellUpdate {}
+    }
+
+    Component {
+        id: notificationsView
+
+        IslandNotifications {}
+    }
+
+    Component {
+        id: timersView
+
+        IslandTimers {}
+    }
+
+    Component {
+        id: weatherView
+
+        IslandWeather {}
+    }
+
+    Component {
+        id: calendarView
+
+        IslandCalendar {}
     }
 }
