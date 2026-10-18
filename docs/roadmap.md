@@ -12,7 +12,7 @@ things live, and leaves the way it came.
 1. **Every action is an intent with a stable name.** Keys, pointer, pen,
    touch, touchpad, voice and hands are only ways to fire intents. Nothing may
    be reachable from one input alone. This builds on the 122 stable action ids
-   in `api/actions.tsv` from the audit branch, draft PR #44.
+   in `api/actions.tsv`.
 2. **Everything lives at an edge or grows from a source.** Pull it from that
    edge, click its home, or press its key to summon it. The music card's home
    is the island. Push it back toward the edge, or press Esc, to put it away. The same direction works for mouse, pen, finger and
@@ -38,8 +38,7 @@ things live, and leaves the way it came.
 
 Rules 5 and 6 come from DESIGN.md section 15, "Drag before click", and
 section 2.5, "Motion: animate to teach, never to decorate", tightened by my
-motion calls of 18 October. Section 2.5 sits on branch `design-motion-rules`
-(commit fe484bf) and is not merged yet.
+motion calls of 18 October.
 
 ## Inputs
 
@@ -62,7 +61,7 @@ Goal: a working day with the pen in hand and the keyboard only for long text.
   most-used intents. Today they can only become right click, middle click or
   erase.
 - Every edge surface opens by pulling from its edge with the pen. That works
-  today for the launcher, the island, the notification tray and the calendar.
+  today for the launcher, the island and the calendar.
   Menus, quick controls and Settings open on click or hover, so they need a
   pull too.
 - Text: dictation first, the on-screen keyboard as the fallback, and a
@@ -71,45 +70,26 @@ Goal: a working day with the pen in hand and the keyboard only for long text.
 - Wrist budget: count key presses per feature for a week, then remove the top
   ten.
 
-## Now (in flight)
+## Shipped on 18 October
 
-PR #53, on branch `motion-fixes`, carries the motion work. Built on the branch
-so far:
-
-- **Island notifications go back up.** Push them up to hide them all. They
-  stay in history.
-- **Lock hold.** The power buttons need the full hold again with reduced
-  motion on.
-- **Launcher exit.** It sinks back into the bottom edge instead of shrinking
-  to its centre.
-- **Tooltips.** Once one is open, its neighbours show at once.
-- **Controls.** Toggles, sliders and chevrons stop bouncing.
-- **Loops.** Reduced motion stops them, and what they meant stays visible.
-
-Being built now, from my motion calls of 18 October:
-
-- **No play for now.** Every other overshoot and bounce goes too, rare
-  moments included.
-- **Hotkeys are instant.** A surface opened by a hotkey appears with no
-  animation, and a hotkey or Esc close is instant too. A pull from its edge or
-  a click on its home still brings it out of its origin, and the gesture
-  follows the finger 1:1.
-- **Two curves.** Ease-out, by exponential smoothing, for anything that
-  answers an input. A critically damped ease-in-out, with no bounce, for things
-  already on screen that move somewhere new.
-- **Reduced motion is no motion.** Fades go too.
-- **The workspace slide.** It leaves my Hyprland config and becomes a
-  banditshell Settings row, at most 250 ms.
-
-Also in flight:
-
-- **PR #52, spatial fixes.** Clipboard paging, the peek highlight, quick
-  controls and the session menu centred, Settings panes matched to the mockup.
-- **Branch `design-motion-rules`.** DESIGN.md section 2.5, "animate to teach,
-  never to decorate". No PR yet.
-- **Draft PR #44, the full audit.** A stable bind API, notifications in the
-  launcher, island moments, module boundaries. It stays off main until I make
-  the five calls it lists.
+- **Motion.** Push island notifications up to put them away; they stay in
+  history. A hotkey opens and closes a surface instantly. Nothing overshoots
+  or bounces. Things that move across the screen ease in and out. Reduced
+  motion means no motion, and the lock's power buttons need the full hold
+  again with it on. The workspace slide is a Settings row, at most 250 ms.
+- **Spatial fixes.** Clipboard paging, the peek highlight, quick controls and
+  the session menu centred, Settings panes matched to the mockup.
+- **DESIGN.md section 2.5,** "animate to teach, never to decorate".
+- **The full audit.** A stable bind API, notifications in the island with
+  their history in the launcher, island moments, module boundaries, and an
+  update that tries the new version before switching. The corner
+  notification list is gone, and the sidebar rests as a rail by default.
+- **The Material 3 leftovers are gone.** Buttons stay round when pressed or
+  switched on, the seek bar is a straight line, and password fields mark
+  characters with dots and grains instead of clovers.
+- **The island does what you press.** The shell update, notification
+  history, timers, the calendar and a seven-day forecast open inside the
+  island.
 
 ## Next (decided, not built)
 
@@ -120,9 +100,8 @@ Also in flight:
 - DESIGN.md's spacing bands rewritten to the Settings mockup: icon to label
   12, heading to rows 8, gap between groups 16. Section 12 says 8, 8 and 32
   today.
-- Same part, same size. The notification card is 440 wide with 16 padding on
-  the island and 376 with 12 in the tray. Tooltips, keycaps and text fields
-  differ the same way. The sidebar's status and tray slots are 29 px, its
+- Same part, same size. Tooltips, keycaps and text fields change size from
+  one surface to the next. The sidebar's status and tray slots are 29 px, its
   workspace slots 32.
 - Grab anything mid-motion. Every moving surface can be caught mid-flight and
   stopped, the way Apple's can.
@@ -133,11 +112,6 @@ Also in flight:
 
 - Settings unrolls out of the sidebar on the left, but you summon it from the
   bottom-right corner. Grow it from the corner, or move the corner.
-- Notifications arrive two ways: dropping from the top in the island, or
-  sliding in from the right edge in the corner tray. Pick one route.
-- The corner tray goes back on a push to the right. Should a swipe up hide it
-  too, like the island? Draft PR #44 deletes the tray and keeps history in the
-  launcher, which would settle it.
 - With the stream bar on, a menu opened from it drops from the top. From the
   sidebar the same menu unrolls sideways.
 - The lock screen calls a password wrong if PAM has not answered in 300 ms,
