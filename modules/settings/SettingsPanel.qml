@@ -242,13 +242,17 @@ FocusScope {
                 Item {
                     id: paneHolder
 
-                    readonly property real wide: root.tiny ? page.width - 24 - root.padding * 2 : root.compact ? Math.min(root.paneWidth, page.width * 0.7) : root.paneWidth + page.width - root.baseWidth
-                    readonly property real home: page.width - root.padding - paneHolder.wide
+                    readonly property real edge: Appearance.padding.large
+                    readonly property real inset: Appearance.padding.card
+                    readonly property real plate: root.tiny ? page.width - paneHolder.edge : Math.min(root.paneWidth, page.width * 0.7)
+                    readonly property real margin: root.compact ? paneHolder.edge + paneHolder.inset : root.padding
+                    readonly property real wide: root.compact ? paneHolder.plate - paneHolder.inset * 2 : root.paneWidth + page.width - root.baseWidth
+                    readonly property real home: page.width - paneHolder.margin - paneHolder.wide
 
-                    x: root.compact ? home + slide.value * (paneHolder.wide + root.padding * 2) : home
-                    y: root.padding
+                    x: root.compact ? home + slide.value * (paneHolder.plate + paneHolder.edge * 2) : home
+                    y: paneHolder.margin
                     width: paneHolder.wide
-                    height: page.height - root.padding * 2
+                    height: page.height - paneHolder.margin * 2
                     z: 4
 
                     Follow {
@@ -261,7 +265,7 @@ FocusScope {
 
                     SquircleRect {
                         anchors.fill: parent
-                        anchors.margins: root.compact ? -Appearance.padding.card : 0
+                        anchors.margins: root.compact ? -paneHolder.inset : 0
                         visible: root.compact
                         radius: Appearance.rounding.large
                         color: Appearance.colour.surfaceSolid

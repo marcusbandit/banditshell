@@ -77,6 +77,32 @@
       ]
     },
     {
+      "id": "2026-10-18",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "PageUp and PageDown in the clipboard move one screen of rows at a time, instead of jumping past entries you never saw."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "When the launcher previews a file, the highlight on the matching line leaves room around the text instead of sitting flush on it."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Quick controls and the power menu sit centred in their panels. Quick controls no longer leaves extra space when there is no brightness slider."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "In a narrow settings window, the details pane sits inside the panel with even margins. Screen time shows each app's bar under its name."
+        }
+      ]
+    },
+    {
       "id": "2026-10-17-5",
       "date": "2026-10-17",
       "changes": [

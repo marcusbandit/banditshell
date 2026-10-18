@@ -9,7 +9,7 @@ Column {
 
     property var row: ({})
 
-    readonly property real barWidth: 96
+    readonly property real rail: Appearance.sizes.sliderHeight
     readonly property real peak: SettingsState.usageApps.length ? SettingsState.usageApps[0].ms : 1
 
     width: parent ? parent.width : 0
@@ -52,6 +52,7 @@ Column {
             interactive: false
             label: Apps.nameFor(app.modelData.appClass) || app.modelData.appClass
             lead: mark
+            under: bar
             onPointed: SettingsView.hovered = root.row
 
             Component {
@@ -64,18 +65,26 @@ Column {
                 }
             }
 
-            SquircleRect {
-                anchors.verticalCenter: parent.verticalCenter
-                width: root.barWidth
-                height: Appearance.padding.small
-                radius: height / 2
-                color: Appearance.colour.fill
+            Component {
+                id: bar
 
-                SquircleRect {
-                    width: parent.width * (app.modelData?.ms ?? 0) / root.peak
-                    height: parent.height
-                    radius: height / 2
-                    color: Appearance.colour.textDim
+                Item {
+                    implicitHeight: root.rail * 2
+
+                    SquircleRect {
+                        y: root.rail
+                        width: parent.width
+                        height: root.rail
+                        radius: height / 2
+                        color: Appearance.colour.fill
+
+                        SquircleRect {
+                            width: parent.width * (app.modelData?.ms ?? 0) / root.peak
+                            height: parent.height
+                            radius: height / 2
+                            color: Appearance.colour.textDim
+                        }
+                    }
                 }
             }
 

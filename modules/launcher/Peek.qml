@@ -247,8 +247,6 @@ Item {
                             SquircleRect {
                                 visible: textLine.hit
                                 anchors.fill: parent
-                                anchors.leftMargin: -Appearance.padding.small
-                                anchors.rightMargin: -Appearance.padding.small
                                 radius: Appearance.rounding.small
                                 color: Appearance.colour.accentFill
                             }
@@ -256,7 +254,8 @@ Item {
                             StyledText {
                                 id: lineText
 
-                                width: parent.width
+                                x: Appearance.padding.small
+                                width: parent.width - Appearance.padding.small * 2
                                 text: textLine.modelData || " "
                                 wrapMode: root.clipText ? Text.Wrap : Text.NoWrap
                                 elide: root.clipText ? Text.ElideNone : Text.ElideRight

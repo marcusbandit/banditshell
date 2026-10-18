@@ -9,8 +9,6 @@ import qs.services
 Item {
     id: root
 
-    required property real border
-
     readonly property bool open: root.shown
     property bool shown: false
 
@@ -45,7 +43,7 @@ Item {
     readonly property real contentWidth: root.groupWidth
     readonly property real contentHeight: root.groupHeight
 
-    readonly property real panelWidth: root.border + root.contentWidth + root.pad * 2
+    readonly property real panelWidth: root.contentWidth + root.pad * 2
     readonly property real panelHeight: root.contentHeight + root.pad * 2
 
     readonly property real slide: (root.panelWidth + Appearance.sizes.melt) * (1 - reveal.value)
