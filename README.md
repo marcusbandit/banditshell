@@ -39,6 +39,11 @@ almost every day.
 > other people run too. Things move around, and the What's new card tells you
 > when they do.
 
+> [!TIP]
+> On Omarchy? The island runs there as a plugin:
+> [banditshell island](https://github.com/marcusbandit/banditshell-island),
+> listed on the [Omarchy plugin marketplace](https://omarchyplugins.com/plugin.html?id=banditshell.island).
+
 ## What's in it
 
 - A launcher that answers as you type. Sums, units, dates and colours go
