@@ -1512,9 +1512,11 @@ banditshell/
 │   │   │                        is up, under the chassis: it blooms in from the
 │   │   │                        bottom edge through the reveal blob once the
 │   │   │                        picture is ready, and closes the same way
-│   │   └── WallpaperView.qml    what the desktop shows on one output: two slots
-│   │                            that cross-fade through the reveal blob; the
-│   │                            wallpaper window and the picker share it
+│   │   └── WallpaperView.qml    what the desktop shows on one output: five slots
+│   │                            stacked by arrival, each with its own reveal
+│   │                            blob, so a new picture sweeps in over one still
+│   │                            arriving; the wallpaper window and the picker
+│   │                            share it
 │   ├── picker/                  screenshot: hover a window or drag a region. A
 │   │                            finished picture raises `Screenshots.captured`;
 │   │                            `picker taken <path>` does the same for
@@ -2575,7 +2577,7 @@ what lets it reach every corner instead of leaving four bays of the old wallpape
 seed shifts the phases per transition, so no two changes arrive in the same shape.
 
 **It opens from where the choice was made**: the card you pressed, the edge you are stepping
-toward with `wallpaper next`, the middle for a keybind that has no place on the screen. That is
+toward with `wallpaper next` or browsing toward in the picker, the middle for a keybind that has no place on the screen. That is
 the thing a fade can never have, and it is what makes the change read as caused. swww does this
 family of transitions and the shape is borrowed knowingly; what is not borrowed is the origin.
 

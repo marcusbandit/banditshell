@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-13",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Browsing wallpapers in the picker reveals each one again instead of snapping to it. Press on while one is still sweeping in and the next sweeps over it, from the side you are browsing towards, without the half-shown picture jumping."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-12",
       "date": "2026-10-18",
       "changes": [
