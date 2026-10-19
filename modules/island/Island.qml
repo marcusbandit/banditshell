@@ -375,7 +375,7 @@ Item {
     readonly property real restHeight: root.deckRest ? root.cardHeight + root.stackItems.length * root.compactHeight : root.compactHeight * Math.max(1, root.stackItems.length)
 
     readonly property real fieldWidth: Math.ceil(Math.max(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2, root.taskWidth + root.shadowRoom * 2, root.voiceRoom))
-    readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), Math.max(overview.implicitHeight, overview.settledHeight) - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2, root.taskHeight) + root.shadowRoom) / root.fieldStep) * root.fieldStep
+    readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), root.taskRoom, Math.max(overview.implicitHeight, overview.settledHeight) - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2, root.taskHeight) + root.shadowRoom) / root.fieldStep) * root.fieldStep
     readonly property real centreX: scene.width / 2
     readonly property real surfaceX: Math.round((root.width - root.fieldWidth) / 2 + trail.value)
 
