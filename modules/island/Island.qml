@@ -379,8 +379,7 @@ Item {
     readonly property real centreX: scene.width / 2
     readonly property real surfaceX: Math.round((root.width - root.fieldWidth) / 2 + trail.value)
 
-    readonly property real overshoot: 0.06
-    readonly property real opened: Math.max(0, Math.min(1 + root.overshoot, glide.value))
+    readonly property real opened: Math.max(0, Math.min(1, glide.value))
     readonly property real widening: Math.min(1, root.opened * 1.8)
     readonly property real pillWidth: wide.value + (span.value - wide.value) * root.widening
     readonly property real pillHeight: tall.value + (overviewTall.value + overview.deckHeight * deckShare.value - tall.value) * root.opened

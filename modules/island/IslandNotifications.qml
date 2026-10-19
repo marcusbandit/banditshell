@@ -30,7 +30,7 @@ Item {
 
     readonly property real deckRoom: root.maxHeight > 0 ? Math.max(0, root.maxHeight - root.topInset - header.implicitHeight - controls.implicitHeight - root.gap * 3 - root.pad) : 100000
 
-    readonly property real bottomInset: deck.visible ? Math.max(0, Appearance.padding.small - Appearance.stroke.line - deck.footerShown) : root.pad
+    readonly property real bottomInset: Notifications.history.length > 0 ? Math.max(0, Appearance.padding.small - Appearance.stroke.line - deck.footerShown) : root.pad
     readonly property real natural: root.topInset + column.implicitHeight + root.bottomInset
 
     implicitHeight: root.maxHeight > 0 ? Math.min(root.natural, root.maxHeight) : root.natural

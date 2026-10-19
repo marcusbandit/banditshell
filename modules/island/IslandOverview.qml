@@ -53,11 +53,13 @@ Item {
         }
     }
     readonly property real topInset: Appearance.padding.large
-    readonly property real bottomInset: notices.visible && !summaryRow.visible ? Appearance.padding.small - Appearance.stroke.line : root.pad
-    readonly property real deckHeight: notices.visible ? notices.height : 0
+    readonly property bool hasNotices: root.notifications.length > 0
+    readonly property bool hasSummary: !!root.summary
+    readonly property real bottomInset: root.hasNotices && !root.hasSummary ? Appearance.padding.small - Appearance.stroke.line : root.pad
+    readonly property real deckHeight: root.hasNotices ? notices.height : 0
     property real laidDeckHeight: 0
     readonly property real restHeight: root.implicitHeight - root.laidDeckHeight
-    readonly property real settledHeight: root.restHeight + (notices.visible ? notices.fullHeight : 0)
+    readonly property real settledHeight: root.restHeight + (root.hasNotices ? notices.fullHeight : 0)
     readonly property real arrivalsTop: column.y + clockBox.height
     readonly property real rowPitch: Appearance.font.line.small + Appearance.padding.small * 2 + rows.spacing
 
@@ -304,12 +306,12 @@ Item {
 
             x: -root.pad
             width: root.width
-            visible: root.notifications.length > 0
+            visible: root.hasNotices
             groups: root.notifications
             fanned: 1
             footed: false
             liftsAway: false
-            maxHeight: Math.max(Appearance.font.line.small * 8, root.room - root.topInset - root.bottomInset - notices.y - (summaryRow.visible ? summaryRow.height + column.spacing : 0))
+            maxHeight: Math.max(Appearance.font.line.small * 8, root.room - root.topInset - root.bottomInset - notices.y - (root.hasSummary ? summaryRow.height + column.spacing : 0))
 
             onDismissed: entry => Notifications.forget(entry)
             onKept: entry => Notifications.forget(entry)
@@ -320,7 +322,7 @@ Item {
             id: summaryRow
 
             width: parent.width
-            visible: !!root.summary
+            visible: root.hasSummary
             activity: root.summary
             lights: true
             live: root.watched

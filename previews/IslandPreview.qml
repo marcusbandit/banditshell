@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Services.Notifications
+import qs.config
 import qs.services
 import qs.modules.island
 import "../modules/island/upgrade-samples.js" as Samples
@@ -907,9 +908,15 @@ ShellRoot {
     function tidy(): bool {
         const rows = preview.cards(island.stage).filter(c => c.opacity > 0.01 && !c.entry.leaving).map(c => ({
                     y: c.mapToItem(island.stage, 0, 0).y,
-                    h: c.height
+                    h: c.height,
+                    app: c.entry.appName
                 })).sort((p, q) => p.y - q.y);
-        return rows.every((r, i) => i === 0 || Math.abs(r.y - (rows[i - 1].y + rows[i - 1].h)) < 2);
+        return rows.every((r, i) => {
+            if (i === 0)
+                return true;
+            const gap = r.y - (rows[i - 1].y + rows[i - 1].h);
+            return Math.abs(gap) < 2 || r.app !== rows[i - 1].app && Math.abs(gap - Appearance.padding.small) < 2;
+        });
     }
 
     function arrive(app: string, summary: string, body: string): void {

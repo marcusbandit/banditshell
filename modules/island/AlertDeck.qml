@@ -287,8 +287,26 @@ Item {
         return slots.itemAt(0)?.cardHeight ?? 0;
     }
 
+    readonly property real settledList: {
+        root.reshaped;
+        let sum = 0;
+        for (let i = 0; i < slots.count; i++)
+            sum += slots.itemAt(i)?.settledRoom ?? 0;
+        return sum;
+    }
+
+    property real lockedList: 0
+    property real lockedView: 0
+
+    onSettledListChanged: {
+        root.lockedView = root.spreadHeight;
+        root.lockedList = root.listHeight;
+    }
+
     readonly property real viewMax: Math.max(root.foldedHeight, root.maxHeight - root.footerHeight)
-    readonly property real spreadHeight: Math.min(root.listHeight, root.viewMax)
+    readonly property real settledView: Math.min(root.settledList, root.viewMax)
+    readonly property real spreadProgress: Math.abs(root.settledList - root.lockedList) < 0.5 ? 1 : Math.max(0, Math.min(1, (root.listHeight - root.lockedList) / (root.settledList - root.lockedList)))
+    readonly property real spreadHeight: root.lockedView + (root.settledView - root.lockedView) * root.spreadProgress
     readonly property real scrollMax: Math.max(0, root.listHeight - root.spreadHeight)
     readonly property real scrolled: Math.min(scroll.value, root.scrollMax)
 
@@ -298,7 +316,7 @@ Item {
         for (let i = 0; i < slots.count; i++) {
             const slot = slots.itemAt(i);
             if (slot && !slot.leaving)
-                sum += slot.cardHeight;
+                sum += slot.cardHeight + Math.max(slot.gapTarget, slot.gapShown);
         }
         return Math.min(sum, Math.max(0, root.maxHeight - root.footerHeight)) + (root.footed && root.behind.length > 0 ? root.footerHeight : 0);
     }
@@ -468,6 +486,9 @@ Item {
                 readonly property bool head: !!slot.group && slot.group.entries[0] === slot.modelData
                 readonly property bool spread: !!slot.group && root.unfolded.includes(slot.group.key)
                 readonly property bool folding: root.folding.includes(slot.modelData)
+                readonly property bool apart: root.grouped && !!slot.above && slot.above.group !== slot.group && (slot.spread || slot.above.spread)
+                readonly property real gapTarget: slot.apart ? Appearance.padding.small : 0
+                readonly property real gapShown: gap.value
                 readonly property int tally: slot.head ? slot.group.entries.filter(e => !e.leaving).length : 1
                 readonly property bool loose: card.loose
                 readonly property real pull: card.pull
@@ -483,7 +504,8 @@ Item {
                 readonly property bool outgoing: card.flinging
                 readonly property real open: Math.max(0, arrival.value - departure.value)
                 readonly property real cardHeight: card.implicitHeight
-                readonly property real room: slot.cardHeight * (root.sweeping ? 1 : slot.open)
+                readonly property real room: (slot.cardHeight + gap.value) * (root.sweeping ? 1 : slot.open)
+                readonly property real settledRoom: slot.leaving || slot.folding ? 0 : slot.cardHeight + slot.gapTarget
 
                 property real leftAt: 0
 
@@ -511,7 +533,7 @@ Item {
                 height: root.fanned > 0 ? slot.room : slot.cardHeight
                 y: (root.fanned > 0 ? slot.spreadY : slot.away * Appearance.padding.normal) - root.raised
                 z: root.fanned > 0 ? 0 : slot.step
-                clip: root.fanned > 0 && slot.height < slot.cardHeight - 0.5
+                clip: root.fanned > 0 && slot.height < slot.cardHeight + gap.value - 0.5
                 scale: root.fanned > 0 ? 1 : 1 - 0.06 * slot.away
                 transformOrigin: Item.Bottom
                 opacity: !slot.inView ? 0 : root.fanned > 0 ? slot.open : slot.step * slot.step * slot.open
@@ -532,6 +554,15 @@ Item {
                 }
 
                 Follow {
+                    id: gap
+
+                    speed: gap.target < gap.value ? Appearance.animation.snapSpeed : Appearance.animation.revealSpeed
+                    epsilon: 0.25
+                    target: slot.gapTarget
+                    startsAtTarget: true
+                }
+
+                Follow {
                     id: departure
 
                     speed: Appearance.animation.snapSpeed
@@ -545,14 +576,15 @@ Item {
                 NotificationCard {
                     id: card
 
+                    y: gap.value
                     width: slot.width
                     entry: slot.modelData
                     count: slot.tally
                     countOpen: slot.spread
                     folded: slot.tally > 1 && !slot.spread
                     tiled: root.grouped
-                    joinedAbove: root.grouped && !!slot.above
-                    joinedBelow: root.grouped && !!slot.below
+                    joinedAbove: root.grouped && !!slot.above && !slot.apart
+                    joinedBelow: root.grouped && !!slot.below && !slot.below.apart
                     aboveLoose: slot.above?.loose ?? false
                     belowLoose: slot.below?.loose ?? false
                     tug: root.grouped ? ((slot.above?.pull ?? 0) + (slot.below?.pull ?? 0)) * root.tugNear + ((slot.above?.above?.pull ?? 0) + (slot.below?.below?.pull ?? 0)) * root.tugFar : 0
