@@ -10,6 +10,8 @@ Item {
     id: root
 
     property var activities: []
+    property var notifications: []
+    property real room: 100000
     property bool watched: false
 
     property real arrivals: 0
@@ -17,6 +19,7 @@ Item {
     property real carriedOpacity: 0
 
     signal chosen(var activity)
+    signal lifted
 
     readonly property real pad: Appearance.padding.card
     readonly property real spotPad: Appearance.padding.small
@@ -71,8 +74,12 @@ Item {
 
     implicitHeight: root.topInset + column.implicitHeight + root.pad
 
-    onWatchedChanged: if (root.watched)
-        Weather.refresh()
+    onWatchedChanged: {
+        if (root.watched)
+            Weather.refresh();
+        else
+            notices.foldAll();
+    }
 
     SystemClock {
         id: clock
@@ -285,7 +292,26 @@ Item {
             })
         }
 
+        AlertDeck {
+            id: notices
+
+            x: -root.pad
+            width: root.width
+            visible: root.notifications.length > 0
+            groups: root.notifications
+            fanned: 1
+            footed: false
+            liftsAway: false
+            maxHeight: Math.max(Appearance.font.line.small * 8, root.room - root.topInset - root.pad - notices.y - (summaryRow.visible ? summaryRow.height + column.spacing : 0))
+
+            onDismissed: entry => Notifications.forget(entry)
+            onKept: entry => Notifications.forget(entry)
+            onLifted: root.lifted()
+        }
+
         ActivityRow {
+            id: summaryRow
+
             width: parent.width
             visible: !!root.summary
             activity: root.summary

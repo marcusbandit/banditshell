@@ -236,6 +236,7 @@ done`, "sh", ...fresh];
     readonly property bool ready: current !== ""
 
     property var previews: ({})
+    property var previewOrigins: ({})
 
     function previewOn(screen: string): string {
         return root.previews[screen] ?? "";
@@ -249,9 +250,21 @@ done`, "sh", ...fresh];
         root.previews = next;
     }
 
+    function previewFrom(screen: string, path: string, x: real, y: real): void {
+        if (!screen)
+            return;
+        const at = Object.assign({}, root.previewOrigins);
+        at[screen] = Qt.point(x, y);
+        root.previewOrigins = at;
+        root.setPreview(screen, path);
+    }
+
     function clearPreview(screen: string): void {
         if (!screen || !(screen in root.previews))
             return;
+        const at = Object.assign({}, root.previewOrigins);
+        delete at[screen];
+        root.previewOrigins = at;
         const next = Object.assign({}, root.previews);
         delete next[screen];
         root.previews = next;
@@ -270,7 +283,11 @@ done`, "sh", ...fresh];
     readonly property point centre: Qt.point(0.5, 0.5)
 
     function originOn(screen: string): point {
-        return root.origins[screen] ?? root.centre;
+        return root.previewOrigins[screen] ?? root.origins[screen] ?? root.centre;
+    }
+
+    function edgeTowards(delta: int): point {
+        return delta > 0 ? Qt.point(1, 0.5) : delta < 0 ? Qt.point(0, 0.5) : root.centre;
     }
 
     function setOrigin(screen: string, x: real, y: real): void {
@@ -307,6 +324,7 @@ done`, "sh", ...fresh];
     function setAll(path: string): void {
 
         Config.setMany([["wallpaper.perScreen", {}], ["wallpaper.current", root.normalise(path)]]);
+        root.previewOrigins = {};
         root.previews = {};
     }
 
@@ -347,7 +365,8 @@ done`, "sh", ...fresh];
     function stepOn(screen: string, delta: int): void {
         if (!root.available.length)
             return;
-        root.setOrigin(screen, delta > 0 ? 1 : 0, 0.5);
+        const edge = root.edgeTowards(delta);
+        root.setOrigin(screen, edge.x, edge.y);
         const i = root.available.indexOf(root.currentOn(screen));
 
         const next = i < 0 ? 0 : (i + delta + root.available.length) % root.available.length;
@@ -360,7 +379,7 @@ done`, "sh", ...fresh];
 
         const edge = {};
         for (const s of Quickshell.screens)
-            edge[s.name] = Qt.point(delta > 0 ? 1 : 0, 0.5);
+            edge[s.name] = root.edgeTowards(delta);
         root.origins = edge;
         const i = root.available.indexOf(root.current);
         const next = i < 0 ? 0 : (i + delta + root.available.length) % root.available.length;

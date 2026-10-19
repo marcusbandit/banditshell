@@ -13,6 +13,7 @@ IslandInspector 1.0 IslandInspector.qml
 IslandIpc 1.0 IslandIpc.qml
 IslandMedia 1.0 IslandMedia.qml
 IslandMicrophone 1.0 IslandMicrophone.qml
+IslandNotificationPage 1.0 IslandNotificationPage.qml
 IslandNotifications 1.0 IslandNotifications.qml
 IslandOverview 1.0 IslandOverview.qml
 IslandShellUpdate 1.0 IslandShellUpdate.qml

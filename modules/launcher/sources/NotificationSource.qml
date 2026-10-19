@@ -102,8 +102,7 @@ QtObject {
         const entries = row.thread.entries;
         root.search.launch(() => {
             Notifications.activate(entries[0]);
-            for (const older of entries.slice(1))
-                Notifications.dismiss(older);
+            Notifications.markSeenOf(entries.slice(1));
         });
     }
 

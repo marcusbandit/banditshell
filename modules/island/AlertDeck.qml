@@ -12,9 +12,31 @@ Item {
 
     property var entries: []
 
+    property var groups: null
+    property var unfolded: []
+    property var folding: []
+
+    readonly property bool grouped: root.groups !== null
+    readonly property var cards: {
+        if (!root.grouped)
+            return root.entries;
+        const out = [];
+        for (const group of root.groups) {
+            const open = root.unfolded.includes(group.key);
+            for (const entry of group.entries)
+                if (entry === group.entries[0] || open || root.folding.includes(entry))
+                    out.push(entry);
+        }
+        return out;
+    }
+
     property real fanned: 0
 
     property real maxHeight: 100000
+
+    property bool footed: true
+
+    property bool liftsAway: true
 
     signal dismissed(var entry)
     signal kept(var entry)
@@ -29,6 +51,38 @@ Item {
     property var clearing: []
     property var swept: []
     property bool sweeping: false
+
+    function groupOf(entry: var): var {
+        return root.grouped ? root.groups.find(g => g.entries.includes(entry)) ?? null : null;
+    }
+
+    function toggle(group: var): void {
+        if (!group)
+            return;
+        if (root.unfolded.includes(group.key)) {
+            root.unfolded = root.unfolded.filter(k => k !== group.key);
+            root.folding = [...root.folding, ...group.entries.slice(1).filter(e => !root.folding.includes(e))];
+        } else {
+            root.unfolded = [...root.unfolded, group.key];
+            root.folding = root.folding.filter(e => !group.entries.includes(e));
+        }
+    }
+
+    function foldAll(): void {
+        root.unfolded = [];
+        root.folding = [];
+    }
+
+    function part(entry: var, keep: bool): void {
+        const group = root.groupOf(entry);
+        const all = group && group.entries[0] === entry && !root.unfolded.includes(group.key) ? group.entries : [entry];
+        for (const e of all) {
+            if (keep)
+                root.kept(e);
+            else
+                root.dismissed(e);
+        }
+    }
 
     function slotFor(entry: var): Item {
         for (let i = 0; i < slots.count; i++) {
@@ -80,19 +134,44 @@ Item {
     }
 
     property real lift: 0
-    property bool lifting: false
     property var liftedAway: []
 
     readonly property real naturalView: root.foldedHeight + (root.spreadHeight - root.foldedHeight) * root.fanned
     readonly property real liftTravel: Math.max(1, root.naturalView + root.footerHeight * footing.value)
-    readonly property real raised: root.lifting ? root.lift : rise.value
-    readonly property real liftFade: 1 - Math.min(1, root.raised / root.liftTravel)
+    readonly property real raised: rise.value
+    readonly property real liftFade: 1 - Math.min(1, Math.max(0, root.raised) / root.liftTravel)
+    readonly property real giveRoom: Appearance.padding.huge * 2
+
+    function give(reach: real): real {
+        const k = Config.values.control.dragResistance;
+        const m = Math.abs(reach);
+        const given = root.giveRoom * (1 - 1 / (1 + m * k / root.giveRoom));
+        return reach < 0 ? -given : given;
+    }
+
+    function ungive(raised: real): real {
+        const k = Math.max(0.01, Config.values.control.dragResistance);
+        const m = Math.min(Math.abs(raised), root.giveRoom * 0.99);
+        const reach = root.giveRoom * (1 / (1 - m / root.giveRoom) - 1) / k;
+        return raised < 0 ? -reach : reach;
+    }
+
+    function holdLift(): void {
+        rise.hold(root.lift >= 0 && root.liftsAway ? root.lift : root.give(root.lift));
+    }
 
     function dragBy(by: real): void {
+        if (!rise.held)
+            root.lift = rise.value >= 0 && root.liftsAway ? rise.value : root.ungive(rise.value);
         const canScroll = root.scrollMax > 0 && root.fanned >= 0.5;
         let rest = Math.abs(by);
         if (by < 0) {
-            if (canScroll && root.lift <= 0) {
+            if (root.lift < 0) {
+                const used = Math.min(-root.lift, rest);
+                root.lift += used;
+                rest -= used;
+            }
+            if (rest > 0 && canScroll && root.lift >= 0) {
                 const from = Math.min(scroll.target, root.scrollMax);
                 const used = Math.min(root.scrollMax - from, rest);
                 if (used > 0) {
@@ -101,37 +180,60 @@ Item {
                     rest -= used;
                 }
             }
-            if (rest > 0) {
-                root.lifting = true;
-                root.lift += rest;
-            }
+            root.lift += rest;
         } else if (by > 0) {
-            const used = Math.min(root.lift, rest);
-            root.lift -= used;
-            rest -= used;
-            if (rest > 0 && root.lift <= 0)
-                root.scrollBy(rest);
+            if (root.lift > 0) {
+                const used = Math.min(root.lift, rest);
+                root.lift -= used;
+                rest -= used;
+            }
+            if (rest > 0 && canScroll && root.lift <= 0) {
+                const from = Math.min(scroll.target, root.scrollMax);
+                const used = Math.min(from, rest);
+                if (used > 0) {
+                    scroll.target = from - used;
+                    scroll.snap();
+                    rest -= used;
+                }
+            }
+            root.lift -= rest;
         }
+        if (root.lift !== 0 || rise.held)
+            root.holdLift();
     }
 
+    function letGo(): void {
+        if (rise.held && !root.handling)
+            root.dragEnd(0);
+    }
+
+    onHandlingChanged: if (!root.handling)
+        Qt.callLater(root.letGo)
+
     function dragEnd(speed: real): void {
-        if (!root.lifting) {
+        if (!rise.held) {
             root.scrollGlide(speed);
             return;
         }
-        const thrown = speed < -root.throwSpeed;
-        const gone = thrown || root.lift > root.liftTravel * Config.values.control.pullCommit;
-        rise.value = root.lift;
-        rise.target = gone ? root.liftTravel : 0;
+        const up = root.lift > 0;
+        const thrown = speed < -root.throwSpeed && root.lift > Config.values.control.dragThreshold;
+        const gone = up && !(speed > root.throwSpeed) && (thrown || root.lift > root.liftTravel * Config.values.control.pullCommit);
+        rise.target = gone && root.liftsAway ? root.liftTravel : 0;
+        rise.release();
+        const settledScroll = Math.abs(root.lift) < 0.5;
         root.lift = 0;
-        root.lifting = false;
+        if (settledScroll)
+            root.scrollGlide(speed);
         if (gone) {
-            root.liftedAway = [...root.standing];
+            if (root.liftsAway)
+                root.liftedAway = [...root.standing];
             root.lifted();
         }
     }
 
     readonly property real throwSpeed: 0.6
+    readonly property real tugNear: 0.18
+    readonly property real tugFar: 0.06
 
     function scrollGlide(speed: real): void {
         if (root.scrollMax <= 0 || root.fanned < 0.5)
@@ -140,8 +242,9 @@ Item {
     }
 
     property var outgoing: []
+    property var recalled: null
 
-    readonly property var standing: root.entries.filter(e => !e.leaving && !root.outgoing.includes(e))
+    readonly property var standing: root.cards.filter(e => !e.leaving && !root.outgoing.includes(e))
     readonly property var front: root.standing[0] ?? null
     readonly property var behind: root.standing.slice(1)
 
@@ -161,14 +264,20 @@ Item {
 
     readonly property real footerHeight: clearButton.implicitHeight + Appearance.padding.card
 
-    readonly property real listHeight: {
-        let sum = 0;
+    property int reshaped: 0
+
+    readonly property var tops: {
+        root.reshaped;
+        const out = [0];
         for (let i = 0; i < slots.count; i++)
-            sum += slots.itemAt(i)?.room ?? 0;
-        return sum;
+            out.push(out[i] + (slots.itemAt(i)?.room ?? 0));
+        return out;
     }
 
+    readonly property real listHeight: root.tops[root.tops.length - 1]
+
     readonly property real foldedHeight: {
+        root.reshaped;
         for (let i = 0; i < slots.count; i++) {
             const slot = slots.itemAt(i);
             if (slot?.isFront)
@@ -183,16 +292,18 @@ Item {
     readonly property real scrolled: Math.min(scroll.value, root.scrollMax)
 
     readonly property real fullHeight: {
+        root.reshaped;
         let sum = 0;
         for (let i = 0; i < slots.count; i++) {
             const slot = slots.itemAt(i);
             if (slot && !slot.leaving)
                 sum += slot.cardHeight;
         }
-        return Math.min(sum, Math.max(0, root.maxHeight - root.footerHeight)) + (root.behind.length > 0 ? root.footerHeight : 0);
+        return Math.min(sum, Math.max(0, root.maxHeight - root.footerHeight)) + (root.footed && root.behind.length > 0 ? root.footerHeight : 0);
     }
 
     readonly property bool handling: {
+        root.reshaped;
         for (let i = 0; i < slots.count; i++)
             if (slots.itemAt(i)?.handling)
                 return true;
@@ -210,10 +321,12 @@ Item {
 
     onFrontChanged: {
         const previous = root.lastFront;
+        const recalled = root.recalled;
         root.lastFront = root.front;
+        root.recalled = null;
         if (!previous || !root.front || root.fanned > 0 || root.sweeping)
             return;
-        const forward = root.standing.includes(previous);
+        const forward = root.standing.includes(previous) && root.front !== recalled;
         if (forward) {
             root.slotFor(root.front)?.settle();
             root.slotFor(previous)?.settle();
@@ -221,14 +334,17 @@ Item {
         root.advanced(forward, root.standing.length, previous);
     }
 
-    onEntriesChanged: {
-        if (root.entries.length === 0) {
+    onCardsChanged: {
+        if (root.cards.length === 0) {
             root.liftedAway = [];
             rise.target = 0;
             rise.snap();
         }
-        root.outgoing = root.outgoing.filter(e => root.entries.includes(e) && !e.leaving);
-        if (root.sweeping && root.swept.every(e => !root.entries.includes(e)))
+        root.outgoing = root.outgoing.filter(e => root.cards.includes(e) && !e.leaving);
+        const folding = root.folding.filter(e => root.cards.includes(e) && !e.leaving);
+        if (folding.length !== root.folding.length)
+            Qt.callLater(() => root.folding = root.folding.filter(e => root.cards.includes(e) && !e.leaving));
+        if (root.sweeping && root.swept.every(e => !root.cards.includes(e)))
             root.sweeping = false;
     }
 
@@ -249,10 +365,9 @@ Item {
 
     implicitHeight: view.height + footer.height
 
-    Follow {
+    Spring {
         id: rise
 
-        speed: Appearance.animation.revealSpeed
         epsilon: 0.5
     }
 
@@ -280,7 +395,7 @@ Item {
 
         speed: Appearance.animation.revealSpeed
         epsilon: 0.004
-        target: root.behind.length > 0 ? 1 : 0
+        target: root.footed && root.behind.length > 0 ? 1 : 0
     }
 
     Follow {
@@ -326,8 +441,11 @@ Item {
             id: slots
 
             model: ScriptModel {
-                values: root.entries
+                values: root.cards
             }
+
+            onItemAdded: root.reshaped++
+            onItemRemoved: root.reshaped++
 
             Item {
                 id: slot
@@ -345,6 +463,21 @@ Item {
 
                 readonly property bool leaving: slot.modelData?.leaving ?? false
                 readonly property bool isFront: slot.modelData === root.front
+                readonly property var group: root.groupOf(slot.modelData)
+                readonly property bool head: !!slot.group && slot.group.entries[0] === slot.modelData
+                readonly property bool spread: !!slot.group && root.unfolded.includes(slot.group.key)
+                readonly property bool folding: root.folding.includes(slot.modelData)
+                readonly property int tally: slot.head ? slot.group.entries.filter(e => !e.leaving).length : 1
+                readonly property bool loose: card.loose
+                readonly property real pull: card.pull
+                readonly property Item above: {
+                    root.reshaped;
+                    return slot.index > 0 ? slots.itemAt(slot.index - 1) : null;
+                }
+                readonly property Item below: {
+                    root.reshaped;
+                    return slots.itemAt(slot.index + 1);
+                }
                 readonly property bool handling: card.handling
                 readonly property bool outgoing: card.flinging
                 readonly property real open: Math.max(0, arrival.value - departure.value)
@@ -356,18 +489,20 @@ Item {
                 readonly property real step: slot.leaving ? slot.leftAt : promotion.value
                 readonly property real away: 1 - slot.step
 
-                readonly property real spreadTop: {
-                    let sum = 0;
-                    for (let i = 0; i < slot.index; i++)
-                        sum += slots.itemAt(i)?.room ?? 0;
-                    return sum;
-                }
+                readonly property real spreadTop: root.tops[slot.index] ?? 0
                 readonly property real spreadY: slot.spreadTop - root.scrolled
                 readonly property bool inView: slot.y < view.height && slot.y + slot.height > 0
                 readonly property bool onScreen: slot.inView && slot.opacity > 0.005
 
-                onOutgoingChanged: if (slot.outgoing && !root.outgoing.includes(slot.modelData))
-                    root.outgoing = [...root.outgoing, slot.modelData]
+                onOutgoingChanged: {
+                    if (slot.outgoing && !root.outgoing.includes(slot.modelData)) {
+                        root.outgoing = [...root.outgoing, slot.modelData];
+                    } else if (!slot.outgoing && !slot.leaving && root.outgoing.includes(slot.modelData)) {
+                        root.recalled = slot.modelData;
+                        root.outgoing = root.outgoing.filter(e => e !== slot.modelData);
+                        Qt.callLater(() => root.recalled = null);
+                    }
+                }
                 onLeavingChanged: if (slot.leaving)
                     slot.leftAt = promotion.value
 
@@ -400,7 +535,10 @@ Item {
 
                     speed: Appearance.animation.snapSpeed
                     epsilon: 0.004
-                    target: slot.leaving ? 1 : 0
+                    target: slot.leaving || slot.folding ? 1 : 0
+
+                    onValueChanged: if (slot.folding && departure.value >= 0.999)
+                        root.folding = root.folding.filter(e => e !== slot.modelData)
                 }
 
                 NotificationCard {
@@ -408,9 +546,19 @@ Item {
 
                     width: slot.width
                     entry: slot.modelData
+                    count: slot.tally
+                    countOpen: slot.spread
+                    folded: slot.tally > 1 && !slot.spread
+                    tiled: root.grouped
+                    joinedAbove: root.grouped && !!slot.above
+                    joinedBelow: root.grouped && !!slot.below
+                    aboveLoose: slot.above?.loose ?? false
+                    belowLoose: slot.below?.loose ?? false
+                    tug: root.grouped ? ((slot.above?.pull ?? 0) + (slot.below?.pull ?? 0)) * root.tugNear + ((slot.above?.above?.pull ?? 0) + (slot.below?.below?.pull ?? 0)) * root.tugFar : 0
 
-                    onReleased: root.dismissed(slot.modelData)
-                    onKept: root.kept(slot.modelData)
+                    onCountTapped: root.toggle(slot.group)
+                    onReleased: root.part(slot.modelData, false)
+                    onKept: root.part(slot.modelData, true)
                     onScrolled: by => root.dragBy(by)
                     onScrollEnded: speed => root.dragEnd(speed)
                 }
@@ -418,7 +566,7 @@ Item {
                 Separator {
                     x: card.pad
                     width: slot.width - card.pad * 2
-                    visible: slot.index > 0 && root.fanned > 0.01
+                    visible: slot.index > 0 && root.fanned > 0.01 && !root.grouped
                     opacity: root.fanned * (1 - card.shiftFade)
                 }
             }
@@ -477,7 +625,7 @@ Item {
             icon: "notifications"
             text: "all notifications"
             opacity: root.fanned
-            visible: opacity > 0.01
+            visible: opacity > 0.01 && !root.grouped
             onClicked: root.history()
         }
 

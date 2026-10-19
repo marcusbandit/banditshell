@@ -176,8 +176,8 @@ The feel to chase: **as if the intent of using the computer makes the computer c
 Alive, responsive, compliant to intent. Nothing is static. Nothing is dead. The computer
 answers the *intent* of use, and only when asked.
 
-Animation implementation for all this motion/summon/tracking comes in two curves, both chased
-every frame so either can be caught and retargeted mid-flight:
+Animation implementation for all this motion/summon/tracking comes in three curves, all chased
+every frame so any of them can be caught and retargeted mid-flight:
 
 - **Follow (`components/Follow.qml`), ease-out**, for anything that answers an input: a reveal,
   a press, a panel arriving. Exponential smoothing,
@@ -188,17 +188,25 @@ every frame so either can be caught and retargeted mid-flight:
   new place: the workspace marker, a menu gliding between sidebar icons, rows closing up, the
   next notification stepping forward. A critically damped follower: it starts gently, arrives
   gently, keeps its speed when the target moves, and never crosses past the target.
+- **Spring (`components/Spring.qml`)**, for anything the hand can hold: a notification card, the
+  island when it is pulled open or shut, a stack lifted away. A mass on a spring, solved exactly
+  each frame (`components/spring.js`), with stiffness, damping and mass in `control.spring`. A
+  finger holds it 1:1 (`hold`), a press catches it wherever it is in flight (`grab`), and letting
+  go hands it the finger's speed (`release`), so a throw carries on the way it was thrown. Short
+  of a throw it goes back to the middle with a little bounce, about four percent past it, by the
+  owner's call on 2026-10-18. `control.dragResistance` is the give: how much a card resists the
+  finger before it commits.
 
 **This is a rule, not a default.** Anything in this shell that moves, tracks, reveals, resizes
-or follows goes through one of those two. A `NumberAnimation` or a `Behavior` on a position is a
+or follows goes through one of those three. A `NumberAnimation` or a `Behavior` on a position is a
 bug, with exactly one exception: a **looping clock** with no target being chased at all. The
 whole list: the mic indicator's processing ripple and typing caret, the battery charge sweep and
 low-charge throb, the scrolling-text marquee, the equalizer, the lyric
 line's sung-gap clock, the lyrics loading pulse, the activity bubble's and the settings keyboard
 widget's spinners, and the demo clocks of the settings scenes. Every one of them stops or freezes
-when `Appearance.lessMotion` is true. No overshoot, bounce or flourish anywhere, for now: the
-shell starts from no play at all, and anything playful comes back later one deliberate piece at
-a time.
+when `Appearance.lessMotion` is true. No overshoot, bounce or flourish anywhere except under the
+hand: the shell starts from no play at all, and anything playful comes back one deliberate piece
+at a time. The first piece is the Spring's small bounce on what can be grabbed.
 
 **Fades are motion too.** An opacity or a colour that changes goes through `Follow`
 (`epsilon: Appearance.animation.fadeEpsilon`, since the default epsilon is in pixels) or
@@ -290,9 +298,11 @@ The rules, in the order the video builds them:
   duration by how often it runs: 400 ms on something opened a thousand times a day is about
   6.7 minutes of waiting.
 - Personality comes from timing. Bounce, overshoot and a long ease-in-out read as playful or
-  premium. Work tools lean rigid and fast. This shell takes the rigid end: spring and bounce are
-  excluded by section 2.3, and the character comes from the pixel type and the chassis (section 6),
-  not from overshoot.
+  premium. Work tools lean rigid and fast. This shell takes the rigid end. The one place a bounce
+  lives is under the hand: whatever can be grabbed is a spring (section 2.3), so a card let go
+  short of a throw swings a little past the middle and settles, the way a held object would.
+  Nothing else overshoots, and the character comes from the pixel type and the chassis (section
+  6).
 
 Applied to this shell:
 
@@ -608,6 +618,9 @@ banditshell/
 │   ├── AppMark.qml             one window's mark, from a spec: symbol/glyph/mono/image
 │   ├── Follow.qml               a value that chases a target by exponential smoothing
 │   ├── FollowColour.qml         the same for a colour; every colour fade goes through it
+│   ├── Spring.qml               a value on a spring, for whatever the hand holds: held 1:1,
+│   │                            caught mid-flight, thrown with the finger's speed; spring.js
+│   │                            is its exact step (tests/spring.test.js)
 │   ├── Pull.qml                 a directional swipe; the way in, and back out, that needs no hover
 │   ├── ScrollGesture.qml        two fingers on a touchpad, delivered as that same swipe
 │   ├── GlideList.qml            a list the system scrolls; glides only for keyboard moves
@@ -826,8 +839,11 @@ banditshell/
 │   │                            a hibernate the machine cannot do is a suspend
 │   ├── Network.qml              NetworkManager: the wire and the radio, one entry per SSID
 │   ├── Bluetooth.qml            bluez: adapter and devices
-│   ├── Media.qml                MPRIS, with a stable choice of player: the one that
-│   │                            last STARTED playing, or the one you picked. Keeps
+│   ├── Media.qml                MPRIS, with a stable choice of player: the one
+│   │                            playing, else the one you last played and paused,
+│   │                            or the one you picked. A paused player you never
+│   │                            played, an old video in a browser tab, is never
+│   │                            shown, even when it is the only one. Keeps
 │   │                            its own clock, re-anchored on every honest report
 │   │                            (seeks made in the app, pause, a new track, a
 │   │                            rate change), deaf for 2.5s after its own seek and
@@ -847,6 +863,7 @@ banditshell/
 │   │                            timed words, a parenthesis lifted onto a backing
 │   │                            line of its own, the music between lines as a
 │   │                            break; line-only lyrics get their words paced
+│   ├── player-choice.js         which player Media shows, as a plain function
 │   ├── SystemInfo.qml            /proc and /sys: cpu, memory, temperature
 │   ├── Display.qml              the screen's comfort: brightness over DDC/CI
 │   │                            (ddcutil, one strictly serial queue,
@@ -1270,6 +1287,9 @@ banditshell/
 │   │   │                        name, a line under it and a close mark
 │   │   ├── IslandShellUpdate.qml the shell update, around the update menu
 │   │   ├── IslandNotifications.qml the history as AlertDeck cards, fanned
+│   │   ├── IslandNotificationPage.qml one notification at full size: the whole
+│   │   │                        text, its actions and reply; where a tap goes
+│   │   │                        when there is no app to open
 │   │   ├── IslandTimers.qml     timers and alarms, around the clock menu
 │   │   ├── IslandCalendar.qml   the month, around the calendar menu
 │   │   ├── IslandWeather.qml    the week ahead, a day per column with its range
@@ -1492,9 +1512,11 @@ banditshell/
 │   │   │                        is up, under the chassis: it blooms in from the
 │   │   │                        bottom edge through the reveal blob once the
 │   │   │                        picture is ready, and closes the same way
-│   │   └── WallpaperView.qml    what the desktop shows on one output: two slots
-│   │                            that cross-fade through the reveal blob; the
-│   │                            wallpaper window and the picker share it
+│   │   └── WallpaperView.qml    what the desktop shows on one output: five slots
+│   │                            stacked by arrival, each with its own reveal
+│   │                            blob, so a new picture sweeps in over one still
+│   │                            arriving; the wallpaper window and the picker
+│   │                            share it
 │   ├── picker/                  screenshot: hover a window or drag a region. A
 │   │                            finished picture raises `Screenshots.captured`;
 │   │                            `picker taken <path>` does the same for
@@ -2555,7 +2577,7 @@ what lets it reach every corner instead of leaving four bays of the old wallpape
 seed shifts the phases per transition, so no two changes arrive in the same shape.
 
 **It opens from where the choice was made**: the card you pressed, the edge you are stepping
-toward with `wallpaper next`, the middle for a keybind that has no place on the screen. That is
+toward with `wallpaper next` or browsing toward in the picker, the middle for a keybind that has no place on the screen. That is
 the thing a fade can never have, and it is what makes the change read as caused. swww does this
 family of transitions and the shape is borrowed knowingly; what is not borrowed is the origin.
 
@@ -3881,9 +3903,12 @@ the eye already is.
 
 The first version melted out of the band like the notch it replaced and stacked
 cards inside it. It read as a notch with things in it, and that is what it was.
-The island is its own object: the darkest stop of the ramp, opaque, floating a
-gap below the band with a soft shadow and the chassis' sheen along its edge. It
-is not part of the chassis field, so it never bridges into the band.
+The island is its own object: the theme's surface colour, the one the panels
+wear, opaque, floating a gap below the band with a soft shadow and the chassis'
+sheen along its edge. It is not part of the chassis field, so it never bridges
+into the band. It was the darkest stop of the ramp until 2026-10-18, and against
+a coloured theme that read as a black hole cut out of the screen rather than a
+thing of ours; `colour.island` names the surface it wears now.
 
 It has three sizes and no others. Compact is a capsule as tall as a button.
 Large is one width, `island.width`, for a notification or for the overview. A
@@ -3905,7 +3930,7 @@ So the island is born in the band: it swells out of it as a bulge, drops on one
 Follow while a second, slower one shortens the reach of the smooth union between
 the two, and the neck stretches nearly to the resting place before it snaps. On
 the way back the reach grows fast and the pill sinks into the band and is
-absorbed. The neck shades from the band's colour to the island's black, and the
+absorbed. The neck shades from the band's colour to the island's own, and the
 shadow only arrives once it floats, because a drop still attached to the band
 casts nothing.
 
@@ -4029,11 +4054,22 @@ times a second, only while dictation is alone. Anything else in the island, a
 notification, an app opening, a bubble, keeps it where it is: then it has
 something to say, and the pointer may well be going for it.
 
+When a view fills the island, the notifications, the media, the timers, the
+calendar, dictation steps out of it: its row slides out from behind the island's
+right edge into a capsule of its own beside the top of the view, mark, live bars
+and language, in the island's colour with the same sheen and shadow. Before, a
+view simply covered it, and dictating into a window with the history open gave
+no sign the microphone was listening. Back in the overview it is a row again.
+
 ### Summoning, and what passes through
 
 Cursor to the top centre with a dwell, a tap on the strip to pin, a pull down to
-drag the overview out of whatever size it is, a pull up to put it back. While
-the pointer is on it, every timer inside it stops. Hovering a notification never
+drag the overview out of whatever size it is, a pull up to put it back. The
+island is a spring while it opens and closes: a pull holds it exactly under the
+finger instead of chasing it, a press on the strip or the open island catches
+it wherever it is on the way, and letting go throws it open or shut with the
+finger's speed, the open edge swinging a little past its place before it
+settles. While the pointer is on it, every timer inside it stops. Hovering a notification never
 opens the overview over it, it spreads a stack instead; a tap or a pull still
 opens it.
 
@@ -4049,23 +4085,75 @@ appearing and that would fight the island's own bloom.
 because moving everyone's notifications is a big change for people who did not ask
 for it; it moved once the corner no longer held the history, since a corner that
 only shows popups has nothing the island does not do better. Set to `island`, a
-notification takes the island at its large size. Tap runs its default action,
-its actions sit under the text from the start, and on hover a close mark appears
-in its corner. Nothing about a card's height depends on the pointer: when actions
+notification takes the island at its large size. Its actions sit under the text
+from the start, and on hover a close mark appears in its corner.
+
+**A tap opens, it never dismisses.** It used to run the default action and then
+delete the notification, and when there was no app to open the tap simply threw
+it away, which is the opposite of what a press means everywhere else in the
+shell. Now a tap runs the app's own default action, or brings its window forward,
+or starts it, and the notification steps back into the history marked read.
+With nothing to open (a script's `notify-send`, an app with no desktop entry) the
+island becomes the notification: the whole text, its actions and reply, and a
+dismiss button. Only a sideways swipe, the close mark, a right click or dismiss
+lets one go. Nothing about a card's height depends on the pointer: when actions
 came out on hover, moving down a spread list grew and shrank the card under the
 pointer, so everything below it jumped up and down.
 
 **History is reached by intent, not by a corner.** The launcher is the shell's
 keyboard home and the island its pointer home, and the old corner tray was neither:
-it opened when the cursor swept past on the way to a window's close button. Now the
-history is the launcher with `notifications ` already typed (section 19, and
-`banditshell notifications open`). Three doors lead there from the island: the
-overview's "N notifications" row, the "all notifications" button at the foot of a
-spread stack, and the "N held while quiet" notice that shows for a moment when quiet
-ends and something was kept back, which opens `notifications held `. `Launcher.show`
+it opened when the cursor swept past on the way to a window's close button. The
+overview shows the three apps that spoke last as real cards under the player, so
+opening the island shows what came in without a second press; a notification used
+to be visible there only while it was still arriving. A row under the three says
+how many more there are and opens the island's history. The whole history is also
+the launcher with `notifications ` already typed (section 19, and
+`banditshell notifications open`). Other doors lead there from the island: the
+"all notifications" button at the foot of a spread stack, and the "N held while
+quiet" notice that shows for a moment when quiet ends and something was kept back,
+which opens `notifications held `. `Launcher.show`
 takes the text to start with. A person who chooses `corner` still gets the live
 popups in a slim `NotificationCorner` at the top right, with no history, no arms
 and no pin; reading the history is the launcher either way.
+
+**Each notification is its own tile, and the tiles are joined.** In the
+overview and the history a notification is a tile of `colour.tile`, a veil of
+paper over whatever the island shows, so the cover's colour field behind the
+overview comes through the cards as it does through the rest of the island;
+they were solid at first and read as grey slabs on a coloured island. A tile is
+set a small padding in from the island's
+edge so the column's corners are concentric with the island's. Tiles that
+border each other are joined into one column, as on Android: a hairline seam
+between them and nearly square corners where they meet, full corners only at
+the column's two ends. A tile comes loose when it is touched: dragging it
+sideways rounds all four of its corners, and the corners of its neighbours that
+faced it round too, so it reads as a card lifted out of the column. The
+neighbours are tugged a little after it, the next ones a fifth of its travel
+and the ones beyond less, each on its own spring, and once it is pulled past
+the throw point they let go and swing home, the way Android 16 lets a swiped
+notification come off its column. Let go
+early and it springs back and joins again; throw it and the column closes up
+behind it and its neighbours square their corners as they meet. The anatomy
+borrows the phone's: the app's mark large on the left, the title first with the
+time on its line, the text under it, and the app's name with its count at the
+foot. The tile is only for lists: a single notification arriving at the
+island's large size keeps the island as its card and uses the same order of
+lines. Picked on 2026-10-18 from three mocks, then joined the same day; plates
+under a folded app went with the joining, since they split the column, and the
+count at the foot is what says an app is folded.
+
+**One card per app.** The overview and the history fold notifications by app:
+the app that spoke last is on top, and its card is its newest notification with
+a count beside the name. A click on a folded card opens the group up to all of
+them, newest first, instead of opening the notification, and the count folds it
+again. A sideways swipe on a folded card clears the whole app, so forty finished
+downloads go in one gesture; unfold the group to let one go. Folding is also what
+keeps the history quick: it built a full card for every notification on the
+click that opened it, a quarter of a second with forty of them, and now it
+builds one per app. The rows of the list are placed from one running sum that is
+redone whenever a row comes or goes; each row used to add up the rows above it
+on its own, and a row born while another was being removed kept a stale sum and
+sat on top of its neighbour or left a gap.
 
 Message text on a screen is private, so the rows appear only when the query is
 clearly about notifications (`notifications`, `unread`, `held`, with `from <app>` and
@@ -4078,11 +4166,17 @@ are not offered at all.
 
 Letting one go is a sideways gesture, animated before anything changes
 underneath. Flick it either way and it follows the pointer, fading as it goes;
-past a third of its width, or thrown fast, it flies off that side and is gone,
-and only then does the stack close up or the island fold away. Short of that it
-springs back. The close mark and a right click do the same flick to the right.
+past a fifth of its width, or thrown fast, it flies off that side and is gone,
+and only then does its row close up or the island fold away. Every list does
+this, the history included: a left swipe there used to fly the card off and
+leave its empty row behind. Short of a throw the card springs back to the
+middle with the finger's speed and a small bounce, and a press catches it
+anywhere on the way, flying off included, which takes the throw back. The close
+mark and a right click do the same flick to the right.
 Up and down never dismiss: a vertical drag on a card scrolls a spread list the
-way a finger scrolls a phone, and a throw keeps it gliding. Swiping up to put a
+way a finger scrolls a phone, and a throw keeps it gliding. Past the top of the
+list the stack gives, stretching down under the finger with growing
+resistance, and springs back when let go. Swiping up to put a
 card away used to share that direction, and it read as the card vanishing
 instead of the list moving, so it is gone; a card that times out still lands in
 the history. A stack carries "clear all" at its foot, folded or spread and
@@ -4223,9 +4317,9 @@ overview opens width first: the island reaches its full width in the first half
 of the way, then grows down, and its contents fade in only in the second half,
 so nothing is ever laid out wider than the island holding it. A row that has no
 place in the overview fades where it is rather than drifting through the player.
-Live rows sit right under the clock, the player under them and the notifications
-row last, so the rows travelling in from the capsule have the shortest way to
-go.
+Live rows sit right under the clock, the player under them, then the newest
+notifications and the row for the rest last, so the rows travelling in from the
+capsule have the shortest way to go.
 
 ### Hover
 

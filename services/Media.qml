@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.Mpris
+import "player-choice.js" as PlayerChoice
 
 Singleton {
     id: root
@@ -48,21 +49,21 @@ Singleton {
         return root.isPreview(player) ? 1 : 2;
     }
 
-    readonly property MprisPlayer active: {
-        const list = root.players;
-        if (root.chosen && list.includes(root.chosen))
-            return root.chosen;
-        let best = null;
-        let top = -1;
-        for (const p of list) {
-            const rank = root.rank(p);
-            const score = (p.isPlaying && rank > 1 ? 100 : 0) + rank * 10 + (p === root.recent ? 5 : 0);
-            if (score > top) {
-                top = score;
-                best = p;
-            }
+    readonly property MprisPlayer active: PlayerChoice.shown(root.players, root.chosen, root.recent, p => root.rank(p))
+
+    PersistentProperties {
+        id: kept
+
+        reloadableId: "media"
+
+        property string recent: ""
+
+        onLoaded: {
+            if (root.recent)
+                kept.recent = root.recent.dbusName ?? "";
+            else
+                root.recent = root.players.find(p => p.dbusName === kept.recent) ?? null;
         }
-        return best;
     }
 
     readonly property var siteNames: ({
@@ -182,6 +183,7 @@ Singleton {
         if (root.rank(player) < 2)
             return;
         root.recent = player;
+        kept.recent = player.dbusName ?? "";
         if (root.chosen !== player)
             root.chosen = null;
     }
@@ -290,7 +292,9 @@ Singleton {
 
     Component.onCompleted: {
         root.lastPlayer = root.active?.dbusName ?? "";
-        root.recent = root.players.find(p => p.isPlaying && root.rank(p) > 1) ?? null;
+        const playing = root.players.find(p => p.isPlaying && root.rank(p) > 1);
+        if (playing)
+            root.started(playing);
         root.adoptLength();
         root.place(root.active?.position ?? 0);
         owning.ask();
