@@ -46,12 +46,13 @@ Singleton {
             root.send(key, explicit);
             return;
         }
-        if (!explicit && root.state === "failed")
+        if (!explicit && (root.missing || root.state === "failed"))
             return;
         const waiting = Object.assign({}, root.waiting);
         waiting[key] = waiting[key] === true || explicit;
         root.waiting = waiting;
-        root.mayBuild = true;
+        if (explicit)
+            root.mayBuild = true;
         root.start();
     }
 
@@ -103,6 +104,7 @@ Singleton {
             root.state = said.state;
             if (said.state === "failed") {
                 root.failedAt = Date.now();
+                retry.restart();
                 console.warn(`Dictionary: the offline dictionary could not be built: ${said.error ?? ""}`);
             }
             if (said.state === "ready") {
@@ -153,10 +155,21 @@ Singleton {
                 root.state = "failed";
                 root.failedAt = Date.now();
                 root.missing = true;
+                retry.restart();
                 return;
             }
             if (Object.keys(root.waiting).length && (root.mayBuild || !root.missing))
                 root.start();
+        }
+    }
+
+    Timer {
+        id: retry
+
+        interval: root.retryAfter + 1000
+        onTriggered: if (Object.values(root.waiting).some(explicit => explicit)) {
+            root.mayBuild = true;
+            root.start();
         }
     }
 

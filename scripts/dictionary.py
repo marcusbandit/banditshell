@@ -6,6 +6,7 @@ import signal
 import sqlite3
 import sys
 import tempfile
+import time
 import urllib.request
 import zipfile
 
@@ -20,6 +21,7 @@ ENDINGS = [
 MOST_EXAMPLES = 2
 MOST_RELATED = 8
 MOST_COMPLETIONS = 6
+STALE = 60 * 60
 
 
 def say(message):
@@ -108,8 +110,9 @@ def entry_of(word, entries, synsets):
 def build(db, source):
     os.makedirs(os.path.dirname(db), exist_ok=True)
     for old in os.listdir(os.path.dirname(db)):
-        if old.startswith("dictionary-"):
-            shutil.rmtree(os.path.join(os.path.dirname(db), old), ignore_errors=True)
+        path = os.path.join(os.path.dirname(db), old)
+        if old.startswith("dictionary-") and time.time() - os.path.getmtime(path) > STALE:
+            shutil.rmtree(path, ignore_errors=True)
     work = tempfile.mkdtemp(prefix="dictionary-", dir=os.path.dirname(db))
     try:
         download = os.path.join(work, "wordnet.zip")

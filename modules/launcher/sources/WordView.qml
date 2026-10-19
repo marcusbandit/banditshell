@@ -6,6 +6,7 @@ import qs.config
 import qs.components
 import qs.services
 import "../../../services/dictionary.js" as Words
+import "../search.js" as Search
 
 Item {
     id: root
@@ -22,8 +23,15 @@ Item {
     readonly property string word: Words.cleanWord(root.typed)
 
     readonly property var answer: root.word ? Dictionary.answers[root.word] : undefined
-    readonly property var entry: root.answer?.entry ?? null
-    readonly property var online: Dictionary.onlineEnabled && root.word ? Dictionary.online.answers[root.word] ?? null : null
+    readonly property var onlineAnswer: Dictionary.onlineEnabled && root.word ? Dictionary.online.answers[root.word] ?? null : null
+
+    property var entry: null
+    property var online: null
+
+    onAnswerChanged: if ((root.answer?.entry ?? null) !== root.entry)
+        root.entry = root.answer?.entry ?? null
+    onOnlineAnswerChanged: if (root.onlineAnswer !== root.online)
+        root.online = root.onlineAnswer
     readonly property bool onlineBusy: Dictionary.onlineEnabled && !!root.word && !root.online && Dictionary.online.failures[root.word] === undefined
     readonly property bool localBusy: !!root.word && root.answer === undefined && (Dictionary.ready || Dictionary.building || Dictionary.state === "starting")
     readonly property bool busy: root.localBusy || root.onlineBusy
@@ -32,9 +40,15 @@ Item {
     readonly property string asked: root.entry?.asked && root.entry.asked.toLowerCase() !== root.entry.word.toLowerCase() ? root.entry.asked : ""
 
     onWordChanged: root.lookUp()
-    Component.onCompleted: root.lookUp()
+    Component.onCompleted: {
+        root.entry = root.answer?.entry ?? null;
+        root.online = root.onlineAnswer;
+        root.lookUp();
+    }
 
     function lookUp(): void {
+        if (!root.word)
+            return;
         Dictionary.want(root.word, true);
         Dictionary.online.want(Dictionary.onlineEnabled ? root.word : "");
     }
@@ -75,23 +89,21 @@ Item {
     property int selected: -1
     property string listedWord: ""
 
-    function firstPickable(from: int, step: int): int {
-        for (let i = from; i >= 0 && i < root.items.length; i += step)
-            if (!root.items[i].header)
-                return i;
-        return -1;
-    }
-
     onItemsChanged: {
         const kept = root.items[root.selected];
         if (root.word !== root.listedWord || !kept || kept.header) {
             root.listedWord = root.word;
-            root.selected = root.firstPickable(0, 1);
+            root.selected = Search.nextPickable(root.items, 0, 1);
             list.positionViewAtBeginning();
+        } else {
+            list.positionViewAtIndex(root.selected, ListView.Contain);
         }
     }
 
     readonly property var current: root.items[root.selected] ?? null
+    readonly property string currentKey: `${root.word}|${root.current?.key ?? ""}`
+
+    onCurrentKeyChanged: detailScroll.contentY = 0
 
     readonly property string peekWord: root.current?.kind === "word" ? root.current.word.toLowerCase() : ""
     onPeekWordChanged: if (root.peekWord)
@@ -124,8 +136,7 @@ Item {
     readonly property string actionLabel: !root.current ? (root.word && !root.busy ? "Search Wiktionary" : "") : root.current.kind === "word" ? `Look up ${root.current.word}` : "Copy definition"
 
     function move(step: int): void {
-        const next = root.firstPickable(root.selected + step, step);
-        const at = next >= 0 ? next : root.firstPickable(step > 0 ? 0 : root.items.length - 1, step);
+        const at = Search.nextPickable(root.items, root.selected + step, step);
         if (at < 0)
             return;
         root.selected = at;
@@ -324,14 +335,6 @@ Item {
                 visible: text !== ""
                 text: root.detail?.source ?? ""
                 color: Appearance.colour.textFaint
-            }
-        }
-
-        Connections {
-            target: root
-
-            function onCurrentChanged(): void {
-                detailScroll.contentY = 0;
             }
         }
     }

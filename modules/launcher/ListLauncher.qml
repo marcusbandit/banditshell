@@ -50,11 +50,12 @@ LauncherConcept {
     }
 
     function present(view: var): void {
+        const before = root.shownView ? root.shownView.before : query.text;
+        root.retypeQuery(view.text ?? "");
         root.shownView = {
             component: view.component,
-            before: root.shownView ? root.shownView.before : query.text
+            before: before
         };
-        root.retypeQuery(view.text ?? "");
         Qt.callLater(query.forceActiveFocus);
     }
 

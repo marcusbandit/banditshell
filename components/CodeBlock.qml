@@ -210,7 +210,7 @@ Item {
             enabled: root.maxPan > 0
 
             onWheel: event => {
-                if (event.pixelDelta.x === 0 && event.angleDelta.x === 0) {
+                if (Math.abs(event.pixelDelta.x) <= Math.abs(event.pixelDelta.y) && Math.abs(event.angleDelta.x) <= Math.abs(event.angleDelta.y)) {
                     event.accepted = false;
                     return;
                 }

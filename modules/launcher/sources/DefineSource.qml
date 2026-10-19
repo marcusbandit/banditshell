@@ -17,16 +17,34 @@ QtObject {
     readonly property bool waitingForWord: Words.waitingForWord(root.search.query)
     readonly property bool onlineWanted: root.explicit && Dictionary.onlineEnabled
 
+    readonly property bool quiet: root.search.quiet
+
     onWordChanged: root.lookUp()
     onExplicitChanged: root.lookUp()
     onOnlineWantedChanged: root.lookUp()
+    onQuietChanged: root.lookUp()
 
     function lookUp(): void {
+        if (root.quiet)
+            return;
         const asked = Words.ask(root.search.text);
         const word = asked?.word ?? "";
         const explicit = !!asked?.explicit;
-        Dictionary.want(word, explicit);
         Dictionary.online.want(explicit && Dictionary.onlineEnabled ? word : "");
+        if (explicit) {
+            root.bare.stop();
+            Dictionary.want(word, true);
+        } else {
+            root.bare.word = word;
+            root.bare.restart();
+        }
+    }
+
+    readonly property Timer bare: Timer {
+        property string word: ""
+
+        interval: 150
+        onTriggered: Dictionary.want(root.bare.word, false)
     }
 
     readonly property bool intent: root.explicit || root.waitingForWord
