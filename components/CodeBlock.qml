@@ -210,6 +210,10 @@ Item {
             enabled: root.maxPan > 0
 
             onWheel: event => {
+                if (event.pixelDelta.x === 0 && event.angleDelta.x === 0) {
+                    event.accepted = false;
+                    return;
+                }
                 const pixels = event.pixelDelta.x;
                 if (pixels !== 0) {
 

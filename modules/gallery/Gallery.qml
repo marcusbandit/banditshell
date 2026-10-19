@@ -88,15 +88,6 @@ Item {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
 
-            MouseArea {
-                anchors.fill: parent
-
-                onWheel: wheel => {
-                    const dy = wheel.angleDelta.y / 120 * Appearance.padding.huge;
-                    navScroll.contentY = Math.max(0, Math.min(Math.max(0, navScroll.contentHeight - navScroll.height), navScroll.contentY - dy));
-                }
-            }
-
             Column {
                 id: navCol
 
