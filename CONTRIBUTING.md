@@ -1,8 +1,7 @@
 # Contributing
 
 One naming scheme runs through the whole path from idea to main: the issue,
-the branch, every commit, the PR title and the squash commit it becomes. It is
-the scheme T3 Code uses, applied to banditshell's packages.
+the branch, every commit, the PR title and the squash commit it becomes.
 
 ## The flow
 
@@ -10,11 +9,13 @@ the scheme T3 Code uses, applied to banditshell's packages.
    title states the outcome, the body says what done looks like.
 2. **Branch** off `main` as `<type>/<issue>-<slug>`.
 3. **Commit** as you go, each message `<type>(<scope>): <outcome>`.
-4. **Open a PR** whose title follows the same pattern and whose body ends in
+4. **Try it live** with `banditshell dev try <branch>` and go back with
+   `banditshell dev back`. See below for what `try` does not cover.
+5. **Open a PR** whose title follows the same pattern and whose body ends in
    `Closes #<issue>`.
-5. **Review and checks.** CI must be green and review comments answered, each
+6. **Review and checks.** CI must be green and review comments answered, each
    fix as a new commit on the branch. Never amend and force-push a pushed branch.
-6. **Squash merge** with `gh pr merge --squash --delete-branch`. The PR title
+7. **Squash merge** with `gh pr merge --squash --delete-branch`. The PR title
    becomes the one commit on main, with `(#N)` appended by GitHub.
 
 ## Types
@@ -51,6 +52,23 @@ that genuinely spans two packages lists both, comma separated:
 
 The slug is a few lowercase hyphenated words naming the outcome. This is the
 name `banditshell dev try` takes, and it matches on any part of it.
+
+## Trying a branch live
+
+`banditshell dev try` relaunches only the shell's front end from the worktree:
+the QML, and the helpers it builds there. It reloads as files change, but a hot
+reload resets singletons, so state can look wrong until a clean start. When a
+change does not seem to take, run `banditshell restart` before deciding it is
+broken.
+
+Hyprland's Lua is pointed at the worktree too, but Hyprland only reads it
+again when its config reloads, so changed binds and layouts wait for that.
+
+Some things `try` never swaps, because they come from what is installed rather
+than the worktree: the `banditshell` command on your `PATH`, systemd units and
+anything `install.sh` puts in place. To test the command, run it from the
+worktree, `BANDITSHELL_DIR=$PWD bash cli/banditshell`. The rest needs an install
+and a restart of the whole session.
 
 ## Commit and PR titles
 
