@@ -490,7 +490,7 @@ Item {
         clip: true
         opacity: root.liftFade
 
-        layer.enabled: root.scrollMax > 0 && root.fanned > 0
+        layer.enabled: root.fanned > 0 && (root.grouped || root.scrollMax > 0)
         layer.effect: ShaderEffect {
             id: edges
 
