@@ -311,6 +311,7 @@ Item {
             fanned: 1
             footed: false
             liftsAway: false
+            warm: root.watched
             maxHeight: Math.max(Appearance.font.line.small * 8, root.room - root.topInset - root.bottomInset - notices.y - (root.hasSummary ? summaryRow.height + column.spacing : 0))
 
             onDismissed: entry => Notifications.forget(entry)
