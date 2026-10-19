@@ -23,11 +23,16 @@ LauncherConcept {
     readonly property int resultCount: results.length
     readonly property string scrollInfo: `row ${root.selected} of ${root.results.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}`
 
-    readonly property real panelWidth: Appearance.sizes.launcherWidth
+    readonly property real viewWiden: 0.25
+    readonly property real panelWidth: Math.round(Appearance.sizes.launcherWidth * (1 + root.viewWiden * widen.value))
 
 
     property var capture: null
     property string beforeCapture: ""
+
+    property var shownView: null
+    property Component viewComponent: null
+    property string viewWord: ""
 
     readonly property var results: root.capture ? search.keyed([Object.assign({}, root.capture.row, {
                     detail: root.capture.said || root.capture.row.detail
@@ -47,23 +52,51 @@ LauncherConcept {
         root.input.forceActiveFocus();
     }
 
+    function present(view: var): void {
+        Appearance.instant = false;
+        root.morph();
+        root.viewWord = view.text ?? "";
+        root.viewComponent = view.component;
+        root.shownView = view;
+        Qt.callLater(query.forceActiveFocus);
+    }
+
+    function closeView(): void {
+        root.morph();
+        root.shownView = null;
+        Qt.callLater(query.forceActiveFocus);
+    }
+
+    function morph(): void {
+        if (!root.morphing) {
+            reshape.value = grow.value;
+            reshape.velocity = 0;
+        }
+        root.morphing = true;
+    }
+
+    property bool morphing: false
+
     function back(): void {
-        if (root.symbolsOpen)
+        if (root.shownView)
+            root.closeView();
+        else if (root.symbolsOpen)
             root.symbolsOpen = false;
         else
             root.hide();
     }
 
-    answerless: search.intent || !!root.capture || assistantCard.shown
+    answerless: search.intent || !!root.capture || !!root.shownView || assistantCard.shown
 
     LauncherSearch {
         id: search
 
         query: root.input?.text ?? ""
         screenName: root.screenName
-        quiet: !!root.capture
+        quiet: !!root.capture || !!root.shownView
         active: root.open
         target: root.restoreTo
+        presents: true
 
         onLaunch: what => root.launch(what)
         onLeave: what => {
@@ -75,6 +108,7 @@ LauncherConcept {
             root.input.cursorPosition = text.length;
         }
         onInquire: row => root.startCapture("ask", row)
+        onPresent: view => root.present(view)
     }
 
     readonly property int pinnedLimit: 12
@@ -102,7 +136,7 @@ LauncherConcept {
         return out;
     }
 
-    readonly property bool quick: !root.capture && !query.text && root.tiles.length > 0
+    readonly property bool quick: !root.capture && !root.shownView && !query.text && root.tiles.length > 0
     property int tile: 0
 
     readonly property bool asking: sheet.open
@@ -135,7 +169,7 @@ LauncherConcept {
 
     onCleared: {
         search.arrangeNow();
-        root.selected = 0;
+        root.selected = Math.max(0, Search.nextPickable(root.results, 0, 1));
         root.tile = 0;
         if (root.unsized) {
             root.unsized = false;
@@ -151,13 +185,17 @@ LauncherConcept {
         if (!Assistant.inPlace)
             Assistant.stop();
         root.capture = null;
+        root.shownView = null;
+        root.morphing = false;
+        viewIn.snap();
+        widen.snap();
         search.armed = "";
         search.colourEdit = null;
     }
 
     function accept(): void {
         search.arrangeNow();
-        if (root.capture)
+        if (root.capture || root.shownView)
             return;
         if (assistantCard.busy)
             return;
@@ -324,6 +362,14 @@ LauncherConcept {
         search.arrangeNow();
         if (root.capture)
             return root.claimCaptureKey(event);
+
+        if (root.shownView && !sheet.open) {
+            if (event.key === Qt.Key_Escape && !(event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier))) {
+                root.closeView();
+                return true;
+            }
+            return !!viewLoader.item?.claimKey(event);
+        }
 
         if (sheet.open) {
             switch (event.key) {
@@ -607,6 +653,37 @@ LauncherConcept {
 
     property bool unsized: false
 
+    Travel {
+        id: reshape
+
+        target: root.morphing ? panel.implicitHeight : reshape.value
+        longestFrame: root.longestFrame
+
+        onSettledChanged: if (reshape.settled && root.morphing) {
+            grow.value = reshape.value;
+            root.morphing = false;
+        }
+    }
+
+    Travel {
+        id: widen
+
+        target: root.shownView ? 1 : 0
+        epsilon: 0.002
+        longestFrame: root.longestFrame
+    }
+
+    Travel {
+        id: viewIn
+
+        readonly property real listShown: Math.max(0, 1 - viewIn.value * 2)
+        readonly property real viewShown: Math.max(0, viewIn.value * 2 - 1)
+
+        target: root.shownView ? 1 : 0
+        epsilon: 0.002
+        longestFrame: root.longestFrame
+    }
+
     Item {
         id: panel
 
@@ -618,13 +695,17 @@ LauncherConcept {
 
         x: (root.width - width) / 2
 
-        y: bandY + (restY - bandY) * root.revealed
+        readonly property real centredY: Math.max(root.inset, (root.height - panel.height) / 2)
+
+        readonly property real liftedY: restY + (centredY - restY) * widen.value
+
+        y: bandY + (liftedY - bandY) * root.revealed
 
         width: root.panelWidth
 
-        implicitHeight: Math.min(root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.quick ? quickLaunch.full : list.needed))
+        implicitHeight: Math.min(root.shownView ? Math.round(root.height * 0.75) : root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
 
-        height: grow.value * root.revealed
+        height: (root.morphing ? reshape.value : grow.value) * root.revealed
 
         visible: height > 0
 
@@ -655,8 +736,20 @@ LauncherConcept {
                         anchors.verticalCenter: parent.verticalCenter
                         width: Appearance.sizes.launcherIcon
                         size: Appearance.font.size.normal
-                        name: !root.capture ? "search" : root.capture.kind === "ask" ? root.capture.row.ask.icon : root.capture.kind === "alias" ? "label" : "keyboard"
-                        color: Appearance.colour.textFaint
+                        name: root.shownView ? "arrow_back" : !root.capture ? "search" : root.capture.kind === "ask" ? root.capture.row.ask.icon : root.capture.kind === "alias" ? "label" : "keyboard"
+                        color: root.shownView && backHover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+
+                        HoverHandler {
+                            id: backHover
+
+                            enabled: !!root.shownView
+                            cursorShape: Qt.PointingHandCursor
+                        }
+
+                        TapHandler {
+                            enabled: !!root.shownView
+                            onTapped: root.closeView()
+                        }
                     }
 
                     TextInput {
@@ -675,6 +768,10 @@ LauncherConcept {
                         selectedTextColor: Appearance.colour.accentText
                         clip: true
 
+                        readOnly: !!root.shownView
+                        opacity: viewIn.listShown
+                        cursorVisible: !root.shownView && activeFocus
+
                         Keys.onPressed: event => root.pressKey(event)
 
                         StyledText {
@@ -685,6 +782,17 @@ LauncherConcept {
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
                         }
+                    }
+
+                    StyledText {
+                        anchors.left: query.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: viewIn.viewShown > 0
+                        opacity: viewIn.viewShown
+                        text: root.viewWord
+                        font.pixelSize: Appearance.font.size.normal
+                        elide: Text.ElideRight
                     }
                 }
 
@@ -770,6 +878,39 @@ LauncherConcept {
 
                     width: parent.width
                     height: Math.max(0, panel.height - y - Appearance.padding.large)
+
+                    Loader {
+                        id: viewLoader
+
+                        y: (1 - viewIn.viewShown) * Appearance.padding.large
+                        width: Math.round(Appearance.sizes.launcherWidth * (1 + root.viewWiden)) - Appearance.padding.large * 2
+                        height: parent.height
+                        active: !!root.shownView || viewIn.value > 0
+                        visible: viewIn.viewShown > 0
+                        opacity: viewIn.viewShown
+                        sourceComponent: root.viewComponent
+
+                        Binding {
+                            target: viewLoader.item
+                            property: "typed"
+                            value: root.viewWord
+                            when: viewLoader.status === Loader.Ready
+                        }
+
+                        Connections {
+                            target: viewLoader.item
+                            ignoreUnknownSignals: true
+
+                            function onLeave(what: var): void {
+                                root.hide();
+                                what();
+                            }
+
+                            function onLaunch(what: var): void {
+                                root.launch(what);
+                            }
+                        }
+                    }
 
                     Item {
                         id: quickLaunch
@@ -879,8 +1020,9 @@ LauncherConcept {
                         y: (quickLaunch.full + Appearance.padding.large) * gridIn.value
                         width: parent.width
                         height: gridIn.value > 0 ? root.height : Math.max(0, body.height - y)
-                        enabled: !root.quick
-                        opacity: 1 - gridIn.value
+                        visible: viewIn.listShown > 0
+                        enabled: !root.quick && !root.shownView
+                        opacity: (1 - gridIn.value) * viewIn.listShown
                         clip: true
 
                         model: ScriptModel {
@@ -1120,7 +1262,7 @@ LauncherConcept {
             row: root.results[root.selected] ?? null
             colour: root.answerColour || (root.answerHolds || !peek.row?.peekColour ? "" : search.colourEdit?.key === peek.row.key ? search.colourEdit.hex : peek.row.peekColour)
             growsLeft: !peek.roomRight
-            wanted: root.open && !root.quick && root.settled && !root.capture && !root.asking && (!root.answerHolds || !!root.answerColour) && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
+            wanted: root.open && !root.quick && root.settled && !root.capture && !root.shownView && !root.asking && (!root.answerHolds || !!root.answerColour) && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
             longestFrame: root.longestFrame
 
             onColourPicked: (hex, done) => root.takeColour(hex, done)

@@ -623,7 +623,10 @@ banditshell/
 │   │                            is its exact step (tests/spring.test.js)
 │   ├── Pull.qml                 a directional swipe; the way in, and back out, that needs no hover
 │   ├── ScrollGesture.qml        two fingers on a touchpad, delivered as that same swipe
-│   ├── GlideList.qml            a list that scrolls by pixels and coasts when let go
+│   ├── WheelStep.qml            the wheel the way a browser scrolls: 100 px a notch added to
+│   │                            one target and glided to, touchpad pixels 1:1; every
+│   │                            scrolling view carries one and the keys share its target
+│   ├── GlideList.qml            a list that scrolls through WheelStep
 │   ├── Separator.qml            a hairline divider
 │   ├── StyledText.qml           the ONE text element
 │   ├── Icon.qml                 the ONE icon glyph; verifies the name exists
@@ -3225,7 +3228,7 @@ this shell's two already-shipped scroll consumers, rather than recalled.
 lift send no farewell, and fingers that merely stop moving send nothing either,
 so the only evidence in both cases is silence. The end is therefore a timer
 restarted by every event and lapsing at `anim.fast`, which is precisely what
-`GlideList`'s coast already does for the identical question, under a floor of
+`GlideList`'s coast once did for the identical question, under a floor of
 fifty milliseconds that no setting can get below: every duration in this shell is
 a tier off `anim.base`, `banditshell config set anim.base 0` is accepted as written, and
 a lapse of zero would make every single event its own complete gesture and stop
