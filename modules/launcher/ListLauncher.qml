@@ -18,7 +18,9 @@ LauncherConcept {
     input: query
     view: list
     rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
-    travel: panel.implicitHeight
+    travel: panel.restLift
+    reach: panel.restLift
+    tabWidth: panel.barHeight * 2
 
     readonly property int resultCount: results.length
     readonly property string scrollInfo: `row ${root.selected} of ${root.results.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}`
@@ -653,6 +655,40 @@ LauncherConcept {
 
     property bool unsized: false
 
+    onShownChanged: panel.judgeArrival()
+    onDraggingChanged: panel.judgeArrival()
+
+    Spring {
+        id: stretch
+
+        stiffness: Appearance.spring.stiffness * 1.9
+        damping: 2 * Math.sqrt(stretch.stiffness * stretch.mass)
+        epsilon: 0.002
+    }
+
+    Spring {
+        id: wide
+
+        target: panel.arrived ? 1 : 0
+        stiffness: Appearance.spring.stiffness * 1.9
+        damping: 1.6 * Math.sqrt(wide.stiffness * wide.mass)
+        epsilon: 0.002
+    }
+
+    Spring {
+        id: sway
+
+        target: root.dragging ? panel.swayFor(root.dragAside) : 0
+    }
+
+    FrameAnimation {
+        id: motion
+
+        running: panel.visible && (root.dragging || panel.lift !== panel.lastLift || Math.abs(panel.speed) > 1)
+
+        onTriggered: panel.track(motion.frameTime)
+    }
+
     Travel {
         id: reshape
 
@@ -688,38 +724,126 @@ LauncherConcept {
         id: panel
 
         readonly property real barOffset: Appearance.padding.large + field.height / 2
+        readonly property real barHeight: barOffset * 2
 
-        readonly property real restY: root.height / 2 - barOffset
+        readonly property real restY: root.height * Config.values.launcher.list.searchAt - barOffset
 
         readonly property real bandY: root.height - root.inset
 
-        x: (root.width - width) / 2
+        readonly property real restLift: bandY - liftedY
+        readonly property real lift: restLift * root.revealed
+        property real lastLift: 0
+        property real speed: 0
 
-        readonly property real centredY: Math.max(root.inset, (root.height - panel.height) / 2)
+        readonly property real stretchRoom: Appearance.sizes.melt
+        readonly property real eagerness: barHeight * 0.5
+        readonly property real letGo: barHeight * 1.5
+        readonly property real reluctance: Math.max(0, Math.min(1, (restLift - lift) / letGo))
+
+        readonly property real centredY: Math.max(root.inset, (root.height - fullHeight) / 2)
 
         readonly property real liftedY: restY + (centredY - restY) * widen.value
 
-        y: bandY + (liftedY - bandY) * root.revealed
+        readonly property real fullHeight: root.morphing ? reshape.value : grow.value
 
-        width: root.panelWidth
+        property bool stuck: true
+        property bool arrived: false
+
+        readonly property real swayRoom: barHeight * 0.5
+
+        function swayFor(aside: real): real {
+            const given = swayRoom * (1 - 1 / (1 + Math.abs(aside) * 0.35 / swayRoom));
+            return aside < 0 ? -given : given;
+        }
+
+        readonly property real tabStretch: Math.max(-0.25, Math.min(0.6, stretch.value))
+        readonly property real bodyStretch: Math.max(-0.06, Math.min(0.15, stretch.value))
+
+        readonly property real tabShapeHeight: stuck ? lift : barHeight * (1 + tabStretch)
+        readonly property real tabShapeWidth: stuck ? root.tabWidth * barHeight / Math.max(barHeight, lift) : root.tabWidth / (1 + tabStretch)
+
+        function judgeArrival(): void {
+            if (root.shown && root.dragging) {
+                if (arrived && restLift - lift >= letGo)
+                    arrived = false;
+                else if (!arrived && restLift - lift < letGo * 0.5)
+                    arrived = true;
+                return;
+            }
+            if (root.dragging)
+                arrived = lift >= restLift - eagerness || (arrived && lift >= restLift - eagerness - stretchRoom);
+            else
+                arrived = root.shown;
+            if (Appearance.still)
+                wide.snap();
+        }
+
+        function track(dt: real): void {
+            if (Appearance.still) {
+                speed = 0;
+                lastLift = lift;
+                stretch.target = 0;
+                if (!stretch.held)
+                    stretch.snap();
+                return;
+            }
+            const t = Math.max(0.001, Math.min(dt, 0.1));
+            speed += ((lift - lastLift) / t - speed) * (1 - Math.exp(-t / 0.05));
+            lastLift = lift;
+            stretch.target = !root.dragging ? 0 : Math.min(0.5, Math.abs(speed) / 6000) + (arrived && root.shown ? 0.12 * reluctance : 0);
+        }
+
+        onLiftChanged: {
+            if (stuck && lift > barHeight + stretchRoom) {
+                stuck = false;
+                stretch.release();
+                stretch.velocity *= 0.3;
+                if (Appearance.still) {
+                    stretch.target = 0;
+                    stretch.snap();
+                }
+            } else if (!stuck && lift <= tabShapeHeight) {
+                stuck = true;
+            }
+            if (stuck)
+                stretch.hold(Math.max(0, lift / barHeight - 1));
+            panel.judgeArrival();
+        }
+
+        onVisibleChanged: if (!visible) {
+            speed = 0;
+            lastLift = lift;
+        }
+
+        x: (root.width - width) / 2 + sway.value
+
+        y: bandY - lift
+
+        width: tabShapeWidth + (root.panelWidth / (1 + bodyStretch) - tabShapeWidth) * wide.value
 
         implicitHeight: Math.min(root.shownView ? Math.round(root.height * 0.75) : root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
 
-        height: (root.morphing ? reshape.value : grow.value) * root.revealed
+        height: tabShapeHeight + (fullHeight * (1 + bodyStretch) - tabShapeHeight) * wide.value
 
         visible: height > 0
 
         Item {
             anchors.fill: parent
             clip: true
+            opacity: Math.max(0, Math.min(1, wide.value))
 
             Column {
                 id: layout
 
-                x: Appearance.padding.large
+                x: Appearance.padding.large + (panel.width - root.panelWidth) / 2
                 y: Appearance.padding.large
                 width: root.panelWidth - Appearance.padding.large * 2
                 spacing: Appearance.padding.normal
+
+                transform: Scale {
+                    origin.x: layout.width / 2
+                    xScale: 1 / (1 + panel.bodyStretch)
+                }
 
                 Item {
                     id: field
@@ -877,7 +1001,7 @@ LauncherConcept {
                     id: body
 
                     width: parent.width
-                    height: Math.max(0, panel.height - y - Appearance.padding.large)
+                    height: Math.max(0, panel.fullHeight - y - Appearance.padding.large)
 
                     Loader {
                         id: viewLoader

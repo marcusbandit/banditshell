@@ -17,6 +17,8 @@ Item {
     property Item view: null
     property real rowPitch: 0
     property real travel: 0
+    property real reach: 0
+    property real tabWidth: 0
 
     property bool shown: false
     readonly property bool open: root.shown
@@ -67,6 +69,7 @@ Item {
 
     property bool dragging: false
     property real dragProgress: 0
+    property real dragAside: 0
 
     readonly property real revealed: root.dragging ? root.dragProgress : rise.value
 
@@ -85,6 +88,8 @@ Item {
 
         root.showing();
         root.shown = true;
+        if (Appearance.still)
+            rise.snap();
         root.input.text = text;
         root.input.cursorPosition = text.length;
         root.cleared();
@@ -94,6 +99,8 @@ Item {
 
     function hide(): void {
         root.shown = false;
+        if (Appearance.still)
+            rise.snap();
         root.input.focus = false;
         root.hidden();
         Hypr.restoreFocus(root.restoreTo);
@@ -107,15 +114,17 @@ Item {
             root.show();
     }
 
-    function dragTo(fraction: real): void {
-        root.dragging = true;
+    function dragTo(fraction: real, aside: real): void {
         root.dragProgress = Math.max(0, Math.min(fraction, 1));
+        root.dragging = true;
+        root.dragAside = aside || 0;
     }
 
     function dragEnd(open: bool): void {
-        root.dragging = false;
-
         rise.value = root.dragProgress;
+
+        root.dragging = false;
+        root.dragAside = 0;
 
         if (open) {
             if (!root.shown)
@@ -239,7 +248,7 @@ Item {
 
         travel: root.travel
 
-        onPulled: fraction => root.dragTo(1 - fraction)
+        onPulled: (fraction, aside) => root.dragTo(1 - fraction, aside)
 
         onFinished: gone => root.dragEnd(!gone)
     }

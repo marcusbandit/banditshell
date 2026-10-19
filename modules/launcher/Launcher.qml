@@ -18,6 +18,8 @@ Item {
     readonly property Item maskItem: root.concept?.maskItem ?? null
 
     readonly property real drawnHeight: root.concept?.drawnHeight ?? 0
+    readonly property real reach: root.concept?.reach ?? 0
+    readonly property real tabWidth: root.concept?.tabWidth ?? 0
     readonly property int resultCount: root.concept?.resultCount ?? 0
     readonly property string scrollInfo: root.concept?.scrollInfo ?? "-"
 
@@ -46,10 +48,10 @@ Item {
             concept.scrubTo(fraction);
     }
 
-    function dragTo(fraction: real): void {
+    function dragTo(fraction: real, aside: real): void {
         const concept = root.build();
         if (concept.dragTo)
-            concept.dragTo(fraction);
+            concept.dragTo(fraction, aside);
     }
 
     function dragEnd(open: bool): void {

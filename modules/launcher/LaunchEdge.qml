@@ -13,7 +13,11 @@ Item {
 
     readonly property real swellBy: Math.max(1, Appearance.sizes.gap - 1)
 
-    readonly property real travelFull: Math.max(1, root.height - root.border * 2)
+    property real reach: 0
+
+    property real bulge: root.span
+
+    readonly property real travelFull: Math.max(1, root.reach > 0 ? root.reach : root.height - root.border * 2)
 
     readonly property real slack: Config.values.control.pullSlack
 
@@ -21,21 +25,21 @@ Item {
 
     readonly property real grab: Math.max(root.border + root.swellBy, Appearance.sizes.minTarget)
 
-    readonly property bool active: root.armed && (zone.containsMouse || zone.pressed)
+    readonly property bool active: root.armed && (zone.containsMouse || zone.pressed) && !zone.pulling
 
     readonly property Item maskItem: zone
 
     signal pressed
 
-    signal dragged(real fraction)
+    signal dragged(real fraction, real aside)
 
     signal finished(bool open)
 
     readonly property var blobs: swell.value <= 0.01 ? [] : [
         {
-            x: (root.width - root.span) / 2,
+            x: (root.width - root.bulge) / 2,
             y: root.height - (root.border + swell.value),
-            w: root.span,
+            w: root.bulge,
             h: root.border + swell.value,
             radius: Appearance.sizes.windowRadius,
             smooth: Math.min(Appearance.sizes.melt, (root.border + swell.value) / 2)
@@ -46,8 +50,8 @@ Item {
         zone.begin();
     }
 
-    function advance(up: real): void {
-        zone.advance(up);
+    function advance(up: real, aside: real): void {
+        zone.advance(up, aside);
     }
 
     function settle(): void {
@@ -75,6 +79,7 @@ Item {
         preventStealing: true
 
         property real from: 0
+        property real fromX: 0
         property bool pulling: false
         property real velocity: 0
 
@@ -92,7 +97,7 @@ Item {
             root.pressed();
         }
 
-        function advance(up: real): void {
+        function advance(up: real, aside: real): void {
 
             const now = Date.now();
             const dt = Math.max(1, Math.min(100, now - zone.lastEvent));
@@ -106,7 +111,7 @@ Item {
 
             zone.pulling = true;
             zone.progress = Math.max(0, Math.min(up / root.travelFull, 1));
-            root.dragged(zone.progress);
+            root.dragged(zone.progress, aside);
         }
 
         function settle(): void {
@@ -124,12 +129,13 @@ Item {
             scroll.finish();
 
             zone.from = mouse.y;
+            zone.fromX = mouse.x;
             zone.begin();
         }
 
         onPositionChanged: mouse => {
             if (zone.pressed)
-                zone.advance(zone.from - mouse.y);
+                zone.advance(zone.from - mouse.y, mouse.x - zone.fromX);
         }
 
         onReleased: {
@@ -175,7 +181,7 @@ Item {
                     }
                 }
 
-                zone.advance(-dy);
+                zone.advance(-dy, dx);
             }
             onEnded: zone.settle()
         }

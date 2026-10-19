@@ -764,6 +764,8 @@ PanelWindow {
             anchors.topMargin: chassis.streamReach
             border: win.border
             span: launcherLayer.open ? wallpaperLayer.item?.panelWidth ?? wallpaperLayer.width : launcherLayer.panelWidth
+            reach: launchEdge.target?.reach ?? 0
+            bulge: launcherLayer.open ? launchEdge.span : launcherLayer.tabWidth || launchEdge.span
 
             armed: true
 
@@ -784,11 +786,11 @@ PanelWindow {
                 launchEdge.aim();
             }
 
-            onDragged: fraction => {
+            onDragged: (fraction, aside) => {
                 launchEdge.aim();
-                launchEdge.target?.dragTo(fraction);
+                launchEdge.target?.dragTo(fraction, aside);
 
-                launchEdge.leaving?.dragTo(1 - fraction);
+                launchEdge.leaving?.dragTo(1 - fraction, 0);
             }
 
             onFinished: open => {
