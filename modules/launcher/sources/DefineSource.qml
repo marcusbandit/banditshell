@@ -15,6 +15,8 @@ QtObject {
     readonly property string word: root.asked?.word ?? ""
     readonly property bool explicit: !!root.asked?.explicit
     readonly property bool waitingForWord: Words.waitingForWord(root.search.query)
+    readonly property var modeRest: Words.modeOf(root.search.query)
+    readonly property bool alone: root.modeRest !== null
     readonly property bool onlineWanted: root.explicit && Dictionary.onlineEnabled
 
     readonly property bool quiet: root.search.quiet
@@ -115,7 +117,9 @@ QtObject {
         if (root.waitingForWord)
             return [root.note("hint", "Type a word to define", "", true)];
         if (!root.word)
-            return [];
+            return root.alone ? [Object.assign(root.note("missing", `No definition for “${root.modeRest}”`, "Search Wiktionary", false), {
+                        word: root.modeRest
+                    })] : [];
         if (!root.explicit)
             return root.localEntry ? [root.wordRow(root.localEntry, false, Ranking.WORD - 0.5)] : [];
         const found = root.localEntry || root.onlineAnswer ? [root.wordRow(root.localEntry, true, Infinity)] : [];
@@ -196,13 +200,7 @@ QtObject {
             {
                 icon: "content_copy",
                 label: "Copy definition",
-                short: "Copy",
                 run: () => root.copy(row.meaning || row.word)
-            },
-            {
-                icon: "content_copy",
-                label: "Copy word",
-                run: () => root.copy(row.word)
             },
             {
                 icon: "open_in_new",

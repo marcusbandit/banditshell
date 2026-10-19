@@ -11,7 +11,7 @@ function lib(file, names) {
 }
 
 const Translation = lib("services/translation.js", ["ask", "languageCode", "languageName", "readAnswer", "keyOf", "splitKey", "pageUrl", "localeCode"]);
-const Dictionary = lib("services/dictionary.js", ["ask", "waitingForWord", "readAnswer", "plain", "pageUrl", "senseLine", "onlineSensesOf"]);
+const Dictionary = lib("services/dictionary.js", ["ask", "modeOf", "waitingForWord", "readAnswer", "plain", "pageUrl", "senseLine", "onlineSensesOf"]);
 const Packages = lib("services/packages.js", ["ask", "readSystem", "readAur", "readFlatpakIndex", "readFlatpakInstalled", "searchFlatpaks", "rank", "installToken", "removalOf", "pageUrl", "detailOf"]);
 const Github = lib("services/github.js", ["ask", "readSummary", "matches", "ago", "numberUrl"]);
 const Browsing = lib("services/browsing.js", ["ask", "hostOf", "prepare", "match"]);
@@ -115,6 +115,18 @@ test.describe("define", () => {
         assert.strictEqual(Dictionary.ask("fir"), null);
         assert.strictEqual(Dictionary.ask("firefox nightly"), null);
         assert.strictEqual(Dictionary.ask("2+2"), null);
+    });
+
+    test.it("holds the launcher to definitions after a define head", () => {
+        assert.strictEqual(Dictionary.modeOf("define "), "");
+        assert.strictEqual(Dictionary.modeOf("define asdf qwer zxcv uiop jkl"), "asdf qwer zxcv uiop jkl");
+        assert.strictEqual(Dictionary.modeOf("Meaning of  42"), "42");
+        assert.strictEqual(Dictionary.modeOf("dict caf\u00e9"), "caf\u00e9");
+        assert.strictEqual(Dictionary.modeOf("define"), null);
+        assert.strictEqual(Dictionary.modeOf("defined "), null);
+        assert.strictEqual(Dictionary.modeOf("dictionary app"), null);
+        assert.strictEqual(Dictionary.modeOf("serendipity meaning"), null);
+        assert.strictEqual(Dictionary.modeOf("firefox"), null);
     });
 
     test.it("knows when the ask is waiting for its word", () => {

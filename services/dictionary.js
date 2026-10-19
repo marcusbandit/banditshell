@@ -7,6 +7,7 @@ var DANGLING = /^(?:of|for)$/i;
 var TAIL = /^(.+?)\s+(?:meaning|definition|defined|synonyms?)\s*\??$/i;
 var MEAN = /^what(?:\s+does|\s+do|'s|\u2019s)\s+(.+?)\s+mean\s*\??$/i;
 var MEANING_OF = /^what(?:'s|\u2019s|\s+is)\s+the\s+(?:meaning|definition)\s+of\s+(.+?)\s*\??$/i;
+var MODE = /^\s*(?:define|def|defn|dict|definition\s+of|meaning\s+of|synonyms?\s+(?:of|for))\s*:?\s+(.*)$/i;
 var WAITING = /^\s*(?:define|def|definition of|meaning of|synonyms? (?:of|for))\s+$/i;
 var WORD = new RegExp("^[" + LETTER + "][" + LETTER + "'\u2019.-]*(?: [" + LETTER + "'\u2019.-]+){0,3}$", "i");
 var BARE = new RegExp("^[" + LETTER + "][" + LETTER + "'-]{3,29}$", "i");
@@ -37,6 +38,11 @@ function ask(input) {
         return word ? { word: word, explicit: true } : null;
     }
     return BARE.test(text) ? { word: text.toLowerCase(), explicit: false } : null;
+}
+
+function modeOf(input) {
+    var hit = MODE.exec(String(input || ""));
+    return hit ? hit[1].trim() : null;
 }
 
 function waitingForWord(input) {

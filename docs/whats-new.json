@@ -20,6 +20,11 @@
           "text": "Forms like geese or engineers find goose and engineer, and a define search lists the words that start with what you typed."
         },
         {
+          "type": "features",
+          "severity": "minor",
+          "text": "Once you type define and a space, or pick Define a word, the launcher only looks words up. Apps, settings and files stay out of the list until you clear define from the field."
+        },
+        {
           "type": "ui",
           "severity": "minor",
           "text": "Everything that scrolls in the shell now scrolls the way a web browser does. Each mouse wheel notch moves a fixed distance and glides there, and a fast spin keeps every notch, so five notches go five times as far. The touchpad follows your fingers exactly."
