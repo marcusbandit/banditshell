@@ -26,6 +26,9 @@ QtObject {
     signal leave(var what)
     signal retype(string text)
     signal inquire(var row)
+    signal present(var view)
+
+    property bool presents: false
 
     readonly property list<QtObject> sources: [
         FallbackSource {
@@ -161,6 +164,8 @@ QtObject {
     readonly property var sourceCommands: root.sources.reduce((out, s) => out.concat(s.commands ?? []), [])
 
     readonly property bool sourceIntent: root.sources.some(s => !!s.intent)
+
+    readonly property QtObject aloneSource: root.sources.find(s => !!s.alone) ?? null
 
     readonly property var limits: root.sources.reduce((out, s) => Object.assign(out, s.caps ?? {}), Object.assign({}, root.caps))
 
@@ -1355,7 +1360,7 @@ QtObject {
         });
     }
 
-    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, root.sourceGroupLists, root.limits]
+    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, root.sourceGroupLists, root.aloneSource, root.limits]
 
     property var arranged: []
     property bool arrangePending: false
@@ -1382,6 +1387,8 @@ QtObject {
     function arrangement(): var {
         if (!root.text)
             return root.appRows;
+        if (root.aloneSource)
+            return Search.arrange(root.aloneSource.groups ?? [], root.limits);
         if (root.path)
             return root.pathRows;
         if (root.cliLine !== null)

@@ -120,6 +120,10 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
+        WheelStep {
+            flick: scroll
+        }
+
         Column {
             id: body
 

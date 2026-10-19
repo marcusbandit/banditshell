@@ -357,12 +357,18 @@ Item {
         }
 
         Flickable {
+            id: scroller
+
             anchors.fill: parent
             visible: root.isText && root.rendered
             clip: true
 
             contentHeight: document.implicitHeight
             boundsBehavior: Flickable.StopAtBounds
+
+            WheelStep {
+                flick: scroller
+            }
 
             Text {
                 id: document

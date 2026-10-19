@@ -1,8 +1,8 @@
 {
   "entries": [
     {
-      "id": "2026-10-19-2",
-      "date": "2026-10-19",
+      "id": "2026-10-20-2",
+      "date": "2026-10-20",
       "changes": [
         {
           "type": "issues",
@@ -23,6 +23,117 @@
           "type": "ui",
           "severity": "minor",
           "text": "The margin under the last notification in the island is as thin as the margin at its sides."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-20",
+      "date": "2026-10-20",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Pulling the launcher up from the bottom edge now keeps its top edge under your pointer the whole way. It comes out as a narrow tab that stretches as you pull, then springs open into the full launcher just before it reaches its place."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Dragging the open launcher back down, it thins and holds on for a moment before folding back into the tab and sliding into the edge. Moving sideways while you drag makes it lean a little toward the pointer."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A quick flick up opens the launcher on its way to the top, and the hotkey shows it at full size from the first frame. With reduced motion on, it simply appears."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "The launcher's search bar now rests two fifths of the way down the screen instead of in the middle. launcher.list.searchAt in config.json sets where, as a fraction of the screen height: 0.4 by default, 0.5 for the old place."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-19-3",
+      "date": "2026-10-19",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "If an app asks for your keyring before the shell has started, for example right after logging in with face unlock, the question now waits for the shell and shows in its card. It used to open GNOME's own window, which could land unseen on another workspace and leave the app frozen until you found it."
+        },
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "To make that work the shell writes two files to ~/.local/share/dbus-1/services: org.gnome.keyring.SystemPrompter.service and org.gnome.keyring.PrivatePrompter.service. When banditshell is not running, GNOME's window still comes after a few seconds. If you already had your own file under either name, the shell leaves it alone."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The password card for the keyring, polkit and Wi-Fi now looks like a page of the launcher. It rises from the bottom edge as the same frosted panel, with the password in the top row, the question under it, and the keys to press along the bottom."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The keyring and polkit card now comes up over a fullscreen window and takes the keyboard there. It used to wait, unseen, until the window left fullscreen."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Unlocking a keyring in the card failed about once in 256 tries: the right password was called wrong for as long as that prompt stayed open. It now works every time."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Choosing the password for a new keyring in the card no longer asks whether to store your passwords unencrypted."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Restarting the shell while the card was up no longer leaves a leftover copy of its keyring helper running, which turned down keyring questions asked while the shell was off."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Enter answers a yes or no question in the card, the same as the highlighted button."
+        }
+      ],
+      "impact": {
+        "restart": true
+      }
+    },
+    {
+      "id": "2026-10-19-2",
+      "date": "2026-10-19",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher has a dictionary that works offline and answers as you type. Type a word, and when nothing else matches it well its meaning comes first. Asking like a person works too: define serendipity, what does ephemeral mean, happy synonyms. The first time, it fetches a 10 MB English dictionary and keeps it on this computer."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Press Enter on a word to open its page inside the launcher: every meaning by part of speech, with examples and similar and opposite words, then Wiktionary's entry when you are online. The launcher widens and fades over to it. Enter copies the first meaning, Ctrl+Enter opens Wiktionary, and Esc goes back."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Forms like geese or engineers find goose and engineer, and a define search lists the words that start with what you typed."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Once you type define and a space, or pick Define a word, the launcher only looks words up. Apps, settings and files stay out of the list until you clear define from the field."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Everything that scrolls in the shell now scrolls the way a web browser does. Each mouse wheel notch moves a fixed distance and glides there, and a fast spin keeps every notch, so five notches go five times as far. The touchpad follows your fingers exactly."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "The Define words switch in Settings is now called Wiktionary definitions. Turned off, it stops the online lookups and leaves the offline dictionary on."
         }
       ]
     },

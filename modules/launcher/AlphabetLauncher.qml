@@ -14,6 +14,7 @@ LauncherConcept {
     view: list
     rowPitch: root.iconSize + Appearance.padding.normal
     travel: panel.fullHeight
+    reach: panel.fullHeight
 
     readonly property bool asking: sheet.open
 

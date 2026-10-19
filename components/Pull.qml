@@ -11,7 +11,7 @@ MouseArea {
 
     property bool armed: true
 
-    signal pulled(real fraction)
+    signal pulled(real fraction, real aside)
 
     signal finished(bool open)
 
@@ -83,7 +83,7 @@ MouseArea {
         root.velocity += (step / dt - root.velocity) * 0.4;
 
         root.progress = Math.max(0, Math.min(proj / root.travelFull, 1));
-        root.pulled(root.progress);
+        root.pulled(root.progress, dx * root.uy - dy * root.ux);
     }
 
     function settle(): void {

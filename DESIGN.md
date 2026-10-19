@@ -109,10 +109,13 @@ disappears; bright content gives a soft darker edge in its own colour, so the ro
 still reads. `edge.fullscreen` (Settings, Shape and motion) turns the ring off for a plain
 fullscreen.
 
-The launcher is the one exception (2026-10-17). Summoned over a fullscreen window, it opens on
+The launcher is one exception (2026-10-17). Summoned over a fullscreen window, it opens on
 the overlay surface that draws the edge ring, as one solid panel rising out of the ring with no
 band or sidebar behind it. It takes the keyboard while it is open and closes back to the plain
-fullscreen window. Every other panel and menu still refuses to open there.
+fullscreen window. The password card is the other (2026-10-19): an application is blocked on
+its answer, so it moves onto the same overlay surface and takes the keyboard there rather than
+waiting, unseen, for the window to leave fullscreen. Every other panel and menu still refuses to
+open there.
 
 The change is a motion, not a cut. Hyprland fades every top-layer surface out under a
 fullscreen window, so the overlay carries the transition: it starts as an exact copy of the
@@ -623,7 +626,10 @@ banditshell/
 │   │                            is its exact step (tests/spring.test.js)
 │   ├── Pull.qml                 a directional swipe; the way in, and back out, that needs no hover
 │   ├── ScrollGesture.qml        two fingers on a touchpad, delivered as that same swipe
-│   ├── GlideList.qml            a list that scrolls by pixels and coasts when let go
+│   ├── WheelStep.qml            the wheel the way a browser scrolls: 100 px a notch added to
+│   │                            one target and glided to, touchpad pixels 1:1; every
+│   │                            scrolling view carries one and the keys share its target
+│   ├── GlideList.qml            a list that scrolls through WheelStep
 │   ├── Separator.qml            a hairline divider
 │   ├── StyledText.qml           the ONE text element
 │   ├── Icon.qml                 the ONE icon glyph; verifies the name exists
@@ -980,7 +986,12 @@ banditshell/
 │   │                            second file here that knows a password, and it
 │   │                            holds one for less time than Lock does: the
 │   │                            secret goes straight down the helper's stdin and
-│   │                            is never stored
+│   │                            is never stored. An app that asks before the
+│   │                            shell is up (Nextcloud, two seconds into a
+│   │                            face-unlocked login) no longer gets gcr's box:
+│   │                            the helper points the name's D-Bus activation at
+│   │                            scripts/keyring-waiter.sh, so the question waits
+│   │                            on the bus for the shell
 │   ├── DarkMode.qml             whether apps are asked for dark: the freedesktop
 │   │                            colour-scheme key, read and watched with
 │   │                            gsettings, which portal-aware apps follow
@@ -1467,12 +1478,19 @@ banditshell/
 │   │                            for exactly those two moments, so a dead lock
 │   │                            client never shows what is behind it
 │   ├── password/PasswordPrompt.qml the keyring's and polkit's password question,
-│   │                            as a card. The
+│   │                            drawn as a page of the launcher (2026-10-19):
+│   │                            the same chassis blob rising out of the band,
+│   │                            the secret where the search row would be, the
+│   │                            dictionary page's bold heading below it and its
+│   │                            key-cap footer for the answers. The
 │   │                            one panel nobody asks for: an application wants
 │   │                            a secret and is BLOCKED on the answer, so it
-│   │                            draws over everything, a click off it is a NO
-│   │                            rather than a dismissal, and every panel that
-│   │                            takes the keyboard refuses it on the way in
+│   │                            draws over everything, a fullscreen window
+│   │                            included, a click off it is a NO rather than a
+│   │                            dismissal, and every panel that takes the
+│   │                            keyboard refuses it on the way in. Enter
+│   │                            answers a yes-or-no card the way it answers the
+│   │                            password field
 │   ├── cheatsheet/              the hotkey sheet, read from the Lua config scrape
 │   │   ├── CheatSheet.qml       the card, the two view choices, and the way out
 │   │   ├── BindList.qml         every bind there is, grouped by how it is pressed
@@ -1769,7 +1787,30 @@ banditshell/
 │   │                            AES-128-CBC) because gnome-keyring will not take
 │   │                            a password as a plain string over the bus.
 │   │                            `--selftest` holds a conversation with libgcr
-│   │                            itself rather than with a memory of the spec
+│   │                            itself rather than with a memory of the spec.
+│   │                            The shared key goes into HKDF without leading
+│   │                            zero bytes, as libgcr writes it; padded, one
+│   │                            exchange in 256 failed. A new password comes
+│   │                            back with a password strength above zero, or
+│   │                            gnome-keyring takes it for a blank one and
+│   │                            offers to store everything unencrypted. It
+│   │                            quits when the shell's end of its pipe is
+│   │                            gone, and never queues for the name, so a
+│   │                            helper outliving its shell cannot answer for it.
+│   │                            It does not let anyone replace it either, so a
+│   │                            late gcr-prompter cannot take a card away
+│   │                            On start it writes a user D-Bus service file
+│   │                            for both prompter names that runs the waiter,
+│   │                            unless someone else's file is already there
+│   ├── keyring-waiter.sh        what D-Bus starts when the keyring asks and the
+│   │                            shell's prompter is not on the bus: it owns
+│   │                            nothing, so the question stays queued for
+│   │                            whoever claims the name first. It waits up to
+│   │                            15 s while a banditshell instance is under 30 s
+│   │                            old, 5 s otherwise, then starts gcr-prompter;
+│   │                            gnome-keyring gives up at 25 s. A /bin/sh guard
+│   │                            in the service file goes straight to
+│   │                            gcr-prompter once this file is gone
 │   └── clip-record.sh           one clipboard event, as one line of JSON: the
 │                                MIME types, and the bytes when they are not text
 ├── src/                         the parts that need C (section 1), built by
@@ -3225,7 +3266,7 @@ this shell's two already-shipped scroll consumers, rather than recalled.
 lift send no farewell, and fingers that merely stop moving send nothing either,
 so the only evidence in both cases is silence. The end is therefore a timer
 restarted by every event and lapsing at `anim.fast`, which is precisely what
-`GlideList`'s coast already does for the identical question, under a floor of
+`GlideList`'s coast once did for the identical question, under a floor of
 fifty milliseconds that no setting can get below: every duration in this shell is
 a tier off `anim.base`, `banditshell config set anim.base 0` is accepted as written, and
 a lapse of zero would make every single event its own complete gesture and stop

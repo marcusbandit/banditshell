@@ -182,6 +182,8 @@ Item {
         }
 
         Flickable {
+            id: scroller
+
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: headRule.bottom
@@ -191,6 +193,10 @@ Item {
             clip: true
             contentHeight: body.implicitHeight
             boundsBehavior: Flickable.StopAtBounds
+
+            WheelStep {
+                flick: scroller
+            }
 
             Column {
                 id: body

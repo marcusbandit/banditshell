@@ -74,6 +74,15 @@ PanelWindow {
                 launcherLayer.concept?.input?.forceActiveFocus();
         })
 
+    readonly property bool passwordAbove: win.underFullscreen && (keyringLayer.open || (keyringLayer.item?.shown ?? false))
+
+    onPasswordAboveChanged: Qt.callLater(() => {
+        if (!win.passwordAbove)
+            keyringLayer.stackBefore(tip);
+        if (keyringLayer.open)
+            keyringLayer.item.takeKeys();
+    })
+
     onUnderFullscreenChanged: if (win.underFullscreen) {
         win.closePanels(null, false);
         menuLayer.hide();
@@ -372,9 +381,9 @@ PanelWindow {
         chassis: chassis
         covering: win.underFullscreen && Appearance.sizes.fullscreenEdge
         window: Hypr.fullscreenWindowOn(win.screen?.name ?? "")
-        hosting: win.launcherAbove
-        taking: win.launcherAbove && launcherLayer.open
-        hostedBlobs: body.lowered(launcherLayer.blobs)
+        hosting: win.launcherAbove || win.passwordAbove
+        taking: win.launcherAbove && launcherLayer.open || win.passwordAbove && keyringLayer.open
+        hostedBlobs: body.lowered([...launcherLayer.blobs, ...keyringLayer.blobs])
     }
 
     IdleInhibitor {
@@ -452,7 +461,7 @@ PanelWindow {
 
             railWanted: sidebar.railWanted
 
-            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs)]
+            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs, ...keyringLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs)]
         }
 
         BandProgress {
@@ -755,6 +764,8 @@ PanelWindow {
             anchors.topMargin: chassis.streamReach
             border: win.border
             span: launcherLayer.open ? wallpaperLayer.item?.panelWidth ?? wallpaperLayer.width : launcherLayer.panelWidth
+            reach: launchEdge.target?.reach ?? 0
+            bulge: launcherLayer.open ? launchEdge.span : launcherLayer.tabWidth || launchEdge.span
 
             armed: true
 
@@ -775,11 +786,11 @@ PanelWindow {
                 launchEdge.aim();
             }
 
-            onDragged: fraction => {
+            onDragged: (fraction, aside) => {
                 launchEdge.aim();
-                launchEdge.target?.dragTo(fraction);
+                launchEdge.target?.dragTo(fraction, aside);
 
-                launchEdge.leaving?.dragTo(1 - fraction);
+                launchEdge.leaving?.dragTo(1 - fraction, 0);
             }
 
             onFinished: open => {
@@ -851,15 +862,14 @@ PanelWindow {
         LazyPanel {
             id: keyringLayer
 
+            parent: win.passwordAbove ? fullscreenBorder.stage : body
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
 
             needed: Keyring.asked + Polkit.asked + PasswordRequest.asked > 0
 
             panel: PasswordPrompt {
-                holeX: chassis.holeX
-                holeY: chassis.holeY
-                holeWidth: chassis.holeWidth
-                holeHeight: chassis.holeHeight
+                inset: win.passwordAbove ? fullscreenBorder.ring : win.border
             }
         }
 

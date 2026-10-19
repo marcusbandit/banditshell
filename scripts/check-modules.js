@@ -750,11 +750,7 @@ function packageEdges(model) {
 }
 
 function renderMatrix(model) {
-    const names = [...model.names].sort((a, b) => {
-        const la = model.packages.get(a).data.layer;
-        const lb = model.packages.get(b).data.layer;
-        return la - lb || a.localeCompare(b);
-    });
+    const names = [...model.names].sort(byLayer(model));
     const table = packageEdges(model);
     const width = Math.max(...names.map(n => n.length));
     const lines = [];
@@ -777,6 +773,90 @@ function renderMatrix(model) {
     lines.push("rows depend on columns; a number is how many files of the row reach the column");
     lines.push("! not declared in requires   o declared and unused   . no dependency   - itself");
     return lines.join("\n");
+}
+
+function byLayer(model) {
+    return (a, b) => model.packages.get(a).data.layer - model.packages.get(b).data.layer || a.localeCompare(b);
+}
+
+function renderGraph(model) {
+    const order = byLayer(model);
+    const names = [...model.names].sort(order);
+    const id = name => name.replace(/-/g, "_");
+    const cell = text => String(text).replace(/\|/g, "\\|");
+    const known = list => list.filter(name => model.names.has(name));
+    const hard = new Map(names.map(name => [name, new Set(known(model.packages.get(name).data.requires.packages))]));
+    const requires = new Map(names.map(name => {
+        const set = allowedTargets(model, name);
+        set.delete(name);
+        return [name, new Set(known([...set]))];
+    }));
+    const reaches = (graph, from, to, seen = new Set()) => {
+        for (const next of graph.get(from) || []) {
+            if (next === to)
+                return true;
+            if (!seen.has(next)) {
+                seen.add(next);
+                if (reaches(graph, next, to, seen))
+                    return true;
+            }
+        }
+        return false;
+    };
+
+    const chart = ["```mermaid", "flowchart BT"];
+    for (const name of names)
+        chart.push(`    ${id(name)}["${name}<br/><small>layer ${model.packages.get(name).data.layer}</small>"]`);
+    for (const name of names) {
+        const direct = [...requires.get(name)].sort(order);
+        for (const target of direct) {
+            const optional = !hard.get(name).has(target);
+            const graph = optional ? requires : hard;
+            const implied = direct.some(other => other !== target && (optional || hard.get(name).has(other)) && reaches(graph, other, target));
+            if (!implied)
+                chart.push(`    ${id(name)} ${optional ? "-.->" : "-->"} ${id(target)}`);
+        }
+    }
+    chart.push("```");
+
+    const requiredBy = new Map(names.map(name => [name, new Set()]));
+    for (const name of names)
+        for (const target of requires.get(name))
+            requiredBy.get(target).add(name);
+    const list = set => [...set].sort(order).join(", ") || "none";
+    const rows = names.map(name => {
+        const data = model.packages.get(name).data;
+        const qml = data.owns.qml || [];
+        const services = (data.owns.services || []).map(service => `services/${service}.qml`);
+        const owned = [...qml, ...services].map(file => `\`${file}\``).join(", ") || "none";
+        return `| ${name} | ${data.layer} | ${cell(data.summary)} | ${cell(owned)} | ${list(requires.get(name))} | ${list(requiredBy.get(name))} |`;
+    });
+
+    return [
+        "# Dependency graph",
+        "",
+        "Generated from the `module.json` manifests by `node scripts/check-modules.js --graph`; do not edit",
+        "it by hand. After a manifest changes, run",
+        "`node scripts/check-modules.js --graph > docs/architecture/dependency-graph.md`. A test fails while",
+        "this page is out of date. The rules behind it are in [modules.md](modules.md).",
+        "",
+        "## Packages",
+        "",
+        `${names.length} packages. An arrow points from a package to one it requires; a dotted arrow is an`,
+        "optional requirement. Arrows that a longer path already implies are left out, so a package also",
+        "reaches everything below its arrows.",
+        "",
+        ...chart,
+        "",
+        "## Every package",
+        "",
+        "The QML a package owns is a file or a folder and everything below it. Where the code reaches",
+        "further than its manifest allows, `node scripts/check-modules.js --explain <package>` shows it.",
+        "",
+        "| package | layer | summary | owns QML | requires | required by |",
+        "|---|---|---|---|---|---|",
+        ...rows
+    ].join("\n");
 }
 
 function renderExplain(model, pkg, showAll) {
@@ -835,10 +915,11 @@ function renderExplain(model, pkg, showAll) {
 
 function usage() {
     return [
-        "usage: check-modules.js [--root <dir>] [--matrix | --explain <package> [--all] | --write-baseline | --warnings | --list]",
+        "usage: check-modules.js [--root <dir>] [--matrix | --graph | --explain <package> [--all] | --write-baseline | --warnings | --list]",
         "",
         "  (none)             check the module boundaries against modules.baseline.json",
         "  --matrix           package by package dependency matrix",
+        "  --graph            Markdown page with a Mermaid graph of the packages",
         "  --explain <pkg>    what a package needs, with file and line",
         "  --all              with --explain, list every reference",
         "  --warnings         also print the R4, R7 and R10 warnings",
@@ -855,6 +936,8 @@ function parseArguments(argv) {
             options.root = path.resolve(argv[++i] || "");
         } else if (arg === "--matrix") {
             options.mode = "matrix";
+        } else if (arg === "--graph") {
+            options.mode = "graph";
         } else if (arg === "--explain") {
             options.mode = "explain";
             options.explain = argv[++i] || "";
@@ -892,6 +975,10 @@ function run(argv, write) {
     }
     if (options.mode === "matrix") {
         write(renderMatrix(model));
+        return 0;
+    }
+    if (options.mode === "graph") {
+        write(renderGraph(model));
         return 0;
     }
     if (options.mode === "explain") {
@@ -933,7 +1020,7 @@ function run(argv, write) {
 module.exports = {
     stripCode, lineIndex, parseImports, parseQmldir, findSingletonUses, findForeignWrites, findConfigReads,
     findIpcTargets, findScriptUses, findPathStrings, namespaceOwner, readsCover, findCycles, validateManifest,
-    buildOwnership, scan, evaluate, compare, renderMatrix, renderExplain, run
+    buildOwnership, scan, evaluate, compare, renderMatrix, renderGraph, renderExplain, run
 };
 
 if (require.main === module) {

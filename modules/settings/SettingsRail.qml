@@ -135,6 +135,10 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
+        WheelStep {
+            flick: list
+        }
+
         SquircleRect {
             id: plate
 

@@ -284,6 +284,8 @@
 #                                modules.baseline.json; a new violation fails
 #   banditshell dev modules [--matrix]
 #                                which package reaches for which, as a table
+#   banditshell dev modules --graph
+#                                the same as a Markdown page with a Mermaid graph
 #   banditshell dev modules --explain <package>
 #                                what a package needs, from which file and line
 #   banditshell dev lint         check the house rules (comments, radii, motion,
@@ -2757,7 +2759,7 @@ route_dev() {
         command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
         cd "$SHELL_DIR" || exit 1
         case "${1:-}" in
-        "" | --matrix) exec node scripts/check-modules.js "$@" ;;
+        "" | --matrix | --graph) exec node scripts/check-modules.js "$@" ;;
         --explain)
             [ -n "${2:-}" ] || say_usage "dev modules --explain <package>"
             exec node scripts/check-modules.js "$@"
