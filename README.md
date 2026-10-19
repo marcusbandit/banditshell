@@ -74,17 +74,31 @@ whichever of pacman, apt, dnf, zypper, xbps or apk the machine has, asks for
 sudo only when a package needs installing, and a second run retries only the
 steps that failed.
 
-Where each distro stood when the installer last ran in a fresh container of it:
+banditshell is written and used every day on Arch. Everywhere else it has
+only been tried in fresh containers: the installer ran, and on Ubuntu the
+whole shell compiled. Nobody uses it daily there yet, so expect rough edges
+and please open an issue when you hit one.
 
-| Distro | Quickshell | Hyprland | What to know |
-| --- | --- | --- | --- |
-| Arch | yes | yes | Everything installs. |
-| Debian 13 | backports | backports | Add `trixie-backports` to your apt sources first. |
-| Fedora 44 | yes, 0.2 | COPR | Hyprland comes from a COPR. Quickshell 0.2 is older than the 0.3 this is built on. |
-| openSUSE Tumbleweed | yes | yes | |
-| Void | yes | no | Build Hyprland yourself. |
-| Alpine | no | yes | Build Quickshell yourself, and `apk add bash` before the installer. |
-| Ubuntu 24.04 | no | no | Its Qt 6.4 is too old. A newer Ubuntu may work. |
+| Distro | Support | Quickshell | Hyprland | What to know |
+| --- | --- | --- | --- | --- |
+| Arch | daily use | yes | yes | Everything installs. |
+| Debian 13 | tried | backports | backports | Add `trixie-backports` to your apt sources first. |
+| openSUSE Tumbleweed | tried | yes | yes | |
+| Ubuntu 26.04, 25.10 | tried | build it | yes, older | Build Quickshell once; see [docs/install-ubuntu.md](docs/install-ubuntu.md). |
+| Fedora 44 | tried | yes, 0.2 | COPR | Hyprland comes from a COPR. Quickshell 0.2 is older than the 0.3 this is built on. |
+| Void | tried | yes | build it | Build Hyprland yourself. |
+| Alpine | tried | build it | yes | Build Quickshell yourself, and `apk add bash` before the installer. |
+| Ubuntu 24.04 | no | | | Its Qt 6.4 is older than the 6.6 Quickshell needs. Upgrade to 26.04. |
+
+What people on other distros run into:
+
+- Quickshell is new, so many distros do not package it yet. Building it takes
+  a few minutes, and it has to be rebuilt whenever the distro moves Qt to a
+  new version.
+- The packaged Hyprland is often older and reads `hyprland.conf`. That works:
+  copy the binds from `docs/hyprland-binds.example.conf`. Custom window
+  layouts and the Lua binds need Hyprland 0.56 or later with `hyprland.lua`.
+- Qt 6.6 is the floor. Anything older cannot run Quickshell at all.
 
 On NixOS, Gentoo or anything else, `./install.sh --list` names every package
 the shell needs, by its Arch name, for you to install your own way. The

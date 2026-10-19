@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-1",
+      "date": "2026-10-19",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The shell now starts on Qt older than 6.12, which is what Ubuntu and Debian ship. Qt before 6.12 refused a handful of names the code used, such as final and char, and the shell would not load at all."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ubuntu 26.04 and 25.10 work once you build Quickshell, and docs/install-ubuntu.md walks through it. The README now says how well each distro is supported and what people there run into. Ubuntu 24.04 cannot run it: its Qt is too old for Quickshell."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "For scripts that call the shell directly: qs ipc call keyboard float is now keyboard undock. banditshell panel keyboard float and your binds work as before."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-12",
       "date": "2026-10-18",
       "changes": [
