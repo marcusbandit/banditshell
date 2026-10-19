@@ -7,7 +7,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Opening and folding a group of notifications in the island is smooth. The island grows and shrinks together with the cards, so a song's colour fills the island the whole way instead of flashing the plain background under it."
+          "text": "Opening and folding a group of notifications in the island is smooth. The cards slide out from behind the top one and tuck back under it, the island grows and shrinks with them without pausing or jumping, a song's colour fills it the whole way, and clicking again mid-fold turns it straight around."
         },
         {
           "type": "ui",
