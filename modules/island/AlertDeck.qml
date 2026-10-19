@@ -287,26 +287,40 @@ Item {
         return slots.itemAt(0)?.cardHeight ?? 0;
     }
 
-    readonly property real settledList: {
+    readonly property real viewMax: Math.max(root.foldedHeight, root.maxHeight - root.footerHeight)
+    readonly property real settledFull: {
         root.reshaped;
         let sum = 0;
         for (let i = 0; i < slots.count; i++)
             sum += slots.itemAt(i)?.settledRoom ?? 0;
         return sum;
     }
+    readonly property real settledReach: {
+        root.reshaped;
+        let sum = 0;
+        for (let i = 0; i < slots.count; i++)
+            sum += slots.itemAt(i)?.settledReachRoom ?? 0;
+        return sum;
+    }
+    readonly property real reachList: {
+        root.reshaped;
+        let sum = 0;
+        for (let i = 0; i < slots.count; i++)
+            sum += slots.itemAt(i)?.reachRoom ?? 0;
+        return sum;
+    }
 
     property real lockedList: 0
     property real lockedView: 0
 
-    onSettledListChanged: {
+    onSettledFullChanged: {
         root.lockedView = root.spreadHeight;
-        root.lockedList = root.listHeight;
+        root.lockedList = root.reachList;
     }
 
-    readonly property real viewMax: Math.max(root.foldedHeight, root.maxHeight - root.footerHeight)
-    readonly property real settledView: Math.min(root.settledList, root.viewMax)
-    readonly property real spreadProgress: Math.abs(root.settledList - root.lockedList) < 0.5 ? 1 : Math.max(0, Math.min(1, (root.listHeight - root.lockedList) / (root.settledList - root.lockedList)))
-    readonly property real spreadHeight: root.lockedView + (root.settledView - root.lockedView) * root.spreadProgress
+    readonly property real settledView: Math.min(root.settledFull, root.viewMax)
+    readonly property real spreadProgress: Math.abs(root.settledReach - root.lockedList) < 0.5 ? 1 : Math.max(0, Math.min(1, (root.reachList - root.lockedList) / (root.settledReach - root.lockedList)))
+    readonly property real spreadHeight: Math.min(root.listHeight, root.lockedView + (root.settledView - root.lockedView) * root.spreadProgress)
     readonly property real scrollMax: Math.max(0, root.listHeight - root.spreadHeight)
     readonly property real scrolled: Math.min(scroll.value, root.scrollMax)
 
@@ -504,9 +518,26 @@ Item {
                 readonly property bool outgoing: card.flinging
                 readonly property real open: slot.tucks ? unfold.value : Math.max(0, arrival.value - departure.value)
                 readonly property real cardHeight: card.implicitHeight
-                readonly property real room: (slot.cardHeight + gap.value) * (root.sweeping ? 1 : slot.open)
+                readonly property real room: slot.tucks && !root.sweeping ? Math.max(0, Math.min(slot.cardHeight + gap.value, slot.tailReveal - slot.fullBefore)) : (slot.cardHeight + gap.value) * (root.sweeping ? 1 : slot.open)
                 readonly property bool tucks: root.grouped && !!slot.group && !slot.head && !slot.leaving
+                readonly property Item tailFirst: !slot.tucks ? null : slot.above?.tucks && slot.above.group === slot.group ? slot.above.tailFirst : slot
+                readonly property Item tailLast: !slot.tucks ? null : slot.below?.tucks && slot.below.group === slot.group ? slot.below.tailLast : slot
+                readonly property real fullBefore: slot.tucks && slot.tailFirst !== slot ? slot.above.fullBefore + slot.above.cardHeight + slot.above.gapShown : 0
+                readonly property real tailTop: {
+                    root.reshaped;
+                    let sum = 0;
+                    for (let i = 0; slot.tucks && i < slot.tailFirst.index; i++)
+                        sum += slots.itemAt(i)?.room ?? 0;
+                    return sum;
+                }
+                readonly property real tailRoom: slot.tucks ? (root.tops[slot.tailLast.index + 1] ?? 0) - slot.tailTop : 0
+                readonly property real tailFull: slot.tucks ? slot.tailLast.fullBefore + slot.tailLast.cardHeight + slot.tailLast.gapShown : 0
+                readonly property real tailReach: Math.min(slot.tailFull, Math.max(0, root.viewMax - slot.tailTop + scroll.value))
+                readonly property real tailReveal: slot.open >= 1 ? slot.tailFull : slot.tailReach * slot.open
+                readonly property real reachRoom: slot.tucks && !root.sweeping ? Math.max(0, Math.min(slot.cardHeight + gap.value, Math.min(slot.tailReveal, slot.tailReach) - slot.fullBefore)) : slot.room
                 readonly property real settledRoom: slot.leaving || slot.folding ? 0 : slot.cardHeight + slot.gapTarget
+                readonly property real settledReachRoom: slot.leaving || slot.folding ? 0 : slot.tucks ? Math.max(0, Math.min(slot.cardHeight + slot.gapTarget, slot.tailReach - slot.fullBefore)) : slot.cardHeight + slot.gapTarget
+                readonly property bool windowed: slot.tucks && root.fanned > 0 && !root.sweeping
 
                 property real leftAt: 0
 
@@ -515,7 +546,7 @@ Item {
 
                 readonly property real spreadTop: root.tops[slot.index] ?? 0
                 readonly property real spreadY: slot.spreadTop - root.scrolled
-                readonly property bool inView: slot.y < view.height && slot.y + slot.height > 0
+                readonly property bool inView: slot.windowed ? slot.y + Math.max(0, card.y) < view.height && slot.y + Math.min(slot.height, card.y + card.height) > 0 && card.y + card.height > 0 : slot.y < view.height && slot.y + slot.height > 0
                 readonly property bool onScreen: slot.inView && slot.opacity > 0.005
 
                 onOutgoingChanged: {
@@ -531,10 +562,10 @@ Item {
                     slot.leftAt = promotion.value
 
                 width: view.width
-                height: root.fanned > 0 ? slot.room : slot.cardHeight
-                y: (root.fanned > 0 ? slot.spreadY : slot.away * Appearance.padding.normal) - root.raised
+                height: slot.windowed ? slot.tailRoom : root.fanned > 0 ? slot.room : slot.cardHeight
+                y: (slot.windowed ? slot.tailTop - root.scrolled : root.fanned > 0 ? slot.spreadY : slot.away * Appearance.padding.normal) - root.raised
                 z: root.fanned > 0 ? 0 : slot.step
-                clip: root.fanned > 0 && slot.height < slot.cardHeight + gap.value - 0.5
+                clip: slot.windowed ? slot.tailRoom < slot.tailFull - 0.5 : root.fanned > 0 && slot.height < slot.cardHeight + gap.value - 0.5
                 scale: root.fanned > 0 ? 1 : 1 - 0.06 * slot.away
                 transformOrigin: Item.Bottom
                 opacity: !slot.inView ? 0 : root.fanned > 0 ? (slot.tucks ? 1 : slot.open) : slot.step * slot.step * slot.open
@@ -583,7 +614,7 @@ Item {
                 NotificationCard {
                     id: card
 
-                    y: gap.value - (slot.tucks && root.fanned > 0 ? (slot.cardHeight + gap.value) * (1 - slot.open) : 0)
+                    y: slot.windowed ? slot.fullBefore + gap.value - Math.max(0, slot.tailReach - slot.tailRoom) : gap.value
                     width: slot.width
                     entry: slot.modelData
                     count: slot.tally
