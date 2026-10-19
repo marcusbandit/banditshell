@@ -31,7 +31,7 @@ Item {
 
     signal pressed
 
-    signal dragged(real fraction)
+    signal dragged(real fraction, real aside)
 
     signal finished(bool open)
 
@@ -50,8 +50,8 @@ Item {
         zone.begin();
     }
 
-    function advance(up: real): void {
-        zone.advance(up);
+    function advance(up: real, aside: real): void {
+        zone.advance(up, aside);
     }
 
     function settle(): void {
@@ -79,6 +79,7 @@ Item {
         preventStealing: true
 
         property real from: 0
+        property real fromX: 0
         property bool pulling: false
         property real velocity: 0
 
@@ -96,7 +97,7 @@ Item {
             root.pressed();
         }
 
-        function advance(up: real): void {
+        function advance(up: real, aside: real): void {
 
             const now = Date.now();
             const dt = Math.max(1, Math.min(100, now - zone.lastEvent));
@@ -110,7 +111,7 @@ Item {
 
             zone.pulling = true;
             zone.progress = Math.max(0, Math.min(up / root.travelFull, 1));
-            root.dragged(zone.progress);
+            root.dragged(zone.progress, aside);
         }
 
         function settle(): void {
@@ -128,12 +129,13 @@ Item {
             scroll.finish();
 
             zone.from = mouse.y;
+            zone.fromX = mouse.x;
             zone.begin();
         }
 
         onPositionChanged: mouse => {
             if (zone.pressed)
-                zone.advance(zone.from - mouse.y);
+                zone.advance(zone.from - mouse.y, mouse.x - zone.fromX);
         }
 
         onReleased: {
@@ -179,7 +181,7 @@ Item {
                     }
                 }
 
-                zone.advance(-dy);
+                zone.advance(-dy, dx);
             }
             onEnded: zone.settle()
         }

@@ -47,6 +47,7 @@ Item {
     property var rest: null
     property var dest: null
 
+    property real originX: 0
     property real originY: 0
     property real pointX: 0
     property real pointY: 0
@@ -620,6 +621,7 @@ Item {
 
             if (!win) {
                 root.forwarding = true;
+                root.originX = at.x;
                 root.originY = at.y;
                 root.fallback?.begin();
                 return;
@@ -636,7 +638,7 @@ Item {
             const at = strip.mapToItem(root, p.x, p.y);
 
             if (root.forwarding) {
-                root.fallback?.advance(root.originY - at.y);
+                root.fallback?.advance(root.originY - at.y, at.x - root.originX);
                 return;
             }
 

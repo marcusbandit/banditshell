@@ -30,8 +30,8 @@ Item {
         root.build().toggle();
     }
 
-    function dragTo(fraction: real): void {
-        root.build().dragTo(fraction);
+    function dragTo(fraction: real, aside: real): void {
+        root.build().dragTo(fraction, aside);
     }
 
     function dragEnd(open: bool): void {

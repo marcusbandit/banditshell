@@ -630,6 +630,12 @@ LauncherConcept {
     }
 
     Spring {
+        id: sway
+
+        target: root.dragging ? panel.swayFor(root.dragAside) : 0
+    }
+
+    Spring {
         id: tall
 
         target: panel.arrived ? 1 : 0
@@ -651,7 +657,6 @@ LauncherConcept {
         readonly property real barHeight: barOffset * 2
 
         readonly property real restY: root.height * Config.values.launcher.list.searchAt - barOffset
-        readonly property real restX: (root.width - root.panelWidth) / 2
 
         readonly property real bandY: root.height - root.inset
 
@@ -667,6 +672,13 @@ LauncherConcept {
 
         property bool stuck: true
         property bool arrived: false
+
+        readonly property real swayRoom: barHeight * 0.5
+
+        function swayFor(aside: real): real {
+            const given = swayRoom * (1 - 1 / (1 + Math.abs(aside) * 0.35 / swayRoom));
+            return aside < 0 ? -given : given;
+        }
 
         readonly property real tabStretch: Math.max(-0.25, Math.min(0.6, stretch.value))
         readonly property real bodyStretch: Math.max(-0.06, Math.min(0.15, stretch.value))
@@ -722,7 +734,7 @@ LauncherConcept {
             lastLift = lift;
         }
 
-        x: (root.width - width) / 2
+        x: (root.width - width) / 2 + sway.value
 
         y: bandY - lift
 
@@ -742,7 +754,7 @@ LauncherConcept {
             Column {
                 id: layout
 
-                x: Appearance.padding.large + panel.restX - panel.x
+                x: Appearance.padding.large + (panel.width - root.panelWidth) / 2
                 y: Appearance.padding.large
                 width: root.panelWidth - Appearance.padding.large * 2
                 spacing: Appearance.padding.normal

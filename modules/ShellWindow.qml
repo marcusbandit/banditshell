@@ -777,11 +777,11 @@ PanelWindow {
                 launchEdge.aim();
             }
 
-            onDragged: fraction => {
+            onDragged: (fraction, aside) => {
                 launchEdge.aim();
-                launchEdge.target?.dragTo(fraction);
+                launchEdge.target?.dragTo(fraction, aside);
 
-                launchEdge.leaving?.dragTo(1 - fraction);
+                launchEdge.leaving?.dragTo(1 - fraction, 0);
             }
 
             onFinished: open => {
