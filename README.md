@@ -40,9 +40,11 @@ almost every day.
 > when they do.
 
 > [!TIP]
-> On Omarchy? The island runs there as a plugin:
-> [banditshell island](https://github.com/marcusbandit/banditshell-island),
-> listed on the [Omarchy plugin marketplace](https://omarchyplugins.com/plugin.html?id=banditshell.island).
+> On Omarchy, keep Omarchy's own shell and add
+> [banditshell island](https://github.com/marcusbandit/banditshell-island)
+> instead: the notification, music and lyrics pill from banditshell, as a
+> plugin from the
+> [Omarchy plugin marketplace](https://plugins.omarchy.org/plugin.html?id=banditshell.island).
 
 ## What's in it
 

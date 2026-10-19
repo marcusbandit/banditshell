@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-19",
+      "date": "2026-10-19",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The README tells people on Omarchy to keep Omarchy's shell and add the banditshell island as a plugin, listed on the Omarchy plugin marketplace."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-13",
       "date": "2026-10-18",
       "changes": [
