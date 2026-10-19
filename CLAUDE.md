@@ -38,8 +38,9 @@ End worktree work with the one command that puts it in front of them:
 A tried worktree reloads as its files change, so further edits land without
 another `try`.
 
-`<worktree-name>` is the worktree's current branch name, a few hyphenated
-words like `media-player-polish-lyrics`. Run `git branch --show-current` in
+`<worktree-name>` is the worktree's current branch name, named
+`<type>/<issue>-<slug>` like `fix/66-wallpaper-browse-reveal` (see
+`CONTRIBUTING.md` for branch, commit and PR naming). Run `git branch --show-current` in
 the worktree right before handing over, and put exactly what it prints after
 `try`. The opening git status of a session is a stale snapshot: T3 starts each
 worktree on a placeholder branch like `t3/e9329e47` and renames it once the
