@@ -502,7 +502,7 @@ Item {
                 }
                 readonly property bool handling: card.handling
                 readonly property bool outgoing: card.flinging
-                readonly property real open: Math.max(0, arrival.value - departure.value)
+                readonly property real open: slot.tucks ? unfold.value : Math.max(0, arrival.value - departure.value)
                 readonly property real cardHeight: card.implicitHeight
                 readonly property real room: (slot.cardHeight + gap.value) * (root.sweeping ? 1 : slot.open)
                 readonly property bool tucks: root.grouped && !!slot.group && !slot.head && !slot.leaving
@@ -554,13 +554,22 @@ Item {
                     Component.onCompleted: arrival.target = 1
                 }
 
-                Follow {
+                Travel {
                     id: gap
 
-                    speed: gap.target < gap.value ? Appearance.animation.snapSpeed : Appearance.animation.revealSpeed
                     epsilon: 0.25
                     target: slot.gapTarget
-                    startsAtTarget: true
+                    Component.onCompleted: gap.snap()
+                }
+
+                Travel {
+                    id: unfold
+
+                    epsilon: 0.004
+                    target: slot.folding ? 0 : 1
+
+                    onValueChanged: if (slot.folding && unfold.value <= 0.001)
+                        root.folding = root.folding.filter(e => e !== slot.modelData)
                 }
 
                 Follow {
@@ -568,10 +577,7 @@ Item {
 
                     speed: Appearance.animation.snapSpeed
                     epsilon: 0.004
-                    target: slot.leaving || slot.folding ? 1 : 0
-
-                    onValueChanged: if (slot.folding && departure.value >= 0.999)
-                        root.folding = root.folding.filter(e => e !== slot.modelData)
+                    target: slot.leaving ? 1 : 0
                 }
 
                 NotificationCard {
