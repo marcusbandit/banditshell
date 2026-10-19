@@ -639,6 +639,7 @@ Item {
                     epsilon: 0.25
                     target: slot.gapTarget
                     Component.onCompleted: gap.snap()
+                    onTargetChanged: gap.velocity = 0
                 }
 
                 Travel {
@@ -646,6 +647,8 @@ Item {
 
                     epsilon: 0.004
                     target: slot.folding || slot.shut ? 0 : 1
+
+                    onTargetChanged: unfold.velocity = 0
 
                     onValueChanged: if (slot.folding && unfold.value <= 0.001)
                         root.folding = root.folding.filter(e => e !== slot.modelData)
