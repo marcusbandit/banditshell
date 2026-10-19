@@ -37,6 +37,7 @@ Segments 1.0 Segments.qml
 Separator 1.0 Separator.qml
 SignalBars 1.0 SignalBars.qml
 Slider 1.0 Slider.qml
+Spring 1.0 Spring.qml
 SquircleImage 1.0 SquircleImage.qml
 SquircleRect 1.0 SquircleRect.qml
 StyledText 1.0 StyledText.qml

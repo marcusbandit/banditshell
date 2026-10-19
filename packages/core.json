@@ -66,6 +66,7 @@
       "tests/ranking.test.js",
       "tests/secret-marks.test.js",
       "tests/site.test.js",
+      "tests/spring.test.js",
       "tests/squircle.test.js",
       "tests/timeformat.test.js"
     ]

@@ -920,6 +920,12 @@ Singleton {
 
                 flickVelocity: 4,
 
+                spring: {
+                    stiffness: 320,
+                    damping: 26,
+                    mass: 1
+                },
+
                 pullAngleCorner: 40,
 
                 pullAngleEdge: 60,
