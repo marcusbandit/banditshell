@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-10-20-2",
+      "date": "2026-10-20",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Opening and folding a group of notifications in the island is smooth. The cards slide out from behind the top one and tuck back under it, the island grows and shrinks with them without pausing or jumping, a song's colour fills it the whole way, and clicking again mid-fold turns it straight around."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "An opened group of notifications stands apart from the apps above and below it, with a small gap and its own rounded corners. Folded groups still sit together."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Opening the island no longer stretches it past its content and back; it stops where the content ends."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The margin under the last notification in the island is as thin as the margin at its sides."
+        }
+      ]
+    },
+    {
       "id": "2026-10-20",
       "date": "2026-10-20",
       "changes": [

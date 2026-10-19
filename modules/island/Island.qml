@@ -375,15 +375,14 @@ Item {
     readonly property real restHeight: root.deckRest ? root.cardHeight + root.stackItems.length * root.compactHeight : root.compactHeight * Math.max(1, root.stackItems.length)
 
     readonly property real fieldWidth: Math.ceil(Math.max(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2, root.taskWidth + root.shadowRoom * 2, root.voiceRoom))
-    readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), overview.implicitHeight - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2, root.taskHeight) + root.shadowRoom) / root.fieldStep) * root.fieldStep
+    readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), root.taskRoom, Math.max(overview.implicitHeight, overview.settledHeight) - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2, root.taskHeight) + root.shadowRoom) / root.fieldStep) * root.fieldStep
     readonly property real centreX: scene.width / 2
     readonly property real surfaceX: Math.round((root.width - root.fieldWidth) / 2 + trail.value)
 
-    readonly property real overshoot: 0.06
-    readonly property real opened: Math.max(0, Math.min(1 + root.overshoot, glide.value))
+    readonly property real opened: Math.max(0, Math.min(1, glide.value))
     readonly property real widening: Math.min(1, root.opened * 1.8)
     readonly property real pillWidth: wide.value + (span.value - wide.value) * root.widening
-    readonly property real pillHeight: tall.value + (overviewTall.value - tall.value) * root.opened
+    readonly property real pillHeight: tall.value + (overviewTall.value + overview.deckHeight * deckShare.value - tall.value) * root.opened
     readonly property real pillX: root.centreX - root.pillWidth / 2
     readonly property real tuckedY: root.edge - root.pillHeight - Appearance.padding.small
     readonly property real lipY: root.edge + Appearance.padding.small - root.pillHeight
@@ -566,7 +565,7 @@ Item {
         root.close();
         root.spent = true;
         root.reforming = true;
-        for (const f of [glide, overviewTall, overviewFade, wide, tall, cardRoom, swell])
+        for (const f of [glide, overviewTall, deckShare, overviewFade, wide, tall, cardRoom, swell])
             f.snap();
         presence.value = 0;
         settle.value = 0;
@@ -999,7 +998,16 @@ Item {
         id: overviewTall
 
         speed: root.morphSpeed
-        target: root.tasking ? root.taskHeight : overview.implicitHeight
+        target: root.tasking ? root.taskHeight : overview.restHeight
+    }
+
+    Follow {
+        id: deckShare
+
+        speed: root.morphSpeed
+        epsilon: 0.004
+        target: root.tasking ? 0 : 1
+        startsAtTarget: true
     }
 
     Follow {
@@ -1450,7 +1458,7 @@ Item {
                     x: root.centreX - root.largeWidth / 2
                     y: root.pillY
                     width: root.largeWidth
-                    height: Math.max(root.compactHeight, overview.implicitHeight)
+                    height: Math.max(root.compactHeight, overview.implicitHeight, root.pillHeight)
                     moving: visible
                     opacity: glow.value
                     visible: glow.value > 0.005
