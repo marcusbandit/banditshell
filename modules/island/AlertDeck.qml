@@ -292,23 +292,21 @@ Item {
     readonly property real viewMax: Math.max(root.foldedHeight, root.maxHeight - root.footerHeight)
     readonly property real settledFull: {
         root.reshaped;
-        let sum = 0;
-        for (let i = 0; i < slots.count; i++)
-            sum += slots.itemAt(i)?.settledRoom ?? 0;
-        return sum;
+        return root.sumOf("settledRoom");
     }
     readonly property real settledReach: {
         root.reshaped;
-        let sum = 0;
-        for (let i = 0; i < slots.count; i++)
-            sum += slots.itemAt(i)?.settledReachRoom ?? 0;
-        return sum;
+        return root.sumOf("settledReachRoom");
     }
     readonly property real reachList: {
         root.reshaped;
+        return root.sumOf("reachRoom");
+    }
+
+    function sumOf(name: string): real {
         let sum = 0;
         for (let i = 0; i < slots.count; i++)
-            sum += slots.itemAt(i)?.reachRoom ?? 0;
+            sum += slots.itemAt(i)?.[name] ?? 0;
         return sum;
     }
 
@@ -433,6 +431,9 @@ Item {
 
         onTriggered: warmer.start()
     }
+
+    onGroupsChanged: if (root.warm && !warming.running)
+        warmer.start()
 
     Timer {
         id: warmer
@@ -648,7 +649,11 @@ Item {
                     epsilon: 0.004
                     target: slot.folding || slot.shut ? 0 : 1
 
-                    onTargetChanged: unfold.velocity = 0
+                    onTargetChanged: {
+                        unfold.velocity = 0;
+                        if (slot.folding && unfold.value <= 0.001)
+                            root.folding = root.folding.filter(e => e !== slot.modelData);
+                    }
 
                     onValueChanged: if (slot.folding && unfold.value <= 0.001)
                         root.folding = root.folding.filter(e => e !== slot.modelData)
