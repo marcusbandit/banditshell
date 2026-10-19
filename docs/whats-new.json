@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-10-20",
+      "date": "2026-10-20",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Pulling the launcher up from the bottom edge now keeps its top edge under your pointer the whole way. It comes out as a narrow tab that stretches as you pull, then springs open into the full launcher just before it reaches its place."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Dragging the open launcher back down, it thins and holds on for a moment before folding back into the tab and sliding into the edge. Moving sideways while you drag makes it lean a little toward the pointer."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A quick flick up opens the launcher on its way to the top, and the hotkey shows it at full size from the first frame. With reduced motion on, it simply appears."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "The launcher's search bar now rests two fifths of the way down the screen instead of in the middle. launcher.list.searchAt in config.json sets where, as a fraction of the screen height: 0.4 by default, 0.5 for the old place."
+        }
+      ]
+    },
+    {
       "id": "2026-10-19-3",
       "date": "2026-10-19",
       "changes": [
