@@ -6,13 +6,15 @@
     "qml": [
       "modules/launcher/sources/BrowserSource.qml",
       "modules/launcher/sources/DefineSource.qml",
+      "modules/launcher/sources/DefinitionHeading.qml",
       "modules/launcher/sources/DefinitionPage.qml",
       "modules/launcher/sources/DefinitionSense.qml",
       "modules/launcher/sources/GithubSource.qml",
       "modules/launcher/sources/PackageSource.qml",
       "modules/launcher/sources/SpeedtestSource.qml",
       "modules/launcher/sources/TranslateSource.qml",
-      "modules/launcher/sources/VideoDownloadSource.qml"
+      "modules/launcher/sources/VideoDownloadSource.qml",
+      "modules/launcher/sources/WordView.qml"
     ],
     "services": [
       "BrowserPlaces",

@@ -7,6 +7,7 @@ ClipboardSource 1.0 ClipboardSource.qml
 ColourSource 1.0 ColourSource.qml
 ContainerSource 1.0 ContainerSource.qml
 DefineSource 1.0 DefineSource.qml
+DefinitionHeading 1.0 DefinitionHeading.qml
 DefinitionPage 1.0 DefinitionPage.qml
 DefinitionSense 1.0 DefinitionSense.qml
 DevSource 1.0 DevSource.qml
@@ -41,5 +42,6 @@ TraySource 1.0 TraySource.qml
 VideoDownloadSource 1.0 VideoDownloadSource.qml
 VpnSource 1.0 VpnSource.qml
 WifiSource 1.0 WifiSource.qml
+WordView 1.0 WordView.qml
 WorkshopSource 1.0 WorkshopSource.qml
 WorkspaceSource 1.0 WorkspaceSource.qml

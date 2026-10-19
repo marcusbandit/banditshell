@@ -94,3 +94,53 @@ function readAnswer(raw, word) {
 function pageUrl(word) {
     return "https://en.wiktionary.org/wiki/" + encodeURIComponent(String(word || "").replace(/ /g, "_"));
 }
+
+function escape(text) {
+    return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function senseLine(part, text) {
+    return part ? "<b>" + escape(part) + "</b>&nbsp; " + escape(text) : escape(text);
+}
+
+function unique(words, leaveOut) {
+    var seen = {};
+    seen[String(leaveOut || "").toLowerCase()] = true;
+    var kept = [];
+    (words || []).forEach(function (word) {
+        var key = String(word || "").toLowerCase();
+        if (key && !seen[key]) {
+            seen[key] = true;
+            kept.push(word);
+        }
+    });
+    return kept;
+}
+
+function sensesOf(entry) {
+    var out = [];
+    ((entry && entry.groups) || []).forEach(function (group) {
+        group.senses.forEach(function (sense) {
+            out.push({
+                part: group.part,
+                text: sense.text,
+                examples: sense.examples || [],
+                synonyms: sense.synonyms || [],
+                antonyms: sense.antonyms || []
+            });
+        });
+    });
+    return out;
+}
+
+function onlineSensesOf(answer) {
+    return ((answer && answer.senses) || []).map(function (sense) {
+        return {
+            part: sense.part,
+            text: sense.text,
+            examples: sense.example ? [sense.example] : [],
+            synonyms: [],
+            antonyms: []
+        };
+    });
+}

@@ -23,11 +23,13 @@ LauncherConcept {
     readonly property int resultCount: results.length
     readonly property string scrollInfo: `row ${root.selected} of ${root.results.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}`
 
-    readonly property real panelWidth: Appearance.sizes.launcherWidth
+    readonly property real panelWidth: root.shownView ? Math.round(Appearance.sizes.launcherWidth * 1.25) : Appearance.sizes.launcherWidth
 
 
     property var capture: null
     property string beforeCapture: ""
+
+    property var shownView: null
 
     readonly property var results: root.capture ? search.keyed([Object.assign({}, root.capture.row, {
                     detail: root.capture.said || root.capture.row.detail
@@ -47,23 +49,47 @@ LauncherConcept {
         root.input.forceActiveFocus();
     }
 
+    function present(view: var): void {
+        root.shownView = {
+            component: view.component,
+            before: root.shownView ? root.shownView.before : query.text
+        };
+        root.retypeQuery(view.text ?? "");
+        Qt.callLater(query.forceActiveFocus);
+    }
+
+    function closeView(): void {
+        const before = root.shownView?.before ?? "";
+        root.shownView = null;
+        root.retypeQuery(before);
+        Qt.callLater(query.forceActiveFocus);
+    }
+
+    function retypeQuery(text: string): void {
+        query.text = text;
+        query.cursorPosition = text.length;
+    }
+
     function back(): void {
-        if (root.symbolsOpen)
+        if (root.shownView)
+            root.closeView();
+        else if (root.symbolsOpen)
             root.symbolsOpen = false;
         else
             root.hide();
     }
 
-    answerless: search.intent || !!root.capture || assistantCard.shown
+    answerless: search.intent || !!root.capture || !!root.shownView || assistantCard.shown
 
     LauncherSearch {
         id: search
 
         query: root.input?.text ?? ""
         screenName: root.screenName
-        quiet: !!root.capture
+        quiet: !!root.capture || !!root.shownView
         active: root.open
         target: root.restoreTo
+        presents: true
 
         onLaunch: what => root.launch(what)
         onLeave: what => {
@@ -75,6 +101,7 @@ LauncherConcept {
             root.input.cursorPosition = text.length;
         }
         onInquire: row => root.startCapture("ask", row)
+        onPresent: view => root.present(view)
     }
 
     readonly property int pinnedLimit: 12
@@ -102,7 +129,7 @@ LauncherConcept {
         return out;
     }
 
-    readonly property bool quick: !root.capture && !query.text && root.tiles.length > 0
+    readonly property bool quick: !root.capture && !root.shownView && !query.text && root.tiles.length > 0
     property int tile: 0
 
     readonly property bool asking: sheet.open
@@ -135,7 +162,7 @@ LauncherConcept {
 
     onCleared: {
         search.arrangeNow();
-        root.selected = 0;
+        root.selected = Math.max(0, Search.nextPickable(root.results, 0, 1));
         root.tile = 0;
         if (root.unsized) {
             root.unsized = false;
@@ -151,13 +178,14 @@ LauncherConcept {
         if (!Assistant.inPlace)
             Assistant.stop();
         root.capture = null;
+        root.shownView = null;
         search.armed = "";
         search.colourEdit = null;
     }
 
     function accept(): void {
         search.arrangeNow();
-        if (root.capture)
+        if (root.capture || root.shownView)
             return;
         if (assistantCard.busy)
             return;
@@ -324,6 +352,14 @@ LauncherConcept {
         search.arrangeNow();
         if (root.capture)
             return root.claimCaptureKey(event);
+
+        if (root.shownView && !sheet.open) {
+            if (event.key === Qt.Key_Escape && !(event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier))) {
+                root.closeView();
+                return true;
+            }
+            return !!viewLoader.item?.claimKey(event);
+        }
 
         if (sheet.open) {
             switch (event.key) {
@@ -625,7 +661,7 @@ LauncherConcept {
 
         width: root.panelWidth
 
-        implicitHeight: Math.min(root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.quick ? quickLaunch.full : list.needed))
+        implicitHeight: Math.min(root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
 
         height: grow.value * root.revealed
 
@@ -658,8 +694,20 @@ LauncherConcept {
                         anchors.verticalCenter: parent.verticalCenter
                         width: Appearance.sizes.launcherIcon
                         size: Appearance.font.size.normal
-                        name: !root.capture ? "search" : root.capture.kind === "ask" ? root.capture.row.ask.icon : root.capture.kind === "alias" ? "label" : "keyboard"
-                        color: Appearance.colour.textFaint
+                        name: root.shownView ? "arrow_back" : !root.capture ? "search" : root.capture.kind === "ask" ? root.capture.row.ask.icon : root.capture.kind === "alias" ? "label" : "keyboard"
+                        color: root.shownView && backHover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+
+                        HoverHandler {
+                            id: backHover
+
+                            enabled: !!root.shownView
+                            cursorShape: Qt.PointingHandCursor
+                        }
+
+                        TapHandler {
+                            enabled: !!root.shownView
+                            onTapped: root.closeView()
+                        }
                     }
 
                     TextInput {
@@ -684,7 +732,7 @@ LauncherConcept {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
 
-                            text: !root.capture ? "Search" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
+                            text: root.shownView ? viewLoader.item?.prompt ?? "" : !root.capture ? "Search" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
                         }
@@ -773,6 +821,40 @@ LauncherConcept {
 
                     width: parent.width
                     height: Math.max(0, panel.height - y - Appearance.padding.large)
+
+                    Loader {
+                        id: viewLoader
+
+                        width: parent.width
+                        height: parent.height
+                        active: !!root.shownView
+                        sourceComponent: root.shownView?.component ?? null
+
+                        Binding {
+                            target: viewLoader.item
+                            property: "typed"
+                            value: query.text
+                            when: viewLoader.status === Loader.Ready
+                        }
+
+                        Connections {
+                            target: viewLoader.item
+                            ignoreUnknownSignals: true
+
+                            function onRetype(text: string): void {
+                                root.retypeQuery(text);
+                            }
+
+                            function onLeave(what: var): void {
+                                root.hide();
+                                what();
+                            }
+
+                            function onLaunch(what: var): void {
+                                root.launch(what);
+                            }
+                        }
+                    }
 
                     Item {
                         id: quickLaunch
@@ -882,6 +964,7 @@ LauncherConcept {
                         y: (quickLaunch.full + Appearance.padding.large) * gridIn.value
                         width: parent.width
                         height: gridIn.value > 0 ? root.height : Math.max(0, body.height - y)
+                        visible: !root.shownView
                         enabled: !root.quick
                         opacity: 1 - gridIn.value
                         clip: true
@@ -1123,7 +1206,7 @@ LauncherConcept {
             row: root.results[root.selected] ?? null
             colour: root.answerColour || (root.answerHolds || !peek.row?.peekColour ? "" : search.colourEdit?.key === peek.row.key ? search.colourEdit.hex : peek.row.peekColour)
             growsLeft: !peek.roomRight
-            wanted: root.open && !root.quick && root.settled && !root.capture && !root.asking && (!root.answerHolds || !!root.answerColour) && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
+            wanted: root.open && !root.quick && root.settled && !root.capture && !root.shownView && !root.asking && (!root.answerHolds || !!root.answerColour) && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
             longestFrame: root.longestFrame
 
             onColourPicked: (hex, done) => root.takeColour(hex, done)

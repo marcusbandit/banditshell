@@ -1,64 +1,70 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import qs.config
 import qs.components
+import "../../../services/dictionary.js" as Words
 
-Item {
+Column {
     id: root
 
-    property int number: 1
     property var sense: ({})
+    property bool related: false
 
-    readonly property real numberWidth: Appearance.font.size.small * 2
-
-    implicitHeight: lines.implicitHeight
-    height: implicitHeight
+    spacing: Appearance.padding.small
 
     StyledText {
-        width: root.numberWidth
-        text: root.number
-        color: Appearance.colour.textFaint
+        width: root.width
+        text: Words.senseLine(root.sense.part ?? "", root.sense.text ?? "")
+        textFormat: Text.StyledText
+        font.pixelSize: Appearance.font.size.normal
+        wrapMode: Text.Wrap
     }
 
-    Column {
-        id: lines
+    Repeater {
+        model: root.sense.examples ?? []
 
-        x: root.numberWidth
-        width: root.width - root.numberWidth
-        spacing: Appearance.padding.hair
+        delegate: Item {
+            id: quote
 
-        StyledText {
-            width: parent.width
-            text: root.sense.part ? `${root.sense.part} · ${root.sense.text}` : root.sense.text
-            wrapMode: Text.Wrap
-        }
+            required property string modelData
 
-        Repeater {
-            model: root.sense.examples ?? []
+            width: root.width
+            height: said.implicitHeight + Appearance.padding.small * 2
 
-            delegate: StyledText {
-                required property string modelData
+            Rectangle {
+                width: Appearance.sizes.seam
+                height: parent.height
+                color: Appearance.colour.textFaint
+            }
 
-                width: lines.width
-                text: `“${modelData}”`
+            StyledText {
+                id: said
+
+                x: Appearance.padding.normal + Appearance.sizes.seam
+                y: Appearance.padding.small
+                width: quote.width - x
+                text: quote.modelData
+                font.pixelSize: Appearance.font.size.normal
                 color: Appearance.colour.textDim
                 wrapMode: Text.Wrap
             }
         }
+    }
 
-        StyledText {
-            width: parent.width
-            visible: (root.sense.synonyms ?? []).length > 0
-            text: `Similar: ${(root.sense.synonyms ?? []).join(", ")}`
-            color: Appearance.colour.textFaint
-            wrapMode: Text.Wrap
-        }
+    StyledText {
+        width: root.width
+        visible: root.related && (root.sense.synonyms ?? []).length > 0
+        text: `Similar: ${(root.sense.synonyms ?? []).join(", ")}`
+        color: Appearance.colour.textFaint
+        wrapMode: Text.Wrap
+    }
 
-        StyledText {
-            width: parent.width
-            visible: (root.sense.antonyms ?? []).length > 0
-            text: `Opposite: ${(root.sense.antonyms ?? []).join(", ")}`
-            color: Appearance.colour.textFaint
-            wrapMode: Text.Wrap
-        }
+    StyledText {
+        width: root.width
+        visible: root.related && (root.sense.antonyms ?? []).length > 0
+        text: `Opposite: ${(root.sense.antonyms ?? []).join(", ")}`
+        color: Appearance.colour.textFaint
+        wrapMode: Text.Wrap
     }
 }

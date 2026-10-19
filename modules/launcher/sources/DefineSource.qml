@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import qs.services
 import "../../../services/dictionary.js" as Words
+import "../../../services/ranking.js" as Ranking
 
 QtObject {
     id: root
@@ -39,6 +40,10 @@ QtObject {
 
     readonly property Component page: Component {
         DefinitionPage {}
+    }
+
+    readonly property Component wordView: Component {
+        WordView {}
     }
 
     readonly property var caps: ({
@@ -111,7 +116,7 @@ QtObject {
         if (!root.word)
             return [];
         if (!root.explicit)
-            return root.localEntry && !root.localEntry.asked ? [root.wordRow(root.localEntry, false, 0.25)] : [];
+            return root.localEntry ? [root.wordRow(root.localEntry, false, Ranking.WORD - 0.5)] : [];
         const found = root.localEntry || root.onlineAnswer ? [root.wordRow(root.localEntry, true, Infinity)] : [];
         const completions = (root.answer?.completions ?? []).map((entry, i) => root.wordRow(entry, false, 9 - i * 0.01));
         if (found.length || completions.length)
@@ -142,6 +147,16 @@ QtObject {
         root.search.leave(() => System.copyText(text));
     }
 
+    function open(word: string): void {
+        if (root.search.presents)
+            root.search.present({
+                component: root.wordView,
+                text: word
+            });
+        else
+            root.search.retype(`define ${word}`);
+    }
+
     function activate(row: var): void {
         if (row.waiting)
             return;
@@ -149,11 +164,7 @@ QtObject {
             root.openWiktionary(row.word);
             return;
         }
-        if (!row.main) {
-            root.search.retype(`define ${row.word}`);
-            return;
-        }
-        root.copy(row.meaning || row.word);
+        root.open(row.word);
     }
 
     function complete(row: var): bool {
@@ -176,19 +187,20 @@ QtObject {
                 }
             ];
         return [
-            row.main ? {
-                icon: "content_copy",
-                label: "Copy definition",
-                run: () => root.copy(row.meaning || row.word)
-            } : {
+            {
                 icon: "menu_book",
                 label: "Open",
-                run: () => root.search.retype(`define ${row.word}`)
+                run: () => root.open(row.word)
+            },
+            {
+                icon: "content_copy",
+                label: "Copy definition",
+                short: "Copy",
+                run: () => root.copy(row.meaning || row.word)
             },
             {
                 icon: "content_copy",
                 label: "Copy word",
-                short: "Copy",
                 run: () => root.copy(row.word)
             },
             {

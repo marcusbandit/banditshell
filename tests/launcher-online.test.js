@@ -11,7 +11,7 @@ function lib(file, names) {
 }
 
 const Translation = lib("services/translation.js", ["ask", "languageCode", "languageName", "readAnswer", "keyOf", "splitKey", "pageUrl", "localeCode"]);
-const Dictionary = lib("services/dictionary.js", ["ask", "waitingForWord", "readAnswer", "plain", "pageUrl"]);
+const Dictionary = lib("services/dictionary.js", ["ask", "waitingForWord", "readAnswer", "plain", "pageUrl", "senseLine", "unique", "sensesOf", "onlineSensesOf"]);
 const Packages = lib("services/packages.js", ["ask", "readSystem", "readAur", "readFlatpakIndex", "readFlatpakInstalled", "searchFlatpaks", "rank", "installToken", "removalOf", "pageUrl", "detailOf"]);
 const Github = lib("services/github.js", ["ask", "readSummary", "matches", "ago", "numberUrl"]);
 const Browsing = lib("services/browsing.js", ["ask", "hostOf", "prepare", "match"]);
@@ -139,6 +139,22 @@ test.describe("define", () => {
         assert.strictEqual(Dictionary.readAnswer("[]", "x"), null);
         assert.strictEqual(Dictionary.readAnswer("not json", "x"), null);
         assert.strictEqual(Dictionary.pageUrl("ad hoc"), "https://en.wiktionary.org/wiki/ad_hoc");
+    });
+
+    test.it("flattens an entry into senses for the word view", () => {
+        const entry = { groups: [{ part: "noun", senses: [{ text: "A person who designs engines", examples: ["the engineer"], synonyms: ["designer"], antonyms: [] }] }, { part: "verb", senses: [{ text: "Design as an engineer" }] }] };
+        assert.deepStrictEqual(Dictionary.sensesOf(entry).map(s => [s.part, s.text, s.synonyms.length]), [["noun", "A person who designs engines", 1], ["verb", "Design as an engineer", 0]]);
+        assert.deepStrictEqual(Dictionary.sensesOf(null), []);
+        assert.deepStrictEqual(Dictionary.onlineSensesOf({ senses: [{ part: "noun", text: "x", example: "an x" }] }), [{ part: "noun", text: "x", examples: ["an x"], synonyms: [], antonyms: [] }]);
+    });
+
+    test.it("lists related words once, leaving out the word itself", () => {
+        assert.deepStrictEqual(Dictionary.unique(["Plan", "design", "plan", "engineer", ""], "Engineer"), ["Plan", "design"]);
+    });
+
+    test.it("escapes sense text before marking the part bold", () => {
+        assert.strictEqual(Dictionary.senseLine("noun", "a <b> & c"), "<b>noun</b>&nbsp; a &lt;b&gt; &amp; c");
+        assert.strictEqual(Dictionary.senseLine("", "plain"), "plain");
     });
 });
 

@@ -46,13 +46,12 @@ Singleton {
             root.send(key, explicit);
             return;
         }
-        if (!explicit && (root.missing || root.state === "failed"))
+        if (!explicit && root.state === "failed")
             return;
         const waiting = Object.assign({}, root.waiting);
         waiting[key] = waiting[key] === true || explicit;
         root.waiting = waiting;
-        if (explicit)
-            root.mayBuild = true;
+        root.mayBuild = true;
         root.start();
     }
 

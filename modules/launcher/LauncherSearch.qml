@@ -26,6 +26,9 @@ QtObject {
     signal leave(var what)
     signal retype(string text)
     signal inquire(var row)
+    signal present(var view)
+
+    property bool presents: false
 
     readonly property list<QtObject> sources: [
         FallbackSource {

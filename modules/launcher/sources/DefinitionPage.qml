@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import "../../../services/dictionary.js" as Words
 
 Item {
     id: root
@@ -14,28 +15,12 @@ Item {
     readonly property string word: root.local?.word || root.entry?.word || ""
     readonly property string asked: root.local?.asked ?? ""
     readonly property int mostSenses: 8
-    readonly property int mostOnline: 6
 
-    readonly property var groups: (root.local?.groups ?? []).map(group => ({
-                part: group.part,
-                senses: group.senses.slice(0, root.mostSenses),
-                hidden: Math.max(0, group.senses.length - root.mostSenses)
-            }))
+    readonly property var senses: Words.sensesOf(root.local)
+    readonly property var shownSenses: root.senses.slice(0, root.mostSenses)
+    readonly property var onlineSenses: Words.onlineSensesOf(root.online).slice(0, root.mostSenses)
 
-    readonly property var onlineSenses: (root.online?.senses ?? []).slice(0, root.mostOnline)
-
-    readonly property string subtitle: {
-        const bits = [];
-        if (root.local?.phonetic)
-            bits.push(root.local.phonetic);
-        if (root.asked && root.asked.toLowerCase() !== root.word.toLowerCase())
-            bits.push(`from ${root.asked}`);
-        else if (root.local?.forms?.length)
-            bits.push(root.local.forms.join(", "));
-        return bits.join(" · ");
-    }
-
-    readonly property string onlineNote: root.entry?.onlineBusy ? "Looking it up" : root.entry?.onlineFailed ? "No entry" : ""
+    readonly property string onlineNote: root.entry?.onlineBusy ? "Wiktionary · looking it up" : ""
 
     readonly property real limit: Appearance.sizes.launcherWidth * 0.8 - Appearance.padding.small * 2
 
@@ -84,103 +69,62 @@ Item {
             id: page
 
             width: scroller.width
-            spacing: Appearance.padding.card
+            spacing: Appearance.padding.normal
 
-            Column {
-                width: parent.width
-                spacing: Appearance.padding.hair
-
-                StyledText {
-                    width: parent.width
-                    text: root.word
-                    font.pixelSize: Appearance.font.size.display
-                    wrapMode: Text.Wrap
-                }
-
-                StyledText {
-                    width: parent.width
-                    visible: text !== ""
-                    text: root.subtitle
-                    color: Appearance.colour.textDim
-                    wrapMode: Text.Wrap
-                }
+            DefinitionHeading {
+                width: page.width
+                word: root.word
+                phonetic: root.local?.phonetic ?? ""
+                note: root.asked && root.asked.toLowerCase() !== root.word.toLowerCase() ? `from ${root.asked}` : ""
             }
 
             Repeater {
-                model: root.groups
+                model: root.shownSenses
 
-                delegate: Column {
-                    id: group
-
+                delegate: DefinitionSense {
                     required property var modelData
 
                     width: page.width
-                    spacing: Appearance.padding.small
-
-                    StyledText {
-                        text: group.modelData.part
-                        color: Appearance.colour.accent
-                    }
-
-                    Repeater {
-                        model: group.modelData.senses
-
-                        delegate: DefinitionSense {
-                            required property var modelData
-                            required property int index
-
-                            width: group.width
-                            number: index + 1
-                            sense: modelData
-                        }
-                    }
-
-                    StyledText {
-                        visible: group.modelData.hidden > 0
-                        text: group.modelData.hidden === 1 ? "1 more sense" : `${group.modelData.hidden} more senses`
-                        color: Appearance.colour.textFaint
-                    }
+                    sense: modelData
                 }
             }
 
-            Column {
+            StyledText {
+                visible: root.senses.length > root.mostSenses
+                text: `${root.senses.length - root.mostSenses} more, press Enter for all`
+                color: Appearance.colour.textFaint
+            }
+
+            Separator {
                 width: page.width
-                spacing: Appearance.padding.small
+                visible: root.local !== null
+            }
+
+            StyledText {
+                visible: root.local !== null
+                text: "Open English WordNet"
+                color: Appearance.colour.textFaint
+            }
+
+            Separator {
+                width: page.width
                 visible: root.onlineSenses.length > 0 || root.onlineNote !== ""
+            }
 
-                Item {
-                    width: parent.width
-                    height: wiktionary.height
+            StyledText {
+                visible: root.onlineSenses.length > 0 || root.onlineNote !== ""
+                text: root.onlineNote || "Wiktionary"
+                color: Appearance.colour.textFaint
+            }
 
-                    StyledText {
-                        id: wiktionary
+            Repeater {
+                model: root.onlineSenses
 
-                        text: "Wiktionary"
-                        color: Appearance.colour.accent
-                    }
+                delegate: DefinitionSense {
+                    required property var modelData
 
-                    StyledText {
-                        anchors.right: parent.right
-                        text: root.onlineNote
-                        color: Appearance.colour.textFaint
-                    }
-                }
-
-                Repeater {
-                    model: root.onlineSenses
-
-                    delegate: DefinitionSense {
-                        required property var modelData
-                        required property int index
-
-                        width: page.width
-                        number: index + 1
-                        sense: ({
-                                text: modelData.text,
-                                part: modelData.part,
-                                examples: modelData.example ? [modelData.example] : []
-                            })
-                    }
+                    width: page.width
+                    sense: modelData
                 }
             }
         }
