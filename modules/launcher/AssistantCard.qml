@@ -139,6 +139,10 @@ Item {
             onContentHeightChanged: if (scroller.pinned && Assistant.streaming)
                 scroller.contentY = Math.max(0, scroller.contentHeight - scroller.height)
 
+            WheelStep {
+                flick: scroller
+            }
+
             Connections {
                 target: Assistant
 

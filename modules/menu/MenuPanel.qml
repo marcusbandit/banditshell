@@ -241,6 +241,10 @@ Item {
                     onHeightChanged: if (!dragging)
                         returnToBounds()
 
+                    WheelStep {
+                        flick: view
+                    }
+
                     Loader {
                         id: bodyLoader
 

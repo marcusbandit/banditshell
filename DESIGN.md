@@ -623,7 +623,10 @@ banditshell/
 │   │                            is its exact step (tests/spring.test.js)
 │   ├── Pull.qml                 a directional swipe; the way in, and back out, that needs no hover
 │   ├── ScrollGesture.qml        two fingers on a touchpad, delivered as that same swipe
-│   ├── GlideList.qml            a list the system scrolls; glides only for keyboard moves
+│   ├── WheelStep.qml            the wheel the way a browser scrolls: 100 px a notch added to
+│   │                            one target and glided to, touchpad pixels 1:1; every
+│   │                            scrolling view carries one and the keys share its target
+│   ├── GlideList.qml            a list that scrolls through WheelStep
 │   ├── Separator.qml            a hairline divider
 │   ├── StyledText.qml           the ONE text element
 │   ├── Icon.qml                 the ONE icon glyph; verifies the name exists

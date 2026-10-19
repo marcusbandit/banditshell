@@ -27,6 +27,12 @@ Item {
         onContentHeightChanged: root.resume()
         onHeightChanged: root.resume()
 
+        WheelStep {
+            id: wheel
+
+            flick: view
+        }
+
         Column {
             id: body
 
@@ -41,7 +47,7 @@ Item {
                 target: SettingsView
 
                 function onTurnChanged(): void {
-                    glide.active = false;
+                    wheel.stop();
                     view.contentY = 0;
                     arrive.value = 1;
                 }
@@ -225,11 +231,10 @@ Item {
             return;
         const at = target.mapToItem(body, 0, 0).y;
         const want = Math.max(0, Math.min(view.contentHeight - view.height, at - view.height / 3));
-        glide.value = view.contentY;
-        glide.target = want;
-        glide.active = true;
         if (SettingsView.reduceMotion)
-            glide.snap();
+            view.contentY = want;
+        else
+            wheel.scrollTo(want);
     }
 
     function findRow(item: Item, uid: string): Item {
@@ -243,26 +248,5 @@ Item {
                 return hit;
         }
         return null;
-    }
-
-    Follow {
-        id: glide
-
-        property bool active: false
-
-        speed: Appearance.animation.scrollSpeed
-        onValueChanged: if (glide.active && !view.dragging)
-            view.contentY = glide.value
-        onSettledChanged: if (glide.settled)
-            glide.active = false
-    }
-
-    Connections {
-        target: view
-
-        function onDraggingChanged(): void {
-            if (view.dragging)
-                glide.active = false;
-        }
     }
 }

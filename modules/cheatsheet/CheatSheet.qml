@@ -626,6 +626,10 @@ Item {
 
                     onMovementEnded: root.park()
 
+                    WheelStep {
+                        flick: view
+                    }
+
                     BindList {
                         id: list
 

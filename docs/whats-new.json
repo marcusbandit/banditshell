@@ -22,7 +22,7 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Lists in the launcher, the clipboard and the file preview scroll the way the rest of your system does. Your touchpad and mouse wheel move them directly, with no glide or step size of the shell's own."
+          "text": "Everything that scrolls in the shell now scrolls the way a web browser does. Each mouse wheel notch moves a fixed distance and glides there, and a fast spin keeps every notch, so five notches go five times as far. The touchpad follows your fingers exactly."
         },
         {
           "type": "config",

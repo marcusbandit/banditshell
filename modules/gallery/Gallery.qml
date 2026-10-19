@@ -88,6 +88,10 @@ Item {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
 
+            WheelStep {
+                flick: navScroll
+            }
+
             Column {
                 id: navCol
 

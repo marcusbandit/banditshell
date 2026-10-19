@@ -6,17 +6,14 @@ ListView {
 
     property real step: Appearance.sizes.rowHeight * ControlTuning.wheelRows
 
-    property real scrollTarget: 0
-
     readonly property real maxScroll: Math.max(0, contentHeight - height)
 
-    readonly property bool handling: dragging || flicking || moving
+    readonly property real anchor: wheel.goal
 
     boundsBehavior: Flickable.DragAndOvershootBounds
 
     function scrollTo(y: real): void {
-        glide.value = root.contentY;
-        root.scrollTarget = Math.max(0, Math.min(y, root.maxScroll));
+        wheel.scrollTo(y);
     }
 
     function reveal(index: int): void {
@@ -34,8 +31,7 @@ ListView {
     }
 
     function reset(): void {
-        root.scrollTarget = 0;
-        glide.value = 0;
+        wheel.stop();
         root.contentY = 0;
     }
 
@@ -43,32 +39,16 @@ ListView {
     onHeightChanged: root.settle()
 
     function settle(): void {
-        root.scrollTarget = Math.max(0, Math.min(root.scrollTarget, root.maxScroll));
-
-        const inside = Math.max(0, Math.min(root.contentY, root.maxScroll));
-        if (!root.handling && Math.abs(inside - root.contentY) > 0.5) {
-            glide.value = inside;
-            root.scrollTarget = inside;
+        if (root.moving || wheel.gliding)
+            return;
+        const inside = wheel.bound(root.contentY);
+        if (Math.abs(inside - root.contentY) > 0.5)
             root.contentY = inside;
-        }
     }
 
-    Follow {
-        id: glide
+    WheelStep {
+        id: wheel
 
-        speed: Appearance.animation.scrollSpeed
-
-        epsilon: 0.5
-        target: root.scrollTarget
-
-        onValueChanged: if (!root.handling)
-            root.contentY = value
+        flick: root
     }
-
-    onContentYChanged: if (root.handling) {
-        glide.value = root.contentY;
-        root.scrollTarget = root.contentY;
-    }
-
-    readonly property real anchor: glide.settled ? contentY : scrollTarget
 }

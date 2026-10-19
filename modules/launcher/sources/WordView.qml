@@ -63,6 +63,7 @@ Item {
     readonly property string status: !root.word || root.groups.length || root.onlineGroups.length ? "" : root.busy ? `Looking up ${root.word}` : `No definition for “${root.word}”`
 
     onWordChanged: {
+        wheel.stop();
         scroller.contentY = 0;
         root.lookUp();
     }
@@ -90,7 +91,7 @@ Item {
     }
 
     function scrollBy(pixels: real): void {
-        scroller.contentY = Math.max(0, Math.min(scroller.contentHeight - scroller.height, scroller.contentY + pixels));
+        wheel.scrollTo(wheel.goal + pixels);
     }
 
     function claimKey(event: var): bool {
@@ -110,7 +111,7 @@ Item {
             root.scrollBy(-page);
             return true;
         case Qt.Key_Home:
-            scroller.contentY = 0;
+            wheel.scrollTo(0);
             return true;
         case Qt.Key_End:
             root.scrollBy(scroller.contentHeight);
@@ -149,6 +150,12 @@ Item {
             readonly property vector4d fades: Qt.vector4d(scroller.atYBeginning ? 0 : scroller.fade, scroller.atYEnd ? 0 : scroller.fade, height, 1)
 
             fragmentShader: Qt.resolvedUrl("../../../components/edgefade.frag.qsb")
+        }
+
+        WheelStep {
+            id: wheel
+
+            flick: scroller
         }
 
         Column {

@@ -408,6 +408,10 @@ Item {
                 clip: interactive
                 boundsBehavior: Flickable.StopAtBounds
 
+                WheelStep {
+                    flick: answer
+                }
+
                 Column {
                     id: lines
 
