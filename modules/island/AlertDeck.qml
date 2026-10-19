@@ -505,6 +505,7 @@ Item {
                 readonly property real open: Math.max(0, arrival.value - departure.value)
                 readonly property real cardHeight: card.implicitHeight
                 readonly property real room: (slot.cardHeight + gap.value) * (root.sweeping ? 1 : slot.open)
+                readonly property bool tucks: root.grouped && !!slot.group && !slot.head && !slot.leaving
                 readonly property real settledRoom: slot.leaving || slot.folding ? 0 : slot.cardHeight + slot.gapTarget
 
                 property real leftAt: 0
@@ -536,7 +537,7 @@ Item {
                 clip: root.fanned > 0 && slot.height < slot.cardHeight + gap.value - 0.5
                 scale: root.fanned > 0 ? 1 : 1 - 0.06 * slot.away
                 transformOrigin: Item.Bottom
-                opacity: !slot.inView ? 0 : root.fanned > 0 ? slot.open : slot.step * slot.step * slot.open
+                opacity: !slot.inView ? 0 : root.fanned > 0 ? (slot.tucks ? 1 : slot.open) : slot.step * slot.step * slot.open
 
                 Travel {
                     id: promotion
@@ -576,7 +577,7 @@ Item {
                 NotificationCard {
                     id: card
 
-                    y: gap.value
+                    y: gap.value - (slot.tucks && root.fanned > 0 ? (slot.cardHeight + gap.value) * (1 - slot.open) : 0)
                     width: slot.width
                     entry: slot.modelData
                     count: slot.tally
