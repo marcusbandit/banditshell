@@ -750,11 +750,7 @@ function packageEdges(model) {
 }
 
 function renderMatrix(model) {
-    const names = [...model.names].sort((a, b) => {
-        const la = model.packages.get(a).data.layer;
-        const lb = model.packages.get(b).data.layer;
-        return la - lb || a.localeCompare(b);
-    });
+    const names = [...model.names].sort(byLayer(model));
     const table = packageEdges(model);
     const width = Math.max(...names.map(n => n.length));
     const lines = [];
@@ -779,94 +775,87 @@ function renderMatrix(model) {
     return lines.join("\n");
 }
 
+function byLayer(model) {
+    return (a, b) => model.packages.get(a).data.layer - model.packages.get(b).data.layer || a.localeCompare(b);
+}
+
 function renderGraph(model) {
-    const byLayer = (a, b) => model.packages.get(a).data.layer - model.packages.get(b).data.layer || a.localeCompare(b);
-    const names = [...model.names].sort(byLayer);
+    const order = byLayer(model);
+    const names = [...model.names].sort(order);
     const id = name => name.replace(/-/g, "_");
+    const cell = text => String(text).replace(/\|/g, "\\|");
+    const known = list => list.filter(name => model.names.has(name));
+    const hard = new Map(names.map(name => [name, new Set(known(model.packages.get(name).data.requires.packages))]));
     const requires = new Map(names.map(name => {
-        const data = model.packages.get(name).data;
-        return [name, new Set([...data.requires.packages, ...data.requires.optional])];
+        const set = allowedTargets(model, name);
+        set.delete(name);
+        return [name, new Set(known([...set]))];
     }));
-    const reaches = (from, to, seen = new Set()) => {
-        for (const next of requires.get(from) || []) {
+    const reaches = (graph, from, to, seen = new Set()) => {
+        for (const next of graph.get(from) || []) {
             if (next === to)
                 return true;
             if (!seen.has(next)) {
                 seen.add(next);
-                if (reaches(next, to, seen))
+                if (reaches(graph, next, to, seen))
                     return true;
             }
         }
         return false;
     };
-    const qmlCount = new Map(names.map(name => [name, 0]));
-    for (const file of model.files) {
-        const owner = model.ownership.owner.get(file);
-        if (owner && file.endsWith(".qml"))
-            qmlCount.set(owner, qmlCount.get(owner) + 1);
-    }
+
     const chart = ["```mermaid", "flowchart BT"];
     for (const name of names)
-        chart.push(`    ${id(name)}["${name}<br/><small>layer ${model.packages.get(name).data.layer}, ${qmlCount.get(name)} qml</small>"]`);
+        chart.push(`    ${id(name)}["${name}<br/><small>layer ${model.packages.get(name).data.layer}</small>"]`);
     for (const name of names) {
-        const data = model.packages.get(name).data;
-        const optional = new Set(data.requires.optional);
-        const direct = [...requires.get(name)].sort(byLayer);
+        const direct = [...requires.get(name)].sort(order);
         for (const target of direct) {
-            if (direct.some(other => other !== target && reaches(other, target)))
-                continue;
-            chart.push(`    ${id(name)} ${optional.has(target) ? "-.->" : "-->"} ${id(target)}`);
+            const optional = !hard.get(name).has(target);
+            const graph = optional ? requires : hard;
+            const implied = direct.some(other => other !== target && (optional || hard.get(name).has(other)) && reaches(graph, other, target));
+            if (!implied)
+                chart.push(`    ${id(name)} ${optional ? "-.->" : "-->"} ${id(target)}`);
         }
     }
     chart.push("```");
 
-    const gaps = new Map(names.map(name => [name, new Set()]));
-    const usedBy = new Map(names.map(name => [name, new Set()]));
-    for (const edge of model.edges) {
-        if (edge.kind !== "import" && edge.kind !== "singleton")
-            continue;
-        if (!edge.to || edge.to === edge.from || !model.names.has(edge.to))
-            continue;
-        if (!requires.get(edge.from).has(edge.to))
-            gaps.get(edge.from).add(edge.to);
-    }
+    const requiredBy = new Map(names.map(name => [name, new Set()]));
     for (const name of names)
         for (const target of requires.get(name))
-            if (usedBy.has(target))
-                usedBy.get(target).add(name);
-
-    const list = set => [...set].sort(byLayer).join(", ") || "none";
+            requiredBy.get(target).add(name);
+    const list = set => [...set].sort(order).join(", ") || "none";
     const rows = names.map(name => {
         const data = model.packages.get(name).data;
-        return `| ${name} | ${data.layer} | ${data.summary} | ${qmlCount.get(name)} | ${list(requires.get(name))} | ${list(usedBy.get(name))} | ${list(gaps.get(name))} |`;
+        const qml = data.owns.qml || [];
+        const services = (data.owns.services || []).map(service => `services/${service}.qml`);
+        const owned = [...qml, ...services].map(file => `\`${file}\``).join(", ") || "none";
+        return `| ${name} | ${data.layer} | ${cell(data.summary)} | ${cell(owned)} | ${list(requires.get(name))} | ${list(requiredBy.get(name))} |`;
     });
 
     return [
         "# Dependency graph",
         "",
-        "Generated by `banditshell dev modules --graph` from the `module.json` manifests and a scan of the",
-        "code. Do not edit it by hand; after a manifest or an import changes, run",
-        "`banditshell dev modules --graph > docs/architecture/dependency-graph.md`. A test fails while this",
-        "page is out of date. The rules behind it are in [modules.md](modules.md).",
+        "Generated from the `module.json` manifests by `node scripts/check-modules.js --graph`; do not edit",
+        "it by hand. After a manifest changes, run",
+        "`node scripts/check-modules.js --graph > docs/architecture/dependency-graph.md`. A test fails while",
+        "this page is out of date. The rules behind it are in [modules.md](modules.md).",
         "",
         "## Packages",
         "",
-        `${names.length} packages, ${[...qmlCount.values()].reduce((a, b) => a + b, 0)} QML files. An arrow points from a package to one it`,
-        "requires; a dotted arrow is an optional requirement. Arrows that a longer path already implies are",
-        "left out, so every package also reaches everything below its arrows.",
+        `${names.length} packages. An arrow points from a package to one it requires; a dotted arrow is an`,
+        "optional requirement. Arrows that a longer path already implies are left out, so a package also",
+        "reaches everything below its arrows.",
         "",
         ...chart,
         "",
         "## Every package",
         "",
-        "Requires and required by come from the manifests. The last column lists packages the code reaches",
-        "for without its manifest allowing it yet; those reaches are recorded in `modules.baseline.json`",
-        "and shrink as the split goes on.",
+        "The QML a package owns is a file or a folder and everything below it. Where the code reaches",
+        "further than its manifest allows, `node scripts/check-modules.js --explain <package>` shows it.",
         "",
-        "| package | layer | summary | qml | requires | required by | reaches without leave |",
-        "|---|---|---|---|---|---|---|",
-        ...rows,
-        ""
+        "| package | layer | summary | owns QML | requires | required by |",
+        "|---|---|---|---|---|---|",
+        ...rows
     ].join("\n");
 }
 
