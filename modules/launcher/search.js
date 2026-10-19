@@ -502,10 +502,10 @@ function reminderAsk(text) {
     return null;
 }
 
-function dayIndex(word, names, short) {
+function dayIndex(word, names, abbreviations) {
     const w = String(word || "").toLowerCase();
     const full = names.indexOf(w);
-    return full >= 0 ? full : short.findIndex(s => w.indexOf(s) === 0);
+    return full >= 0 ? full : abbreviations.findIndex(s => w.indexOf(s) === 0);
 }
 
 function validDay(y, m, d) {

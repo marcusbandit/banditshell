@@ -96,7 +96,7 @@ _bs_moved() {
 
 _bs_live() {
     type -P banditshell >/dev/null || return 1
-    pgrep -x qs >/dev/null 2>&1 || return 1
+    pgrep -x 'qs|quickshell|\.quickshell-wra|\.qs-wrapped' >/dev/null 2>&1 || return 1
     if type -P timeout >/dev/null; then
         timeout 2 banditshell "$@" 2>/dev/null
     else
@@ -124,7 +124,7 @@ _bs_desktop_ids() {
 }
 
 _bs_places() {
-    local root=/usr/share/zoneinfo
+    local root=${TZDIR:-/usr/share/zoneinfo}
     [[ -d $root ]] || return 1
     (cd "$root" && find . -mindepth 2 -type f | sed 's|^\./||')
 }

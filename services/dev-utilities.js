@@ -1190,8 +1190,8 @@ function devAsk(text) {
         };
     }
     if ((m = ASK.caseShort.exec(t) || ASK.caseLoose.exec(t))) {
-        var short = m[1].toLowerCase();
-        var picked = short.indexOf("upper") >= 0 ? "upper" : short.indexOf("lower") >= 0 ? "lower" : short.indexOf("slug") === 0 ? "slug" : "title";
+        var asked = m[1].toLowerCase();
+        var picked = asked.indexOf("upper") >= 0 ? "upper" : asked.indexOf("lower") >= 0 ? "lower" : asked.indexOf("slug") === 0 ? "slug" : "title";
         return {
             tool: "case",
             cases: [picked],

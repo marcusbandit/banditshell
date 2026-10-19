@@ -39,8 +39,8 @@ Singleton {
         return EmojiLogic.toned(entry, modifier);
     }
 
-    function codeOf(char: string): string {
-        return EmojiLogic.codeOf(char);
+    function codeOf(glyph: string): string {
+        return EmojiLogic.codeOf(glyph);
     }
 
     function use(entry: var): void {

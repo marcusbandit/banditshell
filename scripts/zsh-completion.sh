@@ -112,7 +112,7 @@ _bs_moved() {
 
 _bs_live() {
     (( $+commands[banditshell] )) || return 1
-    pgrep -x qs >/dev/null 2>&1 || return 1
+    pgrep -x 'qs|quickshell|\.quickshell-wra|\.qs-wrapped' >/dev/null 2>&1 || return 1
     if (( $+commands[timeout] )); then
         timeout 2 banditshell "$@" 2>/dev/null
     else
@@ -136,7 +136,7 @@ _bs_desktop_ids() {
 }
 
 _bs_places() {
-    local root=/usr/share/zoneinfo file
+    local root=${TZDIR:-/usr/share/zoneinfo} file
     [[ -d $root ]] || return 1
     for file in $root/*/**/*(N.); do
         print -r -- ${file#$root/}

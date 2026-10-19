@@ -7,10 +7,9 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string home: Quickshell.env("HOME")
-    readonly property string path: `${root.home}/.local/share/gvoice/history.json`
+    readonly property string dataDir: Quickshell.env("GVOICE_HOME") || `${Quickshell.env("HOME")}/.local/share/gvoice`
+    readonly property string path: `${root.dataDir}/history.json`
 
-    readonly property string cli: `${root.home}/bin/voice`
 
     property var entries: []
 
@@ -18,7 +17,7 @@ Singleton {
 
     property bool present: false
 
-    readonly property string socketPath: `${root.home}/.local/share/gvoice/events.sock`
+    readonly property string socketPath: `${root.dataDir}/events.sock`
 
     property string phase: "idle"
     property string lang: "auto"
@@ -141,7 +140,7 @@ Singleton {
     }
 
     function run(args: var): void {
-        poke.command = [root.cli, ...args];
+        poke.command = ["sh", "-c", 'exec "$(command -v voice || printf %s "$HOME/bin/voice")" "$@"', "voice", ...args];
         poke.running = true;
     }
 

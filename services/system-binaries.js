@@ -1,9 +1,9 @@
 .pragma library
 
-var DIRECTORIES = ["/usr/bin", "/bin", "/usr/sbin", "/sbin"];
+var DIRECTORIES = ["/usr/bin", "/bin", "/usr/sbin", "/sbin", "/run/wrappers/bin", "/run/current-system/sw/bin"];
 var TOOL = /^[a-z][a-z0-9-]*$/;
 
-var PROBE = 'for tool do\n' + '    for dir in /usr/bin /bin /usr/sbin /sbin; do\n' + '        if [ -f "$dir/$tool" ] && [ -x "$dir/$tool" ]; then printf "%s\\t%s\\n" "$tool" "$dir/$tool"; break; fi\n' + '    done\n' + 'done\n' + 'true\n';
+var PROBE = 'for tool do\n' + '    for dir in ' + DIRECTORIES.join(" ") + '; do\n' + '        if [ -f "$dir/$tool" ] && [ -x "$dir/$tool" ]; then printf "%s\\t%s\\n" "$tool" "$dir/$tool"; break; fi\n' + '    done\n' + 'done\n' + 'true\n';
 
 function probeCommand(tools) {
     return ["sh", "-c", PROBE, "sh"].concat(tools.filter(function (t) {

@@ -44,6 +44,7 @@
     "components": ["components"],
     "scripts": [
       "scripts/check-modules.js",
+      "scripts/find-qt.sh",
       "scripts/in-terminal.sh",
       "scripts/lint-rules.js",
       "scripts/qml-compile-check.sh",

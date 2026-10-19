@@ -26,8 +26,12 @@ function resolve(action, hibernatePossible) {
     return action;
 }
 
+function logindCommand(verb) {
+    return ["sh", "-c", 'if [ -d /run/systemd/system ]; then exec systemctl "$1"; fi; exec loginctl "$1"', "sh", verb];
+}
+
 function commandFor(action) {
     if (action === "suspend" || action === "hibernate")
-        return ["systemctl", action];
+        return logindCommand(action);
     return [];
 }

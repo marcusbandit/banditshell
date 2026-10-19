@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "suspension.js" as Sleep
 
 Singleton {
     id: root
@@ -13,14 +14,14 @@ Singleton {
             icon: "power_settings_new",
             label: "Shut down",
             detail: "",
-            command: ["systemctl", "poweroff"]
+            command: Sleep.logindCommand("poweroff")
         },
         {
             key: "reboot",
             icon: "restart_alt",
             label: "Restart",
             detail: "",
-            command: ["systemctl", "reboot"]
+            command: Sleep.logindCommand("reboot")
         },
         {
             key: "logout",

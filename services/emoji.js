@@ -260,13 +260,13 @@ function toned(entry, modifier) {
     return out;
 }
 
-function remember(used, char, now) {
+function remember(used, glyph, now) {
     var out = {};
     var keys = Object.keys(used || {});
     for (var i = 0; i < keys.length; i++)
         out[keys[i]] = used[keys[i]];
-    var had = out[char];
-    out[char] = {
+    var had = out[glyph];
+    out[glyph] = {
         count: (had ? had.count || 0 : 0) + 1,
         last: now
     };
@@ -279,8 +279,8 @@ function remember(used, char, now) {
     return trimmed;
 }
 
-function codeOf(char) {
-    return codePoints(char).filter(function (point) {
+function codeOf(glyph) {
+    return codePoints(glyph).filter(function (point) {
         return point !== PRESENTATION;
     }).map(function (point) {
         var hex = point.codePointAt(0).toString(16).toUpperCase();

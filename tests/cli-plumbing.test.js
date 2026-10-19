@@ -75,7 +75,7 @@ test("a refusal that used to be sniffed by three verbs now comes out of one plac
 test("the pid is cached, validated with kill -0, and rescanned when it goes stale", async () => {
     const stub = stubs();
     const fake = directory("instance");
-    fs.symlinkSync("/usr/bin/sleep", path.join(fake, "qs"));
+    fs.symlinkSync(spawnSync("sh", ["-c", "command -v sleep"], { encoding: "utf8" }).stdout.trim(), path.join(fake, "qs"));
     const child = spawn(path.join(fake, "qs"), ["60"], { stdio: "ignore" });
     try {
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -291,6 +291,20 @@ test("install.sh lists the path and lua-api steps", () => {
     assert.strictEqual(run.status, 0, run.stderr);
     assert.match(run.stdout, /^path\s+2\s+banditshell on your PATH/m);
     assert.match(run.stdout, /^lua-api\s+2\s+the Lua module for binds/m);
+});
+
+test("install.sh names each package the way the machine's package manager does", () => {
+    const home = directory("home");
+    const names = (manager, pkg) => installer(`PKG_MANAGER=${manager}; package_names ${pkg}; echo "status $?"`, home).stdout.trim();
+    assert.strictEqual(names("pacman", "fd"), "fd\nstatus 0");
+    assert.strictEqual(names("apt-get", "fd"), "fd-find\nstatus 0");
+    assert.strictEqual(names("apt-get", "gcc"), "gcc libc6-dev\nstatus 0");
+    assert.strictEqual(names("dnf", "networkmanager"), "NetworkManager\nstatus 0");
+    assert.strictEqual(names("apk", "python-gobject"), "py3-gobject3\nstatus 0");
+    assert.strictEqual(names("xbps-install", "hyprland"), "status 1");
+    assert.strictEqual(names("zypper", "ttf-nerd-fonts-symbols"), "@nerd-symbols\nstatus 0");
+    assert.strictEqual(names("emerge", "fd"), "status 2");
+    assert.strictEqual(names("apt-get", "something-new"), "something-new\nstatus 0");
 });
 
 test("the path step links ~/.local/bin/banditshell to this checkout's CLI and nothing else", () => {
