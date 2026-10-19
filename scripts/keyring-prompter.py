@@ -5,6 +5,7 @@ import ctypes
 import json
 import os
 import secrets
+import shlex
 import signal
 import sys
 import threading
@@ -470,6 +471,82 @@ class Prompter:
         thread = threading.Thread(target=self._pipe.listen, daemon=True)
         thread.start()
 
+WAITER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "keyring-waiter.sh")
+
+ACTIVATION_GUARD = """'[ -x "$0" ] && exec "$0" "$@"; shift; exec "$@"'"""
+
+def _service_dirs() -> "tuple[str, list[str]]":
+    home = os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+    system = [d for d in (os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share").split(":") if d]
+    if "/usr/share" not in system:
+        system.append("/usr/share")
+    return os.path.join(home, "dbus-1", "services"), [os.path.join(d, "dbus-1", "services") for d in system]
+
+def _service_exec(path: str) -> str:
+    try:
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            lines = handle.read().splitlines()
+    except OSError:
+        return ""
+    group = None
+    for line in lines:
+        line = line.strip()
+        if line.startswith("[") and line.endswith("]"):
+            group = line[1:-1]
+        elif group == "D-BUS Service" and line.startswith("Exec="):
+            return line[len("Exec="):].strip()
+    return ""
+
+def _system_exec(name: str, home: str, system: "list[str]") -> str:
+    for directory in system:
+        if os.path.realpath(directory) == os.path.realpath(home):
+            continue
+        found = _service_exec(os.path.join(directory, f"{name}.service"))
+        if found and "keyring-waiter.sh" not in found:
+            return found
+    return ""
+
+def _activation(name: str, fallback: str) -> str:
+    words = ["/bin/sh", "-c", ACTIVATION_GUARD, shlex.quote(WAITER), name]
+    if fallback:
+        words.append(fallback)
+    return f"[D-BUS Service]\nName={name}\nExec={' '.join(words)}\n"
+
+def redirect_activation(bus: Gio.DBusConnection) -> None:
+    home, system = _service_dirs()
+    changed = False
+    for name in (PROMPTER_NAME, PRIVATE_NAME):
+        ours = os.path.join(home, f"{name}.service")
+        existing = _service_exec(ours)
+        if existing and "keyring-waiter.sh" not in existing:
+            continue
+        wanted = _activation(name, _system_exec(name, home, system))
+        try:
+            with open(ours, encoding="utf-8") as handle:
+                if handle.read() == wanted:
+                    continue
+        except OSError:
+            pass
+        os.makedirs(home, exist_ok=True)
+        staged = f"{ours}.{os.getpid()}"
+        with open(staged, "w", encoding="utf-8") as handle:
+            handle.write(wanted)
+        os.replace(staged, ours)
+        changed = True
+    if changed:
+        bus.call(
+            "org.freedesktop.DBus",
+            "/org/freedesktop/DBus",
+            "org.freedesktop.DBus",
+            "ReloadConfig",
+            None,
+            None,
+            Gio.DBusCallFlags.NONE,
+            -1,
+            None,
+            None,
+        )
+
 EXIT_LOST_NAME = 3
 
 _exit_code = 0
@@ -486,6 +563,10 @@ def main() -> int:
     loop = GLib.MainLoop()
 
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    try:
+        redirect_activation(bus)
+    except OSError as error:
+        print(f"keyring-prompter: could not redirect activation: {error}", file=sys.stderr)
     prompter = Prompter(bus)
 
     info = Gio.DBusNodeInfo.new_for_xml(PROMPTER_XML)

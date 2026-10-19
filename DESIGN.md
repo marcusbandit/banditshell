@@ -983,7 +983,12 @@ banditshell/
 │   │                            second file here that knows a password, and it
 │   │                            holds one for less time than Lock does: the
 │   │                            secret goes straight down the helper's stdin and
-│   │                            is never stored
+│   │                            is never stored. An app that asks before the
+│   │                            shell is up (Nextcloud, two seconds into a
+│   │                            face-unlocked login) no longer gets gcr's box:
+│   │                            the helper points the name's D-Bus activation at
+│   │                            scripts/keyring-waiter.sh, so the question waits
+│   │                            on the bus for the shell
 │   ├── DarkMode.qml             whether apps are asked for dark: the freedesktop
 │   │                            colour-scheme key, read and watched with
 │   │                            gsettings, which portal-aware apps follow
@@ -1772,7 +1777,19 @@ banditshell/
 │   │                            AES-128-CBC) because gnome-keyring will not take
 │   │                            a password as a plain string over the bus.
 │   │                            `--selftest` holds a conversation with libgcr
-│   │                            itself rather than with a memory of the spec
+│   │                            itself rather than with a memory of the spec.
+│   │                            On start it writes a user D-Bus service file
+│   │                            for both prompter names that runs the waiter,
+│   │                            unless someone else's file is already there
+│   ├── keyring-waiter.sh        what D-Bus starts when the keyring asks and the
+│   │                            shell's prompter is not on the bus: it owns
+│   │                            nothing, so the question stays queued for
+│   │                            whoever claims the name first. It waits up to
+│   │                            15 s while a banditshell instance runs, 5 s when
+│   │                            none does, then starts gcr-prompter;
+│   │                            gnome-keyring gives up at 25 s. A /bin/sh guard
+│   │                            in the service file goes straight to
+│   │                            gcr-prompter once this file is gone
 │   └── clip-record.sh           one clipboard event, as one line of JSON: the
 │                                MIME types, and the bytes when they are not text
 ├── src/                         the parts that need C (section 1), built by
