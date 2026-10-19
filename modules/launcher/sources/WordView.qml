@@ -15,7 +15,7 @@ Item {
     signal leave(var what)
     signal launch(var what)
 
-    readonly property string word: Words.cleanWord(root.typed)
+    readonly property string word: String(root.typed ?? "").trim().toLowerCase().replace(/\s+/g, " ")
 
     readonly property var answer: root.word ? Dictionary.answers[root.word] : undefined
     readonly property var onlineAnswer: Dictionary.onlineEnabled && root.word ? Dictionary.online.answers[root.word] ?? null : null
@@ -40,10 +40,7 @@ Item {
         return (root.entry?.forms ?? []).join(", ");
     }
 
-    readonly property var groups: (root.entry?.groups ?? []).map(group => ({
-                part: group.part,
-                senses: group.senses
-            }))
+    readonly property var groups: root.entry?.groups ?? []
 
     readonly property var onlineGroups: {
         const out = [];
@@ -118,17 +115,18 @@ Item {
         case Qt.Key_End:
             root.scrollBy(scroller.contentHeight);
             return true;
+        case Qt.Key_Tab:
+        case Qt.Key_Backtab:
+            return true;
         case Qt.Key_Return:
         case Qt.Key_Enter:
-            if (!root.word)
-                return true;
-            if (event.modifiers & Qt.ControlModifier || !root.firstMeaning)
+            if (event.modifiers & Qt.ControlModifier || !root.firstMeaning && !root.busy)
                 root.openWiktionary();
-            else
+            else if (root.firstMeaning)
                 root.copy();
             return true;
         }
-        return true;
+        return false;
     }
 
     readonly property real footerHeight: Appearance.font.line.small + Appearance.padding.normal * 2
@@ -275,15 +273,13 @@ Item {
 
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
-                visible: !!root.word
                 text: "Wiktionary"
                 color: Appearance.colour.textDim
             }
 
             KeyCap {
                 anchors.verticalCenter: parent.verticalCenter
-                visible: !!root.word
-                text: root.firstMeaning ? "Ctrl ↵" : "↵"
+                text: root.firstMeaning || root.busy ? "Ctrl ↵" : "↵"
             }
 
             Rule {}

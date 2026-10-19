@@ -52,6 +52,7 @@ LauncherConcept {
     }
 
     function present(view: var): void {
+        Appearance.instant = false;
         root.morph();
         root.viewWord = view.text ?? "";
         root.viewComponent = view.component;
@@ -66,8 +67,10 @@ LauncherConcept {
     }
 
     function morph(): void {
-        reshape.value = grow.value;
-        reshape.velocity = 0;
+        if (!root.morphing) {
+            reshape.value = grow.value;
+            reshape.velocity = 0;
+        }
         root.morphing = true;
     }
 
@@ -878,8 +881,9 @@ LauncherConcept {
                     Loader {
                         id: viewLoader
 
+                        x: (parent.width - width) / 2
                         y: (1 - viewIn.viewShown) * Appearance.padding.large
-                        width: parent.width
+                        width: Math.round(Appearance.sizes.launcherWidth * 1.25) - Appearance.padding.large * 2
                         height: parent.height
                         active: !!root.shownView || viewIn.value > 0
                         visible: viewIn.viewShown > 0
