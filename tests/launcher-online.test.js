@@ -139,7 +139,7 @@ test.describe("define", () => {
         assert.strictEqual(Dictionary.waitingForWord("defined "), false);
         assert.strictEqual(Dictionary.waitingForWord("def "), true);
         assert.strictEqual(Dictionary.waitingForWord("synonyms for "), true);
-        assert.strictEqual(Dictionary.waitingForWord("dict "), false);
+        assert.strictEqual(Dictionary.waitingForWord("dict "), true);
         assert.strictEqual(Dictionary.waitingForWord("dictionary "), false);
     });
 

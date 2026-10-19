@@ -628,6 +628,8 @@ Item {
 
                     WheelStep {
                         flick: view
+
+                        onEnded: root.park()
                     }
 
                     BindList {

@@ -9,6 +9,11 @@ WheelHandler {
     property real notch: ControlTuning.wheelNotch
 
     property bool gliding: false
+    property bool touching: false
+    property bool latched: false
+
+    signal began
+    signal ended
 
     readonly property real top: root.flick.originY - root.flick.topMargin
     readonly property real bottom: Math.max(root.top, root.flick.originY + root.flick.contentHeight + root.flick.bottomMargin - root.flick.height)
@@ -29,6 +34,7 @@ WheelHandler {
 
     function stop(): void {
         root.gliding = false;
+        root.glide.snap();
     }
 
     function reclamp(): void {
@@ -40,18 +46,43 @@ WheelHandler {
     acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
 
     onWheel: event => {
-        if (Math.abs(event.angleDelta.x) > Math.abs(event.angleDelta.y) || Math.abs(event.pixelDelta.x) > Math.abs(event.pixelDelta.y)) {
+        if (event.phase === Qt.ScrollEnd || event.phase === Qt.ScrollBegin) {
+            if (root.touching)
+                root.ended();
+            root.touching = false;
+            root.latched = false;
             event.accepted = false;
             return;
         }
-        if (event.phase === Qt.NoScrollPhase && (event.angleDelta.y !== 0 || event.pixelDelta.y !== 0)) {
-            const notches = event.angleDelta.y !== 0 ? event.angleDelta.y / 120 : event.pixelDelta.y / 15;
-            root.scrollTo(root.goal - notches * root.notch);
+        if (Math.abs(event.angleDelta.x) > Math.abs(event.angleDelta.y) || Math.abs(event.pixelDelta.x) > Math.abs(event.pixelDelta.y) || event.angleDelta.y === 0 && event.pixelDelta.y === 0) {
+            event.accepted = false;
             return;
+        }
+        if (event.phase === Qt.NoScrollPhase) {
+            const notches = event.angleDelta.y !== 0 ? event.angleDelta.y / 120 : event.pixelDelta.y / 15;
+            const to = root.bound(root.goal - notches * root.notch);
+            if (to === root.goal) {
+                event.accepted = false;
+                return;
+            }
+            if (!root.gliding)
+                root.began();
+            root.scrollTo(to);
+            return;
+        }
+        const to = root.bound(root.flick.contentY - event.pixelDelta.y);
+        if (to === root.flick.contentY && !root.latched) {
+            event.accepted = false;
+            return;
+        }
+        root.latched = true;
+        if (!root.touching) {
+            root.touching = true;
+            root.began();
         }
         root.stop();
         root.flick.cancelFlick();
-        root.flick.contentY = root.bound(root.flick.contentY - event.pixelDelta.y);
+        root.flick.contentY = to;
     }
 
     property Follow glide: Follow {
@@ -60,8 +91,10 @@ WheelHandler {
 
         onValueChanged: if (root.gliding)
             root.flick.contentY = root.glide.value
-        onSettledChanged: if (root.glide.settled)
-            root.gliding = false
+        onSettledChanged: if (root.glide.settled && root.gliding) {
+            root.gliding = false;
+            root.ended();
+        }
     }
 
     property Connections hooks: Connections {

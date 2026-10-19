@@ -141,6 +141,9 @@ Item {
 
             WheelStep {
                 flick: scroller
+
+                onBegan: scroller.pinned = false
+                onEnded: scroller.pinned = scroller.contentY >= scroller.contentHeight - scroller.height - 2
             }
 
             Connections {

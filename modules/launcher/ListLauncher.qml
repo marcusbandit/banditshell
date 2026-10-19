@@ -23,7 +23,8 @@ LauncherConcept {
     readonly property int resultCount: results.length
     readonly property string scrollInfo: `row ${root.selected} of ${root.results.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}`
 
-    readonly property real panelWidth: Math.round(Appearance.sizes.launcherWidth * (1 + 0.25 * widen.value))
+    readonly property real viewWiden: 0.25
+    readonly property real panelWidth: Math.round(Appearance.sizes.launcherWidth * (1 + root.viewWiden * widen.value))
 
 
     property var capture: null
@@ -882,7 +883,7 @@ LauncherConcept {
                         id: viewLoader
 
                         y: (1 - viewIn.viewShown) * Appearance.padding.large
-                        width: Math.round(Appearance.sizes.launcherWidth * 1.25) - Appearance.padding.large * 2
+                        width: Math.round(Appearance.sizes.launcherWidth * (1 + root.viewWiden)) - Appearance.padding.large * 2
                         height: parent.height
                         active: !!root.shownView || viewIn.value > 0
                         visible: viewIn.viewShown > 0

@@ -31,6 +31,8 @@ Item {
             id: wheel
 
             flick: view
+
+            onBegan: SettingsView.resumeScroll = 0
         }
 
         Column {

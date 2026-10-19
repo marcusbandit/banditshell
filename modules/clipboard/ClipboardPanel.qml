@@ -644,6 +644,10 @@ Item {
                         orientation: Qt.Horizontal
 
                         onWheel: event => {
+                            if (event.pixelDelta.x === 0 && event.pixelDelta.y === 0) {
+                                event.accepted = false;
+                                return;
+                            }
                             if (Math.abs(event.pixelDelta.x) <= Math.abs(event.pixelDelta.y))
                                 return;
                             swipe.feed(event);
