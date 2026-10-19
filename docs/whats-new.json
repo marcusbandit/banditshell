@@ -17,6 +17,11 @@
         {
           "type": "ui",
           "severity": "minor",
+          "text": "The password card for the keyring, polkit and Wi-Fi now looks like a page of the launcher. It rises from the bottom edge as the same frosted panel, with the password in the top row, the question under it, and the keys to press along the bottom."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
           "text": "The keyring and polkit card now comes up over a fullscreen window and takes the keyboard there. It used to wait, unseen, until the window left fullscreen."
         },
         {

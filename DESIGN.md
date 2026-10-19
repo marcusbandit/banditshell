@@ -1478,7 +1478,11 @@ banditshell/
 │   │                            for exactly those two moments, so a dead lock
 │   │                            client never shows what is behind it
 │   ├── password/PasswordPrompt.qml the keyring's and polkit's password question,
-│   │                            as a card. The
+│   │                            drawn as a page of the launcher (2026-10-19):
+│   │                            the same chassis blob rising out of the band,
+│   │                            the secret where the search row would be, the
+│   │                            dictionary page's bold heading below it and its
+│   │                            key-cap footer for the answers. The
 │   │                            one panel nobody asks for: an application wants
 │   │                            a secret and is BLOCKED on the answer, so it
 │   │                            draws over everything, a fullscreen window

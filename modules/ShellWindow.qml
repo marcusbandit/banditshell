@@ -383,7 +383,7 @@ PanelWindow {
         window: Hypr.fullscreenWindowOn(win.screen?.name ?? "")
         hosting: win.launcherAbove || win.passwordAbove
         taking: win.launcherAbove && launcherLayer.open || win.passwordAbove && keyringLayer.open
-        hostedBlobs: body.lowered(launcherLayer.blobs)
+        hostedBlobs: body.lowered([...launcherLayer.blobs, ...keyringLayer.blobs])
     }
 
     IdleInhibitor {
@@ -461,7 +461,7 @@ PanelWindow {
 
             railWanted: sidebar.railWanted
 
-            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs)]
+            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs, ...keyringLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs)]
         }
 
         BandProgress {
@@ -862,14 +862,12 @@ PanelWindow {
 
             parent: win.passwordAbove ? fullscreenBorder.stage : body
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
 
             needed: Keyring.asked + Polkit.asked + PasswordRequest.asked > 0
 
             panel: PasswordPrompt {
-                holeX: chassis.holeX
-                holeY: chassis.holeY
-                holeWidth: chassis.holeWidth
-                holeHeight: chassis.holeHeight
+                inset: win.passwordAbove ? fullscreenBorder.ring : win.border
             }
         }
 
