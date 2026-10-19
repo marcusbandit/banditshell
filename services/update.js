@@ -145,7 +145,7 @@ function removedActions(beforeText, afterText) {
 
 function stepNames(text) {
     const names = [];
-    const pattern = /^[ \t]*add_step[ \t]+([A-Za-z0-9_.@+-]+)/gm;
+    const pattern = /^ {4}add_step[ \t]+([A-Za-z0-9_.@+-]+)/gm;
     const source = String(text ?? "");
     let hit = pattern.exec(source);
     while (hit !== null) {

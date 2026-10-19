@@ -17,6 +17,7 @@ MOZILLA = [
     ("Zen", os.path.join(FLATPAK, "app.zen_browser.zen", ".zen")),
     ("Firefox", os.path.join(HOME, ".mozilla", "firefox")),
     ("Firefox", os.path.join(FLATPAK, "org.mozilla.firefox", ".mozilla", "firefox")),
+    ("Firefox", os.path.join(HOME, "snap", "firefox", "common", ".mozilla", "firefox")),
     ("LibreWolf", os.path.join(HOME, ".librewolf")),
     ("LibreWolf", os.path.join(FLATPAK, "io.gitlab.librewolf-community", ".librewolf")),
     ("Floorp", os.path.join(HOME, ".floorp")),
@@ -26,6 +27,7 @@ MOZILLA = [
 CHROMIUM = [
     ("Chromium", os.path.join(CONFIG, "chromium")),
     ("Chromium", os.path.join(FLATPAK, "org.chromium.Chromium", "config", "chromium")),
+    ("Chromium", os.path.join(HOME, "snap", "chromium", "common", "chromium")),
     ("Chrome", os.path.join(CONFIG, "google-chrome")),
     ("Chrome", os.path.join(FLATPAK, "com.google.Chrome", "config", "google-chrome")),
     ("Brave", os.path.join(CONFIG, "BraveSoftware", "Brave-Browser")),

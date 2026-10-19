@@ -35,7 +35,7 @@ function runBare(args, tools) {
 
 test.describe("install-package.sh", () => {
     test.it("writes the install line for the first package manager it finds", () => {
-        const out = run(["--command", "zypper:qalculate", "apt:qalc", "pacman:libqalculate"], { "apt-get": "exit 0", sudo: "exit 0" });
+        const out = runBare(["--command", "zypper:qalculate", "apt:qalc", "pacman:libqalculate"], { "apt-get": "exit 0", sudo: "exit 0" });
         assert.strictEqual(out.status, 0);
         assert.strictEqual(out.stdout.trim(), "sudo apt-get install -y qalc");
     });
@@ -60,7 +60,7 @@ test.describe("install-package.sh", () => {
     });
 
     test.it("says so when no package manager is there", () => {
-        const out = run(["--command", "zypper:qalculate", "xbps:libqalculate"], {});
+        const out = runBare(["--command", "zypper:qalculate", "xbps:libqalculate"], {});
         assert.strictEqual(out.status, 3);
     });
 

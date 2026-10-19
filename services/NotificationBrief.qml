@@ -30,7 +30,7 @@ Singleton {
         if (!rule)
             return "";
 
-        const short = rule.brief(body);
-        return short && short !== body ? short : "";
+        const brief = rule.brief(body);
+        return brief && brief !== body ? brief : "";
     }
 }

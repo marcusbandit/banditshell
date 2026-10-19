@@ -37,6 +37,27 @@
       ]
     },
     {
+      "id": "2026-10-19-1",
+      "date": "2026-10-19",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The shell now starts on Qt older than 6.12, which is what Ubuntu and Debian ship. Qt before 6.12 refused a handful of names the code used, such as final and char, and the shell would not load at all."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ubuntu 26.04 and 25.10 work once you build Quickshell, and docs/install-ubuntu.md walks through it. The README now says how well each distro is supported and what people there run into. Ubuntu 24.04 cannot run it: its Qt is too old for Quickshell."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "For scripts that call the shell directly: qs ipc call keyboard float is now keyboard undock. banditshell panel keyboard float and your binds work as before."
+        }
+      ]
+    },
+    {
       "id": "2026-10-19",
       "date": "2026-10-19",
       "changes": [
@@ -44,6 +65,32 @@
           "type": "features",
           "severity": "minor",
           "text": "The README tells people on Omarchy to keep Omarchy's shell and add the banditshell island as a plugin, listed on the Omarchy plugin marketplace."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-18-14",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "install.sh runs on Debian, Fedora, openSUSE, Void and Alpine as well as Arch. It finds the package manager and installs each tool under that distro's own name, and ./install.sh --list shows the names it will use. On Debian 13 it takes Quickshell and Hyprland from trixie-backports."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A fresh install now also gets the Qt module the OBS deck talks through, and the base tools small systems leave out, such as cmp, flock and the time zone list. Where a distro has no package for the icon fonts, the installer downloads them."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The update menu names an update by its version every time. About one check in five showed a commit hash instead."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Shut down, restart and sleep work on systems without systemd, through elogind's loginctl. The shell also finds the clipboard history it imports and the niri config when XDG_CONFIG_HOME moves them."
         }
       ]
     },

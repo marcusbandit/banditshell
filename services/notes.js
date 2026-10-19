@@ -174,8 +174,9 @@ function notesAsk(text) {
 }
 
 var INDEX = `max=$1; shift
-if command -v fd >/dev/null 2>&1; then
-    fd --type f --extension md --max-results "$max" --absolute-path --print0 . "$@" 2>/dev/null | xargs -0 -r stat --printf '%Y\\t%n\\n' 2>/dev/null
+fd=$(command -v fd || command -v fdfind) || fd=""
+if [ -n "$fd" ]; then
+    "$fd" --type f --extension md --max-results "$max" --absolute-path --print0 . "$@" 2>/dev/null | xargs -0 -r stat --printf '%Y\\t%n\\n' 2>/dev/null
 else
     find -H "$@" -mindepth 1 -name '.*' -prune -o -type f -name '*.md' -printf '%T@\\t%p\\n' 2>/dev/null | head -n "$max"
 fi`;

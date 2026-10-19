@@ -39,7 +39,7 @@ Column {
             interactive: false
             icon: ovr.value.indexOf("/") < 0 ? ovr.value : "image"
             label: root.label(ovr.modelData)
-            detail: ovr.value.replace(/^\/home\/[^/]+/, "~")
+            detail: ovr.value.startsWith(`${System.home}/`) ? `~${ovr.value.slice(System.home.length)}` : ovr.value
             onPointed: SettingsView.hovered = root.row
 
             SettingsTool {

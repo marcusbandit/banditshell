@@ -25,7 +25,7 @@ Singleton {
 
     readonly property string path: `${Config.stateDir}/region.json`
 
-    readonly property string zoneTablePath: "/usr/share/zoneinfo"
+    readonly property string zoneTablePath: Quickshell.env("TZDIR") || "/usr/share/zoneinfo"
 
     readonly property bool zoneFollowsNetwork: Config.values.region.autoZone && root.geoclueInstalled
 
@@ -168,7 +168,7 @@ Singleton {
     Process {
         id: zoneTableReader
 
-        command: ["sh", "-c", `cat ${root.zoneTablePath}/zone.tab ${root.zoneTablePath}/zone1970.tab 2>/dev/null`]
+        command: ["sh", "-c", `cat "${root.zoneTablePath}/zone.tab" "${root.zoneTablePath}/zone1970.tab" 2>/dev/null`]
 
         stdout: StdioCollector {
             onStreamFinished: root.zoneTable = Rules.parseZoneTable(text)

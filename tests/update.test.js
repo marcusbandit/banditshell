@@ -156,6 +156,8 @@ test("new install steps are the deps, the definition line is not a step", () => 
     assert.deepStrictEqual(Update.addedSteps(before, after), ["fd", "ripgrep"]);
     assert.deepStrictEqual(Update.addedSteps(after, before), []);
     assert.deepStrictEqual(Update.addedSteps("", ""), []);
+    const guarded = after + "    if [ \"$PKG_MANAGER\" = apk ]; then\n        add_step gnu-userland x gnu-userland 1 \"x\"\n    fi\n";
+    assert.deepStrictEqual(Update.addedSteps(after, guarded), []);
     assert.deepStrictEqual(Update.classify({ nameStatus: status("M\tinstall.sh"), installBefore: before, installAfter: after }).deps, ["fd", "ripgrep"]);
 });
 

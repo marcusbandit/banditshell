@@ -38,6 +38,15 @@ const MISSING = [
     ["async or await", /\basync\s+(function\b|\(|[A-Za-z_$][\w$]*\s*=>)|\bawait\b/]
 ];
 
+const RESERVED = "abstract|boolean|byte|char|double|enum|final|float|goto|implements|int|interface|long|native|package|private|protected|public|short|synchronized|throws|transient|volatile";
+
+MISSING.push(
+    ["reserved word as a variable before Qt 6.12", new RegExp(`\\b(const|let|var)\\s+(${RESERVED})\\b`)],
+    ["reserved word as a function before Qt 6.12", new RegExp(`\\bfunction\\s+(${RESERVED})\\s*\\(`)],
+    ["reserved word as a parameter before Qt 6.12", new RegExp(`\\bfunction\\b[^(]*\\((?:[^)]*,)?\\s*(${RESERVED})\\s*[:,)=]|(?:^|[^\\w$.])(${RESERVED})\\s*=>|\\((?:[^()]*,)?\\s*(${RESERVED})\\s*(?:,[^()]*)?\\)\\s*=>|\\bcatch\\s*\\(\\s*(${RESERVED})\\s*\\)`)],
+    ["reserved word as a property before Qt 6.12", new RegExp(`\\bproperty\\s+[\\w$<>.]+\\s+(${RESERVED})\\b`)]
+);
+
 const MISSING_IN_REGEX = [
     ["regex flag s", r => r.flags.includes("s")],
     ["regex flag d", r => r.flags.includes("d")],
@@ -215,6 +224,14 @@ test("the scanner sees code, not strings, comments or regex bodies", () => {
     assert.ok(/s\.matchAll\(/.test(code), code);
     assert.deepStrictEqual(regexes.map(r => [r.body, r.flags, r.line]), [["catch {", "g", 2], ["x", "s", 3]]);
     assert.strictEqual(code.split("\n")[5], "const i = j.flatMap(k);");
+});
+
+test("reserved words are caught as names but not as types, members or keys", () => {
+    const flagged = text => MISSING.some(([name, pattern]) => name.startsWith("reserved") && pattern.test(text));
+    for (const bad of ["const final = 1;", "var short = x;", "function float(): string {", "function f(a, char) {", "function f(byte: int) {", "long => long + 1", "(a, long) => a", "catch (char) {", "property bool long: false"])
+        assert.ok(flagged(bad), bad);
+    for (const good of ["function f(a: int, b: double): int {", "o.long + o.float", "({ long: 1, char: 2 })", "property int count: 0", "const longBreak = 1;", "function undock(): string {"])
+        assert.ok(!flagged(good), good);
 });
 
 test("the engine's file list follows the JavaScript that QML imports", () => {

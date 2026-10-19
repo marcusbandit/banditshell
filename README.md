@@ -35,7 +35,9 @@ text is set in Monocraft, a pixel font. I use it every day, so it changes
 almost every day.
 
 > [!NOTE]
-> Arch Linux and Hyprland only, for now. This is a personal shell that a few
+> Made on Arch with Hyprland, and used there every day. Other distros get the
+> same installer, which knows six package managers, but so far the shell has
+> only been seen running on Arch. This is a personal shell that a few
 > other people run too. Things move around, and the What's new card tells you
 > when they do.
 
@@ -72,10 +74,42 @@ almost every day.
 
 ## Install
 
-You need Arch Linux and Hyprland. The installer brings the rest: Quickshell,
-the Monocraft font, every tool the shell calls, its small C helpers and tab
-completion for zsh and bash. It asks for sudo only when a package needs
-installing, and a second run retries only the steps that failed.
+You need Hyprland and Quickshell. The installer brings them where your distro
+packages them, along with the Monocraft font, the icon fonts, every tool the
+shell calls, its small C helpers and tab completion for zsh and bash. It uses
+whichever of pacman, apt, dnf, zypper, xbps or apk the machine has, asks for
+sudo only when a package needs installing, and a second run retries only the
+steps that failed.
+
+banditshell is written and used every day on Arch. Everywhere else it has
+only been tried in fresh containers: the installer ran, and on Ubuntu the
+whole shell compiled. Nobody uses it daily there yet, so expect rough edges
+and please open an issue when you hit one.
+
+| Distro | Support | Quickshell | Hyprland | What to know |
+| --- | --- | --- | --- | --- |
+| Arch | daily use | yes | yes | Everything installs. |
+| Debian 13 | tried | backports | backports | Add `trixie-backports` to your apt sources first. |
+| openSUSE Tumbleweed | tried | yes | yes | |
+| Ubuntu 26.04, 25.10 | tried | build it | yes, older | Build Quickshell once; see [docs/install-ubuntu.md](docs/install-ubuntu.md). |
+| Fedora 44 | tried | yes, 0.2 | COPR | Hyprland comes from a COPR. Quickshell 0.2 is older than the 0.3 this is built on. |
+| Void | tried | yes | build it | Build Hyprland yourself. |
+| Alpine | tried | build it | yes | Build Quickshell yourself, and `apk add bash` before the installer. |
+| Ubuntu 24.04 | no | | | Its Qt 6.4 is older than the 6.6 Quickshell needs. Upgrade to 26.04. |
+
+What people on other distros run into:
+
+- Quickshell is new, so many distros do not package it yet. Building it takes
+  a few minutes, and it has to be rebuilt whenever the distro moves Qt to a
+  new version.
+- The packaged Hyprland is often older and reads `hyprland.conf`. That works:
+  copy the binds from `docs/hyprland-binds.example.conf`. Custom window
+  layouts and the Lua binds need Hyprland 0.56 or later with `hyprland.lua`.
+- Qt 6.6 is the floor. Anything older cannot run Quickshell at all.
+
+On NixOS, Gentoo or anything else, `./install.sh --list` names every package
+the shell needs, by its Arch name, for you to install your own way. The
+installer then still sets up the fonts, the helpers and the rest.
 
 ```sh
 git clone https://github.com/marcusbandit/banditshell.git

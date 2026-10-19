@@ -48,8 +48,8 @@ Item {
         })
 
     function hex(c: color): string {
-        const byte = x => ("0" + Math.round(x * 255).toString(16)).slice(-2);
-        return "#" + byte(c.a) + byte(c.r) + byte(c.g) + byte(c.b);
+        const pair = x => ("0" + Math.round(x * 255).toString(16)).slice(-2);
+        return "#" + pair(c.a) + pair(c.r) + pair(c.g) + pair(c.b);
     }
 
     function markup(row: var): string {

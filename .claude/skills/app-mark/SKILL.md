@@ -267,7 +267,7 @@ once. Named as a type, it reloads like everything else.
 The shell hot-reloads on save. Check it loaded cleanly, then look:
 
 ```bash
-timeout 4 qs -p /home/bandit/banditshell log 2>&1 | tail -5
+timeout 4 banditshell log 2>&1 | tail -5
 grim -o "$(hyprctl monitors -j | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["name"])')" -l 0 /tmp/bar.png
 python3 -c "
 from PIL import Image

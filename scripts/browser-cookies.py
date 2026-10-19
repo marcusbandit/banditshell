@@ -9,7 +9,7 @@ FLATPAK = os.path.join(HOME, ".var", "app")
 
 MOZILLA = {
     "zen": [os.path.join(HOME, ".zen"), os.path.join(FLATPAK, "app.zen_browser.zen", ".zen")],
-    "firefox": [os.path.join(HOME, ".mozilla", "firefox"), os.path.join(FLATPAK, "org.mozilla.firefox", ".mozilla", "firefox")],
+    "firefox": [os.path.join(HOME, ".mozilla", "firefox"), os.path.join(FLATPAK, "org.mozilla.firefox", ".mozilla", "firefox"), os.path.join(HOME, "snap", "firefox", "common", ".mozilla", "firefox")],
     "librewolf": [os.path.join(HOME, ".librewolf"), os.path.join(FLATPAK, "io.gitlab.librewolf-community", ".librewolf")],
     "floorp": [os.path.join(HOME, ".floorp")],
     "waterfox": [os.path.join(HOME, ".waterfox")],

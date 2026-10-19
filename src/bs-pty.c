@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/syscall.h>
 #include <sys/wait.h>
 #include <termios.h>
 #include <time.h>
@@ -21,6 +22,18 @@
 
 static int master = -1;
 static pid_t child = -1;
+
+static void close_inherited(void) {
+#ifdef SYS_close_range
+    if (syscall(SYS_close_range, 3U, ~0U, 0U) == 0)
+        return;
+#endif
+    long last = sysconf(_SC_OPEN_MAX);
+    if (last <= 0 || last > 65536)
+        last = last <= 0 ? 1024 : 65536;
+    for (long fd = 3; fd < last; fd++)
+        close((int)fd);
+}
 
 static long long now_ms(void) {
     struct timespec ts;
@@ -395,7 +408,7 @@ int main(int argc, char **argv) {
     }
 
     if (child == 0) {
-        close_range(3, ~0U, 0);
+        close_inherited();
 
         setenv("TERM", "xterm-256color", 1);
         setenv("COLORTERM", "truecolor", 1);

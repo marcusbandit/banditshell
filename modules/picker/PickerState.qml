@@ -38,7 +38,7 @@ Scope {
                 names.push(s.name);
         freezer.command = ["sh", "-c", `
             for n in "$@"; do
-                f=$(mktemp /tmp/banditshell-freeze-XXXXXX.png) || continue
+                f=$(mktemp "\${XDG_RUNTIME_DIR:-\${TMPDIR:-/tmp}}/banditshell-freeze-XXXXXX") || continue
                 grim -o "$n" "$f" && printf '%s\\t%s\\n' "$n" "$f" || rm -f "$f"
             done
         `, "sh", ...names];
@@ -67,7 +67,7 @@ Scope {
 
     function capture(screen: var, x: int, y: int, w: int, h: int): void {
         const stamp = Qt.formatDateTime(new Date(), "yyyy-MM-dd-hhmmss");
-        const out = `${Config.values.picker.dir.replace("~", Quickshell.env("HOME"))}/banditshell-${stamp}.png`;
+        const out = `${Config.values.picker.dir.replace(/^~(?=\/|$)/, Quickshell.env("HOME"))}/banditshell-${stamp}.png`;
 
         if (root.freeze) {
             const frozen = root.take(screen.name);
