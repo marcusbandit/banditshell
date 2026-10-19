@@ -398,3 +398,8 @@ test.describe("the repository", () => {
         assert.match(capture(["--root", ROOT, "--explain", "lock"]).out, /needs media/);
     });
 });
+
+test("the dependency graph page matches the manifests and the code", () => {
+    const page = fs.readFileSync(path.join(ROOT, "docs/architecture/dependency-graph.md"), "utf8");
+    assert.strictEqual(page, `${capture(["--graph"]).out}\n`, "run banditshell dev modules --graph > docs/architecture/dependency-graph.md");
+});
