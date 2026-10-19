@@ -694,11 +694,10 @@ LauncherConcept {
                     arrived = true;
                 return;
             }
-            const near = lift >= restLift - eagerness;
             if (root.dragging)
-                arrived = near || (arrived && lift >= restLift - eagerness - stretchRoom);
+                arrived = lift >= restLift - eagerness || (arrived && lift >= restLift - eagerness - stretchRoom);
             else
-                arrived = root.shown && (near || arrived);
+                arrived = root.shown;
         }
 
         function track(dt: real): void {
