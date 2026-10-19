@@ -8,11 +8,12 @@ WheelHandler {
 
     property real notch: 100
 
+    property bool gliding: false
+
     readonly property real top: root.flick.originY - root.flick.topMargin
     readonly property real bottom: Math.max(root.top, root.flick.originY + root.flick.contentHeight + root.flick.bottomMargin - root.flick.height)
 
-    readonly property real goal: root.glide.running ? root.glide.to : root.flick.contentY
-    readonly property bool gliding: root.glide.running
+    readonly property real goal: root.gliding ? root.glide.target : root.flick.contentY
 
     function bound(y: real): real {
         return Math.max(root.top, Math.min(y, root.bottom));
@@ -20,17 +21,19 @@ WheelHandler {
 
     function scrollTo(y: real): void {
         root.flick.cancelFlick();
-        root.glide.to = root.bound(y);
-        root.glide.restart();
+        if (!root.gliding)
+            root.glide.value = root.flick.contentY;
+        root.glide.target = root.bound(y);
+        root.gliding = !root.glide.settled;
     }
 
     function stop(): void {
-        root.glide.stop();
+        root.gliding = false;
     }
 
     function reclamp(): void {
-        if (root.glide.running && root.glide.to !== root.bound(root.glide.to))
-            root.scrollTo(root.glide.to);
+        if (root.gliding)
+            root.glide.target = root.bound(root.glide.target);
     }
 
     enabled: root.flick.interactive
@@ -46,23 +49,26 @@ WheelHandler {
             root.scrollTo(root.goal - notches * root.notch);
             return;
         }
-        root.glide.stop();
+        root.stop();
         root.flick.cancelFlick();
         root.flick.contentY = root.bound(root.flick.contentY - event.pixelDelta.y);
     }
 
-    property NumberAnimation glide: NumberAnimation {
-        target: root.flick
-        property: "contentY"
-        duration: Appearance.still ? 0 : 200
-        easing.type: Easing.OutCubic
+    property Follow glide: Follow {
+        speed: Appearance.animation.scrollSpeed
+        epsilon: 0.5
+
+        onValueChanged: if (root.gliding)
+            root.flick.contentY = root.glide.value
+        onSettledChanged: if (root.glide.settled)
+            root.gliding = false
     }
 
     property Connections hooks: Connections {
         target: root.flick
 
         function onMovementStarted(): void {
-            root.glide.stop();
+            root.stop();
         }
 
         function onContentHeightChanged(): void {
