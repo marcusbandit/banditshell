@@ -272,7 +272,9 @@ Singleton {
                 list: {
                     pinned: true,
 
-                    recents: false
+                    recents: false,
+
+                    searchAt: 0.4
                 },
 
                 webSearch: "https://duckduckgo.com/?q=%s",

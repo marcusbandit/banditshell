@@ -15,6 +15,8 @@ Item {
 
     property real reach: 0
 
+    property real bulge: root.span
+
     readonly property real travelFull: Math.max(1, root.reach > 0 ? root.reach : root.height - root.border * 2)
 
     readonly property real slack: Config.values.control.pullSlack
@@ -23,7 +25,7 @@ Item {
 
     readonly property real grab: Math.max(root.border + root.swellBy, Appearance.sizes.minTarget)
 
-    readonly property bool active: root.armed && (zone.containsMouse || zone.pressed)
+    readonly property bool active: root.armed && (zone.containsMouse || zone.pressed) && !zone.pulling
 
     readonly property Item maskItem: zone
 
@@ -35,9 +37,9 @@ Item {
 
     readonly property var blobs: swell.value <= 0.01 ? [] : [
         {
-            x: (root.width - root.span) / 2,
+            x: (root.width - root.bulge) / 2,
             y: root.height - (root.border + swell.value),
-            w: root.span,
+            w: root.bulge,
             h: root.border + swell.value,
             radius: Appearance.sizes.windowRadius,
             smooth: Math.min(Appearance.sizes.melt, (root.border + swell.value) / 2)

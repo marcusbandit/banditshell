@@ -756,6 +756,7 @@ PanelWindow {
             border: win.border
             span: launcherLayer.open ? wallpaperLayer.item?.panelWidth ?? wallpaperLayer.width : launcherLayer.panelWidth
             reach: launchEdge.target?.reach ?? 0
+            bulge: launcherLayer.open ? launchEdge.span : launcherLayer.tabWidth || launchEdge.span
 
             armed: true
 
