@@ -31,7 +31,7 @@ IpcHandler {
         return "docked";
     }
 
-    function float(): string {
+    function undock(): string {
         Tablet.setDocked(false);
         return "floating";
     }

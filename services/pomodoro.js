@@ -41,11 +41,11 @@ function pomodoroAsk(text) {
 
 function nextRound(state, settings) {
     if (state.phase === "focus") {
-        var long = state.round % Math.max(1, settings.rounds) === 0;
+        var longBreak = state.round % Math.max(1, settings.rounds) === 0;
         return {
-            phase: long ? "long" : "break",
+            phase: longBreak ? "long" : "break",
             round: state.round,
-            minutes: long ? settings.longBreak : state.breakMinutes || settings.breakMinutes
+            minutes: longBreak ? settings.longBreak : state.breakMinutes || settings.breakMinutes
         };
     }
     return {

@@ -34,8 +34,8 @@ function hasControl(text) {
     return false;
 }
 
-function hex(byte) {
-    return "\\x" + (byte < 16 ? "0" : "") + byte.toString(16);
+function hex(value) {
+    return "\\x" + (value < 16 ? "0" : "") + value.toString(16);
 }
 
 function utf8Bytes(code) {

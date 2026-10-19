@@ -59,8 +59,8 @@ Singleton {
 
     function start(ask: var): void {
         if (ask.phase === "break") {
-            const long = !!ask.long;
-            root.begin(long ? "long" : "break", ask.minutes || (long ? root.settings.longBreak : root.settings.breakMinutes), root.state?.round ?? 0, root.state?.focusMinutes ?? 0, root.state?.breakMinutes ?? 0);
+            const longBreak = !!ask.long;
+            root.begin(longBreak ? "long" : "break", ask.minutes || (longBreak ? root.settings.longBreak : root.settings.breakMinutes), root.state?.round ?? 0, root.state?.focusMinutes ?? 0, root.state?.breakMinutes ?? 0);
             return;
         }
         root.begin("focus", ask.minutes || root.settings.focus, 1, ask.minutes, ask.breakMinutes);

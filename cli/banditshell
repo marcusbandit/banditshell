@@ -1339,7 +1339,8 @@ route_panel() {
     case "$name:$action" in
     launcher:run) [ $# -ge 1 ] || say_usage "panel launcher run <app|row>"; ipc launcher run "$1" ;;
     settings:page) [ $# -ge 1 ] || say_usage "panel settings page <page>"; ipc settings page "$1" ;;
-    keyboard:dock | keyboard:float) ipc keyboard "$action" ;;
+    keyboard:dock) ipc keyboard dock ;;
+    keyboard:float) ipc keyboard undock ;;
     keyboard:page) [ $# -ge 1 ] || say_usage "panel keyboard page <layer> [screen]"; ipc keyboard page "$1" "${2:-}" ;;
     clipboard:list | clipboard:clear) ipc clipboard "$action" ;;
     clipboard:use | clipboard:pin | clipboard:remove) [ $# -ge 1 ] || say_usage "panel clipboard $action <index>"; ipc clipboard "$action" "$1" ;;

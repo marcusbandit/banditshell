@@ -191,9 +191,9 @@ Singleton {
         }
         if (last === null)
             return;
-        const final = last.phase === "done" || last.phase === "rolledback" || last.phase === "failed";
+        const settled = last.phase === "done" || last.phase === "rolledback" || last.phase === "failed";
         const fresh = Date.now() / 1000 - (Number(last.at) || 0) < 600;
-        if (!root.busy && started === 0 && (final || !fresh))
+        if (!root.busy && started === 0 && (settled || !fresh))
             return;
 
         silence.stop();
@@ -218,7 +218,7 @@ Singleton {
             root.state = root.failed;
             root.error = Words.explain(failure, root.branch);
         }
-        if (final)
+        if (settled)
             watchdog.stop();
     }
 

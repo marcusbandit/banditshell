@@ -67,11 +67,11 @@
   "keyboard": [
     "close(): string",
     "dock(): string",
-    "float(): string",
     "open(screen: string): string",
     "page(name: string, screen: string): string",
     "status(screen: string): string",
-    "toggle(screen: string): string"
+    "toggle(screen: string): string",
+    "undock(): string"
   ],
   "keyring": [
     "demo(): string",
