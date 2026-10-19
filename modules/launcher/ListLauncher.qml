@@ -19,6 +19,7 @@ LauncherConcept {
     view: list
     rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
     travel: panel.implicitHeight
+    reach: panel.bandY - panel.restY
 
     readonly property int resultCount: results.length
     readonly property string scrollInfo: `row ${root.selected} of ${root.results.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}`

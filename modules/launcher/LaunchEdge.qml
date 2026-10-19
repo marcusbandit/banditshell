@@ -13,7 +13,9 @@ Item {
 
     readonly property real swellBy: Math.max(1, Appearance.sizes.gap - 1)
 
-    readonly property real travelFull: Math.max(1, root.height - root.border * 2)
+    property real reach: 0
+
+    readonly property real travelFull: Math.max(1, root.reach > 0 ? root.reach : root.height - root.border * 2)
 
     readonly property real slack: Config.values.control.pullSlack
 

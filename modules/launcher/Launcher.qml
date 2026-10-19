@@ -18,6 +18,7 @@ Item {
     readonly property Item maskItem: root.concept?.maskItem ?? null
 
     readonly property real drawnHeight: root.concept?.drawnHeight ?? 0
+    readonly property real reach: root.concept?.reach ?? 0
     readonly property int resultCount: root.concept?.resultCount ?? 0
     readonly property string scrollInfo: root.concept?.scrollInfo ?? "-"
 

@@ -755,6 +755,7 @@ PanelWindow {
             anchors.topMargin: chassis.streamReach
             border: win.border
             span: launcherLayer.open ? wallpaperLayer.item?.panelWidth ?? wallpaperLayer.width : launcherLayer.panelWidth
+            reach: launchEdge.target?.reach ?? 0
 
             armed: true
 
