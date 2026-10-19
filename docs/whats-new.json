@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-2",
+      "date": "2026-10-19",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Opening and folding a group of notifications in the island is smooth. The island's bottom edge now moves with the cards, so a song's colour fills the island the whole way instead of flashing the plain background under it."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The margin under the last notification in the island is as thin as the margin at its sides."
+        }
+      ]
+    },
+    {
       "id": "2026-10-19-1",
       "date": "2026-10-19",
       "changes": [

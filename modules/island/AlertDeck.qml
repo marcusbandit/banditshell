@@ -60,8 +60,8 @@ Item {
         if (!group)
             return;
         if (root.unfolded.includes(group.key)) {
-            root.unfolded = root.unfolded.filter(k => k !== group.key);
             root.folding = [...root.folding, ...group.entries.slice(1).filter(e => !root.folding.includes(e))];
+            root.unfolded = root.unfolded.filter(k => k !== group.key);
         } else {
             root.unfolded = [...root.unfolded, group.key];
             root.folding = root.folding.filter(e => !group.entries.includes(e));
@@ -263,6 +263,7 @@ Item {
     }
 
     readonly property real footerHeight: clearButton.implicitHeight + Appearance.padding.card
+    readonly property real footerShown: footer.height
 
     property int reshaped: 0
 
