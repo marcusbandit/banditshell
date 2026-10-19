@@ -15,6 +15,12 @@ Item {
 
     property bool claims: false
 
+    property bool framed: true
+
+    readonly property real inset: root.framed ? Appearance.padding.large : 0
+
+    property real textSize: Appearance.font.size.small
+
     property real markSize: Appearance.font.size.small
 
     readonly property int count: field.length
@@ -76,6 +82,7 @@ Item {
 
     SquircleRect {
         anchors.fill: parent
+        visible: root.framed
 
         radius: Appearance.rounding.normal
         color: Appearance.colour.fill
@@ -89,8 +96,8 @@ Item {
         id: field
 
         anchors.fill: parent
-        anchors.leftMargin: Appearance.padding.large
-        anchors.rightMargin: Appearance.padding.large
+        anchors.leftMargin: root.inset
+        anchors.rightMargin: root.inset
 
         enabled: !root.busy
         echoMode: TextInput.NoEcho
@@ -136,10 +143,11 @@ Item {
 
     StyledText {
         anchors.left: parent.left
-        anchors.leftMargin: Appearance.padding.large
+        anchors.leftMargin: root.inset
         anchors.verticalCenter: parent.verticalCenter
 
         text: root.placeholder
+        font.pixelSize: root.textSize
         color: Appearance.colour.textFaint
 
         opacity: placeholderFade.value
@@ -254,9 +262,10 @@ Item {
         id: marks
 
         anchors.fill: parent
-        anchors.leftMargin: Appearance.padding.large
-        anchors.rightMargin: Appearance.padding.large
+        anchors.leftMargin: root.inset
+        anchors.rightMargin: root.inset
         clip: true
+        opacity: !root.framed && root.busy ? Appearance.opacity.disabled : 1
 
         Item {
             id: strip

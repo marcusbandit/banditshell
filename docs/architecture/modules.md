@@ -167,12 +167,14 @@ to be in a baseline.
 ```
 banditshell dev modules                       check against the baseline
 banditshell dev modules --matrix              which package reaches for which
+banditshell dev modules --graph               the package graph as a Markdown page
 banditshell dev modules --explain <package>   what a package needs, with file and line
 ```
 
 The matrix has packages in rows and columns, ordered by layer. A number is how many files of the
 row reach the column; `!` marks a reach the row does not declare, `o` a declared reach nothing uses.
-`--explain` groups what a package uses by the package it comes from, says whether that is declared,
+`--graph` prints [dependency-graph.md](dependency-graph.md), a Mermaid chart GitHub renders, from
+the manifests alone; a test fails while the committed page is stale. `--explain` groups what a package uses by the package it comes from, says whether that is declared,
 and shows the first places. Add `--all` to list every place. The same script runs without the CLI as
 `node scripts/check-modules.js`, which is what CI runs in the `modules` job, and `node --test
 tests/check-modules.test.js` covers the parsers and the repository itself.

@@ -5,6 +5,7 @@ import ctypes
 import json
 import os
 import secrets
+import shlex
 import signal
 import sys
 import threading
@@ -62,8 +63,6 @@ PRIME_1536 = int(
     16,
 )
 GENERATOR = 2
-
-PRIME_BYTES = (PRIME_1536.bit_length() + 7) // 8
 
 PROTOCOL = "sx-aes-1"
 KEY_LENGTH = 16
@@ -154,7 +153,7 @@ class Exchange:
 
     def _derive(self, peer_public: int) -> None:
         shared = pow(peer_public, self._private, PRIME_1536)
-        ikm = shared.to_bytes(PRIME_BYTES, "big")
+        ikm = shared.to_bytes((shared.bit_length() + 7) // 8, "big")
         self._key = HKDF(
             algorithm=hashes.SHA256(), length=KEY_LENGTH, salt=None, info=None
         ).derive(ikm)
@@ -178,12 +177,19 @@ class Pipe:
     def __init__(self, on_answer) -> None:
         self._on_answer = on_answer
         self._lock = threading.Lock()
+        self._closed = False
 
     def send(self, **message) -> None:
         line = json.dumps(message, separators=(",", ":"))
         with self._lock:
-            sys.stdout.write(line + "\n")
-            sys.stdout.flush()
+            if self._closed:
+                return
+            try:
+                sys.stdout.write(line + "\n")
+                sys.stdout.flush()
+            except OSError:
+                self._closed = True
+                GLib.idle_add(self._deliver, None)
 
     def listen(self) -> None:
         for line in sys.stdin:
@@ -452,6 +458,9 @@ class Prompter:
             return
 
         secret = message.get("secret", "")
+        strength = 1 if secret else 0
+        conversation.properties["password-strength"] = strength
+        changed["password-strength"] = _boxed(GLib.Variant("i", strength))
         self._settle(conversation, REPLY_YES, secret.encode("utf-8"), changed)
 
     def _settle(self, conversation, reply, secret, changed) -> None:
@@ -470,6 +479,94 @@ class Prompter:
         thread = threading.Thread(target=self._pipe.listen, daemon=True)
         thread.start()
 
+WAITER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "keyring-waiter.sh")
+
+ACTIVATION_GUARD = """'[ -x "$0" ] && exec "$0" "$@"; shift; exec "$@"'"""
+
+def _service_dirs() -> "tuple[str, list[str]]":
+    home = os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+    system = [d for d in (os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share").split(":") if d]
+    if "/usr/share" not in system:
+        system.append("/usr/share")
+    return os.path.join(home, "dbus-1", "services"), [os.path.join(d, "dbus-1", "services") for d in system]
+
+def _service_entry(path: str) -> "tuple[str, str]":
+    keyfile = GLib.KeyFile()
+    try:
+        keyfile.load_from_file(path, GLib.KeyFileFlags.NONE)
+    except GLib.Error:
+        return "", ""
+
+    def value(key):
+        try:
+            return keyfile.get_string("D-BUS Service", key).strip()
+        except GLib.Error:
+            return ""
+
+    return value("Name"), value("Exec")
+
+def _foreign(home: str, name: str) -> bool:
+    try:
+        entries = os.listdir(home)
+    except OSError:
+        return False
+    for entry in entries:
+        if not entry.endswith(".service"):
+            continue
+        found_name, found_exec = _service_entry(os.path.join(home, entry))
+        if entry == f"{name}.service":
+            if "keyring-waiter.sh" not in found_exec:
+                return True
+        elif found_name == name:
+            return True
+    return False
+
+def _system_exec(name: str, home: str, system: "list[str]") -> str:
+    for directory in system:
+        if os.path.realpath(directory) == os.path.realpath(home):
+            continue
+        found = _service_entry(os.path.join(directory, f"{name}.service"))[1]
+        if found and "keyring-waiter.sh" not in found:
+            return found
+    return ""
+
+def _activation(name: str, fallback: str) -> str:
+    words = ["/bin/sh", "-c", ACTIVATION_GUARD, shlex.quote(WAITER), name]
+    if fallback:
+        words.append(fallback)
+    return f"[D-BUS Service]\nName={name}\nExec={' '.join(words)}\n"
+
+def redirect_activation(bus: Gio.DBusConnection) -> None:
+    home, system = _service_dirs()
+    for name in (PROMPTER_NAME, PRIVATE_NAME):
+        if _foreign(home, name):
+            continue
+        ours = os.path.join(home, f"{name}.service")
+        wanted = _activation(name, _system_exec(name, home, system))
+        try:
+            with open(ours, encoding="utf-8") as handle:
+                if handle.read() == wanted:
+                    continue
+        except (OSError, ValueError):
+            pass
+        os.makedirs(home, exist_ok=True)
+        staged = f"{ours}.{os.getpid()}"
+        with open(staged, "w", encoding="utf-8") as handle:
+            handle.write(wanted)
+        os.replace(staged, ours)
+    bus.call(
+        "org.freedesktop.DBus",
+        "/org/freedesktop/DBus",
+        "org.freedesktop.DBus",
+        "ReloadConfig",
+        None,
+        None,
+        Gio.DBusCallFlags.NONE,
+        -1,
+        None,
+        None,
+    )
+
 EXIT_LOST_NAME = 3
 
 _exit_code = 0
@@ -477,15 +574,19 @@ _exit_code = 0
 def _lost(prompter, name) -> None:
     global _exit_code
     _exit_code = EXIT_LOST_NAME
-    print(f"keyring-prompter: lost {name}", file=sys.stderr)
-    prompter.lost(name)
     loop.quit()
+    prompter.lost(name)
+    print(f"keyring-prompter: lost {name}", file=sys.stderr)
 
 def main() -> int:
     global loop
     loop = GLib.MainLoop()
 
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    try:
+        redirect_activation(bus)
+    except Exception as error:
+        print(f"keyring-prompter: could not redirect activation: {error}", file=sys.stderr)
     prompter = Prompter(bus)
 
     info = Gio.DBusNodeInfo.new_for_xml(PROMPTER_XML)
@@ -494,7 +595,7 @@ def main() -> int:
     )
 
     flags = (
-        Gio.BusNameOwnerFlags.REPLACE | Gio.BusNameOwnerFlags.ALLOW_REPLACEMENT
+        Gio.BusNameOwnerFlags.REPLACE | Gio.BusNameOwnerFlags.DO_NOT_QUEUE
     )
     for name in (PROMPTER_NAME, PRIVATE_NAME):
         Gio.bus_own_name_on_connection(

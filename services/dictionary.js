@@ -1,21 +1,52 @@
 .pragma library
 
-var ASK = /^(?:define|definition of|meaning of|dictionary|dict)\s+([^\s].*)$/i;
-var MEANING = /^what does\s+(.+?)\s+mean\??$/i;
-var WORD = /^[^\s\d<>{}()\[\]\/\\|=+*^%$#@~`",;:?!][^\d<>{}()\[\]\/\\|=+*^%$#@~`",;:?!]{0,47}$/;
+var LETTER = "a-z\\u00c0-\\u024f";
+var HEAD = /^(define|def|defn|definition(?:\s+of)?|meaning(?:\s+of)?|dictionary|dict|synonyms?(?:\s+(?:of|for))?)\s*:?\s+(\S.*)$/i;
+var LOOSE = /^dictionary$/i;
+var DANGLING = /^(?:of|for)$/i;
+var TAIL = /^(.+?)\s+(?:meaning|definition|defined|synonyms?)\s*\??$/i;
+var MEAN = /^what(?:\s+does|\s+do|'s|\u2019s)\s+(.+?)\s+mean\s*\??$/i;
+var MEANING_OF = /^what(?:'s|\u2019s|\s+is)\s+the\s+(?:meaning|definition)\s+of\s+(.+?)\s*\??$/i;
+var MODE = /^\s*(?:define|def|defn|dict|definition\s+of|meaning\s+of|synonyms?\s+(?:of|for))\s*:?\s+(.*)$/i;
+var WAITING = /^\s*(?:define|def|defn|dict|definition of|meaning of|synonyms? (?:of|for))\s+$/i;
+var WORD = new RegExp("^[" + LETTER + "][" + LETTER + "'\u2019.-]*(?: [" + LETTER + "'\u2019.-]+){0,3}$", "i");
+var BARE = new RegExp("^[" + LETTER + "][" + LETTER + "'-]{3,29}$", "i");
+var QUOTES = /^["'\u201c\u2018]+|["'\u201d\u2019]+$/g;
+var ENDING = /[?!.,:;]+$/;
 var TAGS = /<[^>]*>/g;
 var ENTITIES = /&(#\d+|#x[0-9a-f]+|amp|lt|gt|quot|apos|nbsp);/gi;
 var SPACES = /\s+/g;
 var MOST = 12;
-var ENDING = /[?!.]+$/;
+
+function cleanWord(text) {
+    var word = String(text || "").trim().replace(ENDING, "").replace(QUOTES, "").replace(SPACES, " ").trim();
+    return word.length <= 48 && WORD.test(word) ? word.toLowerCase() : "";
+}
 
 function ask(input) {
-    var text = String(input || "").trim();
-    var hit = ASK.exec(text) || MEANING.exec(text);
-    if (!hit)
-        return "";
-    var word = hit[1].trim().replace(ENDING, "");
-    return WORD.test(word) ? word.toLowerCase() : "";
+    var text = String(input || "").trim().replace(SPACES, " ");
+    var head = HEAD.exec(text);
+    if (head) {
+        if (DANGLING.test(head[2]))
+            return null;
+        var named = cleanWord(head[2]);
+        return named ? { word: named, explicit: !LOOSE.test(head[1]) } : null;
+    }
+    var hit = MEAN.exec(text) || MEANING_OF.exec(text) || TAIL.exec(text);
+    if (hit) {
+        var word = cleanWord(hit[1]);
+        return word ? { word: word, explicit: true } : null;
+    }
+    return BARE.test(text) ? { word: text.toLowerCase(), explicit: false } : null;
+}
+
+function modeOf(input) {
+    var hit = MODE.exec(String(input || ""));
+    return hit ? hit[1].trim() : null;
+}
+
+function waitingForWord(input) {
+    return WAITING.test(String(input || ""));
 }
 
 function entity(match, name) {
@@ -34,34 +65,6 @@ function entity(match, name) {
 
 function plain(html) {
     return String(html || "").replace(TAGS, "").replace(ENTITIES, entity).replace(SPACES, " ").trim();
-}
-
-function fromDictionaryApi(data) {
-    if (!Array.isArray(data))
-        return null;
-    var first = data[0] || {};
-    var phonetic = first.phonetic || ((first.phonetics || []).filter(function (p) {
-        return p && p.text;
-    })[0] || {}).text || "";
-    var senses = [];
-    data.forEach(function (entry) {
-        (entry.meanings || []).forEach(function (meaning) {
-            (meaning.definitions || []).forEach(function (d) {
-                if (d && d.definition)
-                    senses.push({
-                        part: String(meaning.partOfSpeech || "").toLowerCase(),
-                        text: plain(d.definition),
-                        example: plain(d.example || "")
-                    });
-            });
-        });
-    });
-    return {
-        word: first.word || "",
-        phonetic: phonetic,
-        senses: senses.slice(0, MOST),
-        source: "dictionaryapi"
-    };
 }
 
 function fromWiktionary(data) {
@@ -95,7 +98,7 @@ function readAnswer(raw, word) {
     } catch (e) {
         return null;
     }
-    var found = Array.isArray(data) ? fromDictionaryApi(data) : fromWiktionary(data);
+    var found = fromWiktionary(data);
     if (!found || !found.senses.length)
         return null;
     if (!found.word)
@@ -105,4 +108,24 @@ function readAnswer(raw, word) {
 
 function pageUrl(word) {
     return "https://en.wiktionary.org/wiki/" + encodeURIComponent(String(word || "").replace(/ /g, "_"));
+}
+
+function escape(text) {
+    return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function senseLine(part, text) {
+    return part ? "<b>" + escape(part) + "</b>&nbsp; " + escape(text) : escape(text);
+}
+
+function onlineSensesOf(answer) {
+    return ((answer && answer.senses) || []).map(function (sense) {
+        return {
+            part: sense.part,
+            text: sense.text,
+            examples: sense.example ? [sense.example] : [],
+            synonyms: [],
+            antonyms: []
+        };
+    });
 }

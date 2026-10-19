@@ -31,11 +31,17 @@ Item {
         Weather.refresh()
 
     Flickable {
+        id: scroller
+
         anchors.fill: parent
         contentHeight: root.natural
         interactive: root.natural > height
         boundsBehavior: Flickable.StopAtBounds
         clip: interactive
+
+        WheelStep {
+            flick: scroller
+        }
 
         Column {
             id: column

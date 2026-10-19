@@ -134,6 +134,7 @@ rule	dev test *
 rule	dev check
 rule	dev modules
 rule	dev modules --matrix
+rule	dev modules --graph
 rule	dev modules --explain @package
 rule	dev lint
 rule	dev lint --all,--write-baseline

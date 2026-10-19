@@ -54,6 +54,10 @@ Item {
 
         boundsBehavior: Flickable.StopAtBounds
 
+        WheelStep {
+            flick: grid
+        }
+
         delegate: FileTile {
             id: tile
 

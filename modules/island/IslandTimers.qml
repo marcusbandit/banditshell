@@ -1,5 +1,6 @@
 import QtQuick
 import qs.config
+import qs.components
 import qs.services
 import qs.modules.menu.content
 
@@ -23,11 +24,17 @@ Item {
     implicitHeight: root.maxHeight > 0 ? Math.min(root.natural, root.maxHeight) : root.natural
 
     Flickable {
+        id: scroller
+
         anchors.fill: parent
         contentHeight: root.natural
         interactive: root.natural > height
         boundsBehavior: Flickable.StopAtBounds
         clip: interactive
+
+        WheelStep {
+            flick: scroller
+        }
 
         Column {
             id: column

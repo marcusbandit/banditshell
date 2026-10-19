@@ -1,5 +1,6 @@
 import QtQuick
 import qs.config
+import qs.components
 import qs.services
 import qs.modules.menu.content
 
@@ -32,11 +33,17 @@ Item {
     Component.onCompleted: Qt.callLater(() => root.shown = root.watched)
 
     Flickable {
+        id: scroller
+
         anchors.fill: parent
         contentHeight: root.natural
         interactive: root.natural > height
         boundsBehavior: Flickable.StopAtBounds
         clip: interactive
+
+        WheelStep {
+            flick: scroller
+        }
 
         Column {
             id: column
