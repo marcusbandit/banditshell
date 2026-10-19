@@ -616,7 +616,7 @@ LauncherConcept {
         id: stretch
 
         stiffness: Appearance.spring.stiffness * 1.9
-        damping: Appearance.spring.damping * 1.4
+        damping: 2 * Math.sqrt(stretch.stiffness * stretch.mass)
         epsilon: 0.002
     }
 
@@ -625,7 +625,7 @@ LauncherConcept {
 
         target: panel.arrived ? 1 : 0
         stiffness: Appearance.spring.stiffness * 1.9
-        damping: Appearance.spring.damping * 1.4
+        damping: 1.6 * Math.sqrt(wide.stiffness * wide.mass)
         epsilon: 0.002
     }
 
@@ -639,6 +639,8 @@ LauncherConcept {
         id: tall
 
         target: panel.arrived ? 1 : 0
+        stiffness: wide.stiffness
+        damping: wide.damping
         epsilon: 0.002
     }
 
@@ -698,6 +700,10 @@ LauncherConcept {
                 arrived = lift >= restLift - eagerness || (arrived && lift >= restLift - eagerness - stretchRoom);
             else
                 arrived = root.shown;
+            if (Appearance.still) {
+                wide.snap();
+                tall.snap();
+            }
         }
 
         function track(dt: real): void {
@@ -712,7 +718,7 @@ LauncherConcept {
             const t = Math.max(0.001, Math.min(dt, 0.1));
             speed += ((lift - lastLift) / t - speed) * (1 - Math.exp(-t / 0.05));
             lastLift = lift;
-            stretch.target = Math.min(0.5, Math.abs(speed) / 6000) + (arrived && root.shown && root.dragging ? 0.12 * reluctance : 0);
+            stretch.target = !root.dragging ? 0 : Math.min(0.5, Math.abs(speed) / 6000) + (arrived && root.shown ? 0.12 * reluctance : 0);
         }
 
         onLiftChanged: {
@@ -720,6 +726,10 @@ LauncherConcept {
                 stuck = false;
                 stretch.release();
                 stretch.velocity *= 0.3;
+                if (Appearance.still) {
+                    stretch.target = 0;
+                    stretch.snap();
+                }
             } else if (!stuck && lift <= tabShapeHeight) {
                 stuck = true;
             }

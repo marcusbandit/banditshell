@@ -88,6 +88,8 @@ Item {
 
         root.showing();
         root.shown = true;
+        if (Appearance.still)
+            rise.snap();
         root.input.text = text;
         root.input.cursorPosition = text.length;
         root.cleared();
@@ -97,6 +99,8 @@ Item {
 
     function hide(): void {
         root.shown = false;
+        if (Appearance.still)
+            rise.snap();
         root.input.focus = false;
         root.hidden();
         Hypr.restoreFocus(root.restoreTo);
