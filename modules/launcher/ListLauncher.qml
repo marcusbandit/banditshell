@@ -881,7 +881,6 @@ LauncherConcept {
                     Loader {
                         id: viewLoader
 
-                        x: (parent.width - width) / 2
                         y: (1 - viewIn.viewShown) * Appearance.padding.large
                         width: Math.round(Appearance.sizes.launcherWidth * 1.25) - Appearance.padding.large * 2
                         height: parent.height
