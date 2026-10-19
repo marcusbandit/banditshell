@@ -18,8 +18,8 @@ LauncherConcept {
     input: query
     view: list
     rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
-    travel: panel.bandY - panel.restY
-    reach: panel.bandY - panel.restY
+    travel: panel.restLift
+    reach: panel.restLift
     tabWidth: panel.barHeight * 2
 
     readonly property int resultCount: results.length
@@ -681,15 +681,6 @@ LauncherConcept {
         target: root.dragging ? panel.swayFor(root.dragAside) : 0
     }
 
-    Spring {
-        id: tall
-
-        target: panel.arrived ? 1 : 0
-        stiffness: wide.stiffness
-        damping: wide.damping
-        epsilon: 0.002
-    }
-
     FrameAnimation {
         id: motion
 
@@ -739,7 +730,7 @@ LauncherConcept {
 
         readonly property real bandY: root.height - root.inset
 
-        readonly property real restLift: bandY - restY
+        readonly property real restLift: bandY - liftedY
         readonly property real lift: restLift * root.revealed
         property real lastLift: 0
         property real speed: 0
@@ -749,7 +740,7 @@ LauncherConcept {
         readonly property real letGo: barHeight * 1.5
         readonly property real reluctance: Math.max(0, Math.min(1, (restLift - lift) / letGo))
 
-        readonly property real centredY: Math.max(root.inset, (root.height - panel.height) / 2)
+        readonly property real centredY: Math.max(root.inset, (root.height - fullHeight) / 2)
 
         readonly property real liftedY: restY + (centredY - restY) * widen.value
 
@@ -783,10 +774,8 @@ LauncherConcept {
                 arrived = lift >= restLift - eagerness || (arrived && lift >= restLift - eagerness - stretchRoom);
             else
                 arrived = root.shown;
-            if (Appearance.still) {
+            if (Appearance.still)
                 wide.snap();
-                tall.snap();
-            }
         }
 
         function track(dt: real): void {
@@ -817,7 +806,7 @@ LauncherConcept {
                 stuck = true;
             }
             if (stuck)
-                stretch.hold(lift / barHeight - 1);
+                stretch.hold(Math.max(0, lift / barHeight - 1));
             panel.judgeArrival();
         }
 
@@ -828,13 +817,13 @@ LauncherConcept {
 
         x: (root.width - width) / 2 + sway.value
 
-        y: bandY - lift - (restY - liftedY) * root.revealed
+        y: bandY - lift
 
         width: tabShapeWidth + (root.panelWidth / (1 + bodyStretch) - tabShapeWidth) * wide.value
 
         implicitHeight: Math.min(root.shownView ? Math.round(root.height * 0.75) : root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
 
-        height: tabShapeHeight + (fullHeight * (1 + bodyStretch) - tabShapeHeight) * tall.value
+        height: tabShapeHeight + (fullHeight * (1 + bodyStretch) - tabShapeHeight) * wide.value
 
         visible: height > 0
 

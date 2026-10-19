@@ -115,16 +115,16 @@ Item {
     }
 
     function dragTo(fraction: real, aside: real): void {
-        root.dragging = true;
         root.dragProgress = Math.max(0, Math.min(fraction, 1));
+        root.dragging = true;
         root.dragAside = aside || 0;
     }
 
     function dragEnd(open: bool): void {
+        rise.value = root.dragProgress;
+
         root.dragging = false;
         root.dragAside = 0;
-
-        rise.value = root.dragProgress;
 
         if (open) {
             if (!root.shown)
