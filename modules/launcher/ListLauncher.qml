@@ -23,13 +23,15 @@ LauncherConcept {
     readonly property int resultCount: results.length
     readonly property string scrollInfo: `row ${root.selected} of ${root.results.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}`
 
-    readonly property real panelWidth: root.shownView ? Math.round(Appearance.sizes.launcherWidth * 1.25) : Appearance.sizes.launcherWidth
+    readonly property real panelWidth: Math.round(Appearance.sizes.launcherWidth * (1 + 0.25 * widen.value))
 
 
     property var capture: null
     property string beforeCapture: ""
 
     property var shownView: null
+    property Component viewComponent: null
+    property string viewWord: ""
 
     readonly property var results: root.capture ? search.keyed([Object.assign({}, root.capture.row, {
                     detail: root.capture.said || root.capture.row.detail
@@ -50,26 +52,26 @@ LauncherConcept {
     }
 
     function present(view: var): void {
-        const before = root.shownView ? root.shownView.before : query.text;
-        root.retypeQuery(view.text ?? "");
-        root.shownView = {
-            component: view.component,
-            before: before
-        };
+        root.morph();
+        root.viewWord = view.text ?? "";
+        root.viewComponent = view.component;
+        root.shownView = view;
         Qt.callLater(query.forceActiveFocus);
     }
 
     function closeView(): void {
-        const before = root.shownView?.before ?? "";
+        root.morph();
         root.shownView = null;
-        root.retypeQuery(before);
         Qt.callLater(query.forceActiveFocus);
     }
 
-    function retypeQuery(text: string): void {
-        query.text = text;
-        query.cursorPosition = text.length;
+    function morph(): void {
+        reshape.value = grow.value;
+        reshape.velocity = 0;
+        root.morphing = true;
     }
+
+    property bool morphing: false
 
     function back(): void {
         if (root.shownView)
@@ -180,6 +182,9 @@ LauncherConcept {
             Assistant.stop();
         root.capture = null;
         root.shownView = null;
+        root.morphing = false;
+        viewIn.snap();
+        widen.snap();
         search.armed = "";
         search.colourEdit = null;
     }
@@ -421,9 +426,6 @@ LauncherConcept {
         case Qt.Key_End:
             root.moveTo(root.results.length - 1);
             return true;
-        case Qt.Key_PageDown:
-        case Qt.Key_PageUp:
-            return peek.scrollPage(event.key === Qt.Key_PageDown ? 1 : -1);
         }
         return false;
     }
@@ -647,6 +649,37 @@ LauncherConcept {
 
     property bool unsized: false
 
+    Travel {
+        id: reshape
+
+        target: root.morphing ? panel.implicitHeight : reshape.value
+        longestFrame: root.longestFrame
+
+        onSettledChanged: if (reshape.settled && root.morphing) {
+            grow.value = reshape.value;
+            root.morphing = false;
+        }
+    }
+
+    Travel {
+        id: widen
+
+        target: root.shownView ? 1 : 0
+        epsilon: 0.002
+        longestFrame: root.longestFrame
+    }
+
+    Travel {
+        id: viewIn
+
+        readonly property real listShown: Math.max(0, 1 - viewIn.value * 2)
+        readonly property real viewShown: Math.max(0, viewIn.value * 2 - 1)
+
+        target: root.shownView ? 1 : 0
+        epsilon: 0.002
+        longestFrame: root.longestFrame
+    }
+
     Item {
         id: panel
 
@@ -658,13 +691,17 @@ LauncherConcept {
 
         x: (root.width - width) / 2
 
-        y: bandY + (restY - bandY) * root.revealed
+        readonly property real centredY: Math.max(root.inset, (root.height - panel.height) / 2)
+
+        readonly property real liftedY: restY + (centredY - restY) * widen.value
+
+        y: bandY + (liftedY - bandY) * root.revealed
 
         width: root.panelWidth
 
-        implicitHeight: Math.min(root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
+        implicitHeight: Math.min(root.shownView ? Math.round(root.height * 0.75) : root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
 
-        height: grow.value * root.revealed
+        height: (root.morphing ? reshape.value : grow.value) * root.revealed
 
         visible: height > 0
 
@@ -727,16 +764,31 @@ LauncherConcept {
                         selectedTextColor: Appearance.colour.accentText
                         clip: true
 
+                        readOnly: !!root.shownView
+                        opacity: viewIn.listShown
+                        cursorVisible: !root.shownView && activeFocus
+
                         Keys.onPressed: event => root.pressKey(event)
 
                         StyledText {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
 
-                            text: root.shownView ? viewLoader.item?.prompt ?? "" : !root.capture ? "Search" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
+                            text: !root.capture ? "Search" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
                         }
+                    }
+
+                    StyledText {
+                        anchors.left: query.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: viewIn.viewShown > 0
+                        opacity: viewIn.viewShown
+                        text: root.viewWord
+                        font.pixelSize: Appearance.font.size.normal
+                        elide: Text.ElideRight
                     }
                 }
 
@@ -826,25 +878,24 @@ LauncherConcept {
                     Loader {
                         id: viewLoader
 
+                        y: (1 - viewIn.viewShown) * Appearance.padding.large
                         width: parent.width
                         height: parent.height
-                        active: !!root.shownView
-                        sourceComponent: root.shownView?.component ?? null
+                        active: !!root.shownView || viewIn.value > 0
+                        visible: viewIn.viewShown > 0
+                        opacity: viewIn.viewShown
+                        sourceComponent: root.viewComponent
 
                         Binding {
                             target: viewLoader.item
                             property: "typed"
-                            value: query.text
+                            value: root.viewWord
                             when: viewLoader.status === Loader.Ready
                         }
 
                         Connections {
                             target: viewLoader.item
                             ignoreUnknownSignals: true
-
-                            function onRetype(text: string): void {
-                                root.retypeQuery(text);
-                            }
 
                             function onLeave(what: var): void {
                                 root.hide();
@@ -965,9 +1016,9 @@ LauncherConcept {
                         y: (quickLaunch.full + Appearance.padding.large) * gridIn.value
                         width: parent.width
                         height: gridIn.value > 0 ? root.height : Math.max(0, body.height - y)
-                        visible: !root.shownView
-                        enabled: !root.quick
-                        opacity: 1 - gridIn.value
+                        visible: viewIn.listShown > 0
+                        enabled: !root.quick && !root.shownView
+                        opacity: (1 - gridIn.value) * viewIn.listShown
                         clip: true
 
                         model: ScriptModel {

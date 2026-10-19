@@ -6,19 +6,14 @@ import qs.config
 import qs.components
 import qs.services
 import "../../../services/dictionary.js" as Words
-import "../search.js" as Search
 
 Item {
     id: root
 
     property string typed: ""
 
-    signal retype(string text)
     signal leave(var what)
     signal launch(var what)
-
-    readonly property string icon: "menu_book"
-    readonly property string prompt: "Look up a word"
 
     readonly property string word: Words.cleanWord(root.typed)
 
@@ -32,14 +27,48 @@ Item {
         root.entry = root.answer?.entry ?? null
     onOnlineAnswerChanged: if (root.onlineAnswer !== root.online)
         root.online = root.onlineAnswer
+
     readonly property bool onlineBusy: Dictionary.onlineEnabled && !!root.word && !root.online && Dictionary.online.failures[root.word] === undefined
     readonly property bool localBusy: !!root.word && root.answer === undefined && (Dictionary.ready || Dictionary.building || Dictionary.state === "starting")
     readonly property bool busy: root.localBusy || root.onlineBusy
 
-    readonly property string headword: root.entry?.word || root.online?.word || root.word
-    readonly property string asked: root.entry?.asked && root.entry.asked.toLowerCase() !== root.entry.word.toLowerCase() ? root.entry.asked : ""
+    readonly property string title: root.entry?.word || root.word
+    readonly property string note: {
+        const asked = root.entry?.asked ?? "";
+        if (asked && asked.toLowerCase() !== root.title.toLowerCase())
+            return `from ${asked}`;
+        return (root.entry?.forms ?? []).join(", ");
+    }
 
-    onWordChanged: root.lookUp()
+    readonly property var groups: (root.entry?.groups ?? []).map(group => ({
+                part: group.part,
+                senses: group.senses
+            }))
+
+    readonly property var onlineGroups: {
+        const out = [];
+        Words.onlineSensesOf(root.online).forEach(sense => {
+            let group = out.find(g => g.part === sense.part);
+            if (!group) {
+                group = {
+                    part: sense.part,
+                    senses: []
+                };
+                out.push(group);
+            }
+            group.senses.push(sense);
+        });
+        return out;
+    }
+
+    readonly property string firstMeaning: root.groups[0]?.senses[0]?.text ?? root.onlineGroups[0]?.senses[0]?.text ?? ""
+
+    readonly property string status: !root.word || root.groups.length || root.onlineGroups.length ? "" : root.busy ? `Looking up ${root.word}` : `No definition for “${root.word}”`
+
+    onWordChanged: {
+        scroller.contentY = 0;
+        root.lookUp();
+    }
     Component.onCompleted: {
         root.entry = root.answer?.entry ?? null;
         root.online = root.onlineAnswer;
@@ -53,299 +82,152 @@ Item {
         Dictionary.online.want(Dictionary.onlineEnabled ? root.word : "");
     }
 
-    readonly property var items: {
-        const out = [];
-        const section = (key, title, list) => {
-            if (!list.length)
-                return;
-            out.push({
-                header: true,
-                key: `header:${key}`,
-                title: title,
-                count: list.length
-            });
-            list.forEach(it => out.push(it));
-        };
-        const senses = Words.sensesOf(root.entry);
-        const asSense = source => (sense, i) => Object.assign({
-                key: `${source}:${i}`,
-                kind: "sense",
-                label: sense.text,
-                source: source
-            }, sense);
-        section("definitions", "Definitions", senses.map(asSense("Open English WordNet")));
-        const asWord = (word, i) => ({
-                key: `word:${i}:${word}`,
-                kind: "word",
-                label: word,
-                word: word
-            });
-        section("synonyms", "Synonyms", Words.unique(senses.reduce((all, s) => all.concat(s.synonyms), []), root.headword).map(asWord));
-        section("antonyms", "Antonyms", Words.unique(senses.reduce((all, s) => all.concat(s.antonyms), []), root.headword).map(asWord));
-        section("wiktionary", "Wiktionary", Words.onlineSensesOf(root.online).map(asSense("Wiktionary")));
-        return out;
-    }
-
-    property int selected: -1
-    property string listedWord: ""
-
-    onItemsChanged: {
-        const kept = root.items[root.selected];
-        if (root.word !== root.listedWord || !kept || kept.header) {
-            root.listedWord = root.word;
-            root.selected = Search.nextPickable(root.items, 0, 1);
-            list.positionViewAtBeginning();
-        } else {
-            list.positionViewAtIndex(root.selected, ListView.Contain);
-        }
-    }
-
-    readonly property var current: root.items[root.selected] ?? null
-    readonly property string currentKey: `${root.word}|${root.current?.key ?? ""}`
-
-    onCurrentKeyChanged: detailScroll.contentY = 0
-
-    readonly property string peekWord: root.current?.kind === "word" ? root.current.word.toLowerCase() : ""
-    onPeekWordChanged: if (root.peekWord)
-        Dictionary.want(root.peekWord, false)
-    readonly property var peekEntry: root.peekWord ? Dictionary.answers[root.peekWord]?.entry ?? null : null
-
-    readonly property var detail: {
-        const item = root.current;
-        if (!item)
-            return null;
-        if (item.kind === "word")
-            return {
-                word: root.peekEntry?.word ?? item.word,
-                phonetic: root.peekEntry?.phonetic ?? "",
-                note: "",
-                senses: Words.sensesOf(root.peekEntry).slice(0, 8),
-                related: false,
-                source: root.peekEntry ? "Open English WordNet" : ""
-            };
-        return {
-            word: root.headword,
-            phonetic: item.source === "Wiktionary" ? "" : root.entry?.phonetic ?? "",
-            note: root.asked ? `from ${root.asked}` : "",
-            senses: [item],
-            related: true,
-            source: item.source
-        };
-    }
-
-    readonly property string actionLabel: !root.current ? (root.word && !root.busy ? "Search Wiktionary" : "") : root.current.kind === "word" ? `Look up ${root.current.word}` : "Copy definition"
-
-    function move(step: int): void {
-        const at = Search.nextPickable(root.items, root.selected + step, step);
-        if (at < 0)
-            return;
-        root.selected = at;
-        list.positionViewAtIndex(at, ListView.Contain);
-        if (step < 0 && root.items[at - 1]?.header)
-            list.positionViewAtIndex(at - 1, ListView.Contain);
-    }
-
-    function activate(): void {
-        const item = root.current;
-        if (!item) {
-            if (root.word && !root.busy)
-                root.launch(() => Quickshell.execDetached(["xdg-open", Words.pageUrl(root.word)]));
-            return;
-        }
-        if (item.kind === "word") {
-            root.retype(item.word);
-            return;
-        }
-        const text = item.text;
+    function copy(): void {
+        const text = root.firstMeaning;
         root.leave(() => System.copyText(text));
     }
 
-    function scrollDetail(direction: int): void {
-        const step = detailScroll.height - Appearance.font.line.normal * 2;
-        detailScroll.contentY = Math.max(0, Math.min(detailScroll.contentHeight - detailScroll.height, detailScroll.contentY + direction * step));
+    function openWiktionary(): void {
+        const url = Words.pageUrl(root.word);
+        root.launch(() => Quickshell.execDetached(["xdg-open", url]));
+    }
+
+    function scrollBy(pixels: real): void {
+        scroller.contentY = Math.max(0, Math.min(scroller.contentHeight - scroller.height, scroller.contentY + pixels));
     }
 
     function claimKey(event: var): bool {
+        const page = scroller.height - Appearance.font.line.normal * 2;
         switch (event.key) {
         case Qt.Key_Down:
-        case Qt.Key_Tab:
-            root.move(1);
+            root.scrollBy(Appearance.font.line.normal * 3);
             return true;
         case Qt.Key_Up:
-        case Qt.Key_Backtab:
-            root.move(-1);
+            root.scrollBy(-Appearance.font.line.normal * 3);
             return true;
         case Qt.Key_PageDown:
-            root.scrollDetail(1);
+        case Qt.Key_Space:
+            root.scrollBy(page);
             return true;
         case Qt.Key_PageUp:
-            root.scrollDetail(-1);
+            root.scrollBy(-page);
+            return true;
+        case Qt.Key_Home:
+            scroller.contentY = 0;
+            return true;
+        case Qt.Key_End:
+            root.scrollBy(scroller.contentHeight);
             return true;
         case Qt.Key_Return:
         case Qt.Key_Enter:
-            root.activate();
+            if (!root.word)
+                return true;
+            if (event.modifiers & Qt.ControlModifier || !root.firstMeaning)
+                root.openWiktionary();
+            else
+                root.copy();
             return true;
         }
-        return false;
+        return true;
     }
 
-    readonly property real listWidth: Math.round(root.width * 0.4)
     readonly property real footerHeight: Appearance.font.line.small + Appearance.padding.normal * 2
 
-    implicitHeight: Appearance.sizes.rowHeight * 11
-
-    ListView {
-        id: list
-
-        width: root.listWidth
-        height: root.height - root.footerHeight
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        model: root.items
-
-        delegate: Item {
-            id: line
-
-            required property var modelData
-            required property int index
-
-            readonly property bool chosen: line.index === root.selected
-
-            width: list.width - Appearance.padding.normal
-            height: line.modelData.header ? Appearance.font.line.small + Appearance.padding.normal + Appearance.padding.small : Appearance.sizes.rowHeight
-
-            Row {
-                visible: !!line.modelData.header
-                anchors.left: parent.left
-                anchors.leftMargin: Appearance.padding.normal
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: Appearance.padding.small / 2
-                spacing: Appearance.padding.normal
-
-                StyledText {
-                    text: line.modelData.title ?? ""
-                    color: Appearance.colour.textDim
-                }
-
-                StyledText {
-                    text: line.modelData.count ?? ""
-                    color: Appearance.colour.textFaint
-                }
-            }
-
-            SquircleRect {
-                visible: !line.modelData.header
-                anchors.fill: parent
-                radius: Appearance.rounding.normal
-                color: Appearance.colour.fill
-                opacity: line.chosen ? 1 : hover.hovered ? 0.5 : 0
-            }
-
-            StyledText {
-                visible: !line.modelData.header
-                anchors.left: parent.left
-                anchors.leftMargin: Appearance.padding.normal
-                anchors.right: parent.right
-                anchors.rightMargin: Appearance.padding.normal
-                anchors.verticalCenter: parent.verticalCenter
-                text: line.modelData.label ?? ""
-                font.pixelSize: Appearance.font.size.normal
-                elide: Text.ElideRight
-            }
-
-            HoverHandler {
-                id: hover
-
-                enabled: !line.modelData.header
-            }
-
-            TapHandler {
-                enabled: !line.modelData.header
-                onTapped: root.selected = line.index
-                onDoubleTapped: {
-                    root.selected = line.index;
-                    root.activate();
-                }
-            }
-        }
-
-        StyledText {
-            visible: root.items.length === 0
-            anchors.left: parent.left
-            anchors.leftMargin: Appearance.padding.normal
-            y: Appearance.padding.normal
-            width: list.width - Appearance.padding.normal * 2
-            text: !root.word ? "Type a word" : root.busy ? `Looking up ${root.word}` : `No definition for “${root.word}”`
-            font.pixelSize: Appearance.font.size.normal
-            color: Appearance.colour.textFaint
-            wrapMode: Text.Wrap
-        }
-    }
-
-    Rectangle {
-        x: root.listWidth
-        width: 1
-        height: list.height
-        color: Appearance.colour.separator
-    }
+    implicitHeight: Math.max(Appearance.sizes.rowHeight * 6, scroller.contentHeight + root.footerHeight)
 
     Flickable {
-        id: detailScroll
+        id: scroller
 
-        x: root.listWidth + Appearance.padding.large
-        width: root.width - x
-        height: list.height
-        contentHeight: detailPage.implicitHeight + Appearance.padding.normal
+        width: root.width
+        height: root.height - root.footerHeight
+        contentHeight: page.implicitHeight + Appearance.padding.large
         boundsBehavior: Flickable.StopAtBounds
         clip: true
 
-        Column {
-            id: detailPage
+        readonly property real fade: Appearance.font.line.normal * 1.5
 
+        layer.enabled: scroller.contentHeight > scroller.height
+        layer.effect: ShaderEffect {
+            readonly property vector4d fades: Qt.vector4d(scroller.atYBeginning ? 0 : scroller.fade, scroller.atYEnd ? 0 : scroller.fade, height, 1)
+
+            fragmentShader: Qt.resolvedUrl("../../../components/edgefade.frag.qsb")
+        }
+
+        Column {
+            id: page
+
+            x: Appearance.padding.normal
             y: Appearance.padding.small
-            width: detailScroll.width
-            spacing: Appearance.padding.normal
-            visible: root.detail !== null
+            width: scroller.width - Appearance.padding.normal * 2
+            spacing: Appearance.padding.large
 
             DefinitionHeading {
-                width: detailPage.width
-                word: root.detail?.word ?? ""
-                phonetic: root.detail?.phonetic ?? ""
-                note: root.detail?.note ?? ""
-            }
-
-            Repeater {
-                model: root.detail?.senses ?? []
-
-                delegate: DefinitionSense {
-                    required property var modelData
-
-                    width: detailPage.width
-                    sense: modelData
-                    related: root.detail?.related ?? false
-                }
-            }
-
-            Separator {
-                width: detailPage.width
-                visible: (root.detail?.source ?? "") !== ""
+                width: page.width
+                word: root.title
+                phonetic: root.entry?.phonetic ?? ""
+                note: root.note
             }
 
             StyledText {
                 visible: text !== ""
-                text: root.detail?.source ?? ""
+                width: page.width
+                text: root.status
+                font.pixelSize: Appearance.font.size.normal
+                color: Appearance.colour.textFaint
+                wrapMode: Text.Wrap
+            }
+
+            Repeater {
+                model: root.groups
+
+                delegate: PartGroup {}
+            }
+
+            Column {
+                width: page.width
+                spacing: Appearance.padding.large
+                visible: root.onlineGroups.length > 0
+
+                Separator {
+                    width: page.width
+                }
+
+                StyledText {
+                    text: "Wiktionary"
+                    font.pixelSize: Appearance.font.size.normal
+                    font.bold: true
+                    color: Appearance.colour.textDim
+                }
+
+                Repeater {
+                    model: root.onlineGroups
+
+                    delegate: PartGroup {}
+                }
+            }
+
+            Separator {
+                width: page.width
+                visible: source.text !== ""
+            }
+
+            StyledText {
+                id: source
+
+                visible: text !== ""
+                text: [root.entry ? "Open English WordNet" : "", root.online ? "Wiktionary" : "", root.onlineBusy && root.entry ? "looking on Wiktionary" : ""].filter(Boolean).join(" · ")
                 color: Appearance.colour.textFaint
             }
         }
     }
 
     Separator {
-        y: list.height
+        y: scroller.height
         width: root.width
     }
 
     Item {
-        y: list.height + 1
+        y: scroller.height + 1
         width: root.width
         height: root.footerHeight - 1
 
@@ -377,22 +259,34 @@ Item {
 
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
-                visible: root.actionLabel !== ""
-                text: root.actionLabel
+                visible: root.firstMeaning !== ""
+                text: "Copy definition"
             }
 
             KeyCap {
                 anchors.verticalCenter: parent.verticalCenter
-                visible: root.actionLabel !== ""
+                visible: root.firstMeaning !== ""
                 text: "↵"
             }
 
-            Rectangle {
-                anchors.verticalCenter: parent.verticalCenter
-                width: 1
-                height: Appearance.font.line.small
-                color: Appearance.colour.separator
+            Rule {
+                visible: root.firstMeaning !== ""
             }
+
+            StyledText {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !!root.word
+                text: "Wiktionary"
+                color: Appearance.colour.textDim
+            }
+
+            KeyCap {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !!root.word
+                text: root.firstMeaning ? "Ctrl ↵" : "↵"
+            }
+
+            Rule {}
 
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
@@ -405,6 +299,63 @@ Item {
                 text: "Esc"
             }
         }
+    }
+
+    component PartGroup: Column {
+        id: group
+
+        required property var modelData
+
+        width: page.width
+        spacing: Appearance.padding.normal
+
+        StyledText {
+            visible: text !== ""
+            text: group.modelData.part
+            font.pixelSize: Appearance.font.size.normal
+            font.italic: true
+            color: Appearance.colour.accent
+        }
+
+        Repeater {
+            model: group.modelData.senses
+
+            delegate: Item {
+                id: numbered
+
+                required property var modelData
+                required property int index
+
+                readonly property real gutter: Appearance.font.size.normal * 2
+
+                width: group.width
+                height: sense.implicitHeight
+
+                StyledText {
+                    text: numbered.index + 1
+                    font.pixelSize: Appearance.font.size.normal
+                    color: Appearance.colour.textFaint
+                }
+
+                DefinitionSense {
+                    id: sense
+
+                    x: numbered.gutter
+                    width: numbered.width - numbered.gutter
+                    sense: Object.assign({}, numbered.modelData, {
+                        part: ""
+                    })
+                    related: true
+                }
+            }
+        }
+    }
+
+    component Rule: Rectangle {
+        anchors.verticalCenter: parent.verticalCenter
+        width: 1
+        height: Appearance.font.line.small
+        color: Appearance.colour.separator
     }
 
     component KeyCap: Item {

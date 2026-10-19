@@ -56,10 +56,6 @@ QtObject {
     readonly property bool onlineFailed: root.onlineWanted && Dictionary.online.failures[root.word] !== undefined
     readonly property bool onlineBusy: root.onlineWanted && root.onlineAnswer === undefined && !root.onlineFailed
 
-    readonly property Component page: Component {
-        DefinitionPage {}
-    }
-
     readonly property Component wordView: Component {
         WordView {}
     }
@@ -85,17 +81,6 @@ QtObject {
         } : null;
     }
 
-    function pageOf(entry: var, main: bool): var {
-        return {
-            word: entry?.word ?? root.word,
-            local: entry,
-            online: main ? root.onlineAnswer ?? null : null,
-            onlineWanted: main && root.onlineWanted,
-            onlineBusy: main && root.onlineBusy,
-            onlineFailed: main && root.onlineFailed
-        };
-    }
-
     function wordRow(entry: var, main: bool, score: real): var {
         const first = root.firstSense(entry) ?? (main && root.onlineAnswer ? root.onlineAnswer.senses[0] : null);
         const word = entry?.word ?? root.word;
@@ -108,8 +93,6 @@ QtObject {
             word: word,
             main: main,
             meaning: first?.text ?? "",
-            peekCard: root.page,
-            entry: root.pageOf(entry, main),
             score: score
         };
     }

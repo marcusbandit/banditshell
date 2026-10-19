@@ -8,7 +8,6 @@ ColourSource 1.0 ColourSource.qml
 ContainerSource 1.0 ContainerSource.qml
 DefineSource 1.0 DefineSource.qml
 DefinitionHeading 1.0 DefinitionHeading.qml
-DefinitionPage 1.0 DefinitionPage.qml
 DefinitionSense 1.0 DefinitionSense.qml
 DevSource 1.0 DevSource.qml
 EmojiSource 1.0 EmojiSource.qml

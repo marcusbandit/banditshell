@@ -7,7 +7,6 @@
       "modules/launcher/sources/BrowserSource.qml",
       "modules/launcher/sources/DefineSource.qml",
       "modules/launcher/sources/DefinitionHeading.qml",
-      "modules/launcher/sources/DefinitionPage.qml",
       "modules/launcher/sources/DefinitionSense.qml",
       "modules/launcher/sources/GithubSource.qml",
       "modules/launcher/sources/PackageSource.qml",

@@ -12,7 +12,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Press Enter on a word to open it inside the launcher: its definitions, synonyms and opposites in a list on the left, the chosen one in full on the right, and Wiktionary's entry when you are online. Enter copies a definition or looks up a synonym, typing looks up another word, and Esc goes back."
+          "text": "Press Enter on a word to open its page inside the launcher: every meaning by part of speech, with examples and similar and opposite words, then Wiktionary's entry when you are online. The launcher widens and fades over to it. Enter copies the first meaning, Ctrl+Enter opens Wiktionary, and Esc goes back."
         },
         {
           "type": "features",
