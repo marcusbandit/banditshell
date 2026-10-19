@@ -9,6 +9,7 @@ Singleton {
     readonly property var values: Config.values.control
 
     readonly property real wheelRows: root.values.wheelRows
+    readonly property real wheelNotch: root.values.wheelNotch
     readonly property real pullSlack: root.values.pullSlack
     readonly property real pullCommit: root.values.pullCommit
     readonly property real pullReversal: root.values.pullReversal

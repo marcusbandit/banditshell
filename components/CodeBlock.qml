@@ -208,12 +208,11 @@ Item {
 
         WheelHandler {
             enabled: root.maxPan > 0
+            orientation: Qt.Horizontal
 
             onWheel: event => {
-                if (Math.abs(event.pixelDelta.x) <= Math.abs(event.pixelDelta.y) && Math.abs(event.angleDelta.x) <= Math.abs(event.angleDelta.y)) {
-                    event.accepted = false;
+                if (Math.abs(event.pixelDelta.x) <= Math.abs(event.pixelDelta.y) && Math.abs(event.angleDelta.x) <= Math.abs(event.angleDelta.y))
                     return;
-                }
                 const pixels = event.pixelDelta.x;
                 if (pixels !== 0) {
 

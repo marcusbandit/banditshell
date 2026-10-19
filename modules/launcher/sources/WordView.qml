@@ -29,7 +29,7 @@ Item {
         root.online = root.onlineAnswer
 
     readonly property bool onlineBusy: Dictionary.onlineEnabled && !!root.word && !root.online && Dictionary.online.failures[root.word] === undefined
-    readonly property bool localBusy: !!root.word && root.answer === undefined && (Dictionary.ready || Dictionary.building || Dictionary.state === "starting")
+    readonly property bool localBusy: Dictionary.pending(root.word, true)
     readonly property bool busy: root.localBusy || root.onlineBusy
 
     readonly property string title: root.entry?.word || root.word
@@ -60,7 +60,15 @@ Item {
 
     readonly property string firstMeaning: root.groups[0]?.senses[0]?.text ?? root.onlineGroups[0]?.senses[0]?.text ?? ""
 
-    readonly property string status: !root.word || root.groups.length || root.onlineGroups.length ? "" : root.busy ? `Looking up ${root.word}` : `No definition for “${root.word}”`
+    readonly property string status: {
+        if (!root.word || root.groups.length || root.onlineGroups.length)
+            return "";
+        if (root.busy)
+            return `Looking up ${root.word}`;
+        if (Dictionary.missing && Dictionary.state === "failed")
+            return "The offline dictionary could not be downloaded. It tries again in a minute.";
+        return `No definition for “${root.word}”`;
+    }
 
     onWordChanged: {
         wheel.stop();

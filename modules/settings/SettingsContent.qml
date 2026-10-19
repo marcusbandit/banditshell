@@ -231,8 +231,10 @@ Item {
             return;
         const at = target.mapToItem(body, 0, 0).y;
         const want = Math.max(0, Math.min(view.contentHeight - view.height, at - view.height / 3));
-        if (SettingsView.reduceMotion)
+        if (SettingsView.reduceMotion) {
+            wheel.stop();
             view.contentY = want;
+        }
         else
             wheel.scrollTo(want);
     }

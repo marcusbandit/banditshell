@@ -207,7 +207,10 @@ class Dictionary:
             "SELECT key FROM entries INDEXED BY ranked WHERE key > ? AND key < ? ORDER BY rank DESC, length(key) LIMIT ?",
             (key, key + "\uffff", MOST_COMPLETIONS + 1),
         ).fetchall()
-        return [self.entry(k) for (k,) in keys if k != leave_out][:MOST_COMPLETIONS]
+        keys = [k for (k,) in keys if k != leave_out][:MOST_COMPLETIONS]
+        marks = ",".join("?" * len(keys))
+        data = dict(self.con.execute(f"SELECT key, data FROM entries WHERE key IN ({marks})", keys).fetchall())
+        return [json.loads(data[k]) for k in keys]
 
 
 def serve(db, source, build_missing=True):

@@ -6,7 +6,7 @@ WheelHandler {
 
     required property Flickable flick
 
-    property real notch: 100
+    property real notch: ControlTuning.wheelNotch
 
     property bool gliding: false
 

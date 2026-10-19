@@ -1,7 +1,9 @@
 .pragma library
 
 var LETTER = "a-z\\u00c0-\\u024f";
-var HEAD = /^(?:define|def|defn|definition(?:\s+of)?|meaning(?:\s+of)?|dictionary|dict|synonyms?(?:\s+(?:of|for))?)\s*:?\s+(\S.*)$/i;
+var HEAD = /^(define|def|defn|definition(?:\s+of)?|meaning(?:\s+of)?|dictionary|dict|synonyms?(?:\s+(?:of|for))?)\s*:?\s+(\S.*)$/i;
+var LOOSE = /^dictionary$/i;
+var DANGLING = /^(?:of|for)$/i;
 var TAIL = /^(.+?)\s+(?:meaning|definition|defined|synonyms?)\s*\??$/i;
 var MEAN = /^what(?:\s+does|\s+do|'s|\u2019s)\s+(.+?)\s+mean\s*\??$/i;
 var MEANING_OF = /^what(?:'s|\u2019s|\s+is)\s+the\s+(?:meaning|definition)\s+of\s+(.+?)\s*\??$/i;
@@ -22,7 +24,14 @@ function cleanWord(text) {
 
 function ask(input) {
     var text = String(input || "").trim().replace(SPACES, " ");
-    var hit = HEAD.exec(text) || MEAN.exec(text) || MEANING_OF.exec(text) || TAIL.exec(text);
+    var head = HEAD.exec(text);
+    if (head) {
+        if (DANGLING.test(head[2]))
+            return null;
+        var named = cleanWord(head[2]);
+        return named ? { word: named, explicit: !LOOSE.test(head[1]) } : null;
+    }
+    var hit = MEAN.exec(text) || MEANING_OF.exec(text) || TAIL.exec(text);
     if (hit) {
         var word = cleanWord(hit[1]);
         return word ? { word: word, explicit: true } : null;

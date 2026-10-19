@@ -641,19 +641,11 @@ Item {
 
                         property bool spent: false
 
+                        orientation: Qt.Horizontal
+
                         onWheel: event => {
-
-                            if (event.pixelDelta.x === 0 && event.pixelDelta.y === 0) {
-                                event.accepted = false;
+                            if (Math.abs(event.pixelDelta.x) <= Math.abs(event.pixelDelta.y))
                                 return;
-                            }
-
-                            if (Math.abs(event.pixelDelta.x) <= Math.abs(event.pixelDelta.y)) {
-                                event.accepted = false;
-                                return;
-                            }
-
-                            event.accepted = true;
                             swipe.feed(event);
                         }
                     }

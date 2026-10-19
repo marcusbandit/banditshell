@@ -51,7 +51,7 @@ QtObject {
 
     readonly property var answer: root.word ? Dictionary.answers[root.word] : undefined
     readonly property var localEntry: root.answer?.entry ?? null
-    readonly property bool localBusy: !!root.word && root.answer === undefined && (Dictionary.ready || Dictionary.building || Dictionary.state === "starting")
+    readonly property bool localBusy: Dictionary.pending(root.word, root.explicit)
     readonly property var onlineAnswer: root.onlineWanted ? Dictionary.online.answers[root.word] : undefined
     readonly property bool onlineFailed: root.onlineWanted && Dictionary.online.failures[root.word] !== undefined
     readonly property bool onlineBusy: root.onlineWanted && root.onlineAnswer === undefined && !root.onlineFailed

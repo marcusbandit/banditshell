@@ -38,6 +38,11 @@ Singleton {
         return answer !== undefined && (answer.completed || !explicit);
     }
 
+    function pending(word: string, explicit: bool): bool {
+        const key = root.keyOf(word);
+        return !!key && !root.known(key, explicit) && (root.ready || root.building || root.state === "starting");
+    }
+
     function want(word: string, explicit: bool): void {
         const key = root.keyOf(word);
         if (!key || root.known(key, explicit) || root.asked[key] === true || root.asked[key] === explicit)
@@ -46,7 +51,7 @@ Singleton {
             root.send(key, explicit);
             return;
         }
-        if (!explicit && (root.missing || root.state === "failed"))
+        if (!explicit && (root.missing || root.resting()))
             return;
         const waiting = Object.assign({}, root.waiting);
         waiting[key] = waiting[key] === true || explicit;
@@ -152,9 +157,10 @@ Singleton {
             } else {
                 if (root.state !== "failed")
                     console.warn(`Dictionary: the offline dictionary stopped with code ${code}`);
+                if (root.state !== "ready")
+                    root.missing = true;
                 root.state = "failed";
                 root.failedAt = Date.now();
-                root.missing = true;
                 retry.restart();
                 return;
             }
@@ -167,8 +173,11 @@ Singleton {
         id: retry
 
         interval: root.retryAfter + 1000
-        onTriggered: if (Object.values(root.waiting).some(explicit => explicit)) {
-            root.mayBuild = true;
+        onTriggered: {
+            const explicit = Object.values(root.waiting).some(wanted => wanted);
+            if (!explicit && (root.missing || !Object.keys(root.waiting).length))
+                return;
+            root.mayBuild = explicit;
             root.start();
         }
     }

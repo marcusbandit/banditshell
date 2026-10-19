@@ -104,6 +104,10 @@ test.describe("define", () => {
         assert.strictEqual(word("define a/b"), "");
         assert.strictEqual(word("defined"), "");
         assert.strictEqual(word("define one two three four five"), "");
+        assert.strictEqual(Dictionary.ask("meaning of"), null);
+        assert.strictEqual(Dictionary.ask("definition of"), null);
+        assert.strictEqual(Dictionary.ask("synonyms for"), null);
+        assert.deepStrictEqual(Dictionary.ask("dictionary app"), { word: "app", explicit: false });
     });
 
     test.it("offers a quiet lookup for a lone word", () => {

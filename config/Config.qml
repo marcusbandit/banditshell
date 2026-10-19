@@ -904,6 +904,8 @@ Singleton {
 
                 wheelRows: 5,
 
+                wheelNotch: 100,
+
                 coastMs: 190,
 
                 dragDismissFraction: 0.2,
