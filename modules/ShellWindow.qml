@@ -74,6 +74,11 @@ PanelWindow {
                 launcherLayer.concept?.input?.forceActiveFocus();
         })
 
+    readonly property bool passwordAbove: win.underFullscreen && (keyringLayer.item?.shown ?? false)
+
+    onPasswordAboveChanged: if (!win.passwordAbove)
+        Qt.callLater(() => keyringLayer.stackBefore(tip))
+
     onUnderFullscreenChanged: if (win.underFullscreen) {
         win.closePanels(null, false);
         menuLayer.hide();
@@ -372,8 +377,8 @@ PanelWindow {
         chassis: chassis
         covering: win.underFullscreen && Appearance.sizes.fullscreenEdge
         window: Hypr.fullscreenWindowOn(win.screen?.name ?? "")
-        hosting: win.launcherAbove
-        taking: win.launcherAbove && launcherLayer.open
+        hosting: win.launcherAbove || win.passwordAbove
+        taking: win.launcherAbove && launcherLayer.open || win.passwordAbove && keyringLayer.open
         hostedBlobs: body.lowered(launcherLayer.blobs)
     }
 
@@ -851,6 +856,7 @@ PanelWindow {
         LazyPanel {
             id: keyringLayer
 
+            parent: win.passwordAbove ? fullscreenBorder.stage : body
             anchors.fill: parent
 
             needed: Keyring.asked + Polkit.asked + PasswordRequest.asked > 0

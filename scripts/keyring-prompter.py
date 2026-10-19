@@ -64,8 +64,6 @@ PRIME_1536 = int(
 )
 GENERATOR = 2
 
-PRIME_BYTES = (PRIME_1536.bit_length() + 7) // 8
-
 PROTOCOL = "sx-aes-1"
 KEY_LENGTH = 16
 IV_LENGTH = 16
@@ -155,7 +153,7 @@ class Exchange:
 
     def _derive(self, peer_public: int) -> None:
         shared = pow(peer_public, self._private, PRIME_1536)
-        ikm = shared.to_bytes(PRIME_BYTES, "big")
+        ikm = shared.to_bytes((shared.bit_length() + 7) // 8, "big")
         self._key = HKDF(
             algorithm=hashes.SHA256(), length=KEY_LENGTH, salt=None, info=None
         ).derive(ikm)
@@ -179,12 +177,19 @@ class Pipe:
     def __init__(self, on_answer) -> None:
         self._on_answer = on_answer
         self._lock = threading.Lock()
+        self._closed = False
 
     def send(self, **message) -> None:
         line = json.dumps(message, separators=(",", ":"))
         with self._lock:
-            sys.stdout.write(line + "\n")
-            sys.stdout.flush()
+            if self._closed:
+                return
+            try:
+                sys.stdout.write(line + "\n")
+                sys.stdout.flush()
+            except OSError:
+                self._closed = True
+                GLib.idle_add(self._deliver, None)
 
     def listen(self) -> None:
         for line in sys.stdin:
@@ -453,6 +458,9 @@ class Prompter:
             return
 
         secret = message.get("secret", "")
+        strength = 1 if secret else 0
+        conversation.properties["password-strength"] = strength
+        changed["password-strength"] = _boxed(GLib.Variant("i", strength))
         self._settle(conversation, REPLY_YES, secret.encode("utf-8"), changed)
 
     def _settle(self, conversation, reply, secret, changed) -> None:
@@ -554,9 +562,9 @@ _exit_code = 0
 def _lost(prompter, name) -> None:
     global _exit_code
     _exit_code = EXIT_LOST_NAME
-    print(f"keyring-prompter: lost {name}", file=sys.stderr)
-    prompter.lost(name)
     loop.quit()
+    prompter.lost(name)
+    print(f"keyring-prompter: lost {name}", file=sys.stderr)
 
 def main() -> int:
     global loop
@@ -575,7 +583,9 @@ def main() -> int:
     )
 
     flags = (
-        Gio.BusNameOwnerFlags.REPLACE | Gio.BusNameOwnerFlags.ALLOW_REPLACEMENT
+        Gio.BusNameOwnerFlags.REPLACE
+        | Gio.BusNameOwnerFlags.ALLOW_REPLACEMENT
+        | Gio.BusNameOwnerFlags.DO_NOT_QUEUE
     )
     for name in (PROMPTER_NAME, PRIVATE_NAME):
         Gio.bus_own_name_on_connection(

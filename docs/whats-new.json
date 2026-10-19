@@ -1,6 +1,50 @@
 {
   "entries": [
     {
+      "id": "2026-10-19-3",
+      "date": "2026-10-19",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "If an app asks for your keyring before the shell has started, for example right after logging in with face unlock, the question now waits for the shell and shows in its card. It used to open GNOME's own window, which could land unseen on another workspace and leave the app frozen until you found it."
+        },
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "To make that work the shell writes two files to ~/.local/share/dbus-1/services: org.gnome.keyring.SystemPrompter.service and org.gnome.keyring.PrivatePrompter.service. When banditshell is not running, GNOME's window still comes after a few seconds. If you already had your own file under either name, the shell leaves it alone."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The keyring and polkit card now comes up over a fullscreen window and takes the keyboard there. It used to wait, unseen, until the window left fullscreen."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Unlocking a keyring in the card failed about once in 256 tries: the right password was called wrong for as long as that prompt stayed open. It now works every time."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Choosing the password for a new keyring in the card no longer asks whether to store your passwords unencrypted."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Restarting the shell while the card was up no longer leaves a leftover copy of its keyring helper running, which turned down keyring questions asked while the shell was off."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Enter answers a yes or no question in the card, the same as the highlighted button."
+        }
+      ],
+      "impact": {
+        "restart": true
+      }
+    },
+    {
       "id": "2026-10-19-2",
       "date": "2026-10-19",
       "changes": [

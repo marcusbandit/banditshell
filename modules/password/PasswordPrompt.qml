@@ -25,6 +25,8 @@ Item {
 
     readonly property bool needsKeyboard: root.open
 
+    readonly property bool shown: reveal.value > 0.001
+
     readonly property bool asksForSecret: root.source.kind === "password"
 
     readonly property string goLabel: root.source.continueLabel || (root.asksForSecret ? "unlock" : "continue")
@@ -71,6 +73,11 @@ Item {
         id: keys
 
         Keys.onPressed: event => {
+            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                root.answer();
+                event.accepted = true;
+                return;
+            }
             if (event.key !== Qt.Key_Escape)
                 return;
             Appearance.instantly();

@@ -6,7 +6,7 @@
     "qml": ["modules/password"],
     "services": ["Keyring", "PasswordRequest"],
     "scripts": ["scripts/keyring-prompter.py", "scripts/keyring-waiter.sh", "scripts/polkit-takeover.sh"],
-    "tests": ["tests/keyring-activation.test.js"]
+    "tests": ["tests/keyring-activation.test.js", "tests/keyring-prompter.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor"],

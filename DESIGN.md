@@ -109,10 +109,13 @@ disappears; bright content gives a soft darker edge in its own colour, so the ro
 still reads. `edge.fullscreen` (Settings, Shape and motion) turns the ring off for a plain
 fullscreen.
 
-The launcher is the one exception (2026-10-17). Summoned over a fullscreen window, it opens on
+The launcher is one exception (2026-10-17). Summoned over a fullscreen window, it opens on
 the overlay surface that draws the edge ring, as one solid panel rising out of the ring with no
 band or sidebar behind it. It takes the keyboard while it is open and closes back to the plain
-fullscreen window. Every other panel and menu still refuses to open there.
+fullscreen window. The password card is the other (2026-10-19): an application is blocked on
+its answer, so it moves onto the same overlay surface and takes the keyboard there rather than
+waiting, unseen, for the window to leave fullscreen. Every other panel and menu still refuses to
+open there.
 
 The change is a motion, not a cut. Hyprland fades every top-layer surface out under a
 fullscreen window, so the overlay carries the transition: it starts as an exact copy of the
@@ -1478,9 +1481,12 @@ banditshell/
 │   │                            as a card. The
 │   │                            one panel nobody asks for: an application wants
 │   │                            a secret and is BLOCKED on the answer, so it
-│   │                            draws over everything, a click off it is a NO
-│   │                            rather than a dismissal, and every panel that
-│   │                            takes the keyboard refuses it on the way in
+│   │                            draws over everything, a fullscreen window
+│   │                            included, a click off it is a NO rather than a
+│   │                            dismissal, and every panel that takes the
+│   │                            keyboard refuses it on the way in. Enter
+│   │                            answers a yes-or-no card the way it answers the
+│   │                            password field
 │   ├── cheatsheet/              the hotkey sheet, read from the Lua config scrape
 │   │   ├── CheatSheet.qml       the card, the two view choices, and the way out
 │   │   ├── BindList.qml         every bind there is, grouped by how it is pressed
@@ -1778,6 +1784,15 @@ banditshell/
 │   │                            a password as a plain string over the bus.
 │   │                            `--selftest` holds a conversation with libgcr
 │   │                            itself rather than with a memory of the spec.
+│   │                            The shared key goes into HKDF without leading
+│   │                            zero bytes, as libgcr writes it; padded, one
+│   │                            exchange in 256 failed. A new password comes
+│   │                            back with a password strength above zero, or
+│   │                            gnome-keyring takes it for a blank one and
+│   │                            offers to store everything unencrypted. It
+│   │                            quits when the shell's end of its pipe is
+│   │                            gone, and never queues for the name, so a
+│   │                            helper outliving its shell cannot answer for it.
 │   │                            On start it writes a user D-Bus service file
 │   │                            for both prompter names that runs the waiter,
 │   │                            unless someone else's file is already there
