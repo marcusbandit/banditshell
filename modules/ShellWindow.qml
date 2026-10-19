@@ -74,10 +74,14 @@ PanelWindow {
                 launcherLayer.concept?.input?.forceActiveFocus();
         })
 
-    readonly property bool passwordAbove: win.underFullscreen && (keyringLayer.item?.shown ?? false)
+    readonly property bool passwordAbove: win.underFullscreen && (keyringLayer.open || (keyringLayer.item?.shown ?? false))
 
-    onPasswordAboveChanged: if (!win.passwordAbove)
-        Qt.callLater(() => keyringLayer.stackBefore(tip))
+    onPasswordAboveChanged: Qt.callLater(() => {
+        if (!win.passwordAbove)
+            keyringLayer.stackBefore(tip);
+        if (keyringLayer.open)
+            keyringLayer.item.takeKeys();
+    })
 
     onUnderFullscreenChanged: if (win.underFullscreen) {
         win.closePanels(null, false);

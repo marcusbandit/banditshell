@@ -32,6 +32,13 @@ Item {
     readonly property string goLabel: root.source.continueLabel || (root.asksForSecret ? "unlock" : "continue")
     readonly property string stopLabel: root.source.cancelLabel || "cancel"
 
+    function takeKeys(): void {
+        if (root.asksForSecret)
+            field.land();
+        else
+            keys.forceActiveFocus();
+    }
+
     function answer(): void {
         if (root.asksForSecret) {
             field.submit();
@@ -74,7 +81,8 @@ Item {
 
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                root.answer();
+                if (!event.isAutoRepeat)
+                    root.answer();
                 event.accepted = true;
                 return;
             }

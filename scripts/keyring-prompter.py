@@ -490,26 +490,42 @@ def _service_dirs() -> "tuple[str, list[str]]":
         system.append("/usr/share")
     return os.path.join(home, "dbus-1", "services"), [os.path.join(d, "dbus-1", "services") for d in system]
 
-def _service_exec(path: str) -> str:
+def _service_entry(path: str) -> "tuple[str, str]":
+    keyfile = GLib.KeyFile()
     try:
-        with open(path, encoding="utf-8", errors="replace") as handle:
-            lines = handle.read().splitlines()
+        keyfile.load_from_file(path, GLib.KeyFileFlags.NONE)
+    except GLib.Error:
+        return "", ""
+
+    def value(key):
+        try:
+            return keyfile.get_string("D-BUS Service", key).strip()
+        except GLib.Error:
+            return ""
+
+    return value("Name"), value("Exec")
+
+def _foreign(home: str, name: str) -> bool:
+    try:
+        entries = os.listdir(home)
     except OSError:
-        return ""
-    group = None
-    for line in lines:
-        line = line.strip()
-        if line.startswith("[") and line.endswith("]"):
-            group = line[1:-1]
-        elif group == "D-BUS Service" and line.startswith("Exec="):
-            return line[len("Exec="):].strip()
-    return ""
+        return False
+    for entry in entries:
+        if not entry.endswith(".service"):
+            continue
+        found_name, found_exec = _service_entry(os.path.join(home, entry))
+        if entry == f"{name}.service":
+            if "keyring-waiter.sh" not in found_exec:
+                return True
+        elif found_name == name:
+            return True
+    return False
 
 def _system_exec(name: str, home: str, system: "list[str]") -> str:
     for directory in system:
         if os.path.realpath(directory) == os.path.realpath(home):
             continue
-        found = _service_exec(os.path.join(directory, f"{name}.service"))
+        found = _service_entry(os.path.join(directory, f"{name}.service"))[1]
         if found and "keyring-waiter.sh" not in found:
             return found
     return ""
@@ -522,38 +538,34 @@ def _activation(name: str, fallback: str) -> str:
 
 def redirect_activation(bus: Gio.DBusConnection) -> None:
     home, system = _service_dirs()
-    changed = False
     for name in (PROMPTER_NAME, PRIVATE_NAME):
-        ours = os.path.join(home, f"{name}.service")
-        existing = _service_exec(ours)
-        if existing and "keyring-waiter.sh" not in existing:
+        if _foreign(home, name):
             continue
+        ours = os.path.join(home, f"{name}.service")
         wanted = _activation(name, _system_exec(name, home, system))
         try:
             with open(ours, encoding="utf-8") as handle:
                 if handle.read() == wanted:
                     continue
-        except OSError:
+        except (OSError, ValueError):
             pass
         os.makedirs(home, exist_ok=True)
         staged = f"{ours}.{os.getpid()}"
         with open(staged, "w", encoding="utf-8") as handle:
             handle.write(wanted)
         os.replace(staged, ours)
-        changed = True
-    if changed:
-        bus.call(
-            "org.freedesktop.DBus",
-            "/org/freedesktop/DBus",
-            "org.freedesktop.DBus",
-            "ReloadConfig",
-            None,
-            None,
-            Gio.DBusCallFlags.NONE,
-            -1,
-            None,
-            None,
-        )
+    bus.call(
+        "org.freedesktop.DBus",
+        "/org/freedesktop/DBus",
+        "org.freedesktop.DBus",
+        "ReloadConfig",
+        None,
+        None,
+        Gio.DBusCallFlags.NONE,
+        -1,
+        None,
+        None,
+    )
 
 EXIT_LOST_NAME = 3
 
@@ -573,7 +585,7 @@ def main() -> int:
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     try:
         redirect_activation(bus)
-    except OSError as error:
+    except Exception as error:
         print(f"keyring-prompter: could not redirect activation: {error}", file=sys.stderr)
     prompter = Prompter(bus)
 
@@ -583,9 +595,7 @@ def main() -> int:
     )
 
     flags = (
-        Gio.BusNameOwnerFlags.REPLACE
-        | Gio.BusNameOwnerFlags.ALLOW_REPLACEMENT
-        | Gio.BusNameOwnerFlags.DO_NOT_QUEUE
+        Gio.BusNameOwnerFlags.REPLACE | Gio.BusNameOwnerFlags.DO_NOT_QUEUE
     )
     for name in (PROMPTER_NAME, PRIVATE_NAME):
         Gio.bus_own_name_on_connection(

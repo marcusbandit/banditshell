@@ -1793,6 +1793,8 @@ banditshell/
 │   │                            quits when the shell's end of its pipe is
 │   │                            gone, and never queues for the name, so a
 │   │                            helper outliving its shell cannot answer for it.
+│   │                            It does not let anyone replace it either, so a
+│   │                            late gcr-prompter cannot take a card away
 │   │                            On start it writes a user D-Bus service file
 │   │                            for both prompter names that runs the waiter,
 │   │                            unless someone else's file is already there
@@ -1800,8 +1802,8 @@ banditshell/
 │   │                            shell's prompter is not on the bus: it owns
 │   │                            nothing, so the question stays queued for
 │   │                            whoever claims the name first. It waits up to
-│   │                            15 s while a banditshell instance runs, 5 s when
-│   │                            none does, then starts gcr-prompter;
+│   │                            15 s while a banditshell instance is under 30 s
+│   │                            old, 5 s otherwise, then starts gcr-prompter;
 │   │                            gnome-keyring gives up at 25 s. A /bin/sh guard
 │   │                            in the service file goes straight to
 │   │                            gcr-prompter once this file is gone

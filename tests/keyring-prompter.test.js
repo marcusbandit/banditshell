@@ -89,6 +89,7 @@ function python(script, { bus = false, timeout = 60000 } = {}) {
         env: { PATH: process.env.PATH, HOME: dir, XDG_DATA_HOME: path.join(dir, "data"), XDG_DATA_DIRS: path.join(dir, "system") },
         timeout
     });
+    fs.rmSync(dir, { recursive: true, force: true });
     assert.strictEqual(run.status, 0, run.stderr);
     return JSON.parse(run.stdout.trim().split("\n").pop());
 }
@@ -103,27 +104,22 @@ spec = importlib.util.spec_from_file_location("prompter", sys.argv[1])
 prompter = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(prompter)
 from gi.repository import Gcr
-derive = prompter.Exchange._derive
-def remember(self, peer):
-    self.shared = pow(peer, self._private, prompter.PRIME_1536)
-    derive(self, peer)
-prompter.Exchange._derive = remember
-short = agreed = 0
-for _ in range(4000):
-    theirs = Gcr.SecretExchange.new(None)
-    ours = prompter.Exchange()
-    ours.receive(theirs.begin())
-    if ours.shared.bit_length() > 1528:
-        continue
-    short += 1
-    theirs.receive(ours.send(b"pw"))
-    agreed += ours.receive(theirs.send("back", -1)) == b"back"
-    if short == 2:
+theirs = Gcr.SecretExchange.new(None)
+opening = theirs.begin()
+peer = int.from_bytes(prompter._keyfile_read(opening)["public"], "big")
+for private in range(3, 1 << 20, 2):
+    if pow(peer, private, prompter.PRIME_1536).bit_length() <= 1528:
         break
-print(json.dumps({"short": short, "agreed": agreed}))
+ours = prompter.Exchange()
+ours._private = private
+ours._public = pow(prompter.GENERATOR, private, prompter.PRIME_1536)
+ours.receive(opening)
+short = pow(peer, private, prompter.PRIME_1536).bit_length() <= 1528
+theirs.receive(ours.send(b"pw"))
+agreed = short and ours.receive(theirs.send("back", -1)) == b"back"
+print(json.dumps({"agreed": agreed}))
 `);
-        assert.ok(result.short >= 1, "never drew a shared key with a leading zero byte");
-        assert.strictEqual(result.agreed, result.short);
+        assert.strictEqual(result.agreed, true);
     });
 
     test("tells gnome-keyring a typed password is not blank", { skip: !hasBus && "dbus-run-session missing" }, () => {

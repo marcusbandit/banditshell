@@ -10,9 +10,18 @@ const WAITER = path.join(ROOT, "scripts/keyring-waiter.sh");
 const PROMPTER = path.join(ROOT, "scripts/keyring-prompter.py");
 const NAME = "org.gnome.keyring.SystemPrompter";
 
+const scratches = [];
+
 function scratch() {
-    return fs.mkdtempSync(path.join(os.tmpdir(), "keyring-activation-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "keyring-activation-"));
+    scratches.push(dir);
+    return dir;
 }
+
+test.after(() => {
+    for (const dir of scratches)
+        fs.rmSync(dir, { recursive: true, force: true });
+});
 
 function stubs(dir, tools) {
     const bin = path.join(dir, "bin");
@@ -24,17 +33,27 @@ function stubs(dir, tools) {
     return bin;
 }
 
-function wait(dir, { owner, shell }) {
+const CLAIMS = {
+    now: "exit 0",
+    soon: "sleep 0.5; exit 0",
+    never: 'sleep "$4"; exit 1'
+};
+
+const SHELLS = {
+    none: "exit 0",
+    starting: "running for 0 hours, 0 minutes, 2 seconds",
+    settled: "running for 3 hours, 12 minutes, 2 seconds"
+};
+
+function wait(dir, { claim, shell }) {
     const shellRoot = path.join(dir, "shell");
     fs.mkdirSync(path.join(shellRoot, "scripts"), { recursive: true });
     fs.writeFileSync(path.join(shellRoot, "scripts/keyring-prompter.py"), "");
     const bin = stubs(dir, {
-        gdbus: owner ? `[ -f "${dir}/owned" ] && echo "(true,)" || echo "(false,)"` : `echo "(false,)"`,
-        qs: shell ? `echo "  Config path: ${shellRoot}/shell.qml"` : "exit 0",
+        gdbus: `[ "$1 $2 $3 $5" = "wait --session --timeout ${NAME}" ] || exit 2\n${CLAIMS[claim]}`,
+        qs: shell === "none" ? SHELLS.none : `echo "Instance x:"\necho "  Config path: ${shellRoot}/shell.qml"\necho "  Launch time: 2026-10-19 09:42:07 (${SHELLS[shell]})"`,
         fallback: `echo "$@" >"${dir}/fell-back"`
     });
-    if (owner === "now")
-        fs.writeFileSync(path.join(dir, "owned"), "");
     const started = Date.now();
     const run = spawnSync("bash", [WAITER, NAME, path.join(bin, "fallback"), "--from-test"], {
         encoding: "utf8",
@@ -50,20 +69,33 @@ function wait(dir, { owner, shell }) {
 
 test.describe("keyring-waiter.sh", () => {
     test("leaves at once when the shell already owns the name", () => {
-        const result = wait(scratch(), { owner: "now", shell: true });
+        const result = wait(scratch(), { claim: "now", shell: "starting" });
         assert.strictEqual(result.status, 0);
         assert.strictEqual(result.fellBack, null);
         assert.ok(result.seconds < 1, `took ${result.seconds}s`);
     });
 
-    test("hands over to gcr's prompter after the grace when no shell is running", () => {
-        const result = wait(scratch(), { owner: null, shell: false });
-        assert.strictEqual(result.fellBack, "--from-test");
-        assert.ok(result.seconds >= 1 && result.seconds < 3, `took ${result.seconds}s`);
+    test("leaves as soon as the shell claims the name", () => {
+        const result = wait(scratch(), { claim: "soon", shell: "starting" });
+        assert.strictEqual(result.status, 0);
+        assert.strictEqual(result.fellBack, null);
+        assert.ok(result.seconds < 1.5, `took ${result.seconds}s`);
     });
 
-    test("keeps waiting while a banditshell is running, then gives up at the deadline", () => {
-        const result = wait(scratch(), { owner: null, shell: true });
+    test("hands over to gcr's prompter after the grace when no shell is running", () => {
+        const result = wait(scratch(), { claim: "never", shell: "none" });
+        assert.strictEqual(result.fellBack, "--from-test");
+        assert.ok(result.seconds >= 1 && result.seconds < 2.5, `took ${result.seconds}s`);
+    });
+
+    test("does not wait for a shell that has been up long enough to have claimed the name", () => {
+        const result = wait(scratch(), { claim: "never", shell: "settled" });
+        assert.strictEqual(result.fellBack, "--from-test");
+        assert.ok(result.seconds >= 1 && result.seconds < 2.5, `took ${result.seconds}s`);
+    });
+
+    test("keeps waiting while a banditshell is starting, then gives up at the deadline", () => {
+        const result = wait(scratch(), { claim: "never", shell: "starting" });
         assert.strictEqual(result.fellBack, "--from-test");
         assert.ok(result.seconds >= 3, `took ${result.seconds}s`);
     });
@@ -115,20 +147,35 @@ print(Bus.reloads)
         }
     });
 
-    test("leaves the bus alone when the files already say the same", () => {
+    test("rewrites nothing when the files already say the same, and still reloads the bus", () => {
         const dir = scratch();
         system(dir);
         redirect(dir);
-        assert.strictEqual(redirect(dir), 0);
+        const file = path.join(dir, "home/dbus-1/services", `${NAME}.service`);
+        const before = fs.statSync(file).ino;
+        assert.strictEqual(redirect(dir), 1);
+        assert.strictEqual(fs.statSync(file).ino, before);
     });
 
-    test("never overwrites a service file someone else put there", () => {
-        const dir = scratch();
-        system(dir);
-        const services = path.join(dir, "home/dbus-1/services");
-        fs.mkdirSync(services, { recursive: true });
-        fs.writeFileSync(path.join(services, `${NAME}.service`), `[D-BUS Service]\nName=${NAME}\nExec=/usr/bin/my-prompter\n`);
-        redirect(dir);
-        assert.match(ours(dir), /Exec=\/usr\/bin\/my-prompter/);
-    });
+    const theirs = {
+        "a plain Exec line": [`${NAME}.service`, `[D-BUS Service]\nName=${NAME}\nExec=/usr/bin/my-prompter\n`],
+        "spaces round the equals sign": [`${NAME}.service`, `[D-BUS Service]\nName = ${NAME}\nExec = /usr/bin/my-prompter\n`],
+        "a systemd service instead of Exec": [`${NAME}.service`, `[D-BUS Service]\nName=${NAME}\nSystemdService=my-prompter.service\n`],
+        "another file name for the same bus name": ["my-prompter.service", `[D-BUS Service]\nName=${NAME}\nExec=/usr/bin/my-prompter\n`]
+    };
+
+    for (const [how, [file, content]] of Object.entries(theirs)) {
+        test(`never overwrites someone else's service file: ${how}`, () => {
+            const dir = scratch();
+            system(dir);
+            const services = path.join(dir, "home/dbus-1/services");
+            fs.mkdirSync(services, { recursive: true });
+            fs.writeFileSync(path.join(services, file), content);
+            redirect(dir);
+            assert.strictEqual(fs.readFileSync(path.join(services, file), "utf8"), content);
+            if (file !== `${NAME}.service`)
+                assert.ok(!fs.existsSync(path.join(services, `${NAME}.service`)));
+            assert.ok(ours(dir, "org.gnome.keyring.PrivatePrompter").includes(WAITER));
+        });
+    }
 });

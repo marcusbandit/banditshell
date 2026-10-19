@@ -6,30 +6,28 @@ shift
 
 patience=${KEYRING_WAITER_PATIENCE:-15}
 grace=${KEYRING_WAITER_GRACE:-5}
+fresh=${KEYRING_WAITER_FRESH:-30}
 
-owned() {
-    [ "$(gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
-        --method org.freedesktop.DBus.NameHasOwner "$name" 2>/dev/null)" = "(true,)" ]
+claimed_within() {
+    gdbus wait --session --timeout "$1" "$name" >/dev/null 2>&1
 }
 
-shell_coming() {
-    local config
-    while IFS= read -r config; do
-        [ -f "$(dirname "$config")/scripts/keyring-prompter.py" ] && return 0
-    done < <(qs list --all 2>/dev/null | sed -n 's/^[[:space:]]*Config path:[[:space:]]*//p')
+shell_starting() {
+    local line config=""
+    while IFS= read -r line; do
+        case $line in
+            *"Config path:"*) config=${line#*Config path: } ;;
+            *"running for "*)
+                [[ $line =~ running\ for\ ([0-9]+)\ hours,\ ([0-9]+)\ minutes,\ ([0-9]+)\ seconds ]] || continue
+                [ $((BASH_REMATCH[1] * 3600 + BASH_REMATCH[2] * 60 + BASH_REMATCH[3])) -lt "$fresh" ] &&
+                    [ -f "$(dirname "$config")/scripts/keyring-prompter.py" ] && return 0
+                ;;
+        esac
+    done < <(qs list --all 2>/dev/null)
     return 1
 }
 
-elapsed() { echo $(((${EPOCHREALTIME/[.,]/} - started) / 1000000)); }
-
-started=${EPOCHREALTIME/[.,]/}
-
-while [ "$(elapsed)" -lt "$patience" ]; do
-    owned && exit 0
-    [ "$(elapsed)" -ge "$grace" ] && ! shell_coming && break
-    sleep 0.2
-done
-
-owned && exit 0
+claimed_within "$grace" && exit 0
+[ "$patience" -gt "$grace" ] && shell_starting && claimed_within "$((patience - grace))" && exit 0
 [ "$#" -gt 0 ] && exec "$@"
 exit 1
