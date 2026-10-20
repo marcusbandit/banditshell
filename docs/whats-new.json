@@ -14,7 +14,10 @@
           "severity": "minor",
           "text": "Icons whose fill animates, such as the ones in the network menu, no longer leave a new copy of the icon font behind on every frame."
         }
-      ]
+      ],
+      "impact": {
+        "restart": true
+      }
     },
     {
       "id": "2026-10-20-2",

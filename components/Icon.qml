@@ -27,7 +27,7 @@ Text {
 
     font.variableAxes: ({
             opsz: FontAxes.opticalSize(Math.max(20, Math.min(48, root.size))),
-            FILL: FontAxes.fill(root.fill)
+            FILL: FontAxes.between(0, 1, root.fill)
         })
 
     renderType: Text.CurveRendering

@@ -475,9 +475,10 @@ function axisEntries(body) {
     for (let i = 0; i <= body.length; i++) {
         const ch = body[i];
         if (i === body.length || (ch === "," && depth === 0)) {
-            const entry = body.slice(start, i).trim();
-            if (entry)
-                entries.push(entry);
+            const raw = body.slice(start, i);
+            const lead = raw.search(/\S/);
+            if (lead >= 0)
+                entries.push({ text: raw.trim(), offset: start + lead });
             start = i + 1;
         } else if ("([{".includes(ch)) {
             depth++;
@@ -488,28 +489,59 @@ function axisEntries(body) {
     return entries;
 }
 
+function isOneFontAxesCall(value) {
+    const call = /^FontAxes\.\w+\(/.exec(value);
+    if (!call)
+        return false;
+    let depth = 0;
+    for (let i = call[0].length - 1; i < value.length; i++) {
+        if (value[i] === "(")
+            depth++;
+        else if (value[i] === ")" && --depth === 0)
+            return i === value.length - 1;
+    }
+    return false;
+}
+
+function snappedProperties(code, text) {
+    const names = new Set();
+    const declaration = /(?:^|[;{])[ \t]*(?:readonly[ \t]+)?property[ \t]+\w+[ \t]+(\w+)[ \t]*:/gm;
+    let m;
+    while ((m = declaration.exec(code)) !== null) {
+        let from = m.index + m[0].length;
+        while (/\s/.test(code[from] || ""))
+            from++;
+        if (isOneFontAxesCall(text.slice(from, from + readValue(code, from).length)))
+            names.add(m[1]);
+    }
+    return names;
+}
+
 function ruleL14(ctx) {
     const { code, at } = ctx.scanned;
     const found = [];
+    const snapped = snappedProperties(code, ctx.text);
     const assignment = /(?<![\w$])variableAxes[ \t]*(?::|=(?!=))/g;
     let m;
     while ((m = assignment.exec(code)) !== null) {
         let from = m.index + m[0].length;
-        while (code[from] === " " || code[from] === "\t")
+        while (/\s/.test(code[from] || ""))
             from++;
         const value = ctx.text.slice(from, from + readValue(code, from).length);
-        const line = at(m.index);
         const literal = /^\(?\s*\{([\s\S]*)\}\s*\)?$/.exec(value);
         if (!literal) {
-            found.push({ line, detail: `variableAxes from ${value.replace(/\s+/g, " ")}; build the axes in place` });
+            found.push({ line: at(m.index), detail: `variableAxes from ${value.replace(/\s+/g, " ")}; build the axes in place` });
             continue;
         }
+        const bodyAt = from + value.indexOf("{") + 1;
         for (const entry of axisEntries(literal[1])) {
-            const colon = entry.indexOf(":");
-            const axis = entry.slice(0, colon).trim().replace(/^["']|["']$/g, "");
-            const axisValue = entry.slice(colon + 1).trim();
-            if (!/^-?\d+(?:\.\d+)?$/.test(axisValue) && !/^FontAxes\.\w+\(/.test(axisValue))
-                found.push({ line, detail: `axis ${axis} follows ${axisValue.replace(/\s+/g, " ")} unsnapped` });
+            const colon = entry.text.indexOf(":");
+            const axis = entry.text.slice(0, colon).trim().replace(/^["']|["']$/g, "");
+            const axisValue = entry.text.slice(colon + 1).trim();
+            const read = /^(?:[A-Za-z_]\w*\.)?([A-Za-z_]\w*)$/.exec(axisValue);
+            if (/^-?\d+(?:\.\d+)?$/.test(axisValue) || isOneFontAxesCall(axisValue) || (read && snapped.has(read[1])))
+                continue;
+            found.push({ line: at(bodyAt + entry.offset), detail: `axis ${axis} follows ${axisValue.replace(/\s+/g, " ")} unsnapped` });
         }
     }
     return found;
@@ -1018,7 +1050,7 @@ function usage() {
         "usage: lint-rules.js [--root <dir>] [--rule <id>] [--all | --write-baseline | --list]",
         "",
         "  (none)             check the house rules against rules.baseline.json",
-        "  --rule <id>        only this rule, L1 to L12",
+        "  --rule <id>        only this rule, L1 to L14",
         "  --all              print every violation with file and line, known or not",
         "  --write-baseline   record today's counts as the new baseline",
         "  --list             rule ids with their reasons"

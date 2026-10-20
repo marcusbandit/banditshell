@@ -22,7 +22,9 @@ Item {
 
     property color color: Appearance.colour.text
 
-    property real weight: 600
+    property real presence: 1
+
+    readonly property real weight: FontAxes.between(220, 620, root.presence)
 
     readonly property real advance: figure.advanceWidth
     readonly property real colonAdvance: colon.advanceWidth
@@ -124,7 +126,7 @@ Item {
                 font.pixelSize: root.size
                 font.features: ({ "tnum": 1, "case": 1 })
                 font.variableAxes: ({
-                        "wght": FontAxes.weight(Math.max(100, Math.min(900, root.weight * (0.25 + 0.75 * turn.value)))),
+                        "wght": FontAxes.between(Math.max(100, root.weight * 0.25), root.weight, turn.value),
                         "opsz": 32
                     })
                 renderType: Text.NativeRendering
@@ -144,6 +146,6 @@ Item {
         opacity: 0.6
         font.family: root.family
         font.pixelSize: Appearance.font.size.small
-        font.variableAxes: ({ "wght": FontAxes.weight(root.weight) })
+        font.variableAxes: ({ "wght": root.weight })
     }
 }

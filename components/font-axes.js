@@ -1,14 +1,10 @@
 .pragma library
 
-const weightStep = 25;
-const fillSteps = 10;
+const progressSteps = 16;
 
-function weight(value) {
-    return Math.round(value / weightStep) * weightStep;
-}
-
-function fill(value) {
-    return Math.round(Math.max(0, Math.min(1, value)) * fillSteps) / fillSteps;
+function between(from, to, progress) {
+    const held = Math.round(Math.max(0, Math.min(1, progress)) * progressSteps) / progressSteps;
+    return from + (to - from) * held;
 }
 
 function opticalSize(value) {
