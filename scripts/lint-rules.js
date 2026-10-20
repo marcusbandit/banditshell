@@ -468,6 +468,53 @@ function ruleL13(ctx) {
     return found;
 }
 
+function axisEntries(body) {
+    const entries = [];
+    let depth = 0;
+    let start = 0;
+    for (let i = 0; i <= body.length; i++) {
+        const ch = body[i];
+        if (i === body.length || (ch === "," && depth === 0)) {
+            const entry = body.slice(start, i).trim();
+            if (entry)
+                entries.push(entry);
+            start = i + 1;
+        } else if ("([{".includes(ch)) {
+            depth++;
+        } else if (")]}".includes(ch)) {
+            depth--;
+        }
+    }
+    return entries;
+}
+
+function ruleL14(ctx) {
+    const { code, at } = ctx.scanned;
+    const found = [];
+    const assignment = /(?<![\w$])variableAxes[ \t]*(?::|=(?!=))/g;
+    let m;
+    while ((m = assignment.exec(code)) !== null) {
+        let from = m.index + m[0].length;
+        while (code[from] === " " || code[from] === "\t")
+            from++;
+        const value = ctx.text.slice(from, from + readValue(code, from).length);
+        const line = at(m.index);
+        const literal = /^\(?\s*\{([\s\S]*)\}\s*\)?$/.exec(value);
+        if (!literal) {
+            found.push({ line, detail: `variableAxes from ${value.replace(/\s+/g, " ")}; build the axes in place` });
+            continue;
+        }
+        for (const entry of axisEntries(literal[1])) {
+            const colon = entry.indexOf(":");
+            const axis = entry.slice(0, colon).trim().replace(/^["']|["']$/g, "");
+            const axisValue = entry.slice(colon + 1).trim();
+            if (!/^-?\d+(?:\.\d+)?$/.test(axisValue) && !/^FontAxes\.\w+\(/.test(axisValue))
+                found.push({ line, detail: `axis ${axis} follows ${axisValue.replace(/\s+/g, " ")} unsnapped` });
+        }
+    }
+    return found;
+}
+
 function ruleL7(ctx) {
     const { code, at } = ctx.scanned;
     const found = [];
@@ -536,7 +583,8 @@ const RULES = [
     { id: "L10", reason: "Every QML folder carries a qmldir that matches scripts/qmldirs.sh; run it after adding, moving or renaming a file.", appliesTo: () => false, check: null, whole: true },
     { id: "L11", reason: "Name.member on a singleton must name a member that singleton declares; a renamed or moved member reads as undefined at runtime.", appliesTo: () => false, check: null, whole: true },
     { id: "L12", reason: "A pill is an object (round ends) or a place (the shell's corner): a SquircleRect or shadow with a half-size radius says pill: \"object\" or pill: \"place\" instead (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL12 },
-    { id: "L13", reason: "A Button's emphasis is accent, plate, ring or bare; filled, elevated, tonal, outlined and text were Material 3's and are retired (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL13 }
+    { id: "L13", reason: "A Button's emphasis is accent, plate, ring or bare; filled, elevated, tonal, outlined and text were Material 3's and are retired (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL13 },
+    { id: "L14", reason: "A variable font axis is a literal or a components/font-axes.js value; every other value it takes builds a new font engine that maps the font file again, and the font cache's trim of thousands of them freezes the shell (#86).", appliesTo: f => f.endsWith(".qml"), check: ruleL14 }
 ];
 
 function ruleById(id) {

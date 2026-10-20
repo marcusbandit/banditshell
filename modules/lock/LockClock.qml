@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import "../../components/font-axes.js" as FontAxes
 
 Item {
     id: root
@@ -123,7 +124,7 @@ Item {
                 font.pixelSize: root.size
                 font.features: ({ "tnum": 1, "case": 1 })
                 font.variableAxes: ({
-                        "wght": Math.max(100, Math.min(900, root.weight * (0.25 + 0.75 * turn.value))),
+                        "wght": FontAxes.weight(Math.max(100, Math.min(900, root.weight * (0.25 + 0.75 * turn.value)))),
                         "opsz": 32
                     })
                 renderType: Text.NativeRendering
@@ -143,6 +144,6 @@ Item {
         opacity: 0.6
         font.family: root.family
         font.pixelSize: Appearance.font.size.small
-        font.variableAxes: ({ "wght": root.weight })
+        font.variableAxes: ({ "wght": FontAxes.weight(root.weight) })
     }
 }

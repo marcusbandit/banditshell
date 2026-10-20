@@ -6,6 +6,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import "../../components/font-axes.js" as FontAxes
 
 Item {
     id: root
@@ -287,7 +288,7 @@ Item {
                         color: Appearance.colour.textDim
                         font.family: root.family
                         font.pixelSize: Appearance.font.size.small
-                        font.variableAxes: ({ "wght": 300 + 160 * presence.value })
+                        font.variableAxes: ({ "wght": FontAxes.weight(300 + 160 * presence.value) })
                         renderType: Text.NativeRendering
                     }
 

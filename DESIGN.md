@@ -1707,13 +1707,14 @@ banditshell/
 │   │                            boundary the manifests do not allow; --matrix and
 │   │                            --explain <package> show the edges (node, no
 │   │                            dependencies; `banditshell dev modules`)
-│   ├── lint-rules.js            the house rules as thirteen checks (L1 to L13: comments,
+│   ├── lint-rules.js            the house rules as fourteen checks (L1 to L14: comments,
 │   │                            Rectangle radius, motion outside Follow, spring easing,
 │   │                            font sizes, colour literals, textGhost text, dashes,
 │   │                            JS the engine lacks, qmldir drift, Name.member reads
 │   │                            of a member the singleton does not declare, a pill
 │   │                            drawn without an object or place role, a Button
-│   │                            asking for a retired Material 3 emphasis), counted
+│   │                            asking for a retired Material 3 emphasis, a variable
+│   │                            font axis that follows an unsnapped value), counted
 │   │                            per rule and file against rules.baseline.json (node, no
 │   │                            dependencies; `banditshell dev lint`)
 │   ├── boot-check.js            the pure half of `banditshell dev check boot`: which
