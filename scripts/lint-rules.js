@@ -468,6 +468,85 @@ function ruleL13(ctx) {
     return found;
 }
 
+function axisEntries(body) {
+    const entries = [];
+    let depth = 0;
+    let start = 0;
+    for (let i = 0; i <= body.length; i++) {
+        const ch = body[i];
+        if (i === body.length || (ch === "," && depth === 0)) {
+            const raw = body.slice(start, i);
+            const lead = raw.search(/\S/);
+            if (lead >= 0)
+                entries.push({ text: raw.trim(), offset: start + lead });
+            start = i + 1;
+        } else if ("([{".includes(ch)) {
+            depth++;
+        } else if (")]}".includes(ch)) {
+            depth--;
+        }
+    }
+    return entries;
+}
+
+function isOneFontAxesCall(value) {
+    const call = /^FontAxes\.\w+\(/.exec(value);
+    if (!call)
+        return false;
+    let depth = 0;
+    for (let i = call[0].length - 1; i < value.length; i++) {
+        if (value[i] === "(")
+            depth++;
+        else if (value[i] === ")" && --depth === 0)
+            return i === value.length - 1;
+    }
+    return false;
+}
+
+function snappedProperties(code, text) {
+    const names = new Set();
+    const declaration = /(?:^|[;{])[ \t]*(?:readonly[ \t]+)?property[ \t]+\w+[ \t]+(\w+)[ \t]*:/gm;
+    let m;
+    while ((m = declaration.exec(code)) !== null) {
+        let from = m.index + m[0].length;
+        while (/\s/.test(code[from] || ""))
+            from++;
+        if (isOneFontAxesCall(text.slice(from, from + readValue(code, from).length)))
+            names.add(m[1]);
+    }
+    return names;
+}
+
+function ruleL14(ctx) {
+    const { code, at } = ctx.scanned;
+    const found = [];
+    const snapped = snappedProperties(code, ctx.text);
+    const assignment = /(?<![\w$])variableAxes[ \t]*(?::|=(?!=))/g;
+    let m;
+    while ((m = assignment.exec(code)) !== null) {
+        let from = m.index + m[0].length;
+        while (/\s/.test(code[from] || ""))
+            from++;
+        const value = ctx.text.slice(from, from + readValue(code, from).length);
+        const literal = /^\(?\s*\{([\s\S]*)\}\s*\)?$/.exec(value);
+        if (!literal) {
+            found.push({ line: at(m.index), detail: `variableAxes from ${value.replace(/\s+/g, " ")}; build the axes in place` });
+            continue;
+        }
+        const bodyAt = from + value.indexOf("{") + 1;
+        for (const entry of axisEntries(literal[1])) {
+            const colon = entry.text.indexOf(":");
+            const axis = entry.text.slice(0, colon).trim().replace(/^["']|["']$/g, "");
+            const axisValue = entry.text.slice(colon + 1).trim();
+            const read = /^(?:[A-Za-z_]\w*\.)?([A-Za-z_]\w*)$/.exec(axisValue);
+            if (/^-?\d+(?:\.\d+)?$/.test(axisValue) || isOneFontAxesCall(axisValue) || (read && snapped.has(read[1])))
+                continue;
+            found.push({ line: at(bodyAt + entry.offset), detail: `axis ${axis} follows ${axisValue.replace(/\s+/g, " ")} unsnapped` });
+        }
+    }
+    return found;
+}
+
 function ruleL7(ctx) {
     const { code, at } = ctx.scanned;
     const found = [];
@@ -536,7 +615,8 @@ const RULES = [
     { id: "L10", reason: "Every QML folder carries a qmldir that matches scripts/qmldirs.sh; run it after adding, moving or renaming a file.", appliesTo: () => false, check: null, whole: true },
     { id: "L11", reason: "Name.member on a singleton must name a member that singleton declares; a renamed or moved member reads as undefined at runtime.", appliesTo: () => false, check: null, whole: true },
     { id: "L12", reason: "A pill is an object (round ends) or a place (the shell's corner): a SquircleRect or shadow with a half-size radius says pill: \"object\" or pill: \"place\" instead (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL12 },
-    { id: "L13", reason: "A Button's emphasis is accent, plate, ring or bare; filled, elevated, tonal, outlined and text were Material 3's and are retired (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL13 }
+    { id: "L13", reason: "A Button's emphasis is accent, plate, ring or bare; filled, elevated, tonal, outlined and text were Material 3's and are retired (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL13 },
+    { id: "L14", reason: "A variable font axis is a literal or a components/font-axes.js value; every other value it takes builds a new font engine that maps the font file again, and the font cache's trim of thousands of them freezes the shell (#86).", appliesTo: f => f.endsWith(".qml"), check: ruleL14 }
 ];
 
 function ruleById(id) {
@@ -970,7 +1050,7 @@ function usage() {
         "usage: lint-rules.js [--root <dir>] [--rule <id>] [--all | --write-baseline | --list]",
         "",
         "  (none)             check the house rules against rules.baseline.json",
-        "  --rule <id>        only this rule, L1 to L12",
+        "  --rule <id>        only this rule, L1 to L14",
         "  --all              print every violation with file and line, known or not",
         "  --write-baseline   record today's counts as the new baseline",
         "  --list             rule ids with their reasons"

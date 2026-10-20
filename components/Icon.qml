@@ -1,5 +1,6 @@
 import QtQuick
 import qs.config
+import "font-axes.js" as FontAxes
 
 Text {
     id: root
@@ -25,8 +26,8 @@ Text {
     color: Appearance.colour.text
 
     font.variableAxes: ({
-            opsz: Math.max(20, Math.min(48, root.size)),
-            FILL: root.fill
+            opsz: FontAxes.opticalSize(Math.max(20, Math.min(48, root.size))),
+            FILL: FontAxes.between(0, 1, root.fill)
         })
 
     renderType: Text.CurveRendering

@@ -333,6 +333,51 @@ test("L13 flags a Button that asks for a Material 3 emphasis", () => {
     assert.deepStrictEqual(lines("modules/a.qml", text, "L13"), [2, 4, 8]);
 });
 
+test("L14 flags a variable font axis that follows an unsnapped value, on the axis's own line", () => {
+    const text = [
+        "Text {",
+        "    font.variableAxes: ({ \"wght\": 300 + 160 * presence.value })",
+        "    font.variableAxes: ({ \"wght\": 600, \"opsz\": 32 })",
+        "    font.variableAxes: ({",
+        "            \"wght\": FontAxes.between(150, 600, turn.value),",
+        "            \"opsz\": Math.max(20, root.size)",
+        "        })",
+        "    font.variableAxes: root.axes",
+        "    onActiveChanged: label.font.variableAxes = { wght: root.weight }",
+        "}"
+    ].join("\n");
+    assert.deepStrictEqual(lines("modules/a.qml", text, "L14"), [2, 6, 8, 9]);
+});
+
+test("L14 wants the whole value to be one FontAxes call", () => {
+    const text = [
+        "Text {",
+        "    font.variableAxes: ({ \"wght\": FontAxes.between(300, 460, p) + 160 * presence.value })",
+        "    font.variableAxes: ({ wght: FontAxes.between(0, 1, p) * turn.value })",
+        "    font.variableAxes: ({ FILL: FontAxes.between(0, 1, Math.min(1, root.fill)) })",
+        "}"
+    ].join("\n");
+    assert.deepStrictEqual(lines("modules/a.qml", text, "L14"), [2, 3]);
+});
+
+test("L14 reads axes that start on the next line and properties the file snaps", () => {
+    const text = [
+        "Item {",
+        "    property real presence: 1",
+        "    readonly property real weight: FontAxes.between(220, 620, root.presence)",
+        "    property real loose: 220 + 400 * root.presence",
+        "    Text {",
+        "        font.variableAxes:",
+        "            ({ \"wght\": 600 })",
+        "    }",
+        "    Text { font.variableAxes: ({ \"wght\": root.weight }) }",
+        "    Text { font.variableAxes: ({ \"wght\": root.loose }) }",
+        "    Text { font.variableAxes: ({ \"wght\": root.presence }) }",
+        "}"
+    ].join("\n");
+    assert.deepStrictEqual(lines("modules/a.qml", text, "L14"), [10, 11]);
+});
+
 test("L12 flags a half-size radius on a SquircleRect or a shadow that names no pill role", () => {
     const text = [
         "Item {",
@@ -538,7 +583,7 @@ test("--all lists every violation and the options are checked", () => {
 });
 
 test("every rule has an id in order and a reason", () => {
-    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 13 }, (_, i) => `L${i + 1}`));
+    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 14 }, (_, i) => `L${i + 1}`));
     for (const rule of lintRules.RULES)
         assert.ok(rule.reason.length > 20, rule.id);
 });

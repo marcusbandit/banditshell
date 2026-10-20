@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import "../../components/font-axes.js" as FontAxes
 
 Item {
     id: root
@@ -21,7 +22,9 @@ Item {
 
     property color color: Appearance.colour.text
 
-    property real weight: 600
+    property real presence: 1
+
+    readonly property real weight: FontAxes.between(220, 620, root.presence)
 
     readonly property real advance: figure.advanceWidth
     readonly property real colonAdvance: colon.advanceWidth
@@ -123,7 +126,7 @@ Item {
                 font.pixelSize: root.size
                 font.features: ({ "tnum": 1, "case": 1 })
                 font.variableAxes: ({
-                        "wght": Math.max(100, Math.min(900, root.weight * (0.25 + 0.75 * turn.value))),
+                        "wght": FontAxes.between(Math.max(100, root.weight * 0.25), root.weight, turn.value),
                         "opsz": 32
                     })
                 renderType: Text.NativeRendering

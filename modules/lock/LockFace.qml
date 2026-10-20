@@ -6,6 +6,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import "../../components/font-axes.js" as FontAxes
 
 Item {
     id: root
@@ -275,7 +276,7 @@ Item {
                         stacked: Appearance.sizes.lockClockStacked
                         size: Math.round(root.digitHeight / 0.73)
                         family: root.family
-                        weight: 220 + 400 * presence.value
+                        presence: presence.value
                         opacity: 0.6 + 0.4 * presence.value
                     }
 
@@ -287,7 +288,7 @@ Item {
                         color: Appearance.colour.textDim
                         font.family: root.family
                         font.pixelSize: Appearance.font.size.small
-                        font.variableAxes: ({ "wght": 300 + 160 * presence.value })
+                        font.variableAxes: ({ "wght": FontAxes.between(300, 460, presence.value) })
                         renderType: Text.NativeRendering
                     }
 

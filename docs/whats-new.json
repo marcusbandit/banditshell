@@ -1,6 +1,25 @@
 {
   "entries": [
     {
+      "id": "2026-10-20-3",
+      "date": "2026-10-20",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The shell no longer freezes for a few seconds every five minutes once the lock screen has been up. Each flip of the lock clock's digits made a fresh copy of its font for every frame, so after a long lock the shell held thousands of them, gigabytes of memory, and stalled while it tidied them away."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Icons whose fill animates, such as the ones in the network menu, no longer leave a new copy of the icon font behind on every frame."
+        }
+      ],
+      "impact": {
+        "restart": true
+      }
+    },
+    {
       "id": "2026-10-20-2",
       "date": "2026-10-20",
       "changes": [

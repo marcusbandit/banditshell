@@ -59,6 +59,7 @@
       "tests/configuration.test.js",
       "tests/desktop-entries.test.js",
       "tests/engine-compat.test.js",
+      "tests/font-axes.test.js",
       "tests/lint-rules.test.js",
       "tests/markup.test.js",
       "tests/notify.test.js",
