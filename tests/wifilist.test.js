@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/wifilist.js"), "utf8");
-const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, pick, secretLine };")();
+const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, pick, secretLine, signInSecrets };")();
 
 const STEPS = 4;
 
@@ -245,5 +245,17 @@ test.describe("secretLine", () => {
 
     test.it("leaves an ordinary password readable", () => {
         assert.strictEqual(WifiList.secretLine("802-1x.password", "correct-horse"), "802-1x.password:correct-horse\n");
+    });
+});
+
+test.describe("signInSecrets", () => {
+    test.it("carries both entries nmcli asks for on a PEAP or TTLS network", () => {
+        const text = WifiList.signInSecrets("s123456@dtu.dk", "hunter2");
+        assert.deepStrictEqual(nmcliPasswords(text), { "802-1x.identity": "s123456@dtu.dk", "802-1x.password": "hunter2" });
+    });
+
+    test.it("keeps an identity with spaces or a backslash intact", () => {
+        const text = WifiList.signInSecrets(" DOMAIN\\user ", "pass word");
+        assert.deepStrictEqual(nmcliPasswords(text), { "802-1x.identity": " DOMAIN\\user ", "802-1x.password": "pass word" });
     });
 });

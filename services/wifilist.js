@@ -79,3 +79,7 @@ function escapeSecret(secret) {
 function secretLine(property, secret) {
     return `${property}:${escapeSecret(String(secret ?? ""))}\n`;
 }
+
+function signInSecrets(identity, password) {
+    return secretLine("802-1x.identity", identity) + secretLine("802-1x.password", password);
+}

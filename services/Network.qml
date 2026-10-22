@@ -274,7 +274,7 @@ Singleton {
     property string enrollTrouble: ""
 
     property var enrollArgs: []
-    property string enrollPassword: ""
+    property string enrollSecrets: ""
 
     function clearEnroll(name: string): void {
         if (root.enrollFailedName === name) {
@@ -285,7 +285,7 @@ Singleton {
 
     function failEnroll(why: string): void {
         root.enrollArgs = [];
-        root.enrollPassword = "";
+        root.enrollSecrets = "";
         root.enrollFailedName = root.enrollingName;
         root.enrollTrouble = why;
         root.enrollingName = "";
@@ -310,7 +310,7 @@ Singleton {
         if (method !== "tls")
             args.push("802-1x.phase2-auth", phase2 || "mschapv2");
         root.enrollArgs = args;
-        root.enrollPassword = password;
+        root.enrollSecrets = WifiList.signInSecrets(identity, password);
 
         profile.want = name;
         profile.exists = false;
@@ -376,8 +376,8 @@ Singleton {
         stdinEnabled: true
 
         onStarted: {
-            up.write(WifiList.secretLine("802-1x.password", root.enrollPassword));
-            root.enrollPassword = "";
+            up.write(root.enrollSecrets);
+            root.enrollSecrets = "";
             up.stdinEnabled = false;
         }
 

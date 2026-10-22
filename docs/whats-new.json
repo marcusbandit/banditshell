@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-22",
+      "date": "2026-10-22",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Signing in to a Wi-Fi that asks for a username and password, such as DTUsecure or eduroam, now connects. The username never reached NetworkManager, so every attempt failed at once with \"wrong username or password\", whatever was typed."
+        }
+      ]
+    },
+    {
       "id": "2026-10-20-3",
       "date": "2026-10-20",
       "changes": [
