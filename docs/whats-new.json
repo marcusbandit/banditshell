@@ -7,7 +7,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Signing in to a Wi-Fi that asks for a username and password, such as DTUsecure or eduroam, now connects. The username never reached NetworkManager, so every attempt failed at once with \"wrong username or password\", whatever was typed."
+          "text": "Signing in to a WPA2 or WPA3 enterprise Wi-Fi, such as DTUsecure or eduroam, now connects. Every attempt used to stop before the network was even asked, and the menu said \"wrong username or password\" whatever was typed."
         }
       ]
     },

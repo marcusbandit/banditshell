@@ -306,7 +306,7 @@ Singleton {
         root.enrollingName = name;
 
         const method = eap || "peap";
-        const args = ["wifi-sec.key-mgmt", "wpa-eap", "802-1x.eap", method, "802-1x.identity", identity, "802-1x.password", ""];
+        const args = ["connection.auth-retries", "1", "wifi-sec.key-mgmt", "wpa-eap", "802-1x.eap", method, "802-1x.identity", identity, "802-1x.password", ""];
         if (method !== "tls")
             args.push("802-1x.phase2-auth", phase2 || "mschapv2");
         root.enrollArgs = args;
@@ -351,6 +351,15 @@ Singleton {
         }
     }
 
+    function failSignIn(why: string): void {
+        const name = root.enrollingName;
+        root.failEnroll(why);
+        if (name && !profile.exists) {
+            discard.command = ["nmcli", "connection", "delete", "id", name];
+            discard.running = true;
+        }
+    }
+
     Process {
         id: enrol
 
@@ -362,7 +371,7 @@ Singleton {
                 root.failEnroll("NetworkManager would not take the profile");
                 return;
             }
-            up.command = ["nmcli", "--wait", "30", "connection", "up", "id", root.enrollingName, "passwd-file", "/dev/stdin"];
+            up.command = ["nmcli", "--wait", "60", "connection", "up", "id", root.enrollingName, "passwd-file", "/dev/stdin"];
             up.stdinEnabled = true;
             up.running = true;
         }
@@ -387,17 +396,9 @@ Singleton {
             if (!/passwords or encryption keys|required to access the wireless network|not given in .passwd-file|cannot ask without|secrets were required|no valid secrets/i.test(line))
                 return;
 
-            const name = root.enrollingName;
-            const ours = !profile.exists;
-
             up.refused = true;
-            root.failEnroll("wrong username or password");
+            root.failSignIn("wrong username or password");
             up.running = false;
-
-            if (ours) {
-                discard.command = ["nmcli", "connection", "delete", "id", name];
-                discard.running = true;
-            }
         }
 
         stdout: SplitParser {
@@ -416,15 +417,15 @@ Singleton {
                 root.enrollingName = "";
                 return;
             case 3:
-                return root.failEnroll("no answer, so nothing was checked");
+                return root.failSignIn("no answer, so nothing was checked");
             case 4:
-                return root.failEnroll("wrong username or password");
+                return root.failSignIn("wrong username or password");
             case 8:
-                return root.failEnroll("NetworkManager is not running");
+                return root.failSignIn("NetworkManager is not running");
             case 10:
-                return root.failEnroll("it went away while signing in");
+                return root.failSignIn("it went away while signing in");
             }
-            root.failEnroll("could not sign in");
+            root.failSignIn("could not sign in");
         }
     }
 
