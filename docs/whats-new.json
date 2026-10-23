@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-23-2",
+      "date": "2026-10-23",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A fresh install has a wallpaper from the first second: a moonlit pixel landscape that ships with the shell. The default used to point at a picture nothing installed, so the screen stayed black and the log showed a Cannot open warning for each screen until you picked one."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "When wallpaper.current is empty, or names a file that is no longer there, the shell shows the shipped picture instead of a black screen, and the picker lists it with your own. Your config.json is left as it is."
+        }
+      ]
+    },
+    {
       "id": "2026-10-23",
       "date": "2026-10-23",
       "changes": [

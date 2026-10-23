@@ -5,7 +5,8 @@
   "owns": {
     "qml": ["modules/wallpaper"],
     "services": ["Wallpaper"],
-    "scripts": ["scripts/palette.py", "scripts/wallpaper-colours.py"]
+    "scripts": ["scripts/palette.py", "scripts/wallpaper-colours.py"],
+    "assets": ["assets/wallpapers"]
   },
   "requires": {
     "packages": ["core", "compositor"],

@@ -8,8 +8,16 @@ import qs.config
 Singleton {
     id: root
 
+    readonly property string shipped: Quickshell.shellPath("assets/wallpapers/")
+
     function expand(path: string): string {
+        if (path && path.startsWith("shipped:"))
+            return `${root.shipped}${path.slice("shipped:".length)}`;
         return path ? path.replace(/^~(?=\/|$)/, Quickshell.env("HOME")) : "";
+    }
+
+    function stored(path: string): string {
+        return path.startsWith(root.shipped) ? `shipped:${path.slice(root.shipped.length)}` : path;
     }
 
     readonly property string dir: root.expand(Config.values.wallpaper.dir)
@@ -22,7 +30,46 @@ Singleton {
         return root.aliases[path] ?? path;
     }
 
-    readonly property string current: root.normalise(root.expand(Config.values.wallpaper.current))
+    readonly property string fallback: `${root.shipped}moonrise.png`
+
+    readonly property string configured: Config.loaded ? root.normalise(root.expand(Config.values.wallpaper.current)) : ""
+
+    property string verified: ""
+    property string missing: ""
+
+    readonly property string current: {
+        if (!Config.loaded)
+            return "";
+        const want = root.configured;
+        if (!want || want === root.missing)
+            return root.fallback;
+        return want === root.verified || root.available.indexOf(want) >= 0 ? want : "";
+    }
+
+    onConfiguredChanged: root.verify()
+
+    function verify(): void {
+        const want = root.configured;
+        if (!want || prober.running || want === root.verified || want === root.missing || root.available.indexOf(want) >= 0)
+            return;
+        prober.path = want;
+        prober.exec(["test", "-e", want]);
+    }
+
+    Process {
+        id: prober
+
+        property string path: ""
+
+        onExited: code => {
+            if (code === 0)
+                root.verified = prober.path;
+            else
+                root.missing = prober.path;
+            if (prober.path !== root.configured)
+                root.verify();
+        }
+    }
 
     readonly property var perScreen: Config.values.wallpaper.perScreen ?? ({})
 
@@ -233,8 +280,6 @@ done`, "sh", ...fresh];
 
     property var available: []
 
-    readonly property bool ready: current !== ""
-
     property var previews: ({})
     property var previewOrigins: ({})
 
@@ -314,7 +359,7 @@ done`, "sh", ...fresh];
 
         if (root.hasOwn(screen) || name !== root.current) {
             const next = Object.assign({}, Config.values.wallpaper.perScreen ?? {});
-            next[screen] = name;
+            next[screen] = root.stored(name);
             Config.set("wallpaper.perScreen", next);
         }
 
@@ -323,7 +368,7 @@ done`, "sh", ...fresh];
 
     function setAll(path: string): void {
 
-        Config.setMany([["wallpaper.perScreen", {}], ["wallpaper.current", root.normalise(path)]]);
+        Config.setMany([["wallpaper.perScreen", {}], ["wallpaper.current", root.stored(root.normalise(path))]]);
         root.previewOrigins = {};
         root.previews = {};
     }
@@ -517,9 +562,10 @@ done`, root.posterDir, ...videos];
                     if (byFile[key] === undefined || path < byFile[key])
                         byFile[key] = path;
                 }
-                root.available = Object.keys(byFile).map(k => byFile[k]).sort();
-                if (!root.available.length)
-                    console.warn(`Wallpaper: nothing usable in ${root.dir}`);
+                const found = Object.keys(byFile).map(k => byFile[k]).sort();
+                if (!found.length)
+                    console.info(`Wallpaper: nothing usable in ${root.dir}, so only the shipped picture is offered`);
+                root.available = [...found, root.fallback];
                 root.makePosters();
                 root.findFrozen();
                 root.measureShapes();
