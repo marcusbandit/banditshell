@@ -14,6 +14,8 @@ Column {
         switch (root.phase) {
         case "idle":
             return "comes up with streamer mode";
+        case "missing":
+            return "reaching obs needs qt6-websockets";
         case "unset":
             return Obs.installed ? "obs websocket is off in obs" : "obs is not installed here";
         case "ready":

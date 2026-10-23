@@ -12,6 +12,7 @@ HelpersMissing 1.0 HelpersMissing.qml
 NamePrompt 1.0 NamePrompt.qml
 PathBar 1.0 PathBar.qml
 PreviewPane 1.0 PreviewPane.qml
+PreviewPlayer 1.0 PreviewPlayer.qml
 Properties 1.0 Properties.qml
 Setting 1.0 Setting.qml
 SettingChoice 1.0 SettingChoice.qml

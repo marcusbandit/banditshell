@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtMultimedia
 import Quickshell.Io
 import qs.config
 import qs.components
@@ -293,6 +292,8 @@ Item {
 
                     onClicked: {
                         playback.active = true;
+                        if (!root.player)
+                            return;
                         if (root.player.loaded !== root.path) {
                             root.player.loaded = root.path;
                             root.player.source = Urls.fileUrl(root.path);
@@ -448,12 +449,6 @@ Item {
         id: playback
 
         active: false
-
-        sourceComponent: MediaPlayer {
-            readonly property bool playing: playbackState === MediaPlayer.PlayingState
-            property string loaded: ""
-
-            audioOutput: AudioOutput {}
-        }
+        source: Qt.resolvedUrl("PreviewPlayer.qml")
     }
 }

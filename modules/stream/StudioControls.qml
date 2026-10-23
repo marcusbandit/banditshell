@@ -10,7 +10,7 @@ Item {
 
     property string armed: ""
 
-    readonly property string notice: Obs.phase === "closed" ? "OBS is not running" : Obs.phase === "unset" ? "OBS's WebSocket server is off: Tools → WebSocket Server Settings" : Obs.phase === "refused" ? "OBS did not accept its WebSocket password" : "Reaching OBS"
+    readonly property string notice: Obs.phase === "missing" ? "Reaching OBS needs qt6-websockets: bash install.sh adds it" : Obs.phase === "closed" ? "OBS is not running" : Obs.phase === "unset" ? "OBS's WebSocket server is off: Tools → WebSocket Server Settings" : Obs.phase === "refused" ? "OBS did not accept its WebSocket password" : "Reaching OBS"
 
     function arm(want: string): void {
         root.armed = want;

@@ -1,7 +1,6 @@
 pragma Singleton
 
 import QtQuick
-import QtWebSockets
 import Quickshell
 import Quickshell.Io
 import qs.config
@@ -31,7 +30,9 @@ Singleton {
 
     property string link: "closed"
 
-    readonly property string phase: !root.wanted ? "idle" : !root.canConnect ? "unset" : root.link
+    property QtObject socket: null
+
+    readonly property string phase: !root.wanted ? "idle" : !root.socket ? "missing" : !root.canConnect ? "unset" : root.link
 
     property bool identifying: false
 
@@ -73,10 +74,12 @@ Singleton {
     onPasswordChanged: root.sync()
 
     function sync(): void {
-        socket.active = false;
+        if (!root.socket)
+            return;
+        root.socket.active = false;
         root.forget();
         if (root.canConnect)
-            socket.active = true;
+            root.socket.active = true;
     }
 
     function forget(): void {
@@ -103,7 +106,7 @@ Singleton {
         const id = `${++root.serial}`;
         if (then)
             root.waiting[id] = then;
-        socket.sendTextMessage(JSON.stringify(ObsProtocol.request(type, id, data)));
+        root.socket.sendTextMessage(JSON.stringify(ObsProtocol.request(type, id, data)));
     }
 
     function handle(text: string): void {
@@ -116,7 +119,7 @@ Singleton {
         const d = message.d ?? {};
         if (message.op === 0) {
             root.identifying = true;
-            socket.sendTextMessage(JSON.stringify(ObsProtocol.identify(d, root.password, Base64)));
+            root.socket.sendTextMessage(JSON.stringify(ObsProtocol.identify(d, root.password, Base64)));
         } else if (message.op === 2) {
             root.identifying = false;
             root.link = "ready";
@@ -313,7 +316,17 @@ Singleton {
     }
 
     onLegacyPasswordChanged: root.migrate()
-    Component.onCompleted: root.migrate()
+    Component.onCompleted: {
+        root.migrate();
+        const link = Qt.createComponent(Qt.resolvedUrl("ObsLink.qml"));
+        if (link.status !== Component.Ready) {
+            console.warn("OBS stays out of reach until qt6-websockets is installed:", link.errorString().trim());
+            return;
+        }
+        root.socket = link.createObject(root);
+        root.socket.url = Qt.binding(() => root.url);
+        root.sync();
+    }
 
     Process {
         id: keeper
@@ -377,31 +390,28 @@ Singleton {
         onLoadFailed: root.server = null
     }
 
-    WebSocket {
-        id: socket
+    Connections {
+        target: root.socket
 
-        url: root.url
-        active: false
-
-        onStatusChanged: {
-            if (socket.status !== WebSocket.Closed && socket.status !== WebSocket.Error)
-                return;
+        function onDropped(): void {
             const refused = root.identifying;
             root.forget();
             root.link = refused ? "refused" : "closed";
         }
 
-        onTextMessageReceived: message => root.handle(message)
+        function onTextMessageReceived(message: string): void {
+            root.handle(message);
+        }
     }
 
     Timer {
         interval: 3000
         repeat: true
-        running: root.canConnect && root.link === "closed"
+        running: !!root.socket && root.canConnect && root.link === "closed"
 
         onTriggered: {
-            socket.active = false;
-            socket.active = true;
+            root.socket.active = false;
+            root.socket.active = true;
         }
     }
 
