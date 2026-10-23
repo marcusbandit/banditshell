@@ -102,6 +102,7 @@ test("a command that ends here is not also read as a placeholder", () => {
     assert.deepStrictEqual(bashComplete("panel", "close", ""), []);
     assert.deepStrictEqual(bashComplete("doctor", ""), ["--json", "--report", "api", "binds"]);
     assert.deepStrictEqual(bashComplete("doctor", "binds", ""), ["rewrite"]);
+    assert.deepStrictEqual(bashComplete("triage", "words", ""), ["--yes"]);
 });
 
 test("action, api and version complete: ids after action, the three api words, --json", () => {

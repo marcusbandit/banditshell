@@ -38,7 +38,8 @@
       "tests/fixtures/ipc-targets.json",
       "tests/ipc-targets.test.js",
       "tests/lua",
-      "tests/lua-api.test.js"
+      "tests/lua-api.test.js",
+      "tests/triage-cli.test.js"
     ]
   },
   "requires": {
