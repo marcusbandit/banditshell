@@ -109,6 +109,9 @@ verb	unstick	keep a trace of a frozen shell, stop it and start it again; a locke
 rule	unstick
 verb	watchdog	check on the shell every 10 seconds and unstick it on its own: frozen for 30 seconds, or gone while the session is locked
 rule	watchdog
+verb	triage	tell the maintainer something is wrong
+rule	triage --yes
+rule	triage * --yes
 verb	action	run a stable action by its id
 rule	action @id *
 verb	api	the table of stable action ids
