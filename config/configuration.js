@@ -48,9 +48,9 @@ function upgradeValue(path, value) {
     return path === "launcher.concept" && value === "niagara" ? "alphabet" : value;
 }
 
-const UNSHIPPED_WALLPAPER = "~/Pictures/Wallpapers/shaded_landscape.png";
-
-function upgradeLauncher(values) {
+function upgrade(values) {
+    if (!isPlainObject(values) || !isPlainObject(values.launcher))
+        return values;
     const launcher = Object.assign({}, values.launcher);
     if (owns(launcher, "niagara")) {
         if (!owns(launcher, "alphabet"))
@@ -60,15 +60,6 @@ function upgradeLauncher(values) {
     if (owns(launcher, "concept"))
         launcher.concept = upgradeValue("launcher.concept", launcher.concept);
     return Object.assign({}, values, { launcher });
-}
-
-function upgrade(values) {
-    if (!isPlainObject(values))
-        return values;
-    let out = isPlainObject(values.launcher) ? upgradeLauncher(values) : values;
-    if (isPlainObject(values.wallpaper) && values.wallpaper.current === UNSHIPPED_WALLPAPER)
-        out = Object.assign({}, out, { wallpaper: Object.assign({}, values.wallpaper, { current: "" }) });
-    return out;
 }
 
 function holds(node, segment) {

@@ -179,13 +179,6 @@ test.describe("upgrade", () => {
         assert.strictEqual(Configuration.upgradeValue("theme", "niagara"), "niagara");
     });
 
-    test.it("clears the default wallpaper that was never shipped and keeps a chosen one", () => {
-        const old = { wallpaper: { current: "~/Pictures/Wallpapers/shaded_landscape.png", dir: "~/Pictures/Wallpapers" }, theme: "slate" };
-        assert.deepStrictEqual(Configuration.upgrade(old), { wallpaper: { current: "", dir: "~/Pictures/Wallpapers" }, theme: "slate" });
-        const chosen = { wallpaper: { current: "~/Pictures/Wallpapers/leaves.jpg" } };
-        assert.strictEqual(Configuration.upgrade(chosen), chosen);
-    });
-
     test.it("leaves a config without a launcher alone", () => {
         const plain = { theme: "slate" };
         assert.strictEqual(Configuration.upgrade(plain), plain);

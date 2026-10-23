@@ -12,7 +12,7 @@
         {
           "type": "config",
           "severity": "minor",
-          "text": "wallpaper.current is empty by default, and empty means the shipped picture. If your config.json still names shaded_landscape.png, the shell clears it once when it loads. A wallpaper you picked yourself stays."
+          "text": "When wallpaper.current is empty, or names a file that is no longer there, the shell shows the shipped picture instead of a black screen, and the picker lists it with your own. Your config.json is left as it is."
         }
       ]
     },

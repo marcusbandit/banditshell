@@ -90,7 +90,7 @@ Scope {
         }
 
         function status(): string {
-            const head = `${Wallpaper.enabled ? "on" : "off"} default ${Wallpaper.kindOf(Wallpaper.current) || "?"} ${Wallpaper.nameOf(Wallpaper.current) || "(nothing set)"} ${Wallpaper.available.length} in ${Wallpaper.dir}`;
+            const head = `${Wallpaper.enabled ? "on" : "off"} default ${Wallpaper.kindOf(Wallpaper.current) || "?"} ${Wallpaper.nameOf(Wallpaper.current) || "(nothing set)"}${Wallpaper.current === Wallpaper.fallback ? " (shipped)" : ""} ${Wallpaper.available.length} in ${Wallpaper.dir}`;
 
             const rows = Quickshell.screens.map(s => {
                 const own = Wallpaper.hasOwn(s.name);
