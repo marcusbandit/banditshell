@@ -616,7 +616,8 @@ const RULES = [
     { id: "L11", reason: "Name.member on a singleton must name a member that singleton declares; a renamed or moved member reads as undefined at runtime.", appliesTo: () => false, check: null, whole: true },
     { id: "L12", reason: "A pill is an object (round ends) or a place (the shell's corner): a SquircleRect or shadow with a half-size radius says pill: \"object\" or pill: \"place\" instead (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL12 },
     { id: "L13", reason: "A Button's emphasis is accent, plate, ring or bare; filled, elevated, tonal, outlined and text were Material 3's and are retired (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL13 },
-    { id: "L14", reason: "A variable font axis is a literal or a components/font-axes.js value; every other value it takes builds a new font engine that maps the font file again, and the font cache's trim of thousands of them freezes the shell (#86).", appliesTo: f => f.endsWith(".qml"), check: ruleL14 }
+    { id: "L14", reason: "A variable font axis is a literal or a components/font-axes.js value; every other value it takes builds a new font engine that maps the font file again, and the font cache's trim of thousands of them freezes the shell (#86).", appliesTo: f => f.endsWith(".qml"), check: ruleL14 },
+    { id: "L15", reason: "QtWebSockets and QtMultimedia are optional, so only a file loaded with Loader.source or Qt.createComponent imports them: never a singleton, never a type another file names. A machine without one then loses that one feature instead of the whole shell (#96).", appliesTo: () => false, check: null, whole: true }
 ];
 
 function ruleById(id) {
@@ -944,8 +945,57 @@ function readMemberSources(root, files) {
     return sources;
 }
 
-function checkSingletonMembers(root, files) {
-    return checkMembers(readMemberSources(root, files));
+const OPTIONAL_QT_MODULES = ["QtWebSockets", "QtMultimedia"];
+
+function reachableDirectories(file, plain) {
+    const reach = new Set([directoryOf(file)]);
+    const importPattern = /^[ \t]*import[ \t]+(?:"([^"]+)"|qs\.([\w.]+))/gm;
+    let m;
+    while ((m = importPattern.exec(plain)) !== null) {
+        if (m[1] && !m[1].endsWith(".js"))
+            reach.add(joinPath(directoryOf(file), m[1]));
+        else if (m[2])
+            reach.add(m[2].split(".").join("/"));
+    }
+    return reach;
+}
+
+function checkOptionalModules(sources) {
+    const found = [];
+    const scanned = new Map();
+    const needs = new Map();
+    const importing = new RegExp(`^[ \\t]*import[ \\t]+(${OPTIONAL_QT_MODULES.join("|")})\\b`, "m");
+    for (const [file, text] of sources) {
+        if (!file.endsWith(".qml"))
+            continue;
+        const { code, plain } = scanSource(text);
+        const at = lineIndex(text);
+        scanned.set(file, { code, at, reach: reachableDirectories(file, plain) });
+        const imported = importing.exec(code);
+        if (!imported)
+            continue;
+        if (/^[ \t]*pragma[ \t]+Singleton\b/m.test(code))
+            found.push({ rule: "L15", file, line: at(imported.index), detail: `a singleton imports ${imported[1]}; move what needs it into a file the singleton loads with Qt.createComponent` });
+        const name = path.posix.basename(file, ".qml");
+        if (!needs.has(name))
+            needs.set(name, []);
+        needs.get(name).push({ file, module: imported[1] });
+    }
+    if (!needs.size)
+        return found;
+    const names = [...needs.keys()].join("|");
+    const named = new RegExp(`(?<![\\w$])(${names})(?=\\s*\\{)|\\bproperty[ \\t]+(?:[\\w.]+\\.)?(${names})\\b|\\bas[ \\t]+(?:[\\w.]+\\.)?(${names})\\b`, "g");
+    for (const [file, { code, at, reach }] of scanned) {
+        named.lastIndex = 0;
+        let m;
+        while ((m = named.exec(code)) !== null) {
+            const name = m[1] || m[2] || m[3];
+            const need = needs.get(name).find(n => n.file !== file && reach.has(directoryOf(n.file)));
+            if (need)
+                found.push({ rule: "L15", file, line: at(m.index), detail: `names ${name}, which imports ${need.module}; load it with Loader.source: Qt.resolvedUrl("${name}.qml")` });
+        }
+    }
+    return found;
 }
 
 function lint(root, onlyRule) {
@@ -974,8 +1024,11 @@ function lint(root, onlyRule) {
     }
     if (active.some(rule => rule.id === "L10"))
         findings.push(...checkQmldirs(root));
+    const wholeSources = active.some(rule => rule.id === "L11" || rule.id === "L15") ? readMemberSources(root, files) : null;
     if (active.some(rule => rule.id === "L11"))
-        findings.push(...checkSingletonMembers(root, files));
+        findings.push(...checkMembers(wholeSources));
+    if (active.some(rule => rule.id === "L15"))
+        findings.push(...checkOptionalModules(wholeSources));
     findings.sort((a, b) => a.file < b.file ? -1 : a.file > b.file ? 1 : a.line - b.line || (a.rule < b.rule ? -1 : 1));
     return { files: files.length, findings };
 }
@@ -1050,7 +1103,7 @@ function usage() {
         "usage: lint-rules.js [--root <dir>] [--rule <id>] [--all | --write-baseline | --list]",
         "",
         "  (none)             check the house rules against rules.baseline.json",
-        "  --rule <id>        only this rule, L1 to L14",
+        "  --rule <id>        only this rule, L1 to L15",
         "  --all              print every violation with file and line, known or not",
         "  --write-baseline   record today's counts as the new baseline",
         "  --list             rule ids with their reasons"
@@ -1141,7 +1194,7 @@ function run(argv, write) {
 }
 
 module.exports = {
-    RULES, LOOPING_CLOCKS, COLOUR_DATA, scanSource, lintSource, lint, tally, compare, expectedQmldir, qmldirDirectories, checkMembers, run
+    RULES, OPTIONAL_QT_MODULES, LOOPING_CLOCKS, COLOUR_DATA, scanSource, lintSource, lint, tally, compare, expectedQmldir, qmldirDirectories, checkMembers, checkOptionalModules, run
 };
 
 if (require.main === module) {

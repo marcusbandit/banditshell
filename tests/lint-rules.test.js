@@ -532,6 +532,63 @@ test("L11 runs over a repo through lint and honours the rule filter", () => {
     fs.rmSync(repo, { recursive: true, force: true });
 });
 
+function optionalHits(files) {
+    return lintRules.checkOptionalModules(sourceMap(files)).map(f => `${f.rule} ${f.file}:${f.line}`);
+}
+
+test("L15 flags a type another file names when it imports an optional Qt module", () => {
+    assert.deepStrictEqual(optionalHits({
+        "modules/a/Player.qml": "import QtQuick\nimport QtMultimedia\n\nMediaPlayer {}\n",
+        "modules/a/Pane.qml": "import QtQuick\n\nItem {\n    Player {\n    }\n    component Slot: Player {}\n}\n"
+    }), ["L15 modules/a/Pane.qml:4", "L15 modules/a/Pane.qml:6"]);
+});
+
+test("L15 flags a singleton that imports an optional Qt module", () => {
+    assert.deepStrictEqual(optionalHits({
+        "services/Obs.qml": "pragma Singleton\n\nimport QtQuick\nimport QtWebSockets\n\nSingleton {}\n"
+    }), ["L15 services/Obs.qml:4"]);
+});
+
+test("L15 lets a file loaded by URL import an optional Qt module", () => {
+    assert.deepStrictEqual(optionalHits({
+        "modules/a/Player.qml": "import QtQuick\nimport QtMultimedia\n\nMediaPlayer {}\n",
+        "modules/a/Pane.qml": "import QtQuick\n\nLoader {\n    source: Qt.resolvedUrl(\"Player.qml\")\n}\n",
+        "modules/a/Other.qml": "import QtQuick\n\nItem {\n    property var Player: null\n    readonly property bool p: Player !== null\n}\n"
+    }), []);
+});
+
+test("L15 flags a property type and a name reached through an aliased import", () => {
+    assert.deepStrictEqual(optionalHits({
+        "components/Camera2.qml": "import QtQuick\nimport QtMultimedia\n\nItem {}\n",
+        "modules/a/Pane.qml": "import QtQuick\nimport qs.components as Parts\n\nItem {\n    property Camera2 lens: null\n    Parts.Camera2 {}\n}\n"
+    }), ["L15 modules/a/Pane.qml:5", "L15 modules/a/Pane.qml:6"]);
+});
+
+test("L15 only counts a name the file can reach, not a namesake in another folder", () => {
+    assert.deepStrictEqual(optionalHits({
+        "modules/b/Player.qml": "import QtQuick\nimport QtMultimedia\n\nMediaPlayer {}\n",
+        "modules/a/Player.qml": "import QtQuick\n\nItem {}\n",
+        "modules/a/Pane.qml": "import QtQuick\n\nItem {\n    Player {}\n}\n",
+        "modules/c/Pane.qml": "import QtQuick\nimport \"../b\"\n\nItem {\n    Player {}\n}\n"
+    }), ["L15 modules/c/Pane.qml:5"]);
+});
+
+test("the optional Qt modules are the same in lint, the compile check and install.sh", () => {
+    const check = fs.readFileSync(path.join(ROOT, "scripts/qml-compile-check.sh"), "utf8");
+    const install = fs.readFileSync(path.join(ROOT, "install.sh"), "utf8");
+    const named = /module "Qt\(([\w|]+)\)"/.exec(check)[1].split("|").map(m => `Qt${m}`).sort();
+    assert.deepStrictEqual(named, [...lintRules.OPTIONAL_QT_MODULES].sort());
+    for (const module of lintRules.OPTIONAL_QT_MODULES)
+        assert.match(install, new RegExp(`qt_present module ${module}"`), module);
+});
+
+test("L15 ignores an optional module named in a comment or a string", () => {
+    assert.deepStrictEqual(optionalHits({
+        "modules/a/Note.qml": "import QtQuick\n\nText {\n    text: \"import QtMultimedia\"\n}\n",
+        "modules/a/Pane.qml": "import QtQuick\n\nItem {\n    Note {}\n}\n"
+    }), []);
+});
+
 test("a new violation fails, with its file and line, and a fixed one only prints a notice", () => {
     const repo = makeRepo({
         "modules/a.qml": "Item {\n    Rectangle { radius: 3 }\n}\n",
@@ -583,7 +640,7 @@ test("--all lists every violation and the options are checked", () => {
 });
 
 test("every rule has an id in order and a reason", () => {
-    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 14 }, (_, i) => `L${i + 1}`));
+    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 15 }, (_, i) => `L${i + 1}`));
     for (const rule of lintRules.RULES)
         assert.ok(rule.reason.length > 20, rule.id);
 });

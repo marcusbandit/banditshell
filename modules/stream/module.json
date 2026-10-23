@@ -4,7 +4,7 @@
   "layer": 3,
   "owns": {
     "qml": ["modules/stream"],
-    "services": ["Obs", "StreamState"],
+    "services": ["Obs", "ObsLink", "StreamState"],
     "js": ["services/obs.js"],
     "tests": ["tests/obs.test.js"]
   },

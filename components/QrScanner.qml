@@ -1,8 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Effects
-import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import qs.config
@@ -14,7 +12,7 @@ Item {
 
     property string note: ""
 
-    readonly property string status: root.trouble || root.note || (root.reading ? "reading" : "point it at the code")
+    readonly property string status: root.trouble || (root.active ? root.lensTrouble : "") || root.note || (root.reading ? "reading" : "point it at the code")
 
     property string trouble: ""
 
@@ -27,6 +25,10 @@ Item {
     readonly property bool reading: look.running
 
     property string decoder: ""
+
+    readonly property var camera: lens.item
+
+    readonly property string lensTrouble: lens.status === Loader.Error ? "reading a QR code needs qt6-multimedia" : root.camera && root.camera.cameras === 0 ? "no camera on this machine" : ""
 
     implicitWidth: parent ? parent.width : 0
     implicitHeight: body.implicitHeight
@@ -49,47 +51,14 @@ Item {
         }
     }
 
-    MediaDevices {
-        id: devices
-    }
-
-    CaptureSession {
-        id: session
-
-        camera: Camera {
-            id: cam
-
-            cameraDevice: devices.defaultVideoInput
-
-            active: root.active && devices.videoInputs.length > 0
-
-            onErrorOccurred: (error, message) => root.trouble = message || "the camera would not start"
-        }
-
-        videoOutput: preview
-
-        imageCapture: ImageCapture {
-            id: shot
-
-            onImageSaved: (id, path) => {
-                if (root.decoder)
-                    look.running = true;
-            }
-            onErrorOccurred: (id, error, message) => root.trouble = message || "could not read from the camera"
-        }
-    }
-
-    onActiveChanged: if (root.active && devices.videoInputs.length === 0)
-        root.trouble = "no camera on this machine"
-
     Timer {
-        running: root.active && cam.active && !!root.decoder
+        running: root.active && (root.camera?.running ?? false) && !!root.decoder
         interval: root.beat
         repeat: true
         triggeredOnStart: true
 
-        onTriggered: if (shot.readyForCapture && !root.reading)
-            shot.captureToFile(root.framePath)
+        onTriggered: if (root.camera.ready && !root.reading)
+            root.camera.capture()
     }
 
     Process {
@@ -134,37 +103,29 @@ Item {
                 color: Appearance.colour.fillStrong
             }
 
-            VideoOutput {
-                id: preview
+            Loader {
+                id: lens
 
                 anchors.fill: parent
-                fillMode: VideoOutput.PreserveAspectCrop
+                source: Qt.resolvedUrl("QrCamera.qml")
 
-                transform: Scale {
-                    origin.x: preview.width / 2
-                    xScale: -1
+                onLoaded: {
+                    lens.item.active = Qt.binding(() => root.active);
+                    lens.item.framePath = Qt.binding(() => root.framePath);
+                }
+            }
+
+            Connections {
+                target: lens.item
+
+                function onFailed(message: string): void {
+                    root.trouble = message;
                 }
 
-                layer.enabled: true
-                visible: false
-            }
-
-            SquircleRect {
-                id: mask
-
-                anchors.fill: parent
-                radius: Appearance.rounding.normal
-                color: "white"
-                layer.enabled: true
-                visible: false
-            }
-
-            MultiEffect {
-                anchors.fill: parent
-                source: preview
-                maskEnabled: true
-                maskSource: mask
-                visible: cam.active
+                function onSaved(): void {
+                    if (root.decoder)
+                        look.running = true;
+                }
             }
         }
 

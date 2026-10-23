@@ -14,6 +14,8 @@ Column {
         switch (root.phase) {
         case "idle":
             return "comes up with streamer mode";
+        case "missing":
+            return "reaching obs needs qt6-websockets";
         case "unset":
             return Obs.installed ? "obs websocket is off in obs" : "obs is not installed here";
         case "ready":
@@ -37,6 +39,7 @@ Column {
 
         Button {
             anchors.verticalCenter: parent.verticalCenter
+            visible: root.phase !== "missing"
             size: 0
             style: root.phase === "ready" ? "plate" : "accent"
             text: root.phase === "ready" ? "Let go" : root.phase === "refused" ? "Again" : "Connect"

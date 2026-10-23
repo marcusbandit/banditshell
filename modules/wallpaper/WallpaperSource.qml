@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtMultimedia
 import qs.services
 
 Item {
@@ -74,50 +73,19 @@ Item {
     Component {
         id: played
 
-        Item {
+        Loader {
             id: playback
 
-            readonly property bool ready: player.mediaStatus === MediaPlayer.LoadedMedia || player.mediaStatus === MediaPlayer.BufferedMedia || player.mediaStatus === MediaPlayer.BufferingMedia || player.mediaStatus === MediaPlayer.EndOfMedia
+            readonly property bool ready: playback.item?.ready ?? false
 
             anchors.fill: parent
+            source: Qt.resolvedUrl("WallpaperPlayback.qml")
 
-            MediaPlayer {
-                id: player
-
-                source: root.path
-                videoOutput: root.blank ? null : output
-                audioOutput: AudioOutput {
-                    muted: !root.audible
-                }
-
-                loops: MediaPlayer.Infinite
-
-                onMediaStatusChanged: playback.apply()
-            }
-
-            function apply(): void {
-                if (root.playing)
-                    player.play();
-                else
-                    player.pause();
-            }
-
-            Connections {
-                target: root
-
-                function onPlayingChanged(): void {
-                    playback.apply();
-                }
-            }
-
-            Component.onCompleted: playback.apply()
-
-            VideoOutput {
-                id: output
-
-                anchors.fill: parent
-                visible: !root.blank
-                fillMode: VideoOutput.PreserveAspectCrop
+            onLoaded: {
+                playback.item.playing = Qt.binding(() => root.playing);
+                playback.item.audible = Qt.binding(() => root.audible);
+                playback.item.blank = Qt.binding(() => root.blank);
+                playback.item.path = Qt.binding(() => root.path);
             }
         }
     }

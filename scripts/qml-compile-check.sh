@@ -6,7 +6,9 @@ case "${1:-}" in
     echo "usage: qml-compile-check.sh [checkout]"
     echo "  compile every QML file of the checkout in a fresh, offscreen Quickshell"
     echo "  engine with its own HOME and runtime dir and no D-Bus, Wayland or"
-    echo "  Hyprland; prints FAIL lines and CHECKED <n> failures, exits 1 on any"
+    echo "  Hyprland; prints FAIL lines and CHECKED <n> failures, exits 1 on any;"
+    echo "  a file that only lacks QtWebSockets or QtMultimedia prints OPTIONAL, since"
+    echo "  the shell loads without it and loses that one feature"
     exit 0
     ;;
 esac
@@ -40,6 +42,10 @@ ShellRoot {
             const error = component.status === Component.Error ? component.errorString().trim() : "status " + component.status;
             if (/backend loaded|No .*backend/.test(error))
                 continue;
+            if (error.split("\n").every(line => /module "Qt(WebSockets|Multimedia)"( version [\d.]+)? is not installed|plugin cannot be loaded for module "Qt(WebSockets|Multimedia)"/.test(line))) {
+                console.log("OPTIONAL", file, error);
+                continue;
+            }
             failures++;
             console.log("FAIL", file, error);
         }
@@ -64,7 +70,7 @@ QML
         DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent \
         timeout 120 qs -p "$dir/probe.qml") >"$dir.log" 2>&1 || code=$?
     sed 's/\x1b\[[0-9;]*m//g' "$dir.log" >"$dir.plain"
-    grep -E 'FAIL|CHECKED' "$dir.plain" | sed "s|^.*qml: |${2}|" || true
+    grep -E 'FAIL|OPTIONAL|CHECKED' "$dir.plain" | sed "s|^.*qml: |${2}|" || true
     if ! grep -q 'CHECKED' "$dir.plain"; then
         echo "qml-compile-check.sh: the probe never reported (qs exit $code):" >&2
         tail -20 "$dir.plain" >&2

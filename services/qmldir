@@ -68,6 +68,7 @@ NotificationEntry 1.0 NotificationEntry.qml
 singleton Notifications 1.0 Notifications.qml
 singleton Notify 1.0 Notify.qml
 singleton Obs 1.0 Obs.qml
+ObsLink 1.0 ObsLink.qml
 singleton PackageSearch 1.0 PackageSearch.qml
 singleton Pacman 1.0 Pacman.qml
 singleton Panels 1.0 Panels.qml

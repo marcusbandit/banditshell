@@ -296,7 +296,7 @@
 #                                every violation with file and line, or record
 #                                today's counts as the new baseline
 #   banditshell dev lint --rule <rule>
-#                                one rule only, L1 to L14
+#                                one rule only, L1 to L15
 #   banditshell dev promote [--remote <name>] [--no-fetch]
 #                                check that main is fit to be the stable channel
 #                                (tests, modules, house rules, compile check, a
