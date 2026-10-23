@@ -13,6 +13,7 @@ Singleton {
     property var covers: []
     property bool armed: false
     property var heard: ({})
+    property string heardLayout: ""
 
     function cover(who: var, kinds: var): void {
         root.covers = [...root.covers.filter(c => c.who !== who), {
@@ -71,6 +72,17 @@ Singleton {
 
     onPanelChanged: if (root.panel.value >= 0)
         root.witness("brightness", `panel:${root.panel.name}`, root.panel, 1)
+
+    readonly property string layout: Keymap.several ? `${Keymap.index}:${Keymap.layout}` : ""
+
+    onLayoutChanged: {
+        const before = root.heardLayout;
+        root.heardLayout = root.layout;
+        if (!root.armed || !before || !root.layout || before === root.layout)
+            return;
+        if (Logic.levelWanted(root.enabled, root.covers, "layout"))
+            Notices.pass(Logic.layoutMoment(Keymap.layout, Keymap.name));
+    }
 
     Timer {
         interval: 4000

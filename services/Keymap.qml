@@ -11,6 +11,7 @@ Singleton {
 
     property var layouts: []
     property int index: 0
+    property string name: ""
     property bool capsLock: false
 
     readonly property string layout: (root.layouts[root.index] ?? "").toUpperCase()
@@ -36,6 +37,7 @@ Singleton {
         const main = keyboards.find(k => k.main) ?? keyboards[0];
         if (!main)
             return;
+        root.name = String(main.active_keymap ?? "");
         root.layouts = String(main.layout ?? "").split(",").map(l => l.trim()).filter(l => l);
         root.index = main.active_layout_index ?? 0;
         root.capsLock = !!main.capsLock;

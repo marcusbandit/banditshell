@@ -1981,7 +1981,7 @@ rail and not against the full column): one mark per workspace, and below them a 
 whatever is unusual and nothing for what is normal. Unusual is decided in `anomalies.js`: a
 battery under 20 percent, the microphone live or muted while something records from it, a
 screen recording, a VPN, airplane mode (every radio off), quiet or a mode, an update waiting or
-stuck. A cap of four keeps the alarms and drops the quietest, and a mark that goes leaves by
+stuck, a keyboard on any layout but its first, shown as that layout's code. A cap of four keeps the alarms and drops the quietest, and a mark that goes leaves by
 shrinking, not by blinking out.
 
 Pointing at the rail for `anim.dwell` grows it into the full column: the clock, tray, status
@@ -4468,7 +4468,8 @@ the history. Quiet timers, the pomodoro's, stay out.
 
 Volume, mute, brightness and mic mute are a moment, not a thing that stays: a
 row with a mark, a bar and the number, for a second, at the bottom of whatever
-holds the big spot. Nothing in the shell answered the volume keys before, which
+holds the big spot. A keyboard layout switch is the same row with the layout's
+name and its code, since the key that switches it changes every letter after. Nothing in the shell answered the volume keys before, which
 read as dead. `Levels` watches Audio, Display and Backlight and keeps quiet when
 a surface that already shows that level is open (the sound menu, the quick
 controls, the settings volume row declare it with `LevelCover`), when the device

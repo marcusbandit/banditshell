@@ -74,6 +74,15 @@ test("recording, vpn and quiet each show on their own", () => {
     assert.deepStrictEqual(keys({ quiet: true }), ["quiet"]);
 });
 
+test("a keyboard off its first layout shows as its short code, and the first layout shows nothing", () => {
+    assert.deepStrictEqual(keys({ layout: "" }), []);
+    const tag = Anomalies.list(Object.assign({}, calm, { layout: "US", layoutName: "English (US)" }))[0];
+    assert.strictEqual(tag.key, "layout");
+    assert.strictEqual(tag.text, "US");
+    assert.strictEqual(tag.tone, "accent");
+    assert.match(tag.title, /English \(US\)/);
+});
+
 test("a mode icon stands in for quiet instead of doubling it", () => {
     assert.deepStrictEqual(keys({ modeIcon: "target", quiet: true }), ["mode"]);
     assert.strictEqual(Anomalies.list(Object.assign({}, calm, { modeIcon: "target" }))[0].icon, "target");

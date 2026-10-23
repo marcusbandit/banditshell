@@ -104,6 +104,13 @@ Item {
             body: batteryMenu
         },
         {
+            key: "layout",
+            title: Keymap.name || "Keyboard layout",
+            reading: layout,
+            present: Keymap.several,
+            press: () => Keymap.next()
+        },
+        {
             key: "brightness",
             title: "Brightness",
             reading: brightness,
@@ -148,6 +155,13 @@ Item {
         readonly property Component mark: batteryMark
         readonly property bool active: Battery.charging
         readonly property bool alarm: Battery.low
+    }
+
+    QtObject {
+        id: layout
+
+        readonly property string icon: "keyboard"
+        readonly property Component mark: layoutMark
     }
 
     QtObject {
@@ -243,7 +257,7 @@ Item {
                     }
                 }
 
-                onActivated: root.requested(key, true)
+                onActivated: modelData.press ? modelData.press() : root.requested(key, true)
 
                 onScrolled: wheel => {
                     if (modelData.scroll)
@@ -255,6 +269,18 @@ Item {
                     asked: hovered
                 }
             }
+        }
+    }
+
+    Component {
+        id: layoutMark
+
+        StyledText {
+            property color colour: Appearance.colour.text
+
+            text: Keymap.layout
+            color: colour
+            font.pixelSize: Appearance.font.size.small
         }
     }
 
