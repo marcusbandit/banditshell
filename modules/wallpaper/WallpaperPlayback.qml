@@ -6,7 +6,7 @@ Item {
 
     property string path: ""
 
-    property bool playing: true
+    property bool playing: false
 
     property bool audible: false
 

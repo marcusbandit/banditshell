@@ -82,10 +82,10 @@ Item {
             source: Qt.resolvedUrl("WallpaperPlayback.qml")
 
             onLoaded: {
-                playback.item.path = Qt.binding(() => root.path);
                 playback.item.playing = Qt.binding(() => root.playing);
                 playback.item.audible = Qt.binding(() => root.audible);
                 playback.item.blank = Qt.binding(() => root.blank);
+                playback.item.path = Qt.binding(() => root.path);
             }
         }
     }

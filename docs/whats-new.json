@@ -9,10 +9,7 @@
           "severity": "minor",
           "text": "The shell starts even when qt6-websockets, which talks to OBS, or qt6-multimedia, which plays sound and video, is missing. One missing module used to leave the whole screen black. Now only the part that needs it waits: the stream deck says it cannot reach OBS, and video wallpapers, sound previews in the file browser and the QR scanner stay off until bash install.sh adds the package."
         }
-      ],
-      "impact": {
-        "restart": true
-      }
+      ]
     },
     {
       "id": "2026-10-22",

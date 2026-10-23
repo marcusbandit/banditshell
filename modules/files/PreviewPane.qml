@@ -54,6 +54,8 @@ Item {
 
     readonly property var player: playback.item
 
+    readonly property bool soundMissing: playback.status === Loader.Error
+
     onPathChanged: {
         root.stat = null;
         root.contents = [];
@@ -318,7 +320,7 @@ Item {
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
 
-                text: `${Files.humanDuration(root.player?.position ?? 0)} / ${Files.humanDuration(root.player?.duration ?? 0)}`
+                text: root.soundMissing ? "playing it needs qt6-multimedia" : `${Files.humanDuration(root.player?.position ?? 0)} / ${Files.humanDuration(root.player?.duration ?? 0)}`
                 color: Appearance.colour.textFaint
             }
         }

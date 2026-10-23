@@ -12,7 +12,7 @@ Item {
 
     property string note: ""
 
-    readonly property string status: root.trouble || root.note || (root.reading ? "reading" : "point it at the code")
+    readonly property string status: root.trouble || (root.active ? root.lensTrouble : "") || root.note || (root.reading ? "reading" : "point it at the code")
 
     property string trouble: ""
 
@@ -27,6 +27,8 @@ Item {
     property string decoder: ""
 
     readonly property var camera: lens.item
+
+    readonly property string lensTrouble: lens.status === Loader.Error ? "reading a QR code needs qt6-multimedia" : root.camera && root.camera.cameras === 0 ? "no camera on this machine" : ""
 
     implicitWidth: parent ? parent.width : 0
     implicitHeight: body.implicitHeight
@@ -47,15 +49,6 @@ Item {
             if (code !== 0)
                 root.trouble = "no QR reader here; install zxing-cpp";
         }
-    }
-
-    onActiveChanged: {
-        if (!root.active)
-            return;
-        if (!root.camera)
-            root.trouble = "reading a QR code needs qt6-multimedia";
-        else if (root.camera.cameras === 0)
-            root.trouble = "no camera on this machine";
     }
 
     Timer {

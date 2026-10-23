@@ -39,6 +39,7 @@ Column {
 
         Button {
             anchors.verticalCenter: parent.verticalCenter
+            visible: root.phase !== "missing"
             size: 0
             style: root.phase === "ready" ? "plate" : "accent"
             text: root.phase === "ready" ? "Let go" : root.phase === "refused" ? "Again" : "Connect"

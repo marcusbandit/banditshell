@@ -641,8 +641,6 @@ banditshell/
 │   ├── RevealMask.qml          its QML side; a layer.effect, so it masks anything
 │   ├── WallpaperSource.qml      one wallpaper, whatever kind of file it turns out
 │   │                            to be: picture, SVG, GIF or video, behind one `ready`
-│   ├── WallpaperPlayback.qml    the video and sound kinds, loaded by URL so a
-│   │                            machine without QtMultimedia keeps its pictures
 │   ├── MenuRow.qml              icon + label + detail + trailing slot
 │   ├── MenuLayer.qml            the rest of a row, folded up under it
 │   ├── Segments.qml             a row of choices of which exactly one is taken;
@@ -1520,6 +1518,9 @@ banditshell/
 │   ├── wallpaper/               the picker: the bottom edge's SECOND swipe up
 │   │   ├── WallpaperWindow.qml  background layer, below every window; a
 │   │   │                        WallpaperView, motion only on an empty workspace
+│   │   ├── WallpaperPlayback.qml the video and sound kinds of WallpaperSource,
+│   │   │                        loaded by URL so a machine without QtMultimedia
+│   │   │                        keeps its pictures
 │   │   ├── WallpaperPicker.qml  no panel at all, and kept low: the wallpaper
 │   │   │                        you are on as a hero 30% of the height, the
 │   │   │                        rest cropped to strips either side that never

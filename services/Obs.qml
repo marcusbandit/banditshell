@@ -32,7 +32,7 @@ Singleton {
 
     property QtObject socket: null
 
-    readonly property string phase: !root.wanted ? "idle" : !root.socket ? "missing" : !root.canConnect ? "unset" : root.link
+    readonly property string phase: !root.wanted ? "idle" : !root.socket && (root.installed || root.endpoint.remote) ? "missing" : !root.canConnect ? "unset" : root.link
 
     property bool identifying: false
 
