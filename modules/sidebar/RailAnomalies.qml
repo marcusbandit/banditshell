@@ -31,7 +31,8 @@ Item {
         update: Update.state,
         updateMode: Config.values.sidebar.update,
         diverged: Update.diverged,
-        layout: Keymap.several && Keymap.index > 0 ? Keymap.layout : "",
+        layout: Keymap.several ? Keymap.layout : "",
+        layoutAway: Keymap.index > 0,
         layoutName: Keymap.name
     })
 

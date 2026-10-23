@@ -1981,7 +1981,9 @@ rail and not against the full column): one mark per workspace, and below them a 
 whatever is unusual and nothing for what is normal. Unusual is decided in `anomalies.js`: a
 battery under 20 percent, the microphone live or muted while something records from it, a
 screen recording, a VPN, airplane mode (every radio off), quiet or a mode, an update waiting or
-stuck, a keyboard on any layout but its first, shown as that layout's code. A cap of four keeps the alarms and drops the quietest, and a mark that goes leaves by
+stuck. One mark is not about the unusual: with more than one keyboard layout the rail always
+shows the current one's code, dim on the first layout and in the accent on any other, because
+the switch bind changes every key with nothing else moving. A cap of four keeps the alarms and drops the quietest, and a mark that goes leaves by
 shrinking, not by blinking out.
 
 Pointing at the rail for `anim.dwell` grows it into the full column: the clock, tray, status

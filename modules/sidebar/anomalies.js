@@ -52,7 +52,7 @@ function list(state) {
         airplaneOn(s) ? { key: "airplane", icon: "flight", tone: "accent", title: "airplane mode" } : null,
         s.modeIcon ? { key: "mode", icon: s.modeIcon, tone: "accent", title: "mode on" } : null,
         s.quiet && !s.modeIcon ? { key: "quiet", icon: "do_not_disturb_on", tone: "accent", title: "quiet" } : null,
-        s.layout ? { key: "layout", text: s.layout, tone: "accent", title: "keyboard " + (s.layoutName || s.layout) } : null,
+        s.layout ? { key: "layout", text: s.layout, tone: s.layoutAway ? "accent" : "dim", title: "keyboard " + (s.layoutName || s.layout) } : null,
         updateEntry(s)
     ].filter(function (e) {
         return e !== null;
