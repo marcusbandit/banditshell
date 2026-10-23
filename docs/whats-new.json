@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-23-3",
+      "date": "2026-10-23",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell triage tells the maintainer something is wrong. Type what happened after it, and it gathers the version, your config with secrets left out and the end of the log, shows you all of it, and files a GitHub issue once you answer y. It needs gh logged in; without that, the report is saved and the command that sends it is printed."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "banditshell doctor --report also hides passwords in web addresses, bearer tokens, GitHub and Anthropic keys and your home folder's name, and its log part no longer carries colour codes."
+        }
+      ]
+    },
+    {
       "id": "2026-10-23-2",
       "date": "2026-10-23",
       "changes": [
