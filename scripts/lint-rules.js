@@ -616,7 +616,8 @@ const RULES = [
     { id: "L11", reason: "Name.member on a singleton must name a member that singleton declares; a renamed or moved member reads as undefined at runtime.", appliesTo: () => false, check: null, whole: true },
     { id: "L12", reason: "A pill is an object (round ends) or a place (the shell's corner): a SquircleRect or shadow with a half-size radius says pill: \"object\" or pill: \"place\" instead (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL12 },
     { id: "L13", reason: "A Button's emphasis is accent, plate, ring or bare; filled, elevated, tonal, outlined and text were Material 3's and are retired (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL13 },
-    { id: "L14", reason: "A variable font axis is a literal or a components/font-axes.js value; every other value it takes builds a new font engine that maps the font file again, and the font cache's trim of thousands of them freezes the shell (#86).", appliesTo: f => f.endsWith(".qml"), check: ruleL14 }
+    { id: "L14", reason: "A variable font axis is a literal or a components/font-axes.js value; every other value it takes builds a new font engine that maps the font file again, and the font cache's trim of thousands of them freezes the shell (#86).", appliesTo: f => f.endsWith(".qml"), check: ruleL14 },
+    { id: "L15", reason: "QtWebSockets and QtMultimedia are optional, so only a file loaded with Loader.source or Qt.createComponent imports them: never a singleton, never a type another file names. A machine without one then loses that one feature instead of the whole shell (#96).", appliesTo: () => false, check: null, whole: true }
 ];
 
 function ruleById(id) {
@@ -948,6 +949,41 @@ function checkSingletonMembers(root, files) {
     return checkMembers(readMemberSources(root, files));
 }
 
+const OPTIONAL_QT_MODULES = ["QtWebSockets", "QtMultimedia"];
+
+function checkOptionalModules(sources) {
+    const found = [];
+    const scanned = new Map();
+    const needs = new Map();
+    const importing = new RegExp(`^[ \\t]*import[ \\t]+(${OPTIONAL_QT_MODULES.join("|")})\\b`, "m");
+    for (const [file, text] of sources) {
+        if (!file.endsWith(".qml"))
+            continue;
+        const code = scanSource(text).code;
+        const at = lineIndex(text);
+        scanned.set(file, { code, at });
+        const imported = importing.exec(code);
+        if (!imported)
+            continue;
+        if (/^[ \t]*pragma[ \t]+Singleton\b/m.test(code))
+            found.push({ rule: "L15", file, line: at(imported.index), detail: `a singleton imports ${imported[1]}; move what needs it into a file the singleton loads with Qt.createComponent` });
+        needs.set(path.posix.basename(file, ".qml"), { file, module: imported[1] });
+    }
+    if (!needs.size)
+        return found;
+    const named = new RegExp(`(?<![\\w.$])(${[...needs.keys()].join("|")})(?=\\s*\\{)`, "g");
+    for (const [file, { code, at }] of scanned) {
+        named.lastIndex = 0;
+        let m;
+        while ((m = named.exec(code)) !== null) {
+            const need = needs.get(m[1]);
+            if (need.file !== file)
+                found.push({ rule: "L15", file, line: at(m.index), detail: `names ${m[1]}, which imports ${need.module}; load it with Loader.source: Qt.resolvedUrl("${m[1]}.qml")` });
+        }
+    }
+    return found;
+}
+
 function lint(root, onlyRule) {
     const files = listFiles(root);
     const findings = [];
@@ -976,6 +1012,8 @@ function lint(root, onlyRule) {
         findings.push(...checkQmldirs(root));
     if (active.some(rule => rule.id === "L11"))
         findings.push(...checkSingletonMembers(root, files));
+    if (active.some(rule => rule.id === "L15"))
+        findings.push(...checkOptionalModules(readMemberSources(root, files)));
     findings.sort((a, b) => a.file < b.file ? -1 : a.file > b.file ? 1 : a.line - b.line || (a.rule < b.rule ? -1 : 1));
     return { files: files.length, findings };
 }
@@ -1050,7 +1088,7 @@ function usage() {
         "usage: lint-rules.js [--root <dir>] [--rule <id>] [--all | --write-baseline | --list]",
         "",
         "  (none)             check the house rules against rules.baseline.json",
-        "  --rule <id>        only this rule, L1 to L14",
+        "  --rule <id>        only this rule, L1 to L15",
         "  --all              print every violation with file and line, known or not",
         "  --write-baseline   record today's counts as the new baseline",
         "  --list             rule ids with their reasons"
@@ -1141,7 +1179,7 @@ function run(argv, write) {
 }
 
 module.exports = {
-    RULES, LOOPING_CLOCKS, COLOUR_DATA, scanSource, lintSource, lint, tally, compare, expectedQmldir, qmldirDirectories, checkMembers, run
+    RULES, LOOPING_CLOCKS, COLOUR_DATA, scanSource, lintSource, lint, tally, compare, expectedQmldir, qmldirDirectories, checkMembers, checkOptionalModules, run
 };
 
 if (require.main === module) {

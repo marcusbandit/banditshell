@@ -641,6 +641,8 @@ banditshell/
 │   ├── RevealMask.qml          its QML side; a layer.effect, so it masks anything
 │   ├── WallpaperSource.qml      one wallpaper, whatever kind of file it turns out
 │   │                            to be: picture, SVG, GIF or video, behind one `ready`
+│   ├── WallpaperPlayback.qml    the video and sound kinds, loaded by URL so a
+│   │                            machine without QtMultimedia keeps its pictures
 │   ├── MenuRow.qml              icon + label + detail + trailing slot
 │   ├── MenuLayer.qml            the rest of a row, folded up under it
 │   ├── Segments.qml             a row of choices of which exactly one is taken;
@@ -691,6 +693,8 @@ banditshell/
 │   │                            surfaces with no chassis to melt a tip out of
 │   ├── QrScanner.qml            the camera, and whatever code it finds; needs
 │   │                            zxing-cpp's `ZXingReader` on PATH to decode
+│   ├── QrCamera.qml             its QtMultimedia half, loaded by URL, so a machine
+│   │                            without the module only loses the scanner
 │   └── QrCode.qml               the same square the other way round: a string as
 │                                a card, ink on paper, every module a G2 corner
 │                                that asks its neighbours; needs `qrencode`
@@ -1188,6 +1192,9 @@ banditshell/
 │   │                            the password is read from OBS's own config,
 │   │                            state arrives as events, and the one poll is
 │   │                            the stream and recording clocks while they run
+│   ├── ObsLink.qml              that WebSocket, made by URL at start; without
+│   │                            qt6-websockets, Obs reads "missing" and the rest
+│   │                            of the shell loads as usual
 │   ├── obs.js                   that protocol as DATA: the challenge answer
 │   │                            (SHA-256, since QML has no crypto), which
 │   │                            sources are camera, screen, mic or desktop
@@ -1648,6 +1655,7 @@ banditshell/
 │   │   ├── Properties.qml       everything known ABOUT a file, as opposed to
 │   │   │                        what is in it
 │   │   ├── PreviewPane.qml      the thing itself: picture, sound, or text
+│   │   ├── PreviewPlayer.qml    its sound player, loaded by URL (QtMultimedia)
 │   │   ├── TerminalPane.qml     the shell along the bottom; its height is in ROWS
 │   │   ├── ChordHints.qml       hold a modifier, see what it does
 │   │   └── HelpersMissing.qml   the one failure it cannot recover from
@@ -1707,14 +1715,16 @@ banditshell/
 │   │                            boundary the manifests do not allow; --matrix and
 │   │                            --explain <package> show the edges (node, no
 │   │                            dependencies; `banditshell dev modules`)
-│   ├── lint-rules.js            the house rules as fourteen checks (L1 to L14: comments,
+│   ├── lint-rules.js            the house rules as fifteen checks (L1 to L15: comments,
 │   │                            Rectangle radius, motion outside Follow, spring easing,
 │   │                            font sizes, colour literals, textGhost text, dashes,
 │   │                            JS the engine lacks, qmldir drift, Name.member reads
 │   │                            of a member the singleton does not declare, a pill
 │   │                            drawn without an object or place role, a Button
 │   │                            asking for a retired Material 3 emphasis, a variable
-│   │                            font axis that follows an unsnapped value), counted
+│   │                            font axis that follows an unsnapped value, an optional
+│   │                            Qt module imported where a missing one would take the
+│   │                            whole shell down), counted
 │   │                            per rule and file against rules.baseline.json (node, no
 │   │                            dependencies; `banditshell dev lint`)
 │   ├── boot-check.js            the pure half of `banditshell dev check boot`: which

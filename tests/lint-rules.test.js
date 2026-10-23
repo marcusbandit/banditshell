@@ -532,6 +532,38 @@ test("L11 runs over a repo through lint and honours the rule filter", () => {
     fs.rmSync(repo, { recursive: true, force: true });
 });
 
+function optionalHits(files) {
+    return lintRules.checkOptionalModules(sourceMap(files)).map(f => `${f.rule} ${f.file}:${f.line}`);
+}
+
+test("L15 flags a type another file names when it imports an optional Qt module", () => {
+    assert.deepStrictEqual(optionalHits({
+        "modules/a/Player.qml": "import QtQuick\nimport QtMultimedia\n\nMediaPlayer {}\n",
+        "modules/a/Pane.qml": "import QtQuick\n\nItem {\n    Player {\n    }\n    component Slot: Player {}\n}\n"
+    }), ["L15 modules/a/Pane.qml:4", "L15 modules/a/Pane.qml:6"]);
+});
+
+test("L15 flags a singleton that imports an optional Qt module", () => {
+    assert.deepStrictEqual(optionalHits({
+        "services/Obs.qml": "pragma Singleton\n\nimport QtQuick\nimport QtWebSockets\n\nSingleton {}\n"
+    }), ["L15 services/Obs.qml:4"]);
+});
+
+test("L15 lets a file loaded by URL import an optional Qt module", () => {
+    assert.deepStrictEqual(optionalHits({
+        "modules/a/Player.qml": "import QtQuick\nimport QtMultimedia\n\nMediaPlayer {}\n",
+        "modules/a/Pane.qml": "import QtQuick\n\nLoader {\n    source: Qt.resolvedUrl(\"Player.qml\")\n}\n",
+        "modules/a/Other.qml": "import QtQuick\n\nItem {\n    property var Player: null\n    readonly property bool p: Player !== null\n}\n"
+    }), []);
+});
+
+test("L15 ignores an optional module named in a comment or a string", () => {
+    assert.deepStrictEqual(optionalHits({
+        "modules/a/Note.qml": "import QtQuick\n\nText {\n    text: \"import QtMultimedia\"\n}\n",
+        "modules/a/Pane.qml": "import QtQuick\n\nItem {\n    Note {}\n}\n"
+    }), []);
+});
+
 test("a new violation fails, with its file and line, and a fixed one only prints a notice", () => {
     const repo = makeRepo({
         "modules/a.qml": "Item {\n    Rectangle { radius: 3 }\n}\n",
@@ -583,7 +615,7 @@ test("--all lists every violation and the options are checked", () => {
 });
 
 test("every rule has an id in order and a reason", () => {
-    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 14 }, (_, i) => `L${i + 1}`));
+    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 15 }, (_, i) => `L${i + 1}`));
     for (const rule of lintRules.RULES)
         assert.ok(rule.reason.length > 20, rule.id);
 });
