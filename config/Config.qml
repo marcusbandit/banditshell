@@ -223,7 +223,7 @@ Singleton {
 
                 fit: 1.25,
 
-                current: "~/Pictures/Wallpapers/shaded_landscape.png",
+                current: "",
 
                 perScreen: {},
 

@@ -22,7 +22,9 @@ Singleton {
         return root.aliases[path] ?? path;
     }
 
-    readonly property string current: root.normalise(root.expand(Config.values.wallpaper.current))
+    readonly property string fallback: Quickshell.shellPath("assets/wallpapers/moonrise.png")
+
+    readonly property string current: root.normalise(root.expand(Config.values.wallpaper.current)) || root.fallback
 
     readonly property var perScreen: Config.values.wallpaper.perScreen ?? ({})
 
@@ -323,7 +325,8 @@ done`, "sh", ...fresh];
 
     function setAll(path: string): void {
 
-        Config.setMany([["wallpaper.perScreen", {}], ["wallpaper.current", root.normalise(path)]]);
+        const name = root.normalise(path);
+        Config.setMany([["wallpaper.perScreen", {}], ["wallpaper.current", name === root.fallback ? "" : name]]);
         root.previewOrigins = {};
         root.previews = {};
     }
