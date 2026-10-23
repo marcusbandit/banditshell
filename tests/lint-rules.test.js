@@ -557,6 +557,31 @@ test("L15 lets a file loaded by URL import an optional Qt module", () => {
     }), []);
 });
 
+test("L15 flags a property type and a name reached through an aliased import", () => {
+    assert.deepStrictEqual(optionalHits({
+        "components/Camera2.qml": "import QtQuick\nimport QtMultimedia\n\nItem {}\n",
+        "modules/a/Pane.qml": "import QtQuick\nimport qs.components as Parts\n\nItem {\n    property Camera2 lens: null\n    Parts.Camera2 {}\n}\n"
+    }), ["L15 modules/a/Pane.qml:5", "L15 modules/a/Pane.qml:6"]);
+});
+
+test("L15 only counts a name the file can reach, not a namesake in another folder", () => {
+    assert.deepStrictEqual(optionalHits({
+        "modules/b/Player.qml": "import QtQuick\nimport QtMultimedia\n\nMediaPlayer {}\n",
+        "modules/a/Player.qml": "import QtQuick\n\nItem {}\n",
+        "modules/a/Pane.qml": "import QtQuick\n\nItem {\n    Player {}\n}\n",
+        "modules/c/Pane.qml": "import QtQuick\nimport \"../b\"\n\nItem {\n    Player {}\n}\n"
+    }), ["L15 modules/c/Pane.qml:5"]);
+});
+
+test("the optional Qt modules are the same in lint, the compile check and install.sh", () => {
+    const check = fs.readFileSync(path.join(ROOT, "scripts/qml-compile-check.sh"), "utf8");
+    const install = fs.readFileSync(path.join(ROOT, "install.sh"), "utf8");
+    const named = /module "Qt\(([\w|]+)\)"/.exec(check)[1].split("|").map(m => `Qt${m}`).sort();
+    assert.deepStrictEqual(named, [...lintRules.OPTIONAL_QT_MODULES].sort());
+    for (const module of lintRules.OPTIONAL_QT_MODULES)
+        assert.match(install, new RegExp(`qt_present module ${module}"`), module);
+});
+
 test("L15 ignores an optional module named in a comment or a string", () => {
     assert.deepStrictEqual(optionalHits({
         "modules/a/Note.qml": "import QtQuick\n\nText {\n    text: \"import QtMultimedia\"\n}\n",

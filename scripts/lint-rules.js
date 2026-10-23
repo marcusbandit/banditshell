@@ -945,11 +945,20 @@ function readMemberSources(root, files) {
     return sources;
 }
 
-function checkSingletonMembers(root, files) {
-    return checkMembers(readMemberSources(root, files));
-}
-
 const OPTIONAL_QT_MODULES = ["QtWebSockets", "QtMultimedia"];
+
+function reachableDirectories(file, plain) {
+    const reach = new Set([directoryOf(file)]);
+    const importPattern = /^[ \t]*import[ \t]+(?:"([^"]+)"|qs\.([\w.]+))/gm;
+    let m;
+    while ((m = importPattern.exec(plain)) !== null) {
+        if (m[1] && !m[1].endsWith(".js"))
+            reach.add(joinPath(directoryOf(file), m[1]));
+        else if (m[2])
+            reach.add(m[2].split(".").join("/"));
+    }
+    return reach;
+}
 
 function checkOptionalModules(sources) {
     const found = [];
@@ -959,26 +968,31 @@ function checkOptionalModules(sources) {
     for (const [file, text] of sources) {
         if (!file.endsWith(".qml"))
             continue;
-        const code = scanSource(text).code;
+        const { code, plain } = scanSource(text);
         const at = lineIndex(text);
-        scanned.set(file, { code, at });
+        scanned.set(file, { code, at, reach: reachableDirectories(file, plain) });
         const imported = importing.exec(code);
         if (!imported)
             continue;
         if (/^[ \t]*pragma[ \t]+Singleton\b/m.test(code))
             found.push({ rule: "L15", file, line: at(imported.index), detail: `a singleton imports ${imported[1]}; move what needs it into a file the singleton loads with Qt.createComponent` });
-        needs.set(path.posix.basename(file, ".qml"), { file, module: imported[1] });
+        const name = path.posix.basename(file, ".qml");
+        if (!needs.has(name))
+            needs.set(name, []);
+        needs.get(name).push({ file, module: imported[1] });
     }
     if (!needs.size)
         return found;
-    const named = new RegExp(`(?<![\\w.$])(${[...needs.keys()].join("|")})(?=\\s*\\{)`, "g");
-    for (const [file, { code, at }] of scanned) {
+    const names = [...needs.keys()].join("|");
+    const named = new RegExp(`(?<![\\w$])(${names})(?=\\s*\\{)|\\bproperty[ \\t]+(?:[\\w.]+\\.)?(${names})\\b|\\bas[ \\t]+(?:[\\w.]+\\.)?(${names})\\b`, "g");
+    for (const [file, { code, at, reach }] of scanned) {
         named.lastIndex = 0;
         let m;
         while ((m = named.exec(code)) !== null) {
-            const need = needs.get(m[1]);
-            if (need.file !== file)
-                found.push({ rule: "L15", file, line: at(m.index), detail: `names ${m[1]}, which imports ${need.module}; load it with Loader.source: Qt.resolvedUrl("${m[1]}.qml")` });
+            const name = m[1] || m[2] || m[3];
+            const need = needs.get(name).find(n => n.file !== file && reach.has(directoryOf(n.file)));
+            if (need)
+                found.push({ rule: "L15", file, line: at(m.index), detail: `names ${name}, which imports ${need.module}; load it with Loader.source: Qt.resolvedUrl("${name}.qml")` });
         }
     }
     return found;
@@ -1010,10 +1024,11 @@ function lint(root, onlyRule) {
     }
     if (active.some(rule => rule.id === "L10"))
         findings.push(...checkQmldirs(root));
+    const wholeSources = active.some(rule => rule.id === "L11" || rule.id === "L15") ? readMemberSources(root, files) : null;
     if (active.some(rule => rule.id === "L11"))
-        findings.push(...checkSingletonMembers(root, files));
+        findings.push(...checkMembers(wholeSources));
     if (active.some(rule => rule.id === "L15"))
-        findings.push(...checkOptionalModules(readMemberSources(root, files)));
+        findings.push(...checkOptionalModules(wholeSources));
     findings.sort((a, b) => a.file < b.file ? -1 : a.file > b.file ? 1 : a.line - b.line || (a.rule < b.rule ? -1 : 1));
     return { files: files.length, findings };
 }
@@ -1179,7 +1194,7 @@ function run(argv, write) {
 }
 
 module.exports = {
-    RULES, LOOPING_CLOCKS, COLOUR_DATA, scanSource, lintSource, lint, tally, compare, expectedQmldir, qmldirDirectories, checkMembers, checkOptionalModules, run
+    RULES, OPTIONAL_QT_MODULES, LOOPING_CLOCKS, COLOUR_DATA, scanSource, lintSource, lint, tally, compare, expectedQmldir, qmldirDirectories, checkMembers, checkOptionalModules, run
 };
 
 if (require.main === module) {

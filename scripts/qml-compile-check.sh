@@ -42,7 +42,7 @@ ShellRoot {
             const error = component.status === Component.Error ? component.errorString().trim() : "status " + component.status;
             if (/backend loaded|No .*backend/.test(error))
                 continue;
-            if (error.split("\n").every(line => /module "Qt(WebSockets|Multimedia)" is not installed/.test(line))) {
+            if (error.split("\n").every(line => /module "Qt(WebSockets|Multimedia)"( version [\d.]+)? is not installed|plugin cannot be loaded for module "Qt(WebSockets|Multimedia)"/.test(line))) {
                 console.log("OPTIONAL", file, error);
                 continue;
             }
