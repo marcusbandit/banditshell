@@ -224,7 +224,8 @@
 #                                while the session is locked
 #
 # triage                         tell the maintainer something is wrong
-#   banditshell triage [--yes] [<words>]
+#   banditshell triage [--yes]   a report with no words of yours
+#   banditshell triage [<words>] [--yes]
 #                                say what went wrong in your own words; the
 #                                report adds the version, your config with
 #                                secrets left out, the log and the checks, shows
@@ -2269,13 +2270,22 @@ redact_config() {
 }
 
 mask_log() {
+    local q="'" home_escaped
+    local -a home_rule=()
+    if [ -n "${HOME:-}" ] && [ "${HOME%/}" != "" ]; then
+        home_escaped=$(printf '%s' "${HOME%/}" | sed 's/[][\\.*^$#+?(){}|]/\\&/g')
+        home_rule=(-e "s#${home_escaped}(/|[^[:alnum:]_.-]|\$)#~\\1#g")
+    fi
     sed -E \
+        ${home_rule[@]+"${home_rule[@]}"} \
         -e 's#(://)[^/@[:space:]]+@#\1[removed]@#g' \
+        -e "s#(authorization[\"$q]?[=: ]+[\"$q]?)((Basic|Bearer|Digest|Token)[[:space:]]+)?[^[:space:]\"$q]+#\\1[removed]#Ig" \
         -e 's#(Bearer[[:space:]]+)[A-Za-z0-9._~+/=-]+#\1[removed]#Ig' \
         -e 's#(gh[pousr]_|github_pat_)[A-Za-z0-9_]+#[removed]#g' \
         -e 's#sk-ant-[A-Za-z0-9_-]+#[removed]#g' \
-        -e 's#/home/[^/[:space:]]+#~#g' \
-        -e 's/((token|secret|password|passwd|cookie|api[_-]?key)[=: ]+)[^[:space:]"]+/\1[removed]/Ig'
+        -e 's#(^|[^[:alnum:]_])sk-[A-Za-z0-9_-]{6,}#\1[removed]#g' \
+        -e "s#(cookie[\"$q]?[=:][[:space:]]*).*#\\1[removed]#I" \
+        -e "s#([A-Za-z0-9_-]*(token|secret|password|passwd|cookie|api[_-]?key|private[_-]?key)([_-][A-Za-z0-9_-]*|key)?[\"$q]?[=: ]+)(\"[^\"]*\"|${q}[^$q]*$q|[^[:space:]\"$q]+)#\\1[removed]#Ig"
 }
 
 strip_ansi() { sed 's/\x1b\[[0-9;]*m//g'; }
@@ -2290,7 +2300,7 @@ check_summary() {
     echo "$name: ${last:-no answer}"
 }
 
-doctor_report() {
+report_sections() {
     echo "## version"
     route_version
     echo
@@ -2298,23 +2308,32 @@ doctor_report() {
     redact_config
     echo
     echo "## log (last 40 lines)"
-    qs -p "$(live_dir || echo "$SHELL_DIR")" log 2>/dev/null | tail -n 40 | strip_ansi | mask_log || true
+    qs -p "$(live_dir || echo "$SHELL_DIR")" log 2>/dev/null | tail -n 40 | strip_ansi || true
     echo
     echo "## checks"
     check_summary modules check-modules.js
     check_summary rules lint-rules.js
 }
 
+doctor_report() { report_sections | mask_log; }
+
+TRIAGE_REPO="" TRIAGE_TITLE="" TRIAGE_BODY=""
+
 triage_repo() {
-    local url="${BANDITSHELL_TRIAGE_REPO:-}"
-    if [ -z "$url" ]; then
-        url=$(git -C "$SHELL_DIR" remote get-url origin 2>/dev/null) || url=""
+    local given="${BANDITSHELL_TRIAGE_REPO:-}" remote url=""
+    if [ -n "$given" ]; then
+        url="$given"
+    else
+        remote=$(config_leaf updates remote origin)
+        url=$(git -C "$SHELL_DIR" remote get-url "$remote" 2>/dev/null) ||
+            url=$(git -C "$SHELL_DIR" remote get-url origin 2>/dev/null) || url=""
         case "$url" in
         git@github.com:*) url=${url#git@github.com:} ;;
         ssh://git@github.com/*) url=${url#ssh://git@github.com/} ;;
         https://github.com/*) url=${url#https://github.com/} ;;
         *) url="" ;;
         esac
+        url=${url%/}
         url=${url%.git}
         url=${url%/}
     fi
@@ -2333,8 +2352,8 @@ triage_title() {
 }
 
 triage_body() {
-    local words="$1" owner="$2"
-    {
+    local words="$1" owner="$2" text
+    text=$({
         echo "## what happened"
         if [ -n "$words" ]; then
             printf '%s\n' "$words"
@@ -2342,69 +2361,89 @@ triage_body() {
             echo "(no words were given)"
         fi
         echo
-        doctor_report
-        if [ -n "$owner" ]; then
-            printf '\ncc @%s\n' "$owner"
-        fi
-    } 2>/dev/null | mask_log | head -c 60000
+        report_sections
+    } 2>/dev/null | mask_log) || true
+    if [ ${#text} -gt 60000 ]; then
+        text="${text:0:60000}"$'\n\n'"(the report was cut here, it was too long)"
+    fi
+    printf '%s\n' "$text"
+    if [ -n "$owner" ]; then
+        printf '\ncc @%s\n' "$owner"
+    fi
 }
 
 triage_save() {
-    local repo="$1" title="$2" body="$3" file command
+    local file command
     file="$STATE_DIR/triage/$(date +%Y%m%d-%H%M%S)-$$.md"
-    if ! (umask 077 && mkdir -p "$STATE_DIR/triage" && printf '%s\n' "$body" >"$file") 2>/dev/null; then
+    if ! (umask 077 && mkdir -p "$STATE_DIR/triage" && printf '%s\n' "$TRIAGE_BODY" >"$file") 2>/dev/null; then
         complain "could not save the report under $STATE_DIR/triage"
         return 1
     fi
     echo "not sent. the report is saved at $file"
-    command="gh issue create --repo ${repo:-<owner/repo>} --title $(printf '%q' "$title") --body-file $file"
+    command="gh issue create --repo $(printf '%q' "${TRIAGE_REPO:-OWNER/REPO}") --title $(printf '%q' "$TRIAGE_TITLE") --body-file $(printf '%q' "$file")"
     echo "send it with: $command"
 }
 
+triage_keep() {
+    echo "$1"
+    triage_save || true
+    exit 1
+}
+
+triage_show() {
+    local view="title: $TRIAGE_TITLE"$'\n\n'"$TRIAGE_BODY"
+    local -a pager=()
+    if [ -t 1 ]; then
+        read -ra pager <<<"${PAGER:-less}"
+        if [ ${#pager[@]} -gt 0 ] && command -v "${pager[0]}" >/dev/null 2>&1 && "${pager[@]}" <<<"$view"; then
+            return 0
+        fi
+    fi
+    printf '%s\n' "$view"
+}
+
+triage_send() {
+    local out status=0 url
+    out=$(timeout --foreground 30 gh issue create --repo "$TRIAGE_REPO" --title "$TRIAGE_TITLE" --body-file - <<<"$TRIAGE_BODY" 2>&1) || status=$?
+    url=$(printf '%s\n' "$out" | grep -oE 'https://[^[:space:]]+' | tail -n 1) || url=""
+    if [ "$status" = 0 ] && [ -n "$url" ]; then
+        echo "sent: $url"
+        return 0
+    fi
+    printf '%s\n' "$out" | tail -n 3 | mask_log >&2
+    if [ "$status" = 0 ] || [ "$status" = 124 ]; then
+        triage_keep "gh gave no answer in time, so the issue may already exist; look at https://github.com/$TRIAGE_REPO/issues before sending this again"
+    fi
+    triage_keep "gh could not create the issue"
+}
+
 triage() {
-    local assume_yes=0 arg repo title body answer words owner view
-    local -a given=()
+    local assume_yes=0 arg answer words given="${BANDITSHELL_TRIAGE_REPO:-}"
+    local -a given_words=()
     for arg in "$@"; do
         if [ "$arg" = --yes ]; then
             assume_yes=1
         else
-            given+=("$arg")
+            given_words+=("$arg")
         fi
     done
-    words="${given[*]:-}"
-    repo=$(triage_repo)
-    owner=${repo%%/*}
-    title=$(triage_title "$words")
-    body=$(triage_body "$words" "$owner")
+    words="${given_words[*]:-}"
+    TRIAGE_REPO=$(triage_repo)
+    TRIAGE_TITLE=$(triage_title "$words")
+    TRIAGE_BODY=$(triage_body "$words" "${TRIAGE_REPO%%/*}")
 
-    if [ -z "$repo" ]; then
-        echo "this checkout has no github remote, and BANDITSHELL_TRIAGE_REPO is not set"
-        triage_save "" "$title" "$body" || exit 1
-        exit 1
+    if [ -z "$TRIAGE_REPO" ] && [ -n "$given" ]; then
+        triage_keep "BANDITSHELL_TRIAGE_REPO is not in owner/repo form: $(printf '%s' "$given" | mask_log)"
+    elif [ -z "$TRIAGE_REPO" ]; then
+        triage_keep "this checkout has no github remote, and BANDITSHELL_TRIAGE_REPO is not set"
     fi
-    if ! command -v gh >/dev/null 2>&1; then
-        echo "gh (github-cli) is not installed"
-        triage_save "$repo" "$title" "$body" || exit 1
-        exit 1
-    fi
-    if ! timeout 10 gh auth status >/dev/null 2>&1; then
-        echo "gh is not logged in (run: gh auth login)"
-        triage_save "$repo" "$title" "$body" || exit 1
-        exit 1
-    fi
+    command -v gh >/dev/null 2>&1 || triage_keep "gh (github-cli) is not installed"
+    timeout --foreground 10 gh auth status --hostname github.com >/dev/null 2>&1 ||
+        triage_keep "gh is not logged in to github.com (run: gh auth login)"
     if [ "$assume_yes" = 0 ]; then
-        if [ ! -t 0 ]; then
-            echo "there is no terminal to ask on, so nothing was sent (--yes sends without asking)"
-            triage_save "$repo" "$title" "$body" || exit 1
-            exit 1
-        fi
-        view="title: $title"$'\n\n'"$body"
-        if [ -t 1 ]; then
-            printf '%s\n' "$view" | ${PAGER:-less} || true
-        else
-            printf '%s\n' "$view"
-        fi
-        printf 'send this to github.com/%s? [y/N] ' "$repo"
+        [ -t 0 ] || triage_keep "there is no terminal to ask on, so nothing was sent (--yes sends without asking)"
+        triage_show
+        printf 'send this to github.com/%s? [y/N] ' "$TRIAGE_REPO"
         read -r answer || answer=""
         case "$answer" in
         y | Y | yes | YES | Yes) ;;
@@ -2414,28 +2453,7 @@ triage() {
             ;;
         esac
     fi
-    triage_send "$repo" "$title" "$body"
-}
-
-triage_send() {
-    local repo="$1" title="$2" body="$3" file out url
-    mkdir -p "$RUN_DIR"
-    file=$(mktemp "$RUN_DIR/triage.XXXXXX") || { complain "could not write a temporary file"; exit 1; }
-    printf '%s\n' "$body" >"$file"
-    if out=$(timeout 30 gh issue create --repo "$repo" --title "$title" --body-file "$file" 2>&1); then
-        url=$(printf '%s\n' "$out" | grep -oE 'https://[^[:space:]]+' | tail -n 1) || url=""
-        rm -f "$file"
-        if [ -n "$url" ]; then
-            echo "sent: $url"
-            return 0
-        fi
-        out="gh answered without an issue address: $out"
-    fi
-    rm -f "$file"
-    printf '%s\n' "$out" | tail -n 3 | mask_log >&2
-    echo "gh could not create the issue"
-    triage_save "$repo" "$title" "$body" || exit 1
-    exit 1
+    triage_send
 }
 
 doctor() {
