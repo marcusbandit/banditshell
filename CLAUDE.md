@@ -77,6 +77,15 @@ The five canonical roles, unchanged: `needs-triage`, `needs-info`,
 Single-context: one `CONTEXT.md` and one `docs/adr/` at the repo root, alongside
 the existing `DESIGN.md`. See `docs/agents/domain.md`.
 
+### Testing
+
+Tests go where a bug would cost the user something they cannot see at once:
+writes outside the shell, parsed tool output, built command lines, secrets,
+time math, ranking, and every bug fix. Test lines stay at or under 40% of code
+lines, a ceiling and never a target. Logic in QML gets a test by moving its
+pure functions into a `.js` sibling. See `docs/agents/testing.md`, and
+`.scratch/test-gaps/` for the ranked list of untested code.
+
 ### What's new
 
 Every push writes its entry in `docs/whats-new.json` at push time - the log
