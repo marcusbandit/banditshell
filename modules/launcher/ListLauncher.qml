@@ -620,6 +620,7 @@ LauncherConcept {
     onSelectedChanged: root.selectedKey = root.results[root.selected]?.id ?? ""
 
     onResultsChanged: {
+        Trace.note("results");
         if (search.query !== root.listedQuery) {
             root.listedQuery = search.query;
             root.steered = false;

@@ -39,6 +39,8 @@ Singleton {
 
     readonly property bool reduceMotion: SettingsState.v("reduceMotion")
 
+    property bool sceneSeen: true
+
     property var openRows: ({})
 
     property real scroll: 0
@@ -77,13 +79,15 @@ Singleton {
     }
 
     function go(id: string): void {
-        const known = Catalogue.CAT_BY_ID[id] || Catalogue.PAGE_BY_ID[id];
-        root.current = known ? id : "connections";
+        const target = Catalogue.CAT_BY_ID[id] || Catalogue.PAGE_BY_ID[id] ? id : "connections";
+        const span = Settings.open && root.current !== target ? Trace.begin(`settings page ${target}`, "", 150, 1500) : null;
+        root.current = target;
         root.hovered = null;
         root.pin = null;
         root.paneOut = false;
         root.turn++;
         Settings.page = root.current;
+        Trace.step("switched", span);
     }
 
     function isOpen(uid: string): bool {

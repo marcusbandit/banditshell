@@ -38,15 +38,20 @@ Singleton {
         Appearance.instantly();
         if (!win)
             return "";
+        const span = win[part].pinned === on ? null : Trace.begin(`${part} ${on ? "open" : "close"}`);
         win[part].pinned = on;
+        Trace.step(on ? "shown" : "hidden", span);
         return on ? "open" : "closed";
     }
 
     function unpin(part: string): string {
         Appearance.instantly();
         for (const win of Shell.windows)
-            if (win[part])
+            if (win[part]?.pinned) {
+                const span = Trace.begin(`${part} close`);
                 win[part].pinned = false;
+                Trace.step("hidden", span);
+            }
         return "closed";
     }
 

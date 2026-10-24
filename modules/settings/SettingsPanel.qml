@@ -275,6 +275,7 @@ FocusScope {
                         anchors.fill: parent
                         compact: root.compact
                         showing: root.shown
+                        covered: root.yielded
                     }
                 }
             }

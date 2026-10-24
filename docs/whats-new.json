@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-4",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Settings pages open up to 30 times faster the first time"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The hotkey sheet, launcher and other panels open faster the first time"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell dev perf times every menu and action step by step"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-3",
       "date": "2026-10-25",
       "changes": [

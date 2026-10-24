@@ -50,7 +50,9 @@ Item {
         target: root.input
 
         function onTextChanged(): void {
+            const span = root.shown ? Trace.begin("launcher type") : null;
             Calculator.ask(root.input.text);
+            Trace.step("asked", span);
         }
     }
 

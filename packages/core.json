@@ -9,6 +9,7 @@
       "modules/controls",
       "modules/gallery",
       "modules/ipc/CoreIpc.qml",
+      "modules/ipc/TraceIpc.qml",
       "modules/panel",
       "previews/GalleryPreview.qml",
       "previews/QrPreview.qml",
@@ -29,7 +30,8 @@
       "SystemBinaries",
       "TimeFormat",
       "ToolInstaller",
-      "Tooltips"
+      "Tooltips",
+      "Trace"
     ],
     "js": [
       "services/colours.js",
@@ -95,9 +97,10 @@
       "Themes",
       "TimeFormat",
       "ToolInstaller",
-      "Tooltips"
+      "Tooltips",
+      "Trace"
     ],
-    "ipc": ["shell"]
+    "ipc": ["shell", "trace"]
   },
   "config": {
     "namespace": [

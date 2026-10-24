@@ -12,7 +12,16 @@ Item {
 
     property bool compact: false
     property bool showing: true
+    property bool covered: false
     property bool lingering: false
+
+    Binding {
+        target: SettingsView
+        property: "sceneSeen"
+        when: root.showing
+        value: !root.covered && stage.visible && stage.y + stage.height > scroll.contentY && stage.y < scroll.contentY + scroll.height
+        restoreMode: Binding.RestoreNone
+    }
 
     onShowingChanged: {
         if (root.showing)

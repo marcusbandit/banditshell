@@ -255,6 +255,7 @@ Item {
                         sourceComponent: page.pageBody
 
                         onLoaded: {
+                            Trace.note("menu body built");
                             if (page.warm)
                                 Qt.callLater(page.keep);
                             item.width = Qt.binding(() => page.width);
