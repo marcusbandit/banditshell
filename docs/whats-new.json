@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-3",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The rail clock stays at the same height when the sidebar opens"
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "Pick the resting and open sidebar clocks apart, small or large"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The open sidebar clock is stacked and large again"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-2",
       "date": "2026-10-25",
       "changes": [

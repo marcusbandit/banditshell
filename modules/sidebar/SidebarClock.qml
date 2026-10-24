@@ -20,7 +20,8 @@ Column {
 
     readonly property Item timeItem: timeSlot
 
-    readonly property string timeStyle: Config.values.sidebar.clock.style
+    readonly property string timeStyle: Config.values.sidebar.clock.wideStyle
+    readonly property real timeSize: Config.values.sidebar.clock.wideSize === "small" ? Appearance.font.size.small : Appearance.font.size.normal
     readonly property string dateStyle: Config.values.sidebar.clock.date
 
     readonly property bool timeShown: root.timeStyle !== "off"
@@ -86,7 +87,7 @@ Column {
 
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Services.TimeFormat.hourPart(clock.date)
-                font.pixelSize: root.timeStyle === "small" ? Appearance.font.size.small : Appearance.font.size.normal
+                font.pixelSize: root.timeSize
             }
 
             StyledText {
@@ -94,7 +95,7 @@ Column {
 
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Qt.formatDateTime(clock.date, "mm")
-                font.pixelSize: root.timeStyle === "small" ? Appearance.font.size.small : Appearance.font.size.normal
+                font.pixelSize: root.timeSize
             }
         }
 
@@ -105,7 +106,7 @@ Column {
             visible: root.timeStyle === "one line"
 
             text: `${hourText.text}:${minuteText.text}`
-            font.pixelSize: Appearance.font.size.small
+            font.pixelSize: root.timeSize
             rotation: -90
 
             scale: timeScale.value

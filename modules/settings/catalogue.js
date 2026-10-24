@@ -332,8 +332,12 @@ const PAGES_SOURCE = {
                 ] }
             ] },
             { t: "Clock and date", rows: [
-                { n: [], icon: "schedule", label: "Clock", k: "sbClock", kind: "seg", o: ["stacked", "small", "one line", "off"], cfg: "sidebar.clock.style", kw: "sidebar clock style simplified one line hide",
-                    why: "Stacked is hours over minutes at the normal size. Small is the same at the small size. One line turns the time on its side so it reads as 14:32." },
+                { n: [], icon: "schedule", label: "Clock when open", k: "sbClockWide", kind: "seg", o: ["stacked", "one line", "off"], cfg: "sidebar.clock.wideStyle", kw: "sidebar clock style wide open stacked one line hide",
+                    why: "The clock in the open sidebar. Stacked is hours over minutes. One line turns the time on its side so it reads as 14:32." },
+                { n: [], icon: "format_size", label: "Size when open", k: "sbClockWideSize", kind: "seg", o: ["large", "small"], cfg: "sidebar.clock.wideSize", dis: s => s.v("sbClockWide") === "off", kw: "sidebar clock size big small large wide open" },
+                { n: [], icon: "schedule", label: "Clock at rest", k: "sbClock", kind: "seg", o: ["stacked", "one line", "off"], cfg: "sidebar.clock.style", dis: s => s.v("sbStyle") !== "rail", kw: "sidebar clock style rail rest compact stacked one line hide",
+                    why: "The clock on the resting rail. It sits at the same height as the clock in the open sidebar, so it stays put when the rail grows." },
+                { n: [], icon: "format_size", label: "Size at rest", k: "sbClockSize", kind: "seg", o: ["small", "large"], cfg: "sidebar.clock.size", dis: s => s.v("sbStyle") !== "rail" || s.v("sbClock") === "off", kw: "sidebar clock size big small large rail rest compact" },
                 { n: [], icon: "calendar_today", label: "Date", k: "sbDate", kind: "seg", o: [["day and month", "14 oct"], ["day", "14"], ["off", "off"]], cfg: "sidebar.clock.date", kw: "sidebar calendar date hide",
                     why: "The date under the clock. It still opens the calendar when you tap or pull it." }
             ] },

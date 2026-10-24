@@ -30,6 +30,8 @@ Item {
     readonly property real revealed: root.rail ? Math.max(0, Math.min(1, (root.expansion - 0.3) / 0.5)) : 1
     readonly property real railRestWidth: root.fullWidth - Appearance.sizes.sidebarWidth + Appearance.sizes.railWidth
 
+    readonly property real timeCentre: clock.timeShown ? foot.y + clock.y + clock.timeItem.y + clock.timeItem.height / 2 : -1
+
     property bool dwelt: false
     readonly property bool holding: root.menusShown && root.menuKeys.indexOf(root.openKey) >= 0
     readonly property bool railWanted: root.rail && (root.dwelt || root.holding)
@@ -137,6 +139,8 @@ Item {
         }
 
         Column {
+            id: foot
+
             anchors.bottom: parent.bottom
 
             anchors.bottomMargin: root.endMargin(status)
@@ -234,6 +238,7 @@ Item {
                 topInset: root.endMargin(root.tray) + Appearance.padding.large
                 bottomInset: root.endMargin(root.status) + Appearance.padding.large
                 tabsReach: root.glanceReach
+                timeCentre: root.timeCentre
             }
 
             RailAnomalies {

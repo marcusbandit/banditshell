@@ -10,17 +10,25 @@ Item {
     property real topInset: 0
     property real bottomInset: 0
     property real tabsReach: 0
+    property real timeCentre: -1
 
     readonly property string place: Config.values.sidebar.glance
     readonly property bool inRail: root.place === "rail" || root.place === "rail top"
     readonly property bool atHead: root.place === "rail top"
     readonly property bool clockShown: Config.values.sidebar.clock.style !== "off"
     readonly property bool oneLine: Config.values.sidebar.clock.style === "one line"
+    readonly property real timeSize: Config.values.sidebar.clock.size === "large" ? Appearance.font.size.normal : Appearance.font.size.small
+    readonly property bool aligned: root.clockShown && root.timeCentre >= 0
 
     readonly property BatteryGlance battery: BatteryGlance {}
 
     readonly property bool footInUse: (stack.visible && !root.atHead) || wide.visible || root.tabsReach > 0
     readonly property real topEdge: stack.visible && !root.atHead ? stack.y : wide.visible ? wide.y : root.height - root.tabsReach
+
+    function footY(column: Item, timeHeight: real): real {
+        const foot = root.height - root.bottomInset - column.height;
+        return root.aligned ? Math.min(root.timeCentre - timeHeight / 2, foot) : foot;
+    }
 
     SystemClock {
         id: clock
@@ -40,11 +48,13 @@ Item {
         id: stack
 
         x: Math.round((root.width - width) / 2)
-        y: Math.round(root.atHead ? root.topInset : root.height - root.bottomInset - height)
+        y: Math.round(root.atHead ? root.topInset : root.footY(stack, root.oneLine ? sidewaysTime.height : stackedTime.height))
         spacing: Appearance.padding.large
         visible: root.inRail && (root.clockShown || root.battery.shown)
 
         Column {
+            id: stackedTime
+
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 0
             visible: root.clockShown && !root.oneLine
@@ -52,17 +62,19 @@ Item {
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: TimeFormat.hourPart(clock.date)
-                font.pixelSize: Appearance.font.size.small
+                font.pixelSize: root.timeSize
             }
 
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: TimeFormat.minutePart(clock.date)
-                font.pixelSize: Appearance.font.size.small
+                font.pixelSize: root.timeSize
             }
         }
 
         Item {
+            id: sidewaysTime
+
             anchors.horizontalCenter: parent.horizontalCenter
             width: sideways.implicitHeight
             height: sideways.implicitWidth
@@ -73,7 +85,7 @@ Item {
 
                 anchors.centerIn: parent
                 text: TimeFormat.time(clock.date, false)
-                font.pixelSize: Appearance.font.size.small
+                font.pixelSize: root.timeSize
                 rotation: -90
             }
         }
@@ -127,11 +139,13 @@ Item {
         id: wide
 
         x: Math.round((root.width - width) / 2)
-        y: Math.round(root.height - root.bottomInset - height)
+        y: Math.round(root.footY(wide, wideTime.height))
         spacing: Appearance.padding.normal
         visible: root.place === "wide" && (root.clockShown || root.battery.shown)
 
         Column {
+            id: wideTime
+
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 0
             visible: root.clockShown
