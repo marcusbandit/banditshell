@@ -5,6 +5,7 @@ import qs.components
 import qs.services as Services
 
 import qs.modules.menu.content
+import "placement.js" as Placement
 
 Item {
     id: root
@@ -95,7 +96,7 @@ Item {
         return group.sideGap + root.cornerRise(group.sideGap) + group.overhang - Appearance.sizes.band;
     }
 
-    readonly property var blobs: root.expansion < 0.98 ? [] : workspaces.blobs.map(b => ({
+    readonly property var blobs: root.expansion < 0.98 || !workspaces.visible ? [] : workspaces.blobs.map(b => ({
                 x: b.x + workspaces.x,
                 y: b.y + workspaces.y,
                 w: b.w,
@@ -131,9 +132,27 @@ Item {
         Workspaces {
             id: workspaces
 
+            readonly property real ceiling: tray.y + tray.height + tray.overhang + Appearance.padding.large
+            readonly property real floor: foot.y - Appearance.padding.large
+            readonly property var place: Placement.between(workspaces.implicitHeight, body.height, workspaces.ceiling, workspaces.floor)
+
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
+            y: workspaces.place.y
+            height: workspaces.implicitHeight
+            visible: workspaces.place.fits
+
+            screen: root.screen
+        }
+
+        RailPips {
+            id: crowded
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+            y: Placement.between(crowded.implicitHeight, body.height, workspaces.ceiling, workspaces.floor).y
+            height: crowded.implicitHeight
+            visible: !workspaces.place.fits
 
             screen: root.screen
         }
@@ -222,10 +241,15 @@ Item {
         id: restingContent
 
         Item {
+            id: rest
+
             RailPips {
+                id: pips
+
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
+                y: Placement.between(pips.implicitHeight, rest.height, glance.headEdge + Appearance.padding.large, anomalies.y - Appearance.padding.large).y
+                height: pips.implicitHeight
 
                 screen: root.screen
             }
@@ -242,6 +266,8 @@ Item {
             }
 
             RailAnomalies {
+                id: anomalies
+
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom

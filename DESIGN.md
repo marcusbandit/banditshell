@@ -1710,6 +1710,8 @@ banditshell/
 │       ├── RestingGlance.qml    the glance outside it: the top pill and the rail tabs, as blobs
 │       ├── anomalies.js         which marks are unusual, in what order, and how a gone
 │       │                        one is held while it fades (tests/sidebar-anomalies)
+│       ├── placement.js         the workspaces centred, lifted off the foot, and whether
+│       │                        they fit under the tray at all (tests/sidebar-placement)
 │       └── scrolling.js         a wheel turn as a step of volume or brightness
 ├── scripts/
 │   ├── check-modules.js         the module boundary check: reads every module.json,

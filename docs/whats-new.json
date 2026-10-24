@@ -18,6 +18,11 @@
           "type": "ui",
           "severity": "minor",
           "text": "The open sidebar clock is stacked and large again"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Workspaces move up, or shrink to marks, instead of touching the clock"
         }
       ]
     },

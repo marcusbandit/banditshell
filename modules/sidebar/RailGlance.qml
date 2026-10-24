@@ -23,6 +23,7 @@ Item {
     readonly property BatteryGlance battery: BatteryGlance {}
 
     readonly property bool footInUse: (stack.visible && !root.atHead) || wide.visible || root.tabsReach > 0
+    readonly property real headEdge: stack.visible && root.atHead ? stack.y + stack.height : 0
     readonly property real topEdge: stack.visible && !root.atHead ? stack.y : wide.visible ? wide.y : root.height - root.tabsReach
 
     function footY(column: Item, timeHeight: real): real {

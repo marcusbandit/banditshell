@@ -5,7 +5,7 @@
   "owns": {
     "qml": ["modules/menu", "modules/sidebar", "previews/SidebarPreview.qml"],
     "services": ["SidebarState", "Tray"],
-    "tests": ["tests/sidebar-anomalies.test.js"]
+    "tests": ["tests/sidebar-anomalies.test.js", "tests/sidebar-placement.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor", "apps", "audio", "network", "display"],
