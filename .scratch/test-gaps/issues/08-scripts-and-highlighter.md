@@ -26,6 +26,23 @@ never falls back to Firefox's cookies when the user picked another browser.
 Test the clustering and hue bins against a few small fixed images, and that
 the colour cache is reused when the file has not changed.
 
+## scripts/cpu-temperature.sh
+
+It picks a sensor from sysfs: Package id 0, then Tctl, Tdie, then acpitz.
+Give it a root folder override so a test can hand it a fake sysfs, and test
+the order.
+
+## scripts/github-summary.sh
+
+Test the exit codes when `gh` is missing or signed out, and that one failed
+query leaves the rest of the summary instead of an empty panel.
+
+## scripts/tablet-state.py and scripts/pick-file.py
+
+In tablet-state, the bit test and the ioctl numbers, which are plain
+arithmetic. In pick-file, the picked, cancelled and no-chooser exit codes, with
+the portal and `gi` stubbed out.
+
 ## scripts/spicy-lyrics.py, scripts/find-qt.sh, scripts/in-terminal.sh
 
 One test each for the main path: the right cache entry for a track, the probe

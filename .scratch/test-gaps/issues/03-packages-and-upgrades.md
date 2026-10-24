@@ -11,8 +11,9 @@ are not, and a mistake there is a partial upgrade.
 
 Run it with a stubbed `pkexec` and `pacman`. Test that a second start while a
 runner is alive is refused, that a stale pid file does not block a new run,
-that an answer is only passed through when it is one the prompt accepts, and
-that cancel is refused once pacman has started committing.
+that `answer` refuses empty and non-alphanumeric text (it never reads the
+prompt, so any word goes through), and that cancel is refused once pacman has
+started committing.
 
 ## services/SystemUpgrade.qml
 

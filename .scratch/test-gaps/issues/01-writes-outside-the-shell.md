@@ -7,12 +7,22 @@ A bad write here survives a restart: a broken Hyprland config, a moved or
 deleted file, an autostart entry that launches twice. Each item below names the
 decisions to move into a `.js` sibling and what the tests pin down.
 
+## config/Config.qml
+
+`configuration.js` is tested; the guards in `setMany`, `save` and the
+`onLoaded` handler are not. They are all that stands between a `config.json`
+with one stray comma and that file being overwritten with defaults, the same
+shape as #105. Extract the decision (drop, hold or write) and test an
+unreadable file, a file that becomes readable again, and a write before the
+first load.
+
 ## services/HyprConfig.qml
 
 - Extract the write sequence (`write`, `verified`, `rechecked`) as a reducer:
   state and the text read back in, next step out. Test that a changed file
-  between read and write aborts, that a half-applied edit is rolled back, and
-  that a trial reload that fails restores the previous text.
+  between read and write aborts, that a failing verify of the trial copy writes
+  nothing, and that a failing verify after the real write puts the previous
+  text back.
 - `shortName` and `pathOf` move to `services/hyprland-lua.js` with the
   Hyprland folder as an argument. Test files inside it, under `lua/`, and
   sourced from outside it (#110).

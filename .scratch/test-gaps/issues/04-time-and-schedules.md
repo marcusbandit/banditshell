@@ -19,11 +19,12 @@ change, and that a paused timer resumes with the time it had left.
 switch minute and after the machine sleeps through a switch. The level sender
 gives up after repeated failures; test that it recovers once a write succeeds.
 
-## services/Usage.qml and services/UsageApps.qml
+## services/Usage.qml
 
 `forDay`, `absorb` and `prune`: test a session that crosses midnight, two
 shells merging their spans, and that pruning keeps the days the screen time
-page shows.
+page shows. `UsageApps.qml` needs nothing: its pruning is in `usage-apps.js`,
+which `tests/screen-time.test.js` already loads.
 
 ## services/Pomodoro.qml
 

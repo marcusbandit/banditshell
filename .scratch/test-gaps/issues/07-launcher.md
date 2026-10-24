@@ -32,7 +32,7 @@ focused window sorts last.
 audit's claim that Ctrl+Enter on a process row force quits with no
 confirmation. If it does, decide whether it should and test the answer.
 
-## modules/launcher/sources/PortSource.qml and AlphabetLauncher.qml
+## modules/launcher/sources/PortSource.qml and modules/launcher/AlphabetLauncher.qml
 
 `actionsFor` for a user process, a root process and a systemd unit. In the
 alphabet launcher, `rows` and `scrubAt`: test which letter an app with a

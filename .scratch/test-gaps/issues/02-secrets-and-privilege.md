@@ -4,13 +4,15 @@ Status: ready-for-agent
 Tier: 1
 
 A bug here leaks a secret or hangs a password prompt. The scripts can be
-tested today with stub commands on `PATH` (`tests/fixtures/cli-stubs.js`);
-the QML pieces need their decisions moved into `.js` first.
+tested today with their own stub folder on `PATH`, as in
+`tests/online-scripts.test.js`; the QML pieces need their decisions moved into
+`.js` first.
 
 ## installer/askpass.sh
 
-Drive it with a stub UI. Test the ask and retry tokens, that only the secret
-reaches stdout, that the folder is 700 and the FIFOs 600, that cancel exits 1,
+Drive it with a stub `qs` that plays the prompt window; the one in
+`cli-stubs.js` refuses to run. Test the ask and retry tokens, that only the
+secret reaches stdout, that the folder is 700 and the FIFOs 600, that cancel exits 1,
 and that a UI which dies after taking the request makes askpass exit instead
 of hanging (#107).
 
@@ -25,7 +27,10 @@ pin that down.
 ## scripts/assistant-request.sh
 
 Test that the API key arrives on fd 3 and never appears in the argument list
-of the stubbed `curl`, and that the no-key branch sends no auth header.
+of the stubbed `curl`. The script branches on the auth prefix, not on the key:
+with a prefix and an empty key it still sends the bare prefix, and only
+`Assistant.qml` blanking the prefix prevents that. Test both halves, or make
+the script check the key itself.
 
 ## services/Keyring.qml
 

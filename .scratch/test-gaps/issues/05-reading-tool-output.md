@@ -33,8 +33,11 @@ mapping on one, two and three monitors with mixed scales and a rotated one.
 ## modules/cheatsheet/CheatSheet.qml
 
 `readBinds` and `sections`: test real `hyprctl binds -j` output, and that
-malformed output shows an error instead of "0 binds from hyprctl". Fold
-`keyName` into `keybind-search.js keyLabel` so one function names keys.
+malformed output shows an error instead of "0 binds from hyprctl".
+`keyName` upper-cases for the key caps on purpose, unlike `keybind-search.js
+keyLabel`, which title-cases launcher rows. Test it in a cheatsheet `.js` file
+of its own. A shared key namer would have to live in core; the cheatsheet
+package cannot reach into the launcher's.
 
 ## services/Media.qml
 

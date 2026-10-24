@@ -12,8 +12,10 @@ what order the island shows it.
 Extract the held, popup, sound and timeout rules from `onNotification`,
 `timeoutFor`, `setQuiet`, `drop` and `snooze` into a function of the incoming
 notification, the settings and `now`. Test quiet hours, a muted app, a pinned
-notification surviving a clear, and the expire timeout of 0, which the spec
-says means never and which `timeoutFor` currently treats as the default.
+notification surviving a clear, and the expire timeout of 0, which the
+freedesktop notification spec says means never and which `timeoutFor` treats
+as the default (#114, waiting on the owner's call). Quickshell 0.3.2 passes the
+timeout through in milliseconds, unchanged; pin that too.
 
 ## modules/island/Island.qml
 
