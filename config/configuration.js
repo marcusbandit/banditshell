@@ -45,11 +45,15 @@ function merge(base, over, path, opaque, literals) {
 }
 
 function upgradeValue(path, value) {
-    return path === "launcher.concept" && value === "niagara" ? "alphabet" : value;
+    if (path === "launcher.concept" && value === "niagara")
+        return "alphabet";
+    if (path === "sidebar.clock.style" && value === "small")
+        return "stacked";
+    return value;
 }
 
-function upgrade(values) {
-    if (!isPlainObject(values) || !isPlainObject(values.launcher))
+function upgradeLauncher(values) {
+    if (!isPlainObject(values.launcher))
         return values;
     const launcher = Object.assign({}, values.launcher);
     if (owns(launcher, "niagara")) {
@@ -60,6 +64,23 @@ function upgrade(values) {
     if (owns(launcher, "concept"))
         launcher.concept = upgradeValue("launcher.concept", launcher.concept);
     return Object.assign({}, values, { launcher });
+}
+
+function upgradeSidebarClock(values) {
+    const clock = values.sidebar?.clock;
+    if (!isPlainObject(clock) || !["small", "off"].includes(clock.style))
+        return values;
+    const choice = clock.style === "small" ? { style: "stacked", size: "small" } : {};
+    if (!owns(clock, "wideStyle") && !owns(clock, "wideSize"))
+        Object.assign(choice, clock.style === "small" ? { wideStyle: "stacked", wideSize: "small" } : { wideStyle: "off" });
+    const sidebar = Object.assign({}, values.sidebar, { clock: Object.assign({}, clock, choice) });
+    return Object.assign({}, values, { sidebar });
+}
+
+function upgrade(values) {
+    if (!isPlainObject(values))
+        return values;
+    return upgradeSidebarClock(upgradeLauncher(values));
 }
 
 function holds(node, segment) {
