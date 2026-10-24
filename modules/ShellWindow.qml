@@ -89,6 +89,7 @@ PanelWindow {
     }
 
     Component.onCompleted: {
+        Trace.mark(`window ${win.screen?.name ?? ""}`);
         Shell.register(win);
         resumer.start();
     }
@@ -632,6 +633,7 @@ PanelWindow {
         LazyPanel {
             id: clipLayer
 
+            name: "clipboard"
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
 
@@ -647,6 +649,7 @@ PanelWindow {
         LazyPanel {
             id: wallpaperLayer
 
+            name: "wallpapers"
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
 
@@ -661,6 +664,7 @@ PanelWindow {
         LazyPanel {
             id: sessionLayer
 
+            name: "session"
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
 
@@ -673,6 +677,7 @@ PanelWindow {
         LazyPanel {
             id: calcLayer
 
+            name: "calculator"
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
 
@@ -687,6 +692,7 @@ PanelWindow {
         LazyPanel {
             id: keyboardLayer
 
+            name: "keyboard"
             anchors.fill: parent
 
             needed: Tablet.folded && Config.values.tablet.autoKeyboard
@@ -705,6 +711,7 @@ PanelWindow {
         LazyPanel {
             id: cheatLayer
 
+            name: "hotkeys"
             anchors.fill: parent
 
             onOpenChanged: if (open)
@@ -740,6 +747,7 @@ PanelWindow {
         LazyPanel {
             id: mediaLayer
 
+            name: "media"
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
 
@@ -759,6 +767,7 @@ PanelWindow {
         LazyPanel {
             id: settingsLayer
 
+            name: "settings"
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
 
@@ -881,6 +890,7 @@ PanelWindow {
         LazyPanel {
             id: keyringLayer
 
+            name: "keyring"
             parent: win.passwordAbove ? fullscreenBorder.stage : body
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
@@ -897,5 +907,9 @@ PanelWindow {
 
             anchors.fill: parent
         }
+    }
+
+    TraceFrames {
+        label: win.screen?.name ?? ""
     }
 }

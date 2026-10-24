@@ -856,9 +856,12 @@ Singleton {
     }
 
     function show(path: string): void {
+        const span = root.windowOpen ? null : Trace.begin("files open");
         if (path)
             root.cd(path);
+        Trace.step("listed", span);
         root.windowOpen = true;
+        Trace.step("shown", span);
     }
 
     function reveal(path: string): void {
@@ -870,7 +873,9 @@ Singleton {
     }
 
     function hide(): void {
+        const span = root.windowOpen ? Trace.begin("files close") : null;
         root.windowOpen = false;
+        Trace.step("hidden", span);
     }
 
     function toggle(path: string): void {

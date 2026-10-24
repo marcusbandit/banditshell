@@ -13,14 +13,18 @@ Singleton {
     property bool away: false
 
     function show(screen: string, which: string): void {
+        const span = root.open ? null : Trace.begin("settings open");
         root.screenName = screen || root.screenName || Quickshell.screens[0]?.name || "";
         if (which)
             root.page = which;
         root.open = true;
+        Trace.step("shown", span);
     }
 
     function hide(): void {
+        const span = root.open ? Trace.begin("settings close") : null;
         root.open = false;
+        Trace.step("hidden", span);
     }
 
     function toggle(screen: string): void {

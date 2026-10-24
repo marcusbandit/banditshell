@@ -123,6 +123,7 @@ Item {
 
     function show(key: string, title: string, body: Component, at: real, pin: bool, fromTop = false): void {
         const wasClosed = !root.open;
+        const span = key !== root.currentKey ? Trace.begin(`menu ${key} open`, wasClosed ? "" : "swap") : null;
         const turned = fromTop !== root.fromTop;
 
         const swapping = key !== root.currentKey;
@@ -144,9 +145,11 @@ Item {
 
         if (pin)
             root.pinnedKey = key;
+        Trace.step("shown", span);
     }
 
     function hide(): void {
+        const span = root.open ? Trace.begin(`menu ${root.currentKey} close`) : null;
         grace.stop();
         root.currentKey = "";
 
@@ -154,6 +157,7 @@ Item {
         reveal.target = 0;
 
         root.held = Qt.rect(0, 0, 0, 0);
+        Trace.step("hidden", span);
     }
 
     function release(): void {

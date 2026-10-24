@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import qs.config
+import qs.modules.panel
 import qs.services
 
 FloatingWindow {
@@ -26,6 +27,10 @@ FloatingWindow {
     }
 
     Component.onCompleted: win.follow()
+
+    TraceFrames {
+        label: "files"
+    }
 
     Connections {
         target: Files

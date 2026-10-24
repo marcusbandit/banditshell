@@ -324,6 +324,22 @@
 #                                verbs, and fail on any runtime error in its log;
 #                                --shots photographs it at rest and with the
 #                                launcher open
+#   banditshell dev perf [--runs <n>] [--boots <n>] [--only <pattern>] [--profile] [--ns] [dir]
+#                                time every operation headless: boot the shell n
+#                                times (5), then open and close every panel, menu
+#                                and settings page n times (5), and print each
+#                                step in between with first, last, mean, median,
+#                                min and max; --profile also lists the bindings,
+#                                functions and objects that took the time inside
+#                                each one; --ns prints nanoseconds
+#   banditshell dev perf live [--runs <n>] [--only <pattern>] [--ns] [dir]
+#                                the same against the running shell, on screen
+#   banditshell dev trace [on|off|status|clear]
+#                                record the running shell's own timings while you
+#                                use it
+#   banditshell dev trace report [dir]
+#                                every operation recorded so far, grouped, as a
+#                                table and a page
 #   banditshell dev inspect island [screen]
 #                                look at every situation on the live island:
 #                                a panel on the right makes each one up, and
@@ -2819,6 +2835,126 @@ EOF
     [ "$boot_passed" -eq "$boot_total" ]
 }
 
+perf_usage() {
+    say_usage "dev perf [live] [--runs <n>] [--boots <n>] [--only <pattern>] [--profile] [--ns] [dir]"
+}
+
+perf_command() {
+    local out="" runs=5 boots=5 only="" raw="" live="" work src config overrides tool pid link target limit=1800
+    local -a extra=()
+    if [ "${1:-}" = live ]; then
+        live=1
+        boots=0
+        shift
+    fi
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --runs) [ $# -ge 2 ] || perf_usage; runs="$2"; shift ;;
+        --boots) [ $# -ge 2 ] || perf_usage; boots="$2"; shift ;;
+        --only) [ $# -ge 2 ] || perf_usage; only="$2"; shift ;;
+        --ns) raw=1 ;;
+        --profile) [ -z "$live" ] || perf_usage; extra+=(--profile) ;;
+        -*) perf_usage ;;
+        *) out=$(absolute_path "$1") ;;
+        esac
+        shift
+    done
+    [[ $runs =~ ^[0-9]+$ && $boots =~ ^[0-9]+$ ]] || perf_usage
+    command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
+    [ -z "$only" ] || extra+=(--only "$only")
+    [ -z "$raw" ] || extra+=(--ns)
+    if [ -n "$live" ]; then
+        out="${out:-$SHOT_DIR/perf-live}"
+        resolve_target
+        [ "${qs_target[0]}" = --pid ] || { complain "not running (try: banditshell start)"; exit 3; }
+        echo "timing the running shell: every panel, menu and settings page opens and closes on your screen, $runs times; ctrl-c stops"
+        exec node "$SHELL_DIR/scripts/perf.js" run --pid "${qs_target[1]}" --cli "$SHELL_DIR/cli/banditshell" \
+            --runs "$runs" --where "live session" --out "$out" "${extra[@]}"
+    fi
+    out="${out:-$SHOT_DIR/perf}"
+    for tool in gamescope dbus-run-session jq setsid qs pkill; do
+        command -v "$tool" >/dev/null || { echo "banditshell: $tool not found" >&2; exit 1; }
+    done
+    mkdir -p "$out"
+    rm -f "$out"/boot-*.log* "$out"/shell.log* "$out/progress.log" "$out/report.txt" "$out/session.log"
+    work=$(mktemp -d)
+    src="$work/root"
+    boot_root "$work" "$src" "" || { rm -rf "$work"; exit 1; }
+    for link in "$src"/*; do
+        [ -L "$link" ] || continue
+        target=$(readlink "$link")
+        rm "$link"
+        cp -a "$target" "$link"
+    done
+    mkdir -p "$work/config/banditshell" "$work/state" "$work/cache" "$work/runtime"
+    chmod 700 "$work/runtime"
+    config="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json"
+    overrides='. | .pen.enabled = false | .pen.grabPad = false | .polkit.agent = false | .startup.runAutostart = false | .network.keepListFresh = false'
+    overrides="$overrides | $(compositor_look)"
+    jq "$overrides" "$config" >"$work/config/banditshell/config.json" 2>/dev/null ||
+        jq -n "{} | $overrides" >"$work/config/banditshell/config.json"
+    mkdir -p "$work/shims"
+    printf '#!/bin/sh\nexit 1\n' >"$work/shims/ddcutil"
+    printf '#!/bin/sh\nexec cat\n' >"$work/shims/systemd-inhibit"
+    chmod +x "$work/shims/ddcutil" "$work/shims/systemd-inhibit"
+    cat >"$work/bus.conf" <<EOF
+<busconfig>
+  <type>session</type>
+  <listen>unix:dir=$work/runtime</listen>
+  <policy context="default">
+    <allow send_destination="*"/>
+    <allow receive_sender="*"/>
+    <allow own="*"/>
+  </policy>
+</busconfig>
+EOF
+    {
+        printf '#!/usr/bin/env bash\ncd "$HOME"\nexport BANDITSHELL_DIR=%q PATH=%q\n' "$src" "$work/shims:$PATH"
+        printf 'node %q run --shell %q --cli %q --runs %q --boots %q --where %q --out %q' \
+            "$SHELL_DIR/scripts/perf.js" "$src/shell.qml" "$src/cli/banditshell" "$runs" "$boots" "headless, private session" "$out"
+        [ ${#extra[@]} -eq 0 ] || printf ' %q' "${extra[@]}"
+        printf ' >%q 2>%q\n' "$out/report.txt" "$out/progress.log"
+    } >"$work/run.sh"
+    : >"$out/progress.log"
+    echo "booting the real shell.qml headless $boots times, then opening every panel, menu and settings page $runs times; a few minutes, ctrl-c stops"
+    (cd "$work/home" && exec setsid env -i PATH="$PATH" HOME="$work/home" LANG=C.UTF-8 \
+        XDG_CONFIG_HOME="$work/config" XDG_STATE_HOME="$work/state" XDG_CACHE_HOME="$work/cache" XDG_RUNTIME_DIR="$work/runtime" \
+        timeout -s KILL "$limit" dbus-run-session --config-file="$work/bus.conf" -- \
+        bash "$work/run.sh") </dev/null >"$out/session.log" 2>&1 &
+    pid=$!
+    trap 'kill -KILL -- -"$pid" "$pid" 2>/dev/null || true; pkill -KILL -f "$src/shell.qml" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; rm -rf "$work"; echo "stopped" >&2; exit 130' INT TERM
+    tail -n +1 -f --pid="$pid" "$out/progress.log" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+    kill -KILL -- -"$pid" 2>/dev/null || true
+    pkill -KILL -f "$src/shell.qml" 2>/dev/null || true
+    trap - INT TERM
+    rm -rf "$work" 2>/dev/null || echo "banditshell: could not clear $work" >&2
+    if [ ! -s "$out/report.txt" ]; then
+        echo "banditshell: the timing run did not finish (logs: $out)" >&2
+        sed 's/\x1b\[[0-9;]*m//g' "$out/session.log" "$out/progress.log" 2>/dev/null | tail -n 12 >&2 || true
+        exit 1
+    fi
+    cat "$out/report.txt"
+}
+
+trace_command() {
+    local out
+    case "${1:-status}" in
+    on | off | status) ipc trace "${1:-status}" ;;
+    clear)
+        rm -f "$SHOT_DIR/trace/spans.json"
+        ipc trace clear
+        ;;
+    report)
+        command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
+        out=$(absolute_path "${2:-$SHOT_DIR/trace}")
+        mkdir -p "$out"
+        ipc_quiet trace take | node "$SHELL_DIR/scripts/perf.js" live-report --keep "$out/spans.json" --out "$out"
+        ;;
+    *) nope dev "trace $1" ;;
+    esac
+}
+
 window_rect() {
     hyprctl -j clients | jq -r --arg title "$1" '.[] | select(.title == $title) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' | head -1
 }
@@ -2965,6 +3101,8 @@ route_dev() {
         *) nope dev "inspect ${1:-}" ;;
         esac ;;
     preview) route_preview "$@" ;;
+    perf) perf_command "$@" ;;
+    trace) trace_command "$@" ;;
     menu)
         case "${1:-current}" in
         current | hover | list) ipc menu "${1:-current}" ;;

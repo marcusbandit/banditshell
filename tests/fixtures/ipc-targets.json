@@ -222,6 +222,15 @@
     "status(): string",
     "toggle(handle: string): string"
   ],
+  "trace": [
+    "clear(): string",
+    "off(): string",
+    "on(): string",
+    "pending(): string",
+    "status(): string",
+    "take(): string",
+    "watch(name: string, ms: string): string"
+  ],
   "wallpaper": [
     "clear(screen: string): string",
     "list(screen: string): string",
