@@ -118,11 +118,13 @@ Column {
     }
 
     MenuLayer {
+        id: choiceLayer
+
         width: root.width
         open: root.kind === "choice" && root.unrolled
 
         Repeater {
-            model: root.kind === "choice" ? root.choices : []
+            model: root.kind === "choice" && (root.unrolled || choiceLayer.visible) ? root.choices : []
 
             delegate: SettingsRowFrame {
                 id: option

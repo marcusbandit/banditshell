@@ -39,6 +39,8 @@ Singleton {
 
     readonly property bool reduceMotion: SettingsState.v("reduceMotion")
 
+    property bool sceneSeen: true
+
     property var openRows: ({})
 
     property real scroll: 0

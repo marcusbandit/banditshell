@@ -25,6 +25,8 @@ Item {
 
     property bool shaded: true
 
+    readonly property bool drawn: root.color.a > 0 || (root.strokeWidth > 0 && root.stroke.a > 0)
+
     readonly property real inset: root.strokeWidth / 2
     readonly property bool onShader: root.shaded && root.topLeftRadius >= 0 && root.topRightRadius >= 0 && root.bottomRightRadius >= 0 && root.bottomLeftRadius >= 0
 
@@ -33,19 +35,24 @@ Item {
     }
 
     Loader {
-        readonly property real fringe: 1
+        id: drawing
 
-        x: -fringe
-        y: -fringe
-        width: root.width + fringe * 2
-        height: root.height + fringe * 2
-        active: root.onShader
+        active: root.drawn || drawing.item !== null
+        sourceComponent: root.onShader ? fill : outline
+    }
 
-        sourceComponent: ShaderEffect {
-            visible: root.color.a > 0 || (root.strokeWidth > 0 && root.stroke.a > 0)
+    Component {
+        id: fill
+
+        ShaderEffect {
+            x: -bleed
+            y: -bleed
+            width: root.width + bleed * 2
+            height: root.height + bleed * 2
+            visible: root.drawn
 
             property real power: root.cornerPower
-            property real bleed: parent.fringe
+            property real bleed: 1
             property real across: root.width
             property real down: root.height
             property real rim: root.strokeWidth
@@ -53,20 +60,22 @@ Item {
             property color colour: root.color
             property color line: root.stroke
 
-            fragmentShader: Qt.resolvedUrl("squirclefill.frag.qsb")
+            fragmentShader: "squirclefill.frag.qsb"
         }
     }
 
-    Loader {
-        anchors.fill: parent
-        active: !root.onShader
+    Component {
+        id: outline
 
-        sourceComponent: Shape {
+        Shape {
             id: shape
 
-            anchors.fill: parent
-            anchors.margins: root.inset
+            x: root.inset
+            y: root.inset
+            width: Math.max(0, root.width - root.inset * 2)
+            height: Math.max(0, root.height - root.inset * 2)
 
+            visible: root.drawn
             preferredRendererType: Shape.CurveRenderer
 
             ShapePath {

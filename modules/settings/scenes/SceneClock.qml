@@ -9,7 +9,7 @@ QtObject {
     property bool live: true
     property real still: 1
 
-    readonly property bool moving: root.live && !SettingsView.reduceMotion && !Appearance.lessMotion
+    readonly property bool moving: root.live && SettingsView.sceneSeen && !SettingsView.reduceMotion && !Appearance.lessMotion
 
     property real t: 0
 

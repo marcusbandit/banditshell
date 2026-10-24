@@ -25,8 +25,23 @@ function typeMatches(declared, wanted) {
     return declared.endsWith("/*") && wanted.startsWith(declared.slice(0, -1));
 }
 
+const declaredCache = new WeakMap();
+
+function declaredOf(entry) {
+    let known = declaredCache.get(entry);
+    if (!known) {
+        known = {
+            exact: new Set(entry.mimeTypes),
+            wild: entry.mimeTypes.filter(d => d.endsWith("/*")).map(d => d.slice(0, -1))
+        };
+        declaredCache.set(entry, known);
+    }
+    return known;
+}
+
 function handledTypes(entry, group) {
-    return group.types.filter(t => entry.mimeTypes.some(d => typeMatches(d, t)));
+    const known = declaredOf(entry);
+    return group.types.filter(t => known.exact.has(t) || known.wild.some(prefix => t.startsWith(prefix)));
 }
 
 function offers(entries, group, currentId) {
