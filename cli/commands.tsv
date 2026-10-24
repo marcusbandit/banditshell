@@ -147,7 +147,8 @@ rule	dev check island @dir
 rule	dev check boot @dir --shots
 rule	dev perf @dir --runs,--boots,--only,--profile,--ns
 rule	dev perf live @dir --runs,--only,--ns
-rule	dev trace on,off,status,clear
+rule	dev trace on,off,status
+rule	dev trace clear @dir
 rule	dev trace report @dir
 rule	dev inspect island @screen
 rule	dev inspect close

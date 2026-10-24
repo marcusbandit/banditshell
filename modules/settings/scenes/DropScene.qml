@@ -134,6 +134,7 @@ Item {
         height: parent.height - 16 - 44
 
         LayoutMini {
+            seen: SettingsView.sceneSeen
             height: Math.min(parent.height, parent.width * 10 / 16)
             width: height * 16 / 10
             anchors.centerIn: parent

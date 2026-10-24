@@ -20,7 +20,7 @@ Item {
         property: "sceneSeen"
         when: root.showing
         value: !root.covered && stage.visible && stage.y + stage.height > scroll.contentY && stage.y < scroll.contentY + scroll.height
-        restoreMode: Binding.RestoreValue
+        restoreMode: Binding.RestoreNone
     }
 
     onShowingChanged: {

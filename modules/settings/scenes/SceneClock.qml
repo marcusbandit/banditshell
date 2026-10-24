@@ -7,9 +7,10 @@ QtObject {
 
     property int duration: 4800
     property bool live: true
+    property bool seen: SettingsView.sceneSeen
     property real still: 1
 
-    readonly property bool moving: root.live && SettingsView.sceneSeen && !SettingsView.reduceMotion && !Appearance.lessMotion
+    readonly property bool moving: root.live && root.seen && !SettingsView.reduceMotion && !Appearance.lessMotion
 
     property real t: 0
 

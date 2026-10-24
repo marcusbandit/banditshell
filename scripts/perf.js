@@ -51,6 +51,7 @@ function scenarios(menuKeys) {
         panel("files", "files", ["open", ""], ["close"]),
         {
             id: "config write",
+            headless: true,
             steps: [],
             build: shell => {
                 const kept = Number(shell.call("shell", "get", "clipboard.maxEntries").out);
@@ -145,10 +146,17 @@ function drive(shell, options) {
     shell.call("panels", "closeAll");
     shell.settle();
     const opening = shell.take();
+    if (options.keep && opening.length) {
+        let kept = [];
+        try {
+            kept = JSON.parse(fs.readFileSync(options.keep, "utf8"));
+        } catch (e) {}
+        fs.writeFileSync(options.keep, `${JSON.stringify([...kept, ...opening])}\n`);
+    }
     if (options.profile && opening.length)
         runs.push({ scenario: "start of the profiled shell", run: 1, calls: [], spans: opening.map(span => Object.assign({}, span, { name: `${span.name}, profiled shell` })) });
     for (const scenario of chosen) {
-        if (scenario.cli && !shell.cli)
+        if ((scenario.cli && !shell.cli) || (scenario.headless && options.target))
             continue;
         process.stderr.write(`${scenario.id}: `);
         for (let run = 1; run <= options.runs; run++) {

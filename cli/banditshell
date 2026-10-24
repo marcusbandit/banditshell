@@ -334,9 +334,11 @@
 #                                each one; --ns prints nanoseconds
 #   banditshell dev perf live [--runs <n>] [--only <pattern>] [--ns] [dir]
 #                                the same against the running shell, on screen
-#   banditshell dev trace [on|off|status|clear]
+#   banditshell dev trace [on|off|status]
 #                                record the running shell's own timings while you
 #                                use it
+#   banditshell dev trace clear [dir]
+#                                forget what was recorded, in the shell and in dir
 #   banditshell dev trace report [dir]
 #                                every operation recorded so far, grouped, as a
 #                                table and a page
@@ -2850,7 +2852,7 @@ perf_command() {
     while [ $# -gt 0 ]; do
         case "$1" in
         --runs) [ $# -ge 2 ] || perf_usage; runs="$2"; shift ;;
-        --boots) [ $# -ge 2 ] || perf_usage; boots="$2"; shift ;;
+        --boots) [ $# -ge 2 ] && [ -z "$live" ] || perf_usage; boots="$2"; shift ;;
         --only) [ $# -ge 2 ] || perf_usage; only="$2"; shift ;;
         --ns) raw=1 ;;
         --profile) [ -z "$live" ] || perf_usage; extra+=(--profile) ;;
@@ -2868,7 +2870,8 @@ perf_command() {
         resolve_target
         [ "${qs_target[0]}" = --pid ] || { complain "not running (try: banditshell start)"; exit 3; }
         echo "timing the running shell: every panel, menu and settings page opens and closes on your screen, $runs times; ctrl-c stops"
-        exec node "$SHELL_DIR/scripts/perf.js" run --pid "${qs_target[1]}" --cli "$SHELL_DIR/cli/banditshell" \
+        mkdir -p "$SHOT_DIR/trace"
+        exec node "$SHELL_DIR/scripts/perf.js" run --pid "${qs_target[1]}" --cli "$SHELL_DIR/cli/banditshell" --keep "$SHOT_DIR/trace/spans.json" \
             --runs "$runs" --where "live session" --out "$out" "${extra[@]}"
     fi
     out="${out:-$SHOT_DIR/perf}"
@@ -2942,7 +2945,7 @@ trace_command() {
     case "${1:-status}" in
     on | off | status) ipc trace "${1:-status}" ;;
     clear)
-        rm -f "$SHOT_DIR/trace/spans.json"
+        rm -f "$(absolute_path "${2:-$SHOT_DIR/trace}")/spans.json"
         ipc trace clear
         ;;
     report)
