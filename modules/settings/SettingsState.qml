@@ -149,6 +149,7 @@ Singleton {
             workspaceSlide: "anim.workspaceSlide",
             sidebarW: "sidebar.width",
             sbStyle: "sidebar.style",
+            sbGlance: "sidebar.glance",
             sbBright: "sidebar.status.brightness",
             wsStyle: "sidebar.workspaces.style",
             iconMode: "sidebar.workspaces.iconMode",

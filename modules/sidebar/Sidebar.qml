@@ -224,11 +224,20 @@ Item {
                 screen: root.screen
             }
 
+            RailGlance {
+                id: glance
+
+                anchors.fill: parent
+
+                topInset: root.endMargin(root.tray) + Appearance.padding.large
+                bottomInset: root.endMargin(root.status) + Appearance.padding.large
+            }
+
             RailAnomalies {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: root.endMargin(root.status)
+                anchors.bottomMargin: parent.height - glance.topEdge + Appearance.padding.large
 
                 modeIcon: root.modeIcon
             }

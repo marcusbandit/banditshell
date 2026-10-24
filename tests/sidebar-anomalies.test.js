@@ -9,10 +9,6 @@ const Anomalies = load("modules/sidebar/anomalies.js", ["list", "merge", "withou
 const Scrolling = load("modules/sidebar/scrolling.js", ["scrolled"]);
 
 const calm = {
-    battery: true,
-    batteryPercent: 80,
-    charging: false,
-    batteryIcon: "battery_5_bar",
     micShown: true,
     micStreams: false,
     micMuted: false,
@@ -37,25 +33,8 @@ test("a calm machine shows nothing", () => {
     assert.deepStrictEqual(Anomalies.list({}), []);
 });
 
-test("battery shows under twenty percent and not at twenty", () => {
-    assert.deepStrictEqual(keys({ batteryPercent: 19 }), ["battery"]);
-    assert.deepStrictEqual(keys({ batteryPercent: 20 }), []);
-    assert.deepStrictEqual(keys({ batteryPercent: 0 }), ["battery"]);
-});
-
-test("a low battery is an alarm until it charges, then it is only worth knowing", () => {
-    const low = Anomalies.list(Object.assign({}, calm, { batteryPercent: 12 }))[0];
-    assert.strictEqual(low.tone, "alarm");
-    assert.strictEqual(low.icon, "battery_5_bar");
-    const charging = Anomalies.list(Object.assign({}, calm, { batteryPercent: 12, charging: true }))[0];
-    assert.strictEqual(charging.tone, "accent");
-    assert.match(charging.title, /charging/);
-});
-
-test("a hidden or missing battery never shows", () => {
-    assert.deepStrictEqual(keys({ battery: false, batteryPercent: 3 }), []);
-    assert.deepStrictEqual(keys({ battery: false, batteryPercent: NaN }), []);
-    assert.deepStrictEqual(keys({ batteryPercent: undefined }), []);
+test("the battery is never an anomaly, because the rail always shows it", () => {
+    assert.deepStrictEqual(Anomalies.list({ battery: true, batteryPercent: 3 }), []);
 });
 
 test("the microphone shows only while something listens, live or muted", () => {
@@ -99,11 +78,11 @@ test("updates show by state, stuck ones as alarms, and never when the button is 
 });
 
 test("when too many things are unusual the alarms stay and the order holds", () => {
-    const all = { batteryPercent: 5, micStreams: true, recording: true, vpn: true, wifiOn: false, bluetoothOn: false, quiet: true, update: "available" };
+    const all = { micStreams: true, recording: true, vpn: true, wifiOn: false, bluetoothOn: false, quiet: true, update: "available" };
     const shown = keys(all);
     assert.strictEqual(shown.length, 4);
-    assert.deepStrictEqual(shown, ["battery", "mic", "recording", "vpn"]);
-    const quietOnly = keys({ quiet: true, vpn: true, update: "failed", batteryPercent: 5, recording: true, micStreams: true });
+    assert.deepStrictEqual(shown, ["mic", "recording", "vpn", "airplane"]);
+    const quietOnly = keys({ quiet: true, vpn: true, update: "failed", recording: true, micStreams: true });
     assert.ok(quietOnly.includes("update"));
     assert.ok(!quietOnly.includes("quiet"));
 });

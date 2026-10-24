@@ -325,7 +325,7 @@ Singleton {
         readonly property int border: root.follows ? Compositor.gapsOut : root.config.edge.border
         readonly property int sidebarWidth: root.config.sidebar.width
         readonly property bool sidebarRail: root.config.sidebar.style === "rail"
-        readonly property int railWidth: Math.min(root.config.sidebar.railWidth, root.config.sidebar.width)
+        readonly property int railWidth: Math.min(root.config.sidebar.glance === "wide" ? Math.max(root.config.sidebar.railWidth, 46) : root.config.sidebar.railWidth, root.config.sidebar.width)
         readonly property int sidebarReserve: sidebarRail ? railWidth : sidebarWidth
         readonly property int streamHeight: root.config.stream.height
         readonly property real sidebarFlare: root.rounding.at(root.config.sidebar.flareTier)
