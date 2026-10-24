@@ -461,7 +461,7 @@ PanelWindow {
 
             railWanted: sidebar.railWanted
 
-            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs, ...keyringLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs)]
+            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs, ...keyringLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs), ...body.lowered(glance.blobs)]
         }
 
         BandProgress {
@@ -493,6 +493,25 @@ PanelWindow {
             pullSpan: Math.hypot(win.width, win.height)
 
             modeIcon: SettingsState.modeIcon
+
+            glanceReach: Math.max(0, glance.footReach - win.border)
+        }
+
+        RestingGlance {
+            id: glance
+
+            anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
+
+            band: Math.max(0, chassis.topBand - chassis.streamReach)
+            frame: chassis.band
+            railRight: chassis.barWidth
+            railOpen: chassis.railOpen
+            sidebarShown: chassis.sidebar
+            rail: chassis.rail
+            bare: chassis.bare
+            islandOut: islandLayer.out
+            yielded: win.underFullscreen || fullscreenBorder.yielded
         }
 
         StreamPanel {

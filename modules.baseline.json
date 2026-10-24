@@ -274,7 +274,7 @@
     "R3 modules/settings/widgets/WinLayoutsWidget.qml uses LayoutDraft of windows without requiring it",
     "R3 modules/settings/widgets/WinLayoutsWidget.qml uses WindowLayouts of windows without requiring it",
     "R3 modules/settings/widgets/WinLayoutsWidget.qml uses WorkshopLayouts of windows without requiring it",
-    "R3 modules/sidebar/RailAnomalies.qml uses Battery of power without requiring it",
+    "R3 modules/sidebar/BatteryGlance.qml uses Battery of power without requiring it",
     "R3 modules/sidebar/RailAnomalies.qml uses Notifications of notifications without requiring it",
     "R3 modules/sidebar/RailAnomalies.qml uses ScreenRecorder of capture without requiring it",
     "R3 modules/sidebar/RailAnomalies.qml uses Update of updates without requiring it",

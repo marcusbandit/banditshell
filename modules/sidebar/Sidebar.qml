@@ -18,6 +18,8 @@ Item {
 
     property string modeIcon: ""
 
+    property real glanceReach: 0
+
     readonly property string slotIcon: root.modeIcon || (Services.Notifications.quieted ? "do_not_disturb_on" : "")
 
     property real fullWidth: width
@@ -224,13 +226,24 @@ Item {
                 screen: root.screen
             }
 
+            RailGlance {
+                id: glance
+
+                anchors.fill: parent
+
+                topInset: root.endMargin(root.tray) + Appearance.padding.large
+                bottomInset: root.endMargin(root.status) + Appearance.padding.large
+                tabsReach: root.glanceReach
+            }
+
             RailAnomalies {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: root.endMargin(root.status)
+                anchors.bottomMargin: glance.footInUse ? parent.height - glance.topEdge + Appearance.padding.large : root.endMargin(root.status)
 
                 modeIcon: root.modeIcon
+                batteryWanted: ["top", "off"].includes(Config.values.sidebar.glance)
             }
         }
     }

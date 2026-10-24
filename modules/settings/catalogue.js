@@ -318,6 +318,8 @@ const PAGES_SOURCE = {
                 { n: 58, icon: "side_navigation", label: "Sidebar", k: "sidebar", kind: "toggle", cfg: "sidebar.enabled", detail: s => s.v("sidebar") ? "" : "super + b brings it back" },
                 { n: [], icon: "view_column_2", label: "Style", k: "sbStyle", kind: "seg", o: ["full", "rail"], cfg: "sidebar.style", dis: s => !s.v("sidebar"), kw: "sidebar rail simplified expand hover pips anomalies",
                     why: "Full keeps everything on show. Rail rests as workspace marks and shows a status icon only when something is unusual; point at it and it grows into the full column." },
+                { n: [], icon: "schedule", label: "Time at rest", k: "sbGlance", kind: "seg", o: [["rail", "rail"], ["rail top", "rail top"], ["top", "top"], ["tabs", "tabs"], ["wide", "wide"], ["off", "off"]], cfg: "sidebar.glance", dis: s => s.v("sbStyle") !== "rail", kw: "clock time battery glance rest rail top tabs wide",
+                    why: "Where the time and the battery sit while the rail rests. Rail stacks the time over a battery level bar at the rail's foot, rail top at its head. Top hangs them from the top edge, tabs grow them out of the rail, wide widens the rail to hold them." },
                 { n: 59, icon: "width", label: "Width", k: "sidebarW", kind: "slider", min: 40, max: 72, fmt: v => `${v} px`, cfg: "sidebar.width", dis: s => !s.v("sidebar") }
             ] },
             { t: "Workspaces", rows: [

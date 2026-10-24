@@ -130,6 +130,8 @@ Singleton {
 
                 railWidth: 22,
 
+                glance: "rail",
+
                 enabled: true,
 
                 update: "new",
@@ -170,7 +172,7 @@ Singleton {
                     blockGap: 3
                 },
                 clock: {
-                    style: "stacked",
+                    style: "one line",
                     date: "day and month"
                 },
 

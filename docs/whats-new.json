@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-2",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The resting rail shows the time and a battery level bar"
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "Settings, Sidebar, Time at rest moves them or turns them off"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The sidebar clock now defaults to one line, turned on its side"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25",
       "date": "2026-10-25",
       "changes": [

@@ -1706,6 +1706,8 @@ banditshell/
 │       ├── RailPips.qml         the rail at rest: one mark per workspace, drawn from
 │       │                        WorkspaceModel, a bar as long as the windows it holds
 │       ├── RailAnomalies.qml    the rail at rest: a status icon only while it is unusual
+│       ├── RailGlance.qml       the glance inside the rail: time over a level bar, or wide's digits
+│       ├── RestingGlance.qml    the glance outside it: the top pill and the rail tabs, as blobs
 │       ├── anomalies.js         which marks are unusual, in what order, and how a gone
 │       │                        one is held while it fades (tests/sidebar-anomalies)
 │       └── scrolling.js         a wheel turn as a step of volume or brightness
@@ -1978,11 +1980,40 @@ answer most of what the column used to be asked, so the column is allowed to be 
 the sidebar as it was. `rail` is the default since 2026-10-18 and rests as a thin strip of the band
 (`sidebar.railWidth`, which is also what `FrameExclusions` reserves, so windows tile against the
 rail and not against the full column): one mark per workspace, and below them a status icon for
-whatever is unusual and nothing for what is normal. Unusual is decided in `anomalies.js`: a
-battery under 20 percent, the microphone live or muted while something records from it, a
+whatever is unusual and nothing for what is normal. Unusual is decided in `anomalies.js`: the
+microphone live or muted while something records from it, a
 screen recording, a VPN, airplane mode (every radio off), quiet or a mode, an update waiting or
 stuck. A cap of four keeps the alarms and drops the quietest, and a mark that goes leaves by
 shrinking, not by blinking out.
+
+**THE GLANCE, 2026-10-24: the time and the battery show at rest.** People using the shell said
+an empty screen is annoying when all they want is to look up and see what time it is and how much
+battery is left, without pointing at anything. A plate the battery filled and digits drawn from
+pips both failed: on a 5120 px screen they read as noise in a 32 px strip. What held was the plain
+small time with the battery given a shape of its own, a level bar, beside other places that leave
+the rail's width behind. Apple's iPhone Duo met the same problem in its side column and answered
+it the same way: a small time on top, the battery as a level rather than a battery icon. `sidebar.glance` picks where (Settings, Sidebar, "Time at rest"):
+
+- `rail` (the default): in the rail's foot, the hours over the minutes at the small size, and
+  under them the battery as an upright level bar with a nub on top and its percent below. Without
+  a battery the time drops to the foot rather than hovering over an empty space. The clock style
+  `one line` turns the time on its side here too, so it reads as 14:32, and it is the default
+  since 2026-10-25: the owner's pick of the two.
+- `rail top`: the same at the rail's head, where the Duo puts it.
+- `top`: a pill melts out of the top band at the centre with the time and the battery meter and
+  percent. It steps back while the island is out, since the island owns that spot.
+- `tabs`: two tabs melt out of the rail near the bottom, one with the time and one with the
+  battery. They overlap the windows a little and fold back into the rail as it grows.
+- `wide`: the rail widens to 46 px so the hours and minutes fit stacked at the normal size, with
+  the battery under them. Windows give up that width.
+- `off`: the rail rests as bare marks.
+
+The blobs go through the chassis like every panel, so the joins melt rather than butt. Without a
+battery each place shows the time alone. The low-battery anomaly stays only for `top` and `off`,
+where the battery can be out of view: the pill steps back for the island, and `off` shows
+nothing. The clock style `off` and the sidebar's battery toggle still hide each half, and bare
+mode draws no glance outside the rail. `wide` widens the rail but not its workspace marks. This
+bends 2.1 for two readings everyone asks for; nothing else joins them at rest.
 
 Pointing at the rail for `anim.dwell` grows it into the full column: the clock, tray, status
 icons and mode icon, with the workspaces turning from marks into plates. It is not a new panel.
