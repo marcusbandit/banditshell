@@ -2009,9 +2009,11 @@ it the same way: a small time on top, the battery as a level rather than a batte
 - `off`: the rail rests as bare marks.
 
 The blobs go through the chassis like every panel, so the joins melt rather than butt. Without a
-battery each place shows the time alone, in the same spot. The low-battery anomaly went, since the
-battery is always in view. The clock style `off` and the sidebar's battery toggle still hide each
-half. This bends 2.1 for two readings everyone asks for; nothing else joins them at rest.
+battery each place shows the time alone. The low-battery anomaly stays only for `top` and `off`,
+where the battery can be out of view: the pill steps back for the island, and `off` shows
+nothing. The clock style `off` and the sidebar's battery toggle still hide each half, and bare
+mode draws no glance outside the rail. `wide` widens the rail but not its workspace marks. This
+bends 2.1 for two readings everyone asks for; nothing else joins them at rest.
 
 Pointing at the rail for `anim.dwell` grows it into the full column: the clock, tray, status
 icons and mode icon, with the workspaces turning from marks into plates. It is not a new panel.

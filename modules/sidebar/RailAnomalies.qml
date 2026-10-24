@@ -12,7 +12,15 @@ Item {
 
     property string modeIcon: ""
 
+    property bool batteryWanted: false
+
+    readonly property BatteryGlance battery: BatteryGlance {}
+
     readonly property var wanted: Anomalies.list({
+        battery: root.batteryWanted && root.battery.shown,
+        batteryPercent: root.battery.percent,
+        charging: root.battery.charging,
+        batteryIcon: root.battery.icon,
         micShown: Config.values.sidebar.status.sound,
         micStreams: root.micFresh || (Audio.sourceMuted && root.micIds.length > 0),
         micMuted: Audio.sourceMuted,

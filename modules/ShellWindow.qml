@@ -493,6 +493,8 @@ PanelWindow {
             pullSpan: Math.hypot(win.width, win.height)
 
             modeIcon: SettingsState.modeIcon
+
+            glanceReach: Math.max(0, glance.footReach - win.border)
         }
 
         RestingGlance {
@@ -502,10 +504,12 @@ PanelWindow {
             anchors.topMargin: chassis.streamReach
 
             band: Math.max(0, chassis.topBand - chassis.streamReach)
+            frame: chassis.band
             railRight: chassis.barWidth
             railOpen: chassis.railOpen
             sidebarShown: chassis.sidebar
             rail: chassis.rail
+            bare: chassis.bare
             islandOut: islandLayer.out
             yielded: win.underFullscreen || fullscreenBorder.yielded
         }

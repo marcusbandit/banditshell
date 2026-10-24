@@ -1,4 +1,6 @@
 module qs.modules.sidebar
+BatteryGlance 1.0 BatteryGlance.qml
+BatteryReading 1.0 BatteryReading.qml
 RailAnomalies 1.0 RailAnomalies.qml
 RailGlance 1.0 RailGlance.qml
 RailPips 1.0 RailPips.qml

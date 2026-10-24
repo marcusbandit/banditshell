@@ -9,17 +9,18 @@ Item {
 
     property real topInset: 0
     property real bottomInset: 0
+    property real tabsReach: 0
 
     readonly property string place: Config.values.sidebar.glance
     readonly property bool inRail: root.place === "rail" || root.place === "rail top"
     readonly property bool atHead: root.place === "rail top"
     readonly property bool clockShown: Config.values.sidebar.clock.style !== "off"
     readonly property bool oneLine: Config.values.sidebar.clock.style === "one line"
-    readonly property bool batteryShown: Battery.available && Config.values.sidebar.status.battery
 
-    readonly property color levelColour: Battery.low ? Appearance.colour.alarm : Battery.charging ? Appearance.colour.accent : Appearance.colour.text
+    readonly property BatteryGlance battery: BatteryGlance {}
 
-    readonly property real topEdge: root.inRail && !root.atHead ? stack.y : wide.visible ? wide.y : root.height - root.bottomInset
+    readonly property bool footInUse: (stack.visible && !root.atHead) || wide.visible || root.tabsReach > 0
+    readonly property real topEdge: stack.visible && !root.atHead ? stack.y : wide.visible ? wide.y : root.height - root.tabsReach
 
     SystemClock {
         id: clock
@@ -30,7 +31,7 @@ Item {
     Follow {
         id: level
 
-        target: Math.max(0, Math.min(1, Battery.percentage))
+        target: Math.max(0, Math.min(1, root.battery.level))
         speed: Appearance.animation.trackSpeed
         epsilon: 0.001
     }
@@ -41,7 +42,7 @@ Item {
         x: Math.round((root.width - width) / 2)
         y: Math.round(root.atHead ? root.topInset : root.height - root.bottomInset - height)
         spacing: Appearance.padding.large
-        visible: root.inRail && (root.clockShown || root.batteryShown)
+        visible: root.inRail && (root.clockShown || root.battery.shown)
 
         Column {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -56,7 +57,7 @@ Item {
 
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Qt.formatDateTime(clock.date, "mm")
+                text: TimeFormat.minutePart(clock.date)
                 font.pixelSize: Appearance.font.size.small
             }
         }
@@ -71,7 +72,7 @@ Item {
                 id: sideways
 
                 anchors.centerIn: parent
-                text: `${TimeFormat.hourPart(clock.date)}:${Qt.formatDateTime(clock.date, "mm")}`
+                text: TimeFormat.time(clock.date, false)
                 font.pixelSize: Appearance.font.size.small
                 rotation: -90
             }
@@ -84,7 +85,7 @@ Item {
 
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: Appearance.padding.small / 2
-            visible: root.batteryShown
+            visible: root.battery.shown
 
             SquircleRect {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -101,7 +102,7 @@ Item {
                 width: cell.barWidth
                 height: Appearance.font.line.normal * 4
                 pill: "object"
-                color: Battery.low ? Appearance.withAlpha(Appearance.colour.alarm, 0.3) : Appearance.colour.fillStronger
+                color: root.battery.low ? Appearance.withAlpha(Appearance.colour.alarm, 0.3) : Appearance.colour.fillStronger
 
                 SquircleRect {
                     anchors.left: parent.left
@@ -109,15 +110,15 @@ Item {
                     anchors.bottom: parent.bottom
                     height: Math.max(gauge.width, gauge.height * level.value)
                     pill: "object"
-                    color: root.levelColour
+                    color: root.battery.colour
                 }
             }
 
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Battery.percent
+                text: root.battery.percent
                 font.pixelSize: Appearance.font.size.small
-                color: Battery.low ? Appearance.colour.alarm : Appearance.colour.textDim
+                color: root.battery.labelColour
             }
         }
     }
@@ -128,7 +129,7 @@ Item {
         x: Math.round((root.width - width) / 2)
         y: Math.round(root.height - root.bottomInset - height)
         spacing: Appearance.padding.normal
-        visible: root.place === "wide" && (root.clockShown || root.batteryShown)
+        visible: root.place === "wide" && (root.clockShown || root.battery.shown)
 
         Column {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -143,32 +144,14 @@ Item {
 
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Qt.formatDateTime(clock.date, "mm")
+                text: TimeFormat.minutePart(clock.date)
                 font.pixelSize: Appearance.font.size.normal
             }
         }
 
-        Column {
+        BatteryReading {
             anchors.horizontalCenter: parent.horizontalCenter
-            spacing: Appearance.padding.small / 2
-            height: Appearance.font.iconSize + Appearance.font.line.small
-
-            BatteryMeter {
-                anchors.horizontalCenter: parent.horizontalCenter
-                visible: root.batteryShown
-                level: Battery.percentage
-                charging: Battery.charging
-                low: Battery.low
-                colour: root.levelColour
-            }
-
-            StyledText {
-                anchors.horizontalCenter: parent.horizontalCenter
-                visible: root.batteryShown
-                text: `${Battery.percent}%`
-                font.pixelSize: Appearance.font.size.small
-                color: Battery.low ? Appearance.colour.alarm : Appearance.colour.textDim
-            }
+            stacked: true
         }
     }
 }

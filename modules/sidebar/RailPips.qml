@@ -10,7 +10,7 @@ Item {
 
     required property string screen
 
-    readonly property real mark: Math.max(3, Math.round(Appearance.sizes.railWidth * 0.27))
+    readonly property real mark: Math.max(3, Math.round(Appearance.sizes.railMarkWidth * 0.27))
 
     implicitHeight: layout.total
 

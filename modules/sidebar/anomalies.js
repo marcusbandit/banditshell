@@ -1,5 +1,6 @@
 .pragma library
 
+var LOW_BATTERY_PERCENT = 20;
 var TONES = { alarm: 0, accent: 1, dim: 2 };
 var LIMIT = 4;
 
@@ -17,6 +18,18 @@ function updateEntry(state) {
     return null;
 }
 
+function batteryEntry(state) {
+    if (!state.battery || !(state.batteryPercent < LOW_BATTERY_PERCENT))
+        return null;
+    var percent = Math.max(0, Math.round(state.batteryPercent));
+    return {
+        key: "battery",
+        icon: state.batteryIcon || "battery_alert",
+        tone: state.charging ? "accent" : "alarm",
+        title: "battery " + percent + (state.charging ? " percent, charging" : " percent")
+    };
+}
+
 function micEntry(state) {
     if (!state.micShown || !state.micStreams)
         return null;
@@ -32,6 +45,7 @@ function airplaneOn(state) {
 function list(state) {
     var s = state || {};
     var found = [
+        batteryEntry(s),
         micEntry(s),
         s.recording ? { key: "recording", icon: "fiber_manual_record", tone: "alarm", title: "recording the screen" } : null,
         s.vpn ? { key: "vpn", icon: "vpn_lock", tone: "accent", title: "vpn is up" } : null,
