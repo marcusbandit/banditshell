@@ -31,6 +31,12 @@ test("the shipped log parses and is well formed", () => {
     }
 });
 
+test("every shipped line is one short bullet", () => {
+    const doc = JSON.parse(fs.readFileSync(path.join(ROOT, "docs/whats-new.json"), "utf8"));
+    const long = doc.entries.flatMap(e => e.changes.filter(c => c.text.length > 70).map(c => `${e.id}: ${c.text}`));
+    assert.deepStrictEqual(long, [], "a change is 70 characters at most, see docs/agents/whats-new.md");
+});
+
 function impactProblems(raw) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw))
         return ["impact is not an object"];
