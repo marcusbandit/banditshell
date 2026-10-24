@@ -68,12 +68,12 @@ function upgradeLauncher(values) {
 
 function upgradeSidebarClock(values) {
     const clock = values.sidebar?.clock;
-    if (!isPlainObject(clock) || clock.style !== "small")
+    if (!isPlainObject(clock) || !["small", "off"].includes(clock.style))
         return values;
-    const small = { style: "stacked", size: "small" };
+    const choice = clock.style === "small" ? { style: "stacked", size: "small" } : {};
     if (!owns(clock, "wideStyle") && !owns(clock, "wideSize"))
-        Object.assign(small, { wideStyle: "stacked", wideSize: "small" });
-    const sidebar = Object.assign({}, values.sidebar, { clock: Object.assign({}, clock, small) });
+        Object.assign(choice, clock.style === "small" ? { wideStyle: "stacked", wideSize: "small" } : { wideStyle: "off" });
+    const sidebar = Object.assign({}, values.sidebar, { clock: Object.assign({}, clock, choice) });
     return Object.assign({}, values, { sidebar });
 }
 

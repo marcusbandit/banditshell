@@ -17,7 +17,7 @@ Item {
     readonly property bool atHead: root.place === "rail top"
     readonly property bool clockShown: Config.values.sidebar.clock.style !== "off"
     readonly property bool oneLine: Config.values.sidebar.clock.style === "one line"
-    readonly property real timeSize: Config.values.sidebar.clock.size === "large" ? Appearance.font.size.normal : Appearance.font.size.small
+    readonly property real timeSize: Config.values.sidebar.clock.size === "small" ? Appearance.font.size.small : Appearance.font.size.normal
     readonly property bool aligned: root.clockShown && root.timeCentre >= 0
 
     readonly property BatteryGlance battery: BatteryGlance {}
