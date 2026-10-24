@@ -5,6 +5,7 @@ import qs.components
 import qs.services as Services
 
 import qs.modules.menu.content
+import "placement.js" as Placement
 
 Item {
     id: root
@@ -29,6 +30,8 @@ Item {
     readonly property bool rail: Appearance.sizes.sidebarRail
     readonly property real revealed: root.rail ? Math.max(0, Math.min(1, (root.expansion - 0.3) / 0.5)) : 1
     readonly property real railRestWidth: root.fullWidth - Appearance.sizes.sidebarWidth + Appearance.sizes.railWidth
+
+    readonly property real timeCentre: clock.timeShown ? foot.y + clock.y + clock.timeItem.y + clock.timeItem.height / 2 : -1
 
     property bool dwelt: false
     readonly property bool holding: root.menusShown && root.menuKeys.indexOf(root.openKey) >= 0
@@ -93,7 +96,7 @@ Item {
         return group.sideGap + root.cornerRise(group.sideGap) + group.overhang - Appearance.sizes.band;
     }
 
-    readonly property var blobs: root.expansion < 0.98 ? [] : workspaces.blobs.map(b => ({
+    readonly property var blobs: root.expansion < 0.98 || !workspaces.visible ? [] : workspaces.blobs.map(b => ({
                 x: b.x + workspaces.x,
                 y: b.y + workspaces.y,
                 w: b.w,
@@ -129,14 +132,34 @@ Item {
         Workspaces {
             id: workspaces
 
+            readonly property real ceiling: tray.y + tray.height + tray.overhang + Appearance.padding.large
+            readonly property real floor: foot.y - Appearance.padding.large
+            readonly property var place: Placement.between(workspaces.implicitHeight, body.height, workspaces.ceiling, workspaces.floor)
+
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
+            y: workspaces.place.y
+            height: workspaces.implicitHeight
+            visible: workspaces.place.fits
+
+            screen: root.screen
+        }
+
+        RailPips {
+            id: crowded
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+            y: Placement.between(crowded.implicitHeight, body.height, workspaces.ceiling, workspaces.floor).y
+            height: crowded.implicitHeight
+            visible: !workspaces.place.fits
 
             screen: root.screen
         }
 
         Column {
+            id: foot
+
             anchors.bottom: parent.bottom
 
             anchors.bottomMargin: root.endMargin(status)
@@ -218,10 +241,15 @@ Item {
         id: restingContent
 
         Item {
+            id: rest
+
             RailPips {
+                id: pips
+
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
+                y: Placement.between(pips.implicitHeight, rest.height, glance.headEdge + Appearance.padding.large, anomalies.y - Appearance.padding.large).y
+                height: pips.implicitHeight
 
                 screen: root.screen
             }
@@ -234,9 +262,12 @@ Item {
                 topInset: root.endMargin(root.tray) + Appearance.padding.large
                 bottomInset: root.endMargin(root.status) + Appearance.padding.large
                 tabsReach: root.glanceReach
+                timeCentre: root.timeCentre
             }
 
             RailAnomalies {
+                id: anomalies
+
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom

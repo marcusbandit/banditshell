@@ -179,6 +179,27 @@ test.describe("upgrade", () => {
         assert.strictEqual(Configuration.upgradeValue("theme", "niagara"), "niagara");
     });
 
+    test.it("splits the old small sidebar clock into stacked at the small size, rail and open", () => {
+        const old = { sidebar: { clock: { style: "small", date: "day" } } };
+        assert.deepStrictEqual(Configuration.upgrade(old), { sidebar: { clock: { style: "stacked", size: "small", wideStyle: "stacked", wideSize: "small", date: "day" } } });
+        assert.strictEqual(Configuration.upgradeValue("sidebar.clock.style", "small"), "stacked");
+    });
+
+    test.it("keeps an open clock that was already chosen when it upgrades the small one", () => {
+        const old = { sidebar: { clock: { style: "small", wideStyle: "one line" } } };
+        assert.deepStrictEqual(Configuration.upgrade(old).sidebar.clock, { style: "stacked", size: "small", wideStyle: "one line" });
+    });
+
+    test.it("keeps a hidden sidebar clock hidden when the sidebar opens", () => {
+        const old = { sidebar: { clock: { style: "off" } } };
+        assert.deepStrictEqual(Configuration.upgrade(old).sidebar.clock, { style: "off", wideStyle: "off" });
+    });
+
+    test.it("lets a one line clock become stacked when the sidebar opens", () => {
+        const old = { sidebar: { clock: { style: "one line" } } };
+        assert.strictEqual(Configuration.upgrade(old), old);
+    });
+
     test.it("leaves a config without a launcher alone", () => {
         const plain = { theme: "slate" };
         assert.strictEqual(Configuration.upgrade(plain), plain);

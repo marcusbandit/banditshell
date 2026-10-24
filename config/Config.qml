@@ -173,6 +173,9 @@ Singleton {
                 },
                 clock: {
                     style: "one line",
+                    size: "small",
+                    wideStyle: "stacked",
+                    wideSize: "large",
                     date: "day and month"
                 },
 
