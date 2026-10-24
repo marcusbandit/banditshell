@@ -90,5 +90,7 @@ pure functions into a `.js` sibling. See `docs/agents/testing.md`, and
 
 Every push writes its entry in `docs/whats-new.json` at push time - the log
 the shell itself reads out to the user, so it is written for the recipient,
-not the commit log. The Major bar is hard, and agents inflate it: reread the
-last ten entries before classifying. See `docs/agents/whats-new.md`.
+not the commit log. Each change is one short bullet, 70 characters at most:
+what is different now, never why or how. The owner does not read paragraphs.
+The Major bar is hard, and agents inflate it: reread the last ten entries
+before classifying. See `docs/agents/whats-new.md`.

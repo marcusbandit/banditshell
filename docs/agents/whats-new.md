@@ -13,6 +13,28 @@ sentences. No internal jargon, no file paths only the author would know, no
 commit hashes as prose - the entry says what is different now, not what was
 committed.
 
+## Short, always
+
+Set by the owner on 2026-10-25, after a card full of paragraphs that nobody
+read. Each change is one bullet, and a bullet is one short line:
+
+- 70 characters at most, one sentence.
+- Say what is different now. Leave out the cause, the old behaviour and how
+  it works.
+- One bullet per thing the reader would notice. A detail of the same thing
+  folds into its bullet or goes.
+- Most entries have one or two bullets.
+
+| Too long | Right |
+| --- | --- |
+| A fresh install has a wallpaper from the first second: a moonlit pixel landscape that ships with the shell. The default used to point at a picture nothing installed, so the screen stayed black... | Fresh installs start with a wallpaper, not a black screen |
+| The shell starts even when qt6-websockets, which talks to OBS, or qt6-multimedia, which plays sound and video, is missing. One missing module used to leave the whole screen black... | The shell starts without qt6-websockets or qt6-multimedia |
+
+The long story goes elsewhere. A big release gets a post on the blog at
+banditshell.marcusrosado.com for anyone who wants to read through it; a
+small push gets no post, only its bullets. The site has no blog page yet, so
+until it does the detail lives in the PR body.
+
 ## The shape of an entry
 
 Entries are listed newest first. Each entry has:
@@ -21,7 +43,7 @@ Entries are listed newest first. Each entry has:
 | ------------------- | -------------------------------------------------------------------------- |
 | `id`                | The version line the entry ships under. Required. The push date by convention (`2026-09-27`), with `-2`, `-3`... on a second push the same day. The marker the shell stores is this id, so it must be unique and stable. |
 | `date`              | `YYYY-MM-DD`, when the push landed.                                        |
-| `changes`           | One line each, in the order a reader should meet them.                     |
+| `changes`           | One bullet per noticeable thing, in the order a reader should meet them.   |
 | `example`           | `true` on the seed entry only. The shell skips it; the first real entry replaces it. |
 | `impact`            | Optional. What the update does to the person's setup, so the update menu can say so before they press the button. See below. |
 
@@ -31,7 +53,7 @@ Each change carries:
 | --------- | ------------------------------------------------------------------------------------------------------- |
 | `type`    | One of: `issues` (a tracked issue was fixed), `bugs` (something broken was fixed), `features` (something new it can do), `ui` (something looks or moves differently), `config` (config.json keys or files the shell writes changed). |
 | `severity`| `major` or `minor`.                                                                                     |
-| `text`    | The one line the recipient reads.                                                                       |
+| `text`    | The bullet the recipient reads, 70 characters at most. See Short, always.                               |
 
 ## Impact
 
