@@ -279,8 +279,10 @@ test("the outcome tells where the person stands in plain words", () => {
 });
 
 test("a rollback by hand says where it went back to, not that something failed", () => {
-    assert.strictEqual(Update.outcomeText({ ok: false, hand: true, fromLabel: "2026-10-24", toLabel: "2026-10-25", why: "rolled back by hand" }),
-        "Back on 2026-10-24. 2026-10-25 is skipped until a newer version arrives.");
+    const back = { ok: false, hand: true, fromLabel: "2026-10-24", toLabel: "2026-10-25", why: "rolled back by hand" };
+    assert.strictEqual(Update.outcomeText(back, "2026-10-24"),
+        "Back on 2026-10-24; the shell restarted on it. 2026-10-25 is skipped until a newer version arrives.");
+    assert.match(Update.outcomeText(back, "2026-10-25"), /still runs 2026-10-25\. Run banditshell restart to start 2026-10-24\./);
     assert.strictEqual(Update.byHand({ ok: false, why: "rolled back by hand" }), false);
 });
 

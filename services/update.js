@@ -327,15 +327,19 @@ function byHand(result) {
     return !!result && result.ok === false && result.hand === true;
 }
 
-function outcomeText(result) {
+function outcomeText(result, running) {
     if (!result)
         return "";
     const from = result.fromLabel || String(result.from ?? "").slice(0, 7);
     const to = result.toLabel || String(result.to ?? "").slice(0, 7);
     if (result.ok)
         return `Updated to ${to}.`;
-    if (byHand(result))
-        return `Back on ${from}. ${to} is skipped until a newer version arrives.`;
+    if (byHand(result)) {
+        const skipped = `${to} is skipped until a newer version arrives.`;
+        if (!running || running === from)
+            return `Back on ${from}; the shell restarted on it. ${skipped}`;
+        return `Went back to ${from}, but the shell still runs ${running}. Run banditshell restart to start ${from}. ${skipped}`;
+    }
     const why = result.why ? ` ${result.why}.` : "";
     return `Update ${to} did not start, so you are back on ${from}.${why} It will be tried again when a newer version arrives.`;
 }

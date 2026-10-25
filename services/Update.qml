@@ -41,7 +41,7 @@ Singleton {
 
     property var result: null
     readonly property bool resultPending: root.result !== null && root.result.shown !== true
-    readonly property string resultText: Words.outcomeText(root.result)
+    readonly property string resultText: Words.outcomeText(root.result, root.version)
     readonly property bool wentBackByHand: Words.byHand(root.result)
 
     property date checkedAt: new Date(0)

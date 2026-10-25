@@ -141,7 +141,7 @@ Column {
 
         Button {
             visible: Update.resultPending
-            text: "Dismiss"
+            text: "Hide message"
             onClicked: Update.dismissResult()
         }
     }
@@ -154,21 +154,21 @@ Column {
         InkText {
             width: parent.width
             alignInk: true
-            text: `Go back to ${Update.previousVersion}? ${Update.version} is skipped until a newer version arrives.`
+            text: `Go back to ${Update.previousVersion}? The shell restarts on it, and ${Update.version} is skipped until a newer version arrives.`
             wrapMode: Text.Wrap
         }
 
-        StyledText {
+        InkText {
             width: parent.width
-            text: "Your config.json and files this version added elsewhere stay as they are."
-            color: Appearance.colour.textFaint
-            wrapMode: Text.WordWrap
+            alignInk: true
+            text: "Only the shell's own files go back. Your settings and anything else this update changed stay changed."
+            wrapMode: Text.Wrap
         }
 
         ButtonPair {
             id: goBackRow
 
-            actions: [{ text: "Go back", icon: "history" }, { text: "Stay" }]
+            actions: [{ text: "Go back", icon: "history" }, { text: `Stay on ${Update.version}` }]
 
             onTriggered: index => {
                 root.goBackConfirm = false;
@@ -318,7 +318,7 @@ Column {
 
     Button {
         visible: !root.goBackConfirm && root.incoming.length === 0 && root.card.length > 0
-        text: "Got it"
+        text: "Mark as read"
         onClicked: WhatsNew.markSeen(root.card[0].id)
     }
 
