@@ -9,6 +9,7 @@ const kelvin = (s, v) => {
 };
 
 const FILES_SORTS = [["name", "a to z"], ["mtime", "newest"], ["size", "biggest"], ["kind", "type"]];
+const PANEL_SHADES = ["black", "deep", "dark", "medium", "light", "pale", "palest"];
 const FILES_SORT_ORDER = { name: "a to z", mtime: "newest first", size: "biggest first", kind: "grouped by type" };
 
 const MODES = [
@@ -247,7 +248,7 @@ const PAGES_SOURCE = {
                 { n: 43, icon: "colorize", label: "Take it from the wallpaper", k: "fromWall", kind: "toggle", cfg: "themeFromWallpaper", detail: s => s.v("fromWall") ? s.wallName : "", kw: "theme from wallpaper" },
                 { n: 44, icon: "contrast", label: "Highlight colour", k: "accent", kind: "seg", o: [["dim", "soft"], ["mid", "normal"], ["bright", "strong"]], cfg: "colour.accent", kw: "accent strength dim mid bright",
                     why: "Which of the theme’s three highlight colours paints everything that’s on. Soft sits back, strong jumps out." },
-                { n: 45, icon: "layers", label: "Panel shade", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmt: v => ["black", "deep", "dark", "medium", "light", "pale", "palest"][Math.round(v)], cfg: "colour.surface", kw: "surface depth ramp background",
+                { n: 45, icon: "layers", label: "Panel shade", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmt: v => PANEL_SHADES[Math.max(0, Math.min(PANEL_SHADES.length - 1, Math.round(v) || 0))], cfg: "colour.surface", kw: "surface depth ramp background darker lighter",
                     why: "How dark the frame and panels are, picked from the theme’s own shades. Lower is darker." },
                 { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0.5, max: 1, step: 0.01, fmt: v => `${Math.round((1 - v) * 100)}%`, cfg: "material.surfaceAlpha", kw: "transparency" },
                 { n: [], icon: "dark_mode", label: "Dark apps", k: "darkMode", kind: "toggle", detail: s => s.hasDarkMode ? "asks apps to use dark colours" : "no system colour scheme found", dis: s => !s.hasDarkMode, kw: "dark mode light night theme colour scheme apps",

@@ -209,11 +209,12 @@ test("panel shade and highlight colour are found under their old names too", () 
         assert.strictEqual(Catalogue.search(q)[0]?.row.k, "accent", q);
 });
 
-test("highlight colour stores dim, mid and bright under plain names", () => {
+test("highlight colour keeps dim, mid and bright, and every panel shade has a word", () => {
     const row = Catalogue.ROW_BY_KEY.accent;
     assert.deepStrictEqual(Catalogue.options(row, {}).map(o => o[0]), ["dim", "mid", "bright"]);
     assert.strictEqual(Catalogue.show(row, "mid", {}), "normal");
-    assert.strictEqual(Catalogue.show(Catalogue.ROW_BY_KEY.surface, 3, {}), "medium");
+    const shade = Catalogue.ROW_BY_KEY.surface;
+    assert.deepStrictEqual([3, 8, -1, NaN].map(v => Catalogue.show(shade, v, {})), ["medium", "palest", "black", "black"]);
 });
 
 test("resolve takes categories, pages, old names, row keys and config keys", () => {
