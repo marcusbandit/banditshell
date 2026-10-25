@@ -56,8 +56,23 @@ function parse(text) {
     return list.map(entry).filter(e => e);
 }
 
+function idOrder(id) {
+    const hit = /^(\d{4}-\d{2}-\d{2})(?:-(\d+))?$/.exec(String(id ?? "").trim());
+    return hit ? { day: hit[1], push: Number(hit[2] ?? 1) } : null;
+}
+
+function laterThan(a, b) {
+    const x = idOrder(a);
+    const y = idOrder(b);
+    if (x === null || y === null)
+        return false;
+    return x.day !== y.day ? x.day > y.day : x.push > y.push;
+}
+
 function accumulated(entries, seen) {
     const mark = String(seen ?? "");
+    if (mark && laterThan(mark, newestId(entries)))
+        return [];
     const out = [];
     for (const e of entries) {
         if (e.example || !e.changes.length)

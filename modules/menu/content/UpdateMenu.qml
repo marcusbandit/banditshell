@@ -15,8 +15,12 @@ Column {
     readonly property var card: root.incoming.length > 0 ? root.incoming : WhatsNew.pending
 
     property bool declineConfirm: false
+    property bool goBackConfirm: false
 
-    readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth)
+    readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, goBackButton.implicitWidth, goBackRow.implicitWidth)
+
+    onShowingChanged: if (!root.showing)
+        root.goBackConfirm = false
 
     spacing: Appearance.padding.small
 
@@ -100,7 +104,7 @@ Column {
             width: parent.width
             alignInk: true
             text: Update.resultText
-            color: Update.result !== null && Update.result.ok ? Appearance.colour.text : Appearance.colour.updateFailed
+            color: Update.result !== null && (Update.result.ok || Update.wentBackByHand) ? Appearance.colour.text : Appearance.colour.updateFailed
             wrapMode: Text.WordWrap
         }
 
@@ -114,7 +118,7 @@ Column {
 
         StyledText {
             width: parent.width
-            visible: Update.result !== null && !Update.result.ok
+            visible: Update.result !== null && !Update.result.ok && !Update.wentBackByHand
             text: "banditshell log shows what went wrong."
             color: Appearance.colour.textFaint
             wrapMode: Text.WordWrap
@@ -169,7 +173,43 @@ Column {
         style: "accent"
         interactive: !Update.busy
 
-        onClicked: Update.apply()
+        onClicked: Update.state === Update.failed && Update.goingBack ? Update.goBack() : Update.apply()
+    }
+
+    Button {
+        id: goBackButton
+
+        visible: Update.canGoBack && !root.goBackConfirm
+        text: "Go back to the previous version"
+        icon: "history"
+        interactive: !Update.checking
+
+        onClicked: root.goBackConfirm = true
+    }
+
+    Column {
+        width: parent.width
+        visible: Update.canGoBack && root.goBackConfirm
+        spacing: Appearance.padding.small
+
+        InkText {
+            width: parent.width
+            alignInk: true
+            text: `Go back to version ${Update.previousVersion}? The version you are on is skipped until a newer one arrives.`
+            wrapMode: Text.Wrap
+        }
+
+        ButtonPair {
+            id: goBackRow
+
+            actions: [{ text: "Go back", icon: "history" }, { text: "Stay" }]
+
+            onTriggered: index => {
+                root.goBackConfirm = false;
+                if (index === 0)
+                    Update.goBack();
+            }
+        }
     }
 
     Column {

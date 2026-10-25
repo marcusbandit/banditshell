@@ -87,7 +87,7 @@ verb	update	the shell's own version: look, apply, go back
 rule	update
 rule	update check --json,--no-fetch
 rule	update apply --to,--detach,--json
-rule	update rollback
+rule	update rollback --detach,--json
 rule	update status --json
 verb	start	start the shell and wait until it is up
 rule	start

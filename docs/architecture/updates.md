@@ -49,11 +49,15 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    newer one arrives) and the shell is relaunched. If even that launch fails, the last known
    good copy is started. `result.json` records `ok: false` with the reason, and the menu shows it
    until dismissed.
-7. **Roll back by hand.** `banditshell update rollback` does the same reset to `update/previous`
-   and skips what it left. `banditshell update status [--json]` says where the copy stands, the
-   last outcome and the version before the last update.
+7. **Roll back by hand.** `banditshell update rollback [--detach] [--json]` does the same reset to
+   `update/previous` and skips what it left. The check reports that commit as `previous`, with its
+   id as `previousVersion`, while it is an ancestor of HEAD, and the menu then offers "Go back to
+   the previous version", asks once naming that id, and runs `rollback --detach`.
+   `banditshell update status [--json]` says where the copy stands, the last outcome and the
+   version before the last update. What's new shows nothing pending when the seen mark is a
+   newer id than the whole log, which is where a rollback leaves it.
 
-`--detach` runs the whole of apply in a session of its own and writes JSON phase lines to
+`--detach` runs the whole of apply, or of rollback, in a session of its own and writes JSON phase lines to
 `update/progress.log`, which `Update.qml` reads back. A restart or a hot reload cannot kill the
 update that way. A second update at the same time is turned away by a lock on `update/lock`.
 `BANDITSHELL_DRY=1` makes apply print what it would do.

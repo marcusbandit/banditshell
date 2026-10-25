@@ -136,6 +136,17 @@ test("a marker the log no longer contains shows everything", () => {
     assert.deepStrictEqual(WhatsNew.accumulated(log, "trimmed-away"), log);
 });
 
+test("a marker newer than the whole log, as after going back a version, shows nothing", () => {
+    const dated = [
+        { id: "2026-10-24-2", date: "2026-10-24", changes: [{ type: "ui", severity: "minor", text: "Two." }] },
+        { id: "2026-10-24", date: "2026-10-24", changes: [{ type: "ui", severity: "minor", text: "One." }] }
+    ];
+    assert.deepStrictEqual(WhatsNew.accumulated(dated, "2026-10-25"), []);
+    assert.deepStrictEqual(WhatsNew.accumulated(dated, "2026-10-24-3"), []);
+    assert.deepStrictEqual(WhatsNew.accumulated(dated, "2026-10-23").map(e => e.id), ["2026-10-24-2", "2026-10-24"]);
+    assert.deepStrictEqual(WhatsNew.accumulated(dated, "2026-10-24").map(e => e.id), ["2026-10-24-2"]);
+});
+
 test("several skipped pushes accumulate together, newest first", () => {
     const pending = WhatsNew.accumulated(log, "first");
     assert.deepStrictEqual(pending.map(e => e.id), ["third", "skipped"]);

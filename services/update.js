@@ -323,6 +323,10 @@ function phaseOf(line) {
     return doc && typeof doc.phase === "string" ? doc : null;
 }
 
+function byHand(result) {
+    return !!result && result.ok === false && result.why === "rolled back by hand";
+}
+
 function outcomeText(result) {
     if (!result)
         return "";
@@ -330,6 +334,8 @@ function outcomeText(result) {
     const to = result.toLabel || String(result.to ?? "").slice(0, 7);
     if (result.ok)
         return `Updated to ${to}.`;
+    if (byHand(result))
+        return `Back on ${from}. ${to} is skipped until a newer version arrives.`;
     const why = result.why ? ` ${result.why}.` : "";
     return `Update ${to} did not start, so you are back on ${from}.${why} It will be tried again when a newer version arrives.`;
 }

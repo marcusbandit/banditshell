@@ -42,6 +42,7 @@ Singleton {
     property var result: null
     readonly property bool resultPending: root.result !== null && root.result.shown !== true
     readonly property string resultText: Words.outcomeText(root.result)
+    readonly property bool wentBackByHand: Words.byHand(root.result)
 
     property date checkedAt: new Date(0)
 
@@ -54,6 +55,10 @@ Singleton {
     readonly property string channelLabel: Words.channelText(Config.values.updates.channel, Config.values.updates.branch)
     readonly property string version: WhatsNew.version
     property string targetVersion: ""
+    property string previous: ""
+    property string previousVersion: ""
+    readonly property bool canGoBack: root.commit(root.previous) && !root.busy && !root.paused && root.ahead === 0
+    property bool goingBack: false
     readonly property string remote: Config.values.updates.remote
 
     readonly property string dir: Quickshell.shellDir
@@ -77,15 +82,15 @@ Singleton {
         if (root.state === root.updated)
             return "Updated";
         if (root.state === root.rolledback)
-            return "Update rolled back";
+            return root.wentBackByHand ? "Back on the previous version" : "Update rolled back";
         if (root.state === root.restarting)
-            return "Restarting...";
+            return root.goingBack ? "Going back..." : "Restarting...";
         if (root.state === root.verifying)
             return "Checking it loads...";
         if (root.state === root.downloading)
             return "Updating...";
         if (root.state === root.failed)
-            return "Update failed";
+            return root.goingBack ? "Going back failed" : "Update failed";
         if (root.paused)
             return `This copy is on ${root.headBranch === "HEAD" ? "no branch" : root.headBranch}, so it does not follow ${root.branch}`;
         if (root.diverged)
@@ -147,6 +152,7 @@ Singleton {
             root.error = "Nothing has been checked yet. Refresh first.";
             return;
         }
+        root.goingBack = false;
         root.state = root.downloading;
         root.phaseText = "Getting it...";
         root.warnings = [];
@@ -156,6 +162,23 @@ Singleton {
         silence.restart();
 
         Quickshell.execDetached(["bash", root.cli, "update", "apply", "--detach", "--to", root.target]);
+    }
+
+    function goBack(): void {
+        if (!root.canGoBack || root.checking)
+            return;
+
+        root.error = "";
+        root.goingBack = true;
+        root.state = root.restarting;
+        root.phaseText = "Going back...";
+        root.warnings = [];
+        root.lastPhase = "";
+        root.startedAt = Math.floor(Date.now() / 1000) - 1;
+        watchdog.restart();
+        silence.restart();
+
+        Quickshell.execDetached(["bash", root.cli, "update", "rollback", "--detach"]);
     }
 
     function restart(): void {
@@ -211,7 +234,9 @@ Singleton {
             root.ahead = 0;
             root.state = root.updated;
             resultFile.reload();
+            Qt.callLater(root.inspect, false);
         } else if (last.phase === "rolledback") {
+            root.previous = "";
             root.state = root.rolledback;
             resultFile.reload();
         } else if (last.phase === "failed") {
@@ -300,10 +325,10 @@ Singleton {
 
         interval: 30000
         onTriggered: {
-            if (root.state !== root.downloading || root.lastPhase !== "")
+            if (!root.busy || root.lastPhase !== "")
                 return;
             root.state = root.failed;
-            root.error = "The update did not start. banditshell update status tells where this copy stands.";
+            root.error = `${root.goingBack ? "Going back" : "The update"} did not start. banditshell update status tells where this copy stands.`;
         }
     }
 
@@ -376,6 +401,8 @@ Singleton {
                 root.headBranch = got.headBranch ?? "";
                 root.target = root.commit(got.target ?? "") ? got.target : "";
                 root.targetVersion = got.targetVersion ?? "";
+                root.previous = root.commit(got.previous ?? "") ? got.previous : "";
+                root.previousVersion = got.previousVersion ?? "";
                 root.behind = counts ? Number(got.behind) || 0 : 0;
                 root.ahead = counts ? Number(got.ahead) || 0 : 0;
                 root.entries = got.entries ?? [];

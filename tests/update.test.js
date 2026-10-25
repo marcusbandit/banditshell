@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { report, explain, setAside, ago, nameStatus, classify, summary, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, following };")();
+const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, following };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -276,6 +276,12 @@ test("the outcome tells where the person stands in plain words", () => {
     assert.strictEqual(Update.outcomeText({ ok: true, to: "abcdef123", toLabel: "2026-10-18" }), "Updated to 2026-10-18.");
     assert.strictEqual(Update.outcomeText({ ok: false, from: "1111111aaa", to: "2222222bbb", why: "The shell did not answer" }),
         "Update 2222222 did not start, so you are back on 1111111. The shell did not answer. It will be tried again when a newer version arrives.");
+});
+
+test("a rollback by hand says where it went back to, not that something failed", () => {
+    assert.strictEqual(Update.outcomeText({ ok: false, fromLabel: "2026-10-24", toLabel: "2026-10-25", why: "rolled back by hand" }),
+        "Back on 2026-10-24. 2026-10-25 is skipped until a newer version arrives.");
+    assert.strictEqual(Update.byHand({ ok: false, why: "the new version did not start" }), false);
 });
 
 test("a channel is stable or main, and anything else reads as main", () => {

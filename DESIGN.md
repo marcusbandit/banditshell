@@ -1628,8 +1628,10 @@ banditshell/
 │   │                            needed, commands changed"), the What's new
 │   │                            entries of the change BEFORE it is taken,
 │   │                            one button that says Update or Update and
-│   │                            restart, and the outcome of the last
-│   │                            update, a rollback included. The What's
+│   │                            restart, Go back to the previous version
+│   │                            once one is recorded, asked once, and the
+│   │                            outcome of the last update, a rollback
+│   │                            included. The What's
 │   │                            new card is marked seen when dismissed
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)
