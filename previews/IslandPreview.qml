@@ -1007,8 +1007,71 @@ ShellRoot {
             },
             wait: 1500,
             expect: "hidden"
+        },
+        {
+            name: "three notifications pop up",
+            run: () => {
+                Moments.offerUndo();
+                preview.notify("Firefox", "Download finished", "linux-zen-6.17.tar.zst", false);
+                preview.notify("Signal", "Mum", "call me when you get a minute", false);
+                preview.notify("Discord", "marcus", "are you coming tonight?", false);
+                preview.order = Notifications.popups.map(e => e.summary).join("|");
+                preview.mine = Notifications.popups.slice();
+            },
+            wait: 1200,
+            expect: "3 notifications stacked"
+        },
+        {
+            name: "flick the front one away: Discord dismissed, its mark and Undo",
+            run: () => island.flickFront(1),
+            wait: 1500,
+            expect: "2 notifications stacked, below it: activity",
+            holds: () => Notifications.shelved === 1 && preview.undoRow()?.text === "Discord dismissed" && preview.undoRow()?.data?.entry === preview.mine[0]
+        },
+        {
+            name: "Undo puts it back on top of the stack",
+            run: () => preview.pressUndo(),
+            wait: 1500,
+            expect: "3 notifications stacked",
+            holds: () => Notifications.shelved === 0 && !preview.undoRow() && Notifications.popups.map(e => e.summary).join("|") === preview.order
+        },
+        {
+            name: "clear all: 3 notifications cleared, with Undo",
+            run: () => island.clearNotifications(null),
+            wait: 2000,
+            expect: "activity",
+            holds: () => Notifications.shelved === 3 && preview.undoRow()?.text === "3 notifications cleared" && !Notifications.history.some(e => preview.mine.includes(e))
+        },
+        {
+            name: "Undo brings all three back as they were",
+            run: () => preview.pressUndo(),
+            wait: 1500,
+            expect: "3 notifications stacked",
+            holds: () => Notifications.shelved === 0 && Notifications.popups.map(e => e.summary).join("|") === preview.order
+        },
+        {
+            name: "clear all and wait: the row goes after five seconds and so do they",
+            run: () => island.clearNotifications(null),
+            wait: Notifications.undoMs + 2500,
+            expect: "hidden",
+            holds: () => Notifications.shelved === 0 && !preview.undoRow() && !Notifications.history.some(e => preview.mine.includes(e))
         }
     ]
+
+    property string order: ""
+    property var mine: []
+
+    function undoRow(): var {
+        return Activities.shown.find(i => i.id === "moment:undo") ?? null;
+    }
+
+    function pressUndo(): void {
+        const row = preview.undoRow();
+        if (row)
+            Activities.activate(Object.assign({}, row, {
+                action: "undo"
+            }));
+    }
 
     function remember(app: string, summary: string, body: string): void {
         const entry = entryComponent.createObject(preview, {

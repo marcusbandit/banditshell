@@ -822,10 +822,13 @@ Item {
     onHoveringChanged: {
         if (!root.hovering && !root.reforming)
             root.spent = false;
-        if (root.hovering)
+        if (root.hovering) {
             Notifications.pause(root);
-        else
+            Notifications.holdShelf(root);
+        } else {
             Notifications.resume(root);
+            Notifications.releaseShelf(root);
+        }
         Qt.callLater(root.arrange);
     }
 
@@ -867,6 +870,7 @@ Item {
             entry.release(root);
         Notices.release(root);
         Notifications.resume(root);
+        Notifications.releaseShelf(root);
     }
 
     Timer {
@@ -1556,6 +1560,7 @@ Item {
                     y: root.deckY + root.dealY
                     width: root.largeWidth
                     entries: root.deckEntries
+                    clearQuiet: Notifications.shelved > 0
                     fanned: fan.value
                     maxHeight: Math.max(root.compactHeight * 4, ((root.host?.height ?? 1080) - root.islandTop) * 0.55)
                     opacity: deckFade.value * presence.value

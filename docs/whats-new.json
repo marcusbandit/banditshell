@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-18",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Dismissed or cleared notifications can be undone for five seconds"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-17",
       "date": "2026-10-25",
       "changes": [
