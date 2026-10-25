@@ -24,6 +24,6 @@ function outcome(typed) {
     if (typed === false)
         return "Nothing typed";
     if (typed === true)
-        return "Rest discarded";
+        return "Partly typed";
     return "Discarded";
 }

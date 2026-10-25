@@ -175,11 +175,11 @@ ShellRoot {
             holds: () => island.rowOfKind("dictation")?.look.text === "Nothing typed"
         },
         {
-            name: "close the island: it says so at rest",
+            name: "close the island: it says so at rest, with no button beside it",
             run: () => island.pinned = false,
             wait: 600,
             expect: "dictation",
-            holds: () => island.rowOfKind("dictation")?.look.text === "Nothing typed"
+            holds: () => island.rowOfKind("dictation")?.look.text === "Nothing typed" && !island.rowOfKind("dictation")?.look.trailing
         },
         {
             name: "then it leaves",
@@ -188,7 +188,7 @@ ShellRoot {
             expect: "hidden"
         },
         {
-            name: "streaming, some words already typed, then discard: Rest discarded",
+            name: "streaming, some words already typed, then discard: Partly typed",
             run: () => {
                 preview.speak("listening");
                 Dictation.phase = "idle";
@@ -197,7 +197,7 @@ ShellRoot {
             },
             wait: 1400,
             expect: "dictation",
-            holds: () => island.rowOfKind("dictation")?.look.text === "Rest discarded"
+            holds: () => island.rowOfKind("dictation")?.look.text === "Partly typed"
         },
         {
             name: "and that leaves too",
@@ -225,7 +225,7 @@ ShellRoot {
             },
             wait: 100,
             expect: "hidden",
-            holds: () => !["Nothing typed", "Rest discarded", "Discarded"].includes(island.rowOfKind("dictation")?.look.text)
+            holds: () => !["Nothing typed", "Partly typed", "Discarded"].includes(island.rowOfKind("dictation")?.look.text)
         },
         {
             name: "and it is gone",

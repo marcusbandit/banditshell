@@ -64,11 +64,6 @@ Item {
             return {
                 text: `${root.count}`
             };
-        if (root.kind === "dictation" && Dictation.cancelled)
-            return {
-                icon: "close",
-                tone: Appearance.colour.textFaint
-            };
         if (root.kind === "external" && a.state === "ended")
             return {
                 icon: a.outcome === "failed" ? "priority_high" : a.outcome === "cancelled" ? "close" : "check",

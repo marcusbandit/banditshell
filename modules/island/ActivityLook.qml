@@ -37,10 +37,7 @@ QtObject {
                     icon: "mic_off",
                     tone: Appearance.colour.textFaint,
                     text: Dictation.outcome,
-                    dim: true,
-                    trailing: "icon",
-                    trailingIcon: "cancel",
-                    trailingTone: Appearance.colour.textFaint
+                    dim: true
                 };
             return {
                 icon: "mic",
