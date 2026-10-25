@@ -5,9 +5,9 @@
   "owns": {
     "qml": ["modules/ipc/DisplayIpc.qml"],
     "services": ["Backlight", "DarkMode", "Display", "Tablet"],
-    "js": ["services/brightness.js", "services/ddcutil.js", "services/nightlight.js"],
+    "js": ["services/brightness.js", "services/dark-mode.js", "services/ddcutil.js", "services/nightlight.js"],
     "scripts": ["scripts/tablet-state.py"],
-    "tests": ["tests/ddcutil.test.js", "tests/nightlight.test.js"],
+    "tests": ["tests/dark-mode.test.js", "tests/ddcutil.test.js", "tests/nightlight.test.js"],
     "src": [
       "src/bs-gamma.c",
       "src/gamma-client-protocol.c",
@@ -25,6 +25,6 @@
   },
   "config": {
     "namespace": ["screen", "tablet"],
-    "reads": []
+    "reads": ["colour"]
   }
 }

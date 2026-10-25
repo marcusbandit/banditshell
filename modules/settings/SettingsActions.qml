@@ -58,6 +58,8 @@ Singleton {
                     Wallpaper.replayOn(name, x, y);
                 return;
             }
+        case "nightSchedule":
+            return SettingsView.go("light");
         case "exportCfg":
             return root.exportSettings();
         case "importCfg":

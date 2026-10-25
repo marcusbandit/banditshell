@@ -243,15 +243,15 @@ const PAGES_SOURCE = {
         status: s => `${s.v("fromWall") ? "wallpaper" : s.v("theme")} · ${s.v("accent")}`,
         groups: [
             { rows: [
+                { n: [], icon: "dark_mode", label: "Light or dark", k: "scheme", kind: "seg", o: ["light", "dark", "auto"], cfg: "colour.mode", detail: s => s.schemeDetail, extra: { icon: "schedule", tip: "set night light’s schedule", act: "nightSchedule" }, kw: "dark mode dark apps light mode night theme colour scheme apps appearance auto",
+                    why: "Sets the shell and every app that follows the system colour scheme. Auto goes dark while night light warms the screens, on its schedule under Light and warmth." },
                 { n: 42, kind: "w", w: "themes", kw: "theme palette" },
                 { n: 43, icon: "colorize", label: "Take it from the wallpaper", k: "fromWall", kind: "toggle", cfg: "themeFromWallpaper", detail: s => s.v("fromWall") ? s.wallName : "", kw: "theme from wallpaper" },
                 { n: 44, icon: "contrast", label: "Accent", k: "accent", kind: "seg", o: ["dim", "mid", "bright"], cfg: "colour.accent", kw: "accent strength",
                     why: "Which of the theme’s three accents leads. Dim sits back, bright jumps out." },
                 { n: 45, icon: "layers", label: "Surface depth", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmt: v => `ramp ${v}`, cfg: "colour.surface",
                     why: "Which step of the theme ramp the frame and panels are painted with. Lower is darker." },
-                { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0.5, max: 1, step: 0.01, fmt: v => `${Math.round((1 - v) * 100)}%`, cfg: "material.surfaceAlpha", kw: "transparency" },
-                { n: [], icon: "dark_mode", label: "Dark apps", k: "darkMode", kind: "toggle", detail: s => s.hasDarkMode ? "asks apps to use dark colours" : "no system colour scheme found", dis: s => !s.hasDarkMode, kw: "dark mode light night theme colour scheme apps",
-                    why: "Asks apps that follow the system colour scheme to use dark colours. The shell’s own colours come from the theme above." }
+                { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0.5, max: 1, step: 0.01, fmt: v => `${Math.round((1 - v) * 100)}%`, cfg: "material.surfaceAlpha", kw: "transparency" }
             ] }
         ]
     },
@@ -1064,7 +1064,7 @@ function nameOf(page, s) {
 }
 
 function whyOf(row, s) {
-    return row.why || (row.kind === "w" ? WIDGET_WHY[row.w] || "" : "") || val(row.detail, s) || "";
+    return val(row.why, s) || (row.kind === "w" ? WIDGET_WHY[row.w] || "" : "") || val(row.detail, s) || "";
 }
 
 function numbers(row) {

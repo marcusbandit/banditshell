@@ -3,28 +3,136 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.config
+import "dark-mode.js" as Schemes
 
 Singleton {
     id: root
 
     property string scheme: ""
 
+    property string lightScheme: "default"
+
+    property string wanted: ""
+
+    property string sending: ""
+
+    property string before: ""
+
     readonly property bool available: root.scheme !== ""
 
     readonly property bool dark: root.scheme === "prefer-dark"
 
+    readonly property string mode: Appearance.mode
+
+    readonly property bool wantsDark: !Appearance.light
+
+    readonly property bool settled: Config.loaded && root.available
+
+    readonly property bool appsDisagree: root.available && root.dark !== root.wantsDark
+
+    property bool scheduled: false
+
+    property bool night: true
+
+    property double nextFlip: 0
+
     function take(text: string): void {
-        const m = /'([a-z-]+)'/.exec(text);
-        if (m)
-            root.scheme = m[1];
+        const next = Schemes.parse(text);
+        if (!next)
+            return;
+        root.scheme = next;
+        root.lightScheme = Schemes.lightAfter(root.lightScheme, next);
+    }
+
+    function choose(next: string): void {
+        Config.set("colour.mode", next);
     }
 
     function set(on: bool): void {
-        root.scheme = on ? "prefer-dark" : "default";
-        Quickshell.execDetached(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", root.scheme]);
+        const next = Schemes.schemeFor(on, root.lightScheme);
+        root.wanted = next;
+        if (writer.running)
+            return;
+        root.write();
+    }
+
+    function write(): void {
+        if (root.wanted === "" || root.wanted === root.scheme) {
+            root.wanted = "";
+            return;
+        }
+        root.sending = root.wanted;
+        root.before = root.scheme;
+        root.scheme = root.sending;
+        writer.exec(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", root.sending]);
+    }
+
+    function written(code: int): void {
+        root.scheme = Schemes.afterWrite(code, root.sending, root.before);
+        if (code !== 0)
+            console.warn(`DarkMode: gsettings could not set color-scheme to ${root.sending} (exit ${code}), so apps keep ${root.scheme}`);
+        if (root.wanted === root.sending || code !== 0)
+            root.wanted = "";
+        root.sending = "";
+        reader.running = true;
+        root.write();
+    }
+
+    function evaluate(): void {
+        const now = Date.now();
+        const at = Display.nightAt(now);
+        root.scheduled = at.known;
+        root.night = at.night;
+        root.nextFlip = at.next;
+        Appearance.daylight = !at.night;
+        if (root.mode !== "auto")
+            return flip.stop();
+        flip.interval = Math.max(1000, Math.min(60000, at.next > now ? at.next - now + 500 : 60000));
+        flip.restart();
+    }
+
+    onWantsDarkChanged: {
+        if (root.settled)
+            root.set(root.wantsDark);
+    }
+
+    onSettledChanged: {
+        if (root.settled && root.mode === "auto")
+            root.set(root.wantsDark);
+    }
+
+    onModeChanged: root.evaluate()
+
+    Component.onCompleted: root.evaluate()
+
+    Connections {
+        target: Display
+
+        function onWarmWindowChanged(): void {
+            root.evaluate();
+        }
+
+        function onScheduleModeChanged(): void {
+            root.evaluate();
+        }
+    }
+
+    Timer {
+        id: flip
+
+        onTriggered: root.evaluate()
     }
 
     Process {
+        id: writer
+
+        onExited: (code, status) => root.written(code)
+    }
+
+    Process {
+        id: reader
+
         running: true
         command: ["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"]
         stdout: StdioCollector {
