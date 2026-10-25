@@ -1904,7 +1904,7 @@ Singleton {
     readonly property bool lightShell: Appearance.light
 
     readonly property string schemeDetail: {
-        const apps = !DarkMode.available ? "apps keep their own colours" : DarkMode.appsDisagree ? `apps are still ${DarkMode.dark ? "dark" : "light"}` : "shell and apps";
+        const apps = !DarkMode.available ? "apps keep their own colours" : DarkMode.appsDisagree ? `apps still ${DarkMode.dark ? "dark" : "light"}` : "shell and apps";
         if (Appearance.mode !== "auto")
             return apps;
         const flip = DarkMode.nextFlip > 0 ? `${DarkMode.night ? "dark" : "light"} until ${TimeFormat.time(new Date(DarkMode.nextFlip), false)}` : DarkMode.night ? "dark" : "light all day";
