@@ -41,3 +41,12 @@ function candidates(keys, rules, limit) {
     }
     return out;
 }
+
+function restored(rules, key, was) {
+    const next = Object.assign({}, rules);
+    if (was === undefined)
+        delete next[key];
+    else
+        next[key] = was;
+    return next;
+}

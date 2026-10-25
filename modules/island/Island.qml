@@ -1560,7 +1560,7 @@ Item {
                     y: root.deckY + root.dealY
                     width: root.largeWidth
                     entries: root.deckEntries
-                    clearQuiet: Notifications.shelved > 0
+                    clearQuiet: Notifications.shelved > 0 || Notifications.hushed !== null
                     fanned: fan.value
                     maxHeight: Math.max(root.compactHeight * 4, ((root.host?.height ?? 1080) - root.islandTop) * 0.55)
                     opacity: deckFade.value * presence.value

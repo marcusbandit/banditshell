@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/notification-rules.js"), "utf8");
-const Rules = new Function(src + "\nreturn { ruleFor, keyFor, withRule, fromList, candidates };")();
+const Rules = new Function(src + "\nreturn { ruleFor, keyFor, withRule, fromList, candidates, restored };")();
 
 test("an app with no rule pops, sounds and keeps its body off the lock screen", () => {
     assert.deepStrictEqual(Rules.ruleFor({}, "firefox"), { pop: true, snd: true, lock: false, muteUntil: 0 });
@@ -60,4 +60,11 @@ test("muting for a while and unmuting go through the same rule", () => {
     assert.deepStrictEqual(muted.signal, { pop: true, snd: true, lock: false, muteUntil: 9000 });
     const back = Rules.withRule(muted, "signal", { pop: true, snd: true, muteUntil: 0 });
     assert.deepStrictEqual(back.signal, { pop: true, snd: true, lock: false, muteUntil: 0 });
+});
+
+test("undoing a mute puts the rule back exactly, or removes one that was not there", () => {
+    const rules = { signal: { pop: true, snd: false, lock: true, muteUntil: 0 } };
+    const muted = Rules.withRule(Rules.withRule(rules, "signal", { muteUntil: 9000 }), "steam", { pop: false, snd: false });
+    assert.deepStrictEqual(Rules.restored(Rules.restored(muted, "steam", undefined), "signal", rules.signal), rules);
+    assert.ok(!("steam" in Rules.restored(muted, "steam", undefined)));
 });

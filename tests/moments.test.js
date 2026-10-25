@@ -188,6 +188,12 @@ test.describe("undo", () => {
         assert.strictEqual(A.sweep(pushed.list, 60 * 60 * 1000).length, 1);
     });
 
+    test.it("says what happened to a snoozed or muted app", () => {
+        assert.strictEqual(M.undoSpec(["Discord"], null, "snoozed").text, "Discord snoozed");
+        assert.strictEqual(M.undoSpec(["Discord"], null, "muted").text, "Discord muted");
+        assert.deepStrictEqual(M.undoSpec(["Discord"], null, "muted").actions, [{ name: "undo", label: "Undo" }]);
+    });
+
     test.it("posts nothing when the shelf is empty", () => {
         assert.strictEqual(M.undoSpec([]), null);
     });

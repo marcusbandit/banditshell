@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-20",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Snooze a notification or mute its app from its card in the island"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Quiet mode in the island: 1 hour, until tomorrow, or always"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-19",
       "date": "2026-10-25",
       "changes": [

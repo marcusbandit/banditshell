@@ -50,10 +50,12 @@ Column {
             required property string modelData
 
             readonly property var switches: Notifications.ruleAt(rule.modelData)
+            readonly property string muteLeft: Notifications.muteLeft(rule.modelData)
 
             width: root.width
             interactive: false
             label: Apps.nameFor(rule.modelData)
+            detail: rule.muteLeft ? `muted · ${rule.muteLeft}` : ""
             onPointed: SettingsView.hovered = root.row
             lead: Component {
                 AppMark {
@@ -65,6 +67,16 @@ Column {
             Row {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 0
+
+                Button {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: rule.muteLeft !== ""
+                    size: 0
+                    text: "Unmute"
+                    onClicked: Notifications.setRule(rule.modelData, {
+                        muteUntil: 0
+                    })
+                }
 
                 Repeater {
                     model: root.fields

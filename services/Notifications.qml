@@ -27,10 +27,12 @@ Singleton {
 
     property double now: Date.now()
 
+    readonly property bool muting: Object.values(root.rules).some(rule => rule?.muteUntil > root.now)
+
     Timer {
         interval: 30000
         repeat: true
-        running: root.history.length > 0
+        running: root.history.length > 0 || root.muting
         onTriggered: root.now = Date.now()
     }
 
@@ -246,6 +248,10 @@ Singleton {
         return Timing.muted(rule, Date.now()) ? rule.muteUntil : 0;
     }
 
+    function muteLeft(appKey: string): string {
+        return Timing.mutedLine(root.ruleAt(appKey).muteUntil, root.now);
+    }
+
     function isMuted(appKey: string): bool {
         const rule = root.ruleAt(appKey);
         return !rule.pop || Timing.muted(rule, Date.now());
@@ -376,6 +382,59 @@ Singleton {
         return true;
     }
 
+    property var hushed: null
+
+    function hush(entry: var, kind: string, choice: string): bool {
+        if (!entry || entry.leaving)
+            return false;
+        const ms = Timing.hushLength(choice, Date.now(), root.nightTo);
+        const key = root.ruleKeyFor(entry);
+        const record = {
+            kind: kind,
+            entry: entry,
+            app: entry.appName,
+            key: key,
+            was: Object.prototype.hasOwnProperty.call(root.rules, key) ? root.rules[key] : undefined,
+            popups: root.popups.map((e, at) => ({
+                        entry: e,
+                        at: at
+                    })).filter(p => kind === "snooze" ? p.entry === entry : kind === "mute" && root.ruleKeyFor(p.entry) === key),
+            seen: entry.seen
+        };
+        if (kind === "snooze" ? !(ms > 0) : kind === "mute" ? ms < 0 : kind !== "unmute")
+            return false;
+        root.letGo();
+        if (kind === "snooze")
+            root.snooze(entry, ms);
+        else if (kind === "unmute")
+            root.unmute(key);
+        else {
+            root.mute(key, ms);
+            for (const p of record.popups)
+                root.expire(p.entry);
+        }
+        root.hushed = record;
+        return true;
+    }
+
+    function unhush(record: var): void {
+        if (record.kind === "snooze") {
+            root.snoozed = root.snoozed.filter(item => item.entry !== record.entry);
+            if (record.entry)
+                record.entry.seen = record.seen;
+        } else {
+            Config.set("notifications.rules", Rules.restored(root.rules, record.key, record.was));
+        }
+        const back = record.popups.filter(p => p.entry && root.history.includes(p.entry));
+        for (const p of back) {
+            p.entry.leaving = false;
+            p.entry.leaveElapsed = 0;
+        }
+        root.leaving = root.leaving.filter(e => !back.some(p => p.entry === e));
+        if (back.length > 0)
+            root.showPopups(Shelf.placed(root.popups, back));
+    }
+
     function wake(entry: var): void {
         if (!root.history.includes(entry) || entry.leaving)
             return;
@@ -441,6 +500,9 @@ Singleton {
 
         root.erase(entry.cached);
 
+        if (root.hushed?.entry === entry && root.hushed.kind === "snooze")
+            root.hushed = null;
+
         entry.destroy();
     }
 
@@ -479,6 +541,7 @@ Singleton {
     }
 
     function shelve(records: var): void {
+        root.hushed = null;
         const entries = records.map(r => r.entry);
         root.history = root.history.filter(e => !entries.includes(e));
         root.popups = root.popups.filter(e => !entries.includes(e));
@@ -509,6 +572,13 @@ Singleton {
     }
 
     function undo(): bool {
+        const record = root.hushed;
+        if (record) {
+            root.hushed = null;
+            root.shelfElapsed = 0;
+            root.unhush(record);
+            return true;
+        }
         const records = root.shelf;
         if (records.length === 0)
             return false;
@@ -529,6 +599,7 @@ Singleton {
 
     function letGo(): void {
         const records = root.shelf;
+        root.hushed = null;
         root.shelf = [];
         root.shelfElapsed = 0;
         for (const r of records)
@@ -538,7 +609,7 @@ Singleton {
     Timer {
         interval: 100
         repeat: true
-        running: root.shelf.length > 0 && root.shelfHeldBy.length === 0
+        running: (root.shelf.length > 0 || root.hushed !== null) && root.shelfHeldBy.length === 0
 
         onTriggered: {
             root.shelfElapsed += interval;

@@ -155,14 +155,14 @@ function wifiSpec(name, kind, message) {
     };
 }
 
-function undoSpec(apps, only) {
+function undoSpec(apps, only, done) {
     const count = (apps || []).length;
     if (count === 0)
         return null;
     return {
         id: "moment:undo",
         style: "undo",
-        text: count === 1 ? `${preview(apps[0], COPIED_PREVIEW) || "Notification"} dismissed` : `${count} notifications cleared`,
+        text: count === 1 ? `${preview(apps[0], COPIED_PREVIEW) || "Notification"} ${done || "dismissed"}` : `${count} notifications cleared`,
         icon: "notifications",
         data: { entry: count === 1 ? only || null : null },
         priority: 40,

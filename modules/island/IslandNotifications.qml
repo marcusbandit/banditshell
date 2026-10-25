@@ -28,6 +28,8 @@ Item {
         return root.quiet ? `${count} · quiet mode on` : count;
     }
 
+    readonly property string quietChoice: !root.quiet ? "" : Notifications.quietUntil > 0 ? Notifications.endsLabel(Notifications.quietUntil) : Notifications.parseEnds("never")
+
     readonly property real deckRoom: root.maxHeight > 0 ? Math.max(0, root.maxHeight - root.topInset - header.implicitHeight - controls.implicitHeight - root.gap * 3 - root.pad) : 100000
 
     readonly property real bottomInset: Notifications.history.length > 0 ? Math.max(0, Appearance.padding.small - Appearance.stroke.line - deck.footerShown) : root.pad
@@ -69,30 +71,41 @@ Item {
             id: controls
 
             width: parent.width
-            implicitHeight: quietButton.implicitHeight
-
-            Button {
-                id: quietButton
-
-                size: 0
-                style: "plate"
-                icon: "notifications_paused"
-                text: "Quiet mode"
-                checkable: true
-                checked: Notifications.quiet
-
-                onToggled: Notifications.setQuiet(!Notifications.quiet, "")
-            }
+            implicitHeight: quietChoices.implicitHeight
 
             StyledText {
-                anchors.left: quietButton.right
-                anchors.leftMargin: Appearance.padding.normal
-                anchors.right: parent.right
-                anchors.verticalCenter: quietButton.verticalCenter
-                visible: root.quiet
-                text: Notifications.endsNote
+                id: quietLabel
+
+                anchors.left: parent.left
+                anchors.verticalCenter: quietChoices.verticalCenter
+                text: "Quiet"
                 color: Appearance.colour.textDim
-                elide: Text.ElideRight
+            }
+
+            Row {
+                id: quietChoices
+
+                anchors.left: quietLabel.right
+                anchors.leftMargin: Appearance.padding.normal
+                spacing: Appearance.padding.small
+
+                Repeater {
+                    model: [["hour", "1 hour"], ["tomorrow", "tomorrow"], ["never", "always"]]
+
+                    delegate: Button {
+                        required property var modelData
+
+                        readonly property string ends: Notifications.parseEnds(modelData[0])
+
+                        size: 0
+                        style: "ring"
+                        text: checked && Notifications.quietUntil > 0 ? Notifications.endsNote : modelData[1]
+                        checkable: true
+                        checked: root.quietChoice === ends
+
+                        onToggled: Notifications.setQuiet(!checked, checked ? "" : ends)
+                    }
+                }
             }
         }
 
