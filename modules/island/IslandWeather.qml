@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -21,6 +22,9 @@ Item {
     readonly property var range: Forecast.weekRange(root.days)
     readonly property real barWidth: Appearance.padding.small
     readonly property real barHeight: Appearance.font.line.normal * 3
+    readonly property bool failed: Weather.wanted && Weather.failure !== ""
+    readonly property bool blank: root.failed && !Weather.ready
+    readonly property var look: Weather.failureLook
 
     implicitHeight: root.maxHeight > 0 ? Math.min(root.natural, root.maxHeight) : root.natural
 
@@ -53,15 +57,15 @@ Item {
 
             TaskHeader {
                 width: parent.width
-                icon: Weather.icon
-                title: Weather.ready ? `${Weather.temperature} ${Weather.summary.trim()}` : "Weather"
-                subtitle: Weather.place
+                icon: root.blank ? root.look.icon : Weather.icon
+                title: Weather.ready ? `${Weather.temperature} ${Weather.summary.trim()}` : root.blank ? root.look.title : "Weather"
+                subtitle: Weather.stale ? `${Weather.place}, ${Weather.ageText(age.date.getTime())}` : !root.blank ? Weather.place : Weather.failure === "place" ? Weather.failedFor : root.look.detail
                 onClosed: root.hide()
             }
 
             StyledText {
                 width: parent.width
-                visible: !Weather.forecastReady
+                visible: !Weather.forecastReady && !root.failed
                 text: Weather.wanted ? "Loading the forecast" : "Weather is turned off in settings"
                 color: Appearance.colour.textDim
             }
@@ -162,6 +166,42 @@ Item {
                     }
                 }
             }
+
+            Item {
+                width: parent.width
+                height: Math.max(note.implicitHeight, again.implicitHeight)
+                visible: root.failed
+
+                StyledText {
+                    id: note
+
+                    anchors.left: parent.left
+                    anchors.right: again.left
+                    anchors.rightMargin: Appearance.padding.normal
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Weather.stale ? root.look.title : Weather.failure === "place" ? root.look.detail : ""
+                    color: Appearance.colour.textDim
+                    elide: Text.ElideRight
+                }
+
+                Button {
+                    id: again
+
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    icon: "refresh"
+                    text: Weather.loading ? "Trying" : "Try again"
+                    interactive: !Weather.loading
+                    onClicked: Weather.retry()
+                }
+            }
         }
+    }
+
+    SystemClock {
+        id: age
+
+        precision: SystemClock.Minutes
+        enabled: root.watched && Weather.stale
     }
 }

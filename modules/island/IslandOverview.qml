@@ -144,7 +144,7 @@ Item {
                     y: weather.y - root.spotPad / 2
                     width: weather.width + root.spotPad * 2
                     height: weather.height + root.spotPad
-                    visible: Weather.ready
+                    visible: weather.visible
                     kind: "weather"
                 }
 
@@ -239,11 +239,11 @@ Item {
                     anchors.rightMargin: -(weatherInk.advanceWidth - weatherInk.tightBoundingRect.x - weatherInk.tightBoundingRect.width)
                     y: clockBox.line - weatherText.baselineOffset
                     spacing: Appearance.padding.hair
-                    visible: Weather.ready
+                    visible: Weather.ready || Weather.wanted && Weather.failure !== ""
 
                     Icon {
                         anchors.verticalCenter: weatherText.verticalCenter
-                        name: Weather.icon
+                        name: Weather.ready ? Weather.icon : Weather.failureLook.icon
                         size: Appearance.font.size.small
                         color: Appearance.colour.textDim
                     }
@@ -251,7 +251,8 @@ Item {
                     StyledText {
                         id: weatherText
 
-                        text: Weather.temperature
+                        visible: Weather.ready
+                        text: Weather.ready ? Weather.temperature : ""
                         color: Appearance.colour.textDim
                     }
                 }

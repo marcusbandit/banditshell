@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-6",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Weather says when it could not load, with Try again"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "An older forecast stays up with its age when an update fails"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A place the weather does not know says so and names the setting"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-5",
       "date": "2026-10-25",
       "changes": [

@@ -6,7 +6,7 @@
     "qml": ["modules/ipc/ClockIpc.qml"],
     "services": ["Clock", "Localisation", "Weather"],
     "js": ["services/alarms.js", "services/localisation.js", "services/weather.js"],
-    "tests": ["tests/alarms.test.js", "tests/localisation.test.js", "tests/weather.test.js"]
+    "tests": ["tests/alarms.test.js", "tests/fixtures/weather", "tests/localisation.test.js", "tests/weather.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor"],
