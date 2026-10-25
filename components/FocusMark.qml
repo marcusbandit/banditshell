@@ -15,6 +15,6 @@ SquircleRect {
 
     radius: root.pill !== "" ? Math.min(root.width, root.height) / 2 : root.around + root.reach
     stroke: Appearance.colour.accent
-    strokeWidth: Appearance.stroke.ring
+    strokeWidth: root.shown ? Appearance.stroke.ring : 0
     visible: root.shown
 }

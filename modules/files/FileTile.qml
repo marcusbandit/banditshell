@@ -58,7 +58,7 @@ Item {
 
     Column {
         anchors.centerIn: parent
-        width: parent.width - Appearance.padding.small
+        width: parent.width - mark.reach * 2 - Appearance.padding.small
         spacing: Appearance.padding.hair
         visible: !root.row
 

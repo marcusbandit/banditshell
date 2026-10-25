@@ -38,6 +38,12 @@ Item {
 
     function reveal(index: int): void {
         grid.positionViewAtIndex(index, GridView.Contain);
+        const top = Math.floor(index / root.columns) * root.cellHeight - grid.topMargin;
+        const bottom = top + root.cellHeight + grid.topMargin + grid.bottomMargin;
+        if (top < grid.contentY)
+            grid.contentY = top;
+        else if (bottom > grid.contentY + grid.height)
+            grid.contentY = bottom - grid.height;
     }
 
     GridView {

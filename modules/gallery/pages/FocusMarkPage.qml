@@ -108,7 +108,7 @@ Item {
 
         Row {
             anchors.horizontalCenter: parent.horizontalCenter
-            spacing: Appearance.padding.small
+            spacing: Appearance.padding.normal
 
             Tile {
                 caption: "selected"

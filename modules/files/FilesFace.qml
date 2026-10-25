@@ -39,6 +39,10 @@ Item {
             if (!Files.searching)
                 root.forceActiveFocus();
         }
+
+        function onWindowOpenChanged(): void {
+            keys.clear();
+        }
     }
 
     Keys.onPressed: event => {
