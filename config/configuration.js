@@ -75,6 +75,14 @@ function upgradeFilesUndo(values) {
     return Object.assign({}, values, { files });
 }
 
+function upgradeFilesRefresh(values) {
+    const grid = values.files?.grid;
+    if (!isPlainObject(grid) || owns(grid, "F5") || Object.values(grid).includes("refresh"))
+        return values;
+    const files = Object.assign({}, values.files, { grid: Object.assign({}, grid, { F5: "refresh" }) });
+    return Object.assign({}, values, { files });
+}
+
 function upgradeLauncher(values) {
     if (!isPlainObject(values.launcher))
         return values;
@@ -103,7 +111,7 @@ function upgradeSidebarClock(values) {
 function upgrade(values) {
     if (!isPlainObject(values))
         return values;
-    return upgradeFilesUndo(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values))));
+    return upgradeFilesRefresh(upgradeFilesUndo(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values)))));
 }
 
 function holds(node, segment) {

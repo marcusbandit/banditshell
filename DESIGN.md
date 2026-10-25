@@ -3836,6 +3836,23 @@ NAMES, not indices, because the listing is retaken after anything that might
 have changed it and an index into the previous listing is a different file in the
 next one.
 
+**The open folder watches itself, and only while the window is open.** `bs-ls
+--watch` holds one inotify watch on the folder and sleeps in the kernel until
+something changes; it never polls. A burst, an unzip or a download landing, is
+one line after it goes quiet, or one a second while it does not. A listing that
+comes back identical is dropped before it reaches the grid, and a folder of
+more than 5,000 entries waits, while the storm lasts, three times what its last
+listing cost before the next, so a storm cannot take more than a quarter of the frame time. Smaller
+folders are never held back, however busy the machine is. Sorting
+is a merge sort of our own: the engine's `Array.prototype.sort` goes quadratic
+on a descending run followed by an ascending one, which is exactly how readdir
+returns a folder that just had thousands of files added, and 34,000 names took
+over a minute. The watcher dies with the window,
+moves with the folder, and exits when the shell's end of its pipe closes, so a
+crashed shell leaves nothing behind. With it running, the shell's own
+operations no longer schedule a refresh of their own: the watcher sees them
+too.
+
 **Right click opens components/ActionSheet.qml**, the same sheet the clipboard
 and the launcher open on a row - so it arrived knowing how to be arrowed through,
 and the actions are handed in as data exactly as they are there.

@@ -73,6 +73,7 @@ Item {
             zoomin: "Bigger",
             zoomout: "Smaller",
             zoomreset: "Reset the size",
+            refresh: "Refresh",
             settings: "These settings"
         })
 

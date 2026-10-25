@@ -187,16 +187,24 @@ Singleton {
         root.search = "";
         root.searching = false;
         root.refresh();
+        root.watch();
         root.remember();
     }
 
     property int generation: 0
     property var latestListing: null
+    property bool listing: false
+    property bool again: false
+    property bool watched: false
+    property string lastListing: ""
 
     function refresh(): void {
         if (!root.cwd)
             return;
         root.generation += 1;
+        root.listing = true;
+        root.again = false;
+        root.watched = false;
         if (root.latestListing)
             root.latestListing.running = false;
         root.latestListing = lister.createObject(root, {
@@ -209,7 +217,18 @@ Singleton {
     function take(generation: int, text: string): void {
         if (generation !== root.generation)
             return;
+        root.listing = false;
+        const again = root.again;
+        if (text !== root.lastListing) {
+            root.lastListing = text;
+            root.adopt(text);
+        }
+        if (again)
+            root.relistNow();
+    }
 
+    function adopt(text: string): void {
+        const began = Date.now();
         const was = root.cursor;
         try {
             const answer = JSON.parse(text);
@@ -228,6 +247,8 @@ Singleton {
             const at = Math.min(Math.max(was, 0), root.visible.length - 1);
             root.cursorName = at >= 0 ? root.visible[at].name : "";
         }
+        root.landedAt = root.watched ? Date.now() : 0;
+        root.cost = Date.now() - began;
     }
 
     Component {
@@ -244,6 +265,85 @@ Singleton {
 
             onRunningChanged: if (!listing.running)
                 listing.destroy()
+        }
+    }
+
+    property real landedAt: 0
+    property real cost: 0
+
+    Timer {
+        id: pace
+
+        onTriggered: root.relist()
+    }
+
+    function relist(): void {
+        const wait = root.entries.length < 5000 ? 0 : root.landedAt + root.cost * 3 - Date.now();
+        if (wait > 0) {
+            pace.interval = wait;
+            if (!pace.running)
+                pace.start();
+            return;
+        }
+        if (root.listing)
+            root.again = true;
+        else
+            root.relistNow();
+    }
+
+    function relistNow(): void {
+        root.refresh();
+        root.watched = true;
+    }
+
+    property var watcher: null
+    property bool watching: false
+
+    function watch(): void {
+        pace.stop();
+        root.cost = 0;
+        if (root.watcher)
+            root.watcher.running = false;
+        root.watcher = null;
+        root.watching = false;
+        if (!root.windowOpen || root.helpersMissing || !root.cwd)
+            return;
+        root.watcher = folderWatch.createObject(root, {
+            command: [root.helper("bs-ls"), "--watch", root.cwd],
+            running: true
+        });
+    }
+
+    function heard(from: var, line: string): void {
+        if (from !== root.watcher)
+            return;
+        if (line === "ready")
+            root.watching = true;
+        else if (line === "changed")
+            root.relist();
+    }
+
+    Component {
+        id: folderWatch
+
+        Process {
+            id: watching
+
+            stdinEnabled: true
+
+            stdout: SplitParser {
+                onRead: line => root.heard(watching, line)
+            }
+
+            onRunningChanged: {
+                if (watching.running)
+                    return;
+                if (root.watcher === watching) {
+                    root.watcher = null;
+                    root.watching = false;
+                }
+                watching.destroy();
+            }
         }
     }
 
@@ -414,6 +514,7 @@ Singleton {
             root.helpersMissing = code !== 0;
             if (!root.helpersMissing)
                 root.refresh();
+            root.watch();
         }
     }
 
@@ -426,10 +527,13 @@ Singleton {
         target: root
 
         function onWindowOpenChanged(): void {
+            root.watch();
             if (!root.windowOpen)
                 return;
             if (root.entries.length === 0)
                 root.checkHelpers();
+            else
+                root.refresh();
 
             root.refreshPlaces();
         }
@@ -626,7 +730,8 @@ Singleton {
     }
 
     function restat(): void {
-        settle.restart();
+        if (!root.watching)
+            settle.restart();
     }
 
     Timer {
@@ -993,6 +1098,9 @@ Singleton {
             return true;
         case "home":
             root.go(root.home);
+            return true;
+        case "refresh":
+            root.refresh();
             return true;
         }
 
