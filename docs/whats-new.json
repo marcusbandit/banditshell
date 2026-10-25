@@ -8,6 +8,11 @@
           "type": "features",
           "severity": "minor",
           "text": "Type ? in the launcher to see every search word with an example"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Long launcher lists fade at the edge when more rows follow"
         }
       ]
     },

@@ -10,6 +10,8 @@ ListView {
 
     readonly property real anchor: wheel.goal
 
+    property real revealMargin: 0
+
     boundsBehavior: Flickable.DragAndOvershootBounds
 
     function scrollTo(y: real): void {
@@ -19,15 +21,20 @@ ListView {
     function reveal(index: int): void {
         if (root.count <= 0)
             return;
-        const item = root.itemAtIndex(index);
+        let item = root.itemAtIndex(index);
+        if (!item) {
+            wheel.stop();
+            root.positionViewAtIndex(index, ListView.Contain);
+            item = root.itemAtIndex(index);
+        }
         const rowHeight = root.contentHeight / root.count;
         const top = item ? item.y : index * rowHeight;
         const bottom = top + (item ? item.height : rowHeight);
 
-        if (top < root.anchor)
-            root.scrollTo(top);
-        else if (bottom > root.anchor + root.height)
-            root.scrollTo(bottom - root.height);
+        if (top < root.anchor + root.revealMargin)
+            root.scrollTo(top - root.revealMargin);
+        else if (bottom > root.anchor + root.height - root.revealMargin)
+            root.scrollTo(bottom - root.height + root.revealMargin);
     }
 
     function reset(): void {

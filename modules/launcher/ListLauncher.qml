@@ -1150,6 +1150,17 @@ LauncherConcept {
                         opacity: (1 - gridIn.value) * viewIn.listShown
                         clip: true
 
+                        readonly property real fade: Appearance.font.line.normal * 1.5
+
+                        revealMargin: list.layer.enabled ? list.fade : 0
+
+                        layer.enabled: list.contentHeight > list.height
+                        layer.effect: ShaderEffect {
+                            readonly property vector4d fades: Qt.vector4d(list.atYBeginning ? 0 : list.fade, list.atYEnd ? 0 : list.fade, height, 1)
+
+                            fragmentShader: Qt.resolvedUrl("../../components/edgefade.frag.qsb")
+                        }
+
                         model: ScriptModel {
                             values: root.results
                             objectProp: "key"
