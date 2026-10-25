@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-16",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings search keeps your words after a pick; Enter goes to the next"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-15",
       "date": "2026-10-25",
       "changes": [

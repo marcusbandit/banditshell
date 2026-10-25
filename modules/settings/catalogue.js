@@ -1112,6 +1112,17 @@ function search(query) {
     return hits.filter((x, i, a) => a.findIndex(y => y.label === x.label && y.page === x.page) === i).slice(0, 12);
 }
 
+function hitIndexOf(hits, openUid) {
+    return Math.max(0, hits.findIndex(h => h.row.uid === openUid));
+}
+
+function hitToOpen(hits, index, openUid, currentPage) {
+    const h = hits[index];
+    if (!h || h.row.uid !== openUid || h.page.id !== currentPage || hits.length < 2)
+        return index;
+    return (index + 1) % hits.length;
+}
+
 const ALIASES = {
     network: "wifi", ethernet: "wired", hotspot: "vpn", sound: "output", audio: "output", microphone: "mic", monitors: "screens", display: "screens",
     brightness: "light", theme: "colour", font: "type", appearance: "colour", general: "windows", keybinds: "shortcuts", hotkeys: "shortcuts",

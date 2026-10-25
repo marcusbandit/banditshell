@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf"]);
+const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "hitIndexOf", "hitToOpen", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf"]);
 const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "anchor", "nudge", "resize", "fit"]);
 const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "extent", "rects", "board", "lit", "struck", "fromSheet"]);
 const Frames = lib(path.join(SETTINGS, "scenes/keyframes.js"), ["bezier", "STANDARD", "ARRIVE", "BACK", "at", "pulse", "steps"]);
@@ -195,6 +195,20 @@ test("search matches labels, keywords and config keys, and takes a list number",
     assert.ok(Catalogue.search("charge limit").some(h => h.page.id === "battery"));
     assert.ok(Catalogue.search("volume").length <= 12);
     assert.strictEqual(Catalogue.search("nothing like this at all").length, 0);
+});
+
+test("enter on a search hit that is already open steps to the next match", () => {
+    const hits = Catalogue.search("volume");
+    assert.ok(hits.length > 2);
+    const [a, b] = hits;
+    assert.strictEqual(Catalogue.hitToOpen(hits, 0, "", a.page.id), 0);
+    assert.strictEqual(Catalogue.hitToOpen(hits, 0, a.row.uid, a.page.id), 1);
+    assert.strictEqual(Catalogue.hitToOpen(hits, 0, a.row.uid, "nowhere"), 0);
+    assert.strictEqual(Catalogue.hitToOpen(hits, 1, a.row.uid, b.page.id), 1);
+    assert.strictEqual(Catalogue.hitToOpen(hits, hits.length - 1, hits[hits.length - 1].row.uid, hits[hits.length - 1].page.id), 0);
+    assert.strictEqual(Catalogue.hitToOpen([a], 0, a.row.uid, a.page.id), 0);
+    assert.strictEqual(Catalogue.hitIndexOf(hits, b.row.uid), 1);
+    assert.strictEqual(Catalogue.hitIndexOf(hits, "gone"), 0);
 });
 
 test("dark, dark mode, light, night and theme all find the dark apps row", () => {

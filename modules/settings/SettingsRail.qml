@@ -18,8 +18,9 @@ Item {
     readonly property bool listingRecent: SettingsView.searchFocused && SettingsView.query.trim() === ""
     readonly property var recent: SettingsState.changes.slice(0, 6)
     property int hitIndex: 0
+    property string openUid: ""
 
-    onHitsChanged: root.hitIndex = 0
+    onHitsChanged: root.hitIndex = Catalogue.hitIndexOf(root.hits, root.openUid)
 
     Component.onDestruction: Prompts.release(root)
 
@@ -27,7 +28,7 @@ Item {
         query.forceActiveFocus();
     }
 
-    function openHit(i: int): void {
+    function openHit(i: int, keepFocus: bool): void {
         if (root.listingRecent) {
             const c = root.recent[i];
             const found = c ? Catalogue.resolve(c.k) : null;
@@ -36,8 +37,13 @@ Item {
                     page: Catalogue.PAGE_BY_ID[found.page],
                     row: found.row
                 });
-        } else if (root.hits[i])
+        } else if (root.hits[i]) {
+            root.hitIndex = i;
+            root.openUid = root.hits[i].row.uid;
             SettingsView.openHit(root.hits[i]);
+            if (keepFocus)
+                return;
+        }
         query.focus = false;
     }
 
@@ -82,7 +88,10 @@ Item {
             selectedTextColor: Appearance.colour.accentText
 
             text: SettingsView.query
-            onTextEdited: SettingsView.query = text
+            onTextEdited: {
+                root.openUid = "";
+                SettingsView.query = text;
+            }
             onActiveFocusChanged: {
                 SettingsView.searchFocused = activeFocus;
                 if (activeFocus)
@@ -97,7 +106,7 @@ Item {
                     root.hitIndex = Math.max(0, Math.min(n - 1, root.hitIndex + (event.key === Qt.Key_Down ? 1 : -1)));
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    root.openHit(root.hitIndex);
+                    root.openHit(root.listingRecent ? root.hitIndex : Catalogue.hitToOpen(root.hits, root.hitIndex, root.openUid, SettingsView.current), true);
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Escape) {
                     if (query.text)
@@ -332,7 +341,7 @@ Item {
                     label: root.listingRecent ? hit.modelData.label : hit.modelData.label
                     detail: root.listingRecent ? `${hit.modelData.from} → ${hit.modelData.to}` : `${Catalogue.CAT_BY_ID[hit.modelData.page.cat].name.toLowerCase()} · ${Catalogue.nameOf(hit.modelData.page, SettingsState).toLowerCase()}`
                     active: hit.index === root.hitIndex
-                    onPicked: root.openHit(hit.index)
+                    onPicked: root.openHit(hit.index, false)
                 }
             }
         }
