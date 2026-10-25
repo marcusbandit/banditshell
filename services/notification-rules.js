@@ -41,3 +41,26 @@ function candidates(keys, rules, limit) {
     }
     return out;
 }
+
+const HUSHED = ["pop", "snd", "muteUntil"];
+
+function muted(rule, now) {
+    return (!rule.pop && !rule.snd) || rule.muteUntil > now;
+}
+
+function unmuted(rule, now) {
+    return rule.muteUntil > now && (rule.pop || rule.snd) ? { muteUntil: 0 } : { pop: true, snd: true, muteUntil: 0 };
+}
+
+function restored(rules, key, was) {
+    const back = ruleFor(was === undefined ? {} : { [key]: was }, key);
+    const rule = ruleFor(rules, key);
+    for (const field of HUSHED)
+        rule[field] = back[field];
+    const next = Object.assign({}, rules);
+    if (was === undefined && Object.keys(DEFAULT_RULE).every(field => rule[field] === DEFAULT_RULE[field]))
+        delete next[key];
+    else
+        next[key] = rule;
+    return next;
+}

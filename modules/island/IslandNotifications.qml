@@ -28,6 +28,17 @@ Item {
         return root.quiet ? `${count} · quiet mode on` : count;
     }
 
+    property double quietAt: Date.now()
+    readonly property var quietChoices: Notifications.hushChoices(root.quietAt)
+
+    Timer {
+        interval: 10000
+        repeat: true
+        running: !root.quiet && root.visible
+        triggeredOnStart: true
+        onTriggered: root.quietAt = Date.now()
+    }
+
     readonly property real deckRoom: root.maxHeight > 0 ? Math.max(0, root.maxHeight - root.topInset - header.implicitHeight - controls.implicitHeight - root.gap * 3 - root.pad) : 100000
 
     readonly property real bottomInset: Notifications.history.length > 0 ? Math.max(0, Appearance.padding.small - Appearance.stroke.line - deck.footerShown) : root.pad
@@ -59,7 +70,7 @@ Item {
             id: header
 
             width: parent.width
-            icon: "notifications"
+            icon: root.quiet ? "do_not_disturb_on" : "notifications"
             title: "Notifications"
             subtitle: root.subtitle
             onClosed: root.hide()
@@ -69,30 +80,73 @@ Item {
             id: controls
 
             width: parent.width
-            implicitHeight: quietButton.implicitHeight
+            implicitHeight: root.quiet ? quietOff.implicitHeight : quietChoices.implicitHeight
 
-            Button {
-                id: quietButton
+            StyledText {
+                id: quietLabel
 
-                size: 0
-                style: "plate"
-                icon: "notifications_paused"
-                text: "Quiet mode"
-                checkable: true
-                checked: Notifications.quiet
+                anchors.left: parent.left
+                y: (Math.max(Appearance.sizes.minTarget, Appearance.button.height(0)) - implicitHeight) / 2
+                visible: !root.quiet
+                text: "Quiet"
+                color: Appearance.colour.textDim
+            }
 
-                onToggled: Notifications.setQuiet(!Notifications.quiet, "")
+            Column {
+                id: quietChoices
+
+                anchors.left: quietLabel.right
+                anchors.leftMargin: Appearance.padding.normal
+                anchors.right: parent.right
+                visible: !root.quiet
+                spacing: Appearance.padding.small * 1.5
+
+                Flow {
+                    width: parent.width
+                    spacing: Appearance.padding.small
+
+                    Repeater {
+                        model: root.quietChoices
+
+                        delegate: Button {
+                            required property var modelData
+
+                            size: 0
+                            style: "ring"
+                            text: modelData.text
+                            detail: modelData.detail
+                            onClicked: Notifications.quietTill(modelData.until)
+                        }
+                    }
+                }
+
+                Button {
+                    size: 0
+                    style: "ring"
+                    text: "until I turn it off"
+                    onClicked: Notifications.quietTill(0)
+                }
             }
 
             StyledText {
-                anchors.left: quietButton.right
-                anchors.leftMargin: Appearance.padding.normal
-                anchors.right: parent.right
-                anchors.verticalCenter: quietButton.verticalCenter
+                anchors.left: parent.left
+                anchors.right: quietOff.left
+                anchors.rightMargin: Appearance.padding.normal
+                anchors.verticalCenter: quietOff.verticalCenter
                 visible: root.quiet
-                text: Notifications.endsNote
-                color: Appearance.colour.textDim
+                text: Notifications.quietLine || "Quiet"
                 elide: Text.ElideRight
+            }
+
+            Button {
+                id: quietOff
+
+                anchors.right: parent.right
+                visible: root.quiet
+                size: 0
+                style: "ring"
+                text: "turn off"
+                onClicked: Notifications.setQuiet(false, "")
             }
         }
 

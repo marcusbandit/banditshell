@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/notification-shelf.js"), "utf8");
-const Shelf = new Function(src + "\nreturn { shelve, restored, placed, homes };")();
+const Shelf = new Function(src + "\nreturn { shelve, restored, placed, homes, hushedPopups };")();
 
 const at = time => ({ time });
 
@@ -61,4 +61,12 @@ test("a transient card with nowhere to go is let go for real", () => {
     assert.deepStrictEqual(homes.history, []);
     assert.deepStrictEqual(homes.popups, [{ entry: shown, at: 0 }]);
     assert.deepStrictEqual(homes.gone, [closed]);
+});
+
+test("a snooze puts away its own card, a mute every card from that app, in place", () => {
+    const [a, b, c] = [{ n: "a" }, { n: "b" }, { n: "c" }];
+    const keys = ["discord", "signal", "discord"];
+    assert.deepStrictEqual(Shelf.hushedPopups([a, b, c], keys, c, "discord", "snooze"), [{ entry: c, at: 2 }]);
+    assert.deepStrictEqual(Shelf.hushedPopups([a, b, c], keys, a, "discord", "mute"), [{ entry: a, at: 0 }, { entry: c, at: 2 }]);
+    assert.deepStrictEqual(Shelf.hushedPopups([a, b, c], keys, a, "discord", "unmute"), []);
 });
