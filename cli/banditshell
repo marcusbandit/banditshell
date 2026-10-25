@@ -185,7 +185,8 @@
 #                                stage the new version, check that it loads,
 #                                move the checkout up, restart when it needs
 #                                one and go back on its own if it does not start
-#   banditshell update rollback  the version before the last update; it is
+#   banditshell update rollback [--detach] [--json]
+#                                the version before the last update; it is
 #                                skipped until a newer one arrives
 #   banditshell update status [--json]
 #                                where this copy stands, the last update's
@@ -3187,7 +3188,7 @@ config_leaf() {
 
 UPDATE_JSON=0
 UPDATE_APPLYING=0
-U_DIR="" U_REMOTE="" U_CHANNEL="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET="" U_BEHIND=0 U_AHEAD=0 U_STATE=""
+U_DIR="" U_REMOTE="" U_CHANNEL="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET="" U_PREVIOUS="" U_BEHIND=0 U_AHEAD=0 U_STATE=""
 A_RESTART=0 A_HELPERS=0 A_DEPS="" A_DIRTY="" A_BLOCKED="" A_BUTTON="" A_SUMMARY=""
 U_WARNINGS=()
 HEALTH_WHY=""
@@ -3213,7 +3214,7 @@ update_fail() {
             lines+=("$line")
         done <<<"$text"
         if [ "$UPDATE_APPLYING" = 1 ]; then
-            printf '{"phase":"failed","text":%s,"output":%s}\n' "$(json_quote "$(update_explain "$text")")" "$(json_list "${lines[@]}")"
+            printf '{"phase":"failed","text":%s,"output":%s,"at":%s}\n' "$(json_quote "$(update_explain "$text")")" "$(json_list "${lines[@]}")" "$(date +%s)"
         else
             printf '{"state":"error","output":%s}\n' "$(json_list "${lines[@]}")"
         fi
@@ -3302,6 +3303,11 @@ update_read() {
     else
         U_STATE=current
     fi
+    U_PREVIOUS=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
+    if [ "$U_STATE" = paused ] || [ "$U_AHEAD" -gt 0 ] || ! [[ $U_PREVIOUS =~ ^[0-9a-f]{40,64}$ ]] ||
+        [ "$U_PREVIOUS" = "$U_HEAD" ] || ! ugit merge-base --is-ancestor "$U_PREVIOUS" HEAD 2>/dev/null; then
+        U_PREVIOUS=""
+    fi
 }
 
 update_fetched_at() {
@@ -3314,15 +3320,17 @@ update_fetched_at() {
 update_meta() {
     printf '%s\n' "state=$U_STATE" "head=$U_HEAD" "target=$U_TARGET" "channel=$U_CHANNEL" "branch=$U_BRANCH" "headBranch=$U_BRANCH_NOW" \
         "remote=$U_REMOTE" "behind=$U_BEHIND" "ahead=$U_AHEAD" "skipped=$([ "$U_STATE" = skipped ] && echo 1 || echo 0)" \
-        "checkedAt=$(update_fetched_at)" "version=$(update_label "$U_HEAD")" "targetVersion=$(update_label "$U_TARGET")"
+        "checkedAt=$(update_fetched_at)" "version=$(update_label "$U_HEAD")" "targetVersion=$(update_label "$U_TARGET")" \
+        "previous=$U_PREVIOUS" "previousVersion=$(update_label "$U_PREVIOUS")"
 }
 
 update_meta_json() {
-    printf '{"state":%s,"head":%s,"target":%s,"channel":%s,"branch":%s,"headBranch":%s,"remote":%s,"behind":%s,"ahead":%s,"skipped":%s,"checkedAt":%s,"version":%s,"targetVersion":%s' \
+    printf '{"state":%s,"head":%s,"target":%s,"channel":%s,"branch":%s,"headBranch":%s,"remote":%s,"behind":%s,"ahead":%s,"skipped":%s,"checkedAt":%s,"version":%s,"targetVersion":%s,"previous":%s,"previousVersion":%s' \
         "$(json_quote "$U_STATE")" "$(json_quote "$U_HEAD")" "$(json_quote "$U_TARGET")" "$(json_quote "$U_CHANNEL")" "$(json_quote "$U_BRANCH")" \
         "$(json_quote "$U_BRANCH_NOW")" "$(json_quote "$U_REMOTE")" "$U_BEHIND" "$U_AHEAD" \
         "$([ "$U_STATE" = skipped ] && echo true || echo false)" "$(update_fetched_at)" \
-        "$(json_quote "$(update_label "$U_HEAD")")" "$(json_quote "$(update_label "$U_TARGET")")"
+        "$(json_quote "$(update_label "$U_HEAD")")" "$(json_quote "$(update_label "$U_TARGET")")" \
+        "$(json_quote "$U_PREVIOUS")" "$(json_quote "$(update_label "$U_PREVIOUS")")"
 }
 
 update_facts() {
@@ -3428,14 +3436,14 @@ update_label() {
 }
 
 update_result() {
-    local ok="$1" why="$2" from to aside_items=() line
+    local ok="$1" why="$2" hand="${3:-false}" from to aside_items=() line
     from=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
     to=$(cat "$UPDATE_STATE/target" 2>/dev/null || true)
     while IFS= read -r line; do
         [ -z "$line" ] || aside_items+=("$line")
     done 2>/dev/null <"$UPDATE_STATE/aside" || true
-    printf '{"ok":%s,"from":%s,"to":%s,"fromLabel":%s,"toLabel":%s,"why":%s,"aside":%s,"log":%s,"at":%s,"shown":false}\n' \
-        "$ok" "$(json_quote "$from")" "$(json_quote "$to")" "$(json_quote "$(update_label "$from")")" \
+    printf '{"ok":%s,"hand":%s,"from":%s,"to":%s,"fromLabel":%s,"toLabel":%s,"why":%s,"aside":%s,"log":%s,"at":%s,"shown":false}\n' \
+        "$ok" "$hand" "$(json_quote "$from")" "$(json_quote "$to")" "$(json_quote "$(update_label "$from")")" \
         "$(json_quote "$(update_label "$to")")" "$(json_quote "$why")" "$(json_list "${aside_items[@]}")" \
         "$(json_quote "$FAILED_LOG")" "$(date +%s)" >"$UPDATE_STATE/result.json.next"
     mv -f "$UPDATE_STATE/result.json.next" "$UPDATE_STATE/result.json"
@@ -3666,7 +3674,7 @@ update_conclude() {
 }
 
 update_roll_back() {
-    local why="$1" relaunch="$2" previous target out
+    local why="$1" relaunch="$2" hand="${3:-false}" previous target out
     previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
     target=$(cat "$UPDATE_STATE/target" 2>/dev/null || true)
     if dry; then
@@ -3674,6 +3682,7 @@ update_roll_back() {
         return 0
     fi
     if ! out=$(ugit reset --keep --quiet "$previous" 2>&1); then
+        [ "$hand" = true ] && update_fail "$out"
         update_result false "$why. Going back failed too: $(printf '%s' "$out" | tail -1)"
         update_phase failed "$why. Going back failed too."
         return 1
@@ -3689,23 +3698,42 @@ update_roll_back() {
             start_backup || true
         fi
     fi
-    update_result false "$why"
-    complain "update $(update_label "$target") did not start, back on $(update_label "$previous")"
+    update_result false "$why" "$hand"
+    [ "$hand" = true ] || complain "update $(update_label "$target") did not start, back on $(update_label "$previous")"
     update_phase rolledback "Went back to $(update_label "$previous")"
 }
 
 update_rollback() {
-    local previous target head
+    local previous target head arg detach=0
     UPDATE_JSON=0
+    [ -z "${BANDITSHELL_JSON:-}" ] || UPDATE_JSON=1
+    for arg in "$@"; do
+        case "$arg" in
+        --json) UPDATE_JSON=1 ;;
+        --detach) detach=1 ;;
+        *) say_usage "update rollback [--detach] [--json]" ;;
+        esac
+    done
     UPDATE_APPLYING=1
+    if [ "$detach" = 1 ] && ! dry; then
+        mkdir -p "$UPDATE_STATE"
+        : >"$UPDATE_STATE/progress.log"
+        (cd "$HOME" && detach "$(readlink -f "${BASH_SOURCE[0]}")" update rollback --json 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log")
+        return 0
+    fi
     update_prepare
     dry || update_lock -n
+    [ "$UPDATE_JSON" = 0 ] || update_phase goback "Going back..."
+    update_read
+    [ "$U_STATE" != paused ] || update_fail "fatal: $(update_state_text)"
+    [ "$U_AHEAD" -eq 0 ] || update_fail "fatal: this copy has $U_AHEAD commit(s) of its own, and going back would take them off the branch"
     previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
     head=$(ugit rev-parse HEAD)
     [ -n "$previous" ] && [ "$previous" != "$head" ] || update_fail "fatal: there is no earlier version recorded to go back to"
     ugit cat-file -e "$previous^{commit}" 2>/dev/null || update_fail "fatal: the recorded earlier version is no longer in this copy"
+    [ "$U_PREVIOUS" = "$previous" ] || update_fail "fatal: the recorded earlier version is not behind this one"
     printf '%s\n' "$head" >"$UPDATE_STATE/target"
-    update_roll_back "rolled back by hand" "$(running && echo 1 || echo 0)"
+    update_roll_back "rolled back by hand" "$(running && echo 1 || echo 0)" true
 }
 
 update_oneline() {
@@ -3746,7 +3774,7 @@ update_status() {
     result=$(cat "$UPDATE_STATE/result.json" 2>/dev/null || true)
     if [ "$json" = 1 ]; then
         [ -n "$summary" ] || summary="$(update_meta_json)}"
-        printf '%s,"previous":%s,"result":%s}\n' "${summary%\}}" "$(json_quote "$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)")" "${result:-null}"
+        printf '%s,"result":%s}\n' "${summary%\}}" "${result:-null}"
         exit 0
     fi
     update_oneline "$summary"

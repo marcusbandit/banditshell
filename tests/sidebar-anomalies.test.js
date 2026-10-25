@@ -18,6 +18,7 @@ const calm = {
     micMuted: false,
     recording: false,
     vpn: false,
+    awake: false,
     wifiAvailable: true,
     wifiOn: true,
     bluetoothAvailable: true,
@@ -72,6 +73,12 @@ test("recording, vpn and quiet each show on their own", () => {
     assert.deepStrictEqual(keys({ recording: true }), ["recording"]);
     assert.deepStrictEqual(keys({ vpn: true }), ["vpn"]);
     assert.deepStrictEqual(keys({ quiet: true }), ["quiet"]);
+});
+
+test("keep-awake shows a coffee mark only while it is on", () => {
+    assert.deepStrictEqual(keys({ awake: true }), ["awake"]);
+    const awake = Anomalies.list(Object.assign({}, calm, { awake: true }))[0];
+    assert.deepStrictEqual([awake.icon, awake.title], ["coffee", "Keeping awake, click to stop"]);
 });
 
 test("a mode icon stands in for quiet instead of doubling it", () => {

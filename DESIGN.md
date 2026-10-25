@@ -1628,8 +1628,10 @@ banditshell/
 │   │                            needed, commands changed"), the What's new
 │   │                            entries of the change BEFORE it is taken,
 │   │                            one button that says Update or Update and
-│   │                            restart, and the outcome of the last
-│   │                            update, a rollback included. The What's
+│   │                            restart, Go back to <id> once one is
+│   │                            recorded, asked once in its place, and the
+│   │                            outcome of the last update, a rollback
+│   │                            included. The What's
 │   │                            new card is marked seen when dismissed
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)
@@ -1984,9 +1986,11 @@ the sidebar as it was. `rail` is the default since 2026-10-18 and rests as a thi
 rail and not against the full column): one mark per workspace, and below them a status icon for
 whatever is unusual and nothing for what is normal. Unusual is decided in `anomalies.js`: the
 microphone live or muted while something records from it, a
-screen recording, a VPN, airplane mode (every radio off), quiet or a mode, an update waiting or
-stuck. A cap of four keeps the alarms and drops the quietest, and a mark that goes leaves by
-shrinking, not by blinking out.
+screen recording, a VPN, keep-awake, airplane mode (every radio off), quiet or a mode, an update
+waiting or stuck. Pressing the keep-awake mark turns it off, its hover title says so through the
+shared tooltip, and pointing at it holds the rail at rest so it can be pressed before the rail
+grows; after the press the rail stays at rest until the pointer leaves it. A cap of four keeps the
+alarms and drops the quietest, and a mark that goes leaves by shrinking, not by blinking out.
 
 **THE GLANCE, 2026-10-24: the time and the battery show at rest.** People using the shell said
 an empty screen is annoying when all they want is to look up and see what time it is and how much

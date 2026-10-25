@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import "arming.js" as Arming
 
 Item {
     id: root
@@ -16,11 +17,20 @@ Item {
 
     property string arming: ""
 
+    property real armedAt: 0
+
     property string restoreTo: ""
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
-    readonly property var actions: Power.actions
+    readonly property var actions: Power.actions.concat([
+        {
+            key: "suspend",
+            icon: "bedtime",
+            label: "Sleep",
+            safe: true
+        }
+    ])
 
     readonly property int resting: Math.max(0, root.actions.findIndex(a => a.safe))
 
@@ -28,13 +38,28 @@ Item {
 
     readonly property real button: Appearance.sizes.sessionButton
 
+    readonly property string again: "Press again"
+
+    readonly property string lines: {
+        const lines = [root.again];
+        for (const entry of root.actions)
+            lines.push(entry.label);
+        return lines.join("\n");
+    }
+
+    readonly property real line: Appearance.font.line.small
+
+    readonly property real cellWidth: Math.max(root.button, Math.ceil(widest.implicitWidth) + root.pad * 2)
+
+    readonly property real cellHeight: Math.max(root.button, Appearance.sizes.sessionIcon + Appearance.padding.hair + root.line + (Appearance.padding.hair * 2 + root.line) * 2)
+
     readonly property real gap: Appearance.padding.small
 
     readonly property real pad: Appearance.padding.normal
 
-    readonly property real step: root.button + root.gap
+    readonly property real step: root.cellHeight + root.gap
 
-    readonly property real groupWidth: root.button + root.gap * 2
+    readonly property real groupWidth: root.cellWidth + root.gap * 2
     readonly property real groupHeight: root.actions.length * root.step - root.gap + root.gap * 2
 
     readonly property real cellRadius: Appearance.rounding.normal
@@ -99,17 +124,48 @@ Item {
         root.choose(Math.max(0, Math.min(root.actions.length - 1, root.selected + delta)));
     }
 
+    function run(entry: var): void {
+        if (entry.key === "suspend")
+            Suspension.perform("suspend");
+        else
+            Power.run(entry);
+    }
+
     function activate(index: int): void {
         const entry = root.actions[index];
         if (!entry)
             return;
 
-        if (entry.safe || root.arming === entry.key) {
-            Power.run(entry);
+        const now = Date.now();
+        const step = Arming.press(entry, root.arming, root.armedAt, now, Qt.styleHints.mouseDoubleClickInterval);
+        if (step === "run") {
+            root.run(entry);
             root.hide();
-        } else {
+        } else if (step === "arm") {
+            root.armedAt = now;
             root.arming = entry.key;
         }
+    }
+
+    onArmingChanged: {
+        if (root.arming !== "")
+            disarm.restart();
+        else
+            disarm.stop();
+    }
+
+    Timer {
+        id: disarm
+
+        interval: 4000
+        onTriggered: root.arming = ""
+    }
+
+    StyledText {
+        id: widest
+
+        visible: false
+        text: root.lines
     }
 
     Follow {
@@ -140,9 +196,10 @@ Item {
                 root.move(-1);
             else if (event.key === Qt.Key_Down || (ctrl && (event.key === Qt.Key_J || event.key === Qt.Key_N)))
                 root.move(1);
-            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)
-                root.activate(root.selected);
-            else
+            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                if (!event.isAutoRepeat)
+                    root.activate(root.selected);
+            } else
                 return;
 
             event.accepted = true;
@@ -180,8 +237,8 @@ Item {
             SquircleRect {
                 x: root.gap
                 y: root.gap + marker.value
-                width: root.button
-                height: root.button
+                width: root.cellWidth
+                height: root.cellHeight
                 radius: root.cellRadius
 
                 color: markerTone.value
@@ -189,7 +246,7 @@ Item {
                 FollowColour {
                     id: markerTone
 
-                    target: root.arming ? Appearance.colour.accentFill : Appearance.colour.fillStronger
+                    target: root.arming ? Appearance.colour.alarm : Appearance.colour.fillStronger
                     speed: Appearance.animation.revealSpeed
                 }
             }
@@ -211,23 +268,48 @@ Item {
                         readonly property bool armed: root.arming === cell.modelData.key
                         readonly property bool chosen: root.selected === cell.index
 
-                        width: root.button
-                        height: root.button
+                        width: root.cellWidth
+                        height: root.cellHeight
 
                         Icon {
-                            anchors.centerIn: parent
+                            id: glyph
 
-                            name: cell.armed ? "check" : cell.modelData.icon
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: Math.round((root.cellHeight - Appearance.sizes.sessionIcon - Appearance.padding.hair - root.line) / 2)
+
+                            name: cell.modelData.icon
                             size: Appearance.sizes.sessionIcon
+                            height: Appearance.sizes.sessionIcon
 
                             color: glyphTone.value
 
                             FollowColour {
                                 id: glyphTone
 
-                                target: cell.armed ? Appearance.colour.accent : cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                                target: cell.armed ? Appearance.colour.ink : cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
                                 speed: Appearance.animation.trackSpeed
                             }
+                        }
+
+                        StyledText {
+                            id: name
+
+                            anchors.top: glyph.bottom
+                            anchors.topMargin: Appearance.padding.hair
+                            anchors.horizontalCenter: parent.horizontalCenter
+
+                            text: cell.modelData.label
+                            color: glyphTone.value
+                        }
+
+                        StyledText {
+                            anchors.top: name.bottom
+                            anchors.topMargin: Appearance.padding.hair
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: cell.armed
+
+                            text: root.again
+                            color: glyphTone.value
                         }
 
                         MouseArea {

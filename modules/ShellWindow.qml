@@ -494,8 +494,11 @@ PanelWindow {
             pullSpan: Math.hypot(win.width, win.height)
 
             modeIcon: SettingsState.modeIcon
+            awake: Idle.awake
 
             glanceReach: Math.max(0, glance.footReach - win.border)
+
+            onAwakeEnded: Idle.awake = false
         }
 
         RestingGlance {
