@@ -81,7 +81,7 @@ Column {
         label: Catalogue.labelOf(root.row)
         detail: root.stateText
         detailColour: root.bad ? Appearance.colour.alarm : Appearance.colour.textFaint
-        detailLines: root.bad ? 3 : 1
+        detailLines: root.bad ? 3 : root.row.lines ?? 1
         pending: root.pendingText
         off: root.off
         loose: reset.visible ? reset.width + resetGap.width + Appearance.padding.normal * 2 : 0
