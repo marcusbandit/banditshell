@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-7",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Sorting Files by date or type in Settings now really sorts that way"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Files Sort by in Settings reads a to z, newest, biggest or type"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-6",
       "date": "2026-10-25",
       "changes": [

@@ -7,6 +7,7 @@ import qs.config
 import "../components/vt.js" as TerminalEmulator
 import "../components/base64.js" as Base64
 import "quoting.js" as Quoting
+import "files-order.js" as FilesOrder
 
 Singleton {
     id: root
@@ -34,18 +35,7 @@ Singleton {
         const query = root.search.toLowerCase();
         const matched = query === "" ? all : all.filter(e => e.name.toLowerCase().includes(query));
 
-        const key = root.sort;
-        return matched.slice().sort((a, b) => {
-            if ((a.kind === "dir") !== (b.kind === "dir"))
-                return a.kind === "dir" ? -1 : 1;
-            if (key === "size" && a.size !== b.size)
-                return b.size - a.size;
-            if (key === "mtime" && a.mtime !== b.mtime)
-                return b.mtime - a.mtime;
-            if (key === "kind" && a.class !== b.class)
-                return a.class < b.class ? -1 : 1;
-            return a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: "base"});
-        });
+        return FilesOrder.ordered(matched, root.sort);
     }
 
     function indexOf(name: string): int {
