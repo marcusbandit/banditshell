@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-23",
+      "id": "2026-10-25-24",
       "date": "2026-10-25",
       "changes": [
         {
@@ -13,6 +13,17 @@
           "type": "ui",
           "severity": "minor",
           "text": "Each Highlight colour choice shows the colour it picks"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-23",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings search keeps your words and shows 2 of 5; Enter steps through"
         }
       ]
     },
