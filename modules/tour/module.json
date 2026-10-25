@@ -1,0 +1,23 @@
+{
+  "name": "tour",
+  "summary": "the first-run tour over the real desktop",
+  "layer": 2,
+  "owns": {
+    "qml": ["modules/tour"],
+    "services": ["Tour"],
+    "js": ["services/tour.js"],
+    "tests": ["tests/tour.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": []
+  },
+  "config": {
+    "namespace": [],
+    "reads": []
+  }
+}
