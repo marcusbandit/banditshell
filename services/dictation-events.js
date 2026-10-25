@@ -15,6 +15,15 @@ function read(line) {
         lang: typeof msg.lang === "string" ? msg.lang : null,
         level: typeof msg.level === "number" ? msg.level : null,
         canCancel: msg.cancel === true,
-        cancelled: msg.cancelled === true && phase === "idle"
+        cancelled: msg.cancelled === true && phase === "idle",
+        typed: typeof msg.typed === "boolean" ? msg.typed : null
     };
+}
+
+function outcome(typed) {
+    if (typed === false)
+        return "Nothing typed";
+    if (typed === true)
+        return "Rest discarded";
+    return "Discarded";
 }

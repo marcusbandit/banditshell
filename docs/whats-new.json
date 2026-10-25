@@ -7,7 +7,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "With the newest voice, Esc or Cancel stops dictation untyped"
+          "text": "With the newest voice, Esc or Discard stops dictation untyped"
         }
       ]
     },

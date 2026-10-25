@@ -157,28 +157,29 @@ ShellRoot {
             holds: () => island.rowOfKind("dictation")?.actions.length === 0
         },
         {
-            name: "open the island: the dictation row offers Cancel",
+            name: "open the island: the dictation row offers Discard",
             run: () => island.pinned = true,
             wait: 400,
             expect: "overview",
-            holds: () => island.rowOfKind("dictation")?.actions.length === 1
+            holds: () => island.rowOfKind("dictation")?.actions[0]?.label === "Discard"
         },
         {
-            name: "cancel: the row says Dictation cancelled",
+            name: "discard: the row says Nothing typed",
             run: () => {
                 Dictation.phase = "idle";
+                Dictation.cancelledTyped = false;
                 Dictation.cancelled = true;
             },
             wait: 400,
             expect: "overview",
-            holds: () => island.rowOfKind("dictation")?.look.text === "Dictation cancelled"
+            holds: () => island.rowOfKind("dictation")?.look.text === "Nothing typed"
         },
         {
             name: "close the island: it says so at rest",
             run: () => island.pinned = false,
             wait: 600,
             expect: "dictation",
-            holds: () => island.rowOfKind("dictation")?.look.text === "Dictation cancelled"
+            holds: () => island.rowOfKind("dictation")?.look.text === "Nothing typed"
         },
         {
             name: "then it leaves",
@@ -187,7 +188,25 @@ ShellRoot {
             expect: "hidden"
         },
         {
-            name: "an older daemon: no Cancel even with the island open",
+            name: "streaming, some words already typed, then discard: Rest discarded",
+            run: () => {
+                preview.speak("listening");
+                Dictation.phase = "idle";
+                Dictation.cancelledTyped = true;
+                Dictation.cancelled = true;
+            },
+            wait: 1400,
+            expect: "dictation",
+            holds: () => island.rowOfKind("dictation")?.look.text === "Rest discarded"
+        },
+        {
+            name: "and that leaves too",
+            run: () => {},
+            wait: 1800,
+            expect: "hidden"
+        },
+        {
+            name: "an older daemon: no Discard even with the island open",
             run: () => {
                 Dictation.canCancel = false;
                 Dictation.lang = "auto";
@@ -199,14 +218,14 @@ ShellRoot {
             holds: () => !island.rowOfKind("dictation")?.actions.length
         },
         {
-            name: "close it and stop dictating: on its way out it never says cancelled",
+            name: "close it and stop dictating: on its way out it never claims a discard",
             run: () => {
                 island.pinned = false;
                 preview.speak("idle");
             },
             wait: 100,
             expect: "hidden",
-            holds: () => island.rowOfKind("dictation")?.look.text !== "Dictation cancelled"
+            holds: () => !["Nothing typed", "Rest discarded", "Discarded"].includes(island.rowOfKind("dictation")?.look.text)
         },
         {
             name: "and it is gone",

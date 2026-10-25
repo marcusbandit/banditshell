@@ -5,8 +5,8 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/dictation-events.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Events = new Function(src + "\nreturn { read };")();
-const [older, listening, cancelled, chrome] = fs.readFileSync(path.join(ROOT, "tests/fixtures/gvoice/events.jsonl"), "utf8").trim().split("\n");
+const Events = new Function(src + "\nreturn { read, outcome };")();
+const [older, listening, cancelled, chrome, streamed] = fs.readFileSync(path.join(ROOT, "tests/fixtures/gvoice/events.jsonl"), "utf8").trim().split("\n");
 
 test.describe("dictation events", () => {
     test.it("offers no cancel to a daemon that does not say it can", () => {
@@ -28,6 +28,12 @@ test.describe("dictation events", () => {
     test.it("hears a cancel only as the idle that ends it", () => {
         assert.strictEqual(Events.read(cancelled).cancelled, true);
         assert.strictEqual(Events.read('{"phase": "listening", "cancelled": true}').cancelled, false);
+    });
+
+    test.it("says Nothing typed only when the daemon says nothing was", () => {
+        assert.strictEqual(Events.outcome(Events.read(cancelled).typed), "Nothing typed");
+        assert.strictEqual(Events.outcome(Events.read(streamed).typed), "Rest discarded");
+        assert.strictEqual(Events.outcome(Events.read('{"phase": "idle", "cancelled": true}').typed), "Discarded");
     });
 
     test.it("withdraws cancel when the daemon says it cannot", () => {

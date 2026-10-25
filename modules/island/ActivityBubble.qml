@@ -99,7 +99,7 @@ Item {
         const a = root.front ?? {};
         switch (root.kind) {
         case "dictation":
-            return Dictation.cancelled ? "Dictation cancelled" : Dictation.phase === "listening" ? "Dictating" : "Turning speech into text";
+            return Dictation.cancelled ? Dictation.outcome : Dictation.phase === "listening" ? "Dictating" : "Turning speech into text";
         case "launch":
             if (root.items.length > 1)
                 return `${root.items.map(i => i.name).join(", ")} opening`;

@@ -36,7 +36,7 @@ QtObject {
                 return {
                     icon: "mic_off",
                     tone: Appearance.colour.textFaint,
-                    text: "Dictation cancelled",
+                    text: Dictation.outcome,
                     dim: true,
                     trailing: "icon",
                     trailingIcon: "cancel",
@@ -51,7 +51,7 @@ QtObject {
                 actions: [
                     {
                         name: "cancel",
-                        label: "Cancel"
+                        label: "Discard"
                     }
                 ]
             };

@@ -27,6 +27,8 @@ Singleton {
 
     property bool canCancel: false
     property bool cancelled: false
+    property var cancelledTyped: null
+    readonly property string outcome: DictationEvents.outcome(root.cancelledTyped)
     readonly property int cancelledMs: 2500
     readonly property bool cancellable: root.canCancel && (root.phase === "listening" || root.phase === "processing")
 
@@ -105,8 +107,10 @@ Singleton {
                     if (!e)
                         return;
                     root.canCancel = e.canCancel;
-                    if (e.cancelled)
+                    if (e.cancelled) {
+                        root.cancelledTyped = e.typed;
                         root.cancelled = true;
+                    }
                     if (e.phase !== null)
                         root.phase = e.phase;
                     if (e.lang !== null)
