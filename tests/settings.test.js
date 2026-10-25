@@ -197,8 +197,8 @@ test("search matches labels, keywords and config keys, and takes a list number",
     assert.strictEqual(Catalogue.search("nothing like this at all").length, 0);
 });
 
-test("dark, light, night and theme all find the dark mode row", () => {
-    for (const q of ["dark", "light", "night", "theme"])
+test("dark, dark mode, light, night and theme all find the dark apps row", () => {
+    for (const q of ["dark", "dark mode", "light", "night", "theme"])
         assert.ok(Catalogue.search(q).some(h => h.row.k === "darkMode" && h.page.id === "colour"), q);
 });
 

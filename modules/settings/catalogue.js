@@ -247,8 +247,8 @@ const PAGES_SOURCE = {
                 { n: 45, icon: "layers", label: "Surface depth", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmt: v => `ramp ${v}`, cfg: "colour.surface",
                     why: "Which step of the theme ramp the frame and panels are painted with. Lower is darker." },
                 { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0.5, max: 1, step: 0.01, fmt: v => `${Math.round((1 - v) * 100)}%`, cfg: "material.surfaceAlpha", kw: "transparency" },
-                { n: [], icon: "dark_mode", label: "Dark mode", k: "darkMode", kind: "toggle", detail: s => !s.hasDarkMode ? "no system colour scheme found" : s.v("darkMode") ? "apps that follow it go dark" : "apps that follow it go light", dis: s => !s.hasDarkMode, kw: "dark light night theme colour scheme apps",
-                    why: "Tells apps that follow the system colour scheme to go dark or light. The shell keeps the colours of its own theme." }
+                { n: [], icon: "dark_mode", label: "Dark apps", k: "darkMode", kind: "toggle", detail: s => s.hasDarkMode ? "asks apps to use dark colours" : "no system colour scheme found", dis: s => !s.hasDarkMode, kw: "dark mode light night theme colour scheme apps",
+                    why: "Asks apps that follow the system colour scheme to use dark colours. The shell’s own colours come from the theme above." }
             ] }
         ]
     },
