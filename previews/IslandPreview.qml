@@ -147,6 +147,66 @@ ShellRoot {
             expect: "hidden"
         },
         {
+            name: "dictating, and the daemon can cancel: the capsule stays bars and language",
+            run: () => {
+                Dictation.canCancel = true;
+                Dictation.lang = "da-DK";
+                preview.speak("listening");
+            },
+            expect: "dictation",
+            holds: () => island.rowOfKind("dictation")?.actions.length === 0
+        },
+        {
+            name: "open the island: the dictation row offers Cancel",
+            run: () => island.pinned = true,
+            wait: 400,
+            expect: "overview",
+            holds: () => island.rowOfKind("dictation")?.actions.length === 1
+        },
+        {
+            name: "cancel: the row says Dictation cancelled",
+            run: () => {
+                Dictation.phase = "idle";
+                Dictation.cancelled = true;
+            },
+            wait: 400,
+            expect: "overview"
+        },
+        {
+            name: "close the island: it says so at rest",
+            run: () => island.pinned = false,
+            wait: 600,
+            expect: "dictation",
+            holds: () => island.rowOfKind("dictation")?.look.text === "Dictation cancelled"
+        },
+        {
+            name: "then it leaves",
+            run: () => {},
+            wait: 2600,
+            expect: "hidden"
+        },
+        {
+            name: "an older daemon: no Cancel even with the island open",
+            run: () => {
+                Dictation.canCancel = false;
+                Dictation.lang = "auto";
+                preview.speak("listening");
+                island.pinned = true;
+            },
+            wait: 400,
+            expect: "overview",
+            holds: () => !island.rowOfKind("dictation")?.actions.length
+        },
+        {
+            name: "close it and stop dictating",
+            run: () => {
+                island.pinned = false;
+                preview.speak("idle");
+            },
+            wait: 1500,
+            expect: "hidden"
+        },
+        {
             name: "dictating",
             run: () => preview.speak("listening"),
             expect: "dictation"

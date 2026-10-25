@@ -7,6 +7,7 @@ QtObject {
     id: root
 
     property var activity: null
+    property bool lit: false
 
     readonly property string kind: root.activity?.kind ?? ""
 
@@ -31,12 +32,28 @@ QtObject {
                 trailing: "beat"
             };
         case "dictation":
+            if (!Dictation.live)
+                return {
+                    icon: "mic_off",
+                    tone: Appearance.colour.textFaint,
+                    text: "Dictation cancelled",
+                    dim: true,
+                    trailing: "icon",
+                    trailingIcon: "cancel",
+                    trailingTone: Appearance.colour.textFaint
+                };
             return {
                 icon: "mic",
                 tone: Appearance.colour.accent,
                 bars: true,
-                trailing: Dictation.langTag ? "text" : "",
-                trailingText: Dictation.langTag
+                trailing: root.lit && Dictation.canCancel && Dictation.phase !== "typing" ? "actions" : Dictation.langTag ? "text" : "",
+                trailingText: Dictation.langTag,
+                actions: [
+                    {
+                        name: "cancel",
+                        label: "Cancel"
+                    }
+                ]
             };
         case "recording":
             return {

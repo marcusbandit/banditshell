@@ -26,7 +26,7 @@ Item {
         case "launch":
             return a.state === "waiting" ? "progress" : "";
         case "dictation":
-            return Dictation.phase === "listening" ? "voice" : "spin";
+            return !Dictation.live ? "" : Dictation.phase === "listening" ? "voice" : "spin";
         case "music":
             return "track";
         case "kernel":
@@ -64,6 +64,11 @@ Item {
             return {
                 text: `${root.count}`
             };
+        if (root.kind === "dictation" && !Dictation.live)
+            return {
+                icon: "close",
+                tone: Appearance.colour.textFaint
+            };
         if (root.kind === "external" && a.state === "ended")
             return {
                 icon: a.outcome === "failed" ? "priority_high" : a.outcome === "cancelled" ? "close" : "check",
@@ -94,7 +99,7 @@ Item {
         const a = root.front ?? {};
         switch (root.kind) {
         case "dictation":
-            return Dictation.phase === "listening" ? "Dictating" : "Turning speech into text";
+            return !Dictation.live ? "Dictation cancelled" : Dictation.phase === "listening" ? "Dictating" : "Turning speech into text";
         case "launch":
             if (root.items.length > 1)
                 return `${root.items.map(i => i.name).join(", ")} opening`;

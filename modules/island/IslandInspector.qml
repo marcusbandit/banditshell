@@ -278,6 +278,10 @@ Scope {
             voice: "processing"
         },
         {
+            name: "Dictation cancelled",
+            voice: "cancelled"
+        },
+        {
             name: "An app opening",
             launches: ["waiting"]
         },
@@ -775,7 +779,10 @@ Scope {
 
     function setVoice(v: string): void {
         root.voice = v;
-        Dictation.phase = v === "off" ? "idle" : v;
+        if (v === "listening" || v === "processing")
+            Dictation.canCancel = true;
+        Dictation.phase = v === "off" || v === "cancelled" ? "idle" : v;
+        Dictation.cancelled = v === "cancelled";
     }
 
     function notify(spec: var, urgent: bool): void {
@@ -1216,9 +1223,9 @@ Scope {
 
                             Segments {
                                 width: parent.width
-                                options: ["off", "listening", "processing"]
-                                current: Math.max(0, ["off", "listening", "processing"].indexOf(root.voice))
-                                onPicked: index => root.setVoice(["off", "listening", "processing"][index])
+                                options: ["off", "listening", "processing", "cancelled"]
+                                current: Math.max(0, ["off", "listening", "processing", "cancelled"].indexOf(root.voice))
+                                onPicked: index => root.setVoice(["off", "listening", "processing", "cancelled"][index])
                             }
 
                             StyledText {
