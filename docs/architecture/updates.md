@@ -58,7 +58,10 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    checkout moves: `config.json`, files the newer version wrote elsewhere and stashed edits stay
    as they are, and the confirm says so (#171). After a go-back the outcome offers "Reinstall
    <id>", asked once, which clears `updates.skip` and runs `update apply --detach --to <sha>` on
-   the commit it left; applying a commit drops it from `update/skip` (#178).
+   the commit it left; applying a commit drops it from `update/skip` (#178). It also offers
+   "Report what broke": a line of words, shown with the skipped and current versions as the
+   report will start, then handed to `banditshell triage` in a terminal (`scripts/in-terminal.sh`),
+   where triage shows the whole report and sends nothing until the person answers y (#180).
    `banditshell update status [--json]` says where the copy stands, the last outcome and the
    version before the last update. What's new shows nothing pending when the seen mark is a
    newer id than the whole log, which is where a rollback leaves it.

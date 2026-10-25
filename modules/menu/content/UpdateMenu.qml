@@ -17,14 +17,24 @@ Column {
     property bool declineConfirm: false
     property bool goBackConfirm: false
     property bool reinstallConfirm: false
+    property bool reportOpen: false
+    property bool reportHanded: false
 
-    readonly property bool asking: root.goBackConfirm || root.reinstallConfirm
+    readonly property bool asking: root.goBackConfirm || (root.reinstallConfirm && Update.canReinstall) || (root.reportOpen && Update.wentBackByHand && Update.resultPending)
 
-    readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, goBackRow.implicitWidth, afterRow.implicitWidth, reinstallRow.implicitWidth)
+    readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, goBackRow.implicitWidth, afterRow.implicitWidth, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
     onShowingChanged: if (!root.showing) {
         root.goBackConfirm = false;
         root.reinstallConfirm = false;
+        root.reportOpen = false;
+        root.reportHanded = false;
+    }
+
+    function sendReport(): void {
+        Update.report(reportField.value);
+        root.reportOpen = false;
+        root.reportHanded = true;
     }
 
     spacing: Appearance.padding.small
@@ -142,6 +152,80 @@ Column {
                 onClicked: root.reinstallConfirm = true
             }
         }
+
+        StyledText {
+            width: parent.width
+            visible: root.reportHanded && !root.asking
+            text: "The report is open in a terminal. Nothing is sent until you answer y there."
+            color: Appearance.colour.textFaint
+            wrapMode: Text.WordWrap
+        }
+    }
+
+    Column {
+        width: parent.width
+        visible: Update.wentBackByHand && Update.resultPending && root.reportOpen
+        spacing: Appearance.padding.small
+
+        InkText {
+            width: parent.width
+            alignInk: true
+            text: "What broke?"
+        }
+
+        ClockTextField {
+            id: reportField
+
+            width: parent.width
+            placeholder: "what stopped working, in a few words"
+
+            onAccepted: root.sendReport()
+            onCancelled: root.reportOpen = false
+        }
+
+        StyledText {
+            width: parent.width
+            text: "The report starts with"
+            color: Appearance.colour.textDim
+        }
+
+        SquircleRect {
+            width: parent.width
+            height: reportPreview.implicitHeight + Appearance.padding.normal * 2
+            radius: Appearance.rounding.small
+            color: Appearance.colour.fillStrong
+
+            StyledText {
+                id: reportPreview
+
+                x: Appearance.padding.normal
+                y: Appearance.padding.normal
+                width: parent.width - Appearance.padding.normal * 2
+                text: Update.reportText(reportField.value)
+                color: Appearance.colour.text
+                wrapMode: Text.WordWrap
+            }
+        }
+
+        StyledText {
+            width: parent.width
+            text: "A terminal then shows the whole report, with your config and the last log lines, secrets left out. Nothing is sent until you answer y there."
+            color: Appearance.colour.textFaint
+            wrapMode: Text.WordWrap
+        }
+
+        ButtonPair {
+            id: reportRow
+
+            actions: [{ text: "Review and send", icon: "bug_report" }, { text: "Cancel" }]
+
+            onTriggered: index => {
+                if (index === 0)
+                    root.sendReport();
+                else
+                    root.reportOpen = false;
+            }
+        }
     }
 
     Column {
@@ -181,6 +265,17 @@ Column {
             icon: "history"
 
             onClicked: root.goBackConfirm = true
+        }
+
+        Button {
+            visible: Update.wentBackByHand && Update.resultPending
+            text: "Report what broke"
+            icon: "bug_report"
+
+            onClicked: {
+                root.reportHanded = false;
+                root.reportOpen = true;
+            }
         }
 
         Button {

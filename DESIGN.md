@@ -1639,7 +1639,10 @@ banditshell/
 │   │                            recorded, asked once in its place, and the
 │   │                            outcome of the last update, a rollback
 │   │                            included. After a go-back the outcome
-│   │                            offers Reinstall <id>, asked once. The What's
+│   │                            offers Reinstall <id>, asked once, and
+│   │                            Report what broke, a line of words that
+│   │                            banditshell triage shows in a terminal
+│   │                            before anything is sent. The What's
 │   │                            new card is marked seen when dismissed
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)

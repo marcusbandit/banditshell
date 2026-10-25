@@ -200,6 +200,16 @@ Singleton {
         Quickshell.execDetached(["bash", root.cli, "update", "rollback", "--detach"]);
     }
 
+    function reportText(words: string): string {
+        return Words.reportWords(words, root.result, root.version);
+    }
+
+    function report(words: string): void {
+        if (!root.wentBackByHand)
+            return;
+        Quickshell.execDetached([Quickshell.shellPath("scripts/in-terminal.sh"), Words.reportScript(root.cli, words, root.result, root.version)]);
+    }
+
     function restart(): void {
         Quickshell.execDetached(["setsid", "bash", root.cli, "restart"]);
     }
