@@ -199,7 +199,6 @@
     "R3 modules/settings/SettingsState.qml uses Currency of calculator without requiring it",
     "R3 modules/settings/SettingsState.qml uses DefaultApps of apps without requiring it",
     "R3 modules/settings/SettingsState.qml uses Device of launcher-devops without requiring it",
-    "R3 modules/settings/SettingsState.qml uses Display of display without requiring it",
     "R3 modules/settings/SettingsState.qml uses Hotspot of network without requiring it",
     "R3 modules/settings/SettingsState.qml uses Idle of power without requiring it",
     "R3 modules/settings/SettingsState.qml uses Keyboards of cheatsheet without requiring it",

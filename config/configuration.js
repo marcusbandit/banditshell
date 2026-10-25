@@ -49,7 +49,16 @@ function upgradeValue(path, value) {
         return "alphabet";
     if (path === "sidebar.clock.style" && value === "small")
         return "stacked";
+    if (path === "files.sort" && (value === "date" || value === "type"))
+        return value === "date" ? "mtime" : "kind";
     return value;
+}
+
+function upgradeFilesSort(values) {
+    const files = values.files;
+    if (!isPlainObject(files) || !["date", "type"].includes(files.sort))
+        return values;
+    return Object.assign({}, values, { files: Object.assign({}, files, { sort: upgradeValue("files.sort", files.sort) }) });
 }
 
 function upgradeLauncher(values) {
@@ -80,7 +89,7 @@ function upgradeSidebarClock(values) {
 function upgrade(values) {
     if (!isPlainObject(values))
         return values;
-    return upgradeSidebarClock(upgradeLauncher(values));
+    return upgradeFilesSort(upgradeSidebarClock(upgradeLauncher(values)));
 }
 
 function holds(node, segment) {
