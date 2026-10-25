@@ -147,7 +147,7 @@ Item {
         readonly property string icon: Battery.icon()
         readonly property Component mark: batteryMark
         readonly property bool active: Battery.charging
-        readonly property bool alarm: Battery.low
+        readonly property bool warning: Battery.low
     }
 
     QtObject {
@@ -232,6 +232,7 @@ Item {
                 active: modelData.reading.active ?? false
                 alert: modelData.reading.alert ?? false
                 alarm: modelData.reading.alarm ?? false
+                warning: modelData.reading.warning ?? false
                 available: modelData.reading.available ?? true
 
                 onHoveredChanged: {

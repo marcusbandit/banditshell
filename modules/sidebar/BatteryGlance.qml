@@ -10,6 +10,6 @@ QtObject {
     readonly property bool low: Battery.low
     readonly property string icon: Battery.icon()
 
-    readonly property color colour: low ? Appearance.colour.alarm : charging ? Appearance.colour.accent : Appearance.colour.text
-    readonly property color labelColour: low ? Appearance.colour.alarm : Appearance.colour.textDim
+    readonly property color colour: low ? Appearance.colour.warning : charging ? Appearance.colour.accent : Appearance.colour.text
+    readonly property color labelColour: low ? Appearance.colour.warning : Appearance.colour.textDim
 }
