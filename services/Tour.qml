@@ -33,9 +33,9 @@ Singleton {
         return out;
     }
 
-    readonly property var chords: {
+    readonly property var liveChords: {
         if (!root.running)
-            return {};
+            return null;
         const binds = HyprConfig.binds;
         const rows = HyprConfig.actionRows;
         return {
@@ -45,6 +45,11 @@ Singleton {
             settings: Logic.chordFor("settings", binds, rows)
         };
     }
+
+    property var chords: ({})
+
+    onLiveChordsChanged: if (root.liveChords)
+        root.chords = root.liveChords
 
     readonly property var steps: Logic.plan({
         bare: Appearance.bare,

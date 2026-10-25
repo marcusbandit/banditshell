@@ -128,7 +128,7 @@ function plan(env) {
             gesture = env.bare ? "launcher" : "corner";
         if (id === "sidebar" && !gesture)
             continue;
-        steps.push({ id: id, chord: chord, gesture: gesture, button: !chord && !gesture });
+        steps.push({ id: id, chord: chord, gesture: gesture });
     }
     return steps;
 }
@@ -194,44 +194,110 @@ function pass(machine, steps) {
 function words(step, facts) {
     var f = facts || {};
     var key = step.chord;
+    var either = function (gesture) {
+        return key && gesture ? "Press " + key + ", or " + gesture + "." : key ? "Press " + key + "." : gesture ? gesture.charAt(0).toUpperCase() + gesture.slice(1) + "." : "";
+    };
     switch (step.id) {
     case "launcher":
         return {
             title: "The launcher",
             payoff: f.apps > 0 ? "One search for apps, files, settings and sums. " + f.apps + " apps are already in it." : "One search for apps, files, settings and sums.",
-            ask: key && step.gesture ? "Press " + key + ", or drag up from the bottom edge." : key ? "Press " + key + "." : step.gesture ? "Drag up from the bottom edge." : "",
+            ask: either(step.gesture ? "drag up from the middle of the bottom edge" : ""),
+            open: "Open the launcher",
             away: "Esc puts it away again."
         };
     case "island":
         return {
             title: "The island",
             payoff: "Notifications, music, timers and the clock arrive at the top centre.",
-            ask: key && step.gesture ? "Rest the pointer at the top centre, or press " + key + "." : key ? "Press " + key + "." : step.gesture ? "Rest the pointer at the top centre." : "",
+            ask: either(step.gesture ? "rest the pointer at the top centre" : ""),
+            open: "Open the island",
             away: "Move away and it folds back up; if it stays, press Esc."
         };
     case "sidebar":
         return {
             title: step.gesture === "rail" ? "The rail" : "The sidebar",
             payoff: (f.workspaces > 0 ? "Your " + f.workspaces + " workspaces" : "Your workspaces") + ", and a mark only when something needs you.",
-            ask: step.gesture === "rail" ? "Rest the pointer on the strip at the left edge." : "Press a mark in the column on the left.",
+            ask: step.gesture === "rail" ? "Rest the pointer on the rail at the left edge." : "Press a mark in the column on the left.",
+            open: step.gesture === "rail" ? "Open the rail" : "Open a menu",
             away: step.gesture === "rail" ? "It grows into the full column. Move away and it rests again." : "Press it again, or Esc, to close the menu."
         };
     case "hotkeys":
         return {
             title: "The hotkey sheet",
-            payoff: f.binds > 0 ? "All " + f.binds + " of your keys in one place, on a drawn keyboard." : "Every key you bind, in one place, on a drawn keyboard.",
+            payoff: f.binds > 0 ? "All " + f.binds + " of your shortcuts on one sheet, drawn on a keyboard." : "Every shortcut you set, on one sheet, drawn on a keyboard.",
             ask: key ? "Press " + key + "." : "It has no key yet. Give it one in Settings, Keys.",
+            open: "Open the sheet",
             away: "Esc puts it away again."
         };
     case "settings":
         return {
             title: "Settings",
             payoff: "Theme, screens, keys and every switch, each with a preview of what it does.",
-            ask: step.gesture === "corner" ? (key ? "Point into the bottom right corner and press, or press " + key + "." : "Point into the bottom right corner and press.") : key ? "Press " + key + ", or type settings in the launcher." : "Type settings in the launcher.",
+            ask: step.gesture === "corner" ? either("point into the bottom right corner and press") : key ? "Press " + key + ", or type `settings` in the launcher." : "Type `settings` in the launcher.",
+            open: "Open Settings",
             away: "The X, or the corner again, closes it."
         };
     }
-    return { title: "", payoff: "", ask: "", away: "" };
+    return { title: "", payoff: "", ask: "", open: "", away: "" };
+}
+
+function closing(chord, bare) {
+    var now = chord ? "Press " + chord + " and type what you want: an app, a file, a setting." : bare ? "Open the launcher and type what you want: an app, a file, a setting." : "Drag up from the middle of the bottom edge and type what you want: an app, a file, a setting.";
+    return {
+        title: "Tour done",
+        now: now,
+        again: "To see the tour again, type `tour` in the launcher, or open Settings, About.",
+        open: "Open the launcher"
+    };
+}
+
+function tokens(text, chord) {
+    var out = [];
+    var rest = String(text || "");
+    var push = function (part) {
+        var bits = part.split(" ");
+        for (var i = 0; i < bits.length; i++) {
+            if (!bits[i])
+                continue;
+            var typed = /^`([^`]+)`(\S*)$/.exec(bits[i]);
+            if (typed)
+                out.push({ text: typed[1], kind: "typed", before: "", after: typed[2] });
+            else
+                out.push({ text: bits[i], kind: "word", before: "", after: "" });
+        }
+    };
+    var at = chord ? rest.indexOf(chord) : -1;
+    if (at < 0) {
+        push(rest);
+        return out;
+    }
+    push(rest.slice(0, at));
+    var lead = out.length > 0 && out[out.length - 1].kind === "word" && !out[out.length - 1].after ? out.pop().text : "";
+    var after = rest.slice(at + chord.length);
+    var stuck = /^\S*/.exec(after)[0];
+    out.push({ text: chord, kind: "key", before: lead, after: stuck });
+    push(after.slice(stuck.length));
+    return out;
+}
+
+function tail(spot, card, target) {
+    var cx = target.x + target.w / 2;
+    var cy = target.y + target.h / 2;
+    var inset = Math.min(card.w, card.h) / 6;
+    var along = function (value, length) {
+        return Math.max(inset, Math.min(length - inset, value));
+    };
+    var side = String(spot.side || "");
+    if (side.indexOf("right") === 0)
+        return { edge: "left", at: along(cy - spot.y, card.h) };
+    if (side.indexOf("left") === 0)
+        return { edge: "right", at: along(cy - spot.y, card.h) };
+    if (side === "above")
+        return { edge: "bottom", at: along(cx - spot.x, card.w) };
+    if (side === "below")
+        return { edge: "top", at: along(cx - spot.x, card.w) };
+    return { edge: "", at: 0 };
 }
 
 function overlaps(a, b) {

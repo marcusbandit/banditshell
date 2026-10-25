@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/tour.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Tour = new Function(`${src}\nreturn { parseState, formatState, shouldStart, chordFor, keyText, plan, current, begin, observe, pass, words, place, sidebarOf };`)();
+const Tour = new Function(`${src}\nreturn { parseState, formatState, shouldStart, chordFor, keyText, plan, current, begin, observe, pass, words, place, sidebarOf, closing, tokens, tail };`)();
 
 const rows = fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8").split("\n")
     .filter(line => line && !line.startsWith("#"))
@@ -84,12 +84,43 @@ test("every step says the payoff before the ask", () => {
     }
 });
 
-test("plans five steps, drops the sidebar when there is none, and offers a button only when nothing else opens a step", () => {
+test("plans five steps and drops the sidebar when there is none", () => {
     assert.deepStrictEqual(Tour.plan({ bare: false, sidebar: "rail", chords: {} }).map(s => s.id), ["launcher", "island", "sidebar", "hotkeys", "settings"]);
-    const bare = Tour.plan({ bare: true, sidebar: "none", chords: {} });
-    assert.deepStrictEqual(bare.map(s => s.id), ["launcher", "island", "hotkeys", "settings"]);
-    assert.deepStrictEqual(bare.filter(s => s.button).map(s => s.id), ["launcher", "island", "hotkeys"]);
-    assert.strictEqual(Tour.plan({ bare: true, sidebar: "none", chords: { hotkeys: "Super + /" } }).find(s => s.id === "hotkeys").button, false);
+    assert.deepStrictEqual(Tour.plan({ bare: true, sidebar: "none", chords: {} }).map(s => s.id), ["launcher", "island", "hotkeys", "settings"]);
+});
+
+test("every step offers one button that opens the thing itself", () => {
+    for (const sidebar of ["rail", "full"])
+        for (const step of Tour.plan({ bare: false, sidebar, chords: {} }))
+            assert.match(Tour.words(step, {}).open, /^(Open|Show) /, step.id);
+});
+
+test("a chord stays one piece, with the word before it and the punctuation after it", () => {
+    const said = Tour.tokens("Press Super + Shift + /, or drag up.", "Super + Shift + /");
+    assert.deepStrictEqual(said[0], { text: "Super + Shift + /", kind: "key", before: "Press", after: "," });
+    assert.deepStrictEqual(said.slice(1).map(t => t.text), ["or", "drag", "up."]);
+});
+
+test("words to type are marked as typed text", () => {
+    const said = Tour.tokens(Tour.closing("", false).again, "");
+    assert.deepStrictEqual(said.filter(t => t.kind === "typed").map(t => t.text), ["tour"]);
+    assert.ok(!said.some(t => t.text.includes("`") || t.after.includes("`")));
+});
+
+test("the finished card leads with the launcher's own key, and names none without a bind", () => {
+    assert.match(Tour.closing("Super + Space", false).now, /^Press Super \+ Space /);
+    assert.ok(!/Press [A-Z]/.test(Tour.closing("", false).now));
+    assert.ok(!/Press [A-Z]/.test(Tour.closing("", true).now));
+});
+
+test("the card's pointer aims at the middle of its target and stays on the card", () => {
+    const card = { w: 440, h: 260 };
+    const rail = { x: 0, y: 0, w: 250, h: 1080 };
+    assert.deepStrictEqual(Tour.tail({ x: 266, y: 410, side: "right" }, card, rail), { edge: "left", at: 130 });
+    const corner = Tour.tail({ x: 1400, y: 800, side: "leftBottom" }, card, { x: 1860, y: 1020, w: 60, h: 60 });
+    assert.strictEqual(corner.edge, "right");
+    assert.ok(corner.at <= card.h && corner.at >= 0);
+    assert.strictEqual(Tour.tail({ x: 0, y: 0, side: "centre" }, card, rail).edge, "");
 });
 
 const steps = Tour.plan({ bare: false, sidebar: "rail", chords: {} });

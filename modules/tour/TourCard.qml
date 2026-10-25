@@ -3,51 +3,111 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import "../../services/tour.js" as Logic
 
 Item {
     id: root
 
     property string mode: "ask"
     property string title: ""
-    property string payoff: ""
-    property string ask: ""
-    property string away: ""
+    property string intro: ""
+    property string line: ""
+    property string after: ""
     property string chord: ""
-    property string pointing: ""
+    property string primary: ""
+    property string secondary: ""
+    property string tailEdge: ""
+    property real tailAt: 0
     property int number: 1
     property int count: 5
-    property bool offersButton: false
 
-    signal passed
+    signal primaryPressed
+    signal secondaryPressed
     signal quit
-    signal finished
-    signal showMe
     signal closed
 
     readonly property real pad: Appearance.padding.card
-    readonly property bool asking: root.mode === "ask"
     readonly property bool stepping: root.mode === "ask" || root.mode === "seen"
+    readonly property real tailSize: Appearance.padding.huge
 
-    implicitWidth: Appearance.sizes.notificationWidth
+    implicitWidth: Math.ceil(glyph.advanceWidth * 32 + root.pad * 2)
     implicitHeight: body.implicitHeight + root.pad * 2
 
-    readonly property string arrow: ({
-            right: "arrow_back",
-            rightTop: "arrow_back",
-            rightBottom: "arrow_back",
-            left: "arrow_forward",
-            leftTop: "arrow_forward",
-            leftBottom: "arrow_forward",
-            above: "arrow_downward",
-            below: "arrow_upward"
-        })[root.pointing] ?? ""
+    TextMetrics {
+        id: glyph
 
-    function marked(text: string): string {
-        const safe = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        if (!root.chord || text.indexOf(root.chord) < 0)
-            return safe(text);
-        const at = text.indexOf(root.chord);
-        return `${safe(text.slice(0, at))}<font color="${Appearance.colour.accent}">${safe(root.chord)}</font>${safe(text.slice(at + root.chord.length))}`;
+        font.family: Appearance.font.family
+        font.pixelSize: Appearance.font.size.normal
+        text: "M"
+    }
+
+    component Words: Flow {
+        id: words
+
+        property string text: ""
+        property color colour: Appearance.colour.text
+
+        spacing: 0
+
+        TextMetrics {
+            id: space
+
+            font.family: Appearance.font.family
+            font.pixelSize: Appearance.font.size.normal
+            text: " "
+        }
+
+        Repeater {
+            model: Logic.tokens(words.text, root.chord)
+
+            Item {
+                id: token
+
+                required property var modelData
+
+                readonly property bool typed: token.modelData.kind === "typed"
+
+                readonly property real lead: front.text !== "" ? front.width + space.advanceWidth : 0
+
+                width: token.lead + piece.width + rest.width + (token.typed ? Appearance.padding.hair : 0) + space.advanceWidth
+                height: piece.height
+
+                StyledText {
+                    id: front
+
+                    text: token.modelData.before ?? ""
+                    font.pixelSize: Appearance.font.size.normal
+                    color: words.colour
+                }
+
+                SquircleRect {
+                    visible: token.typed
+                    x: token.lead - Appearance.padding.hair
+                    width: piece.width + Appearance.padding.hair * 2
+                    height: piece.height
+                    pill: "place"
+                    color: Appearance.colour.fillStrong
+                }
+
+                StyledText {
+                    id: piece
+
+                    x: token.lead
+                    text: token.modelData.text
+                    font.pixelSize: Appearance.font.size.normal
+                    color: token.modelData.kind === "key" ? Appearance.colour.accent : token.typed ? Appearance.colour.text : words.colour
+                }
+
+                StyledText {
+                    id: rest
+
+                    x: token.lead + piece.width + (token.typed ? Appearance.padding.hair : 0)
+                    text: token.modelData.after
+                    font.pixelSize: Appearance.font.size.normal
+                    color: words.colour
+                }
+            }
+        }
     }
 
     DropShadow {
@@ -58,11 +118,20 @@ Item {
     }
 
     SquircleRect {
+        visible: root.tailEdge !== ""
+        width: root.tailSize
+        height: root.tailSize
+        radius: Appearance.padding.hair
+        rotation: 45
+        color: Appearance.colour.island
+        x: root.tailEdge === "left" ? -root.tailSize / 2 : root.tailEdge === "right" ? root.width - root.tailSize / 2 : root.tailAt - root.tailSize / 2
+        y: root.tailEdge === "top" ? -root.tailSize / 2 : root.tailEdge === "bottom" ? root.height - root.tailSize / 2 : root.tailAt - root.tailSize / 2
+    }
+
+    SquircleRect {
         anchors.fill: parent
         radius: Appearance.rounding.large
         color: Appearance.colour.island
-        stroke: Appearance.colour.fillStrong
-        strokeWidth: Appearance.stroke.line
     }
 
     Column {
@@ -75,14 +144,14 @@ Item {
 
         Item {
             width: body.width
-            height: Math.max(pips.height, shut.height)
+            height: Math.max(pips.height, leave.height)
+            visible: root.stepping
 
             Row {
                 id: pips
 
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: Appearance.padding.hair
-                visible: root.stepping
 
                 Repeater {
                     model: root.count
@@ -90,6 +159,7 @@ Item {
                     SquircleRect {
                         required property int index
 
+                        anchors.verticalCenter: parent.verticalCenter
                         pill: "object"
                         width: index + 1 === root.number ? Appearance.padding.large : Appearance.padding.small
                         height: Appearance.padding.small
@@ -102,22 +172,33 @@ Item {
                 anchors.left: pips.right
                 anchors.leftMargin: Appearance.padding.small
                 anchors.verticalCenter: parent.verticalCenter
-                visible: root.stepping
                 text: `${root.number} of ${root.count}`
                 color: Appearance.colour.textFaint
             }
 
-            Button {
-                id: shut
+            StyledText {
+                id: leave
 
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                icon: "close"
-                style: "bare"
-                size: 0
-                visible: root.mode !== "parting"
+                text: "Skip the tour"
+                color: tint.value
 
-                onClicked: root.mode === "finished" ? root.finished() : root.quit()
+                FollowColour {
+                    id: tint
+
+                    target: leaveHover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+                }
+
+                HoverHandler {
+                    id: leaveHover
+
+                    cursorShape: Qt.PointingHandCursor
+                }
+
+                TapHandler {
+                    onTapped: root.quit()
+                }
             }
         }
 
@@ -129,16 +210,16 @@ Item {
                 id: mark
 
                 anchors.verticalCenter: parent.verticalCenter
-                name: root.mode === "seen" ? "check_circle" : root.mode === "finished" ? "flag" : root.arrow
-                fill: root.mode === "seen" ? 1 : 0
+                name: "check_circle"
+                fill: 1
                 size: Appearance.icon.large
                 color: Appearance.colour.accent
-                visible: name !== ""
+                visible: root.mode === "seen"
             }
 
             StyledText {
-                width: body.width - (mark.visible ? mark.width + parent.spacing : 0)
                 anchors.verticalCenter: parent.verticalCenter
+                width: body.width - (mark.visible ? mark.width + parent.spacing : 0)
                 text: root.title
                 font.pixelSize: Appearance.font.size.large
                 wrapMode: Text.WordWrap
@@ -147,19 +228,24 @@ Item {
 
         StyledText {
             width: body.width
-            text: root.payoff
+            text: root.intro
             font.pixelSize: Appearance.font.size.normal
             color: Appearance.colour.textDim
             wrapMode: Text.WordWrap
+            visible: text !== ""
         }
 
-        StyledText {
+        Words {
             width: body.width
-            text: root.marked(root.mode === "seen" ? root.away : root.ask)
-            textFormat: Text.StyledText
-            font.pixelSize: Appearance.font.size.normal
-            wrapMode: Text.WordWrap
-            visible: text !== ""
+            text: root.line
+            visible: root.line !== ""
+        }
+
+        Words {
+            width: body.width
+            text: root.after
+            colour: Appearance.colour.textDim
+            visible: root.after !== ""
         }
 
         Item {
@@ -167,65 +253,29 @@ Item {
             height: Appearance.padding.hair
         }
 
-        Item {
-            width: body.width
-            height: buttons.height
-            visible: root.mode !== "parting"
+        Row {
+            anchors.right: parent.right
+            spacing: Appearance.padding.small
+            visible: root.primary !== "" || root.secondary !== ""
 
             Button {
-                id: leave
-
-                anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Skip the tour"
+                text: root.secondary
                 style: "bare"
                 size: 0
-                visible: root.stepping && leave.implicitWidth + Appearance.padding.small + buttons.width <= parent.width
+                visible: root.secondary !== ""
 
-                onClicked: root.quit()
+                onClicked: root.secondaryPressed()
             }
 
-            Row {
-                id: buttons
+            Button {
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.primary
+                style: "accent"
+                size: 1
+                visible: root.primary !== ""
 
-                anchors.right: parent.right
-                spacing: Appearance.padding.small
-
-                Button {
-                    text: "Skip this step"
-                    style: "bare"
-                    size: 0
-                    visible: root.asking
-
-                    onClicked: root.passed()
-                }
-
-                Button {
-                    text: "Show me"
-                    style: "accent"
-                    size: 0
-                    visible: root.asking && root.offersButton
-
-                    onClicked: root.showMe()
-                }
-
-                Button {
-                    text: "Next"
-                    style: "accent"
-                    size: 0
-                    visible: root.mode === "seen"
-
-                    onClicked: root.passed()
-                }
-
-                Button {
-                    text: "Done"
-                    style: "accent"
-                    size: 0
-                    visible: root.mode === "finished"
-
-                    onClicked: root.finished()
-                }
+                onClicked: root.primaryPressed()
             }
         }
     }

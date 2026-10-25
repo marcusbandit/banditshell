@@ -81,57 +81,92 @@ PanelWindow {
         return item ? item.mapToItem(null, item.width, 0).x : 0;
     }
 
-    readonly property var spot: {
-        const size = {
-            w: card.width,
-            h: card.height
-        };
-        const centre = {
-            x: win.width / 2,
-            y: win.height / 2,
-            w: 0,
-            h: 0
-        };
-        const id = win.mode === "ask" || win.mode === "seen" ? Tour.step?.id ?? "" : "";
+    readonly property real settingsEdge: (win.frame?.barWidth ?? win.band) + Appearance.sizes.settingsWidth + win.gap
+
+    readonly property real islandHeight: win.band + (win.shell?.island?.compactHeight ?? Appearance.font.line.small) + win.gap
+
+    readonly property var aim: {
+        const id = win.face === "ask" || win.face === "seen" ? Tour.step?.id ?? "" : "";
         switch (id) {
         case "launcher":
-            return Logic.place(size, {
-                x: (win.width - win.launcherWidth) / 2,
-                y: win.band,
-                w: win.launcherWidth,
-                h: win.height - win.band
-            }, win.bounds, ["rightBottom", "leftBottom"], [], win.gap);
+            return {
+                target: {
+                    x: (win.width - win.launcherWidth) / 2,
+                    y: win.height - win.band - win.gap,
+                    w: win.launcherWidth,
+                    h: win.band + win.gap
+                },
+                sides: ["rightBottom", "leftBottom"],
+                avoid: []
+            };
         case "island":
-            return Logic.place(size, {
-                x: (win.width - win.islandWidth) / 2,
-                y: 0,
-                w: win.islandWidth,
-                h: win.height / 3
-            }, win.bounds, ["rightTop", "leftTop", "below"], [], win.gap);
+            return {
+                target: {
+                    x: (win.width - win.islandWidth) / 2,
+                    y: 0,
+                    w: win.islandWidth,
+                    h: win.islandHeight
+                },
+                sides: ["rightTop", "leftTop", "below"],
+                avoid: []
+            };
         case "sidebar":
-            return Logic.place(size, {
-                x: 0,
-                y: 0,
-                w: Math.max(win.frame?.fullBarWidth ?? win.band, win.menuEdge),
-                h: win.height
-            }, win.bounds, ["right"], [], win.gap);
-        case "settings":
-            return Logic.place(size, {
-                x: win.width - win.corner,
-                y: win.height - win.corner,
-                w: win.corner,
-                h: win.corner
-            }, win.bounds, ["leftBottom", "above"], [
-                {
+            return {
+                target: {
                     x: 0,
                     y: 0,
-                    w: (win.frame?.barWidth ?? win.band) + Appearance.sizes.settingsWidth + win.gap,
+                    w: Math.max(win.frame?.fullBarWidth ?? win.band, win.menuEdge),
                     h: win.height
-                }
-            ], win.gap);
+                },
+                sides: ["right"],
+                avoid: []
+            };
+        case "settings":
+            return {
+                target: {
+                    x: win.width - win.corner,
+                    y: win.height - win.corner,
+                    w: win.corner,
+                    h: win.corner
+                },
+                sides: ["leftBottom", "above"],
+                avoid: [
+                    {
+                        x: 0,
+                        y: 0,
+                        w: win.settingsEdge,
+                        h: win.height
+                    }
+                ],
+                room: win.width - win.corner - win.gap - win.settingsEdge
+            };
         }
-        return Logic.place(size, centre, win.bounds, ["centre"], [], win.gap);
+        return {
+            target: {
+                x: win.width / 2,
+                y: win.height / 2,
+                w: 0,
+                h: 0
+            },
+            sides: ["centre"],
+            avoid: []
+        };
     }
+
+    readonly property var cardSize: ({
+            w: card.width,
+            h: card.height
+        })
+
+    readonly property var spot: Logic.place(win.cardSize, win.aim.target, win.bounds, win.aim.sides, win.aim.avoid, win.gap)
+
+    readonly property var tail: Logic.tail({
+        x: glideX.value,
+        y: glideY.value,
+        side: win.spot.side
+    }, win.cardSize, win.aim.target)
+
+    readonly property var closing: Logic.closing(Tour.chords.launcher ?? "", Appearance.bare)
 
     Follow {
         id: shown
@@ -168,12 +203,31 @@ PanelWindow {
             win.shell?.launcher?.show();
         else if (id === "island" && win.shell?.island)
             win.shell.island.pinned = true;
+        else if (id === "sidebar")
+            win.shell?.openMenu("calendar", true);
         else if (id === "hotkeys")
             win.shell?.hotkeys?.show();
         else if (id === "settings")
             Panels.open("settings", {
                 screen: win.output
             });
+    }
+
+    function primary(): void {
+        if (win.face === "seen")
+            return Tour.pass();
+        if (win.face === "finished") {
+            Tour.finish();
+            return win.showMe("launcher");
+        }
+        win.showMe(Tour.step?.id ?? "");
+    }
+
+    function secondary(): void {
+        if (win.face === "finished")
+            Tour.finish();
+        else
+            Tour.pass();
     }
 
     Item {
@@ -184,26 +238,27 @@ PanelWindow {
 
             x: glideX.value
             y: glideY.value + (1 - shown.value) * Appearance.padding.large
-            width: win.islandWidth
+            width: Math.min(implicitWidth, win.bounds.w, Math.max(win.islandWidth, win.aim.room ?? Infinity))
             height: implicitHeight
             opacity: shown.value
             visible: shown.value > 0.001
 
             mode: win.face
-            title: win.face === "finished" ? "Tour done" : win.face === "parting" ? "Tour put away" : Tour.words.title ?? ""
-            payoff: win.face === "finished" ? "Everything else in the shell hangs off what you just met." : win.face === "parting" ? "It is there whenever you want it." : Tour.words.payoff ?? ""
-            ask: win.face === "finished" || win.face === "parting" ? "Open it again from Settings, About, or type tour in the launcher." : Tour.words.ask ?? ""
-            away: Tour.words.away ?? ""
-            chord: Tour.step?.chord ?? ""
-            pointing: win.spot.side ?? ""
+            title: win.face === "finished" ? win.closing.title : win.face === "parting" ? "Tour put away" : Tour.words.title ?? ""
+            intro: win.face === "ask" || win.face === "seen" ? Tour.words.payoff ?? "" : ""
+            line: win.face === "finished" ? win.closing.now : win.face === "parting" ? win.closing.again : win.face === "seen" ? Tour.words.away ?? "" : Tour.words.ask ?? ""
+            after: win.face === "finished" ? win.closing.again : ""
+            chord: win.face === "finished" ? Tour.chords.launcher ?? "" : Tour.step?.chord ?? ""
+            primary: win.face === "ask" ? Tour.words.open ?? "" : win.face === "seen" ? "Next" : win.face === "finished" ? win.closing.open : ""
+            secondary: win.face === "ask" ? "Skip this step" : win.face === "finished" ? "Close" : ""
+            tailEdge: win.tail.edge
+            tailAt: win.tail.at
             number: Tour.number
             count: Tour.steps.length
-            offersButton: Tour.step?.button ?? false
 
-            onPassed: Tour.pass()
+            onPrimaryPressed: win.primary()
+            onSecondaryPressed: win.secondary()
             onQuit: Tour.quit()
-            onFinished: Tour.finish()
-            onShowMe: win.showMe(Tour.step?.id ?? "")
             onClosed: Tour.parting = false
         }
     }
