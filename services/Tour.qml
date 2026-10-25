@@ -66,7 +66,8 @@ Singleton {
     readonly property var step: Logic.current(root.steps, root.machine.done)
     readonly property string phase: root.machine.phase
     readonly property int number: root.step ? root.steps.indexOf(root.step) + 1 : root.steps.length
-    readonly property var words: root.step ? Logic.words(root.step, root.facts) : ({})
+    readonly property string superAt: Logic.explainsSuper(root.steps)
+    readonly property var words: root.step ? Logic.words(root.step, root.facts, root.step.id === root.superAt) : ({})
 
     onReadyChanged: root.settle()
     Component.onCompleted: {

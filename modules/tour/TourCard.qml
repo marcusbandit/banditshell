@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import qs.modules.settings
 import "../../services/tour.js" as Logic
 
 Item {
@@ -69,7 +70,10 @@ Item {
 
                 readonly property real lead: front.text !== "" ? front.width + space.advanceWidth : 0
 
-                width: token.lead + piece.width + rest.width + (token.typed ? Appearance.padding.hair : 0) + space.advanceWidth
+                readonly property bool key: token.modelData.kind === "key"
+                readonly property real body: token.key ? caps.width : piece.width
+
+                width: token.lead + token.body + rest.width + (token.typed ? Appearance.padding.hair : 0) + space.advanceWidth
                 height: piece.height
 
                 StyledText {
@@ -93,15 +97,25 @@ Item {
                     id: piece
 
                     x: token.lead
+                    visible: !token.key
                     text: token.modelData.text
                     font.pixelSize: Appearance.font.size.normal
-                    color: token.modelData.kind === "key" ? Appearance.colour.accent : token.typed ? Appearance.colour.text : words.colour
+                    color: token.typed ? Appearance.colour.text : words.colour
+                }
+
+                KeyCaps {
+                    id: caps
+
+                    x: token.lead
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: token.key
+                    combo: token.key ? token.modelData.text.split(" + ").join(" ") : ""
                 }
 
                 StyledText {
                     id: rest
 
-                    x: token.lead + piece.width + (token.typed ? Appearance.padding.hair : 0)
+                    x: token.lead + token.body + (token.typed ? Appearance.padding.hair : 0)
                     text: token.modelData.after
                     font.pixelSize: Appearance.font.size.normal
                     color: words.colour

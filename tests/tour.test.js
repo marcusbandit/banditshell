@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/tour.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Tour = new Function(`${src}\nreturn { parseState, formatState, shouldStart, chordFor, keyText, plan, current, begin, observe, pass, words, place, sidebarOf, closing, tokens, tail };`)();
+const Tour = new Function(`${src}\nreturn { parseState, formatState, shouldStart, chordFor, keyText, plan, current, begin, observe, pass, words, place, sidebarOf, closing, tokens, tail, explainsSuper };`)();
 
 const rows = fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8").split("\n")
     .filter(line => line && !line.startsWith("#"))
@@ -207,4 +207,15 @@ test("every side the card can take has an arrow and a spot", () => {
     const target = { x: 400, y: 400, w: 100, h: 100 };
     for (const side of ["right", "left", "above", "below", "rightTop", "rightBottom", "leftTop", "leftBottom", "centre"])
         assert.strictEqual(Tour.place(card, target, bounds, [side], [], 10).side, side, side);
+});
+
+test("Super is explained once, on the first card that shows it", () => {
+    const steps = Tour.plan({ bare: false, sidebar: "rail", chords: { island: "Super + Shift + M", hotkeys: "Super + /" } });
+    const first = Tour.explainsSuper(steps);
+    assert.strictEqual(first, "island");
+    const notes = steps.map(s => Tour.words(s, {}, s.id === first).note).filter(Boolean);
+    assert.deepStrictEqual(notes, ["Super is the Windows key."]);
+    assert.strictEqual(Tour.explainsSuper(Tour.plan({ bare: false, sidebar: "rail", chords: {} })), "finished");
+    assert.match(Tour.closing("Super + Space", false, true).again, /^Super is the Windows key\. /);
+    assert.doesNotMatch(Tour.closing("Super + Space", false, false).again, /Windows/);
 });

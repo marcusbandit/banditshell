@@ -1,7 +1,7 @@
 {
   "name": "tour",
   "summary": "the first-run tour over the real desktop",
-  "layer": 2,
+  "layer": 4,
   "owns": {
     "qml": ["modules/tour"],
     "services": ["Tour"],
@@ -9,7 +9,7 @@
     "tests": ["tests/tour.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor"],
+    "packages": ["core", "compositor", "settings"],
     "optional": []
   },
   "provides": {

@@ -860,7 +860,7 @@ const PAGES_SOURCE = {
                 { n: [120, 121], kind: "w", w: "about", kw: "device info about version compositor source design notes" }
             ] },
             { t: "New here", rows: [
-                { n: [], icon: "tour", label: "The tour", kind: "button", btn: "Show", act: "tour", detail: "a few steps over your own desktop", kw: "tour welcome guide introduction onboarding first run help start" }
+                { n: [], icon: "tour", label: "The tour", kind: "button", btn: "Show", act: "tour", why: "A few short steps over your own desktop: the launcher, the island, the rail, the hotkey sheet and Settings, each opened for real.", kw: "tour welcome guide introduction onboarding first run help start" }
             ] }
         ]
     }

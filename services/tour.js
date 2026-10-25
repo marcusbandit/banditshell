@@ -1,5 +1,7 @@
 .pragma library
 
+var SUPER_NOTE = "Super is the Windows key.";
+
 var ORDER = ["launcher", "island", "sidebar", "hotkeys", "settings"];
 
 var SUMMONS = {
@@ -133,6 +135,13 @@ function plan(env) {
     return steps;
 }
 
+function explainsSuper(steps) {
+    for (var i = 0; i < steps.length; i++)
+        if (/\bSuper\b/.test(steps[i].chord || ""))
+            return steps[i].id;
+    return "finished";
+}
+
 function current(steps, done) {
     for (var i = 0; i < steps.length; i++)
         if (done.indexOf(steps[i].id) < 0)
@@ -191,8 +200,9 @@ function pass(machine, steps) {
     return { phase: current(steps, done) ? "ask" : "finished", done: done };
 }
 
-function words(step, facts) {
+function words(step, facts, explain) {
     var f = facts || {};
+    var note = explain && /\bSuper\b/.test(step.chord || "") ? SUPER_NOTE : "";
     var key = step.chord;
     var either = function (gesture) {
         return key && gesture ? "Press " + key + ", or " + gesture + "." : key ? "Press " + key + "." : gesture ? gesture.charAt(0).toUpperCase() + gesture.slice(1) + "." : "";
@@ -204,7 +214,8 @@ function words(step, facts) {
             payoff: f.apps > 0 ? "One search for apps, files, settings and sums. " + f.apps + " apps are already in it." : "One search for apps, files, settings and sums.",
             ask: either(step.gesture ? "drag up from the middle of the bottom edge" : ""),
             open: "Open the launcher",
-            away: "Esc puts it away again."
+            away: "Esc puts it away again.",
+            note: note
         };
     case "island":
         return {
@@ -212,7 +223,8 @@ function words(step, facts) {
             payoff: "Notifications, music, timers and the clock arrive at the top centre.",
             ask: either(step.gesture ? "rest the pointer at the top centre" : ""),
             open: "Open the island",
-            away: "Move away and it folds back up; if it stays, press Esc."
+            away: "Move away and it folds back up; if it stays, press Esc.",
+            note: note
         };
     case "sidebar":
         return {
@@ -220,7 +232,8 @@ function words(step, facts) {
             payoff: (f.workspaces > 0 ? "Your " + f.workspaces + " workspaces" : "Your workspaces") + ", and a mark only when something needs you.",
             ask: step.gesture === "rail" ? "Rest the pointer on the rail at the left edge." : "Press a mark in the column on the left.",
             open: step.gesture === "rail" ? "Open the rail" : "Open a menu",
-            away: step.gesture === "rail" ? "It grows into the full column. Move away and it rests again." : "Press it again, or Esc, to close the menu."
+            away: step.gesture === "rail" ? "It grows into the full column. Move away and it rests again." : "Press it again, or Esc, to close the menu.",
+            note: note
         };
     case "hotkeys":
         return {
@@ -228,7 +241,8 @@ function words(step, facts) {
             payoff: f.binds > 0 ? "All " + f.binds + " of your shortcuts on one sheet, drawn on a keyboard." : "Every shortcut you set, on one sheet, drawn on a keyboard.",
             ask: key ? "Press " + key + "." : "It has no key yet. Give it one in Settings, Keys.",
             open: "Open the sheet",
-            away: "Esc puts it away again."
+            away: "Esc puts it away again.",
+            note: note
         };
     case "settings":
         return {
@@ -236,18 +250,19 @@ function words(step, facts) {
             payoff: "Theme, screens, keys and every switch, each with a preview of what it does.",
             ask: step.gesture === "corner" ? either("point into the bottom right corner and press") : key ? "Press " + key + ", or type `settings` in the launcher." : "Type `settings` in the launcher.",
             open: "Open Settings",
-            away: "The X, or the corner again, closes it."
+            away: "The X, or the corner again, closes it.",
+            note: note
         };
     }
-    return { title: "", payoff: "", ask: "", open: "", away: "" };
+    return { title: "", payoff: "", ask: "", open: "", away: "", note: "" };
 }
 
-function closing(chord, bare) {
+function closing(chord, bare, explain) {
     var now = chord ? "Press " + chord + " and type what you want: an app, a file, a setting." : bare ? "Open the launcher and type what you want: an app, a file, a setting." : "Drag up from the middle of the bottom edge and type what you want: an app, a file, a setting.";
     return {
         title: "Tour done",
         now: now,
-        again: "To see the tour again, type `tour` in the launcher, or open Settings, About.",
+        again: (explain && /\bSuper\b/.test(chord) ? SUPER_NOTE + " " : "") + "To see the tour again, type `tour` in the launcher, or open Settings, About.",
         open: "Open the launcher"
     };
 }

@@ -115,7 +115,7 @@ PanelWindow {
                 target: {
                     x: 0,
                     y: 0,
-                    w: Math.max(win.frame?.fullBarWidth ?? win.band, win.menuEdge),
+                    w: Math.max(win.frame?.barWidth ?? win.band, win.menuEdge),
                     h: win.height
                 },
                 sides: ["right"],
@@ -166,7 +166,7 @@ PanelWindow {
         side: win.spot.side
     }, win.cardSize, win.aim.target)
 
-    readonly property var closing: Logic.closing(Tour.chords.launcher ?? "", Appearance.bare)
+    readonly property var closing: Logic.closing(Tour.chords.launcher ?? "", Appearance.bare, Tour.superAt === "finished")
 
     Follow {
         id: shown
@@ -247,7 +247,7 @@ PanelWindow {
             title: win.face === "finished" ? win.closing.title : win.face === "parting" ? "Tour put away" : Tour.words.title ?? ""
             intro: win.face === "ask" || win.face === "seen" ? Tour.words.payoff ?? "" : ""
             line: win.face === "finished" ? win.closing.now : win.face === "parting" ? win.closing.again : win.face === "seen" ? Tour.words.away ?? "" : Tour.words.ask ?? ""
-            after: win.face === "finished" ? win.closing.again : ""
+            after: win.face === "finished" ? win.closing.again : win.face === "ask" ? Tour.words.note ?? "" : ""
             chord: win.face === "finished" ? Tour.chords.launcher ?? "" : Tour.step?.chord ?? ""
             primary: win.face === "ask" ? Tour.words.open ?? "" : win.face === "seen" ? "Next" : win.face === "finished" ? win.closing.open : ""
             secondary: win.face === "ask" ? "Skip this step" : win.face === "finished" ? "Close" : ""
