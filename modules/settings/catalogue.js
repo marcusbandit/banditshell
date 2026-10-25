@@ -1023,7 +1023,7 @@ function same(a, b) {
 }
 
 function resettable(row) {
-    return !!row?.k && !!row.cfg && !row.ro && row.kind !== "secret" && row.kind !== "button";
+    return !!row?.k && !!row.cfg && !row.ro && !row.k.startsWith("scr:") && row.kind !== "secret" && row.kind !== "button";
 }
 
 function changed(value, fallback) {

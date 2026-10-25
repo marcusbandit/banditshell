@@ -25,7 +25,8 @@ Column {
             list.push([root.value, String(root.value)]);
         return list;
     }
-    readonly property var fallback: Catalogue.resettable(root.row) ? SettingsState.defaultOf(root.key) : undefined
+    readonly property bool resettable: !!root.key && SettingsState.resettable(root.key)
+    readonly property var fallback: root.resettable ? SettingsState.defaultOf(root.key) : undefined
     readonly property bool changed: !root.off && Catalogue.changed(root.value, root.fallback)
     readonly property bool flashing: !!SettingsView.flash && !!root.row.uid && SettingsView.flash.uid === root.row.uid
 
@@ -65,10 +66,21 @@ Column {
 
         SettingsTool {
             anchors.verticalCenter: parent.verticalCenter
-            visible: root.changed
+            visible: root.resettable
+            enabled: root.changed
+            opacity: shown.value
             icon: "restart_alt"
             tip: "back to default"
-            onClicked: root.set(root.fallback)
+            onClicked: SettingsState.reset(root.key)
+
+            Follow {
+                id: shown
+
+                target: root.changed ? 1 : 0
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
+            }
         }
 
         Loader {

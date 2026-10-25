@@ -435,6 +435,26 @@ Singleton {
         return undefined;
     }
 
+    function resettable(k: string): bool {
+        const cfg = root.configBacked[k];
+        if (!cfg || !Catalogue.resettable(root.rowOf(k)))
+            return false;
+        const t = root.transforms[k];
+        if (!t)
+            return true;
+        const raw = Config.get(cfg);
+        return JSON.stringify(t.write(t.read(raw))) === JSON.stringify(raw);
+    }
+
+    function reset(k: string): void {
+        const r = root.rowOf(k);
+        const before = root.v(k);
+        root.set(k, root.defaultOf(k));
+        const after = root.v(k);
+        if (r?.kind === "text" && !root.muteLog && JSON.stringify(after) !== JSON.stringify(before))
+            root.log(k, r, before, after);
+    }
+
     function lookup(values: var, key: string): var {
         let at = values;
         for (const part of key.split(".")) {

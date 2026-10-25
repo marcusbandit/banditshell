@@ -551,9 +551,12 @@ test("a row offers its default back only when its value really differs", () => {
     assert.ok(!Catalogue.changed(true, undefined));
 });
 
-test("a reset arrow is never offered for a password, a button or a screen row", () => {
+test("a reset arrow is never offered for a password, a button, a read-only path or a screen row", () => {
     assert.ok(Catalogue.resettable({ k: "x", cfg: "a.b", kind: "toggle" }));
     assert.ok(!Catalogue.resettable({ k: "x", cfg: "a.b", kind: "secret" }));
     assert.ok(!Catalogue.resettable({ k: "x", cfg: "a.b", kind: "button" }));
-    assert.ok(!Catalogue.resettable({ k: "scr:scale", kind: "slider" }));
+    assert.ok(!Catalogue.resettable({ k: "x", cfg: "a.b", kind: "path", ro: true }));
+    const screens = Object.values(Catalogue.ROWS).filter(r => r.k && r.k.startsWith("scr:"));
+    assert.ok(screens.length > 0);
+    assert.ok(screens.every(r => !Catalogue.resettable(r)));
 });
