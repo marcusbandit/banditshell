@@ -10,8 +10,8 @@ var SECTIONS = [
             { word: "downloads", example: "downloads pdf", about: "Latest downloads", icon: "download", also: ["download"] },
             { word: "screenshots", example: "screenshots terminal", about: "Latest screenshots", icon: "screenshot_monitor", also: [] },
             { word: "projects", example: "projects banditshell", about: "Your projects", icon: "folder_code", also: ["project", "repos", "repo"] },
-            { word: "notes", example: "notes budget", about: "Search your notes", icon: "description", also: ["vault", "obsidian"] },
-            { word: "note", example: "note meeting", about: "Write a new note", icon: "note_add", also: [] },
+            { word: "notes", example: "notes budget", about: "Search existing notes", icon: "description", also: ["vault", "obsidian"] },
+            { word: "note", example: "note meeting", about: "Start a new note", icon: "note_add", also: [] },
             { word: "snip", example: "snip signature", about: "Snippets", icon: "short_text", also: ["snippet", "snippets"] },
             { word: "colours", about: "Colours you picked", icon: "palette", also: ["pick"] }
         ]
