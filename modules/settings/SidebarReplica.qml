@@ -29,10 +29,10 @@ Item {
     width: SettingsState.v("sidebarW")
     implicitHeight: root.naturalHeight
 
-    SystemClock {
+    WallClock {
         id: now
 
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
     }
 
     Column {

@@ -88,10 +88,10 @@ Item {
             notices.foldAll();
     }
 
-    SystemClock {
+    WallClock {
         id: clock
 
-        precision: SystemClock.Seconds
+        precision: WallClock.Seconds
         enabled: root.watched
     }
 

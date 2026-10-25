@@ -39,9 +39,9 @@ Column {
 
     visible: root.timeShown || root.dateShown
 
-    SystemClock {
+    WallClock {
         id: clock
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
     }
 
     Item {
