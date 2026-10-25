@@ -171,7 +171,7 @@ test("statuses, blurbs, details and options all render against a live state", ()
     for (const p of Catalogue.PAGES)
         assert.strictEqual(typeof p.status(s), "string", p.id);
     for (const r of Catalogue.ROWS) {
-        for (const f of ["state", "pending", "why"])
+        for (const f of ["state", "pending"])
             assert.strictEqual(typeof (Catalogue.val(r[f], s) ?? ""), "string", `${r.k || r.label} ${f}`);
         if (r.dis)
             r.dis(s);
@@ -184,7 +184,7 @@ test("statuses, blurbs, details and options all render against a live state", ()
 test("a row's line under its label only says what is true now, and shortcuts, explanations and pending changes each have their own field", () => {
     const Lua = lib(path.join(ROOT, "services/hyprland-lua.js"), ["actionTable", "actionDescription", "scanLua", "bindAction"]);
     const actions = Lua.actionTable(fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8"));
-    const bound = Lua.scanLua(fs.readFileSync(path.join(ROOT, "docs/hyprland-binds.example.lua"), "utf8")).binds.map(b => Lua.bindAction(b.expr));
+    const bound = Lua.scanLua(fs.readFileSync(path.join(ROOT, "docs/hyprland-binds.example.lua"), "utf8")).binds.map(b => Lua.bindAction(b.expr, actions));
     const filesActions = Object.values(DEFAULTS.files.keys).map(String);
     for (const r of Catalogue.ROWS) {
         const name = r.k || r.label || r.w;
@@ -192,6 +192,8 @@ test("a row's line under its label only says what is true now, and shortcuts, ex
         for (const f of ["state", "pending"])
             if (f in r)
                 assert.strictEqual(typeof r[f], "function", `${name} ${f} is a fixed line, which explains the row, so it belongs in why`);
+        if ("why" in r)
+            assert.strictEqual(typeof r.why, "string", `${name} why changes with the machine, which is state`);
         if (!r.keys)
             continue;
         const [set, id] = r.keys.split(":");

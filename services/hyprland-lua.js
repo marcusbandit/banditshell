@@ -1178,9 +1178,9 @@ function actionTable(text) {
     for (const line of String(text ?? "").split("\n")) {
         if (!line || line[0] === "#")
             continue;
-        const [id, , , , description] = line.split("\t");
+        const [id, , , argv, description] = line.split("\t");
         if (id && description)
-            rows.push({ segments: id.split("."), description });
+            rows.push({ segments: id.split("."), argv: argv ? argv.split(" ") : [], description });
     }
     return rows;
 }
@@ -1205,9 +1205,9 @@ function describeExpr(expr, actions) {
     if (exec)
         return luaUnescape(exec[1]);
 
-    const named = /^bs\.([a-z0-9_]+(?:\.[a-z0-9_]+)*)$/.exec(e) || /^bs\.action\(\s*"([a-z0-9_]+(?:\.[a-z0-9_]+)*)"/.exec(e);
+    const named = namedAction(e);
     if (named && actions) {
-        const said = actionDescription(named[1], actions);
+        const said = actionDescription(named, actions);
         if (said)
             return said;
     }
@@ -1219,13 +1219,33 @@ function describeExpr(expr, actions) {
     return e;
 }
 
-function bindAction(expr) {
+function namedAction(expr) {
+    const named = /^bs\.([a-z0-9_]+(?:\.[a-z0-9_]+)*)$/.exec(expr) || /^bs\.action\(\s*"([a-z0-9_]+(?:\.[a-z0-9_]+)*)"/.exec(expr);
+    return named ? named[1] : "";
+}
+
+function actionFromArgv(words, rows) {
+    let best = null;
+    for (const row of rows ?? []) {
+        const argv = row.argv ?? [];
+        if (!argv.length || argv.length > words.length || !argv.every((a, i) => a === "$1" || a === words[i]))
+            continue;
+        const loose = argv.filter(a => a === "$1").length;
+        if (best && (argv.length < best.argv.length || (argv.length === best.argv.length && loose >= best.loose)))
+            continue;
+        const fill = argv.map((a, i) => a === "$1" ? words[i] : null).filter(w => w !== null);
+        best = { argv, loose, id: row.segments.map(seg => seg === "*" ? fill.shift() : seg).join(".") };
+    }
+    return best ? best.id : "";
+}
+
+function bindAction(expr, actions) {
     const e = String(expr ?? "").trim();
-    const named = /^bs\.([a-z0-9_]+(?:\.[a-z0-9_]+)*)$/.exec(e) || /^bs\.action\(\s*"([a-z0-9_]+(?:\.[a-z0-9_]+)*)"/.exec(e);
+    const named = namedAction(e);
     if (named)
-        return named[1];
-    const exec = /^hl\.dsp\.exec_cmd\("banditshell ([a-z0-9_]+(?: [a-z0-9_]+)*)"\)$/.exec(e);
-    return exec ? exec[1].split(" ").join(".") : "";
+        return named;
+    const exec = /^hl\.dsp\.exec_cmd\("banditshell ([A-Za-z0-9_.:\/-]+(?: [A-Za-z0-9_.:\/-]+)*)"\)$/.exec(e);
+    return exec ? actionFromArgv(exec[1].split(" "), actions) : "";
 }
 
 function optionSegments(path) {

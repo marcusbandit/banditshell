@@ -701,7 +701,7 @@ const PAGES_SOURCE = {
             { t: "When idle", rows: [
                 { n: 91, icon: "lock_clock", label: "Lock after", k: "idleLock", kind: "choice", o: ["1 min", "5 min", "15 min", "never"], cfg: "idle.lock", state: s => s.idleHandled ? `${s.idleHandler} is handling this` : "", kw: "auto-lock idle" },
                 { n: 91, icon: "monitor", label: "Screens off after", k: "idleOff", kind: "choice", o: ["5 min", "10 min", "30 min", "never"], cfg: "idle.screensOff", state: s => s.idleHandled ? `${s.idleHandler} is handling this` : "", why: "A playing video holds it off.", kw: "screen-off idle" },
-                { n: 91, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], cfg: "idle.sleep", state: s => s.idleHandled ? `${s.idleHandler} is handling this` : "", why: s => s.hasBattery ? "On battery only." : "", kw: "suspend idle" }
+                { n: 91, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], cfg: "idle.sleep", state: s => s.idleHandled ? `${s.idleHandler} is handling this` : "", why: "On a laptop it only counts on battery.", kw: "suspend idle" }
             ] }
         ]
     },
@@ -800,7 +800,7 @@ const PAGES_SOURCE = {
         groups: [
             { rows: [
                 { n: 113, icon: "animation", label: "Less motion", k: "reduceMotion", kind: "toggle", cfg: "access.lessMotion", why: "Turns off every animation. No motion at all.", kw: "accessibility reduce motion" },
-                { n: 113, icon: "format_size", label: "Larger text", k: "largerText", kind: "toggle", cfg: "access.largerText", why: s => `Base ${s.v("fontBase")} becomes ${s.largerBase}.`, kw: "accessibility larger text" },
+                { n: 113, icon: "format_size", label: "Larger text", k: "largerText", kind: "toggle", cfg: "access.largerText", why: "Raises the base text size, so every size steps up.", kw: "accessibility larger text" },
                 { n: 113, icon: "contrast", label: "More contrast", k: "contrast", kind: "toggle", cfg: "access.moreContrast", why: "Faint text gets brighter.", kw: "accessibility contrast" }
             ] }
         ]
@@ -1079,7 +1079,7 @@ function nameOf(page, s) {
 }
 
 function whyOf(row, s) {
-    return val(row.why, s) || (row.kind === "w" ? WIDGET_WHY[row.w] || "" : "") || "";
+    return row.why || (row.kind === "w" ? WIDGET_WHY[row.w] || "" : "") || "";
 }
 
 function numbers(row) {

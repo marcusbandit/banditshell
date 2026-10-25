@@ -5,7 +5,6 @@ import Quickshell
 import qs.config
 import qs.services
 import "../../services/hyprland-lua.js" as HyprlandLua
-import "boards.js" as Boards
 
 Singleton {
     id: root
@@ -58,8 +57,8 @@ Singleton {
         const at = ref.indexOf(":");
         const id = ref.slice(at + 1);
         const keys = Config.values.files.keys ?? {};
-        const combos = ref.slice(0, at) === "files" ? Object.keys(keys).filter(k => String(keys[k]) === id).map(k => root.fromChord(k)) : root.shell.filter(k => HyprlandLua.bindAction(k.bind.expr) === id).map(k => k.combo);
-        return combos.map(c => c.split(" ").map(Boards.keyName).join(" "));
+        const combos = ref.slice(0, at) === "files" ? Object.keys(keys).filter(k => String(keys[k]) === id).map(k => root.fromChord(k)) : root.shell.filter(k => !k.bind.submap && HyprlandLua.bindAction(k.bind.expr, HyprConfig.actionRows) === id).map(k => k.combo);
+        return combos.filter((c, i) => combos.indexOf(c) === i);
     }
 
     function find(pinId: string): var {

@@ -1107,10 +1107,15 @@ test("the scanner reads hl.bind with a stable id as an ordinary bind with that e
 });
 
 test("a bind names the same action whether it calls bs or runs the banditshell command", () => {
-    assert.strictEqual(HyprlandLua.bindAction("bs.panel.clipboard.toggle"), "panel.clipboard.toggle");
-    assert.strictEqual(HyprlandLua.bindAction('hl.dsp.exec_cmd("banditshell panel clipboard toggle")'), "panel.clipboard.toggle");
-    assert.strictEqual(HyprlandLua.bindAction('bs.action("tablet.on", "compositor")'), "tablet.on");
-    assert.strictEqual(HyprlandLua.bindAction('hl.dsp.exec_cmd("banditshell panel clipboard toggle; rm -rf x")'), "");
-    assert.strictEqual(HyprlandLua.bindAction('hl.dsp.exec_cmd("~/.local/bin/ollama-clipboard")'), "");
-    assert.strictEqual(HyprlandLua.bindAction("hl.dsp.window.close()"), "");
+    const rows = HyprlandLua.actionTable(fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8"));
+    const of = expr => HyprlandLua.bindAction(expr, rows);
+    assert.strictEqual(of("bs.panel.clipboard.toggle"), "panel.clipboard.toggle");
+    assert.strictEqual(of('hl.dsp.exec_cmd("banditshell panel clipboard toggle")'), "panel.clipboard.toggle");
+    assert.strictEqual(of('hl.dsp.exec_cmd("banditshell panel launcher toggle")'), "launcher.toggle");
+    assert.strictEqual(of('hl.dsp.exec_cmd("banditshell screenshot save --freeze")'), "screenshot.save_frozen");
+    assert.strictEqual(of('hl.dsp.exec_cmd("banditshell screen sidebar toggle all")'), "screen.sidebar.toggle");
+    assert.strictEqual(of('bs.action("tablet.on", "compositor")'), "tablet.on");
+    assert.strictEqual(of('hl.dsp.exec_cmd("banditshell panel clipboard toggle; rm -rf x")'), "");
+    assert.strictEqual(of('hl.dsp.exec_cmd("~/.local/bin/ollama-clipboard")'), "");
+    assert.strictEqual(of("hl.dsp.window.close()"), "");
 });
