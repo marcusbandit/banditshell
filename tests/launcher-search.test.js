@@ -11,7 +11,7 @@ function lib(file, names) {
 }
 
 const Calculation = lib("services/calculation.js", ["looksLikeCalculation", "qalcExpression", "readQalc"]);
-const Search = lib("modules/launcher/search.js", ["pathQuery", "shortPath", "pathRows", "fileRows", "urlOf", "webSearchUrl", "arrange", "nextPickable", "matchesNothing"]);
+const Search = lib("modules/launcher/search.js", ["pathQuery", "shortPath", "pathRows", "fileRows", "urlOf", "webSearchUrl", "arrange", "nextPickable", "matchesNothing", "armsFirst"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 test.describe("looksLikeCalculation", () => {
@@ -331,5 +331,23 @@ test.describe("matchesNothing", () => {
         assert.ok(Search.matchesNothing([{ header: true, key: "header:fallbacks" }, { kind: "fallback", key: "fallback:web" }]));
         assert.ok(!Search.matchesNothing([{ kind: "app", key: "app:firefox" }, { kind: "fallback", key: "fallback:web" }]));
         assert.ok(!Search.matchesNothing([{ kind: "file", key: "file:/home/a/frefiox.txt" }]));
+    });
+});
+
+test.describe("armsFirst", () => {
+    test.it("asks twice before a guess suspends, locks or ends the session", () => {
+        for (const id of ["suspend", "hibernate", "lock", "restartshell", "sleepdisplays"])
+            assert.ok(Search.armsFirst({ id: id }, true), id);
+    });
+
+    test.it("runs a guessed harmless toggle on the first Enter", () => {
+        assert.ok(!Search.armsFirst({ id: "awake" }, true));
+        assert.ok(!Search.armsFirst({ id: "nightlight" }, true));
+    });
+
+    test.it("still asks twice for a confirm command, guessed or typed", () => {
+        assert.ok(Search.armsFirst({ id: "poweroff", confirm: true }, false));
+        assert.ok(Search.armsFirst({ id: "poweroff", confirm: true }, true));
+        assert.ok(!Search.armsFirst({ id: "suspend" }, false));
     });
 });

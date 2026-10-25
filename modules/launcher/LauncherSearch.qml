@@ -836,9 +836,7 @@ QtObject {
         const target = found < apps.length ? root.appRow(apps[found]) : found < apps.length + commands.length ? root.commandRow(commands[found - apps.length]) : root.settingRow(settings[found - apps.length - commands.length]);
         return Object.assign({}, target, {
             guessed: true,
-            label: target.armed ? target.label : `Did you mean ${root.nameOf(target)}?`,
-            detail: "",
-            toggle: undefined,
+            label: target.armed ? target.label : root.nameOf(target),
             score: 0
         });
     }
@@ -1489,7 +1487,7 @@ QtObject {
         return guess ? Search.arrange(remembered.concat([
             {
                 key: "guess",
-                title: "Closest match",
+                title: `Corrected from “${root.text}”`,
                 items: [guess]
             }
         ]), root.limits) : arranged;
@@ -1521,7 +1519,7 @@ QtObject {
             root.launch(() => Apps.launch(row.entry));
             return;
         case "command":
-            if ((row.command.confirm || row.guessed) && root.armed !== row.command.id) {
+            if (Search.armsFirst(row.command, row.guessed) && root.armed !== row.command.id) {
                 root.armed = row.command.id;
                 return;
             }
@@ -1627,7 +1625,7 @@ QtObject {
     function confirmActions(row: var): var {
         const cancel = {
             icon: "close",
-            label: "Cancel",
+            label: row.kind === "command" ? `Don't ${row.command.label.toLowerCase()}` : "Cancel",
             run: () => root.armed = ""
         };
         const owner = root.sourceOf(row);
