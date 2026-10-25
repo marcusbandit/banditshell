@@ -73,7 +73,7 @@ Item {
 
     property string pointedKey: ""
 
-    readonly property bool pointing: root.held.some(e => e.key === root.pointedKey && e.present)
+    readonly property bool pointing: root.pointedKey !== ""
 
     property var held: []
 
@@ -127,17 +127,28 @@ Item {
                     color: root.toneColour(mark.entry?.tone ?? mark.modelData.tone)
                 }
 
+                readonly property bool pointed: area.visible && area.enabled && area.containsMouse
+
+                onPointedChanged: {
+                    if (mark.pointed)
+                        root.pointedKey = mark.modelData.key;
+                    else if (root.pointedKey === mark.modelData.key)
+                        root.pointedKey = "";
+                }
+
+                Component.onDestruction: {
+                    if (root.pointedKey === mark.modelData.key)
+                        root.pointedKey = "";
+                }
+
                 MouseArea {
+                    id: area
+
                     anchors.fill: parent
-                    enabled: mark.present && !!root.presses[mark.modelData.key]
+                    visible: !!root.presses[mark.modelData.key]
+                    enabled: mark.present
                     hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onContainsMouseChanged: {
-                        if (containsMouse)
-                            root.pointedKey = mark.modelData.key;
-                        else if (root.pointedKey === mark.modelData.key)
-                            root.pointedKey = "";
-                    }
+                    cursorShape: area.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                     onClicked: root.presses[mark.modelData.key]()
                 }
 

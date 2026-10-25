@@ -36,6 +36,7 @@ Item {
     readonly property real timeCentre: clock.timeShown ? foot.y + clock.y + clock.timeItem.y + clock.timeItem.height / 2 : -1
 
     property bool dwelt: false
+    property bool pressedAtRest: false
     readonly property bool holding: root.menusShown && root.menuKeys.indexOf(root.openKey) >= 0
     readonly property bool railWanted: root.rail && (root.dwelt || root.holding)
 
@@ -283,18 +284,28 @@ Item {
                 awake: root.awake
                 batteryWanted: ["top", "off"].includes(Config.values.sidebar.glance)
 
-                onAwakeEnded: root.awakeEnded()
+                enabled: root.revealed === 0
+
+                onAwakeEnded: {
+                    root.pressedAtRest = true;
+                    root.awakeEnded();
+                }
             }
         }
     }
 
     HoverHandler {
         id: pointer
+
+        onHoveredChanged: {
+            if (!pointer.hovered)
+                root.pressedAtRest = false;
+        }
     }
 
     Timer {
         interval: Appearance.animation.dwell
-        running: root.rail && pointer.hovered && !root.dwelt && !(resting.item?.holdsRest ?? false)
+        running: root.rail && pointer.hovered && !root.dwelt && !root.pressedAtRest && !(resting.item?.holdsRest ?? false)
         onTriggered: root.dwelt = true
     }
 
