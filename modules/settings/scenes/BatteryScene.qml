@@ -63,7 +63,7 @@ Item {
             FollowColour {
                 id: levelTone
 
-                target: root.low ? Appearance.colour.alarm : root.charging ? Appearance.colour.accent : Appearance.colour.text
+                target: root.low ? Appearance.colour.warning : root.charging ? Appearance.colour.accent : Appearance.colour.text
                 speed: Appearance.animation.trackSpeed
             }
         }
@@ -113,7 +113,7 @@ Item {
 
             ShapePath {
                 fillColor: "transparent"
-                strokeColor: root.low ? Appearance.colour.alarm : Appearance.colour.textDim
+                strokeColor: root.low ? Appearance.colour.warning : Appearance.colour.textDim
                 strokeWidth: Appearance.stroke.ring
 
                 PathPolyline {
@@ -135,7 +135,7 @@ Item {
 
             ShapePath {
                 fillColor: "transparent"
-                strokeColor: Appearance.colour.alarm
+                strokeColor: Appearance.colour.warning
                 strokeWidth: Appearance.stroke.line
                 strokeStyle: ShapePath.DashLine
                 dashPattern: [2, 4]
