@@ -208,6 +208,15 @@ test.describe("upgrade", () => {
         assert.strictEqual(Configuration.upgrade(current), current);
     });
 
+    test.it("gives a saved file grid keymap Ctrl+Z for undo unless undo or Ctrl+Z is already bound", () => {
+        const saved = { files: { grid: { "Ctrl+C": "copy" }, view: "list" } };
+        assert.deepStrictEqual(Configuration.upgrade(saved), { files: { grid: { "Ctrl+C": "copy", "Ctrl+Z": "undo" }, view: "list" } });
+        const moved = { files: { grid: { "Ctrl+U": "undo" } } };
+        assert.strictEqual(Configuration.upgrade(moved), moved);
+        const taken = { files: { grid: { "Ctrl+Z": "trash" } } };
+        assert.strictEqual(Configuration.upgrade(taken), taken);
+    });
+
     test.it("leaves a config without a launcher alone", () => {
         const plain = { theme: "slate" };
         assert.strictEqual(Configuration.upgrade(plain), plain);

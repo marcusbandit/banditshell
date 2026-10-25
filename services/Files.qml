@@ -785,13 +785,17 @@ Singleton {
         if (!path || !name)
             return;
         const to = root.join(root.parentOf(path), name);
-        if (to !== path)
-            root.run(["mv", "-i", "--"], [path, to]);
+        if (to === path)
+            return;
+        root.run(["mv", "-i", "--"], [path, to]);
+        FilesUndo.renamed(path, to);
     }
 
     function trash(paths: var): void {
-        if (paths.length > 0)
-            root.run(["gio", "trash", "--"], paths);
+        if (paths.length === 0)
+            return;
+        root.run(["gio", "trash", "--"], paths);
+        FilesUndo.trashed(paths);
     }
 
     function deleteForever(paths: var): void {
@@ -801,12 +805,14 @@ Singleton {
 
     function copyInto(paths: var, dir: string): void {
         if (paths.length > 0)
-            root.run(["cp", "-ri", "--"], [...paths, dir]);
+            FilesUndo.beforeCopy(paths, dir, () => root.run(["cp", "-ri", "--"], [...paths, dir]));
     }
 
     function moveInto(paths: var, dir: string): void {
-        if (paths.length > 0)
-            root.run(["mv", "-i", "--"], [...paths, dir]);
+        if (paths.length === 0)
+            return;
+        root.run(["mv", "-i", "--"], [...paths, dir]);
+        FilesUndo.moved(paths, dir);
     }
 
     property var clipboard: []

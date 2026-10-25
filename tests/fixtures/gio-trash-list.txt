@@ -1,0 +1,6 @@
+trash:///notes.txt	12	(regular)	trash::orig-path=/home/user/Documents/notes.txt trash::deletion-date=2026-10-25T22:34:34
+trash:///notes.txt.2	15	(regular)	trash::orig-path=/home/user/Documents/notes.txt trash::deletion-date=2026-10-25T22:40:02
+trash:///a%20b%09t%20%C3%A9%20%22q%22.txt	1	(regular)	trash::orig-path=/home/user/a b\x09t \xc3\xa9 "q".txt trash::deletion-date=2026-10-25T22:34:34
+trash:///back%5Cslash	1	(regular)	trash::orig-path=/home/user/back\x5cslash trash::deletion-date=2026-10-25T22:34:41
+trash:///My%20Old%20Notes	342	(directory)	trash::orig-path=/home/user/Documents/My Old Notes trash::deletion-date=2026-09-10T09:00:31
+trash:///%5Cmnt%5Cdisk%5C.Trash-1000%5Cfiles%5Cclip.mkv	985144233	(regular)	trash::orig-path=/mnt/disk/media/clip.mkv trash::deletion-date=2026-10-20T19:30:16
