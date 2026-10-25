@@ -612,7 +612,7 @@ FocusScope {
                 if (footer.pending && root.trouble.loose.length)
                     return `${root.trouble.loose[0]} touches no other screen`;
                 if (footer.pending)
-                    return root.staged.length === 1 ? `${root.staged[0]} changed · not applied yet` : `${root.staged.length} screens changed · not applied yet`;
+                    return root.staged.length === 1 ? `${root.staged[0]} needs Apply` : `${root.staged.length} screens need Apply`;
                 return "drag to move · arrows nudge · shift moves 10";
             }
         }

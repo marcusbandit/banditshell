@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import "boards.js" as Boards
 
 Row {
     id: root
@@ -10,7 +11,7 @@ Row {
     property string combo: ""
     property bool listening: false
 
-    readonly property var parts: root.listening ? ["press keys"] : root.combo ? root.combo.split(" ").filter(Boolean) : []
+    readonly property var parts: root.listening ? ["press keys"] : root.combo ? root.combo.split(" ").filter(Boolean).map(Boards.keyName) : []
 
     spacing: 4
 
