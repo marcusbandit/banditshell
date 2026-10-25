@@ -55,10 +55,6 @@ Singleton {
                 read: v => (v || []).join(" "),
                 write: v => String(v).trim().split(/\s+/).filter(Boolean)
             },
-            filesMarkdown: {
-                read: v => Catalogue.filesMarkdownOf(v),
-                write: v => v
-            },
             termColours: {
                 read: v => v === "theme" ? "theme" : JSON.stringify(v) === JSON.stringify(Config.defaults.files.terminal.palette) ? "one dark" : "custom",
                 write: v => v === "theme" ? "theme" : Config.defaults.files.terminal.palette

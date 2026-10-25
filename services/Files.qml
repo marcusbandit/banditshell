@@ -8,7 +8,6 @@ import "../components/vt.js" as TerminalEmulator
 import "../components/base64.js" as Base64
 import "quoting.js" as Quoting
 import "files-order.js" as FilesOrder
-import "files-markdown.js" as FilesMarkdown
 
 Singleton {
     id: root
@@ -256,10 +255,10 @@ Singleton {
 
     readonly property string view: Config.values.files.view
 
-    readonly property bool markdownRendered: FilesMarkdown.rendered(Config.values.files.markdown)
+    readonly property bool markdownRendered: Config.values.files.markdown !== "raw"
 
     function toggleMarkdown(): void {
-        Config.set("files.markdown", root.markdownRendered ? "source" : "rendered");
+        Config.set("files.markdown", root.markdownRendered ? "raw" : "rendered");
     }
 
     function toggleView(): void {

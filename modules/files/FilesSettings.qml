@@ -267,9 +267,9 @@ Item {
                     SettingChoice {
                         choices: [
                             {label: "Rendered", value: "rendered"},
-                            {label: "Source", value: "source"}
+                            {label: "Source", value: "raw"}
                         ]
-                        chosen: Files.markdownRendered ? "rendered" : "source"
+                        chosen: Files.markdownRendered ? "rendered" : "raw"
                         onChose: value => Config.set("files.markdown", value)
                     }
                 }
