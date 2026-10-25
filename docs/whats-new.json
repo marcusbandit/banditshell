@@ -1,8 +1,8 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-22",
-      "date": "2026-10-25",
+      "id": "2026-10-26-2",
+      "date": "2026-10-26",
       "changes": [
         {
           "type": "issues",
@@ -18,6 +18,92 @@
           "type": "ui",
           "severity": "minor",
           "text": "Screen recording on the rail is a screen with a dot, not a bare dot"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Pasting onto a taken name asks: replace, skip or keep both"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rename refuses a name that is already in the folder"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-26",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type ? in the launcher to see every search word with an example"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Long launcher lists fade at the edge when more rows follow"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-25",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Colour settings say Panel shade and Highlight colour in plain words"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Each Highlight colour choice shows the colour it picks"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-24",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A changed setting has a reset arrow that puts its default back"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-23",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings search keeps your words and shows 2 of 5; Enter steps through"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-22",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clipboard and launcher have Clear history; pinned entries stay"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clearing a broken clipboard history no longer deletes its pictures"
         }
       ]
     },
