@@ -18,9 +18,9 @@ Item {
     readonly property bool listingRecent: SettingsView.searchFocused && SettingsView.query.trim() === ""
     readonly property var recent: SettingsState.changes.slice(0, 6)
     property int hitIndex: 0
-    property string openUid: ""
+    property string pointedUid: ""
 
-    onHitsChanged: root.hitIndex = Catalogue.hitIndexOf(root.hits, root.openUid)
+    onHitsChanged: root.point(Catalogue.hitIndexOf(root.hits, root.pointedUid))
 
     Component.onDestruction: Prompts.release(root)
 
@@ -28,7 +28,12 @@ Item {
         query.forceActiveFocus();
     }
 
-    function openHit(i: int, keepFocus: bool): void {
+    function point(i: int): void {
+        root.hitIndex = i;
+        root.pointedUid = root.listingRecent ? "" : root.hits[i]?.row.uid ?? "";
+    }
+
+    function openHit(i: int): void {
         if (root.listingRecent) {
             const c = root.recent[i];
             const found = c ? Catalogue.resolve(c.k) : null;
@@ -38,12 +43,15 @@ Item {
                     row: found.row
                 });
         } else if (root.hits[i]) {
-            root.hitIndex = i;
-            root.openUid = root.hits[i].row.uid;
+            root.point(i);
             SettingsView.openHit(root.hits[i]);
-            if (keepFocus)
-                return;
         }
+    }
+
+    function pick(i: int): void {
+        root.openHit(i);
+        if (root.tiny)
+            SettingsView.query = "";
         query.focus = false;
     }
 
@@ -75,7 +83,7 @@ Item {
             id: query
 
             x: glass.x + glass.width + Appearance.padding.small
-            width: parent.width - x - Appearance.padding.normal
+            width: (clear.visible ? clear.x : parent.width - Appearance.padding.normal) - x
             anchors.verticalCenter: parent.verticalCenter
             visible: !root.tiny || activeFocus
             clip: true
@@ -89,7 +97,7 @@ Item {
 
             text: SettingsView.query
             onTextEdited: {
-                root.openUid = "";
+                root.pointedUid = "";
                 SettingsView.query = text;
             }
             onActiveFocusChanged: {
@@ -103,10 +111,13 @@ Item {
             Keys.onPressed: event => {
                 const n = root.listingRecent ? root.recent.length : root.hits.length;
                 if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
-                    root.hitIndex = Math.max(0, Math.min(n - 1, root.hitIndex + (event.key === Qt.Key_Down ? 1 : -1)));
+                    root.point(Math.max(0, Math.min(n - 1, root.hitIndex + (event.key === Qt.Key_Down ? 1 : -1))));
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    root.openHit(root.listingRecent ? root.hitIndex : Catalogue.hitToOpen(root.hits, root.hitIndex, root.openUid, SettingsView.current), true);
+                    if (root.listingRecent)
+                        root.pick(root.hitIndex);
+                    else
+                        root.openHit(Catalogue.hitToOpen(root.hits, root.hitIndex, SettingsView.flash?.uid ?? "", SettingsView.current));
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Escape) {
                     if (query.text)
@@ -130,6 +141,18 @@ Item {
             visible: !query.activeFocus
             cursorShape: Qt.IBeamCursor
             onClicked: query.forceActiveFocus()
+        }
+
+        SettingsTool {
+            id: clear
+
+            x: parent.width - width - (parent.height - height) / 2
+            anchors.verticalCenter: parent.verticalCenter
+            visible: !!SettingsView.query && (!root.tiny || query.activeFocus)
+            size: 28
+            icon: "close"
+            tip: "clear the search"
+            onClicked: SettingsView.query = ""
         }
     }
 
@@ -341,7 +364,7 @@ Item {
                     label: root.listingRecent ? hit.modelData.label : hit.modelData.label
                     detail: root.listingRecent ? `${hit.modelData.from} → ${hit.modelData.to}` : `${Catalogue.CAT_BY_ID[hit.modelData.page.cat].name.toLowerCase()} · ${Catalogue.nameOf(hit.modelData.page, SettingsState).toLowerCase()}`
                     active: hit.index === root.hitIndex
-                    onPicked: root.openHit(hit.index, false)
+                    onPicked: root.pick(hit.index)
                 }
             }
         }

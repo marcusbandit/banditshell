@@ -115,7 +115,8 @@ Singleton {
     }
 
     function openHit(hit: var): void {
-        root.go(hit.page.id);
+        if (hit.page.id !== root.current)
+            root.go(hit.page.id);
         let r = hit.row;
         while (r.parent) {
             root.setOpen(r.parent.uid, true);
