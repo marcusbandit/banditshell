@@ -274,6 +274,7 @@ Singleton {
             lockDesat: "lock.desaturate",
             filesView: "files.view",
             filesSort: "files.sort",
+            filesReversed: "files.reversed",
             filesHidden: "files.hidden",
             filesMarkdown: "files.markdown",
             filesZoom: "files.zoom",
