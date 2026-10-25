@@ -200,6 +200,14 @@ test.describe("upgrade", () => {
         assert.strictEqual(Configuration.upgrade(old), old);
     });
 
+    test.it("moves a files sort saved by the old Settings to the values the file manager sorts on", () => {
+        assert.deepStrictEqual(Configuration.upgrade({ files: { sort: "date", view: "list" } }), { files: { sort: "mtime", view: "list" } });
+        assert.deepStrictEqual(Configuration.upgrade({ files: { sort: "type" } }), { files: { sort: "kind" } });
+        assert.strictEqual(Configuration.upgradeValue("files.sort", "date"), "mtime");
+        const current = { files: { sort: "size" } };
+        assert.strictEqual(Configuration.upgrade(current), current);
+    });
+
     test.it("leaves a config without a launcher alone", () => {
         const plain = { theme: "slate" };
         assert.strictEqual(Configuration.upgrade(plain), plain);
