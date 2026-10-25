@@ -1991,7 +1991,10 @@ waiting or stuck. Every mark's tooltip says what it is and then what a press doe
 click for settings"). Battery, sound, airplane and update open their sidebar menus, so the rail
 grows under them; VPN, a mode and quiet open their Settings page; keep-awake and a screen
 recording stop. Pointing at a mark holds the rail at rest so it can be pressed before the rail
-grows; after the press the rail stays at rest until the pointer leaves it. Every mark shows while
+grows; after the press the rail stays at rest until the pointer leaves it. The workspace marks
+never move for a status mark: they keep their place, always leave room for four status marks under
+them, and the status marks stay a clear gap below, so they read as their own group and never as
+one more workspace. Every mark shows while
 the rail has room for it between the workspace marks and its foot; when it runs out, the most
 important stay by a fixed rank: the microphone, a screen recording, a low battery that is not
 charging, quiet or a mode, a stuck update, then VPN, airplane, keep-awake, and last a charging
