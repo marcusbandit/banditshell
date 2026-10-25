@@ -16,11 +16,33 @@ Column {
 
     property bool declineConfirm: false
     property bool goBackConfirm: false
+    property bool reinstallConfirm: false
+    property bool reportOpen: false
+    property bool reportHanded: false
 
-    readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, goBackRow.implicitWidth)
+    readonly property bool reinstallAsking: root.reinstallConfirm && Update.canReinstall
+    readonly property bool reportAsking: root.reportOpen && Update.wentBackByHand && Update.resultPending
+    readonly property bool asking: root.goBackConfirm || root.reinstallAsking || root.reportAsking
 
-    onShowingChanged: if (!root.showing)
-        root.goBackConfirm = false
+    readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, goBackRow.implicitWidth, afterRow.implicitWidth, reinstallRow.implicitWidth, reportRow.implicitWidth)
+
+    onShowingChanged: if (!root.showing) {
+        root.goBackConfirm = false;
+        root.reinstallConfirm = false;
+        root.reportOpen = false;
+        root.reportHanded = false;
+    }
+
+    onReportAskingChanged: if (root.reportAsking) {
+        reportBody.text = "";
+        reportBody.forceActiveFocus();
+    }
+
+    function sendReport(): void {
+        Update.report(reportBody.text);
+        root.reportOpen = false;
+        root.reportHanded = true;
+    }
 
     spacing: Appearance.padding.small
 
@@ -42,6 +64,7 @@ Column {
     Row {
         id: metaRow
 
+        visible: !root.reportAsking
         spacing: Appearance.padding.small
 
         Button {
@@ -123,12 +146,159 @@ Column {
             color: Appearance.colour.textFaint
             wrapMode: Text.WordWrap
         }
+
+        StyledText {
+            width: parent.width
+            visible: root.reportHanded && !root.asking
+            text: "The report opens in a terminal. Nothing is sent until you answer y there."
+            color: Appearance.colour.textFaint
+            wrapMode: Text.WordWrap
+        }
+    }
+
+    Column {
+        width: parent.width
+        visible: root.reportAsking
+        spacing: Appearance.padding.small
+
+        InkText {
+            width: parent.width
+            alignInk: true
+            text: "Report what broke"
+        }
+
+        Item {
+            id: reportBox
+
+            width: parent.width
+            height: Math.max(Appearance.font.line.small * 4, reportBody.contentHeight) + Appearance.padding.normal * 2
+
+            SquircleRect {
+                anchors.fill: parent
+                radius: Appearance.rounding.small
+                color: Appearance.colour.fillStrong
+                stroke: reportBody.activeFocus ? Appearance.colour.accent : "transparent"
+                strokeWidth: reportBody.activeFocus ? Appearance.stroke.ring : 0
+            }
+
+            TextEdit {
+                id: reportBody
+
+                anchors.fill: parent
+                anchors.margins: Appearance.padding.normal
+                wrapMode: TextEdit.Wrap
+                font.family: Appearance.font.family
+                font.pixelSize: Appearance.font.size.small
+                renderType: Text.NativeRendering
+                color: Appearance.colour.text
+                selectionColor: Appearance.colour.accent
+                selectedTextColor: Appearance.colour.accentText
+                selectByMouse: true
+
+                onActiveFocusChanged: {
+                    if (activeFocus)
+                        Prompts.request(reportBox);
+                    else
+                        Prompts.release(reportBox);
+                }
+
+                Keys.onEscapePressed: event => {
+                    root.reportOpen = false;
+                    event.accepted = true;
+                }
+
+                StyledText {
+                    width: parent.width
+                    visible: !reportBody.text
+                    text: "What broke, and what did you expect?"
+                    color: Appearance.colour.textFaint
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.IBeamCursor
+                acceptedButtons: Qt.NoButton
+            }
+
+            Component.onDestruction: Prompts.release(reportBox)
+        }
+
+        StyledText {
+            width: parent.width
+            text: "Added after your words"
+            color: Appearance.colour.textDim
+        }
+
+        SquircleRect {
+            width: parent.width
+            height: reportPreview.implicitHeight + Appearance.padding.normal * 2
+            radius: Appearance.rounding.small
+            color: Appearance.colour.fillStrong
+
+            StyledText {
+                id: reportPreview
+
+                x: Appearance.padding.normal
+                y: Appearance.padding.normal
+                width: parent.width - Appearance.padding.normal * 2
+                text: Update.reportContext
+                color: Appearance.colour.text
+                wrapMode: Text.WordWrap
+            }
+        }
+
+        StyledText {
+            width: parent.width
+            text: "Review in a terminal shows the whole report, your config and the last log lines included, secrets left out. It files an issue on banditshell's GitHub only after you answer y."
+            color: Appearance.colour.textDim
+            wrapMode: Text.WordWrap
+        }
+
+        ButtonPair {
+            id: reportRow
+
+            actions: [{ text: "Review in a terminal", icon: "terminal" }, { text: "Don't send" }]
+
+            onTriggered: index => {
+                if (index === 0)
+                    root.sendReport();
+                else
+                    root.reportOpen = false;
+            }
+        }
+    }
+
+    Column {
+        width: parent.width
+        visible: root.reinstallAsking
+        spacing: Appearance.padding.small
+
+        InkText {
+            width: parent.width
+            alignInk: true
+            text: `Reinstall ${Update.skippedVersion}? The shell restarts on it, and it is no longer skipped.`
+            wrapMode: Text.Wrap
+        }
+
+        ButtonPair {
+            id: reinstallRow
+
+            actions: [{ text: "Reinstall", icon: "restart_alt" }, { text: `Stay on ${Update.version}` }]
+
+            onTriggered: index => {
+                root.reinstallConfirm = false;
+                if (index === 0)
+                    Update.reinstall();
+            }
+        }
     }
 
     Row {
         id: actionRow
 
-        visible: !root.goBackConfirm && (Update.canGoBack || Update.resultPending)
+        visible: !root.asking && (Update.canGoBack || Update.resultPending)
         spacing: Appearance.padding.small
 
         Button {
@@ -140,9 +310,35 @@ Column {
         }
 
         Button {
+            visible: Update.wentBackByHand && Update.resultPending
+            text: "Report what broke"
+            icon: "bug_report"
+            style: "accent"
+
+            onClicked: {
+                root.reportHanded = false;
+                root.reportOpen = true;
+            }
+        }
+
+        Button {
             visible: Update.resultPending
             text: "Hide message"
             onClicked: Update.dismissResult()
+        }
+    }
+
+    Row {
+        id: afterRow
+
+        visible: !root.asking && Update.canReinstall
+        spacing: Appearance.padding.small
+
+        Button {
+            text: "Reinstall the version you just left"
+            style: "bare"
+
+            onClicked: root.reinstallConfirm = true
         }
     }
 
@@ -203,7 +399,7 @@ Column {
     }
 
     Button {
-        visible: Update.busy || (!root.goBackConfirm && !Update.diverged && !Update.paused && (Update.behind > 0 || Update.state === Update.failed))
+        visible: Update.busy || (!root.asking && !Update.diverged && !Update.paused && (Update.behind > 0 || Update.state === Update.failed))
         text: {
             if (Update.busy)
                 return Update.phaseText || "Updating...";
@@ -221,7 +417,7 @@ Column {
         style: "accent"
         interactive: !Update.busy
 
-        onClicked: Update.state === Update.failed && Update.goingBack ? Update.goBack() : Update.apply()
+        onClicked: Update.state === Update.failed ? Update.retry() : Update.apply()
     }
 
     Column {
@@ -317,7 +513,7 @@ Column {
     }
 
     Button {
-        visible: !root.goBackConfirm && root.incoming.length === 0 && root.card.length > 0
+        visible: !root.asking && root.incoming.length === 0 && root.card.length > 0
         text: "Mark as read"
         onClicked: WhatsNew.markSeen(root.card[0].id)
     }

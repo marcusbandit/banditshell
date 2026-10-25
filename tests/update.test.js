@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, following };")();
+const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, following, reportWords, reportScript };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -284,6 +284,41 @@ test("a rollback by hand says where it went back to, not that something failed",
         "Back on 2026-10-24; the shell restarted on it. 2026-10-25 is skipped until a newer version arrives.");
     assert.match(Update.outcomeText(back, "2026-10-25"), /still runs 2026-10-25\. Run banditshell restart to start 2026-10-24\./);
     assert.strictEqual(Update.byHand({ ok: false, why: "rolled back by hand" }), false);
+});
+
+const quotingSrc = fs.readFileSync(path.join(ROOT, "services/quoting.js"), "utf8").replace(/^\.pragma .*$/m, "");
+const { posix } = new Function(quotingSrc + "\nreturn { posix };")();
+
+const wentBack = { ok: false, hand: true, from: "1111111aaaa", to: "2222222bbbb", fromLabel: "2026-10-24", toLabel: "2026-10-25", why: "rolled back by hand" };
+
+test("a report after going back carries the words, the skipped version and the current one", () => {
+    assert.strictEqual(Update.reportWords("  the bar   went blank ", wentBack, "2026-10-24"),
+        "the bar went blank\n\nWent back in the update menu.\nSkipped: 2026-10-25 (2222222)\nCurrent: 2026-10-24 (1111111)");
+    assert.match(Update.reportWords("\nthe bar went blank\n\n\n\nexpected  the clock \n", wentBack, "2026-10-24"),
+        /^the bar went blank\n\nexpected the clock\n\nWent back/);
+    assert.match(Update.reportWords("", { ...wentBack, fromLabel: "", toLabel: "" }, ""), /^\(no words were given\)\n[^]*Skipped: 2222222\nCurrent: 1111111$/);
+    assert.match(Update.reportWords("x", wentBack, "2026-10-25"), /Current: 2026-10-25$/);
+});
+
+test("the report command hands the words to triage as one argument, whatever they hold", () => {
+    const os = require("node:os");
+    const { spawnSync } = require("node:child_process");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "banditshell-report-"));
+    try {
+        const cli = path.join(dir, "it's a cli");
+        const out = path.join(dir, "args");
+        fs.writeFileSync(cli, `printf '%s\\0' "$@" >'${out}'\n`);
+        for (const words of ["it's $(touch pwned) `touch pwned` \"q\" \\ ;|&", "--yes"]) {
+            const ran = spawnSync("sh", ["-c", Update.reportScript(posix, cli, words, wentBack, "2026-10-24")], { cwd: dir, input: "\n", encoding: "utf8" });
+            assert.strictEqual(ran.status, 0, ran.stderr);
+            const args = fs.readFileSync(out, "utf8").split("\0").slice(0, -1);
+            assert.deepStrictEqual(args, ["triage", Update.reportWords(words, wentBack, "2026-10-24")]);
+            assert.ok(!args.includes("--yes"));
+            assert.ok(!fs.existsSync(path.join(dir, "pwned")));
+        }
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
 });
 
 test("a channel is stable or main, and anything else reads as main", () => {
