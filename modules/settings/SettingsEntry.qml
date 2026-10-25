@@ -25,6 +25,8 @@ Column {
             list.push([root.value, String(root.value)]);
         return list;
     }
+    readonly property var fallback: Catalogue.resettable(root.row) ? SettingsState.defaultOf(root.key) : undefined
+    readonly property bool changed: !root.off && Catalogue.changed(root.value, root.fallback)
     readonly property bool flashing: !!SettingsView.flash && !!root.row.uid && SettingsView.flash.uid === root.row.uid
 
     width: parent ? parent.width : 0
@@ -60,6 +62,14 @@ Column {
         interactive: root.kind === "toggle" || root.kind === "choice" || root.hasLayer
         onActivated: root.activate()
         onPointed: SettingsView.hovered = root.row
+
+        SettingsTool {
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.changed
+            icon: "restart_alt"
+            tip: "back to default"
+            onClicked: root.set(root.fallback)
+        }
 
         Loader {
             id: controls

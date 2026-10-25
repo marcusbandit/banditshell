@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf"]);
+const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf", "resettable", "changed"]);
 const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "anchor", "nudge", "resize", "fit"]);
 const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "extent", "rects", "board", "lit", "struck", "fromSheet"]);
 const Frames = lib(path.join(SETTINGS, "scenes/keyframes.js"), ["bezier", "STANDARD", "ARRIVE", "BACK", "at", "pulse", "steps"]);
@@ -540,4 +540,20 @@ test("the settings preview draws the sheet's own keys, the ISO enter as its two 
     assert.ok(Boards.struck(keys[1], { super: true }));
     assert.strictEqual(keys[2].label, "Space");
     assert.ok(Boards.struck(keys[0], { return: true }));
+});
+
+test("a row offers its default back only when its value really differs", () => {
+    assert.ok(Catalogue.changed(true, false));
+    assert.ok(!Catalogue.changed(0.1 + 0.2, 0.3));
+    assert.ok(!Catalogue.changed("2", 2));
+    assert.ok(!Catalogue.changed(["a", "b"], ["a", "b"]));
+    assert.ok(Catalogue.changed(["a"], ["a", "b"]));
+    assert.ok(!Catalogue.changed(true, undefined));
+});
+
+test("a reset arrow is never offered for a password, a button or a screen row", () => {
+    assert.ok(Catalogue.resettable({ k: "x", cfg: "a.b", kind: "toggle" }));
+    assert.ok(!Catalogue.resettable({ k: "x", cfg: "a.b", kind: "secret" }));
+    assert.ok(!Catalogue.resettable({ k: "x", cfg: "a.b", kind: "button" }));
+    assert.ok(!Catalogue.resettable({ k: "scr:scale", kind: "slider" }));
 });

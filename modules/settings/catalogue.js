@@ -1022,6 +1022,20 @@ function same(a, b) {
     return String(a) === String(b);
 }
 
+function resettable(row) {
+    return !!row?.k && !!row.cfg && !row.ro && row.kind !== "secret" && row.kind !== "button";
+}
+
+function changed(value, fallback) {
+    if (value === undefined || fallback === undefined)
+        return false;
+    if (typeof value === "number" && typeof fallback === "number")
+        return Math.abs(value - fallback) > 1e-6;
+    if (typeof value === "object" || typeof fallback === "object")
+        return JSON.stringify(value) !== JSON.stringify(fallback);
+    return !same(value, fallback);
+}
+
 function optionLabel(row, s, v) {
     const hit = options(row, s).find(o => same(o[0], v));
     return hit ? hit[1] : v;
