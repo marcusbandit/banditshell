@@ -10,10 +10,12 @@ Item {
     property color tone: Appearance.colour.accent
     property string title: ""
     property string subtitle: ""
+    property color titleColour: Appearance.colour.text
 
     signal closed
 
     readonly property real gap: Appearance.padding.normal
+    readonly property real inset: badge.width + root.gap
 
     implicitHeight: Math.max(badge.height, titles.implicitHeight, shut.implicitHeight)
 
@@ -40,6 +42,7 @@ Item {
         StyledText {
             width: parent.width
             text: root.title
+            color: root.titleColour
             font.pixelSize: Appearance.font.size.large
             elide: Text.ElideRight
         }

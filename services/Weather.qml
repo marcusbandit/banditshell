@@ -12,6 +12,7 @@ Singleton {
     readonly property var cfg: Config.values.weather
     readonly property bool wanted: root.cfg.show
     readonly property bool imperial: root.cfg.units === "imperial"
+    readonly property string location: root.cfg.location ?? ""
 
     property var current: null
     property double fetchedAt: 0
@@ -50,9 +51,10 @@ Singleton {
     }
 
     onImperialChanged: root.loadOutlook()
+    onLocationChanged: root.refresh()
 
     function refresh(): void {
-        const place = root.cfg.location ?? "";
+        const place = root.location;
         const fresh = Date.now() - root.fetchedAt < Math.max(5, root.cfg.minutes) * 60000;
         if (!fresh || place !== root.fetchedFor || root.failure !== "")
             root.retry();
@@ -61,7 +63,7 @@ Singleton {
     function retry(): void {
         if (!root.wanted || reader.running)
             return;
-        const place = root.cfg.location ?? "";
+        const place = root.location;
         reader.place = place;
         reader.command = ["curl", "-sS", "--max-time", "10", "-w", "\n%{http_code} %{exitcode}", `https://wttr.in/${encodeURIComponent(place)}?format=j1`];
         reader.running = true;

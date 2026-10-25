@@ -190,10 +190,10 @@ function readWttr(output) {
 
 function failureLook(failure) {
     if (failure === "place")
-        return { icon: "wrong_location", title: "Place not found", detail: "Change weather.location in config.json" };
+        return { icon: "wrong_location", title: "Place not found", detail: "Fix the spelling of the town in config.json" };
     if (failure === "service")
-        return { icon: "cloud_off", title: "Weather unavailable", detail: "wttr.in is not answering" };
-    return { icon: "cloud_off", title: "Weather unavailable", detail: "No connection" };
+        return { icon: "cloud_off", title: "Weather unavailable", detail: "The weather service did not answer" };
+    return { icon: "cloud_off", title: "Weather unavailable", detail: "This computer is offline" };
 }
 
 function ago(then, now) {

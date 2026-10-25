@@ -17,7 +17,12 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A place the weather does not know says so and names the setting"
+          "text": "A place the weather does not know says so and how to fix it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Rain chance in the forecast has a raindrop beside it"
         }
       ]
     },

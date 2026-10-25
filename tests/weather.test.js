@@ -170,8 +170,9 @@ test("an unknown place is told apart from a failed fetch", () => {
 
 test("a failure says what went wrong", () => {
     assert.strictEqual(Forecast.failureLook("offline").title, "Weather unavailable");
-    assert.strictEqual(Forecast.failureLook("service").detail, "wttr.in is not answering");
-    assert.match(Forecast.failureLook("place").detail, /weather\.location/);
+    assert.strictEqual(Forecast.failureLook("offline").detail, "This computer is offline");
+    assert.strictEqual(Forecast.failureLook("service").detail, "The weather service did not answer");
+    assert.match(Forecast.failureLook("place").detail, /config\.json/);
 });
 
 test("the age of an older forecast", () => {

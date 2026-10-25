@@ -55,11 +55,66 @@ Item {
             spacing: Appearance.padding.card
 
             TaskHeader {
+                id: header
+
                 width: parent.width
                 icon: root.blank ? root.look.icon : Weather.icon
+                tone: root.blank ? Appearance.colour.alarm : Weather.stale ? Appearance.colour.textDim : Appearance.colour.accent
                 title: Weather.ready ? `${Weather.temperature} ${Weather.summary.trim()}` : root.blank ? root.look.title : "Weather"
-                subtitle: Weather.stale ? [Weather.place, Forecast.ago(Weather.fetchedAt, age.date.getTime())].filter(Boolean).join(", ") : !root.blank ? Weather.place : Weather.failure === "place" && Weather.failedFor ? Weather.failedFor : root.look.detail
+                titleColour: Weather.stale ? Appearance.colour.textDim : Appearance.colour.text
+                subtitle: Weather.stale ? [Weather.place, Forecast.ago(Weather.fetchedAt, age.date.getTime())].filter(Boolean).join(", ") : !root.blank ? Weather.place : Weather.failure !== "place" ? root.look.detail : Weather.failedFor ? `No town called "${Weather.failedFor}"` : "The weather service does not know this place"
                 onClosed: root.hide()
+            }
+
+            Item {
+                width: parent.width
+                height: Math.max(notes.implicitHeight, again.visible ? again.implicitHeight : 0)
+                visible: Weather.failed
+
+                Column {
+                    id: notes
+
+                    anchors.left: parent.left
+                    anchors.leftMargin: header.inset
+                    anchors.right: again.visible && !root.blank ? again.left : parent.right
+                    anchors.rightMargin: again.visible && !root.blank ? Appearance.padding.normal : 0
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    StyledText {
+                        width: parent.width
+                        visible: Weather.stale
+                        text: "Couldn't refresh"
+                        color: Appearance.colour.alarm
+                    }
+
+                    StyledText {
+                        width: parent.width
+                        visible: Weather.stale || Weather.failure === "place"
+                        text: root.look.detail
+                        wrapMode: Text.Wrap
+                    }
+
+                    StyledText {
+                        width: parent.width
+                        visible: Weather.failure === "place"
+                        text: "The weather updates as soon as it is saved"
+                        color: Appearance.colour.textDim
+                        wrapMode: Text.Wrap
+                    }
+                }
+
+                Button {
+                    id: again
+
+                    x: root.blank ? header.inset : parent.width - width
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: Weather.failure !== "place"
+                    style: "accent"
+                    icon: "refresh"
+                    text: Weather.loading ? "Trying" : "Try again"
+                    interactive: !Weather.loading
+                    onClicked: Weather.retry()
+                }
             }
 
             StyledText {
@@ -74,6 +129,7 @@ Item {
 
                 width: parent.width
                 visible: Weather.forecastReady
+                opacity: Weather.stale ? Appearance.opacity.disabled : 1
 
                 Repeater {
                     model: root.days
@@ -154,44 +210,33 @@ Item {
                                 color: Appearance.colour.textDim
                             }
 
-                            StyledText {
+                            Item {
                                 width: parent.width
                                 height: Appearance.font.line.small
-                                horizontalAlignment: Text.AlignHCenter
-                                text: Forecast.rainText(cell.modelData)
-                                color: Appearance.colour.textFaint
+
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: Appearance.padding.hair
+                                    visible: !!rain.text
+
+                                    Icon {
+                                        anchors.verticalCenter: rain.verticalCenter
+                                        name: "water_drop"
+                                        size: Appearance.font.size.small
+                                        fill: 1
+                                        color: Appearance.colour.textFaint
+                                    }
+
+                                    StyledText {
+                                        id: rain
+
+                                        text: Forecast.rainText(cell.modelData)
+                                        color: Appearance.colour.textFaint
+                                    }
+                                }
                             }
                         }
                     }
-                }
-            }
-
-            Item {
-                width: parent.width
-                height: Math.max(note.implicitHeight, again.implicitHeight)
-                visible: Weather.failed
-
-                StyledText {
-                    id: note
-
-                    anchors.left: parent.left
-                    anchors.right: again.left
-                    anchors.rightMargin: Appearance.padding.normal
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: Weather.stale ? root.look.title : Weather.failure === "place" ? root.look.detail : ""
-                    color: Appearance.colour.textDim
-                    elide: Text.ElideRight
-                }
-
-                Button {
-                    id: again
-
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    icon: "refresh"
-                    text: Weather.loading ? "Trying" : "Try again"
-                    interactive: !Weather.loading
-                    onClicked: Weather.retry()
                 }
             }
         }
