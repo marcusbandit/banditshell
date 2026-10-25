@@ -1720,7 +1720,7 @@ banditshell/
 │   │                            boundary the manifests do not allow; --matrix and
 │   │                            --explain <package> show the edges (node, no
 │   │                            dependencies; `banditshell dev modules`)
-│   ├── lint-rules.js            the house rules as fifteen checks (L1 to L15: comments,
+│   ├── lint-rules.js            the house rules as sixteen checks (L1 to L16: comments,
 │   │                            Rectangle radius, motion outside Follow, spring easing,
 │   │                            font sizes, colour literals, textGhost text, dashes,
 │   │                            JS the engine lacks, qmldir drift, Name.member reads
@@ -1729,7 +1729,7 @@ banditshell/
 │   │                            asking for a retired Material 3 emphasis, a variable
 │   │                            font axis that follows an unsnapped value, an optional
 │   │                            Qt module imported where a missing one would take the
-│   │                            whole shell down), counted
+│   │                            whole shell down, Quickshell's SystemClock), counted
 │   │                            per rule and file against rules.baseline.json (node, no
 │   │                            dependencies; `banditshell dev lint`)
 │   ├── boot-check.js            the pure half of `banditshell dev check boot`: which

@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import qs.components
 import "weather.js" as Forecast
 
 Singleton {
@@ -100,10 +101,10 @@ Singleton {
         }
     }
 
-    SystemClock {
+    WallClock {
         id: clock
 
-        precision: SystemClock.Hours
+        precision: WallClock.Hours
         enabled: root.wanted
     }
 }
