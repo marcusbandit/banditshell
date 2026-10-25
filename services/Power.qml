@@ -18,7 +18,7 @@ Singleton {
         },
         {
             key: "reboot",
-            icon: "restart_alt",
+            icon: "autorenew",
             label: "Restart",
             detail: "",
             command: Sleep.logindCommand("reboot")

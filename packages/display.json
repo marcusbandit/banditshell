@@ -20,7 +20,7 @@
     "optional": []
   },
   "provides": {
-    "singletons": ["Backlight", "Display", "Tablet"],
+    "singletons": ["Backlight", "DarkMode", "Display", "Tablet"],
     "ipc": ["screen", "tablet"]
   },
   "config": {

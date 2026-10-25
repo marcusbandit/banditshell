@@ -390,6 +390,8 @@ Singleton {
             return Hotspot.band;
         case "warm":
             return Display.warm;
+        case "darkMode":
+            return DarkMode.dark;
         case "saver":
             return root.v("profile") === "saver";
         case "profile":
@@ -501,6 +503,8 @@ Singleton {
             return Display.setWarmth(value > 0 ? Math.round(Display.neutral - value / 100 * (Display.neutral - Display.warmest)) : 0);
         case "warm":
             return Display.toggleWarm();
+        case "darkMode":
+            return DarkMode.set(value);
         case "autoZone":
             if (value && !Localisation.geoclueInstalled) {
                 root.denied = true;
@@ -1263,6 +1267,7 @@ Singleton {
     readonly property var specialNames: Hypr.specials.map(s => s.label)
     readonly property bool hasBattery: Battery.available
     readonly property bool hasLid: Lid.present
+    readonly property bool hasDarkMode: DarkMode.available
     readonly property bool hibernatePossible: Suspension.hibernatePossible
     readonly property int nearlyEmptyPercent: Battery.nearlyEmptyPercent
     readonly property var profileChoices: PowerProfile.choices
