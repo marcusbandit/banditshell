@@ -69,12 +69,15 @@ Item {
 
     property bool clearing: false
 
-    readonly property int clearable: Clipboard.entries.filter(e => !e.pinned).length
+    readonly property int clearable: Clipboard.unpinned
     readonly property int pinnedCount: Clipboard.entries.length - root.clearable
 
     readonly property bool canClear: !root.speech && !root.searching && root.clearable > 0
 
     onCanClearChanged: if (!root.canClear)
+        root.clearing = false
+
+    onExpandedChanged: if (root.expanded)
         root.clearing = false
 
     function show(): void {
@@ -337,6 +340,12 @@ Item {
                     sheet.close();
                     break;
                 }
+                event.accepted = true;
+                return;
+            }
+
+            if (root.clearing && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+                root.clearHistory();
                 event.accepted = true;
                 return;
             }

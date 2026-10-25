@@ -18,6 +18,8 @@ Singleton {
 
     property var entries: []
 
+    readonly property int unpinned: root.entries.filter(e => !e.pinned).length
+
     property bool loaded: false
 
     property bool keep: true
@@ -180,8 +182,7 @@ Singleton {
     }
 
     function basename(p: string): string {
-        const cut = p.lastIndexOf("/");
-        return cut < 0 ? p : p.slice(cut + 1);
+        return Sweep.basename(p);
     }
 
     function age(recorded: real): string {
@@ -440,7 +441,7 @@ Singleton {
         }
         root.sweepOwed = false;
 
-        const command = Sweep.command(root.blobs, root.entries, root.keep);
+        const command = Sweep.command(root.blobs, root.entries, root.keep && root.loaded);
         if (!command)
             return;
         reaper.command = command;

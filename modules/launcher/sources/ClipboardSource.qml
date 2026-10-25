@@ -23,7 +23,7 @@ QtObject {
 
     readonly property bool intent: root.explicit
 
-    readonly property int clearable: Clipboard.entries.filter(e => !e.pinned).length
+    readonly property int clearable: Clipboard.unpinned
 
     readonly property bool offersClear: root.explicit && root.clearable > 0 && (root.asked.term === "" || "clear history".startsWith(root.asked.term.toLowerCase()))
 
@@ -33,7 +33,7 @@ QtObject {
         {
             key: "clipboard",
             title: "Clipboard",
-            items: root.found.map(entry => root.row(entry)).concat(root.offersClear ? [root.clearRow()] : [])
+            items: root.offersClear && root.asked.term !== "" ? [root.clearRow()].concat(root.found.map(entry => root.row(entry))) : root.found.map(entry => root.row(entry)).concat(root.offersClear ? [root.clearRow()] : [])
         }
     ]
 
@@ -73,8 +73,8 @@ QtObject {
             key: "clipboardclear",
             kind: "clipboardclear",
             armed: root.clearing,
-            label: root.clearing ? "Clear history?" : "Clear history",
-            detail: pinned > 0 ? `${pinned} pinned stay` : "",
+            label: root.clearing ? "Press Enter again to clear" : "Clear history",
+            detail: !root.clearing && pinned > 0 ? `${pinned} pinned stay` : "",
             icon: "delete_sweep",
             score: Infinity
         };
