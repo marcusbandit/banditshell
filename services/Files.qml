@@ -8,6 +8,7 @@ import "../components/vt.js" as TerminalEmulator
 import "../components/base64.js" as Base64
 import "quoting.js" as Quoting
 import "files-order.js" as FilesOrder
+import "files-conflicts.js" as Conflicts
 
 Singleton {
     id: root
@@ -785,6 +786,10 @@ Singleton {
             root.run(["touch", "--"], [root.join(root.cwd, name)]);
     }
 
+    function renameRefusal(path: string, name: string): string {
+        return Conflicts.renameRefusal(name, path.slice(path.lastIndexOf("/") + 1), root.entries, Conflicts.folderName(root.parentOf(path), root.home));
+    }
+
     function renameTo(path: string, name: string): void {
         if (!path || !name)
             return;
@@ -806,13 +811,11 @@ Singleton {
     }
 
     function copyInto(paths: var, dir: string): void {
-        if (paths.length > 0)
-            FilesUndo.copying(paths, dir, () => root.run(["cp", "-ri", "--"], [...paths, dir]));
+        FilesPaste.start(paths, dir, false);
     }
 
     function moveInto(paths: var, dir: string): void {
-        if (paths.length > 0)
-            FilesUndo.moving(paths, dir, () => root.run(["mv", "-i", "--"], [...paths, dir]));
+        FilesPaste.start(paths, dir, true);
     }
 
     property var clipboard: []
@@ -827,9 +830,11 @@ Singleton {
         if (root.clipboard.length === 0)
             return;
         if (root.clipboardCut) {
-            root.moveInto(root.clipboard, root.cwd);
-
-            root.clipboard = [];
+            const moving = root.clipboard;
+            FilesPaste.start(moving, root.cwd, true, outcome => {
+                if (root.clipboard === moving)
+                    root.clipboard = Conflicts.leftover(moving, outcome);
+            });
         } else {
             root.copyInto(root.clipboard, root.cwd);
         }

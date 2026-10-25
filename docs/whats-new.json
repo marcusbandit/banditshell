@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-26",
+      "id": "2026-10-26-5",
       "date": "2026-10-26",
       "changes": [
         {
@@ -13,6 +13,123 @@
           "type": "features",
           "severity": "minor",
           "text": "Type tour in the launcher, or use Settings, About, to see it again"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-4",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "After going back, the update menu can reinstall the skipped version"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "After going back, the update menu can report what broke"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-3",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings shortcuts show as hints like Ctrl + 5, read from your binds"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "What a setting does is told in the side pane, not under its name"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A screen change waiting for Apply has an accent dot"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-2",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rail marks no longer share the active workspace's colour"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Low battery is yellow; on the rail, orange is only mic and recording"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Screen recording on the rail is a screen with a dot, not a bare dot"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Pasting onto a taken name asks: replace, skip or keep both"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rename refuses a name that is already in the folder"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-26",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type ? in the launcher to see every search word with an example"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Long launcher lists fade at the edge when more rows follow"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-25",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Colour settings say Panel shade and Highlight colour in plain words"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Each Highlight colour choice shows the colour it picks"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-24",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A changed setting has a reset arrow that puts its default back"
         }
       ]
     },

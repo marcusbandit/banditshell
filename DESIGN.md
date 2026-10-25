@@ -463,7 +463,8 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   `config/Appearance.qml`, so the shell and Hyprland's window borders are the same object rather
   than two things that happen to match. One hue family climbing near-black to silvery white, with a
   saturated end (`dim` / `mid` / `bright`) spent sparingly so a bright stop reads as a specular
-  highlight, plus one `alarm` outside the family.
+  highlight, plus one `alarm` outside the family and the theme's `brass` as `warning`, a second
+  colour outside it for what needs a hand soon but is no alarm.
   - **The Monocraft constraint is load-bearing.** Pixel-font stems are one device pixel, so
     anti-aliasing has nothing to work with and mid-tones turn text to mush. Pixel text goes a bright
     stop on a dark one. **Never on a mid tone.** That is why the panel is the darkest ramp stop and
@@ -1638,7 +1639,12 @@ banditshell/
 │   │                            restart, Go back to <id> once one is
 │   │                            recorded, asked once in its place, and the
 │   │                            outcome of the last update, a rollback
-│   │                            included. The What's
+│   │                            included. After a go-back the outcome
+│   │                            leads with Report what broke, a few lines
+│   │                            that banditshell triage shows in a
+│   │                            terminal before anything is sent, and
+│   │                            offers a quiet Reinstall the version you
+│   │                            just left, asked once. The What's
 │   │                            new card is marked seen when dismissed
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)
@@ -2007,7 +2013,10 @@ important stay by a fixed rank: the microphone, a screen recording, a low batter
 charging, quiet or a mode, a stuck update, then VPN, airplane, keep-awake, and last a charging
 battery or an update that is only waiting. Privacy and anything that swallows notifications stay
 in view. A `+N` under the marks counts what did not fit and names them on hover, and a mark
-that goes leaves by shrinking, not by blinking out.
+that goes leaves by shrinking, not by blinking out. The marks never wear the accent, which belongs
+to the active workspace pip: what is only on (VPN, airplane, quiet, a mode, keep-awake, a muted
+microphone, a waiting update, a charging battery) is the palette's plain light, a low battery or a
+stuck update is `warning`, and `alarm` is kept for a live microphone and a screen recording.
 
 **THE GLANCE, 2026-10-24: the time and the battery show at rest.** People using the shell said
 an empty screen is annoying when all they want is to look up and see what time it is and how much
@@ -2801,7 +2810,9 @@ when it answers `shell status` over IPC within `BANDITSHELL_HEALTH_WAIT` seconds
 shows no ReferenceError or "Failed to load" for `BANDITSHELL_HEALTH_SCAN` seconds (3); the last
 good copy is refreshed after that and not before. A failed check goes back by itself: `git reset
 --keep` to the recorded commit, relaunch, `update/result.json` for the next shell to read, and
-`update/skip` plus `updates.skip` so the same commit is not offered again; a newer one is.
+`update/skip` plus `updates.skip` so the same commit is not offered again; a newer one is. Once the
+skipped commit is applied and starts (`update apply --to`, the menu's Reinstall), it leaves
+`update/skip`, and the shell clears `updates.skip` when the result names it.
 
 `BANDITSHELL_DRY=1` makes `stop`, `start`, `restart`, `update apply` and `update rollback` print
 what they would do (`dry: ...`) and change nothing. `tests/update-cli.test.js` runs the whole loop

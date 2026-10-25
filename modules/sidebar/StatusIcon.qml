@@ -9,6 +9,7 @@ Item {
     property bool active: false
     property bool alert: false
     property bool alarm: false
+    property bool warning: false
     property bool available: true
 
     property Component mark: null
@@ -18,7 +19,7 @@ Item {
 
     readonly property bool hovered: mouse.containsMouse
 
-    readonly property color markColour: !root.available ? Appearance.colour.textFaint : root.alarm ? Appearance.colour.alarm : root.alert ? Appearance.colour.accent : root.hovered || root.active ? Appearance.colour.text : Appearance.colour.textDim
+    readonly property color markColour: !root.available ? Appearance.colour.textFaint : root.alarm ? Appearance.colour.alarm : root.warning ? Appearance.colour.warning : root.alert ? Appearance.colour.accent : root.hovered || root.active ? Appearance.colour.text : Appearance.colour.textDim
 
     implicitWidth: drawing.width
     implicitHeight: drawing.height
