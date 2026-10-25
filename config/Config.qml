@@ -39,6 +39,8 @@ Singleton {
 
                 label: [0.92, 0.58, 0.45, 0.16],
 
+                lightLabel: [0.92, 0.7, 0.6, 0.2],
+
                 fill: [0.07, 0.145, 0.18],
 
                 separator: 0.1,
@@ -102,6 +104,8 @@ Singleton {
             },
 
             colour: {
+
+                mode: "dark",
 
                 surface: 3,
 

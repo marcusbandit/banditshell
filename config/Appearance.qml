@@ -2,12 +2,21 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import "scheme.js" as Scheme
 
 Singleton {
     id: root
 
     readonly property var config: Config.values
-    readonly property var theme: Themes.get(root.config.theme)
+    readonly property var chosenTheme: Themes.get(root.config.theme)
+
+    readonly property string mode: Scheme.modeOf(root.config.colour.mode)
+
+    property bool daylight: false
+
+    readonly property bool light: Scheme.isLight(root.mode, root.daylight)
+
+    readonly property var theme: root.light ? Scheme.lightTheme(root.chosenTheme) : root.chosenTheme
 
     readonly property bool follows: root.config.compositor.follow && Compositor.available && !root.config.edge.bare
 
@@ -36,7 +45,7 @@ Singleton {
 
     readonly property real fontBase: root.config.access.largerText ? root.config.access.largerBase : root.config.font.base
 
-    readonly property var labelAlphas: root.config.access.moreContrast ? root.config.access.contrastLabel : root.config.material.label
+    readonly property var labelAlphas: root.config.access.moreContrast ? root.config.access.contrastLabel : root.light ? root.config.material.lightLabel : root.config.material.label
 
     function tier(base: real, scale: var, i: int): real {
         return base * scale[Math.max(0, Math.min(i, scale.length - 1))];
@@ -96,6 +105,18 @@ Singleton {
     }
 
     readonly property color tint: theme.ramp[theme.ramp.length - 1]
+
+    function lightCard(card: var): var {
+        return root.light ? Scheme.lightCard(card) : card;
+    }
+
+    function legible(c: color): color {
+        return root.light ? Scheme.lightAccent(String(c)) : c;
+    }
+
+    function shadeWord(step: real): string {
+        return Scheme.shadeWord(root.light, step);
+    }
 
     function veil(alpha: real): color {
         return root.mix(root.tint, root.tint, 0, alpha);
@@ -161,10 +182,10 @@ Singleton {
         readonly property color updateFailed: root.roleColour(root.config.updates.failedColour)
         readonly property color updateReady: root.roleColour(root.config.updates.readyColour)
 
-        readonly property color changeNew: "#8fb8e8"
-        readonly property color changeChanged: "#b9a3e3"
-        readonly property color changeFixed: "#8fcfa6"
-        readonly property color changeSettings: "#e3c58f"
+        readonly property color changeNew: root.legible("#8fb8e8")
+        readonly property color changeChanged: root.legible("#b9a3e3")
+        readonly property color changeFixed: root.legible("#8fcfa6")
+        readonly property color changeSettings: root.legible("#e3c58f")
 
         readonly property color frame: root.config.edge.outerColour
 

@@ -228,7 +228,7 @@ Item {
             height: root.marker
             pill: "object"
             color: Qt.hsla(root.hue, root.saturation, root.lightness, 1)
-            stroke: root.lightness > 0.6 ? Appearance.colour.ink : Appearance.colour.text
+            stroke: root.lightness > 0.6 ? Appearance.chosenTheme.ramp[0] : Appearance.chosenTheme.ramp[10]
             strokeWidth: 2
         }
 
