@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-6",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The power menu has Sleep, and every button says what it does"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "An armed shut down or restart says press again, and lets go after 4 s"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-5",
       "date": "2026-10-25",
       "changes": [
