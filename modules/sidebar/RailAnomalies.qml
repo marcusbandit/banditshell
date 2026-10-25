@@ -124,13 +124,27 @@ Item {
                 opacity: grow.value
 
                 Icon {
+                    id: glyph
+
+                    readonly property bool dotted: mark.entry?.dot ?? mark.modelData.dot ?? false
+
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: parent.top
                     anchors.topMargin: Math.round(Appearance.sizes.statusGap / 2)
                     height: Appearance.sizes.statusSlot
                     name: mark.entry?.icon ?? mark.modelData.icon
-                    fill: 1
+                    fill: glyph.dotted ? 0 : 1
                     color: root.toneColour(mark.entry?.tone ?? mark.modelData.tone)
+
+                    SquircleRect {
+                        visible: glyph.dotted
+                        pill: "object"
+                        width: Math.round(glyph.size * 0.26)
+                        height: width
+                        x: Math.round((glyph.width - width) / 2)
+                        y: Math.round((glyph.height - height) / 2 - glyph.size * 0.09)
+                        color: glyph.color
+                    }
                 }
 
                 readonly property bool pointed: area.enabled && area.containsMouse

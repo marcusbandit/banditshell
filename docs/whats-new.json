@@ -13,6 +13,11 @@
           "type": "ui",
           "severity": "minor",
           "text": "Low battery is yellow; on the rail, orange is only mic and recording"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Screen recording on the rail is a screen with a dot, not a bare dot"
         }
       ]
     },

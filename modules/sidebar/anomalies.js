@@ -51,7 +51,7 @@ function found(state) {
     return [
         batteryEntry(s),
         micEntry(s),
-        s.recording ? { key: "recording", icon: "fiber_manual_record", tone: "alarm", title: "Recording the screen", hint: "click to stop", rank: 1, opens: { stops: "recording" } } : null,
+        s.recording ? { key: "recording", icon: "desktop_windows", dot: true, tone: "alarm", title: "Recording the screen", hint: "click to stop", rank: 1, opens: { stops: "recording" } } : null,
         s.vpn ? { key: "vpn", icon: "vpn_lock", tone: "notice", title: "VPN on", hint: "click for settings", rank: 5, opens: { settings: "vpn" } } : null,
         s.awake ? { key: "awake", icon: "coffee", tone: "notice", title: "Keeping awake", hint: "click to stop", rank: 7, opens: { stops: "awake" } } : null,
         airplaneOn(s) ? { key: "airplane", icon: "flight", tone: "notice", title: "Airplane mode", hint: "click for network", rank: 6, opens: { menu: "network" } } : null,
