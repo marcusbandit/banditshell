@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-19",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Ctrl+Z in Files undoes a delete, move, rename or paste"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-18",
       "date": "2026-10-25",
       "changes": [
