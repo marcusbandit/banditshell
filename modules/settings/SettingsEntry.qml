@@ -15,7 +15,9 @@ Column {
     readonly property var value: root.key ? SettingsState.v(root.key) : undefined
     readonly property bool off: !!root.row.dis && !!root.row.dis(SettingsState)
     readonly property bool bad: !!root.row.bad && !!root.row.bad(SettingsState)
-    readonly property string detailText: String(Catalogue.val(root.row.detail, SettingsState) ?? "")
+    readonly property string stateText: String(Catalogue.val(root.row.state, SettingsState) ?? "")
+    readonly property string pendingText: String(Catalogue.val(root.row.pending, SettingsState) ?? "")
+    readonly property var combos: root.row.keys ? SettingsKeys.combosFor(root.row.keys) : []
     readonly property bool hasLayer: !!root.row.layer
     readonly property bool unrolled: SettingsView.isOpen(root.row.uid ?? "")
     readonly property var choices: {
@@ -31,7 +33,7 @@ Column {
     readonly property bool changed: !root.off && Catalogue.changed(root.value, root.fallback)
     readonly property string fallbackText: root.resettable ? String(Catalogue.show(root.row, root.fallback, SettingsState)) : ""
     readonly property real controlsWidth: {
-        const parts = [controls.item ? controls.width : -1, extra.visible ? extra.width : -1, more.visible ? more.width : -1].filter(w => w >= 0);
+        const parts = [shortcut.visible ? shortcut.width : -1, controls.item ? controls.width : -1, extra.visible ? extra.width : -1, more.visible ? more.width : -1].filter(w => w >= 0);
         return parts.reduce((a, b) => a + b, 0) + Math.max(0, parts.length - 1) * Appearance.padding.normal;
     }
     property string noted: ""
@@ -77,9 +79,10 @@ Column {
         width: root.width
         icon: root.row.icon ?? ""
         label: Catalogue.labelOf(root.row)
-        detail: root.detailText
+        detail: root.stateText
         detailColour: root.bad ? Appearance.colour.alarm : Appearance.colour.textFaint
         detailLines: root.bad ? 3 : 1
+        pending: root.pendingText
         off: root.off
         loose: reset.visible ? reset.width + resetGap.width + Appearance.padding.normal * 2 : 0
         flashStamp: root.flashing ? SettingsView.flash.at : 0
@@ -117,6 +120,56 @@ Column {
             visible: reset.visible
             width: 1 + Math.max(0, SettingsView.resetColumn - root.controlsWidth)
             height: 1
+        }
+
+        Row {
+            id: shortcut
+
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.combos.length > 0
+            spacing: Appearance.padding.small
+
+            Repeater {
+                model: root.combos
+
+                delegate: Row {
+                    id: alternative
+
+                    required property string modelData
+                    required property int index
+
+                    spacing: Appearance.padding.small
+
+                    StyledText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: alternative.index > 0
+                        text: "or"
+                        color: Appearance.colour.textFaint
+                    }
+
+                    Item {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: hintText.implicitWidth + Appearance.padding.normal
+                        height: hintText.implicitHeight + Appearance.padding.small
+
+                        SquircleRect {
+                            anchors.fill: parent
+                            radius: Appearance.rounding.small
+                            color: "transparent"
+                            stroke: Appearance.colour.separator
+                            strokeWidth: 1
+                        }
+
+                        StyledText {
+                            id: hintText
+
+                            anchors.centerIn: parent
+                            text: SettingsKeys.hint(alternative.modelData)
+                            color: Appearance.colour.textDim
+                        }
+                    }
+                }
+            }
         }
 
         Loader {

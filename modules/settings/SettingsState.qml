@@ -278,6 +278,7 @@ Singleton {
             lockDesat: "lock.desaturate",
             filesView: "files.view",
             filesSort: "files.sort",
+            filesReversed: "files.reversed",
             filesHidden: "files.hidden",
             filesMarkdown: "files.markdown",
             filesZoom: "files.zoom",
@@ -1017,7 +1018,7 @@ Singleton {
             return "";
         if (sub === "hz" && live && String(live.mode).split("@")[1] === String(mine.mode).split("@")[1])
             return "";
-        return "not applied yet";
+        return "needs Apply";
     }
 
     function resetStage(): void {
@@ -1272,7 +1273,7 @@ Singleton {
     readonly property string vpnOn: Tunnels.activeName
 
     readonly property string hotspotStatus: Hotspot.status
-    readonly property string alertsDetail: AlertSounds.available ? "notifications · low battery · errors" : "pw-play is not installed, so alerts stay silent"
+    readonly property string alertsDetail: AlertSounds.available ? "" : "pw-play is not installed, so alerts stay silent"
     readonly property bool hotspotBlocked: Hotspot.blocker !== "" && !Hotspot.on
     readonly property string hotspotPasswordTrouble: Hotspot.passwordTrouble
     readonly property string weatherPlaceTrouble: Weather.failed && Weather.failure === "place" && Weather.failedFor === Weather.location ? Weather.location ? `no town called "${Weather.location}"` : "could not place you" : ""

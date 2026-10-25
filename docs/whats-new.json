@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-26-3",
+      "id": "2026-10-26-6",
       "date": "2026-10-26",
       "changes": [
         {
@@ -18,6 +18,59 @@
           "type": "ui",
           "severity": "minor",
           "text": "World clocks in Settings are now headed Other time zones"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-5",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files sorts either way: oldest first, smallest first or Z to A"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files settings preview shows whole names and each date or size"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-4",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "After going back, the update menu can reinstall the skipped version"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "After going back, the update menu can report what broke"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-3",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings shortcuts show as hints like Ctrl + 5, read from your binds"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "What a setting does is told in the side pane, not under its name"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A screen change waiting for Apply has an accent dot"
         }
       ]
     },
