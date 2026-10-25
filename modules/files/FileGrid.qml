@@ -45,6 +45,7 @@ Item {
         const view = [Files.cwd, Files.search, Config.values.files.sort, Config.values.files.hidden].join("\n");
         const y = grid.contentY;
         grid.model = root.entries;
+        grid.currentIndex = Qt.binding(() => Files.cursor);
         if (view === root.shown)
             grid.contentY = Math.max(grid.originY, Math.min(y, grid.originY + grid.contentHeight - grid.height));
         root.shown = view;
@@ -63,7 +64,6 @@ Item {
 
         cellHeight: root.cellHeight
 
-        currentIndex: Files.cursor
 
         boundsBehavior: Flickable.StopAtBounds
 

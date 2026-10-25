@@ -3849,9 +3849,8 @@ on a descending run followed by an ascending one, which is exactly how readdir
 returns a folder that just had thousands of files added, and 34,000 names took
 over a minute. The watcher dies with the window,
 moves with the folder, and exits when the shell's end of its pipe closes, so a
-crashed shell leaves nothing behind. With it running, the shell's own
-operations no longer schedule a refresh of their own: the watcher sees them
-too.
+crashed shell leaves nothing behind. A folder deleted and made again under it
+is watched again on the next listing.
 
 **Right click opens components/ActionSheet.qml**, the same sheet the clipboard
 and the launcher open on a row - so it arrived knowing how to be arrowed through,

@@ -194,6 +194,7 @@ Singleton {
     property int generation: 0
     property var latestListing: null
     property bool listing: false
+    property real listingSince: 0
     property bool again: false
     property bool watched: false
     property string lastListing: ""
@@ -203,6 +204,7 @@ Singleton {
             return;
         root.generation += 1;
         root.listing = true;
+        root.listingSince = Date.now();
         root.again = false;
         root.watched = false;
         if (root.latestListing)
@@ -224,7 +226,9 @@ Singleton {
             root.adopt(text);
         }
         if (again)
-            root.relistNow();
+            root.relist();
+        if (!root.watcher && !root.error && root.cwd !== root.unwatchable)
+            root.watch();
     }
 
     function adopt(text: string): void {
@@ -285,7 +289,7 @@ Singleton {
                 pace.start();
             return;
         }
-        if (root.listing)
+        if (root.listing && Date.now() - root.listingSince < 30000)
             root.again = true;
         else
             root.relistNow();
@@ -298,14 +302,20 @@ Singleton {
 
     property var watcher: null
     property bool watching: false
+    property string unwatchable: ""
 
     function watch(): void {
         pace.stop();
         root.cost = 0;
-        if (root.watcher)
-            root.watcher.running = false;
+        const old = root.watcher;
         root.watcher = null;
         root.watching = false;
+        if (old) {
+            old.running = false;
+            old.destroy();
+        }
+        if (!root.windowOpen)
+            root.lastListing = "";
         if (!root.windowOpen || root.helpersMissing || !root.cwd)
             return;
         root.watcher = folderWatch.createObject(root, {
@@ -327,22 +337,24 @@ Singleton {
         id: folderWatch
 
         Process {
-            id: watching
+            id: watcherProcess
 
             stdinEnabled: true
 
             stdout: SplitParser {
-                onRead: line => root.heard(watching, line)
+                onRead: line => root.heard(watcherProcess, line)
             }
 
             onRunningChanged: {
-                if (watching.running)
+                if (watcherProcess.running || root.watcher !== watcherProcess)
                     return;
-                if (root.watcher === watching) {
-                    root.watcher = null;
-                    root.watching = false;
-                }
-                watching.destroy();
+                const was = root.watching;
+                root.watcher = null;
+                root.watching = false;
+                root.unwatchable = was ? "" : root.cwd;
+                watcherProcess.destroy();
+                if (was)
+                    root.relist();
             }
         }
     }
@@ -514,7 +526,6 @@ Singleton {
             root.helpersMissing = code !== 0;
             if (!root.helpersMissing)
                 root.refresh();
-            root.watch();
         }
     }
 
@@ -730,8 +741,7 @@ Singleton {
     }
 
     function restat(): void {
-        if (!root.watching)
-            settle.restart();
+        settle.restart();
     }
 
     Timer {
