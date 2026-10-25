@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-8",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The power menu has Sleep, and every button says what it does"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "An armed shut down or restart turns red and lets go after 4 s"
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "session.button is now the smallest a power button gets"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A double-click on Shut down or Restart no longer runs it at once"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-7",
       "date": "2026-10-25",
       "changes": [
