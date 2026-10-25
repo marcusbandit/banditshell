@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-3",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files fills what is picked and rings the file the arrow keys are on"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The keyboard ring appears on a key press and goes when the mouse moves"
+        }
+      ]
+    },
+    {
       "id": "2026-10-26-2",
       "date": "2026-10-26",
       "changes": [

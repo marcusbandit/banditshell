@@ -12,6 +12,7 @@ Item {
 
     property point dragPoint: Qt.point(-1, -1)
     property bool dragging: false
+    property bool keyed: false
 
     signal picked(int index, int modifiers)
     signal activated(int index)
@@ -53,6 +54,8 @@ Item {
         currentIndex: Files.cursor
 
         boundsBehavior: Flickable.StopAtBounds
+        topMargin: Appearance.padding.hair
+        bottomMargin: Appearance.padding.hair
 
         WheelStep {
             flick: grid
@@ -64,9 +67,10 @@ Item {
             width: grid.cellWidth
             height: grid.cellHeight
 
+            z: tile.focused ? 1 : 0
             row: root.list
             picked: Files.isPicked(modelData.name)
-            cursored: index === Files.cursor
+            focused: root.keyed && index === Files.cursor
             receiving: root.dragging && root.target === index && droppable && !Files.isPicked(modelData.name)
 
             onClicked: modifiers => root.picked(index, modifiers)
