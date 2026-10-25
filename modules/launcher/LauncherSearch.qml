@@ -1487,7 +1487,11 @@ QtObject {
         return guess ? Search.arrange(remembered.concat([
             {
                 key: "guess",
-                title: `Corrected from “${root.text}”`,
+                title: ({
+                        app: "Apps",
+                        command: "Commands",
+                        setting: "Settings"
+                    })[guess.kind],
                 items: [guess]
             }
         ]), root.limits) : arranged;
