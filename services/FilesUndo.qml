@@ -17,20 +17,16 @@ Singleton {
         root.stack = Undo.remember(root.stack, entry);
     }
 
-    function moving(paths: var, dir: string, then: var): void {
-        root.before(Undo.moved(Undo.into(paths, dir)), then);
-    }
-
     function renaming(from: string, to: string, then: var): void {
         root.before(Undo.renamed(from, to), then);
     }
 
-    function copying(paths: var, dir: string, then: var): void {
-        root.before(Undo.copied(Undo.into(paths, dir)), then);
-    }
-
     function trashed(paths: var): void {
         root.remember(Undo.trashed(paths, Date.now() / 1000));
+    }
+
+    function pasted(cut: bool, pairs: var, replaced: var, at: real): void {
+        root.remember(Undo.batch([cut ? Undo.moved(pairs) : Undo.copied(pairs), Undo.trashed(replaced, at)]));
     }
 
     function before(entry: var, then: var): void {
@@ -65,10 +61,29 @@ Singleton {
         root.running = entry;
         root.shown = [];
 
-        if (entry.kind === "trash")
-            root.start(Undo.TRASH_LISTING, text => root.start(Undo.command(entry, Undo.pick(Undo.parseTrash(text ?? ""), entry)), root.finish));
+        root.perform(entry, root.finish);
+    }
+
+    function perform(entry: var, done: var): void {
+        if (entry.kind === "batch")
+            root.picked(entry.parts, picks => root.chain(entry.parts.map((part, i) => Undo.command(part, picks[i])), [], done));
+        else if (entry.kind === "trash")
+            root.picked([entry], picks => root.start(Undo.command(entry, picks[0]), out => done([out])));
         else
-            root.start(Undo.command(entry, []), root.finish);
+            root.start(Undo.command(entry, []), out => done([out]));
+    }
+
+    function picked(parts: var, done: var): void {
+        root.start(Undo.TRASH_LISTING, text => {
+            const items = Undo.parseTrash(text ?? "");
+            done(parts.map(part => part.kind === "trash" ? Undo.pick(items, part) : []));
+        });
+    }
+
+    function chain(commands: var, texts: var, done: var): void {
+        if (texts.length === commands.length)
+            return done(texts);
+        root.start(commands[texts.length], out => root.chain(commands, texts.concat([out]), done));
     }
 
     property var shown: []
@@ -90,15 +105,13 @@ Singleton {
         });
     }
 
-    function finish(text: var): void {
-        const counts = Undo.outcome(root.running, text ?? "");
-        const said = Undo.summary(root.running, counts, Files.cwd, Files.home);
-        if (counts.ok > 0)
-            root.say(said);
+    function finish(texts: var): void {
+        const told = Undo.report(root.running, texts, Files.cwd, Files.home);
+        if (told.ok)
+            root.say(told.text);
         else
-            Files.failure = said;
-        if (root.running.kind !== "copy")
-            root.show(counts.done.filter(path => Undo.parentOf(path) === Files.cwd).map(path => Undo.baseName(path)));
+            Files.failure = told.text;
+        root.show(told.shown.filter(path => Undo.parentOf(path) === Files.cwd).map(path => Undo.baseName(path)));
         root.running = null;
         Files.refresh();
         if (root.stack.length === 0)
@@ -131,12 +144,16 @@ Singleton {
                 if (task.over)
                     return;
                 task.over = true;
-                task.done(text);
+                task.done(text, complaint.text);
                 task.destroy();
             }
 
             stdout: StdioCollector {
                 onStreamFinished: task.end(text)
+            }
+
+            stderr: StdioCollector {
+                id: complaint
             }
 
             onStarted: task.begun = true

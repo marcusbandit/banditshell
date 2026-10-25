@@ -904,7 +904,7 @@ LauncherConcept {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
 
-                            text: !root.capture ? "Search" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
+                            text: !root.capture ? "Search, or ? for help" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
                         }
@@ -1150,6 +1150,17 @@ LauncherConcept {
                         enabled: !root.quick && !root.shownView
                         opacity: (1 - gridIn.value) * viewIn.listShown
                         clip: true
+
+                        readonly property real fade: Appearance.font.line.normal * 1.5
+
+                        revealMargin: list.layer.enabled ? list.fade : 0
+
+                        layer.enabled: list.contentHeight > list.height
+                        layer.effect: ShaderEffect {
+                            readonly property vector4d fades: Qt.vector4d(list.atYBeginning ? 0 : list.fade, list.atYEnd ? 0 : list.fade, height, 1)
+
+                            fragmentShader: Qt.resolvedUrl("../../components/edgefade.frag.qsb")
+                        }
 
                         model: ScriptModel {
                             values: root.results

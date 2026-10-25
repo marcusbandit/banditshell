@@ -115,7 +115,7 @@ Item {
                 width: cell.barWidth
                 height: Appearance.font.line.normal * 4
                 pill: "object"
-                color: root.battery.low ? Appearance.withAlpha(Appearance.colour.alarm, 0.3) : Appearance.colour.fillStronger
+                color: root.battery.low ? Appearance.withAlpha(Appearance.colour.warning, 0.3) : Appearance.colour.fillStronger
 
                 SquircleRect {
                     anchors.left: parent.left

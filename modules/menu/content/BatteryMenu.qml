@@ -74,7 +74,7 @@ Column {
             level: Battery.percentage
             charging: Battery.charging
 
-            liquid: Battery.low ? Appearance.colour.alarm : Appearance.colour.accent
+            liquid: Battery.low ? Appearance.colour.warning : Appearance.colour.accent
         }
 
         Column {
@@ -107,7 +107,7 @@ Column {
 
                         text: readout.modelData.value
                         font.pixelSize: readout.modelData.lead ? Appearance.font.size.normal : Appearance.font.size.small
-                        color: readout.modelData.lead && Battery.low ? Appearance.colour.alarm : Appearance.colour.text
+                        color: readout.modelData.lead && Battery.low ? Appearance.colour.warning : Appearance.colour.text
                         elide: Text.ElideRight
                     }
 
