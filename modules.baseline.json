@@ -197,6 +197,7 @@
     "R3 modules/settings/SettingsState.qml uses Clipboard of clipboard without requiring it",
     "R3 modules/settings/SettingsState.qml uses Clock of clock without requiring it",
     "R3 modules/settings/SettingsState.qml uses Currency of calculator without requiring it",
+    "R3 modules/settings/SettingsState.qml uses DarkMode of display without requiring it",
     "R3 modules/settings/SettingsState.qml uses DefaultApps of apps without requiring it",
     "R3 modules/settings/SettingsState.qml uses Device of launcher-devops without requiring it",
     "R3 modules/settings/SettingsState.qml uses Display of display without requiring it",
