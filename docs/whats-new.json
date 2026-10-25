@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-7",
+      "id": "2026-10-25-8",
       "date": "2026-10-25",
       "changes": [
         {
@@ -23,6 +23,22 @@
           "type": "bugs",
           "severity": "minor",
           "text": "A double-click on Shut down or Restart no longer runs it at once"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-7",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Sorting Files by date or type in Settings now really sorts that way"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Files Sort by in Settings reads a to z, newest, biggest or type"
         }
       ]
     },
