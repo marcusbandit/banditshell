@@ -10,11 +10,15 @@ Item {
 
     property int current: 0
 
+    property var swatches: []
+
     signal picked(int index)
 
     readonly property int count: root.options.length
 
     readonly property real segment: root.count > 0 ? root.width / root.count : root.width
+
+    readonly property real swatchRoom: root.swatches.length > 0 ? 18 + Appearance.padding.small : 0
 
     readonly property string widest: {
         let out = "";
@@ -24,7 +28,7 @@ Item {
         return out;
     }
 
-    implicitWidth: root.count * (Math.ceil(ink.width) + Appearance.padding.normal * 2)
+    implicitWidth: root.count * (Math.ceil(ink.width) + root.swatchRoom + Appearance.padding.normal * 2)
     implicitHeight: Math.max(Appearance.sizes.minTarget, Appearance.font.line.small + Appearance.padding.small * 2)
     width: implicitWidth
     height: implicitHeight
@@ -78,7 +82,10 @@ Item {
             height: root.height
 
             StyledText {
+                id: label
+
                 anchors.fill: parent
+                leftPadding: root.swatchRoom
 
                 elide: Text.ElideRight
                 horizontalAlignment: Text.AlignHCenter
@@ -87,6 +94,18 @@ Item {
                 text: seg.modelData
 
                 color: seg.covered > 0.5 ? Appearance.colour.accentText : Appearance.colour.text
+            }
+
+            SquircleRect {
+                x: (seg.width - root.swatchRoom - label.contentWidth) / 2
+                anchors.verticalCenter: parent.verticalCenter
+                width: 18
+                height: 18
+                radius: 6
+                color: root.swatches[seg.index] ?? "transparent"
+                stroke: label.color
+                strokeWidth: seg.covered > 0.5 ? 1.5 : 0
+                visible: root.swatchRoom > 0
             }
 
             MouseArea {
