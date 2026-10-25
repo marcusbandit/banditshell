@@ -181,6 +181,17 @@ PanelWindow {
         return true;
     }
 
+    function pressMark(opens: var): void {
+        if (opens?.menu)
+            win.openMenu(opens.menu, true);
+        else if (opens?.settings)
+            Settings.openAt(win.screen?.name ?? "", opens.settings, opens.row ?? "");
+        else if (opens?.stops === "awake")
+            Idle.awake = false;
+        else if (opens?.stops === "recording")
+            ScreenRecorder.stop();
+    }
+
     function act(notice: var): void {
         if (notice.mock && notice.kind !== "music")
             return;
@@ -498,7 +509,7 @@ PanelWindow {
 
             glanceReach: Math.max(0, glance.footReach - win.border)
 
-            onAwakeEnded: Idle.awake = false
+            onMarkPressed: opens => win.pressMark(opens)
         }
 
         RestingGlance {
