@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-20",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Point at a mark on the rail to read what it means"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Pressing a rail mark opens what controls it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The rail counts the marks that did not fit, like +2"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-13",
       "date": "2026-10-25",
       "changes": [

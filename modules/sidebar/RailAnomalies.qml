@@ -17,11 +17,11 @@ Item {
 
     property bool awake: false
 
-    signal awakeEnded
+    signal markPressed(var opens)
 
     readonly property BatteryGlance battery: BatteryGlance {}
 
-    readonly property var wanted: Anomalies.list({
+    readonly property var reading: ({
         battery: root.batteryWanted && root.battery.shown,
         batteryPercent: root.battery.percent,
         charging: root.battery.charging,
@@ -42,6 +42,10 @@ Item {
         updateMode: Config.values.sidebar.update,
         diverged: Update.diverged
     })
+
+    readonly property var wanted: Anomalies.list(root.reading)
+
+    readonly property var dropped: Anomalies.dropped(root.reading)
 
     readonly property var micIds: Audio.recording.filter(n => (n.properties?.["media.class"] ?? "").includes("Audio")).map(n => n.id)
 
@@ -67,10 +71,6 @@ Item {
         interval: Math.max(1, Config.values.island.glanceSeconds) * 1000
         onTriggered: root.micFresh = false
     }
-
-    readonly property var presses: ({
-            awake: () => root.awakeEnded()
-        })
 
     property string pointedKey: ""
 
@@ -128,7 +128,7 @@ Item {
                     color: root.toneColour(mark.entry?.tone ?? mark.modelData.tone)
                 }
 
-                readonly property bool pointed: area.visible && area.enabled && area.containsMouse
+                readonly property bool pointed: area.enabled && area.containsMouse
 
                 onPointedChanged: {
                     if (mark.pointed)
@@ -146,11 +146,10 @@ Item {
                     id: area
 
                     anchors.fill: parent
-                    visible: !!root.presses[mark.modelData.key]
                     enabled: mark.present
                     hoverEnabled: true
                     cursorShape: area.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: root.presses[mark.modelData.key]()
+                    onClicked: root.markPressed(mark.entry.opens)
 
                     HoverTip {
                         text: area.enabled ? (mark.entry?.title ?? "") : ""
@@ -174,6 +173,56 @@ Item {
                             root.held = Anomalies.without(root.held, mark.modelData.key);
                     }
                 }
+            }
+        }
+
+        Item {
+            id: more
+
+            readonly property int live: root.dropped.length
+            readonly property bool shown: more.live > 0
+
+            property int count: 0
+
+            onLiveChanged: if (more.live > 0)
+                more.count = more.live
+
+            Component.onCompleted: more.count = more.live
+
+            width: column.width
+            height: Math.round((Appearance.sizes.statusSlot + Appearance.sizes.statusGap) * swell.value)
+            opacity: swell.value
+            visible: swell.value > 0.005
+
+            StyledText {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                text: "+" + more.count
+                color: Appearance.colour.textDim
+            }
+
+            readonly property bool pointed: tip.hovered && more.shown
+
+            onPointedChanged: {
+                if (more.pointed)
+                    root.pointedKey = "more";
+                else if (root.pointedKey === "more")
+                    root.pointedKey = "";
+            }
+
+            HoverTip {
+                id: tip
+
+                text: more.shown ? Anomalies.droppedTitle(root.dropped) : ""
+                host: more
+            }
+
+            Follow {
+                id: swell
+
+                target: more.shown ? 1 : 0
+                speed: Appearance.animation.revealSpeed
+                epsilon: 0.005
             }
         }
     }

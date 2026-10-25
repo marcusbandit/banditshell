@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const load = (file, names) => new Function(fs.readFileSync(path.join(ROOT, file), "utf8").replace(/^\.pragma .*$/m, "") + `\nreturn { ${names.join(", ")} };`)();
-const Anomalies = load("modules/sidebar/anomalies.js", ["list", "merge", "without", "airplaneOn"]);
+const Anomalies = load("modules/sidebar/anomalies.js", ["list", "dropped", "droppedTitle", "merge", "without", "airplaneOn"]);
 const Scrolling = load("modules/sidebar/scrolling.js", ["scrolled"]);
 
 const calm = {
@@ -113,6 +113,37 @@ test("when too many things are unusual the alarms stay and the order holds", () 
     const quietOnly = keys({ quiet: true, vpn: true, update: "failed", batteryPercent: 5, recording: true, micStreams: true });
     assert.ok(quietOnly.includes("update"));
     assert.ok(!quietOnly.includes("quiet"));
+});
+
+test("every mark opens what controls it, and the two that stop say so", () => {
+    const alone = [{ batteryPercent: 5 }, { micStreams: true }, { recording: true }, { vpn: true }, { awake: true }, { wifiOn: false, bluetoothOn: false }, { quiet: true }, { update: "available" }, { modeIcon: "target" }];
+    const opens = {};
+    for (const one of alone)
+        for (const e of Anomalies.list(Object.assign({}, calm, one)))
+            opens[e.key] = e.opens;
+    assert.deepStrictEqual(opens, {
+        battery: { menu: "battery" },
+        mic: { menu: "audio" },
+        recording: { stops: "recording" },
+        vpn: { settings: "vpn", row: "tunnels" },
+        awake: { stops: "awake" },
+        airplane: { menu: "network" },
+        quiet: { settings: "modes", row: "dnd" },
+        update: { menu: "update" },
+        mode: { settings: "modes" }
+    });
+    for (const e of Anomalies.list(Object.assign({}, calm, { recording: true, awake: true })))
+        assert.match(e.title, /click to stop/);
+});
+
+test("the marks the cap drops are counted and named, and none when all fit", () => {
+    const crowd = Object.assign({}, calm, { batteryPercent: 5, micStreams: true, recording: true, vpn: true, quiet: true, update: "available" });
+    const gone = Anomalies.dropped(crowd);
+    assert.deepStrictEqual(gone.map(e => e.key), ["quiet", "update"]);
+    assert.strictEqual(Anomalies.list(crowd).length + gone.length, 6);
+    assert.strictEqual(Anomalies.droppedTitle(gone), "2 more: Do not disturb · Update available");
+    assert.deepStrictEqual(Anomalies.dropped(Object.assign({}, calm, { vpn: true })), []);
+    assert.strictEqual(Anomalies.droppedTitle([]), "");
 });
 
 test("held marks fade out instead of vanishing, and come back in place", () => {
