@@ -186,7 +186,7 @@ Column {
         Repeater {
             model: WhatsNew.sections(root.card)
 
-            delegate: Rectangle {
+            delegate: SquircleRect {
                 id: section
 
                 required property var modelData
@@ -239,12 +239,12 @@ Column {
                             width: sectionBody.width
                             height: changeText.height
 
-                            Rectangle {
+                            SquircleRect {
                                 x: Math.round((Appearance.font.iconSize - width) / 2)
                                 y: Math.round((Appearance.font.line.small - height) / 2)
                                 width: Math.max(4, Math.round(Appearance.font.size.small / 4))
                                 height: width
-                                radius: width / 2
+                                pill: "object"
                                 color: Appearance.blend(Appearance.colour.textFaint, section.hue, 0.5)
                             }
 
@@ -339,13 +339,13 @@ Column {
         if (key === "major")
             return Appearance.colour.accent;
         if (key === "features")
-            return "#8fb8e8";
+            return Appearance.colour.changeNew;
         if (key === "ui")
-            return "#b9a3e3";
+            return Appearance.colour.changeChanged;
         if (key === "bugs")
-            return "#8fcfa6";
+            return Appearance.colour.changeFixed;
         if (key === "config")
-            return "#e3c58f";
+            return Appearance.colour.changeSettings;
         return Appearance.colour.textDim;
     }
 }
