@@ -324,7 +324,7 @@ function phaseOf(line) {
 }
 
 function byHand(result) {
-    return !!result && result.ok === false && result.why === "rolled back by hand";
+    return !!result && result.ok === false && result.hand === true;
 }
 
 function outcomeText(result) {

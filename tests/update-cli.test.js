@@ -610,6 +610,7 @@ test("rollback by hand returns to the recorded version and skips the one it left
     const result = JSON.parse(readState(world, "result.json"));
     assert.strictEqual(result.ok, false);
     assert.strictEqual(result.why, "rolled back by hand");
+    assert.strictEqual(result.hand, true);
     assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json"]).out).state, "skipped");
     const again = run(world, ["update", "rollback"]);
     assert.strictEqual(again.status, 1);
@@ -648,6 +649,45 @@ test("a detached rollback reports through progress.log and toasts no failed star
     assert.strictEqual(liveHead(world), before);
     const notes = fs.existsSync(path.join(world.fakeqs, "notes")) ? fs.readFileSync(path.join(world.fakeqs, "notes"), "utf8") : "";
     assert.doesNotMatch(notes, /did not start/);
+});
+
+test("rollback refuses to take this copy's own commits off the branch, and the check offers none", () => {
+    const world = makeWorld();
+    const target = advance(world, "v2", { "shell.qml": "// v2\n" });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    write(world.live, "mine.txt", "mine\n");
+    git(world.live, "add", "mine.txt");
+    git(world.live, "commit", "-q", "-m", "mine");
+    const mine = liveHead(world);
+    assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out).previous, "");
+    const got = run(world, ["update", "rollback"]);
+    assert.strictEqual(got.status, 1);
+    assert.match(got.err, /commit\(s\) of its own/);
+    assert.strictEqual(liveHead(world), mine);
+});
+
+test("rollback refuses on a copy paused on another branch", () => {
+    const world = makeWorld();
+    const target = advance(world, "v2", { "shell.qml": "// v2\n" });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    git(world.live, "checkout", "-q", "-b", "elsewhere");
+    const got = run(world, ["update", "rollback"]);
+    assert.strictEqual(got.status, 1);
+    assert.strictEqual(liveHead(world), target);
+});
+
+test("a rollback by hand that git refuses changes nothing and skips nothing", () => {
+    const world = makeWorld();
+    const target = advance(world, "v2", { "shell.qml": "// v2\n" });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    write(world.live, "shell.qml", "// my own edit\n");
+    const got = run(world, ["update", "rollback", "--json"]);
+    assert.strictEqual(got.status, 1);
+    const lines = got.out.split("\n").filter(Boolean).map(l => JSON.parse(l));
+    assert.deepStrictEqual(lines.map(l => l.phase), ["goback", "failed"]);
+    assert.strictEqual(liveHead(world), target);
+    assert.strictEqual(JSON.parse(readState(world, "result.json")).ok, true);
+    assert.ok(!fs.existsSync(stateFile(world, "skip")));
 });
 
 test("a detached rollback with nothing recorded fails in progress.log with a time", () => {

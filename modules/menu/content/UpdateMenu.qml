@@ -182,7 +182,6 @@ Column {
         visible: Update.canGoBack && !root.goBackConfirm
         text: "Go back to the previous version"
         icon: "history"
-        interactive: !Update.checking
 
         onClicked: root.goBackConfirm = true
     }

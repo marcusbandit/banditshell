@@ -57,7 +57,7 @@ Singleton {
     property string targetVersion: ""
     property string previous: ""
     property string previousVersion: ""
-    readonly property bool canGoBack: root.commit(root.previous) && !root.busy && !root.paused && root.ahead === 0
+    readonly property bool canGoBack: root.commit(root.previous) && !root.busy && !root.paused
     property bool goingBack: false
     readonly property string remote: Config.values.updates.remote
 
@@ -165,7 +165,7 @@ Singleton {
     }
 
     function goBack(): void {
-        if (!root.canGoBack || root.checking)
+        if (!root.canGoBack)
             return;
 
         root.error = "";
@@ -202,11 +202,14 @@ Singleton {
         const warnings = [];
         let last = null;
         let failure = [];
+        let back = false;
         for (const line of lines) {
             const phase = Words.phaseOf(line);
             if (phase === null || (Number(phase.at) || 0) < started)
                 continue;
             last = phase;
+            if (phase.phase === "goback")
+                back = true;
             if (phase.phase === "warning")
                 warnings.push(phase.text);
             else if (phase.phase === "failed")
@@ -220,6 +223,7 @@ Singleton {
             return;
 
         silence.stop();
+        root.goingBack = back;
         root.lastPhase = last.phase;
         root.phaseText = last.text ?? "";
         root.warnings = warnings;
@@ -227,7 +231,7 @@ Singleton {
             root.state = root.downloading;
         else if (last.phase === "verify")
             root.state = root.verifying;
-        else if (last.phase === "restart" || last.phase === "health")
+        else if (last.phase === "restart" || last.phase === "health" || last.phase === "goback")
             root.state = root.restarting;
         else if (last.phase === "done") {
             root.behind = 0;

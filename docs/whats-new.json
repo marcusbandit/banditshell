@@ -5,7 +5,7 @@
       "date": "2026-10-25",
       "changes": [
         {
-          "type": "issues",
+          "type": "features",
           "severity": "minor",
           "text": "The update menu can go back to the previous version"
         }

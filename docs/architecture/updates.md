@@ -50,9 +50,11 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    good copy is started. `result.json` records `ok: false` with the reason, and the menu shows it
    until dismissed.
 7. **Roll back by hand.** `banditshell update rollback [--detach] [--json]` does the same reset to
-   `update/previous` and skips what it left. The check reports that commit as `previous`, with its
-   id as `previousVersion`, while it is an ancestor of HEAD, and the menu then offers "Go back to
-   the previous version", asks once naming that id, and runs `rollback --detach`.
+   `update/previous` and skips what it left. It refuses on a paused copy, on a copy with commits
+   of its own, and when the recorded commit is not behind HEAD; a reset git refuses changes and
+   skips nothing. The check reports that commit as `previous`, with its id as `previousVersion`,
+   under the same rules, and the menu then offers "Go back to the previous version", asks once
+   naming that id, and runs `rollback --detach`, whose first progress line is `goback`.
    `banditshell update status [--json]` says where the copy stands, the last outcome and the
    version before the last update. What's new shows nothing pending when the seen mark is a
    newer id than the whole log, which is where a rollback leaves it.

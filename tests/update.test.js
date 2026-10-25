@@ -279,9 +279,9 @@ test("the outcome tells where the person stands in plain words", () => {
 });
 
 test("a rollback by hand says where it went back to, not that something failed", () => {
-    assert.strictEqual(Update.outcomeText({ ok: false, fromLabel: "2026-10-24", toLabel: "2026-10-25", why: "rolled back by hand" }),
+    assert.strictEqual(Update.outcomeText({ ok: false, hand: true, fromLabel: "2026-10-24", toLabel: "2026-10-25", why: "rolled back by hand" }),
         "Back on 2026-10-24. 2026-10-25 is skipped until a newer version arrives.");
-    assert.strictEqual(Update.byHand({ ok: false, why: "the new version did not start" }), false);
+    assert.strictEqual(Update.byHand({ ok: false, why: "rolled back by hand" }), false);
 });
 
 test("a channel is stable or main, and anything else reads as main", () => {
