@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-5",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files sorts either way: oldest first, smallest first or Z to A"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files settings preview shows whole names and each date or size"
+        }
+      ]
+    },
+    {
       "id": "2026-10-26-4",
       "date": "2026-10-26",
       "changes": [
