@@ -43,6 +43,7 @@ Item {
         id: shape
 
         activity: root.activity
+        lit: root.lights
     }
 
     readonly property int maxChars: 30
@@ -53,8 +54,9 @@ Item {
     readonly property real centreWidth: root.look.bars ? bars.implicitWidth : root.metered ? root.meterWidth : root.textWidth
     readonly property var actions: root.look.trailing === "actions" ? (root.look.actions ?? []) : []
     readonly property real pillGap: Appearance.padding.small
+    readonly property string actionsTag: root.actions.length > 0 ? (root.look.trailingText ?? "") : ""
     readonly property real actionsWidth: {
-        let total = 0;
+        let total = root.actionsTag ? em.advanceWidth * root.actionsTag.length + root.pillGap : 0;
         for (const a of root.actions)
             total += em.advanceWidth * a.label.length + root.gap * 2 + root.pillGap;
         return Math.max(0, total - root.pillGap);
@@ -231,6 +233,13 @@ Item {
         Row {
             spacing: root.pillGap
             visible: root.actions.length > 0
+
+            StyledText {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !!root.actionsTag
+                text: root.actionsTag
+                color: root.look.trailingTone ?? Appearance.colour.textFaint
+            }
 
             Repeater {
                 model: root.actions

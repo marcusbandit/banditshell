@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-17",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "With the newest voice, Esc or Discard stops dictation untyped"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-16",
       "date": "2026-10-25",
       "changes": [
