@@ -13,6 +13,11 @@
           "type": "ui",
           "severity": "minor",
           "text": "An armed shut down or restart says press again, and lets go after 4 s"
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "session.button is now the smallest a power button gets"
         }
       ]
     },

@@ -40,7 +40,7 @@ Item {
     readonly property string lines: {
         const lines = [root.again];
         for (const entry of root.actions)
-            lines.push(entry.label, root.armedLine(entry));
+            lines.push(entry.label, entry.safe ? "" : root.armedLine(entry));
         return lines.join("\n");
     }
 
@@ -194,9 +194,10 @@ Item {
                 root.move(-1);
             else if (event.key === Qt.Key_Down || (ctrl && (event.key === Qt.Key_J || event.key === Qt.Key_N)))
                 root.move(1);
-            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)
-                root.activate(root.selected);
-            else
+            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                if (!event.isAutoRepeat)
+                    root.activate(root.selected);
+            } else
                 return;
 
             event.accepted = true;
@@ -268,18 +269,11 @@ Item {
                         width: root.cellWidth
                         height: root.cellHeight
 
-                        Follow {
-                            id: lift
-
-                            target: cell.armed ? root.line : 0
-                            speed: Appearance.animation.trackSpeed
-                        }
-
                         Icon {
                             id: glyph
 
                             anchors.horizontalCenter: parent.horizontalCenter
-                            y: Math.round((root.cellHeight - Appearance.sizes.sessionIcon - Appearance.padding.hair - root.line - lift.value) / 2)
+                            y: Math.round((root.cellHeight - Appearance.sizes.sessionIcon - Appearance.padding.hair - root.line * (cell.armed ? 2 : 1)) / 2)
 
                             name: cell.modelData.icon
                             size: Appearance.sizes.sessionIcon
