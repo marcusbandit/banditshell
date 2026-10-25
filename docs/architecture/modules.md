@@ -81,7 +81,6 @@ launcher's groups in the config.
 | network | 2 | Network, Hotspot, Tunnels, Tailscale, WifiJoin | core, compositor | none | network |
 | password | 2 | Keyring, PasswordRequest, modules/password | core, compositor | keyring, polkit | none |
 | pen | 2 | PenMap, PenButtons, modules/pen | core, compositor | penmap | pen |
-| settings | 2 | modules/settings, Settings, Modes, ThemeSwitcher | core, compositor | settings, mode | settings, corner, menu |
 | wallpaper | 2 | Wallpaper, modules/wallpaper (with WallpaperWindow) | core, compositor | wallpaper, wallpapers | wallpaper |
 | bar | 3 | modules/sidebar, modules/menu, Tray, SidebarState | core, compositor, apps, audio, network, display | menu, sidebar | sidebar, calendar |
 | calculator | 3 | Calculator, Currency, modules/calculator | core, compositor, network | calculator | none |
@@ -89,6 +88,7 @@ launcher's groups in the config.
 | launcher | 3 | the launcher itself, LauncherHotkeys, search.js | core, compositor, apps | launcher | launcher |
 | notifications | 3 | Notifications, AppNotifications, AlertSounds, modules/notifications | core, compositor, apps | notifications, quiet | notifications, sound |
 | quickcontrols | 3 | modules/quickcontrols | core, compositor, audio, display | quickcontrols | screen.grabFraction, screen.linger |
+| settings | 3 | modules/settings, Settings, Modes, ThemeSwitcher | core, compositor, display | settings, mode | settings, corner, menu |
 | stream | 3 | StreamState, Obs, modules/stream | core, compositor, apps, audio, network | stream | obs, stream |
 | windows | 3 | modules/windows, modules/workshop, WindowLayouts, WorkshopLayouts, LayoutDraft | core, compositor, apps | none | windows |
 | launcher-ai | 4 | Assistant, the ask and rewrite sources | core, compositor, launcher, clipboard | none | launcher.ai |
