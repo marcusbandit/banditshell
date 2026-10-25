@@ -67,6 +67,16 @@ Item {
 
     readonly property var current: root.expanded ? root.reading : root.entry
 
+    property bool clearing: false
+
+    readonly property int clearable: Clipboard.entries.filter(e => !e.pinned).length
+    readonly property int pinnedCount: Clipboard.entries.length - root.clearable
+
+    readonly property bool canClear: !root.speech && !root.searching && root.clearable > 0
+
+    onCanClearChanged: if (!root.canClear)
+        root.clearing = false
+
     function show(): void {
         if (root.shown)
             return;
@@ -76,6 +86,7 @@ Item {
         root.hovered = -1;
 
         root.reading = null;
+        root.clearing = false;
         root.stopSearch();
         list.reset();
 
@@ -87,6 +98,7 @@ Item {
             return;
         root.shown = false;
         root.reading = null;
+        root.clearing = false;
         sheet.close();
         root.stopSearch();
         keys.focus = false;
@@ -103,6 +115,7 @@ Item {
     }
 
     function startSearch(): void {
+        root.clearing = false;
         root.searching = true;
         Qt.callLater(query.forceActiveFocus);
     }
@@ -178,6 +191,20 @@ Item {
         root.history.forget(e);
         if (onScreen)
             root.collapse();
+    }
+
+    function askClear(): void {
+        if (!root.canClear)
+            return;
+        sheet.close();
+        root.clearing = true;
+    }
+
+    function clearHistory(): void {
+        root.clearing = false;
+        Clipboard.clear();
+        root.selected = 0;
+        list.reset();
     }
 
     function actionsFor(e: var): var {
@@ -323,7 +350,9 @@ Item {
 
             case Qt.Key_Escape:
                 Appearance.instantly();
-                if (root.expanded)
+                if (root.clearing)
+                    root.clearing = false;
+                else if (root.expanded)
                     root.collapse();
                 else
                     root.hide();
@@ -468,7 +497,7 @@ Item {
                         x: Appearance.padding.large
                         y: Appearance.padding.large
                         width: parent.width - Appearance.padding.large * 2
-                        height: Math.max(tabStrip.height, field.height)
+                        height: Math.max(tabStrip.height, field.height, clearBar.height)
 
                         Segments {
                             id: tabStrip
@@ -479,6 +508,57 @@ Item {
                             options: root.tabs
                             current: root.tab
                             onPicked: index => root.setTab(index)
+                        }
+
+                        Row {
+                            id: clearBar
+
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: Appearance.padding.small
+
+                            opacity: clearFade.value
+                            visible: clearFade.value > 0.01
+
+                            Follow {
+                                id: clearFade
+
+                                target: root.canClear ? 1 : 0
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: Appearance.animation.fadeEpsilon
+                                startsAtTarget: true
+                            }
+
+                            StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: root.clearing && root.pinnedCount > 0
+                                text: `${root.pinnedCount} pinned stay`
+                                font.pixelSize: Appearance.font.size.small
+                                color: Appearance.colour.textFaint
+                            }
+
+                            Button {
+                                visible: !root.clearing
+                                style: "bare"
+                                icon: "delete_sweep"
+                                text: "Clear history"
+                                onClicked: root.askClear()
+                            }
+
+                            Button {
+                                visible: root.clearing
+                                icon: "delete_sweep"
+                                text: `Clear ${root.clearable}`
+                                alarm: true
+                                onClicked: root.clearHistory()
+                            }
+
+                            Button {
+                                visible: root.clearing
+                                style: "bare"
+                                text: "Cancel"
+                                onClicked: root.clearing = false
+                            }
                         }
 
                         Item {

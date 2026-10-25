@@ -8,7 +8,7 @@ QtObject {
 
     required property var search
 
-    readonly property var kinds: ["clipboard"]
+    readonly property var kinds: ["clipboard", "clipboardclear"]
 
     readonly property var asked: ClipboardSearch.ask(root.search.text)
     readonly property bool explicit: root.asked.explicit
@@ -23,11 +23,17 @@ QtObject {
 
     readonly property bool intent: root.explicit
 
+    readonly property int clearable: Clipboard.entries.filter(e => !e.pinned).length
+
+    readonly property bool offersClear: root.explicit && root.clearable > 0 && (root.asked.term === "" || "clear history".startsWith(root.asked.term.toLowerCase()))
+
+    readonly property bool clearing: root.search.armed === "clipboardclear"
+
     readonly property var groups: [
         {
             key: "clipboard",
             title: "Clipboard",
-            items: root.found.map(entry => root.row(entry))
+            items: root.found.map(entry => root.row(entry)).concat(root.offersClear ? [root.clearRow()] : [])
         }
     ]
 
@@ -61,6 +67,24 @@ QtObject {
         };
     }
 
+    function clearRow(): var {
+        const pinned = Clipboard.entries.length - root.clearable;
+        return {
+            key: "clipboardclear",
+            kind: "clipboardclear",
+            armed: root.clearing,
+            label: root.clearing ? "Clear history?" : "Clear history",
+            detail: pinned > 0 ? `${pinned} pinned stay` : "",
+            icon: "delete_sweep",
+            score: Infinity
+        };
+    }
+
+    function clear(): void {
+        root.search.armed = "";
+        Clipboard.clear();
+    }
+
     function paste(row: var): void {
         const address = root.search.windowTarget();
         Clipboard.copy(row.entry);
@@ -73,13 +97,39 @@ QtObject {
     }
 
     function activate(row: var): void {
+        if (row.kind === "clipboardclear") {
+            if (row.armed)
+                root.clear();
+            else
+                root.search.armed = "clipboardclear";
+            return;
+        }
         if (Typist.found)
             root.paste(row);
         else
             root.copy(row);
     }
 
+    function confirmActionsFor(row: var): var {
+        return [
+            {
+                icon: "delete_sweep",
+                label: `Clear ${root.clearable}`,
+                alarm: true,
+                run: () => root.clear()
+            }
+        ];
+    }
+
     function actionsFor(row: var): var {
+        if (row.kind === "clipboardclear")
+            return [
+                {
+                    icon: "delete_sweep",
+                    label: "Clear history",
+                    run: () => root.search.armed = "clipboardclear"
+                }
+            ];
         const typing = Typist.found;
         const acts = [
             {
