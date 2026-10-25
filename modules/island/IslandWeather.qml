@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -242,10 +241,10 @@ Item {
         }
     }
 
-    SystemClock {
+    WallClock {
         id: age
 
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
         enabled: root.watched && Weather.stale
     }
 }

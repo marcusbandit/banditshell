@@ -67,10 +67,10 @@ Item {
         };
     }
 
-    SystemClock {
+    WallClock {
         id: clock
 
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
     }
 
     Follow {
