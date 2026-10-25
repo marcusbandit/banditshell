@@ -777,12 +777,29 @@ Scope {
         again.restart();
     }
 
+    property bool realCancel: false
+    property bool faking: false
+
     function setVoice(v: string): void {
+        if (!root.faking && v !== "off") {
+            root.realCancel = Dictation.canCancel;
+            root.faking = true;
+        }
         root.voice = v;
-        if (v === "listening" || v === "processing")
-            Dictation.canCancel = true;
+        Dictation.canCancel = v === "off" ? root.realCancel : v !== "cancelled";
+        if (v === "off")
+            root.faking = false;
         Dictation.phase = v === "off" || v === "cancelled" ? "idle" : v;
         Dictation.cancelled = v === "cancelled";
+    }
+
+    Connections {
+        target: Dictation
+
+        function onCancelledChanged(): void {
+            if (!Dictation.cancelled && root.voice === "cancelled")
+                Dictation.cancelled = true;
+        }
     }
 
     function notify(spec: var, urgent: bool): void {

@@ -32,7 +32,7 @@ QtObject {
                 trailing: "beat"
             };
         case "dictation":
-            if (!Dictation.live)
+            if (Dictation.cancelled)
                 return {
                     icon: "mic_off",
                     tone: Appearance.colour.textFaint,
@@ -46,7 +46,7 @@ QtObject {
                 icon: "mic",
                 tone: Appearance.colour.accent,
                 bars: true,
-                trailing: root.lit && Dictation.canCancel && Dictation.phase !== "typing" ? "actions" : Dictation.langTag ? "text" : "",
+                trailing: root.lit && Dictation.cancellable ? "actions" : Dictation.langTag ? "text" : "",
                 trailingText: Dictation.langTag,
                 actions: [
                     {

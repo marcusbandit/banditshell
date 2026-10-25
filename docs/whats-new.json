@@ -7,7 +7,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Esc or Cancel in the open island stops dictation without typing"
+          "text": "With the newest voice, Esc or Cancel stops dictation untyped"
         }
       ]
     },

@@ -28,10 +28,21 @@ Singleton {
     property bool canCancel: false
     property bool cancelled: false
     readonly property int cancelledMs: 2500
+    readonly property bool cancellable: root.canCancel && (root.phase === "listening" || root.phase === "processing")
 
     function cancel(): void {
-        if (root.canCancel && (root.phase === "listening" || root.phase === "processing"))
-            root.run(["cancel"]);
+        if (!root.cancellable || stop.running)
+            return;
+        stop.command = ["sh", "-c", 'exec "$(command -v voice || printf %s "$HOME/bin/voice")" "$@"', "voice", "cancel"];
+        stop.running = true;
+    }
+
+    Process {
+        id: stop
+
+        stderr: SplitParser {
+            onRead: line => console.warn("Dictation:", line)
+        }
     }
 
     Timer {

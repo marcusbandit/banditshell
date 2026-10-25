@@ -170,7 +170,8 @@ ShellRoot {
                 Dictation.cancelled = true;
             },
             wait: 400,
-            expect: "overview"
+            expect: "overview",
+            holds: () => island.rowOfKind("dictation")?.look.text === "Dictation cancelled"
         },
         {
             name: "close the island: it says so at rest",
@@ -198,11 +199,18 @@ ShellRoot {
             holds: () => !island.rowOfKind("dictation")?.actions.length
         },
         {
-            name: "close it and stop dictating",
+            name: "close it and stop dictating: on its way out it never says cancelled",
             run: () => {
                 island.pinned = false;
                 preview.speak("idle");
             },
+            wait: 100,
+            expect: "hidden",
+            holds: () => island.rowOfKind("dictation")?.look.text !== "Dictation cancelled"
+        },
+        {
+            name: "and it is gone",
+            run: () => {},
             wait: 1500,
             expect: "hidden"
         },
