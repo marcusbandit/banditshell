@@ -9,6 +9,7 @@ const kelvin = (s, v) => {
 };
 
 const FILES_SORTS = [["name", "a to z"], ["mtime", "newest"], ["size", "biggest"], ["kind", "type"]];
+const PANEL_SHADES = ["black", "deep", "dark", "medium", "light", "pale", "palest"];
 const FILES_SORT_ORDER = { name: "a to z", mtime: "newest first", size: "biggest first", kind: "grouped by type" };
 
 const MODES = [
@@ -52,7 +53,7 @@ const WIDGET_WHY = {
     nets: "Click a network to join, share or forget it in the pane. The camera button reads a Wi-Fi code.",
     devices: "Click a device to connect, trust, forget or block it in the pane.",
     volume: "Scroll the speaker in the sidebar to change it from anywhere.",
-    themes: "Themes come from ~/.config/theme. The ramp paints surfaces; the accents paint everything that’s on.",
+    themes: "Themes come from ~/.config/theme. The theme’s shades paint the panels; its highlight colours paint everything that’s on.",
     wsStyles: "Plates stack the apps in each workspace. Map draws a bar per window. Blocks draws a square per window.",
     walls: "A new wallpaper grows out from where you clicked.",
     battery: "Charge over the last day. The dashed lines are the hold point and the warning.",
@@ -173,7 +174,7 @@ const PAGES_SOURCE = {
                     why: "The corner is the top right, where they always were. The island drops them from the top centre instead, where a wide screen keeps them in view. The corner still opens the history either way." },
                 { n: 77, icon: "timer", label: "Stay for", k: "notifTimeout", kind: "step", min: 1, max: 30, unit: " s", cfg: "notifications.timeout", extra: { icon: "send", tip: "send a test", act: "testNotif" }, kw: "notification timeout" },
                 { n: 78, icon: "stacks", label: "At once", k: "notifPopups", kind: "step", min: 1, max: 8, cfg: "notifications.maxPopups", fmt: v => `${v}`, kw: "notification popups at once" },
-                { n: 79, icon: "history", label: "Remember", k: "notifHistory", kind: "step", min: 10, max: 500, step: 10, cfg: "notifications.maxHistory", fmt: v => `${v}`, kw: "notification history length" }
+                { n: 79, icon: "inbox", label: "Remember", k: "notifHistory", kind: "step", min: 10, max: 500, step: 10, cfg: "notifications.maxHistory", fmt: v => `${v}`, kw: "notification history length" }
             ] },
             { t: "By app", rows: [
                 { n: 81, kind: "w", w: "rules", cfg: "notifications.rules", kw: "per-app notification rules" }
@@ -240,15 +241,15 @@ const PAGES_SOURCE = {
     },
     colour: {
         id: "colour", name: "Colour", icon: "palette", preview: "chassis",
-        status: s => `${s.v("fromWall") ? "wallpaper" : s.v("theme")} · ${s.v("accent")}`,
+        status: s => s.v("fromWall") ? "wallpaper" : s.v("theme"),
         groups: [
             { rows: [
                 { n: 42, kind: "w", w: "themes", kw: "theme palette" },
                 { n: 43, icon: "colorize", label: "Take it from the wallpaper", k: "fromWall", kind: "toggle", cfg: "themeFromWallpaper", detail: s => s.v("fromWall") ? s.wallName : "", kw: "theme from wallpaper" },
-                { n: 44, icon: "contrast", label: "Accent", k: "accent", kind: "seg", o: ["dim", "mid", "bright"], cfg: "colour.accent", kw: "accent strength",
-                    why: "Which of the theme’s three accents leads. Dim sits back, bright jumps out." },
-                { n: 45, icon: "layers", label: "Surface depth", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmt: v => `ramp ${v}`, cfg: "colour.surface",
-                    why: "Which step of the theme ramp the frame and panels are painted with. Lower is darker." },
+                { n: 44, icon: "format_color_fill", label: "Highlight colour", k: "accent", kind: "seg", o: [["dim", "soft"], ["mid", "normal"], ["bright", "strong"]], swatches: true, cfg: "colour.accent", kw: "accent strength dim mid bright",
+                    why: "Which of the theme’s three highlight colours paints everything that’s on. Soft sits back, strong jumps out." },
+                { n: 45, icon: "layers", label: "Panel shade", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmt: v => PANEL_SHADES[Math.max(0, Math.min(PANEL_SHADES.length - 1, Math.round(v) || 0))], cfg: "colour.surface", kw: "surface depth ramp background darker lighter",
+                    why: "How dark the frame and panels are, picked from the theme’s own shades. Lower is darker." },
                 { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0.5, max: 1, step: 0.01, fmt: v => `${Math.round((1 - v) * 100)}%`, cfg: "material.surfaceAlpha", kw: "transparency" },
                 { n: [], icon: "dark_mode", label: "Dark apps", k: "darkMode", kind: "toggle", detail: s => s.hasDarkMode ? "asks apps to use dark colours" : "no system colour scheme found", dis: s => !s.hasDarkMode, kw: "dark mode light night theme colour scheme apps",
                     why: "Asks apps that follow the system colour scheme to use dark colours. The shell’s own colours come from the theme above." }
@@ -391,7 +392,7 @@ const PAGES_SOURCE = {
                     why: "List is a plain search list. Alphabet is a thumb-sized rail of letters with favourites on a bow." },
                 { n: [], icon: "push_pin", label: "Show pinned", k: "listPinned", kind: "toggle", cfg: "launcher.list.pinned", dis: s => s.v("concept") !== "list", kw: "pinned favourites quick launch grid icons",
                     why: "Pick an app in the list and press Pin to put it here." },
-                { n: [], icon: "history", label: "Show recents", k: "listRecents", kind: "toggle", cfg: "launcher.list.recents", dis: s => s.v("concept") !== "list", kw: "recent apps launcher icons" },
+                { n: [], icon: "schedule", label: "Show recents", k: "listRecents", kind: "toggle", cfg: "launcher.list.recents", dis: s => s.v("concept") !== "list", kw: "recent apps launcher icons" },
                 { n: [], icon: "animation", label: "Animate preview", k: "animatePreview", kind: "toggle", cfg: "launcher.animatePreview", dis: s => s.v("concept") !== "list", kw: "preview peek card animate resize frame motion",
                     why: "The card beside the list grows and shrinks to fit the next preview instead of jumping to its size." },
                 { n: 70, icon: "photo_size_select_large", label: "Icon size", k: "launcherIcon", kind: "slider", min: 18, max: 48, step: 2, fmt: v => `${v} px`, cfg: "launcher.iconSize", kw: "launcher icon size" },
@@ -441,7 +442,7 @@ const PAGES_SOURCE = {
                 { n: [], icon: "timer", label: "Focus round", k: "focusMinutes", kind: "step", min: 5, max: 120, step: 5, unit: " min", cfg: "launcher.powerTools.focusMinutes", kw: "pomodoro focus work minutes" },
                 { n: [], icon: "coffee", label: "Break", k: "breakMinutes", kind: "step", min: 1, max: 30, unit: " min", cfg: "launcher.powerTools.breakMinutes", kw: "pomodoro short break minutes" },
                 { n: [], icon: "self_improvement", label: "Long break", k: "longBreakMinutes", kind: "step", min: 5, max: 60, step: 5, unit: " min", cfg: "launcher.powerTools.longBreakMinutes", kw: "pomodoro long break minutes" },
-                { n: [], icon: "replay", label: "Rounds before a long break", k: "roundsBeforeLongBreak", kind: "step", min: 2, max: 8, cfg: "launcher.powerTools.roundsBeforeLongBreak", fmt: v => `${v}`, kw: "pomodoro rounds long break" }
+                { n: [], icon: "coffee", label: "Rounds before a long break", k: "roundsBeforeLongBreak", kind: "step", min: 2, max: 8, cfg: "launcher.powerTools.roundsBeforeLongBreak", fmt: v => `${v}`, kw: "pomodoro rounds long break" }
             ] },
             { t: "Developer tools", rows: [
                 { n: [], icon: "dns", label: "SSH hosts", k: "devOpsSsh", kind: "toggle", cfg: "launcher.devOps.ssh", kw: "ssh hosts servers remote connect terminal known_hosts",
@@ -1022,6 +1023,20 @@ function same(a, b) {
     return String(a) === String(b);
 }
 
+function resettable(row) {
+    return !!row?.k && !!row.cfg && !row.ro && !row.k.startsWith("scr:") && row.kind !== "secret" && row.kind !== "button";
+}
+
+function changed(value, fallback) {
+    if (value === undefined || fallback === undefined)
+        return false;
+    if (typeof value === "number" && typeof fallback === "number")
+        return Math.abs(value - fallback) > 1e-6;
+    if (typeof value === "object" || typeof fallback === "object")
+        return JSON.stringify(value) !== JSON.stringify(fallback);
+    return !same(value, fallback);
+}
+
 function optionLabel(row, s, v) {
     const hit = options(row, s).find(o => same(o[0], v));
     return hit ? hit[1] : v;
@@ -1110,6 +1125,21 @@ function search(query) {
         hits = hits.map((x, i) => ({ x: x, i: i })).sort((a, b) => lead(b.x) - lead(a.x) || a.i - b.i).map(e => e.x);
     }
     return hits.filter((x, i, a) => a.findIndex(y => y.label === x.label && y.page === x.page) === i).slice(0, 12);
+}
+
+function hitIndexOf(hits, openUid) {
+    return Math.max(0, hits.findIndex(h => h.row.uid === openUid));
+}
+
+function hitIsOpen(hits, index, openUid, currentPage) {
+    const h = hits[index];
+    return !!h && h.row.uid === openUid && h.page.id === currentPage;
+}
+
+function hitToOpen(hits, index, openUid, currentPage, back) {
+    if (!hitIsOpen(hits, index, openUid, currentPage) || hits.length < 2)
+        return index;
+    return (index + (back ? hits.length - 1 : 1)) % hits.length;
 }
 
 const ALIASES = {

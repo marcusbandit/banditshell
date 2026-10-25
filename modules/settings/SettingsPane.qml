@@ -257,11 +257,12 @@ Item {
 
                 StyledText {
                     readonly property string d: root.defaultText(info.r)
+                    readonly property bool back: !!info.r?.k && !(info.r.dis && info.r.dis(SettingsState)) && SettingsState.offersReset(info.r.k)
 
                     width: parent.width
                     visible: d !== ""
                     textFormat: Text.StyledText
-                    text: `default ${root.tone(Appearance.colour.textDim, d)}`
+                    text: `${back ? "reset to default," : "default"} ${root.tone(Appearance.colour.textDim, d)}`
                     color: Appearance.colour.textFaint
                     wrapMode: Text.WordWrap
                 }

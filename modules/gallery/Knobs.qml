@@ -115,7 +115,7 @@ Column {
                     required property int index
 
                     readonly property var slice: choiceRow.rows[rowCtl.index]
-                    readonly property int taken: Math.max(0, Math.min(rowCtl.slice.length - 1, choiceRow.chosen - choiceRow.rows.slice(0, rowCtl.index).reduce((n, r) => n + r.length, 0)))
+                    readonly property int taken: choiceRow.chosen - choiceRow.rows.slice(0, rowCtl.index).reduce((n, r) => n + r.length, 0)
 
                     options: rowCtl.slice
                     current: rowCtl.taken
