@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-6",
+      "id": "2026-10-25-7",
       "date": "2026-10-25",
       "changes": [
         {
@@ -13,6 +13,22 @@
           "type": "ui",
           "severity": "minor",
           "text": "Files Sort by in Settings says which way it runs, like newest first"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-6",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The screenshot key freezes the screen at once"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Hotkeys and the island stay quick when the clocks go back an hour"
         }
       ]
     },
