@@ -87,16 +87,6 @@ function lightTheme(theme) {
     };
 }
 
-const SHADE_WORDS = {
-    dark: ["black", "deep", "dark", "medium", "light", "pale", "palest"],
-    light: ["white", "palest", "pale", "light", "soft", "medium", "grey"]
-};
-
-function shadeWord(light, step) {
-    const words = SHADE_WORDS[light ? "light" : "dark"];
-    return words[Math.max(0, Math.min(words.length - 1, Math.round(step) || 0))];
-}
-
 const MODES = ["light", "dark", "auto"];
 
 function modeOf(value) {

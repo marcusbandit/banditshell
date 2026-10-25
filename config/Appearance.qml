@@ -114,10 +114,6 @@ Singleton {
         return root.light ? Scheme.lightAccent(String(c)) : c;
     }
 
-    function shadeWord(step: real): string {
-        return Scheme.shadeWord(root.light, step);
-    }
-
     function veil(alpha: real): color {
         return root.mix(root.tint, root.tint, 0, alpha);
     }

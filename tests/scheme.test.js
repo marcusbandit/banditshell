@@ -24,7 +24,7 @@ function block(opener) {
     throw new Error(`unclosed ${opener}`);
 }
 
-const Scheme = lib(path.join(ROOT, "config/scheme.js"), ["modeOf", "isLight", "shadeWord"]);
+const Scheme = lib(path.join(ROOT, "config/scheme.js"), ["modeOf", "isLight"]);
 const Configuration = lib(path.join(ROOT, "config/configuration.js"), ["merge", "upgrade", "assign"]);
 const DEFAULTS = new Function(`return (${block("readonly property var defaults:")});`)();
 const OPAQUE = new Function(`return ${fs.readFileSync(CONFIG, "utf8").match(/readonly property var opaque: (\[.*\])/)[1]};`)();
@@ -55,10 +55,4 @@ test("auto is light only while the schedule says it is day", () => {
     assert.deepStrictEqual([true, false].map(day => Scheme.isLight("auto", day)), [true, false]);
     assert.deepStrictEqual([true, false].map(day => Scheme.isLight("light", day)), [true, true]);
     assert.deepStrictEqual([true, false].map(day => Scheme.isLight("dark", day)), [false, false]);
-});
-
-test("panel shade words run from the theme's ground, dark or light", () => {
-    assert.deepStrictEqual([0, 6].map(v => Scheme.shadeWord(false, v)), ["black", "palest"]);
-    assert.deepStrictEqual([0, 6].map(v => Scheme.shadeWord(true, v)), ["white", "grey"]);
-    assert.strictEqual(Scheme.shadeWord(true, NaN), "white");
 });

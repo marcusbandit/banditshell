@@ -434,6 +434,30 @@ Singleton {
         return undefined;
     }
 
+    function resettable(k: string): bool {
+        const cfg = root.configBacked[k];
+        if (!cfg || !Catalogue.resettable(root.rowOf(k)))
+            return false;
+        const t = root.transforms[k];
+        if (!t)
+            return true;
+        const raw = Config.get(cfg);
+        return JSON.stringify(t.write(t.read(raw))) === JSON.stringify(raw);
+    }
+
+    function offersReset(k: string): bool {
+        return root.resettable(k) && Catalogue.changed(root.v(k), root.defaultOf(k));
+    }
+
+    function reset(k: string): void {
+        const r = root.rowOf(k);
+        const before = root.v(k);
+        root.set(k, root.defaultOf(k));
+        const after = root.v(k);
+        if (r?.kind === "text" && !root.muteLog && JSON.stringify(after) !== JSON.stringify(before))
+            root.log(k, r, before, after);
+    }
+
     function lookup(values: var, key: string): var {
         let at = values;
         for (const part of key.split(".")) {
@@ -1876,6 +1900,8 @@ Singleton {
         const span = `${TimeFormat.time(new Date(w.start), false)} to ${TimeFormat.time(new Date(w.end), false)}`;
         return mode === "sunset" ? `tonight ${span}` : span;
     }
+
+    readonly property bool lightShell: Appearance.light
 
     readonly property string schemeDetail: {
         const apps = !DarkMode.available ? "apps keep their own colours" : DarkMode.appsDisagree ? `apps are still ${DarkMode.dark ? "dark" : "light"}` : "shell and apps";
