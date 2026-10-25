@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import qs.services
+import "../../services/hyprland-lua.js" as HyprlandLua
 
 Singleton {
     id: root
@@ -50,6 +51,16 @@ Singleton {
                 bind: null
             };
         });
+    }
+
+    function combosFor(ref: string): var {
+        const at = ref.indexOf(":");
+        const id = ref.slice(at + 1);
+        if (ref.slice(0, at) === "files") {
+            const keys = Config.values.files.keys ?? {};
+            return Object.keys(keys).filter(k => String(keys[k]) === id).map(k => root.fromChord(k));
+        }
+        return root.shell.filter(k => HyprlandLua.bindAction(k.bind.expr) === id).map(k => k.combo);
     }
 
     function find(pinId: string): var {

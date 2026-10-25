@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/hyprland-lua.js"), "utf8");
 const HyprlandLua = new Function(src
-    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, describeExpr, actionTable, entryReplacement, entriesForHost, relocateEntry, verifyReport, baselineRefusal, parseBandSpec, spliceLines, appendSplice, configFromCommandLine, confSources };")();
+    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, describeExpr, bindAction, actionTable, entryReplacement, entriesForHost, relocateEntry, verifyReport, baselineRefusal, parseBandSpec, spliceLines, appendSplice, configFromCommandLine, confSources };")();
 
 test("chords parse into modifiers and a key", () => {
     assert.deepStrictEqual(HyprlandLua.parseChord("SUPER + SHIFT + Slash"), {
@@ -1104,4 +1104,13 @@ test("the scanner reads hl.bind with a stable id as an ordinary bind with that e
         ["SUPER + SPACE", "bs.launcher.toggle", false, false],
         ["SUPER + V", "bs.panel.clipboard.toggle", false, true]
     ]);
+});
+
+test("a bind names the same action whether it calls bs or runs the banditshell command", () => {
+    assert.strictEqual(HyprlandLua.bindAction("bs.panel.clipboard.toggle"), "panel.clipboard.toggle");
+    assert.strictEqual(HyprlandLua.bindAction('hl.dsp.exec_cmd("banditshell panel clipboard toggle")'), "panel.clipboard.toggle");
+    assert.strictEqual(HyprlandLua.bindAction('bs.action("tablet.on", "compositor")'), "tablet.on");
+    assert.strictEqual(HyprlandLua.bindAction('hl.dsp.exec_cmd("banditshell panel clipboard toggle; rm -rf x")'), "");
+    assert.strictEqual(HyprlandLua.bindAction('hl.dsp.exec_cmd("~/.local/bin/ollama-clipboard")'), "");
+    assert.strictEqual(HyprlandLua.bindAction("hl.dsp.window.close()"), "");
 });

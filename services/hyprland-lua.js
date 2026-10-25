@@ -1219,6 +1219,15 @@ function describeExpr(expr, actions) {
     return e;
 }
 
+function bindAction(expr) {
+    const e = String(expr ?? "").trim();
+    const named = /^bs\.([a-z0-9_]+(?:\.[a-z0-9_]+)*)$/.exec(e) || /^bs\.action\(\s*"([a-z0-9_]+(?:\.[a-z0-9_]+)*)"/.exec(e);
+    if (named)
+        return named[1];
+    const exec = /^hl\.dsp\.exec_cmd\("banditshell ([a-z0-9_]+(?: [a-z0-9_]+)*)"\)$/.exec(e);
+    return exec ? exec[1].split(" ").join(".") : "";
+}
+
 function optionSegments(path) {
     return String(path ?? "").split(/[:.]/).filter(Boolean).map(part => part.replace(/-/g, "_"));
 }
