@@ -86,7 +86,7 @@ Item {
 
                 text: seg.modelData
 
-                color: seg.covered > 0.5 ? Appearance.colour.accentText : Appearance.colour.textFaint
+                color: seg.covered > 0.5 ? Appearance.colour.accentText : Appearance.colour.text
             }
 
             MouseArea {
