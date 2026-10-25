@@ -10,6 +10,7 @@ import qs.modules.island
 import qs.modules.lock
 import qs.modules.pen
 import qs.modules.picker
+import qs.modules.tour
 import qs.modules.wallpaper
 
 ShellRoot {
@@ -68,7 +69,14 @@ ShellRoot {
             }
 
             ShellWindow {
+                id: shellWindow
+
                 screen: scope.modelData
+            }
+
+            TourWindow {
+                screen: scope.modelData
+                shell: shellWindow
             }
 
             FrameExclusions {

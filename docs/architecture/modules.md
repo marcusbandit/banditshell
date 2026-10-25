@@ -76,13 +76,14 @@ launcher's groups in the config.
 | clock | 2 | Clock, Localisation, Weather | core, compositor | timer, alarm, zone | clock, weather |
 | display | 2 | Display, Backlight, DarkMode, Tablet, bs-gamma | core, compositor | screen, tablet | screen, tablet |
 | files | 2 | Files, Downloads, modules/files, bs-ls, bs-pty | core, compositor | files | files |
-| host | 2 | shell.qml, ShellWindow, Chassis, Ipc (the list of every target), the Shell window registry | core, compositor | border | none |
 | media | 2 | Media, Lyrics, modules/media | core, compositor | media | media |
 | network | 2 | Network, Hotspot, Tunnels, Tailscale, WifiJoin | core, compositor | none | network |
 | password | 2 | Keyring, PasswordRequest, modules/password | core, compositor | keyring, polkit | none |
 | pen | 2 | PenMap, PenButtons, modules/pen | core, compositor | penmap | pen |
 | wallpaper | 2 | Wallpaper, modules/wallpaper (with WallpaperWindow) | core, compositor | wallpaper, wallpapers | wallpaper |
+| tour | 2 | Tour, modules/tour (the first-run tour's card, one window per screen) | core, compositor | none | none |
 | bar | 3 | modules/sidebar, modules/menu, Tray, SidebarState | core, compositor, apps, audio, network, display | menu, sidebar | sidebar, calendar |
+| host | 3 | shell.qml, ShellWindow, Chassis, Ipc (the list of every target), the Shell window registry | core, compositor, tour | border | none |
 | calculator | 3 | Calculator, Currency, modules/calculator | core, compositor, network | calculator | none |
 | keyboard | 3 | modules/keyboard, Keystrokes | core, compositor, display | keyboard | tablet.autoKeyboard, tablet.height, tablet.seam, tablet.repeat, tablet.repeatDelay, tablet.repeatInterval |
 | launcher | 3 | the launcher itself, LauncherHotkeys, search.js | core, compositor, apps | launcher | launcher |
