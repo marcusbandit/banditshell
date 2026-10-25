@@ -86,7 +86,7 @@ Singleton {
     }
 
     function offerUndo(): void {
-        const spec = Logic.undoSpec(Notifications.shelf.map(r => r.entry.appName));
+        const spec = Logic.undoSpec(Notifications.shelf.map(r => r.entry.appName), Notifications.shelf[0]?.entry);
         if (!spec) {
             Activities.remove("moment:undo");
             return;

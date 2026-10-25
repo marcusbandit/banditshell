@@ -926,8 +926,8 @@ ShellRoot {
             run: () => {
                 Moments.offerUndo();
                 preview.notify("Firefox", "Download finished", "linux-zen-6.17.tar.zst", false);
-                preview.notify("Discord", "marcus", "are you coming tonight?", false);
                 preview.notify("Signal", "Mum", "call me when you get a minute", false);
+                preview.notify("Discord", "marcus", "are you coming tonight?", false);
                 preview.order = Notifications.popups.map(e => e.summary).join("|");
                 preview.mine = Notifications.popups.slice();
             },
@@ -935,11 +935,11 @@ ShellRoot {
             expect: "3 notifications stacked"
         },
         {
-            name: "flick the front one away: Signal dismissed, with Undo",
+            name: "flick the front one away: Discord dismissed, its mark and Undo",
             run: () => island.flickFront(1),
             wait: 1500,
             expect: "2 notifications stacked, below it: activity",
-            holds: () => Notifications.shelved === 1 && preview.undoRow()?.text === "Signal dismissed"
+            holds: () => Notifications.shelved === 1 && preview.undoRow()?.text === "Discord dismissed" && preview.undoRow()?.data?.entry === preview.mine[0]
         },
         {
             name: "Undo puts it back on top of the stack",

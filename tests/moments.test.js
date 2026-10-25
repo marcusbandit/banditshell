@@ -170,6 +170,13 @@ test.describe("undo", () => {
         assert.deepStrictEqual(M.undoSpec(["a", "b"]).actions, [{ name: "undo", label: "Undo" }]);
     });
 
+    test.it("carries the one card so the row can show its app's mark", () => {
+        const card = { appName: "Signal" };
+        assert.strictEqual(M.undoSpec(["Signal"], card).data.entry, card);
+        assert.strictEqual(M.undoSpec(["Signal", "Discord"], card).data.entry, null);
+        assert.strictEqual(M.undoSpec(["Signal", "Discord"], card).icon, "notifications");
+    });
+
     test.it("falls back to Notification and shortens a long app name", () => {
         assert.strictEqual(M.undoSpec([""]).text, "Notification dismissed");
         assert.ok(M.undoSpec(["A Very Long Application Name Indeed"]).text.length <= 32);

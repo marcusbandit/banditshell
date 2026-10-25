@@ -126,6 +126,7 @@ QtObject {
                 };
             if (a.style === "undo")
                 return {
+                    entry: a.data?.entry ?? null,
                     icon: a.icon,
                     tone: Appearance.colour.textDim,
                     text: a.text,
