@@ -43,6 +43,9 @@ Singleton {
 
     property var openRows: ({})
 
+    property var trails: ({})
+    readonly property real resetColumn: Object.values(root.trails).reduce((a, b) => Math.max(a, b), 0)
+
     property real scroll: 0
     property real resumeScroll: 0
 
@@ -115,8 +118,8 @@ Singleton {
     }
 
     function openHit(hit: var): void {
-        root.query = "";
-        root.go(hit.page.id);
+        if (hit.page.id !== root.current)
+            root.go(hit.page.id);
         let r = hit.row;
         while (r.parent) {
             root.setOpen(r.parent.uid, true);
@@ -165,6 +168,20 @@ Singleton {
     property var toast: null
     property int toastSerial: 0
 
+    function noteTrail(uid: string, width: real): void {
+        if (!uid)
+            return;
+        const had = root.trails[uid];
+        if (width < 0 ? had === undefined : had === width)
+            return;
+        const next = Object.assign({}, root.trails);
+        if (width < 0)
+            delete next[uid];
+        else
+            next[uid] = width;
+        root.trails = next;
+    }
+
     function drop(text: string, icon: string, action: var): void {
         if (icon === "error")
             Notify.alert("error");
@@ -203,11 +220,13 @@ Singleton {
             if (!Settings.reveal)
                 return;
             const found = Catalogue.resolve(Settings.reveal);
-            if (found?.row)
+            if (found?.row) {
+                root.query = "";
                 root.openHit({
                     page: Catalogue.PAGE_BY_ID[found.page],
                     row: found.row
                 });
+            }
             Settings.reveal = "";
         }
     }

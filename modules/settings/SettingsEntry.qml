@@ -25,9 +25,31 @@ Column {
             list.push([root.value, String(root.value)]);
         return list;
     }
+    readonly property bool resettable: !!root.key && SettingsState.resettable(root.key)
+    readonly property var fallback: root.resettable ? SettingsState.defaultOf(root.key) : undefined
+    readonly property bool changed: !root.off && Catalogue.changed(root.value, root.fallback)
+    readonly property string fallbackText: root.resettable ? String(Catalogue.show(root.row, root.fallback, SettingsState)) : ""
+    readonly property real controlsWidth: {
+        const parts = [controls.item ? controls.width : -1, extra.visible ? extra.width : -1, more.visible ? more.width : -1].filter(w => w >= 0);
+        return parts.reduce((a, b) => a + b, 0) + Math.max(0, parts.length - 1) * Appearance.padding.normal;
+    }
+    property string noted: ""
     readonly property bool flashing: !!SettingsView.flash && !!root.row.uid && SettingsView.flash.uid === root.row.uid
 
     width: parent ? parent.width : 0
+
+    onControlsWidthChanged: root.noteTrail()
+    onResettableChanged: root.noteTrail()
+    Component.onCompleted: root.noteTrail()
+    Component.onDestruction: SettingsView.noteTrail(root.noted, -1)
+
+    function noteTrail(): void {
+        const uid = root.resettable ? root.row.uid ?? "" : "";
+        if (root.noted !== uid)
+            SettingsView.noteTrail(root.noted, -1);
+        root.noted = uid;
+        SettingsView.noteTrail(uid, root.controlsWidth);
+    }
 
     function set(next: var): void {
         SettingsState.set(root.key, next);
@@ -56,10 +78,43 @@ Column {
         label: Catalogue.labelOf(root.row)
         detail: root.detailText
         off: root.off
+        loose: reset.visible ? reset.width + resetGap.width + Appearance.padding.normal * 2 : 0
         flashStamp: root.flashing ? SettingsView.flash.at : 0
         interactive: root.kind === "toggle" || root.kind === "choice" || root.hasLayer
         onActivated: root.activate()
         onPointed: SettingsView.hovered = root.row
+
+        SettingsTool {
+            id: reset
+
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.resettable && (root.changed || shown.value > 0)
+            enabled: root.changed
+            opacity: shown.value
+            icon: "restart_alt"
+            tip: `reset to default, ${root.fallbackText || "empty"}`
+            onClicked: {
+                frame.pulse();
+                SettingsState.reset(root.key);
+            }
+
+            Follow {
+                id: shown
+
+                target: root.changed ? 1 : 0
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
+            }
+        }
+
+        Item {
+            id: resetGap
+
+            visible: reset.visible
+            width: 1 + Math.max(0, SettingsView.resetColumn - root.controlsWidth)
+            height: 1
+        }
 
         Loader {
             id: controls
@@ -89,6 +144,8 @@ Column {
         }
 
         SettingsTool {
+            id: more
+
             anchors.verticalCenter: parent.verticalCenter
             visible: root.hasLayer
             icon: "expand_more"
@@ -161,6 +218,7 @@ Column {
 
         Segments {
             options: root.choices.map(o => String(o[1]))
+            swatches: root.row.swatches ? root.choices.map(o => Appearance.roleColour(String(o[0]))) : []
             current: Math.max(0, root.choices.findIndex(o => Catalogue.same(o[0], root.value)))
             enabled: !root.off
             onPicked: i => root.set(root.choices[i][0])
