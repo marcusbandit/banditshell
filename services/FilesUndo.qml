@@ -17,31 +17,35 @@ Singleton {
         root.stack = Undo.remember(root.stack, entry);
     }
 
-    function moved(paths: var, dir: string): void {
-        root.remember(Undo.moved(Undo.into(paths, dir)));
+    function moving(paths: var, dir: string, then: var): void {
+        root.before(Undo.moved(Undo.into(paths, dir)), then);
     }
 
-    function renamed(from: string, to: string): void {
-        root.remember(Undo.renamed(from, to));
+    function renaming(from: string, to: string, then: var): void {
+        root.before(Undo.renamed(from, to), then);
+    }
+
+    function copying(paths: var, dir: string, then: var): void {
+        root.before(Undo.copied(Undo.into(paths, dir)), then);
     }
 
     function trashed(paths: var): void {
         root.remember(Undo.trashed(paths, Date.now() / 1000));
     }
 
-    function beforeCopy(paths: var, dir: string, then: var): void {
-        const pairs = Undo.into(paths, dir);
-        if (pairs.length === 0)
+    function before(entry: var, then: var): void {
+        if (entry.pairs.length === 0)
             return then();
-        const targets = pairs.map(pair => pair.to);
+        const targets = entry.pairs.map(pair => pair.to);
         root.start(Undo.existsCommand(targets), text => {
             if (text !== null)
-                root.remember(Undo.copied(pairs, Undo.existing(targets, text)));
+                root.remember(Undo.fresh(entry, Undo.existing(targets, text)));
             then();
         });
     }
 
     function say(text: string): void {
+        Files.failure = "";
         root.notice = text;
         fade.restart();
     }
@@ -53,6 +57,8 @@ Singleton {
         }
         if (root.stack.length === 0)
             return root.say("Nothing to undo");
+        if (Files.working > 0)
+            return root.say("Still working, try again in a moment");
 
         const entry = root.stack[root.stack.length - 1];
         root.stack = root.stack.slice(0, -1);
@@ -73,9 +79,16 @@ Singleton {
     }
 
     function finish(text: var): void {
-        root.say(Undo.summary(root.running, Undo.outcome(text ?? "")));
+        const counts = Undo.outcome(text ?? "");
+        const said = Undo.summary(root.running, counts);
+        if (counts.ok > 0)
+            root.say(said);
+        else
+            Files.failure = said;
         root.running = null;
         Files.refresh();
+        if (root.stack.length === 0)
+            root.waiting = 0;
         if (root.waiting > 0) {
             root.waiting -= 1;
             root.undo();

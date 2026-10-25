@@ -28,11 +28,6 @@ function baseName(path) {
     return trimmed.slice(trimmed.lastIndexOf("/") + 1);
 }
 
-function parentOf(path) {
-    var cut = path.lastIndexOf("/");
-    return cut <= 0 ? "/" : path.slice(0, cut);
-}
-
 function join(dir, name) {
     return dir === "/" ? "/" + name : dir + "/" + name;
 }
@@ -55,14 +50,23 @@ function renamed(from, to) {
     return {kind: "rename", pairs: from === to ? [] : [{from: from, to: to}]};
 }
 
-function copied(pairs, existing) {
-    return {kind: "copy", pairs: pairs.filter(function (pair) {
+function copied(pairs) {
+    return {kind: "copy", pairs: pairs};
+}
+
+function fresh(entry, existing) {
+    return {kind: entry.kind, pairs: entry.pairs.filter(function (pair) {
         return existing.indexOf(pair.to) < 0;
     })};
 }
 
+function wallClock(seconds) {
+    var d = new Date(seconds * 1000);
+    return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds()) / 1000;
+}
+
 function trashed(paths, now) {
-    return {kind: "trash", paths: paths.slice(), at: now};
+    return {kind: "trash", paths: paths.slice(), at: wallClock(now)};
 }
 
 function size(entry) {
@@ -104,11 +108,11 @@ function unescapeBytes(text) {
     }
 }
 
-function localSeconds(stamp) {
+function stampSeconds(stamp) {
     var m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)/.exec(stamp);
     if (!m)
         return NaN;
-    return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime() / 1000;
+    return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) / 1000;
 }
 
 function parseTrash(text) {
@@ -126,7 +130,7 @@ function parseTrash(text) {
         var origin = /(?:^| )trash::orig-path=(.*)$/.exec(rest);
         if (!origin)
             continue;
-        out.push({uri: fields[0], path: unescapeBytes(origin[1].replace(/ +$/, "")), deleted: localSeconds(date[1])});
+        out.push({uri: fields[0], path: unescapeBytes(origin[1].replace(/ +$/, "")), deleted: stampSeconds(date[1])});
     }
     return out;
 }
@@ -164,14 +168,12 @@ function command(entry, uris) {
 }
 
 function outcome(text) {
-    var counts = {ok: 0, gone: 0, taken: 0, failed: 0, total: 0};
+    var counts = {ok: 0, gone: 0, taken: 0, failed: 0};
     var lines = text.split("\n");
     for (var i = 0; i < lines.length; i++) {
         var word = lines[i].trim();
-        if (counts[word] === undefined || word === "total")
-            continue;
-        counts[word] += 1;
-        counts.total += 1;
+        if (counts[word] !== undefined)
+            counts[word] += 1;
     }
     return counts;
 }

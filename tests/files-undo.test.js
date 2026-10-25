@@ -7,13 +7,15 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 
+process.env.TZ = "Europe/Copenhagen";
+
 function lib(file, names) {
     const src = fs.readFileSync(path.join(ROOT, file), "utf8").replace(/^\.pragma .*$/m, "");
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
 const Undo = lib("services/files-undo.js", [
-    "LIMIT", "into", "moved", "renamed", "copied", "trashed", "remember",
+    "LIMIT", "into", "moved", "renamed", "copied", "fresh", "trashed", "remember",
     "existsCommand", "existing", "parseTrash", "pick", "command", "outcome", "summary"
 ]);
 
@@ -21,6 +23,10 @@ const LISTING = fs.readFileSync(path.join(ROOT, "tests/fixtures/gio-trash-list.t
 
 function local(y, mo, d, h, mi, s) {
     return new Date(y, mo - 1, d, h, mi, s).getTime() / 1000;
+}
+
+function wall(y, mo, d, h, mi, s) {
+    return Date.UTC(y, mo - 1, d, h, mi, s) / 1000;
 }
 
 function sandbox() {
@@ -85,9 +91,28 @@ test.describe("files undo", () => {
         assert.strictEqual(stack[stack.length - 1].pairs[0].from, `/a/${Undo.LIMIT + 4}`);
     });
 
-    test.it("never records a pasted copy whose name was already there before the paste", () => {
+    test.it("never records a paste, move or rename onto a name that was already there", () => {
         const pairs = Undo.into(["/a/keep", "/a/new"], "/b");
-        assert.deepStrictEqual(Undo.copied(pairs, ["/b/keep"]).pairs, [{ from: "/a/new", to: "/b/new" }]);
+        assert.deepStrictEqual(Undo.fresh(Undo.copied(pairs), ["/b/keep"]), { kind: "copy", pairs: [{ from: "/a/new", to: "/b/new" }] });
+        assert.deepStrictEqual(Undo.fresh(Undo.moved(pairs), ["/b/keep"]).pairs, [{ from: "/a/new", to: "/b/new" }]);
+        assert.deepStrictEqual(Undo.fresh(Undo.renamed("/a/notes.txt", "/a/Projects"), ["/a/Projects"]).pairs, []);
+    });
+
+    test.it("never renames a folder back when a file was renamed into it", () => {
+        const box = sandbox();
+        try {
+            fs.mkdirSync(box.at("Projects"));
+            fs.writeFileSync(box.at("Projects", "plan"), "kept");
+            fs.writeFileSync(box.at("notes.txt"), "mine");
+            const entry = Undo.renamed(box.at("notes.txt"), box.at("Projects"));
+            const targets = entry.pairs.map(pair => pair.to);
+            const kept = Undo.fresh(entry, Undo.existing(targets, box.run(Undo.existsCommand(targets))));
+            box.run(["sh", "-c", 'mv -- "$1" "$2"', "sh", box.at("notes.txt"), box.at("Projects")]);
+            assert.deepStrictEqual(Undo.remember([], kept), []);
+            assert.strictEqual(fs.readFileSync(box.at("Projects", "plan"), "utf8"), "kept");
+        } finally {
+            box.done();
+        }
     });
 
     test.it("finds which paste targets already exist, odd names and dangling links included", () => {
@@ -118,7 +143,7 @@ test.describe("files undo", () => {
             assert.ok(!fs.existsSync(box.at(ODD[0])));
 
             const counts = Undo.outcome(box.run(Undo.command(entry, [])));
-            assert.deepStrictEqual(counts, { ok: ODD.length + 1, gone: 0, taken: 0, failed: 0, total: ODD.length + 1 });
+            assert.deepStrictEqual(counts, { ok: ODD.length + 1, gone: 0, taken: 0, failed: 0 });
             for (const name of ODD)
                 assert.strictEqual(fs.readFileSync(box.at(name), "utf8"), name);
             assert.strictEqual(fs.readFileSync(box.at("folder", "inside"), "utf8"), "kept");
@@ -176,7 +201,7 @@ test.describe("files undo", () => {
             const sources = ["one", "two words", "old"].map(name => box.at("from", name));
             const pairs = Undo.into(sources, box.at("to"));
             const targets = pairs.map(pair => pair.to);
-            const entry = Undo.copied(pairs, Undo.existing(targets, box.run(Undo.existsCommand(targets))));
+            const entry = Undo.fresh(Undo.copied(pairs), Undo.existing(targets, box.run(Undo.existsCommand(targets))));
             box.run(["sh", "-c", 'd=$1; shift; cp -rn -- "$@" "$d"', "sh", box.at("to"), ...sources]);
 
             const counts = Undo.outcome(box.run(Undo.command(entry, [])));
@@ -194,7 +219,7 @@ test.describe("files undo", () => {
     test.it("reads the trash listing gio prints, unescaping the bytes in its paths", () => {
         const items = Undo.parseTrash(LISTING);
         assert.strictEqual(items.length, 6);
-        assert.deepStrictEqual(items[0], { uri: "trash:///notes.txt", path: "/home/user/Documents/notes.txt", deleted: local(2026, 10, 25, 22, 34, 34) });
+        assert.deepStrictEqual(items[0], { uri: "trash:///notes.txt", path: "/home/user/Documents/notes.txt", deleted: wall(2026, 10, 25, 22, 34, 34) });
         assert.strictEqual(items[2].path, "/home/user/a b\tt é \"q\".txt");
         assert.strictEqual(items[3].path, "/home/user/back\\slash");
         assert.strictEqual(items[4].path, "/home/user/Documents/My Old Notes");
@@ -208,6 +233,10 @@ test.describe("files undo", () => {
         const second = Undo.trashed(["/home/user/Documents/notes.txt"], local(2026, 10, 25, 22, 40, 1) + 0.8);
         assert.deepStrictEqual(Undo.pick(items, first), ["trash:///notes.txt"]);
         assert.deepStrictEqual(Undo.pick(items, second), ["trash:///notes.txt.2"]);
+        const fallBack = [{ uri: "trash:///late", path: "/h/late", deleted: wall(2026, 10, 25, 2, 30, 5) }];
+        const repeated = local(2026, 10, 25, 2, 30, 4) + 3600;
+        assert.strictEqual(new Date(repeated * 1000).getHours(), 2);
+        assert.deepStrictEqual(Undo.pick(fallBack, Undo.trashed(["/h/late"], repeated)), ["trash:///late"]);
         const later = Undo.trashed(["/home/user/Documents/My Old Notes", "/home/user/missing"], local(2026, 10, 25, 22, 0, 0));
         assert.deepStrictEqual(Undo.pick(items, later), ["-", "-"]);
     });
@@ -226,7 +255,7 @@ test.describe("files undo", () => {
             fs.writeFileSync(box.at(ODD[0]), "made again");
 
             const counts = Undo.outcome(box.run(Undo.command(entry, [...paths.slice(0, -1).map(p => byPath[p]), "-"])));
-            assert.deepStrictEqual(counts, { ok: ODD.length - 2, gone: 1, taken: 1, failed: 0, total: ODD.length });
+            assert.deepStrictEqual(counts, { ok: ODD.length - 2, gone: 1, taken: 1, failed: 0 });
             assert.strictEqual(fs.readFileSync(box.at(ODD[0]), "utf8"), "made again");
             for (const name of ODD.slice(1, -1))
                 assert.strictEqual(fs.readFileSync(box.at(name), "utf8"), name);
@@ -240,15 +269,15 @@ test.describe("files undo", () => {
     test.it("says what came back in a few words", () => {
         const one = Undo.trashed(["/h/report.pdf"], 0);
         const three = Undo.trashed(["/h/a", "/h/b", "/h/c"], 0);
-        const all = n => ({ ok: n, gone: 0, taken: 0, failed: 0, total: n });
+        const all = n => ({ ok: n, gone: 0, taken: 0, failed: 0 });
         assert.strictEqual(Undo.summary(one, all(1)), "report.pdf restored");
         assert.strictEqual(Undo.summary(three, all(3)), "3 files restored");
-        assert.strictEqual(Undo.summary(three, { ok: 0, gone: 3, taken: 0, failed: 0, total: 3 }), "Nothing restored, no longer in the trash");
-        assert.strictEqual(Undo.summary(one, { ok: 0, gone: 1, taken: 0, failed: 0, total: 1 }), "report.pdf is no longer in the trash");
+        assert.strictEqual(Undo.summary(three, { ok: 0, gone: 3, taken: 0, failed: 0 }), "Nothing restored, no longer in the trash");
+        assert.strictEqual(Undo.summary(one, { ok: 0, gone: 1, taken: 0, failed: 0 }), "report.pdf is no longer in the trash");
         assert.strictEqual(Undo.summary(Undo.moved(Undo.into(["/h/a"], "/h/d")), all(1)), "a moved back");
-        assert.strictEqual(Undo.summary(Undo.copied(Undo.into(["/h/a"], "/h/d"), []), all(1)), "Copy of a moved to the trash");
-        assert.strictEqual(Undo.summary(three, { ok: 0, gone: 0, taken: 0, failed: 0, total: 0 }), "Nothing could be brought back");
-        for (const text of [Undo.summary(three, all(3)), Undo.summary(one, { ok: 0, gone: 0, taken: 1, failed: 0, total: 1 })])
+        assert.strictEqual(Undo.summary(Undo.copied(Undo.into(["/h/a"], "/h/d")), all(1)), "Copy of a moved to the trash");
+        assert.strictEqual(Undo.summary(three, { ok: 0, gone: 0, taken: 0, failed: 0 }), "Nothing could be brought back");
+        for (const text of [Undo.summary(three, all(3)), Undo.summary(one, { ok: 0, gone: 0, taken: 1, failed: 0 })])
             assert.ok(text.length <= 70);
     });
 });
