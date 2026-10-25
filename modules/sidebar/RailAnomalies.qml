@@ -17,6 +17,8 @@ Item {
 
     property bool awake: false
 
+    property real room: Infinity
+
     signal markPressed(var opens)
 
     readonly property BatteryGlance battery: BatteryGlance {}
@@ -43,7 +45,7 @@ Item {
         diverged: Update.diverged
     })
 
-    readonly property var split: Anomalies.split(root.reading)
+    readonly property var split: Anomalies.split(root.reading, Anomalies.slotsIn(root.room, Appearance.sizes.statusSlot + Appearance.sizes.statusGap))
 
     readonly property var wanted: root.split.kept
 

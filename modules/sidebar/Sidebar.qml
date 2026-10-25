@@ -282,6 +282,7 @@ Item {
 
                 modeIcon: root.modeIcon
                 awake: root.awake
+                room: rest.height - anomalies.anchors.bottomMargin - glance.headEdge - pips.implicitHeight - Appearance.padding.large * 2
                 batteryWanted: ["top", "off"].includes(Config.values.sidebar.glance)
 
                 enabled: root.revealed === 0

@@ -1,7 +1,6 @@
 .pragma library
 
 var LOW_BATTERY_PERCENT = 20;
-var LIMIT = 4;
 var UPDATE = { menu: "update" };
 var SOUND = { menu: "audio" };
 var DETAILS = "click for details";
@@ -53,7 +52,7 @@ function found(state) {
         batteryEntry(s),
         micEntry(s),
         s.recording ? { key: "recording", icon: "fiber_manual_record", tone: "alarm", title: "Recording the screen", hint: "click to stop", rank: 1, opens: { stops: "recording" } } : null,
-        s.vpn ? { key: "vpn", icon: "vpn_lock", tone: "accent", title: "VPN is up", hint: "click for settings", rank: 5, opens: { settings: "vpn" } } : null,
+        s.vpn ? { key: "vpn", icon: "vpn_lock", tone: "accent", title: "VPN on", hint: "click for settings", rank: 5, opens: { settings: "vpn" } } : null,
         s.awake ? { key: "awake", icon: "coffee", tone: "accent", title: "Keeping awake", hint: "click to stop", rank: 7, opens: { stops: "awake" } } : null,
         airplaneOn(s) ? { key: "airplane", icon: "flight", tone: "accent", title: "Airplane mode", hint: "click for network", rank: 6, opens: { menu: "network" } } : null,
         s.modeIcon ? { key: "mode", icon: s.modeIcon, tone: "accent", title: "Mode on", hint: "click for modes", rank: 3, opens: { settings: "modes" } } : null,
@@ -64,19 +63,25 @@ function found(state) {
     });
 }
 
-function kept(all) {
+function slotsIn(height, pitch) {
+    return pitch > 0 ? Math.max(1, Math.floor(height / pitch)) : Infinity;
+}
+
+function kept(all, slots) {
+    var room = slots === undefined ? Infinity : slots;
+    var take = all.length <= room ? all.length : room - 1;
     return all.map(function (e, i) {
         return { entry: e, rank: e.rank, at: i };
     }).sort(function (a, b) {
         return a.rank - b.rank || a.at - b.at;
-    }).slice(0, LIMIT).map(function (r) {
+    }).slice(0, take).map(function (r) {
         return r.entry;
     });
 }
 
-function split(state) {
+function split(state, slots) {
     var all = found(state);
-    var keep = kept(all);
+    var keep = kept(all, slots);
     return {
         kept: all.filter(function (e) {
             return keep.indexOf(e) >= 0;
@@ -87,8 +92,8 @@ function split(state) {
     };
 }
 
-function list(state) {
-    return split(state).kept;
+function list(state, slots) {
+    return split(state, slots).kept;
 }
 
 function tip(entry) {
