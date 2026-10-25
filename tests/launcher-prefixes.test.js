@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Prefixes = lib("modules/launcher/prefixes.js", ["PREFIXES", "asked", "guess", "completion"]);
+const Prefixes = lib("modules/launcher/prefixes.js", ["SECTIONS", "PREFIXES", "asked", "guess", "completion", "detail"]);
 const Ranking = lib("services/ranking.js", ["closest"]);
 
 test.describe("the ? page", () => {
@@ -20,14 +20,29 @@ test.describe("the ? page", () => {
             assert.strictEqual(Prefixes.asked(text), false, text);
     });
 
-    test.it("lists each prefix once with an example that starts the way Enter types it", () => {
+    test.it("lists each prefix once, under a titled section", () => {
         const seen = new Set();
-        for (const p of Prefixes.PREFIXES) {
-            assert.ok(!seen.has(p.word), `${p.word} listed twice`);
-            seen.add(p.word);
-            assert.ok(p.example === p.word || p.example.startsWith(Prefixes.completion(p)), `${p.word}: ${p.example}`);
-            assert.ok(p.about && p.icon, p.word);
+        for (const section of Prefixes.SECTIONS) {
+            assert.ok(section.title && section.prefixes.length, section.title);
+            for (const p of section.prefixes) {
+                assert.ok(!seen.has(p.word), `${p.word} listed twice`);
+                seen.add(p.word);
+                assert.ok(p.about && p.icon, p.word);
+            }
         }
+        assert.strictEqual(seen.size, Prefixes.PREFIXES.length);
+    });
+
+    test.it("gives an example only when it adds something after the prefix", () => {
+        for (const p of Prefixes.PREFIXES.filter(p => p.example !== undefined)) {
+            const typed = Prefixes.completion(p);
+            assert.ok(p.example.startsWith(typed) && p.example.trim().length > typed.trim().length, `${p.word}: ${p.example}`);
+        }
+    });
+
+    test.it("says what a prefix does, with its example when it has one", () => {
+        assert.strictEqual(Prefixes.detail({ about: "Connect to a host", example: "ssh nemurenai" }), "Connect to a host, as in ssh nemurenai");
+        assert.strictEqual(Prefixes.detail({ about: "Test your internet speed" }), "Test your internet speed");
     });
 });
 

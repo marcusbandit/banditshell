@@ -12,21 +12,19 @@ QtObject {
 
     readonly property bool intent: root.alone
 
-    readonly property var groups: [
-        {
-            key: "prefixes",
-            title: "Prefixes",
-            items: !root.alone ? [] : Prefixes.PREFIXES.map(p => ({
+    readonly property var groups: !root.alone ? [] : Prefixes.SECTIONS.map(section => ({
+                key: `prefixes:${section.title}`,
+                title: section.title,
+                items: section.prefixes.map(p => ({
                         key: `prefix:${p.word}`,
                         kind: "prefix",
                         complete: Prefixes.completion(p),
                         label: p.word,
-                        detail: `${p.about}, as in ${p.example}`,
+                        detail: Prefixes.detail(p),
                         icon: p.icon,
                         score: 1
                     }))
-        }
-    ]
+            }))
 
     function activate(row: var): void {
         root.search.retype(row.complete);
