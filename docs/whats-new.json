@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-3",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings shortcuts show as hints like Ctrl + 5, read from your binds"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "What a setting does is told in the side pane, not under its name"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A screen change waiting for Apply has an accent dot"
+        }
+      ]
+    },
+    {
       "id": "2026-10-26-2",
       "date": "2026-10-26",
       "changes": [
