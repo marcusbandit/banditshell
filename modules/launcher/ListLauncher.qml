@@ -1292,6 +1292,8 @@ LauncherConcept {
                                         visible: active
 
                                         sourceComponent: Toggle {
+                                            height: Appearance.font.size.normal
+                                            width: Math.round(height * Appearance.sizes.toggleWidth / Appearance.sizes.toggleHeight)
                                             checked: !!line.modelData.toggle
                                             onToggled: search.activate(line.modelData)
                                         }
