@@ -92,7 +92,7 @@ Column {
             enabled: root.changed
             opacity: shown.value
             icon: "restart_alt"
-            tip: `back to ${root.fallbackText || "empty"}`
+            tip: `reset to default, ${root.fallbackText || "empty"}`
             onClicked: {
                 frame.pulse();
                 SettingsState.reset(root.key);

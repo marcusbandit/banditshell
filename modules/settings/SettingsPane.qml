@@ -262,7 +262,7 @@ Item {
                     width: parent.width
                     visible: d !== ""
                     textFormat: Text.StyledText
-                    text: `${back ? "back to" : "default"} ${root.tone(Appearance.colour.textDim, d)}`
+                    text: `${back ? "reset to default," : "default"} ${root.tone(Appearance.colour.textDim, d)}`
                     color: Appearance.colour.textFaint
                     wrapMode: Text.WordWrap
                 }
