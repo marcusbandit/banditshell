@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-16",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Pasting onto a taken name asks: replace, skip or keep both"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rename refuses a name that is already in the folder"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-14",
       "date": "2026-10-25",
       "changes": [

@@ -42,7 +42,7 @@ Item {
     }
 
     Keys.onPressed: event => {
-        if (settings.up || prompt.up)
+        if (settings.up || prompt.up || conflict.up)
             return;
 
         if (sheet.open) {
@@ -385,7 +385,7 @@ Item {
         const path = Files.join(Files.cwd, entry.name);
 
         const dot = entry.name.lastIndexOf(".");
-        prompt.ask(`Rename ${entry.name}`, entry.name, dot > 0 ? dot : 0, name => Files.renameTo(path, name));
+        prompt.ask(`Rename ${entry.name}`, entry.name, dot > 0 ? dot : 0, name => Files.renameTo(path, name), name => Files.renameRefusal(path, name));
     }
 
     function confirmDelete(): void {
@@ -419,6 +419,16 @@ Item {
 
     NamePrompt {
         id: prompt
+
+        anchors.fill: parent
+
+        z: 200
+
+        onDismissed: Qt.callLater(root.forceActiveFocus)
+    }
+
+    PasteConflict {
+        id: conflict
 
         anchors.fill: parent
 

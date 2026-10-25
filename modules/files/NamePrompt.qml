@@ -9,14 +9,18 @@ Item {
 
     property string title: ""
     property var accepted: null
+    property var check: null
+
+    readonly property string refusal: root.up && root.check ? root.check(field.text.trim()) : ""
 
     property bool up: false
 
     signal dismissed
 
-    function ask(question: string, initial: string, select: int, onAccept: var): void {
+    function ask(question: string, initial: string, select: int, onAccept: var, check: var): void {
         root.title = question;
         root.accepted = onAccept;
+        root.check = check ?? null;
         field.text = initial;
         root.up = true;
 
@@ -33,10 +37,13 @@ Item {
     function close(): void {
         root.up = false;
         root.accepted = null;
+        root.check = null;
         root.dismissed();
     }
 
     function commit(): void {
+        if (root.refusal)
+            return;
         const answer = field.text.trim();
         const run = root.accepted;
         root.close();
@@ -120,6 +127,16 @@ Item {
                     Keys.onEnterPressed: root.commit()
                     Keys.onEscapePressed: root.close()
                 }
+            }
+
+            StyledText {
+                width: parent.width
+                visible: root.refusal !== ""
+
+                text: root.refusal
+                font.pixelSize: Appearance.font.size.small
+                color: Appearance.colour.alarm
+                elide: Text.ElideMiddle
             }
         }
     }

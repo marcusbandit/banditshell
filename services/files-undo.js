@@ -69,7 +69,18 @@ function trashed(paths, now) {
     return {kind: "trash", paths: paths.slice(), at: wallClock(now)};
 }
 
+function batch(parts) {
+    var kept = parts.filter(function (part) {
+        return part && size(part) > 0;
+    });
+    return kept.length === 1 ? kept[0] : {kind: "batch", parts: kept};
+}
+
 function size(entry) {
+    if (entry.kind === "batch")
+        return entry.parts.reduce(function (sum, part) {
+            return sum + size(part);
+        }, 0);
     return entry.kind === "trash" ? entry.paths.length : entry.pairs.length;
 }
 
@@ -210,4 +221,20 @@ function summary(entry, counts) {
     if (counts.gone > 0)
         return one ? name + " is no longer where it was moved" : "Nothing moved back, the files are gone";
     return one ? name + " could not be brought back" : "Nothing could be brought back";
+}
+
+function report(entry, texts) {
+    if (entry.kind !== "batch") {
+        var counts = outcome(texts[0] || "");
+        return {ok: counts.ok > 0, text: summary(entry, counts)};
+    }
+    var told = entry.parts.map(function (part, i) {
+        return report(part, [texts[i] || ""]);
+    });
+    var ok = told.some(function (one) {
+        return one.ok;
+    });
+    return {ok: ok, text: ok ? told.map(function (one) {
+        return one.text;
+    }).join(", ") : told[0].text};
 }

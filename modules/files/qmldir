@@ -10,6 +10,7 @@ FilesSidebar 1.0 FilesSidebar.qml
 FilesWindow 1.0 FilesWindow.qml
 HelpersMissing 1.0 HelpersMissing.qml
 NamePrompt 1.0 NamePrompt.qml
+PasteConflict 1.0 PasteConflict.qml
 PathBar 1.0 PathBar.qml
 PreviewPane 1.0 PreviewPane.qml
 PreviewPlayer 1.0 PreviewPlayer.qml

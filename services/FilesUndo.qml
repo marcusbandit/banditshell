@@ -17,20 +17,16 @@ Singleton {
         root.stack = Undo.remember(root.stack, entry);
     }
 
-    function moving(paths: var, dir: string, then: var): void {
-        root.before(Undo.moved(Undo.into(paths, dir)), then);
-    }
-
     function renaming(from: string, to: string, then: var): void {
         root.before(Undo.renamed(from, to), then);
     }
 
-    function copying(paths: var, dir: string, then: var): void {
-        root.before(Undo.copied(Undo.into(paths, dir)), then);
-    }
-
     function trashed(paths: var): void {
         root.remember(Undo.trashed(paths, Date.now() / 1000));
+    }
+
+    function pasted(cut: bool, pairs: var, replaced: var, at: real): void {
+        root.remember(Undo.batch([cut ? Undo.moved(pairs) : Undo.copied(pairs), Undo.trashed(replaced, at)]));
     }
 
     function before(entry: var, then: var): void {
@@ -64,10 +60,22 @@ Singleton {
         root.stack = root.stack.slice(0, -1);
         root.running = entry;
 
-        if (entry.kind === "trash")
-            root.start(Undo.TRASH_LISTING, text => root.start(Undo.command(entry, Undo.pick(Undo.parseTrash(text ?? ""), entry)), root.finish));
+        root.perform(entry, root.finish);
+    }
+
+    function perform(entry: var, done: var): void {
+        if (entry.kind === "batch")
+            root.chain(entry.parts, [], done);
+        else if (entry.kind === "trash")
+            root.start(Undo.TRASH_LISTING, text => root.start(Undo.command(entry, Undo.pick(Undo.parseTrash(text ?? ""), entry)), out => done([out])));
         else
-            root.start(Undo.command(entry, []), root.finish);
+            root.start(Undo.command(entry, []), out => done([out]));
+    }
+
+    function chain(parts: var, texts: var, done: var): void {
+        if (texts.length === parts.length)
+            return done(texts);
+        root.perform(parts[texts.length], out => root.chain(parts, texts.concat(out), done));
     }
 
     function start(command: var, done: var): void {
@@ -78,13 +86,12 @@ Singleton {
         });
     }
 
-    function finish(text: var): void {
-        const counts = Undo.outcome(text ?? "");
-        const said = Undo.summary(root.running, counts);
-        if (counts.ok > 0)
-            root.say(said);
+    function finish(texts: var): void {
+        const told = Undo.report(root.running, texts);
+        if (told.ok)
+            root.say(told.text);
         else
-            Files.failure = said;
+            Files.failure = told.text;
         root.running = null;
         Files.refresh();
         if (root.stack.length === 0)
