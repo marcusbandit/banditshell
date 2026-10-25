@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-6",
+      "id": "2026-10-25-7",
       "date": "2026-10-25",
       "changes": [
         {
@@ -23,6 +23,22 @@
           "type": "bugs",
           "severity": "minor",
           "text": "A double-click on Shut down or Restart no longer runs it at once"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-6",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The screenshot key freezes the screen at once"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Hotkeys and the island stay quick when the clocks go back an hour"
         }
       ]
     },

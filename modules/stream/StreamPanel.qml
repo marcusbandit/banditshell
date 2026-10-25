@@ -38,10 +38,10 @@ Item {
 
     visible: root.reach > 0
 
-    SystemClock {
+    WallClock {
         id: time
 
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
     }
 
     Item {
