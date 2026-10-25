@@ -553,6 +553,8 @@ Singleton {
         root.restat();
     }
 
+    property int working: 0
+
     function spawn(command: var, input: string): void {
         job.createObject(root, {
             command: command,
@@ -583,6 +585,7 @@ Singleton {
 
             onStarted: {
                 task.begun = true;
+                root.working += 1;
                 if (task.input !== "") {
                     task.write(task.input);
                     task.stdinEnabled = false;
@@ -597,6 +600,7 @@ Singleton {
             }
 
             onExited: (code, status) => {
+                root.working -= 1;
                 if (code !== 0 || status !== 0)
                     root.report(task.command, code, complaint.text);
                 root.restat();
@@ -786,12 +790,14 @@ Singleton {
             return;
         const to = root.join(root.parentOf(path), name);
         if (to !== path)
-            root.run(["mv", "-i", "--"], [path, to]);
+            FilesUndo.renaming(path, to, () => root.run(["mv", "-i", "--"], [path, to]));
     }
 
     function trash(paths: var): void {
-        if (paths.length > 0)
-            root.run(["gio", "trash", "--"], paths);
+        if (paths.length === 0)
+            return;
+        root.run(["gio", "trash", "--"], paths);
+        FilesUndo.trashed(paths);
     }
 
     function deleteForever(paths: var): void {
@@ -801,12 +807,12 @@ Singleton {
 
     function copyInto(paths: var, dir: string): void {
         if (paths.length > 0)
-            root.run(["cp", "-ri", "--"], [...paths, dir]);
+            FilesUndo.copying(paths, dir, () => root.run(["cp", "-ri", "--"], [...paths, dir]));
     }
 
     function moveInto(paths: var, dir: string): void {
         if (paths.length > 0)
-            root.run(["mv", "-i", "--"], [...paths, dir]);
+            FilesUndo.moving(paths, dir, () => root.run(["mv", "-i", "--"], [...paths, dir]));
     }
 
     property var clipboard: []

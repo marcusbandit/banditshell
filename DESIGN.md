@@ -486,7 +486,10 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   | focus | `Appearance.stroke.ring` in `accent` | `Appearance.stroke.ring` in `accent` |
 
   Applied in `MenuRow`, `Button` (a transparent plate takes the row column, an opaque one blends
-  toward its label colour by the same fill step) and the settings tiles. `textGhost` is for
+  toward its label colour by the same fill step) and the settings tiles. A switched-on toggle,
+  a checked button and the chosen segment of a `Segments` row are one thing, a state, so they
+  share the solid `accent` plate with `accentText` on it. An off toggle is a `textFaint` ring
+  around `fill` with a `textDim` knob. Decided 2026-10-25 in #172 and #175. `textGhost` is for
   decorative rules only; readable text, placeholders and disabled glyphs use `textFaint`.
 - **Small constants have names.** `Appearance.padding.hair` (4), `Appearance.stroke.line` (1) and
   `ring` (the font stem), `Appearance.opacity.disabled` / `trail` / `glow`, the icon ladder
@@ -1058,6 +1061,10 @@ banditshell/
 │   │                            having. THE SHELL OWNS THE DIRECTORY; see 17.
 │   │                            home and openWith forward to System, and a
 │   │                            reveal request from System lands here
+│   ├── FilesUndo.qml            what Ctrl+Z can take back in the browser:
+│   │                            trash, move, rename, paste. A delete comes
+│   │                            back through gio's own trash record, and
+│   │                            nothing is overwritten on the way back
 │   ├── FileSearch.qml           files by name under home (fd), words inside
 │   │                            them (ripgrep, one line a file, eight files,
 │   │                            stopped the moment the line changes; never
@@ -1991,7 +1998,10 @@ waiting or stuck. Every mark's tooltip says what it is and then what a press doe
 click for settings"). Battery, sound, airplane and update open their sidebar menus, so the rail
 grows under them; VPN, a mode and quiet open their Settings page; keep-awake and a screen
 recording stop. Pointing at a mark holds the rail at rest so it can be pressed before the rail
-grows; after the press the rail stays at rest until the pointer leaves it. Every mark shows while
+grows; after the press the rail stays at rest until the pointer leaves it. The workspace marks
+never move for a status mark: they keep their place, leave four status slots under them wherever
+the rail is tall enough, and the status marks stay a clear gap below, so they read as their own
+group and never as one more workspace. Every mark shows while
 the rail has room for it between the workspace marks and its foot; when it runs out, the most
 important stay by a fixed rank: the microphone, a screen recording, a low battery that is not
 charging, quiet or a mode, a stuck update, then VPN, airplane, keep-awake, and last a charging
