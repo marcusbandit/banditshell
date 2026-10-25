@@ -175,7 +175,7 @@ Column {
     Column {
         width: parent.width
         visible: root.card.length > 0
-        spacing: Appearance.padding.normal
+        spacing: Appearance.padding.small
 
         StyledText {
             width: parent.width
@@ -184,50 +184,77 @@ Column {
         }
 
         Repeater {
-            model: root.card
+            model: WhatsNew.sections(root.card)
 
-            delegate: Column {
-                id: entryBlock
+            delegate: Rectangle {
+                id: section
 
                 required property var modelData
 
+                readonly property color hue: root.hue(section.modelData.key)
+                readonly property bool major: section.modelData.key === "major"
+
                 width: root.width
-                spacing: Appearance.padding.small
+                height: sectionBody.implicitHeight + Appearance.padding.normal * 2
+                radius: Appearance.rounding.small
+                color: Appearance.withAlpha(section.hue, 0.07)
 
-                StyledText {
-                    width: parent.width
-                    text: entryBlock.modelData.date !== "" && entryBlock.modelData.date !== entryBlock.modelData.id ? `${entryBlock.modelData.id} · ${entryBlock.modelData.date}` : entryBlock.modelData.id
-                    color: WhatsNew.severityOf(entryBlock.modelData) === "major" ? Appearance.colour.accent : Appearance.colour.textFaint
-                }
+                Column {
+                    id: sectionBody
 
-                Repeater {
-                    model: entryBlock.modelData.changes
+                    x: Appearance.padding.normal
+                    y: Appearance.padding.normal
+                    width: parent.width - Appearance.padding.normal * 2
+                    spacing: Appearance.padding.hair
 
-                    delegate: Item {
-                        id: changeLine
+                    Row {
+                        spacing: Appearance.padding.small
 
-                        required property var modelData
+                        Icon {
+                            y: Math.round((Appearance.font.line.small - size) / 2)
+                            size: Appearance.font.iconSize
+                            name: root.glyph(section.modelData.key)
+                            color: Appearance.blend(Appearance.colour.textDim, section.hue, 0.7)
+                        }
 
-                        width: entryBlock.width
-                        height: line.height
+                        StyledText {
+                            text: section.modelData.title
+                            color: Appearance.blend(Appearance.colour.text, section.hue, 0.55)
+                        }
 
-                        Row {
-                            id: line
+                        StyledText {
+                            text: section.modelData.changes.length
+                            color: Appearance.colour.textFaint
+                        }
+                    }
 
-                            spacing: Appearance.padding.small
+                    Repeater {
+                        model: section.modelData.changes
 
-                            Icon {
+                        delegate: Item {
+                            id: changeLine
 
-                                y: Math.round((Appearance.font.line.small - size) / 2)
-                                size: Appearance.font.iconSize
-                                name: root.glyph(changeLine.modelData.type)
-                                color: Appearance.colour.textDim
+                            required property var modelData
+
+                            width: sectionBody.width
+                            height: changeText.height
+
+                            Rectangle {
+                                x: Math.round((Appearance.font.iconSize - width) / 2)
+                                y: Math.round((Appearance.font.line.small - height) / 2)
+                                width: Math.max(4, Math.round(Appearance.font.size.small / 4))
+                                height: width
+                                radius: width / 2
+                                color: Appearance.blend(Appearance.colour.textFaint, section.hue, 0.5)
                             }
 
                             StyledText {
-                                width: changeLine.width - Appearance.font.iconSize - line.spacing
+                                id: changeText
+
+                                x: Appearance.font.iconSize + Appearance.padding.small
+                                width: changeLine.width - x
                                 text: changeLine.modelData.text
-                                color: changeLine.modelData.severity === "major" ? Appearance.colour.text : Appearance.colour.textDim
+                                color: section.major ? Appearance.colour.text : Appearance.colour.textDim
                                 wrapMode: Text.WordWrap
                             }
                         }
@@ -308,7 +335,23 @@ Column {
         }
     }
 
+    function hue(key: string): color {
+        if (key === "major")
+            return Appearance.colour.accent;
+        if (key === "features")
+            return "#8fb8e8";
+        if (key === "ui")
+            return "#b9a3e3";
+        if (key === "bugs")
+            return "#8fcfa6";
+        if (key === "config")
+            return "#e3c58f";
+        return Appearance.colour.textDim;
+    }
+
     function glyph(type: string): string {
+        if (type === "major")
+            return "new_releases";
         if (type === "issues")
             return "check_circle";
         if (type === "bugs")
