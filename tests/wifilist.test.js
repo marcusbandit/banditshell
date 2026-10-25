@@ -271,7 +271,6 @@ test.describe("join failures", () => {
         assert.strictEqual(WifiList.failureLabel("password"), "wrong password");
         assert.strictEqual(WifiList.failureLabel("timeout"), "no answer");
         assert.strictEqual(WifiList.failureLabel("hungup"), "it hung up");
-        assert.strictEqual(WifiList.failureLabel("refused"), "could not join");
     });
 
     test.it("falls back to a general cause for a reason it does not know", () => {

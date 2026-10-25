@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Networking
+import "wifilist.js" as WifiList
 
 Singleton {
     id: root
@@ -29,8 +30,8 @@ Singleton {
             return;
         }
         if (n.known || !Network.secured(n)) {
-            root.pending = name;
             Network.join(n, "");
+            root.pending = name;
             return;
         }
         root.askFor(name, "");
@@ -52,8 +53,8 @@ Singleton {
                 const target = Network.find(name);
                 if (!target || !secret)
                     return;
-                root.pending = name;
                 Network.join(target, secret);
+                root.pending = name;
             }
         });
     }
@@ -69,7 +70,7 @@ Singleton {
         if (root.asksAgain(n, kind))
             root.askFor(name, root.wrongPassword);
         else
-            root.join(name, root.screenName);
+            root.join(name, Hypr.focusedScreen || root.screenName);
     }
 
     Connections {
@@ -82,12 +83,11 @@ Singleton {
             if (asked && root.asksAgain(Network.find(name), kind))
                 root.askFor(name, root.wrongPassword);
             else
-                root.failed(name, kind, Network.failureMessage(name, kind));
+                root.failed(name, kind, WifiList.failureMessage(name, kind));
         }
 
-        function onActiveNameChanged(): void {
-            if (root.pending && Network.activeName === root.pending)
-                root.pending = "";
+        function onTryingChanged(): void {
+            root.pending = "";
         }
     }
 }

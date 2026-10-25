@@ -148,6 +148,10 @@ test.describe("wifi", () => {
         assert.strictEqual(M.wifiSpec("Cafe", "timeout", "").text, "Cafe");
     });
 
+    test.it("retries the network by its exact name, spaces and all", () => {
+        assert.strictEqual(M.wifiSpec("Cafe  5G ", "lost", "Cafe  5G : it went away").data.name, "Cafe  5G ");
+    });
+
     test.it("posts nothing for a network without a name", () => {
         assert.strictEqual(M.wifiSpec("  ", "timeout", "x"), null);
     });

@@ -262,6 +262,8 @@ Singleton {
 
     function forget(n: var): void {
         if (n) {
+            if (root.trying === n.name)
+                root.trying = "";
             root.clearFailure(n.name);
             root.clearEnroll(n.name);
             n.forget();
@@ -662,6 +664,7 @@ Singleton {
             return;
         root.clearFailure(n.name);
         root.trying = n.name;
+        tryingExpiry.restart();
         if (psk)
             n.connectWithPsk(psk);
         else
@@ -673,8 +676,15 @@ Singleton {
         root.failedReason = reason;
         if (root.trying !== name)
             return;
-        root.trying = "";
         root.joinFailed(name, root.failureKind(reason));
+        root.trying = "";
+    }
+
+    Timer {
+        id: tryingExpiry
+
+        interval: 90000
+        onTriggered: root.trying = ""
     }
 
     function failureKind(reason: int): string {
@@ -687,8 +697,6 @@ Singleton {
             return "lost";
         case ConnectionFailReason.WifiClientDisconnected:
             return "hungup";
-        case ConnectionFailReason.WifiClientFailed:
-            return "refused";
         }
         return "unknown";
     }
@@ -702,10 +710,6 @@ Singleton {
 
     function failureLabel(): string {
         return WifiList.failureLabel(root.failureKind(root.failedReason));
-    }
-
-    function failureMessage(name: string, kind: string): string {
-        return WifiList.failureMessage(name, kind);
     }
 
     Instantiator {

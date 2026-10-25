@@ -151,7 +151,7 @@ function wifiSpec(name, kind, message) {
         priority: 45,
         pressable: true,
         source: "moments",
-        data: { name: shown, kind: String(kind || "unknown") },
+        data: { name: String(name), kind: String(kind || "unknown") },
         actions: [{ name: "retry", label: "Try again" }]
     };
 }
