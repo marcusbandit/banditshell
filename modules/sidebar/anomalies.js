@@ -1,22 +1,22 @@
 .pragma library
 
 var LOW_BATTERY_PERCENT = 20;
-var TONES = { alarm: 0, accent: 1, dim: 2 };
 var LIMIT = 4;
 var UPDATE = { menu: "update" };
 var SOUND = { menu: "audio" };
+var DETAILS = "click for details";
 
 function updateEntry(state) {
     if (state.updateMode === "never")
         return null;
     if (state.update === "downloaded")
-        return { key: "update", icon: "download_done", tone: "accent", title: "Update ready", opens: UPDATE };
+        return { key: "update", icon: "download_done", tone: "accent", title: "Update ready", hint: DETAILS, rank: 8, opens: UPDATE };
     if (state.update === "downloading")
-        return { key: "update", icon: "cloud_download", tone: "accent", title: "Update downloading", opens: UPDATE };
+        return { key: "update", icon: "cloud_download", tone: "accent", title: "Update downloading", hint: DETAILS, rank: 8, opens: UPDATE };
     if (state.update === "failed" || (state.update === "available" && state.diverged))
-        return { key: "update", icon: "sync_problem", tone: "alarm", title: "Update stuck", opens: UPDATE };
+        return { key: "update", icon: "sync_problem", tone: "alarm", title: "Update stuck", hint: DETAILS, rank: 4, opens: UPDATE };
     if (state.update === "available")
-        return { key: "update", icon: "system_update_alt", tone: "accent", title: "Update available", opens: UPDATE };
+        return { key: "update", icon: "system_update_alt", tone: "accent", title: "Update available", hint: DETAILS, rank: 8, opens: UPDATE };
     return null;
 }
 
@@ -29,6 +29,8 @@ function batteryEntry(state) {
         icon: state.batteryIcon || "battery_alert",
         tone: state.charging ? "accent" : "alarm",
         title: "Battery " + percent + (state.charging ? " percent, charging" : " percent"),
+        hint: DETAILS,
+        rank: state.charging ? 8 : 2,
         opens: { menu: "battery" }
     };
 }
@@ -37,8 +39,8 @@ function micEntry(state) {
     if (!state.micShown || !state.micStreams)
         return null;
     if (state.micMuted)
-        return { key: "mic", icon: "mic_off", tone: "accent", title: "Microphone muted while something listens", opens: SOUND };
-    return { key: "mic", icon: "mic", tone: "alarm", title: "Microphone in use", opens: SOUND };
+        return { key: "mic", icon: "mic_off", tone: "accent", title: "Microphone muted while something listens", hint: "click for sound", rank: 0, opens: SOUND };
+    return { key: "mic", icon: "mic", tone: "alarm", title: "Microphone in use", hint: "click for sound", rank: 0, opens: SOUND };
 }
 
 function airplaneOn(state) {
@@ -50,12 +52,12 @@ function found(state) {
     return [
         batteryEntry(s),
         micEntry(s),
-        s.recording ? { key: "recording", icon: "fiber_manual_record", tone: "alarm", title: "Recording the screen", hint: "click to stop", opens: { stops: "recording" } } : null,
-        s.vpn ? { key: "vpn", icon: "vpn_lock", tone: "accent", title: "VPN is up", opens: { settings: "vpn" } } : null,
-        s.awake ? { key: "awake", icon: "coffee", tone: "accent", title: "Keeping awake", hint: "click to stop", opens: { stops: "awake" } } : null,
-        airplaneOn(s) ? { key: "airplane", icon: "flight", tone: "accent", title: "Airplane mode", opens: { menu: "network" } } : null,
-        s.modeIcon ? { key: "mode", icon: s.modeIcon, tone: "accent", title: "Mode on", opens: { settings: "modes" } } : null,
-        s.quiet && !s.modeIcon ? { key: "quiet", icon: "do_not_disturb_on", tone: "accent", title: "Do not disturb", opens: { settings: "modes", row: "dnd" } } : null,
+        s.recording ? { key: "recording", icon: "fiber_manual_record", tone: "alarm", title: "Recording the screen", hint: "click to stop", rank: 1, opens: { stops: "recording" } } : null,
+        s.vpn ? { key: "vpn", icon: "vpn_lock", tone: "accent", title: "VPN is up", hint: "click for settings", rank: 5, opens: { settings: "vpn" } } : null,
+        s.awake ? { key: "awake", icon: "coffee", tone: "accent", title: "Keeping awake", hint: "click to stop", rank: 7, opens: { stops: "awake" } } : null,
+        airplaneOn(s) ? { key: "airplane", icon: "flight", tone: "accent", title: "Airplane mode", hint: "click for network", rank: 6, opens: { menu: "network" } } : null,
+        s.modeIcon ? { key: "mode", icon: s.modeIcon, tone: "accent", title: "Mode on", hint: "click for modes", rank: 3, opens: { settings: "modes" } } : null,
+        s.quiet && !s.modeIcon ? { key: "quiet", icon: "do_not_disturb_on", tone: "accent", title: "Do not disturb", hint: "click for settings", rank: 3, opens: { settings: "modes", row: "dnd" } } : null,
         updateEntry(s)
     ].filter(function (e) {
         return e !== null;
@@ -64,7 +66,7 @@ function found(state) {
 
 function kept(all) {
     return all.map(function (e, i) {
-        return { entry: e, rank: TONES[e.tone], at: i };
+        return { entry: e, rank: e.rank, at: i };
     }).sort(function (a, b) {
         return a.rank - b.rank || a.at - b.at;
     }).slice(0, LIMIT).map(function (r) {

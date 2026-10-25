@@ -7,7 +7,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Point at a mark on the rail to read what it means"
+          "text": "Point at a rail mark to read what it is and what a press does"
         },
         {
           "type": "features",
@@ -18,6 +18,11 @@
           "type": "ui",
           "severity": "minor",
           "text": "The rail counts the marks that did not fit, like +2"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A crowded rail keeps the mic, recording and Do not disturb in view"
         }
       ]
     },

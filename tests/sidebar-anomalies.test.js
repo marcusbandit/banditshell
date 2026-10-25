@@ -106,20 +106,19 @@ test("updates show by state, stuck ones as alarms, and never when the button is 
     assert.deepStrictEqual(keys({ update: "failed", updateMode: "never" }), []);
 });
 
-test("when too many things are unusual the alarms stay and the order holds", () => {
+test("when too many things are unusual, privacy and attention stay and the order holds", () => {
     const all = { batteryPercent: 5, micStreams: true, recording: true, vpn: true, wifiOn: false, bluetoothOn: false, quiet: true, update: "available" };
-    const shown = keys(all);
-    assert.strictEqual(shown.length, 4);
-    assert.deepStrictEqual(shown, ["battery", "mic", "recording", "vpn"]);
-    const quietOnly = keys({ quiet: true, vpn: true, update: "failed", batteryPercent: 5, recording: true, micStreams: true });
-    assert.ok(quietOnly.includes("update"));
-    assert.ok(!quietOnly.includes("quiet"));
+    assert.deepStrictEqual(keys(all), ["battery", "mic", "recording", "quiet"]);
+    const crowd = { quiet: true, vpn: true, update: "failed", batteryPercent: 5, recording: true, micStreams: true };
+    assert.deepStrictEqual(keys(crowd), ["battery", "mic", "recording", "quiet"]);
+    assert.deepStrictEqual(keys({ modeIcon: "target", vpn: true, awake: true, wifiOn: false, bluetoothOn: false, update: "failed" }), ["vpn", "airplane", "mode", "update"]);
+    assert.deepStrictEqual(keys({ batteryPercent: 5, charging: true, vpn: true, awake: true, wifiOn: false, bluetoothOn: false, quiet: true }), ["vpn", "awake", "airplane", "quiet"]);
 });
 
 const alone = [{ batteryPercent: 5 }, { micStreams: true }, { recording: true }, { vpn: true }, { awake: true }, { wifiOn: false, bluetoothOn: false }, { quiet: true }, { update: "available" }, { modeIcon: "target" }];
 const everyMark = () => alone.flatMap(one => Anomalies.list(Object.assign({}, calm, one)));
 
-test("every mark opens what controls it, and the two that stop say so", () => {
+test("every mark opens what controls it, and its hover says what a press does", () => {
     const opens = {};
     for (const e of everyMark())
         opens[e.key] = e.opens;
@@ -134,10 +133,12 @@ test("every mark opens what controls it, and the two that stop say so", () => {
         update: { menu: "update" },
         mode: { settings: "modes" }
     });
-    for (const e of Anomalies.list(Object.assign({}, calm, { recording: true, awake: true }))) {
-        assert.match(Anomalies.tip(e), /click to stop$/);
+    for (const e of everyMark()) {
+        assert.match(Anomalies.tip(e), /^[^,]+(, [^,]+)?, click (to|for) [a-z ]+$/, e.key);
         assert.doesNotMatch(e.title, /click/);
     }
+    for (const e of Anomalies.list(Object.assign({}, calm, { recording: true, awake: true })))
+        assert.match(Anomalies.tip(e), /click to stop$/);
     assert.strictEqual(Anomalies.tip(null), "");
 });
 
@@ -152,10 +153,10 @@ test("every settings page and row a mark opens exists in the catalogue", () => {
 test("the marks the cap drops are counted and named, and none when all fit", () => {
     const crowd = Object.assign({}, calm, { batteryPercent: 5, micStreams: true, recording: true, vpn: true, quiet: true, update: "available" });
     const gone = Anomalies.split(crowd).dropped;
-    assert.deepStrictEqual(gone.map(e => e.key), ["quiet", "update"]);
+    assert.deepStrictEqual(gone.map(e => e.key), ["vpn", "update"]);
     assert.deepStrictEqual(Anomalies.split(crowd).kept, Anomalies.list(crowd));
     assert.strictEqual(Anomalies.list(crowd).length + gone.length, 6);
-    assert.strictEqual(Anomalies.droppedTitle(gone), "2 more: Do not disturb · Update available");
+    assert.strictEqual(Anomalies.droppedTitle(gone), "2 more: VPN is up · Update available");
     assert.deepStrictEqual(Anomalies.split(Object.assign({}, calm, { vpn: true })).dropped, []);
     assert.strictEqual(Anomalies.droppedTitle([]), "");
 });
