@@ -4,6 +4,7 @@ const GROUND = 0.99;
 const INK = 0.16;
 const CURVE = 1.6;
 const PIVOT = 0.62;
+const WARNING_FLOOR = 0.52;
 
 function channel(hex, shift) {
     return (parseInt(hex.slice(1), 16) >> shift & 255) / 255;
@@ -71,9 +72,9 @@ function lightRamp(ramp) {
     });
 }
 
-function lightAccent(hex) {
+function lightAccent(hex, floor) {
     const s = toLch(hex);
-    return fromLch(Math.max(0.2, Math.min(0.75, 2 * PIVOT - s.l)), s.c, s.h);
+    return fromLch(Math.max(floor ?? 0.2, Math.min(0.75, 2 * PIVOT - s.l)), s.c * (floor ? 1.6 : 1), s.h);
 }
 
 function lightTheme(theme) {
@@ -83,7 +84,8 @@ function lightTheme(theme) {
         dim: lightAccent(String(theme.dim)),
         mid: lightAccent(String(theme.mid)),
         bright: lightAccent(String(theme.bright)),
-        alarm: lightAccent(String(theme.alarm))
+        alarm: lightAccent(String(theme.alarm)),
+        brass: theme.brass ? lightAccent(String(theme.brass), WARNING_FLOOR) : undefined
     };
 }
 
