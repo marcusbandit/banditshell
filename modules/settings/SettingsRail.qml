@@ -18,13 +18,20 @@ Item {
     readonly property bool listingRecent: SettingsView.searchFocused && SettingsView.query.trim() === ""
     readonly property var recent: SettingsState.changes.slice(0, 6)
     property int hitIndex: 0
+    property string pointedUid: ""
+    readonly property bool hitOpen: Catalogue.hitIsOpen(root.hits, root.hitIndex, SettingsView.flash?.uid ?? "", SettingsView.current)
 
-    onHitsChanged: root.hitIndex = 0
+    onHitsChanged: root.point(Catalogue.hitIndexOf(root.hits, root.pointedUid))
 
     Component.onDestruction: Prompts.release(root)
 
     function focusSearch(): void {
         query.forceActiveFocus();
+    }
+
+    function point(i: int): void {
+        root.hitIndex = i;
+        root.pointedUid = root.listingRecent ? "" : root.hits[i]?.row.uid ?? "";
     }
 
     function openHit(i: int): void {
@@ -36,8 +43,16 @@ Item {
                     page: Catalogue.PAGE_BY_ID[found.page],
                     row: found.row
                 });
-        } else if (root.hits[i])
+        } else if (root.hits[i]) {
+            root.point(i);
             SettingsView.openHit(root.hits[i]);
+        }
+    }
+
+    function pick(i: int): void {
+        root.openHit(i);
+        if (root.tiny)
+            SettingsView.query = "";
         query.focus = false;
     }
 
@@ -69,7 +84,7 @@ Item {
             id: query
 
             x: glass.x + glass.width + Appearance.padding.small
-            width: parent.width - x - Appearance.padding.normal
+            width: (count.visible ? count.x - Appearance.padding.small : clear.visible ? clear.x : parent.width - Appearance.padding.normal) - x
             anchors.verticalCenter: parent.verticalCenter
             visible: !root.tiny || activeFocus
             clip: true
@@ -82,7 +97,10 @@ Item {
             selectedTextColor: Appearance.colour.accentText
 
             text: SettingsView.query
-            onTextEdited: SettingsView.query = text
+            onTextEdited: {
+                root.pointedUid = "";
+                SettingsView.query = text;
+            }
             onActiveFocusChanged: {
                 SettingsView.searchFocused = activeFocus;
                 if (activeFocus)
@@ -94,10 +112,13 @@ Item {
             Keys.onPressed: event => {
                 const n = root.listingRecent ? root.recent.length : root.hits.length;
                 if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
-                    root.hitIndex = Math.max(0, Math.min(n - 1, root.hitIndex + (event.key === Qt.Key_Down ? 1 : -1)));
+                    root.point(Math.max(0, Math.min(n - 1, root.hitIndex + (event.key === Qt.Key_Down ? 1 : -1))));
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    root.openHit(root.hitIndex);
+                    if (root.listingRecent)
+                        root.pick(root.hitIndex);
+                    else
+                        root.openHit(Catalogue.hitToOpen(root.hits, root.hitIndex, SettingsView.flash?.uid ?? "", SettingsView.current, !!(event.modifiers & Qt.ShiftModifier)));
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Escape) {
                     if (query.text)
@@ -121,6 +142,28 @@ Item {
             visible: !query.activeFocus
             cursorShape: Qt.IBeamCursor
             onClicked: query.forceActiveFocus()
+        }
+
+        StyledText {
+            id: count
+
+            x: (clear.visible ? clear.x : parent.width - Appearance.padding.normal) - width - Appearance.padding.small
+            anchors.verticalCenter: parent.verticalCenter
+            visible: !root.tiny && !root.listingRecent && root.hits.length > 0
+            text: `${root.hitIndex + 1} of ${root.hits.length}`
+            color: Appearance.colour.textFaint
+        }
+
+        SettingsTool {
+            id: clear
+
+            x: parent.width - width - (parent.height - height) / 2
+            anchors.verticalCenter: parent.verticalCenter
+            visible: !!SettingsView.query && (!root.tiny || query.activeFocus)
+            size: 28
+            icon: "close"
+            tip: "clear the search"
+            onClicked: SettingsView.query = ""
         }
     }
 
@@ -318,6 +361,16 @@ Item {
                 wrapMode: Text.WordWrap
             }
 
+            StyledText {
+                x: Appearance.padding.normal
+                width: parent.width - Appearance.padding.normal * 2
+                topPadding: Appearance.padding.small
+                bottomPadding: Appearance.padding.normal
+                visible: query.activeFocus && !root.tiny && !root.listingRecent && root.hits.length > 0 && !(root.hitOpen && root.hits.length < 2)
+                text: root.hitOpen ? "enter next\nshift+enter back" : "enter opens it"
+                color: Appearance.colour.textFaint
+            }
+
             Repeater {
                 model: root.listingRecent ? root.recent : root.hits
 
@@ -332,7 +385,7 @@ Item {
                     label: root.listingRecent ? hit.modelData.label : hit.modelData.label
                     detail: root.listingRecent ? `${hit.modelData.from} → ${hit.modelData.to}` : `${Catalogue.CAT_BY_ID[hit.modelData.page.cat].name.toLowerCase()} · ${Catalogue.nameOf(hit.modelData.page, SettingsState).toLowerCase()}`
                     active: hit.index === root.hitIndex
-                    onPicked: root.openHit(hit.index)
+                    onPicked: root.pick(hit.index)
                 }
             }
         }

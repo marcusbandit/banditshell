@@ -67,6 +67,27 @@ Item {
 
     readonly property var current: root.expanded ? root.reading : root.entry
 
+    property bool clearing: false
+
+    readonly property int clearable: Clipboard.unpinned
+    readonly property int pinnedCount: Clipboard.entries.length - root.clearable
+
+    readonly property bool canClear: !root.speech && !root.searching && root.clearable > 0
+
+    onCanClearChanged: if (!root.canClear)
+        root.clearing = false
+
+    onExpandedChanged: if (root.expanded)
+        root.clearing = false
+
+    function items(n: int): string {
+        return n === 1 ? "1 item" : `${n} items`;
+    }
+
+    property string cleared: ""
+
+    readonly property int clearedHold: 3000
+
     function show(): void {
         if (root.shown)
             return;
@@ -76,6 +97,7 @@ Item {
         root.hovered = -1;
 
         root.reading = null;
+        root.clearing = false;
         root.stopSearch();
         list.reset();
 
@@ -87,6 +109,8 @@ Item {
             return;
         root.shown = false;
         root.reading = null;
+        root.clearing = false;
+        clearedLinger.stop();
         sheet.close();
         root.stopSearch();
         keys.focus = false;
@@ -103,6 +127,7 @@ Item {
     }
 
     function startSearch(): void {
+        root.clearing = false;
         root.searching = true;
         Qt.callLater(query.forceActiveFocus);
     }
@@ -178,6 +203,24 @@ Item {
         root.history.forget(e);
         if (onScreen)
             root.collapse();
+    }
+
+    function askClear(): void {
+        if (!root.canClear)
+            return;
+        sheet.close();
+        root.clearing = true;
+    }
+
+    function clearHistory(): void {
+        const gone = root.clearable;
+        const kept = root.pinnedCount;
+        root.clearing = false;
+        root.cleared = kept > 0 ? `${gone} cleared, ${kept} pinned kept` : `${gone} cleared`;
+        clearedLinger.restart();
+        Clipboard.clear();
+        root.selected = 0;
+        list.reset();
     }
 
     function actionsFor(e: var): var {
@@ -314,6 +357,12 @@ Item {
                 return;
             }
 
+            if (root.clearing && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+                root.clearHistory();
+                event.accepted = true;
+                return;
+            }
+
             if (root.commonKey(event)) {
                 event.accepted = true;
                 return;
@@ -323,7 +372,9 @@ Item {
 
             case Qt.Key_Escape:
                 Appearance.instantly();
-                if (root.expanded)
+                if (root.clearing)
+                    root.clearing = false;
+                else if (root.expanded)
                     root.collapse();
                 else
                     root.hide();
@@ -468,7 +519,7 @@ Item {
                         x: Appearance.padding.large
                         y: Appearance.padding.large
                         width: parent.width - Appearance.padding.large * 2
-                        height: Math.max(tabStrip.height, field.height)
+                        height: Math.max(tabStrip.height, field.height, clearBar.height)
 
                         Segments {
                             id: tabStrip
@@ -479,6 +530,95 @@ Item {
                             options: root.tabs
                             current: root.tab
                             onPicked: index => root.setTab(index)
+                        }
+
+                        Row {
+                            id: clearBar
+
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: Appearance.padding.small
+
+                            opacity: clearFade.value
+                            visible: clearFade.value > 0.01
+
+                            Follow {
+                                id: clearFade
+
+                                target: root.canClear ? 1 : 0
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: Appearance.animation.fadeEpsilon
+                                startsAtTarget: true
+                            }
+
+                            StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: root.clearing && root.pinnedCount > 0
+                                text: `${root.pinnedCount} pinned stay`
+                                font.pixelSize: Appearance.font.size.small
+                                color: Appearance.colour.text
+                            }
+
+                            Button {
+                                visible: !root.clearing
+                                style: "bare"
+                                icon: "delete_sweep"
+                                text: "Clear history"
+                                onClicked: root.askClear()
+                            }
+
+                            Button {
+                                visible: root.clearing
+                                icon: "delete_sweep"
+                                text: `Clear ${root.items(root.clearable)}`
+                                alarm: true
+                                onClicked: root.clearHistory()
+                            }
+
+                            Button {
+                                visible: root.clearing
+                                style: "bare"
+                                text: "Cancel"
+                                onClicked: root.clearing = false
+                            }
+                        }
+
+                        Row {
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: Appearance.padding.small
+
+                            opacity: clearedFade.value
+                            visible: clearedFade.value > 0.01
+
+                            Follow {
+                                id: clearedFade
+
+                                target: clearedLinger.running && !root.canClear && !root.searching ? 1 : 0
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: Appearance.animation.fadeEpsilon
+                                startsAtTarget: true
+                            }
+
+                            Timer {
+                                id: clearedLinger
+
+                                interval: root.clearedHold
+                            }
+
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: "check"
+                                size: Appearance.font.iconSize
+                                color: Appearance.colour.text
+                            }
+
+                            StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.cleared
+                                font.pixelSize: Appearance.font.size.small
+                                color: Appearance.colour.text
+                            }
                         }
 
                         Item {
@@ -593,6 +733,7 @@ Item {
                             width: list.width
                             entry: modelData
                             selected: index === root.selected
+                            going: root.clearing && !modelData.pinned
 
                             onActivated: {
                                 root.selected = index;

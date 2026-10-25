@@ -147,6 +147,93 @@ ShellRoot {
             expect: "hidden"
         },
         {
+            name: "dictating, and the daemon can cancel: the capsule stays bars and language",
+            run: () => {
+                Dictation.canCancel = true;
+                Dictation.lang = "da-DK";
+                preview.speak("listening");
+            },
+            expect: "dictation",
+            holds: () => island.rowOfKind("dictation")?.actions.length === 0
+        },
+        {
+            name: "open the island: the dictation row offers Discard",
+            run: () => island.pinned = true,
+            wait: 400,
+            expect: "overview",
+            holds: () => island.rowOfKind("dictation")?.actions[0]?.label === "Discard"
+        },
+        {
+            name: "discard: the row says Nothing typed",
+            run: () => {
+                Dictation.phase = "idle";
+                Dictation.cancelledTyped = false;
+                Dictation.cancelled = true;
+            },
+            wait: 400,
+            expect: "overview",
+            holds: () => island.rowOfKind("dictation")?.look.text === "Nothing typed"
+        },
+        {
+            name: "close the island: it says so at rest, with no button beside it",
+            run: () => island.pinned = false,
+            wait: 600,
+            expect: "dictation",
+            holds: () => island.rowOfKind("dictation")?.look.text === "Nothing typed" && !island.rowOfKind("dictation")?.look.trailing
+        },
+        {
+            name: "then it leaves",
+            run: () => {},
+            wait: 2600,
+            expect: "hidden"
+        },
+        {
+            name: "streaming, some words already typed, then discard: Partly typed",
+            run: () => {
+                preview.speak("listening");
+                Dictation.phase = "idle";
+                Dictation.cancelledTyped = true;
+                Dictation.cancelled = true;
+            },
+            wait: 1400,
+            expect: "dictation",
+            holds: () => island.rowOfKind("dictation")?.look.text === "Partly typed"
+        },
+        {
+            name: "and that leaves too",
+            run: () => {},
+            wait: 1800,
+            expect: "hidden"
+        },
+        {
+            name: "an older daemon: no Discard even with the island open",
+            run: () => {
+                Dictation.canCancel = false;
+                Dictation.lang = "auto";
+                preview.speak("listening");
+                island.pinned = true;
+            },
+            wait: 400,
+            expect: "overview",
+            holds: () => !island.rowOfKind("dictation")?.actions.length
+        },
+        {
+            name: "close it and stop dictating: on its way out it never claims a discard",
+            run: () => {
+                island.pinned = false;
+                preview.speak("idle");
+            },
+            wait: 100,
+            expect: "hidden",
+            holds: () => !["Nothing typed", "Partly typed", "Discarded"].includes(island.rowOfKind("dictation")?.look.text)
+        },
+        {
+            name: "and it is gone",
+            run: () => {},
+            wait: 1500,
+            expect: "hidden"
+        },
+        {
             name: "dictating",
             run: () => preview.speak("listening"),
             expect: "dictation"
@@ -920,8 +1007,71 @@ ShellRoot {
             },
             wait: 1500,
             expect: "hidden"
+        },
+        {
+            name: "three notifications pop up",
+            run: () => {
+                Moments.offerUndo();
+                preview.notify("Firefox", "Download finished", "linux-zen-6.17.tar.zst", false);
+                preview.notify("Signal", "Mum", "call me when you get a minute", false);
+                preview.notify("Discord", "marcus", "are you coming tonight?", false);
+                preview.order = Notifications.popups.map(e => e.summary).join("|");
+                preview.mine = Notifications.popups.slice();
+            },
+            wait: 1200,
+            expect: "3 notifications stacked"
+        },
+        {
+            name: "flick the front one away: Discord dismissed, its mark and Undo",
+            run: () => island.flickFront(1),
+            wait: 1500,
+            expect: "2 notifications stacked, below it: activity",
+            holds: () => Notifications.shelved === 1 && preview.undoRow()?.text === "Discord dismissed" && preview.undoRow()?.data?.entry === preview.mine[0]
+        },
+        {
+            name: "Undo puts it back on top of the stack",
+            run: () => preview.pressUndo(),
+            wait: 1500,
+            expect: "3 notifications stacked",
+            holds: () => Notifications.shelved === 0 && !preview.undoRow() && Notifications.popups.map(e => e.summary).join("|") === preview.order
+        },
+        {
+            name: "clear all: 3 notifications cleared, with Undo",
+            run: () => island.clearNotifications(null),
+            wait: 2000,
+            expect: "activity",
+            holds: () => Notifications.shelved === 3 && preview.undoRow()?.text === "3 notifications cleared" && !Notifications.history.some(e => preview.mine.includes(e))
+        },
+        {
+            name: "Undo brings all three back as they were",
+            run: () => preview.pressUndo(),
+            wait: 1500,
+            expect: "3 notifications stacked",
+            holds: () => Notifications.shelved === 0 && Notifications.popups.map(e => e.summary).join("|") === preview.order
+        },
+        {
+            name: "clear all and wait: the row goes after five seconds and so do they",
+            run: () => island.clearNotifications(null),
+            wait: Notifications.undoMs + 2500,
+            expect: "hidden",
+            holds: () => Notifications.shelved === 0 && !preview.undoRow() && !Notifications.history.some(e => preview.mine.includes(e))
         }
     ]
+
+    property string order: ""
+    property var mine: []
+
+    function undoRow(): var {
+        return Activities.shown.find(i => i.id === "moment:undo") ?? null;
+    }
+
+    function pressUndo(): void {
+        const row = preview.undoRow();
+        if (row)
+            Activities.activate(Object.assign({}, row, {
+                action: "undo"
+            }));
+    }
 
     function remember(app: string, summary: string, body: string): void {
         const entry = entryComponent.createObject(preview, {

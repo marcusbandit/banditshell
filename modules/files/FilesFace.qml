@@ -210,6 +210,9 @@ Item {
         case "destroy":
             root.confirmDelete();
             return true;
+        case "undo":
+            FilesUndo.undo();
+            return true;
         case "properties":
             if (Files.currentPath)
                 properties.show(Files.currentPath);
@@ -394,6 +397,22 @@ Item {
             if (answer.toLowerCase() === "delete")
                 Files.deleteForever(paths);
         });
+    }
+
+    Connections {
+        target: Files
+
+        function onVisibleChanged(): void {
+            const at = FilesUndo.shown.map(name => Files.indexOf(name)).filter(index => index >= 0);
+            if (at.length === 0)
+                return;
+            FilesUndo.shown = [];
+            const first = Math.min(...at);
+            Files.cursorName = Files.visible[first].name;
+            Files.anchorName = Files.cursorName;
+            grid.reveal(Math.max(...at));
+            grid.reveal(first);
+        }
     }
 
     ActionSheet {
@@ -623,7 +642,7 @@ Item {
         anchors.right: parent.right
         anchors.bottom: terminal.top
 
-        visible: Files.failure !== ""
+        visible: Files.failure !== "" || FilesUndo.notice !== ""
         height: failure.visible ? failure.implicitHeight : 0
 
         leftPadding: Appearance.padding.normal
@@ -631,13 +650,16 @@ Item {
         topPadding: Appearance.padding.small
         bottomPadding: Appearance.padding.small
 
-        text: Files.failure
+        text: Files.failure || FilesUndo.notice
         font.pixelSize: Files.zoomed(Appearance.font.size.small)
-        color: Appearance.colour.alarm
+        color: Files.failure ? Appearance.colour.alarm : Appearance.colour.text
         elide: Text.ElideRight
 
         TapHandler {
-            onTapped: Files.failure = ""
+            onTapped: {
+                Files.failure = "";
+                FilesUndo.notice = "";
+            }
         }
     }
 
