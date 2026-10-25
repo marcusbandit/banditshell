@@ -28,7 +28,14 @@ Item {
         return root.quiet ? `${count} · quiet mode on` : count;
     }
 
-    readonly property string quietChoice: !root.quiet ? "" : Notifications.quietUntil > 0 ? Notifications.endsLabel(Notifications.quietUntil) : Notifications.parseEnds("never")
+    readonly property string quietChoice: {
+        if (!root.quiet)
+            return "";
+        if (!(Notifications.quietUntil > 0))
+            return Notifications.parseEnds("never");
+        const tomorrow = Notifications.parseEnds("tomorrow");
+        return Notifications.quietUntil === Notifications.deadlineFor(tomorrow) ? tomorrow : Notifications.parseEnds("hour");
+    }
 
     readonly property real deckRoom: root.maxHeight > 0 ? Math.max(0, root.maxHeight - root.topInset - header.implicitHeight - controls.implicitHeight - root.gap * 3 - root.pad) : 100000
 

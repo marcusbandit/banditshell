@@ -77,16 +77,10 @@ function snoozeAdd(items, entry, at) {
     return (items ?? []).filter(item => item && item.entry !== entry).concat([{ entry, at }]);
 }
 
-function hushLength(choice, now, wake) {
-    if (choice === "always")
-        return 0;
-    if (choice === "hour")
-        return HOUR;
-    if (choice !== "tomorrow")
-        return -1;
-    const said = /^(\d{1,2}):(\d{2})$/.exec(String(wake ?? "").trim());
-    const minutes = said && Number(said[1]) < 24 && Number(said[2]) < 60 ? Number(said[1]) * 60 + Number(said[2]) : 0;
-    const today = new Date(now);
-    const at = days => new Date(today.getFullYear(), today.getMonth(), today.getDate() + days, Math.floor(minutes / 60), minutes % 60, 0, 0).getTime();
-    return (at(0) > now ? at(0) : at(1)) - now;
+function hushAllowed(kind, ms, key) {
+    if (kind === "snooze")
+        return ms > 0;
+    if (kind === "mute")
+        return !!key && ms >= 0;
+    return kind === "unmute" && !!key;
 }

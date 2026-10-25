@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/notification-rules.js"), "utf8");
-const Rules = new Function(src + "\nreturn { ruleFor, keyFor, withRule, fromList, candidates, restored };")();
+const Rules = new Function(src + "\nreturn { ruleFor, keyFor, withRule, fromList, candidates, muted, unmuted, restored };")();
 
 test("an app with no rule pops, sounds and keeps its body off the lock screen", () => {
     assert.deepStrictEqual(Rules.ruleFor({}, "firefox"), { pop: true, snd: true, lock: false, muteUntil: 0 });
@@ -62,9 +62,27 @@ test("muting for a while and unmuting go through the same rule", () => {
     assert.deepStrictEqual(back.signal, { pop: true, snd: true, lock: false, muteUntil: 0 });
 });
 
-test("undoing a mute puts the rule back exactly, or removes one that was not there", () => {
-    const rules = { signal: { pop: true, snd: false, lock: true, muteUntil: 0 } };
+test("undoing a mute puts back only what the mute changed, or removes a rule it made", () => {
+    const rules = { signal: { pop: true, snd: false, lock: false, muteUntil: 0 } };
     const muted = Rules.withRule(Rules.withRule(rules, "signal", { muteUntil: 9000 }), "steam", { pop: false, snd: false });
     assert.deepStrictEqual(Rules.restored(Rules.restored(muted, "steam", undefined), "signal", rules.signal), rules);
-    assert.ok(!("steam" in Rules.restored(muted, "steam", undefined)));
+    const locked = Rules.withRule(muted, "signal", { lock: true });
+    assert.deepStrictEqual(Rules.restored(locked, "signal", rules.signal).signal, { pop: true, snd: false, lock: true, muteUntil: 0 });
+    const lockedNew = Rules.withRule(muted, "steam", { lock: true });
+    assert.deepStrictEqual(Rules.restored(lockedNew, "steam", undefined).steam, { pop: true, snd: true, lock: true, muteUntil: 0 });
+});
+
+test("muted means popups and sound off, or a mute still running", () => {
+    const rule = changes => Rules.ruleFor({ a: changes }, "a");
+    assert.strictEqual(Rules.muted(rule({ pop: false, snd: false }), 0), true);
+    assert.strictEqual(Rules.muted(rule({ snd: false }), 0), false);
+    assert.strictEqual(Rules.muted(rule({ muteUntil: 5000 }), 1000), true);
+    assert.strictEqual(Rules.muted(rule({ muteUntil: 5000 }), 6000), false);
+});
+
+test("unmuting a running mute keeps the app's own sound and popup choices", () => {
+    const rule = changes => Rules.ruleFor({ a: changes }, "a");
+    assert.deepStrictEqual(Rules.unmuted(rule({ snd: false, muteUntil: 5000 }), 1000), { muteUntil: 0 });
+    assert.deepStrictEqual(Rules.unmuted(rule({ pop: false, snd: false }), 1000), { pop: true, snd: true, muteUntil: 0 });
+    assert.deepStrictEqual(Rules.unmuted(rule({ pop: false, snd: false, muteUntil: 5000 }), 1000), { pop: true, snd: true, muteUntil: 0 });
 });

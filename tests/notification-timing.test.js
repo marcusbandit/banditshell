@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/notification-timing.js"), "utf8");
-const Timing = new Function(src + "\nreturn { span, muteLength, snoozeLength, muted, mutedLine, due, snoozeAdd, hushLength };")();
+const Timing = new Function(src + "\nreturn { span, muteLength, snoozeLength, muted, mutedLine, due, snoozeAdd, hushAllowed };")();
 
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
@@ -75,19 +75,13 @@ test("snoozing the same entry again moves its deadline", () => {
     assert.deepStrictEqual(again.map(i => [i.entry.name, i.at]), [["b", 200], ["a", 900]]);
 });
 
-test("a press snoozes or mutes for an hour, until the night ends, or for good", () => {
-    const at = (day, h, m) => new Date(2026, 9, day, h, m).getTime();
-    assert.strictEqual(Timing.hushLength("hour", at(25, 10, 15), "07:30"), HOUR);
-    assert.strictEqual(Timing.hushLength("always", at(25, 10, 15), "07:30"), 0);
-    assert.strictEqual(Timing.hushLength("tomorrow", at(25, 23, 0), "07:30"), 8 * HOUR + 30 * MIN);
-    assert.strictEqual(Timing.hushLength("tomorrow", at(25, 3, 0), "07:30"), 4 * HOUR + 30 * MIN);
-    assert.strictEqual(Timing.hushLength("tomorrow", at(25, 7, 30), "07:30"), at(26, 7, 30) - at(25, 7, 30));
-    assert.strictEqual(at(31, 22, 0) + Timing.hushLength("tomorrow", at(31, 22, 0), "07:30"), new Date(2026, 10, 1, 7, 30).getTime());
-});
-
-test("tomorrow falls back to midnight when the night has no end set", () => {
-    const now = new Date(2026, 9, 25, 20, 0).getTime();
-    assert.strictEqual(Timing.hushLength("tomorrow", now, ""), 4 * HOUR);
-    assert.strictEqual(Timing.hushLength("tomorrow", now, "25:00"), 4 * HOUR);
-    assert.strictEqual(Timing.hushLength("later", now, "07:30"), -1);
+test("a press needs a snooze length, or an app key to mute or unmute", () => {
+    assert.strictEqual(Timing.hushAllowed("snooze", HOUR, ""), true);
+    assert.strictEqual(Timing.hushAllowed("snooze", 0, "discord"), false);
+    assert.strictEqual(Timing.hushAllowed("mute", 0, "discord"), true);
+    assert.strictEqual(Timing.hushAllowed("mute", HOUR, ""), false);
+    assert.strictEqual(Timing.hushAllowed("mute", -1, "discord"), false);
+    assert.strictEqual(Timing.hushAllowed("unmute", 0, "discord"), true);
+    assert.strictEqual(Timing.hushAllowed("unmute", 0, ""), false);
+    assert.strictEqual(Timing.hushAllowed("shout", HOUR, "discord"), false);
 });

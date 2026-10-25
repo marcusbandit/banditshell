@@ -1164,6 +1164,13 @@ ShellRoot {
             holds: () => Notifications.quiet && Notifications.quietUntil === Notifications.deadlineFor(Notifications.parseEnds("tomorrow"))
         },
         {
+            name: "quiet until evening, set elsewhere: the first choice lights with its end and turns it off",
+            run: () => Notifications.setQuiet(true, Notifications.parseEnds("evening")),
+            wait: 1200,
+            expect: "the notifications",
+            holds: () => Notifications.quiet && new Date(Notifications.quietUntil).getHours() === 18
+        },
+        {
             name: "quiet always: on until turned off",
             run: () => Notifications.setQuiet(true, Notifications.parseEnds("never")),
             wait: 1200,

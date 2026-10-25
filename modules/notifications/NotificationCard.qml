@@ -56,8 +56,7 @@ Item {
     readonly property var actions: root.live && root.roomy ? (root.entry?.pressable(root.notification?.actions) ?? []) : []
 
     readonly property string appName: root.entry?.appName || "this app"
-    readonly property var appRule: root.entry ? Notifications.ruleAt(Notifications.ruleKeyFor(root.entry)) : null
-    readonly property bool appMuted: !!root.appRule && (!root.appRule.pop || root.appRule.muteUntil > Notifications.now)
+    readonly property bool appMuted: !!root.entry && Notifications.mutedNow(Notifications.ruleKeyFor(root.entry))
 
     readonly property real tileInset: root.tiled ? Appearance.padding.small : 0
     readonly property real tileGap: root.tiled ? Appearance.stroke.line : 0
@@ -331,7 +330,8 @@ Item {
                 Item {
                     id: headRow
 
-                    readonly property real room: headRow.width - (ageText.text ? ageText.implicitWidth + Appearance.padding.small : 0) - (pinMark.visible ? pinMark.width + Appearance.padding.small : 0)
+                    readonly property real ageRoom: Math.max(ageText.text ? ageText.implicitWidth : 0, root.roomy ? root.closeSize : 0)
+                    readonly property real room: headRow.width - (headRow.ageRoom ? headRow.ageRoom + Appearance.padding.small : 0) - (pinMark.visible ? pinMark.width + Appearance.padding.small : 0)
 
                     width: parent.width
                     height: Math.max(Appearance.font.line.small, headline.visible ? headline.implicitHeight : 0, heading.visible ? heading.implicitHeight : 0)
@@ -346,13 +346,14 @@ Item {
                         text: root.age
                         color: Appearance.colour.textFaint
                         font.family: root.family
+                        opacity: root.roomy ? 1 - hushButton.opacity : 1
                     }
 
                     Icon {
                         id: pinMark
 
-                        anchors.right: ageText.text ? ageText.left : parent.right
-                        anchors.rightMargin: ageText.text ? Appearance.padding.small : 0
+                        anchors.right: parent.right
+                        anchors.rightMargin: headRow.ageRoom ? headRow.ageRoom + Appearance.padding.small : 0
                         anchors.verticalCenter: ageText.verticalCenter
                         name: "push_pin"
                         size: Appearance.font.size.small
@@ -741,8 +742,10 @@ Item {
     }
 
     CornerButton {
-        x: close.x
-        y: close.y + close.height + Appearance.padding.small / 2
+        id: hushButton
+
+        x: close.x - Appearance.padding.small * 1.5 - width
+        y: close.y
         width: root.closeSize
         height: root.closeSize
         icon: "snooze"

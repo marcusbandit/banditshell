@@ -29,6 +29,8 @@ Singleton {
 
     readonly property bool muting: Object.values(root.rules).some(rule => rule?.muteUntil > root.now)
 
+    onRulesChanged: root.now = Date.now()
+
     Timer {
         interval: 30000
         repeat: true
@@ -252,6 +254,10 @@ Singleton {
         return Timing.mutedLine(root.ruleAt(appKey).muteUntil, root.now);
     }
 
+    function mutedNow(appKey: string): bool {
+        return Rules.muted(root.ruleAt(appKey), root.now);
+    }
+
     function isMuted(appKey: string): bool {
         const rule = root.ruleAt(appKey);
         return !rule.pop || Timing.muted(rule, Date.now());
@@ -387,27 +393,25 @@ Singleton {
     function hush(entry: var, kind: string, choice: string): bool {
         if (!entry || entry.leaving)
             return false;
-        const ms = Timing.hushLength(choice, Date.now(), root.nightTo);
         const key = root.ruleKeyFor(entry);
+        const ms = kind === "unmute" ? 0 : QuietHours.hushLength(choice, Date.now(), root.nightTo);
+        if (!Timing.hushAllowed(kind, ms, key))
+            return false;
         const record = {
             kind: kind,
             entry: entry,
             app: entry.appName,
             key: key,
             was: Object.prototype.hasOwnProperty.call(root.rules, key) ? root.rules[key] : undefined,
-            popups: root.popups.map((e, at) => ({
-                        entry: e,
-                        at: at
-                    })).filter(p => kind === "snooze" ? p.entry === entry : kind === "mute" && root.ruleKeyFor(p.entry) === key),
+            popups: Shelf.hushedPopups(root.popups, root.popups.map(e => root.ruleKeyFor(e)), entry, key, kind),
+            snooze: root.snoozed.find(item => item.entry === entry) ?? null,
             seen: entry.seen
         };
-        if (kind === "snooze" ? !(ms > 0) : kind === "mute" ? ms < 0 : kind !== "unmute")
-            return false;
         root.letGo();
         if (kind === "snooze")
             root.snooze(entry, ms);
         else if (kind === "unmute")
-            root.unmute(key);
+            root.setRule(key, Rules.unmuted(root.ruleAt(key), Date.now()));
         else {
             root.mute(key, ms);
             for (const p of record.popups)
@@ -419,7 +423,7 @@ Singleton {
 
     function unhush(record: var): void {
         if (record.kind === "snooze") {
-            root.snoozed = root.snoozed.filter(item => item.entry !== record.entry);
+            root.snoozed = root.snoozed.filter(item => item.entry !== record.entry).concat(record.snooze ? [record.snooze] : []);
             if (record.entry)
                 record.entry.seen = record.seen;
         } else {
@@ -521,6 +525,7 @@ Singleton {
     property var shelfHeldBy: []
 
     readonly property int shelved: root.shelf.length
+    readonly property bool undoable: root.shelf.length > 0 || root.hushed !== null
 
     function holdShelf(who: var): void {
         if (!root.shelfHeldBy.includes(who))
@@ -609,7 +614,7 @@ Singleton {
     Timer {
         interval: 100
         repeat: true
-        running: (root.shelf.length > 0 || root.hushed !== null) && root.shelfHeldBy.length === 0
+        running: root.undoable && root.shelfHeldBy.length === 0
 
         onTriggered: {
             root.shelfElapsed += interval;

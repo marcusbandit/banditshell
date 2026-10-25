@@ -57,6 +57,13 @@ function deadlineFor(choice, at, wake) {
     return 0;
 }
 
+function hushLength(choice, at, wake) {
+    if (choice === "always")
+        return 0;
+    const ends = parseEnds(choice);
+    return ends === ENDS_HOUR || ends === ENDS_TOMORROW ? deadlineFor(ends, at, wake) - at : -1;
+}
+
 function endsLabel(until, at, wake) {
     if (!(until > at))
         return ENDS_NEVER;
