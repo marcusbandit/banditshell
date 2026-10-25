@@ -92,7 +92,8 @@ Singleton {
             dim: p.dim,
             mid: p.mid,
             bright: p.bright,
-            alarm: p.alarm
+            alarm: p.alarm,
+            brass: colour(p.brass) ? p.brass : root.slate.brass
         };
     }
 
@@ -163,6 +164,7 @@ Singleton {
         mid: p ? p.mid : root.slate.mid
         bright: p ? p.bright : root.slate.bright
         alarm: p ? p.alarm : root.slate.alarm
+        brass: p ? p.brass : root.slate.brass
     }
 
     FileView {
@@ -222,6 +224,7 @@ Singleton {
         required property color bright
 
         required property color alarm
+        required property color brass
     }
 
     readonly property Theme slate: Theme {
@@ -232,5 +235,6 @@ Singleton {
         mid: "#7fb3d4"
         bright: "#b8dcf0"
         alarm: "#ff7a4d"
+        brass: "#d8c48c"
     }
 }

@@ -463,7 +463,8 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   `config/Appearance.qml`, so the shell and Hyprland's window borders are the same object rather
   than two things that happen to match. One hue family climbing near-black to silvery white, with a
   saturated end (`dim` / `mid` / `bright`) spent sparingly so a bright stop reads as a specular
-  highlight, plus one `alarm` outside the family.
+  highlight, plus one `alarm` outside the family and the theme's `brass` as `warning`, a second
+  colour outside it for what needs a hand soon but is no alarm.
   - **The Monocraft constraint is load-bearing.** Pixel-font stems are one device pixel, so
     anti-aliasing has nothing to work with and mid-tones turn text to mush. Pixel text goes a bright
     stop on a dark one. **Never on a mid tone.** That is why the panel is the darkest ramp stop and
@@ -2011,7 +2012,10 @@ important stay by a fixed rank: the microphone, a screen recording, a low batter
 charging, quiet or a mode, a stuck update, then VPN, airplane, keep-awake, and last a charging
 battery or an update that is only waiting. Privacy and anything that swallows notifications stay
 in view. A `+N` under the marks counts what did not fit and names them on hover, and a mark
-that goes leaves by shrinking, not by blinking out.
+that goes leaves by shrinking, not by blinking out. The marks never wear the accent, which belongs
+to the active workspace pip: what is only on (VPN, airplane, quiet, a mode, keep-awake, a muted
+microphone, a waiting update, a charging battery) is the palette's plain light, a low battery or a
+stuck update is `warning`, and `alarm` is kept for a live microphone and a screen recording.
 
 **THE GLANCE, 2026-10-24: the time and the battery show at rest.** People using the shell said
 an empty screen is annoying when all they want is to look up and see what time it is and how much
