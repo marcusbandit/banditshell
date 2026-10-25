@@ -142,6 +142,8 @@ Singleton {
 
         readonly property color alarm: root.theme.alarm
 
+        readonly property color warning: root.theme.brass
+
         readonly property color accentText: root.rampAt(1, 1)
 
         readonly property color ink: root.rampAt(0, 1)

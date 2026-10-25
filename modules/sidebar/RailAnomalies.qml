@@ -91,7 +91,7 @@ Item {
     }
 
     function toneColour(tone: string): color {
-        return tone === "alarm" ? Appearance.colour.alarm : tone === "accent" ? Appearance.colour.accent : Appearance.colour.textDim;
+        return tone === "alarm" ? Appearance.colour.alarm : tone === "warning" ? Appearance.colour.warning : tone === "notice" ? Appearance.colour.text : Appearance.colour.textDim;
     }
 
     implicitHeight: column.implicitHeight

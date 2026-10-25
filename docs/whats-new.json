@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-22",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rail marks no longer share the active workspace's colour"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Low battery turns brass; orange now means mic or screen recording"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-21",
       "date": "2026-10-25",
       "changes": [
