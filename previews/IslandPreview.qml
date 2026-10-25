@@ -1055,8 +1055,159 @@ ShellRoot {
             wait: Notifications.undoMs + 2500,
             expect: "hidden",
             holds: () => Notifications.shelved === 0 && !preview.undoRow() && !Notifications.history.some(e => preview.mine.includes(e))
+        },
+        {
+            name: "three more pop up for snoozing and muting",
+            run: () => {
+                Moments.offerUndo();
+                preview.notify("Firefox", "Download finished", "linux-zen-6.17.tar.zst", false);
+                preview.notify("Signal", "Mum", "call me when you get a minute", false);
+                preview.notify("Discord", "marcus", "are you coming tonight?", false);
+                preview.order = Notifications.popups.map(e => e.summary).join("|");
+                preview.mine = Notifications.popups.slice();
+            },
+            wait: 1200,
+            expect: "3 notifications stacked"
+        },
+        {
+            name: "the snooze button on Discord's card opens snooze and mute choices",
+            run: () => preview.hushing(true),
+            wait: 1200,
+            expect: "3 notifications stacked",
+            holds: () => preview.cardOf(preview.mine[0])?.hushing === true
+        },
+        {
+            name: "pointing at the snooze button names it",
+            run: () => preview.tip("Remind me or mute", true),
+            wait: 1200,
+            expect: "3 notifications stacked",
+            holds: () => preview.tip("Remind me or mute", true)
+        },
+        {
+            name: "remind me in an hour: the card goes, Discord hidden until then, with Undo",
+            run: () => preview.tip("Remind me or mute", false) && preview.cardOf(preview.mine[0])?.hush("snooze", Notifications.hushUntil("hour", Date.now())),
+            wait: 1500,
+            expect: "2 notifications stacked, below it: activity",
+            holds: () => Notifications.snoozed.some(i => i.entry === preview.mine[0] && Math.abs(i.at - Date.now() - 3600000) < 10000) && preview.undoRow()?.text.startsWith("Discord hidden until ")
+        },
+        {
+            name: "Undo brings the card back and drops the snooze",
+            run: () => preview.pressUndo(),
+            wait: 1500,
+            expect: "3 notifications stacked",
+            holds: () => Notifications.snoozed.length === 0 && !preview.undoRow() && Notifications.popups.map(e => e.summary).join("|") === preview.order
+        },
+        {
+            name: "mute Discord until I unmute: its card goes, popups and sound off, with Undo",
+            run: () => {
+                preview.hushing(true);
+                preview.cardOf(preview.mine[0])?.hush("mute", 0);
+            },
+            wait: 1500,
+            expect: "2 notifications stacked, below it: activity",
+            holds: () => {
+                const rule = Notifications.ruleAt(Notifications.ruleKeyFor(preview.mine[0]));
+                return !rule.pop && !rule.snd && preview.undoRow()?.text === "Discord muted until I unmute";
+            }
+        },
+        {
+            name: "Undo unmutes and leaves no rule behind",
+            run: () => preview.pressUndo(),
+            wait: 1500,
+            expect: "3 notifications stacked",
+            holds: () => !(Notifications.ruleKeyFor(preview.mine[0]) in Notifications.rules) && Notifications.popups.map(e => e.summary).join("|") === preview.order
+        },
+        {
+            name: "mute for an hour and let the undo lapse: the mute stays",
+            run: () => {
+                preview.hushing(true);
+                preview.cardOf(preview.mine[0])?.hush("mute", Notifications.hushUntil("hour", Date.now()));
+            },
+            wait: Notifications.undoMs + 2500,
+            expect: "2 notifications stacked",
+            holds: () => Notifications.mutedUntil(Notifications.ruleKeyFor(preview.mine[0])) > Date.now() + 3500000 && !preview.undoRow()
+        },
+        {
+            name: "a muted app's card offers unmute instead",
+            run: () => {
+                preview.notify("Discord", "marcus", "still coming?", false);
+                preview.mine = [Notifications.popups[0]];
+                preview.hushing(true);
+            },
+            wait: 1500,
+            expect: "3 notifications stacked",
+            holds: () => preview.cardOf(preview.mine[0])?.appMuted === true
+        },
+        {
+            name: "unmute: Discord unmuted, with Undo",
+            run: () => preview.cardOf(preview.mine[0])?.hush("unmute", 0),
+            wait: 1500,
+            expect: "3 notifications stacked, below it: activity",
+            holds: () => Notifications.mutedUntil(Notifications.ruleKeyFor(preview.mine[0])) === 0 && preview.undoRow()?.text === "Discord unmuted"
+        },
+        {
+            name: "the notifications view offers quiet until an hour from now, the night's end, or until turned off",
+            run: () => {
+                Notifications.letGo();
+                island.choose({
+                    kind: "notifications"
+                });
+            },
+            wait: 1500,
+            expect: "the notifications"
+        },
+        {
+            name: "quiet for an hour: the row says until when, with turn off",
+            run: () => Notifications.quietTill(Notifications.hushUntil("hour", Date.now())),
+            wait: 1200,
+            expect: "the notifications",
+            holds: () => Notifications.quiet && Math.abs(Notifications.quietUntil - Date.now() - 3600000) < 10000
+        },
+        {
+            name: "quiet until tomorrow: it ends when the night does",
+            run: () => Notifications.quietTill(Notifications.hushUntil("tomorrow", Date.now())),
+            wait: 1200,
+            expect: "the notifications",
+            holds: () => Notifications.quiet && Notifications.quietUntil === Notifications.deadlineFor(Notifications.parseEnds("tomorrow"))
+        },
+        {
+            name: "quiet until evening, set elsewhere: the row says so too",
+            run: () => Notifications.setQuiet(true, Notifications.parseEnds("evening")),
+            wait: 1200,
+            expect: "the notifications",
+            holds: () => Notifications.quiet && new Date(Notifications.quietUntil).getHours() === 18
+        },
+        {
+            name: "quiet always: on until turned off",
+            run: () => Notifications.quietTill(0),
+            wait: 1200,
+            expect: "the notifications",
+            holds: () => Notifications.quiet && Notifications.quietUntil === 0
         }
     ]
+
+    function tip(text: string, up: bool): bool {
+        const find = item => {
+            for (const child of item?.children ?? []) {
+                if (child.text === text && child.up !== undefined)
+                    return child;
+                const deeper = find(child);
+                if (deeper)
+                    return deeper;
+            }
+            return null;
+        };
+        const found = find(preview.cardOf(preview.mine[0]));
+        if (found)
+            found.up = up;
+        return !!found;
+    }
+
+    function hushing(on: bool): void {
+        const card = preview.cardOf(preview.mine[0]);
+        if (card)
+            card.hushing = on;
+    }
 
     property string order: ""
     property var mine: []
