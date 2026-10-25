@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.modules.settings
+import "../catalogue.js" as Catalogue
 
 Item {
     id: root
@@ -20,9 +21,9 @@ Item {
     readonly property var shown: {
         const by = {
             name: (a, b) => a[0].replace(".", "").localeCompare(b[0].replace(".", "")),
-            date: (a, b) => a[4] - b[4],
+            mtime: (a, b) => a[4] - b[4],
             size: (a, b) => b[3] - a[3],
-            type: (a, b) => a[2].localeCompare(b[2]) || a[0].localeCompare(b[0])
+            kind: (a, b) => a[2].localeCompare(b[2]) || a[0].localeCompare(b[0])
         }[root.sort] ?? ((a, b) => 0);
         return root.files.filter(f => root.hidden || !f[0].startsWith(".")).sort((a, b) => ((b[2] === "dir") - (a[2] === "dir")) || by(a, b));
     }
@@ -266,6 +267,6 @@ Item {
     }
 
     SceneCaption {
-        text: `${root.list ? "list" : "icons"} · by ${root.sort}${root.hidden ? " · dotfiles shown" : ""}`
+        text: `${root.list ? "list" : "icons"} · ${Catalogue.filesSortOrder(root.sort)}${root.hidden ? " · dotfiles shown" : ""}`
     }
 }

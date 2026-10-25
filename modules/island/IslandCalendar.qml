@@ -22,10 +22,10 @@ Item {
 
     implicitHeight: root.maxHeight > 0 ? Math.min(root.natural, root.maxHeight) : root.natural
 
-    SystemClock {
+    WallClock {
         id: clock
 
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
         enabled: root.watched
     }
 

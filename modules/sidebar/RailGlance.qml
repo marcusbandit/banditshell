@@ -31,10 +31,10 @@ Item {
         return root.aligned ? Math.min(root.timeCentre - timeHeight / 2, foot) : foot;
     }
 
-    SystemClock {
+    WallClock {
         id: clock
 
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
     }
 
     Follow {
