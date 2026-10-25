@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "ranking.js" as Ranking
+import "clipboard-sweep.js" as Sweep
 
 Singleton {
     id: root
@@ -16,6 +17,8 @@ Singleton {
     readonly property string clipseDir: `${Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`}/clipse`
 
     property var entries: []
+
+    readonly property int unpinned: root.entries.filter(e => !e.pinned).length
 
     property bool loaded: false
 
@@ -179,8 +182,7 @@ Singleton {
     }
 
     function basename(p: string): string {
-        const cut = p.lastIndexOf("/");
-        return cut < 0 ? p : p.slice(cut + 1);
+        return Sweep.basename(p);
     }
 
     function age(recorded: real): string {
@@ -439,19 +441,10 @@ Singleton {
         }
         root.sweepOwed = false;
 
-        const wanted = root.entries.filter(e => !!e.file).map(e => root.basename(e.file));
-
-        reaper.command = ["sh", "-c", `
-            dir=$1; shift
-            [ -d "$dir" ] || exit 0
-            keep=$(mktemp) || exit 0
-            printf '%s\\n' "$@" > "$keep"
-            find "$dir" -maxdepth 1 -type f -printf '%f\\n' 2>/dev/null \\
-                | grep -vxF -f "$keep" \\
-                | while IFS= read -r n; do rm -f -- "$dir/$n"; done
-            rm -f "$keep"
-            exit 0
-        `, "sh", root.blobs, ...wanted];
+        const command = Sweep.command(root.blobs, root.entries, root.keep && root.loaded);
+        if (!command)
+            return;
+        reaper.command = command;
         reaper.running = true;
     }
 

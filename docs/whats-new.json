@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-22",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clipboard and launcher have Clear history; pinned entries stay"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clearing a broken clipboard history no longer deletes its pictures"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-21",
       "date": "2026-10-25",
       "changes": [

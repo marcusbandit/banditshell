@@ -1178,6 +1178,17 @@ LauncherConcept {
                                 color: Appearance.colour.textFaint
                             }
 
+                            SquircleRect {
+                                visible: !!line.modelData.going
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: Appearance.stroke.ring * 2
+                                height: line.height - Appearance.padding.normal * 2
+                                pill: "object"
+                                color: Appearance.colour.alarm
+                                z: 1
+                            }
+
                             MenuRow {
                                 id: row
 
