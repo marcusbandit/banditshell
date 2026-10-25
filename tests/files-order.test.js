@@ -48,6 +48,12 @@ test.describe("files order", () => {
         assert.deepStrictEqual(said, ["a to z", "newest first", "biggest first", "grouped by type"]);
     });
 
+    test.it("Markdown source in Settings writes raw, the value the file manager shows as source", () => {
+        const row = Catalogue.ROW_BY_KEY.filesMarkdown;
+        assert.strictEqual(row.cfg, "files.markdown");
+        assert.deepStrictEqual(Catalogue.options(row, {}), [["rendered", "rendered"], ["raw", "source"]]);
+    });
+
     test.it("does not reorder the list it was given", () => {
         Order.ordered(entries, "size");
         assert.deepStrictEqual(entries.map(e => e.name), ["b.txt", "a.png", "c.md", "zdir"]);
