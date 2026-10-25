@@ -16,3 +16,27 @@ function restored(list, entries) {
     }
     return out;
 }
+
+function placed(list, items) {
+    const out = list.slice();
+    for (const item of items.slice().reverse())
+        if (!out.includes(item.entry))
+            out.splice(Math.min(Math.max(0, item.at), out.length), 0, item.entry);
+    return out;
+}
+
+function homes(records) {
+    const history = [];
+    const popups = [];
+    const gone = [];
+    for (const r of records) {
+        const popup = r.popup >= 0 && r.live;
+        if (r.listed)
+            history.push(r.entry);
+        if (popup)
+            popups.push({ entry: r.entry, at: r.popup });
+        if (!r.listed && !popup)
+            gone.push(r.entry);
+    }
+    return { history: history, popups: popups, gone: gone };
+}

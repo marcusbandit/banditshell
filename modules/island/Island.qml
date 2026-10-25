@@ -818,10 +818,13 @@ Item {
     onHoveringChanged: {
         if (!root.hovering && !root.reforming)
             root.spent = false;
-        if (root.hovering)
+        if (root.hovering) {
             Notifications.pause(root);
-        else
+            Notifications.holdShelf(root);
+        } else {
             Notifications.resume(root);
+            Notifications.releaseShelf(root);
+        }
         Qt.callLater(root.arrange);
     }
 
@@ -863,6 +866,7 @@ Item {
             entry.release(root);
         Notices.release(root);
         Notifications.resume(root);
+        Notifications.releaseShelf(root);
     }
 
     Timer {
