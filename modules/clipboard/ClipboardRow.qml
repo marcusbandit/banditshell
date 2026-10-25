@@ -53,12 +53,12 @@ Item {
     property bool leaving: false
     property real lastY: 0
 
-    opacity: leave.value * goingFade.value
+    opacity: leave.value
 
     Follow {
         id: goingFade
 
-        target: root.going ? Appearance.opacity.disabled : 1
+        target: root.going ? 1 : 0
         speed: Appearance.animation.revealSpeed
         epsilon: Appearance.animation.fadeEpsilon
         startsAtTarget: true
@@ -110,6 +110,18 @@ Item {
         height: root.height - Appearance.padding.small
 
         opacity: root.thrown < 0 ? 1 - root.throwFraction * 0.7 : 1
+
+        SquircleRect {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            width: Appearance.stroke.ring * 2
+            height: parent.height - Appearance.padding.normal * 2
+            pill: "object"
+            color: Appearance.colour.alarm
+            opacity: goingFade.value
+            visible: opacity > 0.01
+            z: 1
+        }
 
         SquircleRect {
             anchors.fill: parent

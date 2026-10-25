@@ -59,7 +59,7 @@ QtObject {
             key: `clipboard:${entry.id}`,
             kind: "clipboard",
             entry: entry,
-            faded: root.clearing && !entry.pinned,
+            going: root.clearing && !entry.pinned,
             label: picture ? entry.w > 0 ? `${entry.w} × ${entry.h}` : "Picture" : ClipboardSearch.firstLine(Clipboard.summarise(entry), 160),
             detail: parts.join(" · "),
             icon: Clipboard.markFor(entry.kind),
@@ -74,7 +74,7 @@ QtObject {
             key: "clipboardclear",
             kind: "clipboardclear",
             armed: root.clearing,
-            label: root.clearing ? `Clear ${root.clearable === 1 ? "1 item" : `${root.clearable} items`}?` : "Clear history",
+            label: root.clearing ? `Enter clears ${root.clearable === 1 ? "1 item" : `${root.clearable} items`}` : "Clear history",
             detail: pinned > 0 ? `${pinned} pinned stay` : "",
             icon: "delete_sweep",
             score: Infinity
