@@ -1,9 +1,10 @@
 const SCREENSHOT_MS = 6000;
 const BLUETOOTH_MS = 3000;
+const WIFI_MS = 8000;
 const COPIED_MS = 900;
 const COPIED_PREVIEW = 20;
 const MASK = "••••••••";
-const MOMENT_KINDS = ["screenshot", "privacy", "copied", "bluetooth"];
+const MOMENT_KINDS = ["screenshot", "privacy", "copied", "bluetooth", "wifi"];
 const SCREENSHOT_ACTIONS = ["copy", "edit", "folder", "delete"];
 const AUDIO_ICONS = ["headphones", "speaker"];
 
@@ -134,6 +135,24 @@ function bluetoothSpec(name, icon, battery) {
         priority: 30,
         source: "moments",
         data: { battery: battery >= 0 ? battery : -1 }
+    };
+}
+
+function wifiSpec(name, kind, message) {
+    const shown = squash(name);
+    if (shown === "")
+        return null;
+    return {
+        id: "moment:wifi",
+        style: "wifi",
+        text: squash(message) || shown,
+        icon: "wifi_off",
+        until: WIFI_MS,
+        priority: 45,
+        pressable: true,
+        source: "moments",
+        data: { name: shown, kind: String(kind || "unknown") },
+        actions: [{ name: "retry", label: "Try again" }]
     };
 }
 

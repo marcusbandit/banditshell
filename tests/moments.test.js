@@ -5,14 +5,14 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/moments.js"), "utf8");
-const M = new Function(src + "\nreturn { SCREENSHOT_MS, BLUETOOTH_MS, COPIED_MS, momentWanted, fileUrl, screenshotSpec, screenshotAction, editorCommand, preview, copyShape, copiedLabel, copiedSpec, audioDevice, batteryPercent, bluetoothSpec, newlyConnected };")();
+const M = new Function(src + "\nreturn { SCREENSHOT_MS, BLUETOOTH_MS, COPIED_MS, momentWanted, fileUrl, screenshotSpec, screenshotAction, editorCommand, preview, copyShape, copiedLabel, copiedSpec, audioDevice, batteryPercent, bluetoothSpec, wifiSpec, newlyConnected };")();
 const act = fs.readFileSync(path.join(ROOT, "services/activities.js"), "utf8");
 const A = new Function(act + "\nreturn { push, itemOf, sweep };")();
 
 test.describe("moment switches", () => {
     test.it("wants every kind unless its switch is off", () => {
-        const all = { screenshot: true, privacy: true, copied: true, bluetooth: true };
-        for (const kind of ["screenshot", "privacy", "copied", "bluetooth"])
+        const all = { screenshot: true, privacy: true, copied: true, bluetooth: true, wifi: true };
+        for (const kind of ["screenshot", "privacy", "copied", "bluetooth", "wifi"])
             assert.strictEqual(M.momentWanted(all, kind), true);
         assert.strictEqual(M.momentWanted(Object.assign({}, all, { copied: false }), "copied"), false);
         assert.strictEqual(M.momentWanted(Object.assign({}, all, { copied: false }), "screenshot"), true);
@@ -131,5 +131,24 @@ test.describe("bluetooth", () => {
         assert.deepStrictEqual(M.newlyConnected(["a"], ["a", "b"]), ["b"]);
         assert.deepStrictEqual(M.newlyConnected(["a", "b"], ["a"]), []);
         assert.deepStrictEqual(M.newlyConnected(undefined, ["a"]), ["a"]);
+    });
+});
+
+test.describe("wifi", () => {
+    test.it("says which network failed and why, with Try again, for eight seconds", () => {
+        const spec = M.wifiSpec("Cafe", "timeout", "Cafe: no answer");
+        assert.strictEqual(spec.text, "Cafe: no answer");
+        assert.strictEqual(spec.until, 8000);
+        assert.deepStrictEqual(spec.data, { name: "Cafe", kind: "timeout" });
+        assert.deepStrictEqual(spec.actions, [{ name: "retry", label: "Try again" }]);
+        assert.ok(!A.push([], spec, 0).error);
+    });
+
+    test.it("falls back to the network name without a message", () => {
+        assert.strictEqual(M.wifiSpec("Cafe", "timeout", "").text, "Cafe");
+    });
+
+    test.it("posts nothing for a network without a name", () => {
+        assert.strictEqual(M.wifiSpec("  ", "timeout", "x"), null);
     });
 });

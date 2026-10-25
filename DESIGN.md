@@ -4510,15 +4510,19 @@ controls, the settings volume row declare it with `LevelCover`), when the device
 just changed, and for the first seconds after the shell starts.
 `island.levels` turns it off.
 
-Four more things post through the same door, as `Moments` and `Privacy`, and each
+Five more things post through the same door, as `Moments` and `Privacy`, and each
 has its own switch under `island.moments`. A screenshot shows the picture small
 through `SquircleImage`, with Copy, Edit (the picker's editor), Folder and Delete,
 for six seconds; pressing the row opens the picture, and Delete moves it to the
 trash. It runs after `screenshot save`, `copy` and `full`. Copying anything from
 the shell gives a short Copied row with the first twenty characters; text that
 was copied as sensitive shows eight dots instead of the text. An audio device
-that connects over Bluetooth gets its name and battery for three seconds. The
-fourth is not a moment but a state: while a program holds the microphone, the
+that connects over Bluetooth gets its name and battery for three seconds. A
+Wi-Fi join that fails names the network and the cause, "Cafe: no answer", in
+red for eight seconds, with Try again; only joins a person started
+count, through `Network.join`, so a dropped connection or a background retry
+stays quiet, and a wrong password typed into the join prompt goes back to the
+prompt instead. The fifth is not a moment but a state: while a program holds the microphone, the
 camera or a screen cast open in PipeWire, a privacy activity stays up, coloured
 (the camera and the screen alarm red, the microphone accent), naming the app. It
 is kind `privacy`, so it sits in the island like dictation does, but it joins

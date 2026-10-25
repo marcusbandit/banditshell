@@ -83,3 +83,18 @@ function secretLine(property, secret) {
 function signInSecrets(identity, password) {
     return secretLine("802-1x.identity", identity) + secretLine("802-1x.password", password);
 }
+
+const JOIN_FAILURES = {
+    password: "wrong password",
+    timeout: "no answer",
+    lost: "it went away",
+    hungup: "it hung up"
+};
+
+function failureLabel(kind) {
+    return JOIN_FAILURES[kind] || "could not join";
+}
+
+function failureMessage(name, kind) {
+    return `${name}: ${failureLabel(kind)}`;
+}

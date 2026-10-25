@@ -770,6 +770,23 @@ ShellRoot {
             expect: "hidden"
         },
         {
+            name: "a Wi-Fi join fails: it says why, with Try again",
+            run: () => Activities.push(MomentLogic.wifiSpec("Cafe", "timeout", "Cafe: no answer")),
+            expect: "activity"
+        },
+        {
+            name: "pin the island: the same row in the overview",
+            run: () => island.pinned = true,
+            wait: 600,
+            expect: "overview"
+        },
+        {
+            name: "unpin: the Wi-Fi moment is gone after eight seconds",
+            run: () => island.pinned = false,
+            wait: 8200,
+            expect: "hidden"
+        },
+        {
             name: "dictating, then a screenshot: it shows below the bars first",
             run: () => {
                 preview.speak("listening");

@@ -1511,8 +1511,8 @@ QtObject {
                 const n = Network.find(row.name);
                 if (n?.connected)
                     n.disconnect();
-                else if (n)
-                    n.connect();
+                else
+                    Network.join(n, "");
             }
             return;
         case "output":

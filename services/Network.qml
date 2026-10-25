@@ -503,12 +503,7 @@ Singleton {
         if (root.enterprise(n))
             return `${card.ssid} signs in with an identity, and a card cannot carry one`;
 
-        root.clearFailure(n.name);
-
-        if (root.secured(n) && card.password)
-            n.connectWithPsk(card.password);
-        else
-            n.connect();
+        root.join(n, root.secured(n) ? card.password : "");
         return "";
     }
 
@@ -658,9 +653,44 @@ Singleton {
     property string failedName: ""
     property int failedReason: ConnectionFailReason.Unknown
 
+    property string trying: ""
+
+    signal joinFailed(string name, string kind)
+
+    function join(n: var, psk: string): void {
+        if (!n)
+            return;
+        root.clearFailure(n.name);
+        root.trying = n.name;
+        if (psk)
+            n.connectWithPsk(psk);
+        else
+            n.connect();
+    }
+
     function noteFailure(name: string, reason: int): void {
         root.failedName = name;
         root.failedReason = reason;
+        if (root.trying !== name)
+            return;
+        root.trying = "";
+        root.joinFailed(name, root.failureKind(reason));
+    }
+
+    function failureKind(reason: int): string {
+        switch (reason) {
+        case ConnectionFailReason.NoSecrets:
+            return "password";
+        case ConnectionFailReason.WifiAuthTimeout:
+            return "timeout";
+        case ConnectionFailReason.WifiNetworkLost:
+            return "lost";
+        case ConnectionFailReason.WifiClientDisconnected:
+            return "hungup";
+        case ConnectionFailReason.WifiClientFailed:
+            return "refused";
+        }
+        return "unknown";
     }
 
     function clearFailure(name: string): void {
@@ -671,17 +701,11 @@ Singleton {
     }
 
     function failureLabel(): string {
-        switch (root.failedReason) {
-        case ConnectionFailReason.NoSecrets:
-            return "wrong password";
-        case ConnectionFailReason.WifiAuthTimeout:
-            return "no answer";
-        case ConnectionFailReason.WifiNetworkLost:
-            return "it went away";
-        case ConnectionFailReason.WifiClientDisconnected:
-            return "it hung up";
-        }
-        return "could not join";
+        return WifiList.failureLabel(root.failureKind(root.failedReason));
+    }
+
+    function failureMessage(name: string, kind: string): string {
+        return WifiList.failureMessage(name, kind);
     }
 
     Instantiator {
@@ -701,6 +725,8 @@ Singleton {
 
                 function onConnectedChanged(): void {
                     if (watcher.modelData.connected) {
+                        if (root.trying === watcher.modelData.name)
+                            root.trying = "";
                         root.clearFailure(watcher.modelData.name);
                         root.clearEnroll(watcher.modelData.name);
                     }

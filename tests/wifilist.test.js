@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/wifilist.js"), "utf8");
-const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, pick, secretLine, signInSecrets };")();
+const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, pick, secretLine, signInSecrets, failureLabel, failureMessage };")();
 
 const STEPS = 4;
 
@@ -257,5 +257,25 @@ test.describe("signInSecrets", () => {
     test.it("keeps an identity with spaces or a backslash intact", () => {
         const text = WifiList.signInSecrets(" DOMAIN\\user ", "pass word");
         assert.deepStrictEqual(nmcliPasswords(text), { "802-1x.identity": " DOMAIN\\user ", "802-1x.password": "pass word" });
+    });
+});
+
+test.describe("join failures", () => {
+    test.it("names the network and the cause in plain words", () => {
+        assert.strictEqual(WifiList.failureMessage("Cafe", "timeout"), "Cafe: no answer");
+        assert.strictEqual(WifiList.failureMessage("Cafe", "password"), "Cafe: wrong password");
+        assert.strictEqual(WifiList.failureMessage("Cafe", "lost"), "Cafe: it went away");
+    });
+
+    test.it("keeps the short row labels the menu shows", () => {
+        assert.strictEqual(WifiList.failureLabel("password"), "wrong password");
+        assert.strictEqual(WifiList.failureLabel("timeout"), "no answer");
+        assert.strictEqual(WifiList.failureLabel("hungup"), "it hung up");
+        assert.strictEqual(WifiList.failureLabel("refused"), "could not join");
+    });
+
+    test.it("falls back to a general cause for a reason it does not know", () => {
+        assert.strictEqual(WifiList.failureLabel("nonsense"), "could not join");
+        assert.strictEqual(WifiList.failureMessage("Cafe", undefined), "Cafe: could not join");
     });
 });

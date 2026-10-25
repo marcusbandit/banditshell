@@ -444,7 +444,7 @@ Column {
                                 return n.disconnect();
 
                             if (n.known || !Network.secured(n))
-                                return n.connect();
+                                return Network.join(n, "");
                             root.asking = root.asking === n.name ? "" : n.name;
                         }
 
@@ -508,9 +508,8 @@ Column {
                             onAccepted: psk => {
                                 const n = Network.find(entry.name);
                                 if (n) {
-                                    Network.clearFailure(n.name);
                                     Network.clearEnroll(n.name);
-                                    n.connectWithPsk(psk);
+                                    Network.join(n, psk);
                                 }
                                 root.asking = "";
                             }

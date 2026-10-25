@@ -10,6 +10,10 @@ Singleton {
     property string pending: ""
     property string screenName: ""
 
+    readonly property string wrongPassword: "That password did not work"
+
+    signal failed(string name, string kind, string message)
+
     function join(name: string, screenName: string): void {
         const n = Network.find(name);
         if (!n || n.connected)
@@ -26,7 +30,7 @@ Singleton {
         }
         if (n.known || !Network.secured(n)) {
             root.pending = name;
-            n.connect();
+            Network.join(n, "");
             return;
         }
         root.askFor(name, "");
@@ -48,33 +52,42 @@ Singleton {
                 const target = Network.find(name);
                 if (!target || !secret)
                     return;
-                Network.clearFailure(name);
                 root.pending = name;
-                target.connectWithPsk(secret);
+                Network.join(target, secret);
             }
         });
+    }
+
+    function asksAgain(n: var, kind: string): bool {
+        return kind === "password" && !!n && Network.secured(n) && !Network.enterprise(n);
+    }
+
+    function retry(name: string, kind: string): void {
+        const n = Network.find(name);
+        if (!n || n.connected)
+            return;
+        if (root.asksAgain(n, kind))
+            root.askFor(name, root.wrongPassword);
+        else
+            root.join(name, root.screenName);
     }
 
     Connections {
         target: Network
 
-        function onFailedNameChanged(): void {
-            Qt.callLater(root.checkFailure);
+        function onJoinFailed(name: string, kind: string): void {
+            const asked = root.pending === name;
+            if (asked)
+                root.pending = "";
+            if (asked && root.asksAgain(Network.find(name), kind))
+                root.askFor(name, root.wrongPassword);
+            else
+                root.failed(name, kind, Network.failureMessage(name, kind));
         }
 
         function onActiveNameChanged(): void {
             if (root.pending && Network.activeName === root.pending)
                 root.pending = "";
         }
-    }
-
-    function checkFailure(): void {
-        if (!root.pending || Network.failedName !== root.pending)
-            return;
-        const name = root.pending;
-        root.pending = "";
-        const n = Network.find(name);
-        if (Network.failedReason === ConnectionFailReason.NoSecrets && n && Network.secured(n) && !Network.enterprise(n))
-            root.askFor(name, "That password did not work");
     }
 }
