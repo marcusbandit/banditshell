@@ -161,6 +161,11 @@ Singleton {
         readonly property color updateFailed: root.roleColour(root.config.updates.failedColour)
         readonly property color updateReady: root.roleColour(root.config.updates.readyColour)
 
+        readonly property color changeNew: "#8fb8e8"
+        readonly property color changeChanged: "#b9a3e3"
+        readonly property color changeFixed: "#8fcfa6"
+        readonly property color changeSettings: "#e3c58f"
+
         readonly property color frame: root.config.edge.outerColour
 
         readonly property color scrim: Qt.rgba(0, 0, 0, 0.45)

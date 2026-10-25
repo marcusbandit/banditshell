@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/whatsnew.js"), "utf8");
 const WhatsNew = new Function(src
-    + "\nreturn { parse, accumulated, severityOf, readSeen, lastSeen, legacyToMove, newestId, tagFor, TYPES, IMPACT_KEYS };")();
+    + "\nreturn { parse, accumulated, severityOf, readSeen, lastSeen, legacyToMove, newestId, tagFor, sections, TYPES, IMPACT_KEYS };")();
 
 const log = [
     { id: "third", date: "2026-09-03", changes: [{ type: "bugs", severity: "minor", text: "Fixed the thing." }] },
@@ -199,4 +199,17 @@ test("a date id becomes the git tag for it, anything else becomes none", () => {
     assert.strictEqual(WhatsNew.tagFor("2026-10-16-7"), "v2026.10.16-7");
     assert.strictEqual(WhatsNew.tagFor("v1"), "");
     assert.strictEqual(WhatsNew.tagFor(""), "");
+});
+
+test("sections put big changes first and fold minor ones by kind across updates", () => {
+    const got = WhatsNew.sections([
+        { changes: [{ type: "ui", severity: "minor", text: "A" }, { type: "issues", severity: "minor", text: "B" }] },
+        { changes: [{ type: "bugs", severity: "minor", text: "C" }, { type: "config", severity: "major", text: "D" }, { type: "odd", text: "E" }, { type: "ui", text: "A" }] }
+    ]);
+    assert.deepStrictEqual(got.map(s => [s.key, s.changes.map(c => c.text)]), [
+        ["major", ["D"]],
+        ["ui", ["A", "A"]],
+        ["bugs", ["B", "C"]],
+        ["other", ["E"]]
+    ]);
 });

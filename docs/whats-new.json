@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-5",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "What's new sorts changes into coloured New, Changed and Fixed groups"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-4",
       "date": "2026-10-25",
       "changes": [

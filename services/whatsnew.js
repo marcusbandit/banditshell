@@ -97,3 +97,34 @@ function tagFor(id) {
     const hit = /^(\d{4})-(\d{2})-(\d{2})(-\d+)?$/.exec(String(id ?? "").trim());
     return hit ? `v${hit[1]}.${hit[2]}.${hit[3]}${hit[4] ?? ""}` : "";
 }
+
+const SECTIONS = [
+    { key: "major", title: "Big changes", glyph: "new_releases", types: null },
+    { key: "features", title: "New", glyph: "add_circle", types: ["features"] },
+    { key: "ui", title: "Changed", glyph: "border_color", types: ["ui"] },
+    { key: "bugs", title: "Fixed", glyph: "build", types: ["bugs", "issues"] },
+    { key: "config", title: "Settings", glyph: "tune", types: ["config"] },
+    { key: "other", title: "Other", glyph: "chevron_right", types: [] }
+];
+
+function sectionOf(c) {
+    if (c.severity === "major")
+        return "major";
+    const hit = SECTIONS.find(s => s.types && s.types.includes(c.type));
+    return hit ? hit.key : "other";
+}
+
+function sections(entries) {
+    const buckets = {};
+    for (const e of Array.isArray(entries) ? entries : [])
+        for (const raw of Array.isArray(e?.changes) ? e.changes : []) {
+            const c = change(raw);
+            if (!c)
+                continue;
+            const key = sectionOf(c);
+            if (!buckets[key])
+                buckets[key] = [];
+            buckets[key].push(c);
+        }
+    return SECTIONS.filter(s => buckets[s.key]).map(s => ({ key: s.key, title: s.title, glyph: s.glyph, changes: buckets[s.key] }));
+}
