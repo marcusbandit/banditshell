@@ -7,7 +7,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A new install opens with a five-step tour of the real desktop"
+          "text": "A new install opens with a short tour of the real desktop"
         },
         {
           "type": "features",

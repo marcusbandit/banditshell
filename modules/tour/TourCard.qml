@@ -36,6 +36,7 @@ Item {
             rightTop: "arrow_back",
             rightBottom: "arrow_back",
             left: "arrow_forward",
+            leftTop: "arrow_forward",
             leftBottom: "arrow_forward",
             above: "arrow_downward",
             below: "arrow_upward"

@@ -16,10 +16,12 @@ PanelWindow {
     readonly property string output: win.screen?.name ?? ""
     readonly property var frame: win.shell?.frame ?? null
 
+    readonly property bool railWide: !!win.frame?.rail && win.frame.railOpen > 0.9
+
     readonly property var flags: ({
             launcher: win.shell?.launcher?.open ?? false,
             island: win.shell?.island?.expanded ?? false,
-            sidebar: (win.shell?.menus?.open ?? false) || (!!win.frame?.rail && win.frame.railOpen > 0.9),
+            sidebar: (win.shell?.menus?.open ?? false) || win.railWide,
             hotkeys: win.shell?.hotkeys?.open ?? false,
             settings: Panels.isOpen("settings")
         })
@@ -48,6 +50,7 @@ PanelWindow {
         right: true
     }
 
+    visible: Tour.running || Tour.parting || shown.value > 0.001
     color: "transparent"
     exclusiveZone: 0
     WlrLayershell.layer: WlrLayer.Overlay
@@ -150,6 +153,11 @@ PanelWindow {
         target: win.spot.y
     }
 
+    onWidthChanged: if (shown.value < 0.05) {
+        glideX.snap();
+        glideY.snap();
+    }
+
     onWantedChanged: if (win.wanted && shown.value < 0.05) {
         glideX.snap();
         glideY.snap();
@@ -183,7 +191,7 @@ PanelWindow {
 
             mode: win.face
             title: win.face === "finished" ? "Tour done" : win.face === "parting" ? "Tour put away" : Tour.words.title ?? ""
-            payoff: win.face === "finished" ? "Everything else in the shell hangs off these five." : win.face === "parting" ? "It is there whenever you want it." : Tour.words.payoff ?? ""
+            payoff: win.face === "finished" ? "Everything else in the shell hangs off what you just met." : win.face === "parting" ? "It is there whenever you want it." : Tour.words.payoff ?? ""
             ask: win.face === "finished" || win.face === "parting" ? "Open it again from Settings, About, or type tour in the launcher." : Tour.words.ask ?? ""
             away: Tour.words.away ?? ""
             chord: Tour.step?.chord ?? ""

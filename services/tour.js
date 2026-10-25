@@ -147,8 +147,16 @@ function numberOf(steps, id) {
     return steps.length;
 }
 
-function begin(done) {
-    return { phase: "ask", done: (done || []).slice() };
+function begin(done, steps) {
+    var kept = (done || []).slice();
+    return { phase: steps && !current(steps, kept) ? "finished" : "ask", done: kept };
+}
+
+function sidebarOf(layouts) {
+    var kinds = [];
+    for (var name in layouts)
+        kinds.push(layouts[name]);
+    return kinds.indexOf("rail") >= 0 ? "rail" : kinds.indexOf("full") >= 0 ? "full" : "none";
 }
 
 function observe(machine, steps, before, after) {
@@ -199,7 +207,7 @@ function words(step, facts) {
             title: "The island",
             payoff: "Notifications, music, timers and the clock arrive at the top centre.",
             ask: key && step.gesture ? "Rest the pointer at the top centre, or press " + key + "." : key ? "Press " + key + "." : step.gesture ? "Rest the pointer at the top centre." : "",
-            away: "Move away, or press Esc, and it folds back up."
+            away: "Move away and it folds back up; if it stays, press Esc."
         };
     case "sidebar":
         return {
@@ -246,6 +254,7 @@ function place(card, target, bounds, sides, avoid, gap) {
         below: { x: clampX(midX), y: target.y + target.h + gap },
         rightTop: { x: target.x + target.w + gap, y: clampY(target.y) },
         rightBottom: { x: target.x + target.w + gap, y: clampY(target.y + target.h - card.h) },
+        leftTop: { x: target.x - gap - card.w, y: clampY(target.y) },
         leftBottom: { x: target.x - gap - card.w, y: clampY(target.y + target.h - card.h) },
         centre: { x: clampX(bounds.x + (bounds.w - card.w) / 2), y: clampY(bounds.y + (bounds.h - card.h) / 2) }
     };

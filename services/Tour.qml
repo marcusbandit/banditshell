@@ -34,6 +34,8 @@ Singleton {
     }
 
     readonly property var chords: {
+        if (!root.running)
+            return {};
         const binds = HyprConfig.binds;
         const rows = HyprConfig.actionRows;
         return {
@@ -46,7 +48,7 @@ Singleton {
 
     readonly property var steps: Logic.plan({
         bare: Appearance.bare,
-        sidebar: root.layouts[root.screen] ?? "none",
+        sidebar: Logic.sidebarOf(root.layouts),
         chords: root.chords
     })
 
@@ -86,7 +88,7 @@ Singleton {
         root.parting = false;
         root.screen = screen || Focus.focusedScreen || Quickshell.screens[0]?.name || "";
         root.last = root.observed;
-        root.machine = Logic.begin(done);
+        root.machine = Logic.begin(done, root.steps);
         root.running = true;
         root.keep("running");
     }
@@ -121,8 +123,11 @@ Singleton {
 
     function forget(screen: string): void {
         const reports = Object.assign({}, root.reports);
+        const layouts = Object.assign({}, root.layouts);
         delete reports[screen];
+        delete layouts[screen];
         root.reports = reports;
+        root.layouts = layouts;
     }
 
     onObservedChanged: {

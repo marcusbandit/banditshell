@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/tour.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Tour = new Function(`${src}\nreturn { parseState, formatState, shouldStart, chordFor, keyText, plan, current, begin, observe, pass, words, place };`)();
+const Tour = new Function(`${src}\nreturn { parseState, formatState, shouldStart, chordFor, keyText, plan, current, begin, observe, pass, words, place, sidebarOf };`)();
 
 const rows = fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8").split("\n")
     .filter(line => line && !line.startsWith("#"))
@@ -155,4 +155,25 @@ test("the card keeps clear of a panel it was told to avoid", () => {
     const settings = { x: 30, y: 140, w: 1300, h: 830 };
     const spot = Tour.place(card, { x: 1820, y: 980, w: 100, h: 100 }, bounds, ["left", "above"], [settings], 16);
     assert.ok(!overlaps({ x: spot.x, y: spot.y, w: card.w, h: card.h }, settings));
+});
+
+test("a tour that reached its end before a reload comes back as the finished card, not an empty step", () => {
+    const m = Tour.begin(steps.map(s => s.id), steps);
+    assert.strictEqual(m.phase, "finished");
+    assert.strictEqual(Tour.begin(["launcher"], steps).phase, "ask");
+});
+
+test("the sidebar step follows whether any screen has a sidebar, not which screen has focus", () => {
+    assert.strictEqual(Tour.sidebarOf({ "DP-1": "none", "HDMI-A-1": "rail" }), "rail");
+    assert.strictEqual(Tour.sidebarOf({ "DP-1": "full", "HDMI-A-1": "none" }), "full");
+    assert.strictEqual(Tour.sidebarOf({ "DP-1": "none" }), "none");
+    assert.strictEqual(Tour.sidebarOf({}), "none");
+});
+
+test("every side the card can take has an arrow and a spot", () => {
+    const card = { w: 100, h: 50 };
+    const bounds = { x: 0, y: 0, w: 1000, h: 1000 };
+    const target = { x: 400, y: 400, w: 100, h: 100 };
+    for (const side of ["right", "left", "above", "below", "rightTop", "rightBottom", "leftTop", "leftBottom", "centre"])
+        assert.strictEqual(Tour.place(card, target, bounds, [side], [], 10).side, side, side);
 });
