@@ -7,6 +7,8 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 
+process.env.TZ = "Europe/Copenhagen";
+
 function lib(file, names) {
     const src = fs.readFileSync(path.join(ROOT, file), "utf8").replace(/^\.pragma .*$/m, "");
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
@@ -15,7 +17,7 @@ function lib(file, names) {
 const Conflicts = lib("services/files-conflicts.js", [
     "numbered", "items", "loops", "placeable", "loopRefusal", "probeCommand", "probed", "choices", "answer", "next", "waiting",
     "operations", "command", "results", "leftover", "reason", "failure", "notice", "renameRefusal",
-    "picture", "newer", "keptName", "clashes", "clashLabel", "folderName"
+    "picture", "newer", "larger", "day", "keptName", "clashes", "clashLabel", "folderName"
 ]);
 const Undo = lib("services/files-undo.js", ["moved", "copied", "trashed", "batch", "command", "report", "remember"]);
 
@@ -347,6 +349,9 @@ test.describe("files paste conflicts", () => {
             assert.deepStrictEqual(photo.there, { size: 3, modified: 1000, count: -1 });
             assert.deepStrictEqual(photo.coming, { size: 14, modified: 2000, count: -1 });
             assert.strictEqual(Conflicts.newer(photo), "coming");
+            assert.strictEqual(Conflicts.larger(photo), "coming");
+            assert.strictEqual(Conflicts.larger(site), "coming");
+            assert.strictEqual(Conflicts.larger(Object.assign({}, photo, { coming: photo.there })), "");
             assert.strictEqual(Conflicts.keptName(photo), "photo (3).png");
             assert.strictEqual(site.there.count, 1);
             assert.strictEqual(site.coming.count, 2);
@@ -356,6 +361,14 @@ test.describe("files paste conflicts", () => {
         } finally {
             box.done();
         }
+    });
+
+    test.it("always says the day with the time", () => {
+        const now = new Date(2026, 9, 26, 9, 30).getTime() / 1000;
+        assert.strictEqual(Conflicts.day(new Date(2026, 9, 26, 0, 5).getTime() / 1000, now), "today");
+        assert.strictEqual(Conflicts.day(new Date(2026, 9, 25, 23, 57).getTime() / 1000, now), "25 Oct");
+        assert.strictEqual(Conflicts.day(new Date(2026, 8, 1, 14, 2).getTime() / 1000, now), "1 Sep");
+        assert.strictEqual(Conflicts.day(new Date(2025, 11, 31, 22, 0).getTime() / 1000, now), "31 Dec 2025");
     });
 
     test.it("names the clashes still to come, briefly", () => {

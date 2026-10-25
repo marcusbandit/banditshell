@@ -16,6 +16,7 @@ Item {
     readonly property string folder: root.question ? Conflicts.folderName(root.question.dir, Files.home) : ""
     readonly property string source: root.question ? Conflicts.folderName(Files.parentOf(root.question.from), Files.home) : ""
     readonly property string newer: root.question ? Conflicts.newer(root.question) : ""
+    readonly property string larger: root.question ? Conflicts.larger(root.question) : ""
     readonly property string called: !root.question ? "" : root.question.name.length <= 30 ? root.question.name : root.question.folder ? "folder" : "file"
     readonly property bool picture: !!root.question && !root.question.folder && Conflicts.picture(root.question.name)
 
@@ -154,7 +155,7 @@ Item {
                     folder: root.question?.folder ?? false
                     picture: root.picture
                     facts: root.question?.there ?? null
-                    newer: root.newer === "there"
+                    tags: (root.newer === "there" ? ["Newer"] : []).concat(root.larger === "there" ? ["Larger"] : [])
                 }
 
                 ConflictSide {
@@ -166,22 +167,30 @@ Item {
                     folder: root.question?.folder ?? false
                     picture: root.picture
                     facts: root.question?.coming ?? null
-                    newer: root.newer === "coming"
+                    tags: (root.newer === "coming" ? ["Newer"] : []).concat(root.larger === "coming" ? ["Larger"] : [])
+                }
+            }
+
+            Repeater {
+                model: root.choices
+
+                StyledText {
+                    required property string modelData
+
+                    width: body.width
+
+                    text: !root.question ? "" : modelData === "replace" ? `Replace moves the ${root.called} already in ${root.folder} to the trash` : modelData === "skip" ? `Skip leaves the ${root.called} in ${root.folder} as it is` : `Keep both saves the new one as ${Conflicts.keptName(root.question)}`
+                    font.pixelSize: Appearance.font.size.small
+                    color: Appearance.colour.textDim
+                    wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 }
             }
 
             StyledText {
                 width: parent.width
+                visible: !root.canReplace
 
-                text: root.question ? `Keep both saves the new one as ${Conflicts.keptName(root.question)}` : ""
-                font.pixelSize: Appearance.font.size.small
-                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-            }
-
-            StyledText {
-                width: parent.width
-
-                text: !root.question ? "" : root.canReplace ? `Replace moves the ${root.called} already in ${root.folder} to the trash` : `The ${root.called} in ${root.folder} holds what you are pasting, so it cannot be replaced`
+                text: root.question ? `The ${root.called} in ${root.folder} holds what you are pasting, so it cannot be replaced` : ""
                 font.pixelSize: Appearance.font.size.small
                 color: Appearance.colour.textDim
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere

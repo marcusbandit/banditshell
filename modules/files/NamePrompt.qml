@@ -146,7 +146,7 @@ Item {
             KeyHints {
                 width: parent.width
 
-                keys: root.refusal ? [["Esc", "cancel"]] : [["Enter", root.verb], ["Esc", "cancel"]]
+                keys: [["Enter", root.refusal ? `${root.verb} once the name is free` : root.verb], ["Esc", "cancel"]]
             }
         }
     }

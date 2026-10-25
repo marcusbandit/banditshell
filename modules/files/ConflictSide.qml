@@ -5,6 +5,7 @@ import qs.config
 import qs.components
 import qs.services
 import "urls.js" as Urls
+import "../../services/files-conflicts.js" as Conflicts
 
 SquircleRect {
     id: root
@@ -15,13 +16,14 @@ SquircleRect {
     property bool folder: false
     property bool picture: false
     property var facts: null
-    property bool newer: false
+    property var tags: []
 
     readonly property string detail: {
         if (!root.facts)
             return "";
         const size = root.facts.count >= 0 ? (root.facts.count === 1 ? "1 item" : `${root.facts.count} items`) : Files.humanSize(root.facts.size);
-        return `${size} · ${Files.humanTime(root.facts.modified)}`;
+        const moment = new Date(root.facts.modified * 1000);
+        return `${size} · ${Conflicts.day(root.facts.modified, Date.now() / 1000)} ${TimeFormat.time(moment, false)}`;
     }
 
     implicitHeight: row.implicitHeight + Appearance.padding.normal * 2
@@ -90,13 +92,34 @@ SquircleRect {
                 elide: Text.ElideRight
             }
 
-            StyledText {
-                width: parent.width
-                visible: root.newer
+            Row {
+                visible: root.tags.length > 0
+                spacing: Appearance.padding.small
 
-                text: "Newer"
-                font.pixelSize: Appearance.font.size.small
-                color: Appearance.colour.accent
+                Repeater {
+                    model: root.tags
+
+                    SquircleRect {
+                        id: tag
+
+                        required property string modelData
+
+                        implicitWidth: tagText.implicitWidth + Appearance.padding.normal * 2
+                        implicitHeight: tagText.implicitHeight + Appearance.padding.small
+
+                        radius: Appearance.rounding.small
+                        color: Appearance.colour.fillStrong
+
+                        StyledText {
+                            id: tagText
+
+                            anchors.centerIn: parent
+                            text: tag.modelData
+                            font.pixelSize: Appearance.font.size.small
+                            color: Appearance.colour.text
+                        }
+                    }
+                }
             }
         }
     }

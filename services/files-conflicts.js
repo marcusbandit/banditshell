@@ -263,6 +263,27 @@ function newer(item) {
     return item.coming.modified > item.there.modified ? "coming" : "there";
 }
 
+function larger(item) {
+    if (!item.there || !item.coming)
+        return "";
+    var there = item.there.count >= 0 ? item.there.count : item.there.size;
+    var coming = item.coming.count >= 0 ? item.coming.count : item.coming.size;
+    if (there === coming)
+        return "";
+    return coming > there ? "coming" : "there";
+}
+
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function day(epoch, now) {
+    var then = new Date(epoch * 1000);
+    var today = new Date(now * 1000);
+    if (then.getFullYear() === today.getFullYear() && then.getMonth() === today.getMonth() && then.getDate() === today.getDate())
+        return "today";
+    var out = then.getDate() + " " + MONTHS[then.getMonth()];
+    return then.getFullYear() === today.getFullYear() ? out : out + " " + then.getFullYear();
+}
+
 function keptName(item) {
     return numbered(item.name, item.folder, item.next || 2);
 }
