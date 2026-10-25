@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-16",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "An off switch has an outline, so it reads as a switch"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The chosen option in a row of choices is filled in the theme colour"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-15",
       "date": "2026-10-25",
       "changes": [
