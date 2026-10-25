@@ -255,6 +255,7 @@ Singleton {
     readonly property string sort: Config.values.files.sort
     readonly property bool reversed: Config.values.files.reversed
     readonly property var orderWords: FilesOrder.orderWords(root.sort)
+    readonly property var sortWords: FilesOrder.SORT_WORDS
 
     readonly property string view: Config.values.files.view
 

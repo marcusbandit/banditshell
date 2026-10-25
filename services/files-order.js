@@ -17,16 +17,15 @@ function orderWords(key) {
 
 function ordered(entries, key, reversed) {
     const sign = reversed ? -1 : 1;
+    const byName = (a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: "base"});
+    const primary = {
+        size: (a, b) => b.size - a.size,
+        mtime: (a, b) => b.mtime - a.mtime,
+        kind: (a, b) => a.class < b.class ? -1 : a.class > b.class ? 1 : 0
+    }[key] ?? byName;
     return entries.slice().sort((a, b) => {
         if ((a.kind === "dir") !== (b.kind === "dir"))
             return a.kind === "dir" ? -1 : 1;
-        if (key === "size" && a.size !== b.size)
-            return sign * (b.size - a.size);
-        if (key === "mtime" && a.mtime !== b.mtime)
-            return sign * (b.mtime - a.mtime);
-        if (key === "kind" && a.class !== b.class)
-            return sign * (a.class < b.class ? -1 : 1);
-        const byName = a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: "base"});
-        return key === "name" ? sign * byName : byName;
+        return sign * primary(a, b) || byName(a, b);
     });
 }

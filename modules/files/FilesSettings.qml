@@ -250,12 +250,10 @@ Item {
                     label: "Sort by"
 
                     SettingChoice {
-                        choices: [
-                            {label: "Name", value: "name"},
-                            {label: "Date", value: "mtime"},
-                            {label: "Size", value: "size"},
-                            {label: "Type", value: "kind"}
-                        ]
+                        choices: ["name", "mtime", "size", "kind"].map(value => ({
+                                    label: Files.sortWords[value].replace(/^\w/, c => c.toUpperCase()),
+                                    value: value
+                                }))
                         chosen: Files.sort
                         onChose: value => Config.set("files.sort", value)
                     }

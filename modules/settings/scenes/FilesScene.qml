@@ -9,7 +9,7 @@ import "../catalogue.js" as Catalogue
 Item {
     id: root
 
-    readonly property real stageHeight: Math.min(560, Math.max(280, fb.y + body.y + body.fullHeight + 44))
+    readonly property real stageHeight: 464
     readonly property bool list: SettingsState.v("filesView") === "list"
     readonly property string sort: SettingsState.v("filesSort")
     readonly property bool reversed: SettingsState.v("filesReversed")
@@ -94,21 +94,18 @@ Item {
 
             readonly property real previewWidth: body.width * open.value
             readonly property real itemsWidth: body.width - (open.value > 0.001 ? body.previewWidth + 8 : 0)
-            readonly property real cell: Math.max(64 * root.zoom, longest.width + 8)
+            readonly property real cell: Math.max(64 * root.zoom, root.shown.reduce((w, f) => Math.max(w, metrics.advanceWidth(f[0]), root.valued ? metrics.advanceWidth(root.valueOf(f)) : 0), 0) + 8)
             readonly property int columns: root.list ? 1 : Math.max(1, Math.floor((body.itemsWidth + 6) / (body.cell + 6)))
             readonly property real cellWidth: (body.itemsWidth - (body.columns - 1) * 6) / body.columns
             readonly property real tileHeight: root.list ? Appearance.font.line.small + 8 : Math.round(28 * root.zoom) + 16 + 4 + 12 + (root.valued ? Appearance.font.line.small : 0)
             readonly property real spacing: root.list ? 2 : 6
-            readonly property int fullColumns: root.list ? 1 : Math.max(1, Math.floor((body.width + 6) / (body.cell + 6)))
-            readonly property real fullHeight: Math.ceil(root.shown.length / body.fullColumns) * (body.tileHeight + body.spacing) - body.spacing
             readonly property real currentBottom: (Math.floor(root.cursor % Math.max(1, root.shown.length) / body.columns) + 1) * (body.tileHeight + body.spacing)
 
-            TextMetrics {
-                id: longest
+            FontMetrics {
+                id: metrics
 
                 font.family: Appearance.font.family
                 font.pixelSize: Appearance.font.size.small
-                text: root.shown.map(f => f[0]).concat(root.valued ? root.shown.map(f => root.valueOf(f)) : []).reduce((a, b) => b.length > a.length ? b : a, "")
             }
 
             Grid {

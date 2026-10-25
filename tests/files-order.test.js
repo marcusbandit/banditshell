@@ -86,9 +86,16 @@ test.describe("files order", () => {
         assert.deepStrictEqual([run("kind"), back("kind")], ["adir zdir a.png d.png c.md b.txt", "adir zdir b.txt c.md a.png d.png"]);
     });
 
+    test.it("an unknown sort runs by name, and Z to A turns it round", () => {
+        assert.deepStrictEqual(names("bogus", false), names("name", false));
+        assert.deepStrictEqual(names("bogus", true), names("name", true));
+    });
+
     test.it("a config saved before the order setting keeps the order it had", () => {
         const saved = Configuration.upgrade({files: {sort: "mtime", view: "list"}});
-        const files = Configuration.merge(defaults(), saved, "", ["files.keys", "files.grid", "notifications.rules"]).files;
+        const config = fs.readFileSync(path.join(ROOT, "config/Config.qml"), "utf8");
+        const opaque = JSON.parse(/readonly property var opaque: (\[[^\]]*\])/.exec(config)[1]);
+        const files = Configuration.merge(defaults(), saved, "", opaque).files;
         assert.strictEqual(files.reversed, false);
         assert.deepStrictEqual(names(files.sort, files.reversed), ["zdir", "b.txt", "c.md", "a.png"]);
     });
