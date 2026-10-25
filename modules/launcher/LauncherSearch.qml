@@ -824,6 +824,23 @@ QtObject {
         };
     }
 
+    function guessRow(): var {
+        if (root.intent || root.aliasId)
+            return null;
+        const apps = Apps.visible;
+        const commands = root.commands.filter(c => !c.hidden);
+        const settings = Catalogue.everyHit();
+        const found = Ranking.closest(root.text, apps.map(e => e.name ?? "").concat(commands.map(c => c.label), settings.map(hit => hit.label)));
+        if (found < 0)
+            return null;
+        const target = found < apps.length ? root.appRow(apps[found]) : found < apps.length + commands.length ? root.commandRow(commands[found - apps.length]) : root.settingRow(settings[found - apps.length - commands.length]);
+        return Object.assign({}, target, {
+            guessed: true,
+            label: target.armed ? target.label : root.nameOf(target),
+            score: 0
+        });
+    }
+
     readonly property int awakeFor: Search.awakeAsk(root.text)
 
     readonly property var awakeRows: root.awakeFor <= 0 ? [] : [
@@ -1360,7 +1377,7 @@ QtObject {
         });
     }
 
-    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, root.sourceGroupLists, root.aloneSource, root.limits]
+    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, FileSearch.grepAnswered, root.sourceGroupLists, root.aloneSource, root.limits]
 
     property var arranged: []
     property bool arrangePending: false
@@ -1462,7 +1479,22 @@ QtObject {
             note: root.contentNote,
             items: root.contentRows
         }, ...root.sourceGroupLists.reduce((out, list) => out.concat(list), []));
-        return Search.arrange(Search.remembered(groups, key => LauncherMemory.bonusOf(key, Date.now())), root.limits);
+        const remembered = Search.remembered(groups, key => LauncherMemory.bonusOf(key, Date.now()));
+        const arranged = Search.arrange(remembered, root.limits);
+        if (!Search.matchesNothing(arranged) || root.grepFor && FileSearch.grepAnswered !== root.text)
+            return arranged;
+        const guess = root.guessRow();
+        return guess ? Search.arrange(remembered.concat([
+            {
+                key: "guess",
+                title: ({
+                        app: "Apps",
+                        command: "Commands",
+                        setting: "Settings"
+                    })[guess.kind],
+                items: [guess]
+            }
+        ]), root.limits) : arranged;
     }
 
     function openSetting(row: var): void {
@@ -1491,7 +1523,7 @@ QtObject {
             root.launch(() => Apps.launch(row.entry));
             return;
         case "command":
-            if (row.command.confirm && root.armed !== row.command.id) {
+            if (Search.armsFirst(row.command, row.guessed) && root.armed !== row.command.id) {
                 root.armed = row.command.id;
                 return;
             }
@@ -1597,7 +1629,7 @@ QtObject {
     function confirmActions(row: var): var {
         const cancel = {
             icon: "close",
-            label: "Cancel",
+            label: row.kind === "command" ? `Don't ${row.command.label.toLowerCase()}` : "Cancel",
             run: () => root.armed = ""
         };
         const owner = root.sourceOf(row);

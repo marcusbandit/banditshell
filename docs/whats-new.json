@@ -1,13 +1,24 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-16",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A changed setting has a reset arrow that puts its default back"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-15",
       "date": "2026-10-25",
       "changes": [
         {
-          "type": "issues",
+          "type": "features",
           "severity": "minor",
-          "text": "A changed setting has a reset arrow that puts its default back"
+          "text": "A typo in the launcher offers the closest match; Enter takes it"
         }
       ]
     },
