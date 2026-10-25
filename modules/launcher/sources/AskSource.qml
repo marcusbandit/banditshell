@@ -2,13 +2,14 @@ import QtQuick
 import Quickshell
 import qs.services
 import "../../../services/assistant.js" as Logic
+import "../prefixes.js" as Prefixes
 
 QtObject {
     id: root
 
     required property var search
 
-    readonly property var asked: Logic.askOf(root.search.text)
+    readonly property var asked: Prefixes.asked(root.search.text) ? null : Logic.askOf(root.search.text)
     readonly property bool explicit: root.asked !== null && Assistant.enabled
     readonly property bool questionLike: !root.explicit && Assistant.ready && root.search.text.length > 8 && Logic.looksLikeQuestion(root.search.text)
     readonly property string question: root.explicit ? root.asked : root.questionLike ? root.search.text : ""
