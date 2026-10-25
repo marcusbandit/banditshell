@@ -71,7 +71,7 @@ Item {
         return out;
     }
 
-    readonly property bool voice: root.focused && Dictation.live
+    readonly property bool voice: root.focused && (Dictation.live || Dictation.cancelled)
     readonly property var voiceActivity: ({
             key: "dictation",
             kind: "dictation"
@@ -519,6 +519,10 @@ Item {
     }
 
     function choose(activity: var): void {
+        if (activity?.kind === "dictation" && activity.action === "cancel") {
+            Dictation.cancel();
+            return;
+        }
         if (activity?.kind === "privacy" && activity.data?.privacy === "mic") {
             root.openTask("microphone");
             return;

@@ -57,7 +57,7 @@ Item {
 
     signal updateRequested(bool deliberate)
 
-    signal awakeEnded
+    signal markPressed(var opens)
 
     readonly property var menuItems: [...tray.items, root.updateEntry, root.clockEntry, root.calendarEntry, ...status.items]
     readonly property var menuKeys: root.menuItems.map(i => i.key)
@@ -282,13 +282,14 @@ Item {
 
                 modeIcon: root.modeIcon
                 awake: root.awake
+                room: rest.height - anomalies.anchors.bottomMargin - glance.headEdge - pips.implicitHeight - Appearance.padding.large * 2
                 batteryWanted: ["top", "off"].includes(Config.values.sidebar.glance)
 
                 enabled: root.revealed === 0
 
-                onAwakeEnded: {
+                onMarkPressed: opens => {
                     root.pressedAtRest = true;
-                    root.awakeEnded();
+                    root.markPressed(opens);
                 }
             }
         }
