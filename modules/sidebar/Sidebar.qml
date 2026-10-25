@@ -249,8 +249,8 @@ Item {
             id: rest
 
             readonly property bool holdsRest: anomalies.pointing
-            readonly property int marksKept: 4
-            readonly property var place: Placement.rail(pips.implicitHeight, rest.height, glance.headEdge + Appearance.padding.large, rest.height - anomalies.anchors.bottomMargin, (Appearance.sizes.statusSlot + Appearance.sizes.statusGap) * rest.marksKept, Appearance.padding.huge)
+            readonly property int slotsReserved: 4
+            readonly property var place: Placement.rail(pips.implicitHeight, rest.height, glance.headEdge + Appearance.padding.large, rest.height - anomalies.anchors.bottomMargin, (Appearance.sizes.statusSlot + Appearance.sizes.statusGap) * rest.slotsReserved, Appearance.padding.huge)
 
             RailPips {
                 id: pips

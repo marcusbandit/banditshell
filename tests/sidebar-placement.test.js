@@ -30,14 +30,16 @@ test.describe("rail", () => {
         assert.deepStrictEqual(rail(100, 1000, 50, 900, 132, 32), { y: 450, room: 318 });
     });
 
-    test.it("lifts the pips to keep the kept marks and the gap above the foot", () => {
+    test.it("lifts the pips to keep the reserved slots and the gap above the foot", () => {
         assert.deepStrictEqual(rail(100, 600, 50, 400, 132, 32), { y: 136, room: 132 });
     });
 
-    test.it("always leaves the kept marks their room under the pips", () => {
-        for (let foot = 330; foot <= 900; foot += 7) {
-            const r = rail(120, 1000, 40, foot, 132, 32);
-            assert.ok(r.room >= 132 && r.y + 120 + 32 + r.room === foot, String(foot));
-        }
+    test.it("keeps the pips under the head on a rail too short for the reserve", () => {
+        assert.deepStrictEqual(rail(120, 400, 40, 250, 132, 32), { y: 40, room: 58 });
+    });
+
+    test.it("never gives the marks less than the reserve while it fits", () => {
+        for (let foot = 324; foot <= 900; foot += 7)
+            assert.ok(rail(120, 1000, 40, foot, 132, 32).room >= 132, String(foot));
     });
 });

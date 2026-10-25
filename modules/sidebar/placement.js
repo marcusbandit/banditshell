@@ -8,8 +8,8 @@ function between(height, span, top, bottom) {
     };
 }
 
-function rail(height, span, top, foot, kept, gap) {
-    var y = between(height, span, top, foot - kept - gap).y;
+function rail(height, span, top, foot, reserve, gap) {
+    var y = between(height, span, top, foot - reserve - gap).y;
     return {
         y: y,
         room: foot - y - height - gap
