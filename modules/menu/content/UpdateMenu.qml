@@ -20,7 +20,9 @@ Column {
     property bool reportOpen: false
     property bool reportHanded: false
 
-    readonly property bool asking: root.goBackConfirm || (root.reinstallConfirm && Update.canReinstall) || (root.reportOpen && Update.wentBackByHand && Update.resultPending)
+    readonly property bool reinstallAsking: root.reinstallConfirm && Update.canReinstall
+    readonly property bool reportAsking: root.reportOpen && Update.wentBackByHand && Update.resultPending
+    readonly property bool asking: root.goBackConfirm || root.reinstallAsking || root.reportAsking
 
     readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, goBackRow.implicitWidth, afterRow.implicitWidth, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
@@ -156,7 +158,7 @@ Column {
         StyledText {
             width: parent.width
             visible: root.reportHanded && !root.asking
-            text: "The report is open in a terminal. Nothing is sent until you answer y there."
+            text: "The report opens in a terminal. Nothing is sent until you answer y there."
             color: Appearance.colour.textFaint
             wrapMode: Text.WordWrap
         }
@@ -164,7 +166,7 @@ Column {
 
     Column {
         width: parent.width
-        visible: Update.wentBackByHand && Update.resultPending && root.reportOpen
+        visible: root.reportAsking
         spacing: Appearance.padding.small
 
         InkText {
@@ -230,7 +232,7 @@ Column {
 
     Column {
         width: parent.width
-        visible: Update.canReinstall && root.reinstallConfirm
+        visible: root.reinstallAsking
         spacing: Appearance.padding.small
 
         InkText {
@@ -360,7 +362,7 @@ Column {
         style: "accent"
         interactive: !Update.busy
 
-        onClicked: Update.state === Update.failed && Update.goingBack ? Update.goBack() : Update.apply()
+        onClicked: Update.state === Update.failed ? Update.retry() : Update.apply()
     }
 
     Column {

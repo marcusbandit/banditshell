@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "update.js" as Words
+import "quoting.js" as Quoting
 
 Singleton {
     id: root
@@ -62,6 +63,7 @@ Singleton {
     property string previousVersion: ""
     readonly property bool canGoBack: root.commit(root.previous) && !root.busy && !root.paused
     property bool goingBack: false
+    property string aimedAt: ""
     readonly property string remote: Config.values.updates.remote
 
     readonly property string dir: Quickshell.shellDir
@@ -155,19 +157,28 @@ Singleton {
             root.error = "Nothing has been checked yet. Refresh first.";
             return;
         }
+        root.aimedAt = "";
         root.take(root.target);
     }
 
     function reinstall(): void {
-        if (!root.canReinstall || root.checking)
+        if (!root.canReinstall)
             return;
 
         const sha = root.skipped;
         root.dismissResult();
-        if (Config.values.updates.skip === sha)
-            Config.set("updates.skip", "");
         root.error = "";
+        root.aimedAt = sha;
         root.take(sha);
+    }
+
+    function retry(): void {
+        if (root.goingBack)
+            root.goBack();
+        else if (root.commit(root.aimedAt) && !root.busy && !root.paused)
+            root.take(root.aimedAt);
+        else
+            root.apply();
     }
 
     function take(sha: string): void {
@@ -207,7 +218,7 @@ Singleton {
     function report(words: string): void {
         if (!root.wentBackByHand)
             return;
-        Quickshell.execDetached([Quickshell.shellPath("scripts/in-terminal.sh"), Words.reportScript(root.cli, words, root.result, root.version)]);
+        Quickshell.execDetached([Quickshell.shellPath("scripts/in-terminal.sh"), Words.reportScript(Quoting.posix, root.cli, words, root.result, root.version)]);
     }
 
     function restart(): void {
@@ -287,6 +298,8 @@ Singleton {
             return;
         }
         root.result = data;
+        if (data.ok && data.to && Config.values.updates.skip === data.to)
+            Config.set("updates.skip", "");
         if (data.shown === true)
             return;
         if (data.ok) {
