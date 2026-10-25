@@ -814,7 +814,8 @@ Singleton {
                     "Ctrl+I": "properties",
                     "F2": "rename",
                     "Delete": "trash",
-                    "Shift+Delete": "destroy"
+                    "Shift+Delete": "destroy",
+                    "Ctrl+Z": "undo"
                 }
             },
 

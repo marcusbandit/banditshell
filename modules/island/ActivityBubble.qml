@@ -26,7 +26,7 @@ Item {
         case "launch":
             return a.state === "waiting" ? "progress" : "";
         case "dictation":
-            return Dictation.phase === "listening" ? "voice" : "spin";
+            return Dictation.cancelled ? "" : Dictation.phase === "listening" ? "voice" : "spin";
         case "music":
             return "track";
         case "kernel":
@@ -94,7 +94,7 @@ Item {
         const a = root.front ?? {};
         switch (root.kind) {
         case "dictation":
-            return Dictation.phase === "listening" ? "Dictating" : "Turning speech into text";
+            return Dictation.cancelled ? Dictation.outcome : Dictation.phase === "listening" ? "Dictating" : "Turning speech into text";
         case "launch":
             if (root.items.length > 1)
                 return `${root.items.map(i => i.name).join(", ")} opening`;

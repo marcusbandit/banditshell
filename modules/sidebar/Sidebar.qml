@@ -57,7 +57,7 @@ Item {
 
     signal updateRequested(bool deliberate)
 
-    signal awakeEnded
+    signal markPressed(var opens)
 
     readonly property var menuItems: [...tray.items, root.updateEntry, root.clockEntry, root.calendarEntry, ...status.items]
     readonly property var menuKeys: root.menuItems.map(i => i.key)
@@ -249,13 +249,15 @@ Item {
             id: rest
 
             readonly property bool holdsRest: anomalies.pointing
+            readonly property int slotsReserved: 4
+            readonly property var place: Placement.rail(pips.implicitHeight, rest.height, glance.headEdge + Appearance.padding.large, rest.height - anomalies.anchors.bottomMargin, (Appearance.sizes.statusSlot + Appearance.sizes.statusGap) * rest.slotsReserved, Appearance.padding.huge)
 
             RailPips {
                 id: pips
 
                 anchors.left: parent.left
                 anchors.right: parent.right
-                y: Placement.between(pips.implicitHeight, rest.height, glance.headEdge + Appearance.padding.large, anomalies.y - Appearance.padding.large).y
+                y: rest.place.y
                 height: pips.implicitHeight
 
                 screen: root.screen
@@ -282,13 +284,14 @@ Item {
 
                 modeIcon: root.modeIcon
                 awake: root.awake
+                room: rest.place.room
                 batteryWanted: ["top", "off"].includes(Config.values.sidebar.glance)
 
                 enabled: root.revealed === 0
 
-                onAwakeEnded: {
+                onMarkPressed: opens => {
                     root.pressedAtRest = true;
-                    root.awakeEnded();
+                    root.markPressed(opens);
                 }
             }
         }
