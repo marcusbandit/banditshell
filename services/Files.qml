@@ -787,7 +787,7 @@ Singleton {
     }
 
     function renameRefusal(path: string, name: string): string {
-        return Conflicts.renameRefusal(name, path.slice(path.lastIndexOf("/") + 1), root.entries.map(e => e.name));
+        return Conflicts.renameRefusal(name, path.slice(path.lastIndexOf("/") + 1), root.entries, Conflicts.folderName(root.parentOf(path), root.home));
     }
 
     function renameTo(path: string, name: string): void {

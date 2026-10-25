@@ -1,12 +1,18 @@
 .pragma library
 
-var PROBE = 'i=0; while [ $# -ge 2 ]; do i=$((i+1)); to=$1 from=$2; shift 2; '
-    + 'if [ -e "$to" ] || [ -L "$to" ]; then echo "t$i"; fi; '
+var PROBE = 'facts() { if [ -d "$2" ] && [ ! -L "$2" ]; then c=$(find "$2" -mindepth 1 -maxdepth 1 -printf . 2>/dev/null | wc -c); else c=-1; fi; '
+    + 's=$(stat -c "%s %Y" -- "$2" 2>/dev/null) && echo "$1 $s $c"; }; '
+    + 'i=0; while [ $# -ge 4 ]; do i=$((i+1)); to=$1 from=$2 stem=$3 ext=$4; shift 4; '
+    + 'if [ -e "$to" ] || [ -L "$to" ]; then echo "t$i"; facts "a$i" "$to"; facts "b$i" "$from"; '
+    + 'if [ -d "$from" ] && [ ! -L "$from" ]; then stem=$to ext=; fi; n=2; '
+    + 'while [ -e "$stem ($n)$ext" ] || [ -L "$stem ($n)$ext" ]; do n=$((n+1)); done; echo "n$i $n"; fi; '
     + 'if [ -d "$from" ] && [ ! -L "$from" ]; then echo "d$i"; fi; '
     + 'if [ -e "$to" ] && [ "$from" -ef "$to" ]; then echo "s$i"; fi; '
     + 'if [ -d "$to" ] && [ -e "$from" ]; then '
     + 'r=$(realpath -- "$to") && f=$(realpath -- "$(dirname -- "$from")") && '
     + 'case "$f/${from##*/}" in "$r"/*) echo "h$i";; esac; fi; done';
+
+var PICTURE = /\.(png|jpe?g|gif|webp|bmp|svg|avif|tiff?|ico)$/i;
 
 var PASTE = 'verb=$1; shift; '
     + 'while [ $# -ge 5 ]; do mode=$1 from=$2 to=$3 stem=$4 ext=$5; shift 5; '
@@ -79,9 +85,27 @@ function loopRefusal(list) {
 
 function probeCommand(list) {
     var args = ["sh", "-c", PROBE, "sh"];
-    for (var i = 0; i < list.length; i++)
-        args.push(list[i].to, list[i].from);
+    for (var i = 0; i < list.length; i++) {
+        var parts = split(list[i].name, false);
+        args.push(list[i].to, list[i].from, join(list[i].dir, parts.stem), parts.ext);
+    }
     return args;
+}
+
+function field(marks, key) {
+    for (var i = 0; i < marks.length; i++) {
+        var words = marks[i].split(" ");
+        if (words[0] === key)
+            return words.slice(1);
+    }
+    return [];
+}
+
+function facts(marks, key) {
+    var words = field(marks, key);
+    if (words.length < 3)
+        return null;
+    return {size: Number(words[0]), modified: Number(words[1]), count: Number(words[2])};
 }
 
 function probed(list, text) {
@@ -97,6 +121,9 @@ function probed(list, text) {
         copy.self = item.self || has("s");
         copy.holds = item.holds || has("h");
         copy.twin = seen.indexOf(item.to);
+        copy.there = facts(marks, "a" + (i + 1));
+        copy.coming = facts(marks, "b" + (i + 1));
+        copy.next = parseInt(field(marks, "n" + (i + 1))[0], 10) || 2;
         seen.push(item.to);
         return copy;
     });
@@ -226,8 +253,47 @@ function notice(outcome) {
     return "";
 }
 
-function renameRefusal(name, original, names) {
-    if (name === original || names.indexOf(name) < 0)
+function picture(name) {
+    return PICTURE.test(name);
+}
+
+function newer(item) {
+    if (!item.there || !item.coming || item.there.modified === item.coming.modified)
         return "";
-    return name + " is already here";
+    return item.coming.modified > item.there.modified ? "coming" : "there";
+}
+
+function keptName(item) {
+    return numbered(item.name, item.folder, item.next || 2);
+}
+
+function clashes(list, chosen, at) {
+    var out = [];
+    for (var i = at + 1; i < list.length; i++)
+        if (chosen[i] === null && asks(list[i]))
+            out.push(list[i].name);
+    return out;
+}
+
+function clashLabel(names) {
+    if (names.length === 0)
+        return "";
+    var count = names.length === 1 ? "1 more name clash" : names.length + " more name clashes";
+    var joined = names.join(", ");
+    return names.length <= 3 && joined.length <= 40 ? count + ": " + joined : count;
+}
+
+function folderName(dir, home) {
+    if (dir === home)
+        return "Home";
+    return dir === "/" ? "/" : baseName(dir);
+}
+
+function renameRefusal(name, original, entries, where) {
+    if (name === original)
+        return "";
+    for (var i = 0; i < entries.length; i++)
+        if (entries[i].name === name)
+            return "A " + (entries[i].kind === "dir" ? "folder" : "file") + " named " + name + " is already in " + where;
+    return "";
 }

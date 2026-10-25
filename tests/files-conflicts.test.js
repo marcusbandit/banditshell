@@ -14,7 +14,8 @@ function lib(file, names) {
 
 const Conflicts = lib("services/files-conflicts.js", [
     "numbered", "items", "loops", "placeable", "loopRefusal", "probeCommand", "probed", "choices", "answer", "next", "waiting",
-    "operations", "command", "results", "leftover", "reason", "failure", "notice", "renameRefusal"
+    "operations", "command", "results", "leftover", "reason", "failure", "notice", "renameRefusal",
+    "picture", "newer", "keptName", "clashes", "clashLabel", "folderName"
 ]);
 const Undo = lib("services/files-undo.js", ["moved", "copied", "trashed", "batch", "command", "report", "remember"]);
 
@@ -31,7 +32,7 @@ function sandbox({ trashFails = false } = {}) {
     const home = path.join(dir, "home");
     for (const made of [bin, trash, home])
         fs.mkdirSync(made);
-    for (const tool of ["mv", "cp", "cat", "realpath", "dirname"])
+    for (const tool of ["mv", "cp", "cat", "realpath", "dirname", "find", "wc", "stat"])
         fs.symlinkSync(which(tool), path.join(bin, tool));
     fs.writeFileSync(path.join(bin, "gio"), `#!/bin/sh
 ${trashFails ? "exit 1" : ""}
@@ -319,13 +320,53 @@ test.describe("files paste conflicts", () => {
         assert.deepStrictEqual(told, { ok: false, text: "a could not be brought back", shown: [] });
     });
 
-    test.it("refuses a rename onto a name already in the folder", () => {
-        const names = ["draft.md", "final.md", "Notes"];
-        assert.strictEqual(Conflicts.renameRefusal("final.md", "draft.md", names), "final.md is already here");
-        assert.strictEqual(Conflicts.renameRefusal("Notes", "draft.md", names), "Notes is already here");
-        assert.strictEqual(Conflicts.renameRefusal("draft.md", "draft.md", names), "");
-        assert.strictEqual(Conflicts.renameRefusal("notes", "draft.md", names), "");
-        assert.strictEqual(Conflicts.renameRefusal("report.md", "draft.md", names), "");
+    test.it("refuses a rename onto a name already in the folder, and says which folder", () => {
+        const entries = [{ name: "draft.md", kind: "file" }, { name: "final.md", kind: "file" }, { name: "Notes", kind: "dir" }];
+        assert.strictEqual(Conflicts.renameRefusal("final.md", "draft.md", entries, "Documents"), "A file named final.md is already in Documents");
+        assert.strictEqual(Conflicts.renameRefusal("Notes", "draft.md", entries, "Home"), "A folder named Notes is already in Home");
+        assert.strictEqual(Conflicts.renameRefusal("draft.md", "draft.md", entries, "Documents"), "");
+        assert.strictEqual(Conflicts.renameRefusal("notes", "draft.md", entries, "Documents"), "");
+        assert.strictEqual(Conflicts.folderName("/h/u", "/h/u"), "Home");
+        assert.strictEqual(Conflicts.folderName("/h/u/Documents", "/h/u"), "Documents");
+        assert.strictEqual(Conflicts.folderName("/", "/h/u"), "/");
+    });
+
+    test.it("tells the two files apart: sizes, times, the newer one and the name keep both gives", () => {
+        const box = sandbox();
+        try {
+            write(box.at("from", "photo.png"), "new and longer");
+            write(box.at("to", "photo.png"), "old");
+            write(box.at("to", "photo (2).png"), "taken");
+            write(box.at("from", "site", "a"), "1");
+            write(box.at("from", "site", "b"), "2");
+            write(box.at("to", "site", "a"), "1");
+            fs.utimesSync(box.at("to", "photo.png"), 1000, 1000);
+            fs.utimesSync(box.at("from", "photo.png"), 2000, 2000);
+            const list = Conflicts.items([box.at("from", "photo.png"), box.at("from", "site")], box.at("to"), false);
+            const [photo, site] = Conflicts.probed(list, box.run(Conflicts.probeCommand(list)));
+            assert.deepStrictEqual(photo.there, { size: 3, modified: 1000, count: -1 });
+            assert.deepStrictEqual(photo.coming, { size: 14, modified: 2000, count: -1 });
+            assert.strictEqual(Conflicts.newer(photo), "coming");
+            assert.strictEqual(Conflicts.keptName(photo), "photo (3).png");
+            assert.strictEqual(site.there.count, 1);
+            assert.strictEqual(site.coming.count, 2);
+            assert.strictEqual(Conflicts.keptName(site), "site (2)");
+            assert.strictEqual(Conflicts.newer(Object.assign({}, photo, { coming: photo.there })), "");
+            assert.ok(Conflicts.picture("photo.PNG") && !Conflicts.picture("notes.txt"));
+        } finally {
+            box.done();
+        }
+    });
+
+    test.it("names the clashes still to come, briefly", () => {
+        const list = Conflicts.probed(Conflicts.items(["/a/1.txt", "/a/notes.txt", "/a/fresh", "/a/report.pdf"], "/t", false), "t1\nt2\nt4\n");
+        const chosen = Conflicts.choices(list);
+        assert.deepStrictEqual(Conflicts.clashes(list, chosen, 0), ["notes.txt", "report.pdf"]);
+        assert.strictEqual(Conflicts.clashLabel(["notes.txt", "report.pdf"]), "2 more name clashes: notes.txt, report.pdf");
+        assert.strictEqual(Conflicts.clashLabel(["notes.txt"]), "1 more name clash: notes.txt");
+        assert.strictEqual(Conflicts.clashLabel(["a", "b", "c", "d"]), "4 more name clashes");
+        assert.strictEqual(Conflicts.clashLabel(["Quarterly budget review, final version.xlsx"]), "1 more name clash");
+        assert.strictEqual(Conflicts.clashLabel([]), "");
     });
 
     test.it("says what went wrong in one short line", () => {
