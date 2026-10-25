@@ -523,13 +523,19 @@ ShellRoot {
             expect: "the weather"
         },
         {
-            name: "no forecast ever loaded: weather unavailable, try again",
+            name: "no forecast ever loaded while offline: it says so and waits",
             run: () => {
                 Weather.current = null;
                 Weather.wttrData = null;
                 Weather.outlook = [];
                 Weather.take("", "\n000 6");
             },
+            wait: 1200,
+            expect: "the weather"
+        },
+        {
+            name: "the weather service did not answer: a quiet try again",
+            run: () => Weather.take("", "\n000 28"),
             wait: 1200,
             expect: "the weather"
         },

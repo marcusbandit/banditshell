@@ -168,10 +168,11 @@ test("an unknown place is told apart from a failed fetch", () => {
     assert.deepStrictEqual(Forecast.readWttr("{}\n200"), { failure: "service" });
 });
 
-test("a failure says what went wrong", () => {
-    assert.strictEqual(Forecast.failureLook("offline").title, "Weather unavailable");
-    assert.strictEqual(Forecast.failureLook("offline").detail, "This computer is offline");
-    assert.strictEqual(Forecast.failureLook("service").detail, "The weather service did not answer");
+test("a failure says what went wrong and offers Try again only where it can work", () => {
+    assert.strictEqual(Forecast.failureLook("offline").title, "You're offline");
+    assert.strictEqual(Forecast.failureLook("offline").retry, false);
+    assert.strictEqual(Forecast.failureLook("service").retry, true);
+    assert.strictEqual(Forecast.failureLook("place").retry, false);
     assert.match(Forecast.failureLook("place").detail, /config\.json/);
 });
 

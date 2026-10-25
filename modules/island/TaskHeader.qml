@@ -10,7 +10,6 @@ Item {
     property color tone: Appearance.colour.accent
     property string title: ""
     property string subtitle: ""
-    property color titleColour: Appearance.colour.text
 
     signal closed
 
@@ -42,7 +41,6 @@ Item {
         StyledText {
             width: parent.width
             text: root.title
-            color: root.titleColour
             font.pixelSize: Appearance.font.size.large
             elide: Text.ElideRight
         }

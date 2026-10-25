@@ -58,17 +58,16 @@ Item {
 
                 width: parent.width
                 icon: root.blank ? root.look.icon : Weather.icon
-                tone: root.blank ? Appearance.colour.alarm : Weather.stale ? Appearance.colour.textDim : Appearance.colour.accent
+                tone: !root.blank ? Appearance.colour.accent : Weather.failure === "place" ? Appearance.colour.alarm : Appearance.colour.textDim
                 title: Weather.ready ? `${Weather.temperature} ${Weather.summary.trim()}` : root.blank ? root.look.title : "Weather"
-                titleColour: Weather.stale ? Appearance.colour.textDim : Appearance.colour.text
-                subtitle: Weather.stale ? [Weather.place, Forecast.ago(Weather.fetchedAt, age.date.getTime())].filter(Boolean).join(", ") : !root.blank ? Weather.place : Weather.failure !== "place" ? root.look.detail : Weather.failedFor ? `No town called "${Weather.failedFor}"` : "The weather service does not know this place"
+                subtitle: !root.blank ? Weather.place : Weather.failure !== "place" ? root.look.detail : Weather.failedFor ? `No town called "${Weather.failedFor}"` : "The weather service does not know this place"
                 onClosed: root.hide()
             }
 
             Item {
                 width: parent.width
                 height: Math.max(notes.implicitHeight, again.visible ? again.implicitHeight : 0)
-                visible: Weather.failed
+                visible: Weather.stale || Weather.failure === "place" || root.blank && root.look.retry
 
                 Column {
                     id: notes
@@ -82,13 +81,14 @@ Item {
                     StyledText {
                         width: parent.width
                         visible: Weather.stale
-                        text: "Couldn't refresh"
-                        color: Appearance.colour.alarm
+                        text: `${Forecast.ago(Weather.fetchedAt, age.date.getTime())}, ${root.look.note}`
+                        color: Appearance.colour.textDim
+                        wrapMode: Text.Wrap
                     }
 
                     StyledText {
                         width: parent.width
-                        visible: Weather.stale || Weather.failure === "place"
+                        visible: Weather.failure === "place"
                         text: root.look.detail
                         wrapMode: Text.Wrap
                     }
@@ -105,10 +105,10 @@ Item {
                 Button {
                     id: again
 
-                    x: root.blank ? header.inset : parent.width - width
+                    x: root.blank ? header.inset - again.padX : parent.width - width
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: Weather.failure !== "place"
-                    style: "accent"
+                    visible: root.look.retry
+                    style: "bare"
                     icon: "refresh"
                     text: Weather.loading ? "Trying" : "Try again"
                     interactive: !Weather.loading
@@ -128,7 +128,6 @@ Item {
 
                 width: parent.width
                 visible: Weather.forecastReady
-                opacity: Weather.stale ? Appearance.opacity.disabled : 1
 
                 Repeater {
                     model: root.days

@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Networking
 import qs.config
 import qs.components
 import "weather.js" as Forecast
@@ -14,6 +15,7 @@ Singleton {
     readonly property bool wanted: root.cfg.show
     readonly property bool imperial: root.cfg.units === "imperial"
     readonly property string location: root.cfg.location ?? ""
+    readonly property bool online: Networking.connectivity === NetworkConnectivity.Full
 
     property var current: null
     property double fetchedAt: 0
@@ -53,6 +55,8 @@ Singleton {
 
     onImperialChanged: root.loadOutlook()
     onLocationChanged: root.refresh()
+    onOnlineChanged: if (root.online && root.failure === "offline")
+        root.retry()
 
     function refresh(): void {
         const place = root.location;
