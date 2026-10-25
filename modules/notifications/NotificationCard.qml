@@ -56,7 +56,11 @@ Item {
     readonly property var actions: root.live && root.roomy ? (root.entry?.pressable(root.notification?.actions) ?? []) : []
 
     readonly property string appName: root.entry?.appName || "this app"
-    readonly property bool appMuted: !!root.entry && Notifications.mutedNow(Notifications.ruleKeyFor(root.entry))
+    readonly property string appMutedLabel: root.entry ? Notifications.mutedLabel(Notifications.ruleKeyFor(root.entry)) : ""
+    readonly property bool appMuted: root.appMutedLabel !== ""
+
+    property double hushAt: Date.now()
+    readonly property var hushEnds: [...new Set([Notifications.hushUntil("hour", root.hushAt), Notifications.hushUntil("tomorrow", root.hushAt)])].sort((a, b) => a - b)
 
     readonly property real tileInset: root.tiled ? Appearance.padding.small : 0
     readonly property real tileGap: root.tiled ? Appearance.stroke.line : 0
@@ -102,9 +106,18 @@ Item {
         root.holdEntry();
     }
 
-    function hush(kind: string, choice: string): void {
+    function hush(kind: string, until: double): void {
         root.hushing = false;
-        Notifications.hush(root.entry, kind, choice);
+        Notifications.hush(root.entry, kind, until);
+    }
+
+    onHushingChanged: root.hushAt = Date.now()
+
+    Timer {
+        interval: 10000
+        repeat: true
+        running: root.hushing
+        onTriggered: root.hushAt = Date.now()
     }
 
     function pin(on: bool): void {
@@ -634,12 +647,14 @@ Item {
                     Repeater {
                         model: [
                             {
-                                label: "Snooze",
-                                choices: [["snooze", "hour", "1 hour"], ["snooze", "tomorrow", "tomorrow"]]
+                                label: "Remind me",
+                                timed: root.hushEnds.map(until => ["snooze", until, `at ${Notifications.endsAt(until, root.hushAt)}`]),
+                                lasting: []
                             },
                             {
-                                label: root.appMuted ? `${root.appName} muted` : `Mute ${root.appName}`,
-                                choices: root.appMuted ? [["unmute", "", "unmute"]] : [["mute", "hour", "1 hour"], ["mute", "tomorrow", "tomorrow"], ["mute", "always", "always"]]
+                                label: root.appMuted ? `${root.appName} muted ${root.appMutedLabel}` : `Mute ${root.appName}`,
+                                timed: root.appMuted ? [["unmute", 0, "unmute"]] : root.hushEnds.map(until => ["mute", until, `until ${Notifications.endsAt(until, root.hushAt)}`]),
+                                lasting: root.appMuted ? [] : [["mute", 0, "until I unmute"]]
                             }
                         ]
 
@@ -659,20 +674,28 @@ Item {
                                 elide: Text.ElideRight
                             }
 
-                            Flow {
-                                width: group.width
-                                spacing: Appearance.padding.small
+                            Repeater {
+                                model: [group.modelData.timed, group.modelData.lasting].filter(line => line.length > 0)
 
-                                Repeater {
-                                    model: group.modelData.choices
+                                delegate: Flow {
+                                    id: line
 
-                                    delegate: Button {
-                                        required property var modelData
+                                    required property var modelData
 
-                                        size: 0
-                                        style: "ring"
-                                        text: modelData[2]
-                                        onClicked: root.hush(modelData[0], modelData[1])
+                                    width: group.width
+                                    spacing: Appearance.padding.small
+
+                                    Repeater {
+                                        model: line.modelData
+
+                                        delegate: Button {
+                                            required property var modelData
+
+                                            size: 0
+                                            style: "ring"
+                                            text: modelData[2]
+                                            onClicked: root.hush(modelData[0], modelData[1])
+                                        }
                                     }
                                 }
                             }
@@ -687,6 +710,7 @@ Item {
         id: corner
 
         property string icon: ""
+        property string title: ""
         property bool on: false
 
         signal clicked
@@ -726,6 +750,13 @@ Item {
 
             onClicked: corner.clicked()
         }
+
+        FloatingTooltip {
+            x: corner.width - width
+            y: corner.height + gap
+            text: corner.title
+            shown: cornerArea.containsMouse
+        }
     }
 
     CornerButton {
@@ -736,6 +767,7 @@ Item {
         width: root.closeSize
         height: root.closeSize
         icon: "close"
+        title: "Dismiss"
         opacity: root.roomy ? glow.value : 0
 
         onClicked: root.fling(1)
@@ -749,6 +781,7 @@ Item {
         width: root.closeSize
         height: root.closeSize
         icon: "snooze"
+        title: "Remind me or mute"
         on: root.hushing
         opacity: !root.roomy ? 0 : root.hushing ? 1 : glow.value
 

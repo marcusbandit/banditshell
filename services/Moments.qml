@@ -87,7 +87,7 @@ Singleton {
 
     function offerUndo(): void {
         const hush = Notifications.hushed;
-        const spec = hush ? Logic.undoSpec([hush.app], hush.entry, `${hush.kind}d`) : Logic.undoSpec(Notifications.shelf.map(r => r.entry.appName), Notifications.shelf[0]?.entry);
+        const spec = hush ? Logic.undoSpec([hush.app], hush.entry, Logic.hushDone(hush.kind, Notifications.endsAt(hush.until, Date.now()))) : Logic.undoSpec(Notifications.shelf.map(r => r.entry.appName), Notifications.shelf[0]?.entry);
         if (!spec) {
             Activities.remove("moment:undo");
             return;

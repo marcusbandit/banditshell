@@ -161,6 +161,10 @@ Singleton {
         Config.setMany([["notifications.quiet", on], ["notifications.quietUntil", until]]);
     }
 
+    function quietTill(until: double): void {
+        Config.setMany([["notifications.quiet", true], ["notifications.quietUntil", until > Date.now() ? until : 0]]);
+    }
+
     function dropSpentDeadline(): void {
         if (Config.loaded && root.quietUntil > 0 && (!root.quiet || root.quietUntil <= Date.now()))
             Config.set("notifications.quietUntil", 0);
@@ -250,12 +254,24 @@ Singleton {
         return Timing.muted(rule, Date.now()) ? rule.muteUntil : 0;
     }
 
-    function muteLeft(appKey: string): string {
-        return Timing.mutedLine(root.ruleAt(appKey).muteUntil, root.now);
+    function hushUntil(choice: string, at: double): double {
+        return QuietHours.hushUntil(choice, at, root.nightTo);
     }
 
-    function mutedNow(appKey: string): bool {
-        return Rules.muted(root.ruleAt(appKey), root.now);
+    function endsAt(until: double, at: double): string {
+        return QuietHours.endsAt(until, at);
+    }
+
+    function mutedLabel(appKey: string): string {
+        const rule = root.ruleAt(appKey);
+        if (rule.muteUntil > root.now)
+            return `until ${root.endsAt(rule.muteUntil, root.now)}`;
+        return Rules.muted(rule, root.now) ? "until I\u00a0unmute" : "";
+    }
+
+    function endMute(appKey: string): void {
+        if (appKey)
+            root.setRule(appKey, Rules.unmuted(root.ruleAt(appKey), Date.now()));
     }
 
     function isMuted(appKey: string): bool {
@@ -390,11 +406,11 @@ Singleton {
 
     property var hushed: null
 
-    function hush(entry: var, kind: string, choice: string): bool {
+    function hush(entry: var, kind: string, until: double): bool {
         if (!entry || entry.leaving)
             return false;
         const key = root.ruleKeyFor(entry);
-        const ms = kind === "unmute" ? 0 : QuietHours.hushLength(choice, Date.now(), root.nightTo);
+        const ms = kind === "unmute" || until === 0 ? 0 : until - Date.now();
         if (!Timing.hushAllowed(kind, ms, key))
             return false;
         const record = {
@@ -402,6 +418,7 @@ Singleton {
             entry: entry,
             app: entry.appName,
             key: key,
+            until: until,
             was: Object.prototype.hasOwnProperty.call(root.rules, key) ? root.rules[key] : undefined,
             popups: Shelf.hushedPopups(root.popups, root.popups.map(e => root.ruleKeyFor(e)), entry, key, kind),
             snooze: root.snoozed.find(item => item.entry === entry) ?? null,
@@ -411,7 +428,7 @@ Singleton {
         if (kind === "snooze")
             root.snooze(entry, ms);
         else if (kind === "unmute")
-            root.setRule(key, Rules.unmuted(root.ruleAt(key), Date.now()));
+            root.endMute(key);
         else {
             root.mute(key, ms);
             for (const p of record.popups)

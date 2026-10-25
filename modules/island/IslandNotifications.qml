@@ -28,13 +28,15 @@ Item {
         return root.quiet ? `${count} · quiet mode on` : count;
     }
 
-    readonly property string quietChoice: {
-        if (!root.quiet)
-            return "";
-        if (!(Notifications.quietUntil > 0))
-            return Notifications.parseEnds("never");
-        const tomorrow = Notifications.parseEnds("tomorrow");
-        return Notifications.quietUntil === Notifications.deadlineFor(tomorrow) ? tomorrow : Notifications.parseEnds("hour");
+    property double quietAt: Date.now()
+    readonly property var quietEnds: [...new Set([Notifications.hushUntil("hour", root.quietAt), Notifications.hushUntil("tomorrow", root.quietAt)])].sort((a, b) => a - b)
+
+    Timer {
+        interval: 10000
+        repeat: true
+        running: !root.quiet && root.visible
+        triggeredOnStart: true
+        onTriggered: root.quietAt = Date.now()
     }
 
     readonly property real deckRoom: root.maxHeight > 0 ? Math.max(0, root.maxHeight - root.topInset - header.implicitHeight - controls.implicitHeight - root.gap * 3 - root.pad) : 100000
@@ -78,41 +80,72 @@ Item {
             id: controls
 
             width: parent.width
-            implicitHeight: quietChoices.implicitHeight
+            implicitHeight: root.quiet ? quietOff.implicitHeight : quietChoices.implicitHeight
 
             StyledText {
                 id: quietLabel
 
                 anchors.left: parent.left
-                anchors.verticalCenter: quietChoices.verticalCenter
+                y: (Math.max(Appearance.sizes.minTarget, Appearance.button.height(0)) - implicitHeight) / 2
+                visible: !root.quiet
                 text: "Quiet"
                 color: Appearance.colour.textDim
             }
 
-            Row {
+            Column {
                 id: quietChoices
 
                 anchors.left: quietLabel.right
                 anchors.leftMargin: Appearance.padding.normal
+                anchors.right: parent.right
+                visible: !root.quiet
                 spacing: Appearance.padding.small
 
-                Repeater {
-                    model: [["hour", "1 hour"], ["tomorrow", "tomorrow"], ["never", "always"]]
+                Flow {
+                    width: parent.width
+                    spacing: Appearance.padding.small
 
-                    delegate: Button {
-                        required property var modelData
+                    Repeater {
+                        model: root.quietEnds
 
-                        readonly property string ends: Notifications.parseEnds(modelData[0])
+                        delegate: Button {
+                            required property double modelData
 
-                        size: 0
-                        style: "ring"
-                        text: checked && Notifications.quietUntil > 0 ? Notifications.endsNote : modelData[1]
-                        checkable: true
-                        checked: root.quietChoice === ends
-
-                        onToggled: Notifications.setQuiet(!checked, checked ? "" : ends)
+                            size: 0
+                            style: "ring"
+                            text: `until ${Notifications.endsAt(modelData, root.quietAt)}`
+                            onClicked: Notifications.quietTill(modelData)
+                        }
                     }
                 }
+
+                Button {
+                    size: 0
+                    style: "ring"
+                    text: "until I turn it off"
+                    onClicked: Notifications.quietTill(0)
+                }
+            }
+
+            StyledText {
+                anchors.left: parent.left
+                anchors.right: quietOff.left
+                anchors.rightMargin: Appearance.padding.normal
+                anchors.verticalCenter: quietOff.verticalCenter
+                visible: root.quiet
+                text: Notifications.quietLine || "Quiet"
+                elide: Text.ElideRight
+            }
+
+            Button {
+                id: quietOff
+
+                anchors.right: parent.right
+                visible: root.quiet
+                size: 0
+                style: "ring"
+                text: "turn off"
+                onClicked: Notifications.setQuiet(false, "")
             }
         }
 

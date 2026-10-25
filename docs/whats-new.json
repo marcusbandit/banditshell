@@ -7,12 +7,12 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Snooze a notification or mute its app from its card in the island"
+          "text": "Island cards can remind you later or mute their app, with an end time"
         },
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Quiet mode in the island: 1 hour, until tomorrow, or always"
+          "text": "Quiet mode in the island shows when it ends and has a turn off button"
         }
       ]
     },

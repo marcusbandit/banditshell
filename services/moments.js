@@ -172,6 +172,14 @@ function undoSpec(apps, only, done) {
     };
 }
 
+function hushDone(kind, ends) {
+    if (kind === "snooze")
+        return `back at ${ends}`;
+    if (kind === "mute")
+        return ends ? `muted until ${ends}` : "muted until I unmute";
+    return "unmuted";
+}
+
 function newlyConnected(before, after) {
     const had = new Set(before || []);
     return (after || []).filter(address => !had.has(address));

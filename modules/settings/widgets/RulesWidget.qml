@@ -50,12 +50,15 @@ Column {
             required property string modelData
 
             readonly property var switches: Notifications.ruleAt(rule.modelData)
-            readonly property string muteLeft: Notifications.muteLeft(rule.modelData)
+            readonly property string mutedLabel: Notifications.mutedLabel(rule.modelData)
+            readonly property bool muted: rule.mutedLabel !== ""
 
             width: root.width
             interactive: false
             label: Apps.nameFor(rule.modelData)
-            detail: rule.muteLeft ? `muted · ${rule.muteLeft}` : ""
+            detail: rule.muted ? `muted ${rule.mutedLabel}` : ""
+            detailColour: Appearance.colour.text
+            detailLines: 2
             onPointed: SettingsView.hovered = root.row
             lead: Component {
                 AppMark {
@@ -70,26 +73,30 @@ Column {
 
                 Button {
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: rule.muteLeft !== ""
+                    visible: rule.muted
                     size: 0
                     text: "Unmute"
-                    onClicked: Notifications.setRule(rule.modelData, {
-                        muteUntil: 0
-                    })
+                    onClicked: Notifications.endMute(rule.modelData)
                 }
 
                 Repeater {
                     model: root.fields
 
                     delegate: Item {
+                        id: field
+
                         required property var modelData
+
+                        readonly property bool held: rule.muted && modelData[0] !== "lock"
 
                         width: root.column
                         height: Appearance.sizes.toggleHeight
 
                         Toggle {
                             anchors.centerIn: parent
-                            checked: rule.switches[modelData[0]]
+                            enabled: !field.held
+                            opacity: field.held ? Appearance.opacity.disabled : 1
+                            checked: !field.held && rule.switches[modelData[0]]
                             onToggled: Notifications.setRule(rule.modelData, {
                                 [modelData[0]]: !rule.switches[modelData[0]]
                             })

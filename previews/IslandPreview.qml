@@ -1077,11 +1077,18 @@ ShellRoot {
             holds: () => preview.cardOf(preview.mine[0])?.hushing === true
         },
         {
-            name: "snooze for an hour: the card goes, Discord snoozed with Undo",
-            run: () => preview.cardOf(preview.mine[0])?.hush("snooze", "hour"),
+            name: "pointing at the snooze button names it",
+            run: () => preview.tip("Remind me or mute", true),
+            wait: 1200,
+            expect: "3 notifications stacked",
+            holds: () => preview.tip("Remind me or mute", true)
+        },
+        {
+            name: "remind me in an hour: the card goes, Discord back at that time, with Undo",
+            run: () => preview.tip("Remind me or mute", false) && preview.cardOf(preview.mine[0])?.hush("snooze", Notifications.hushUntil("hour", Date.now())),
             wait: 1500,
             expect: "2 notifications stacked, below it: activity",
-            holds: () => Notifications.snoozed.some(i => i.entry === preview.mine[0] && Math.abs(i.at - Date.now() - 3600000) < 10000) && preview.undoRow()?.text === "Discord snoozed"
+            holds: () => Notifications.snoozed.some(i => i.entry === preview.mine[0] && Math.abs(i.at - Date.now() - 3600000) < 10000) && preview.undoRow()?.text.startsWith("Discord back at ")
         },
         {
             name: "Undo brings the card back and drops the snooze",
@@ -1091,16 +1098,16 @@ ShellRoot {
             holds: () => Notifications.snoozed.length === 0 && !preview.undoRow() && Notifications.popups.map(e => e.summary).join("|") === preview.order
         },
         {
-            name: "mute Discord always: its card goes, popups and sound off, with Undo",
+            name: "mute Discord until I unmute: its card goes, popups and sound off, with Undo",
             run: () => {
                 preview.hushing(true);
-                preview.cardOf(preview.mine[0])?.hush("mute", "always");
+                preview.cardOf(preview.mine[0])?.hush("mute", 0);
             },
             wait: 1500,
             expect: "2 notifications stacked, below it: activity",
             holds: () => {
                 const rule = Notifications.ruleAt(Notifications.ruleKeyFor(preview.mine[0]));
-                return !rule.pop && !rule.snd && preview.undoRow()?.text === "Discord muted";
+                return !rule.pop && !rule.snd && preview.undoRow()?.text === "Discord muted until I unmute";
             }
         },
         {
@@ -1114,7 +1121,7 @@ ShellRoot {
             name: "mute for an hour and let the undo lapse: the mute stays",
             run: () => {
                 preview.hushing(true);
-                preview.cardOf(preview.mine[0])?.hush("mute", "hour");
+                preview.cardOf(preview.mine[0])?.hush("mute", Notifications.hushUntil("hour", Date.now()));
             },
             wait: Notifications.undoMs + 2500,
             expect: "2 notifications stacked",
@@ -1133,13 +1140,13 @@ ShellRoot {
         },
         {
             name: "unmute: Discord unmuted, with Undo",
-            run: () => preview.cardOf(preview.mine[0])?.hush("unmute", ""),
+            run: () => preview.cardOf(preview.mine[0])?.hush("unmute", 0),
             wait: 1500,
             expect: "3 notifications stacked, below it: activity",
             holds: () => Notifications.mutedUntil(Notifications.ruleKeyFor(preview.mine[0])) === 0 && preview.undoRow()?.text === "Discord unmuted"
         },
         {
-            name: "the notifications view offers quiet for 1 hour, until tomorrow, or always",
+            name: "the notifications view offers quiet until an hour from now, the night's end, or until turned off",
             run: () => {
                 Notifications.letGo();
                 island.choose({
@@ -1150,21 +1157,21 @@ ShellRoot {
             expect: "the notifications"
         },
         {
-            name: "quiet for an hour: that choice lights up",
-            run: () => Notifications.setQuiet(true, Notifications.parseEnds("hour")),
+            name: "quiet for an hour: the row says until when, with turn off",
+            run: () => Notifications.quietTill(Notifications.hushUntil("hour", Date.now())),
             wait: 1200,
             expect: "the notifications",
             holds: () => Notifications.quiet && Math.abs(Notifications.quietUntil - Date.now() - 3600000) < 10000
         },
         {
             name: "quiet until tomorrow: it ends when the night does",
-            run: () => Notifications.setQuiet(true, Notifications.parseEnds("tomorrow")),
+            run: () => Notifications.quietTill(Notifications.hushUntil("tomorrow", Date.now())),
             wait: 1200,
             expect: "the notifications",
             holds: () => Notifications.quiet && Notifications.quietUntil === Notifications.deadlineFor(Notifications.parseEnds("tomorrow"))
         },
         {
-            name: "quiet until evening, set elsewhere: the first choice lights with its end and turns it off",
+            name: "quiet until evening, set elsewhere: the row says so too",
             run: () => Notifications.setQuiet(true, Notifications.parseEnds("evening")),
             wait: 1200,
             expect: "the notifications",
@@ -1172,12 +1179,29 @@ ShellRoot {
         },
         {
             name: "quiet always: on until turned off",
-            run: () => Notifications.setQuiet(true, Notifications.parseEnds("never")),
+            run: () => Notifications.quietTill(0),
             wait: 1200,
             expect: "the notifications",
             holds: () => Notifications.quiet && Notifications.quietUntil === 0
         }
     ]
+
+    function tip(text: string, up: bool): bool {
+        const find = item => {
+            for (const child of item?.children ?? []) {
+                if (child.text === text && child.up !== undefined)
+                    return child;
+                const deeper = find(child);
+                if (deeper)
+                    return deeper;
+            }
+            return null;
+        };
+        const found = find(preview.cardOf(preview.mine[0]));
+        if (found)
+            found.up = up;
+        return !!found;
+    }
 
     function hushing(on: bool): void {
         const card = preview.cardOf(preview.mine[0]);
