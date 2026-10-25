@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-6",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Keep awake shows a coffee mark on the rail; press it to turn it off"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-5",
       "date": "2026-10-25",
       "changes": [

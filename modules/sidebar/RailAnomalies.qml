@@ -14,6 +14,10 @@ Item {
 
     property bool batteryWanted: false
 
+    property bool awake: false
+
+    signal awakeEnded
+
     readonly property BatteryGlance battery: BatteryGlance {}
 
     readonly property var wanted: Anomalies.list({
@@ -26,6 +30,7 @@ Item {
         micMuted: Audio.sourceMuted,
         recording: ScreenRecorder.recording,
         vpn: Tunnels.anyOn,
+        awake: root.awake,
         wifiAvailable: Network.available,
         wifiOn: Network.enabled,
         bluetoothAvailable: Bluetooth.available,
@@ -61,6 +66,14 @@ Item {
         interval: Math.max(1, Config.values.island.glanceSeconds) * 1000
         onTriggered: root.micFresh = false
     }
+
+    readonly property var presses: ({
+            awake: () => root.awakeEnded()
+        })
+
+    property string pointedKey: ""
+
+    readonly property bool pointing: root.held.some(e => e.key === root.pointedKey && e.present)
 
     property var held: []
 
@@ -112,6 +125,20 @@ Item {
                     name: mark.entry?.icon ?? mark.modelData.icon
                     fill: 1
                     color: root.toneColour(mark.entry?.tone ?? mark.modelData.tone)
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: mark.present && !!root.presses[mark.modelData.key]
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onContainsMouseChanged: {
+                        if (containsMouse)
+                            root.pointedKey = mark.modelData.key;
+                        else if (root.pointedKey === mark.modelData.key)
+                            root.pointedKey = "";
+                    }
+                    onClicked: root.presses[mark.modelData.key]()
                 }
 
                 Follow {

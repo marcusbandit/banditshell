@@ -19,6 +19,8 @@ Item {
 
     property string modeIcon: ""
 
+    property bool awake: false
+
     property real glanceReach: 0
 
     readonly property string slotIcon: root.modeIcon || (Services.Notifications.quieted ? "do_not_disturb_on" : "")
@@ -53,6 +55,8 @@ Item {
     signal clockPullEnded(bool open)
 
     signal updateRequested(bool deliberate)
+
+    signal awakeEnded
 
     readonly property var menuItems: [...tray.items, root.updateEntry, root.clockEntry, root.calendarEntry, ...status.items]
     readonly property var menuKeys: root.menuItems.map(i => i.key)
@@ -243,6 +247,8 @@ Item {
         Item {
             id: rest
 
+            readonly property bool holdsRest: anomalies.pointing
+
             RailPips {
                 id: pips
 
@@ -274,7 +280,10 @@ Item {
                 anchors.bottomMargin: glance.footInUse ? parent.height - glance.topEdge + Appearance.padding.large : root.endMargin(root.status)
 
                 modeIcon: root.modeIcon
+                awake: root.awake
                 batteryWanted: ["top", "off"].includes(Config.values.sidebar.glance)
+
+                onAwakeEnded: root.awakeEnded()
             }
         }
     }
@@ -285,7 +294,7 @@ Item {
 
     Timer {
         interval: Appearance.animation.dwell
-        running: root.rail && pointer.hovered && !root.dwelt
+        running: root.rail && pointer.hovered && !root.dwelt && !(resting.item?.holdsRest ?? false)
         onTriggered: root.dwelt = true
     }
 
