@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "dictation-events.js" as DictationEvents
 
 Singleton {
     id: root
@@ -24,6 +25,34 @@ Singleton {
 
     readonly property bool live: root.phase !== "idle"
 
+    property bool canCancel: false
+    property bool cancelled: false
+    property var cancelledTyped: null
+    readonly property string outcome: DictationEvents.outcome(root.cancelledTyped)
+    readonly property int cancelledMs: 2500
+    readonly property bool cancellable: root.canCancel && (root.phase === "listening" || root.phase === "processing")
+
+    function cancel(): void {
+        if (!root.cancellable || stop.running)
+            return;
+        stop.command = ["sh", "-c", 'exec "$(command -v voice || printf %s "$HOME/bin/voice")" "$@"', "voice", "cancel"];
+        stop.running = true;
+    }
+
+    Process {
+        id: stop
+
+        stderr: SplitParser {
+            onRead: line => console.warn("Dictation:", line)
+        }
+    }
+
+    Timer {
+        running: root.cancelled
+        interval: root.cancelledMs
+        onTriggered: root.cancelled = false
+    }
+
     readonly property string langTag: root.lang === "auto" ? "" : root.lang.startsWith("en") ? "EN" : root.lang.startsWith("da") ? "DK" : root.lang.startsWith("ja") ? "JP" : root.lang.split(/[-_]/)[0].toUpperCase()
 
     readonly property int levelCount: 128
@@ -42,8 +71,10 @@ Singleton {
         root.levels = next;
     }
 
-    onPhaseChanged: if (root.phase === "listening")
-        root.quiet()
+    onPhaseChanged: if (root.phase === "listening") {
+        root.cancelled = false;
+        root.quiet();
+    }
 
     Component.onCompleted: root.quiet()
 
@@ -57,6 +88,7 @@ Singleton {
 
         onUpChanged: if (!up) {
             root.phase = "idle";
+            root.canCancel = false;
             root.quiet();
         }
     }
@@ -71,18 +103,20 @@ Singleton {
             parser: SplitParser {
                 splitMarker: "\n"
                 onRead: line => {
-                    let msg;
-                    try {
-                        msg = JSON.parse(line);
-                    } catch (e) {
+                    const e = DictationEvents.read(line);
+                    if (!e)
                         return;
+                    root.canCancel = e.canCancel;
+                    if (e.cancelled) {
+                        root.cancelledTyped = e.typed;
+                        root.cancelled = true;
                     }
-                    if (msg.phase !== undefined)
-                        root.phase = msg.phase;
-                    if (msg.lang !== undefined)
-                        root.lang = msg.lang;
-                    if (msg.level !== undefined && root.phase === "listening")
-                        root.heard(msg.level);
+                    if (e.phase !== null)
+                        root.phase = e.phase;
+                    if (e.lang !== null)
+                        root.lang = e.lang;
+                    if (e.level !== null && root.phase === "listening")
+                        root.heard(e.level);
                 }
             }
         }

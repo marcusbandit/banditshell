@@ -5,8 +5,8 @@
   "owns": {
     "qml": ["modules/clipboard"],
     "services": ["Clipboard", "Dictation"],
-    "js": ["services/clipboard-search.js", "services/clipboard-sweep.js"],
-    "tests": ["tests/clipboard-sweep.test.js"],
+    "js": ["services/clipboard-search.js", "services/clipboard-sweep.js", "services/dictation-events.js"],
+    "tests": ["tests/clipboard-sweep.test.js", "tests/dictation-events.test.js", "tests/fixtures/gvoice/events.jsonl"],
     "scripts": ["scripts/clip-record.sh"]
   },
   "requires": {

@@ -5,7 +5,7 @@
   "owns": {
     "qml": ["modules/ipc/NotificationsIpc.qml", "modules/notifications", "previews/NotificationPreview.qml"],
     "services": ["AlertSounds", "AppNotifications", "NotificationBrief", "NotificationEntry", "Notifications"],
-    "js": ["services/notification-rules.js", "services/notification-search.js", "services/notification-store.js", "services/notification-timing.js", "services/quiet-hours.js"],
+    "js": ["services/notification-rules.js", "services/notification-search.js", "services/notification-shelf.js", "services/notification-store.js", "services/notification-timing.js", "services/quiet-hours.js"],
     "assets": ["assets/sounds"],
     "scripts": ["scripts/alert-sounds.py"],
     "tests": [
@@ -13,6 +13,7 @@
       "tests/notification-rules.test.js",
       "tests/notifications-cli.test.js",
       "tests/notification-search.test.js",
+      "tests/notification-shelf.test.js",
       "tests/notification-store.test.js",
       "tests/notification-timing.test.js",
       "tests/quiet-hours.test.js"

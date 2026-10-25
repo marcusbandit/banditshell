@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-16",
+      "id": "2026-10-25-22",
       "date": "2026-10-25",
       "changes": [
         {
@@ -13,6 +13,97 @@
           "type": "issues",
           "severity": "minor",
           "text": "Clearing a broken clipboard history no longer deletes its pictures"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-21",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "An off switch has an outline, so it reads as a switch"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The chosen option in a row of choices is filled in the theme colour"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-20",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Workspace pips stay put when a rail mark comes or goes"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Rail marks sit apart from the workspace pips"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-19",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Ctrl+Z in Files undoes a delete, move, rename or paste"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-18",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Dismissed or cleared notifications can be undone for five seconds"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-17",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "With the newest voice, Esc or Discard stops dictation untyped"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-16",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Point at a rail mark to read what it is and what a press does"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Pressing a rail mark opens what controls it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The rail counts the marks that did not fit, like +2"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A crowded rail keeps the mic, recording and Do not disturb in view"
         }
       ]
     },

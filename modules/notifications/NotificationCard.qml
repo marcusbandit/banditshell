@@ -112,7 +112,7 @@ Item {
     function dismissAfter(act: var): void {
         if (root.live)
             act();
-        Notifications.dismiss(root.entry);
+        Notifications.answered(root.entry);
     }
 
     implicitHeight: (root.compact ? slim.height : full.implicitHeight) + root.pad * 2 + root.tileGap * 2
