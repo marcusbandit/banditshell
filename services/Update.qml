@@ -43,6 +43,9 @@ Singleton {
     readonly property bool resultPending: root.result !== null && root.result.shown !== true
     readonly property string resultText: Words.outcomeText(root.result, root.version)
     readonly property bool wentBackByHand: Words.byHand(root.result)
+    readonly property string skipped: root.wentBackByHand && root.commit(root.result.to ?? "") ? root.result.to : ""
+    readonly property string skippedVersion: root.skipped === "" ? "" : root.result.toLabel || root.skipped.slice(0, 7)
+    readonly property bool canReinstall: root.resultPending && root.skipped !== "" && !root.busy && !root.paused
 
     property date checkedAt: new Date(0)
 
@@ -152,6 +155,22 @@ Singleton {
             root.error = "Nothing has been checked yet. Refresh first.";
             return;
         }
+        root.take(root.target);
+    }
+
+    function reinstall(): void {
+        if (!root.canReinstall || root.checking)
+            return;
+
+        const sha = root.skipped;
+        root.dismissResult();
+        if (Config.values.updates.skip === sha)
+            Config.set("updates.skip", "");
+        root.error = "";
+        root.take(sha);
+    }
+
+    function take(sha: string): void {
         root.goingBack = false;
         root.state = root.downloading;
         root.phaseText = "Getting it...";
@@ -161,7 +180,7 @@ Singleton {
         watchdog.restart();
         silence.restart();
 
-        Quickshell.execDetached(["bash", root.cli, "update", "apply", "--detach", "--to", root.target]);
+        Quickshell.execDetached(["bash", root.cli, "update", "apply", "--detach", "--to", sha]);
     }
 
     function goBack(): void {

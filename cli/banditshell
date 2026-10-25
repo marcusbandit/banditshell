@@ -3284,6 +3284,10 @@ update_skipped() {
     grep -qxF -- "$1" <<<"$skips"
 }
 
+update_skipped_here() {
+    grep -qxF -- "$1" "$UPDATE_STATE/skip" 2>/dev/null
+}
+
 update_read() {
     U_BRANCH_NOW=$(ugit symbolic-ref --quiet --short HEAD 2>/dev/null || echo HEAD)
     U_HEAD=$(ugit rev-parse --verify --quiet HEAD 2>/dev/null || true)
@@ -3627,6 +3631,7 @@ update_apply() {
     mkdir -p "$UPDATE_STATE"
     printf '%s\n' "$U_HEAD" >"$UPDATE_STATE/previous"
     printf '%s\n' "$U_TARGET" >"$UPDATE_STATE/target"
+    ! update_skipped_here "$U_TARGET" || rm -f "$UPDATE_STATE/skip"
     rm -f "$UPDATE_STATE/result.json"
     mark=$(update_log_mark)
     update_set_aside

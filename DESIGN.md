@@ -1638,7 +1638,8 @@ banditshell/
 │   │                            restart, Go back to <id> once one is
 │   │                            recorded, asked once in its place, and the
 │   │                            outcome of the last update, a rollback
-│   │                            included. The What's
+│   │                            included. After a go-back the outcome
+│   │                            offers Reinstall <id>, asked once. The What's
 │   │                            new card is marked seen when dismissed
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)
@@ -2801,7 +2802,9 @@ when it answers `shell status` over IPC within `BANDITSHELL_HEALTH_WAIT` seconds
 shows no ReferenceError or "Failed to load" for `BANDITSHELL_HEALTH_SCAN` seconds (3); the last
 good copy is refreshed after that and not before. A failed check goes back by itself: `git reset
 --keep` to the recorded commit, relaunch, `update/result.json` for the next shell to read, and
-`update/skip` plus `updates.skip` so the same commit is not offered again; a newer one is.
+`update/skip` plus `updates.skip` so the same commit is not offered again; a newer one is. Applying
+the skipped commit by its id (`update apply --to`, the menu's Reinstall) drops it from `update/skip`,
+and the menu clears `updates.skip`.
 
 `BANDITSHELL_DRY=1` makes `stop`, `start`, `restart`, `update apply` and `update rollback` print
 what they would do (`dry: ...`) and change nothing. `tests/update-cli.test.js` runs the whole loop

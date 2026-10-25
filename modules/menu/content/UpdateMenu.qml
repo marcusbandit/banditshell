@@ -16,11 +16,16 @@ Column {
 
     property bool declineConfirm: false
     property bool goBackConfirm: false
+    property bool reinstallConfirm: false
 
-    readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, goBackRow.implicitWidth)
+    readonly property bool asking: root.goBackConfirm || root.reinstallConfirm
 
-    onShowingChanged: if (!root.showing)
-        root.goBackConfirm = false
+    readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, goBackRow.implicitWidth, afterRow.implicitWidth, reinstallRow.implicitWidth)
+
+    onShowingChanged: if (!root.showing) {
+        root.goBackConfirm = false;
+        root.reinstallConfirm = false;
+    }
 
     spacing: Appearance.padding.small
 
@@ -123,12 +128,51 @@ Column {
             color: Appearance.colour.textFaint
             wrapMode: Text.WordWrap
         }
+
+        Row {
+            id: afterRow
+
+            visible: !root.asking && Update.canReinstall
+            spacing: Appearance.padding.small
+
+            Button {
+                text: `Reinstall ${Update.skippedVersion}`
+                icon: "restart_alt"
+
+                onClicked: root.reinstallConfirm = true
+            }
+        }
+    }
+
+    Column {
+        width: parent.width
+        visible: Update.canReinstall && root.reinstallConfirm
+        spacing: Appearance.padding.small
+
+        InkText {
+            width: parent.width
+            alignInk: true
+            text: `Reinstall ${Update.skippedVersion}? The shell restarts on it, and it is no longer skipped.`
+            wrapMode: Text.Wrap
+        }
+
+        ButtonPair {
+            id: reinstallRow
+
+            actions: [{ text: "Reinstall", icon: "restart_alt" }, { text: `Stay on ${Update.version}` }]
+
+            onTriggered: index => {
+                root.reinstallConfirm = false;
+                if (index === 0)
+                    Update.reinstall();
+            }
+        }
     }
 
     Row {
         id: actionRow
 
-        visible: !root.goBackConfirm && (Update.canGoBack || Update.resultPending)
+        visible: !root.asking && (Update.canGoBack || Update.resultPending)
         spacing: Appearance.padding.small
 
         Button {
@@ -203,7 +247,7 @@ Column {
     }
 
     Button {
-        visible: Update.busy || (!root.goBackConfirm && !Update.diverged && !Update.paused && (Update.behind > 0 || Update.state === Update.failed))
+        visible: Update.busy || (!root.asking && !Update.diverged && !Update.paused && (Update.behind > 0 || Update.state === Update.failed))
         text: {
             if (Update.busy)
                 return Update.phaseText || "Updating...";
@@ -317,7 +361,7 @@ Column {
     }
 
     Button {
-        visible: !root.goBackConfirm && root.incoming.length === 0 && root.card.length > 0
+        visible: !root.asking && root.incoming.length === 0 && root.card.length > 0
         text: "Mark as read"
         onClicked: WhatsNew.markSeen(root.card[0].id)
     }
