@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-3",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The shell has a light look, built from your theme's own colours"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings, Colour: Light, dark or auto sets the shell and apps at once"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Auto turns dark while night light warms the screens, on its schedule"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Dark mode shows what apps really got when the system refuses a change"
+        }
+      ]
+    },
+    {
       "id": "2026-10-26-2",
       "date": "2026-10-26",
       "changes": [
