@@ -935,11 +935,11 @@ ShellRoot {
             expect: "3 notifications stacked"
         },
         {
-            name: "flick the front one away: Dismissed, with Undo",
+            name: "flick the front one away: Signal dismissed, with Undo",
             run: () => island.flickFront(1),
             wait: 1500,
             expect: "2 notifications stacked, below it: activity",
-            holds: () => Notifications.shelved === 1 && preview.undoRow()?.text === "Dismissed"
+            holds: () => Notifications.shelved === 1 && preview.undoRow()?.text === "Signal dismissed"
         },
         {
             name: "Undo puts it back on top of the stack",
@@ -949,11 +949,11 @@ ShellRoot {
             holds: () => Notifications.shelved === 0 && !preview.undoRow() && Notifications.popups.map(e => e.summary).join("|") === preview.order
         },
         {
-            name: "clear all: Cleared 3, with Undo",
+            name: "clear all: 3 notifications cleared, with Undo",
             run: () => island.clearNotifications(null),
             wait: 2000,
             expect: "activity",
-            holds: () => Notifications.shelved === 3 && preview.undoRow()?.text === "Cleared 3" && !Notifications.history.some(e => preview.mine.includes(e))
+            holds: () => Notifications.shelved === 3 && preview.undoRow()?.text === "3 notifications cleared" && !Notifications.history.some(e => preview.mine.includes(e))
         },
         {
             name: "Undo brings all three back as they were",
