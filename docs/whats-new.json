@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-10",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The update menu can go back to the previous version"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-9",
       "date": "2026-10-25",
       "changes": [
