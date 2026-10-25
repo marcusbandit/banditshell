@@ -8,6 +8,11 @@
           "type": "issues",
           "severity": "minor",
           "text": "Sorting Files by date or type in Settings now really sorts that way"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Files Sort by in Settings says which way it runs, like newest first"
         }
       ]
     },

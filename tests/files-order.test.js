@@ -41,6 +41,17 @@ test.describe("files order", () => {
         });
     });
 
+    test.it("Settings says which way each sort runs", () => {
+        const row = Catalogue.ROW_BY_KEY.filesSort;
+        const said = Object.fromEntries(Catalogue.options(row, {}).map(([v, l]) => [l, row.detail({v: () => v})]));
+        assert.deepStrictEqual(said, {
+            name: "A to Z",
+            date: "newest first",
+            size: "biggest first",
+            type: "grouped by type"
+        });
+    });
+
     test.it("the Settings summary names the sort by its label", () => {
         const values = {filesView: "list", filesSort: "mtime", filesHidden: false};
         assert.strictEqual(Catalogue.PAGE_BY_ID.files.status({v: k => values[k]}), "list · by date");

@@ -9,6 +9,7 @@ const kelvin = (s, v) => {
 };
 
 const FILES_SORTS = [["name", "name"], ["mtime", "date"], ["size", "size"], ["kind", "type"]];
+const FILES_SORT_ORDER = { name: "A to Z", mtime: "newest first", size: "biggest first", kind: "grouped by type" };
 
 const MODES = [
     { id: "none", name: "none", icon: "radio_button_unchecked", detail: "everything as set", set: {} },
@@ -730,7 +731,7 @@ const PAGES_SOURCE = {
         groups: [
             { rows: [
                 { n: 92, icon: "view_module", label: "View", k: "filesView", kind: "seg", o: ["icons", "list"], cfg: "files.view", kw: "files app view" },
-                { n: 92, icon: "sort", label: "Sort by", k: "filesSort", kind: "seg", o: FILES_SORTS, cfg: "files.sort", kw: "files sort" },
+                { n: 92, icon: "sort", label: "Sort by", k: "filesSort", kind: "seg", o: FILES_SORTS, cfg: "files.sort", detail: s => FILES_SORT_ORDER[s.v("filesSort")] ?? "", kw: "files sort newest oldest biggest" },
                 { n: 92, icon: "visibility_off", label: "Hidden files", k: "filesHidden", kind: "toggle", cfg: "files.hidden", detail: "ctrl + 5 or .", kw: "files hidden" },
                 { n: 92, icon: "markdown", label: "Markdown", k: "filesMarkdown", kind: "seg", o: ["rendered", "source"], cfg: "files.markdown", kw: "files previews" },
                 { n: 92, icon: "zoom_in", label: "Zoom", k: "filesZoom", kind: "slider", min: 0.6, max: 2, step: 0.1, fmt: v => `${v.toFixed(1)}×`, cfg: "files.zoom", kw: "files previews" }
