@@ -264,7 +264,7 @@ QtObject {
         {
             id: "suspend",
             icon: "bedtime",
-            label: "Suspend",
+            label: "Sleep",
             words: "sleep suspend",
             run: () => Suspension.perform("suspend")
         },
