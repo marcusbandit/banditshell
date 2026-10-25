@@ -157,6 +157,16 @@ function remembered(groups, bonusOf) {
     });
 }
 
+var DISRUPTIVE = ["lock", "suspend", "hibernate", "restartshell", "sleepdisplays"];
+
+function armsFirst(command, guessed) {
+    return !!command.confirm || !!guessed && DISRUPTIVE.indexOf(command.id) >= 0;
+}
+
+function matchesNothing(rows) {
+    return !rows.some(r => !r.header && r.kind !== "fallback");
+}
+
 function arrange(groups, caps) {
     const best = g => g.items.reduce((m, it) => Math.max(m, it.score ?? 0), -Infinity);
     const live = (groups || []).map((g, i) => ({

@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/ranking.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Ranking = new Function(src + "\nreturn { EXACT, PREFIX, WORD, ANYWHERE, NONE, escapeRegex, place, subsequence };")();
+const Ranking = new Function(src + "\nreturn { EXACT, PREFIX, WORD, ANYWHERE, NONE, escapeRegex, place, subsequence, typos, closest };")();
 
 test.describe("place", () => {
     test.it("ranks exact over prefix over word start over anywhere", () => {
@@ -55,5 +55,56 @@ test.describe("subsequence", () => {
         assert.ok(Ranking.subsequence("Thunderbird", "TBD"));
         assert.ok(!Ranking.subsequence("code", "vsc"));
         assert.ok(!Ranking.subsequence("ab", "abc"));
+    });
+});
+
+test.describe("typos", () => {
+    test.it("counts a wrong, missing, extra or swapped letter as one", () => {
+        assert.strictEqual(Ranking.typos("firefox", "firefox"), 0);
+        assert.strictEqual(Ranking.typos("firefox", "firefax"), 1);
+        assert.strictEqual(Ranking.typos("firefox", "firfox"), 1);
+        assert.strictEqual(Ranking.typos("firefox", "fireefox"), 1);
+        assert.strictEqual(Ranking.typos("firefox", "fierfox"), 1);
+    });
+
+    test.it("measures the whole name, so a started word is not a typo", () => {
+        assert.strictEqual(Ranking.typos("thunderbird", "thunder"), 4);
+    });
+});
+
+test.describe("closest", () => {
+    const names = ["Firefox", "Lock screen", "Files", "Kitty", "Night light"];
+
+    test.it("finds the name one typo away", () => {
+        assert.strictEqual(names[Ranking.closest("lok screen", names)], "Lock screen");
+        assert.strictEqual(names[Ranking.closest("firefxo", names)], "Firefox");
+        assert.strictEqual(names[Ranking.closest("nigth light", names)], "Night light");
+    });
+
+    test.it("takes the right letters in the wrong order", () => {
+        assert.strictEqual(names[Ranking.closest("frefiox", names)], "Firefox");
+    });
+
+    test.it("matches the end of a name from a word start", () => {
+        assert.strictEqual(names[Ranking.closest("screne", names)], "Lock screen");
+        assert.strictEqual(Ranking.closest("übersciht", ["Neue Übersicht"]), 0);
+        assert.strictEqual(Ranking.closest("ndern zeiit", ["Ändern Zeit"]), -1);
+    });
+
+    test.it("guesses nothing under five letters or past the typo limit", () => {
+        assert.strictEqual(Ranking.closest("kity", names), -1);
+        assert.strictEqual(Ranking.closest("pikachu", names), -1);
+        assert.strictEqual(Ranking.closest("xyzzyq", names), -1);
+    });
+
+    test.it("leaves ordinary words for the web search", () => {
+        const labels = ["Suspend", "Variable refresh", "Mail", "Sleep displays", "Airplane mode"];
+        for (const word of ["suspended", "maria", "email", "gmail", "sleepy", "airplay"])
+            assert.strictEqual(Ranking.closest(word, labels), -1, word);
+    });
+
+    test.it("prefers fewer typos, then a match at the start of the name", () => {
+        assert.strictEqual(Ranking.closest("filex", ["Firefox", "Files"]), 1);
+        assert.strictEqual(Ranking.closest("lighst", ["Night lights", "Lights"]), 1);
     });
 });

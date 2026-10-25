@@ -250,10 +250,10 @@ Item {
 
                     SettingChoice {
                         choices: [
-                            {label: "Name", value: "name"},
-                            {label: "Size", value: "size"},
-                            {label: "Changed", value: "mtime"},
-                            {label: "Kind", value: "kind"}
+                            {label: "A to Z", value: "name"},
+                            {label: "Newest", value: "mtime"},
+                            {label: "Biggest", value: "size"},
+                            {label: "Type", value: "kind"}
                         ]
                         chosen: Files.sort
                         onChose: value => Config.set("files.sort", value)
@@ -267,7 +267,7 @@ Item {
                     SettingChoice {
                         choices: [
                             {label: "Rendered", value: "rendered"},
-                            {label: "Raw", value: "raw"}
+                            {label: "Source", value: "raw"}
                         ]
                         chosen: Files.markdownRendered ? "rendered" : "raw"
                         onChose: value => Config.set("files.markdown", value)
