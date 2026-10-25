@@ -8,6 +8,7 @@ import qs.config
 import "quiet-hours.js" as QuietHours
 import "notification-rules.js" as Rules
 import "notification-search.js" as Search
+import "notification-shelf.js" as Shelf
 import "notification-store.js" as Store
 import "notification-timing.js" as Timing
 
@@ -307,6 +308,7 @@ Singleton {
     function forget(entry: var): void {
         if (!entry || entry.leaving)
             return;
+        entry.unpinned = entry.pinned;
         entry.pinned = false;
         root.beginLeave(entry, true);
     }
@@ -405,15 +407,25 @@ Singleton {
     }
 
     function drop(entry: var): void {
+        const popup = root.popups.includes(entry);
         root.leaving = root.leaving.filter(e => e !== entry);
         root.popups = root.popups.filter(e => e !== entry);
 
-        if (!entry.forget && root.history.includes(entry)) {
+        if (entry.forget) {
+            root.shelve([root.shelfRecord(entry, popup, entry.unpinned)]);
+            return;
+        }
+
+        if (root.history.includes(entry)) {
             entry.leaving = false;
             entry.leaveElapsed = 0;
             return;
         }
 
+        root.finish(entry);
+    }
+
+    function finish(entry: var): void {
         root.history = root.history.filter(e => e !== entry);
         root.snoozed = root.snoozed.filter(item => item.entry !== entry);
         entry.notification?.dismiss();
@@ -424,21 +436,83 @@ Singleton {
     }
 
     function clear(): void {
-
         const all = [...new Set([...root.history, ...root.popups, ...root.leaving])];
-
-        root.history = [];
-        root.popups = [];
+        const records = all.map(e => root.shelfRecord(e, root.popups.includes(e) && (!e.leaving || e.forget), e.forget ? e.unpinned : e.pinned));
         root.leaving = [];
-        root.snoozed = [];
+        root.shelve(records);
+    }
 
-        for (const entry of all) {
+    readonly property int undoMs: 5000
 
-            entry.notification?.dismiss();
+    property var shelf: []
+    property int shelfElapsed: 0
 
-            root.erase(entry.cached);
+    readonly property int shelved: root.shelf.length
 
-            entry.destroy();
+    function shelfRecord(entry: var, popup: bool, pinned: bool): var {
+        return {
+            entry: entry,
+            listed: root.history.includes(entry),
+            popup: popup,
+            pinned: pinned,
+            snooze: root.snoozed.find(item => item.entry === entry) ?? null
+        };
+    }
+
+    function shelve(records: var): void {
+        const entries = records.map(r => r.entry);
+        root.history = root.history.filter(e => !entries.includes(e));
+        root.popups = root.popups.filter(e => !entries.includes(e));
+        root.snoozed = root.snoozed.filter(item => !entries.includes(item.entry));
+        for (const entry of entries) {
+            entry.leaving = false;
+            entry.leaveElapsed = 0;
+        }
+        root.shelf = Shelf.shelve(root.shelf, records);
+        root.shelfElapsed = 0;
+    }
+
+    function undo(): bool {
+        const records = root.shelf;
+        if (records.length === 0)
+            return false;
+        root.shelf = [];
+        root.shelfElapsed = 0;
+        for (const r of records) {
+            r.entry.forget = false;
+            r.entry.unpinned = false;
+            r.entry.pinned = r.pinned;
+        }
+        for (const r of records.filter(r => !r.listed && !r.popup))
+            root.finish(r.entry);
+        root.history = root.trimmed(Shelf.restored(root.history, records.filter(r => r.listed).map(r => r.entry)));
+        const shown = Shelf.restored(root.popups, records.filter(r => r.popup && (!r.listed || root.history.includes(r.entry))).map(r => r.entry));
+        root.popups = shown.slice(0, root.maxPopups);
+        for (const old of shown.slice(root.maxPopups))
+            root.expire(old);
+        const snoozes = records.map(r => r.snooze).filter(s => s && root.history.includes(s.entry));
+        if (snoozes.length > 0)
+            root.snoozed = [...root.snoozed, ...snoozes];
+        return true;
+    }
+
+    function letGo(): void {
+        const records = root.shelf;
+        root.shelf = [];
+        root.shelfElapsed = 0;
+        for (const r of records)
+            root.finish(r.entry);
+    }
+
+    Timer {
+        interval: 100
+        repeat: true
+        running: root.shelf.length > 0 && !root.paused
+
+        onTriggered: {
+            root.shelfElapsed += interval;
+            if (root.shelfElapsed >= root.undoMs)
+                root.letGo();
         }
     }
 
@@ -575,6 +649,8 @@ Singleton {
     }
 
     Component.onDestruction: {
+        for (const r of root.shelf)
+            r.entry.notification?.dismiss();
         if (!saveDelay.running)
             return;
         store.blockWrites = true;

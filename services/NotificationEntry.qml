@@ -221,6 +221,7 @@ QtObject {
     property int leaveElapsed: 0
 
     property bool forget: false
+    property bool unpinned: false
 
     readonly property bool running: timeout > 0 && remaining > 0 && !held && !pinned && !leaving
 

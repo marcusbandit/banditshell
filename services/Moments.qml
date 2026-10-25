@@ -85,6 +85,20 @@ Singleton {
             }));
     }
 
+    function offerUndo(): void {
+        const spec = Logic.undoSpec(Notifications.shelved);
+        if (!spec) {
+            Activities.remove("moment:undo");
+            return;
+        }
+        Activities.push(Object.assign(spec, {
+            act: (entry, action) => {
+                if (action === "undo")
+                    Notifications.undo();
+            }
+        }));
+    }
+
     function retryWifi(entry: var): void {
         Activities.remove(entry.id);
         WifiJoin.retry(entry.data.name, entry.data.kind);
@@ -122,6 +136,14 @@ Singleton {
             const failed = Activities.entries.find(e => e.id === "moment:wifi");
             if (failed && failed.data?.name === Network.activeName)
                 Activities.remove(failed.id);
+        }
+    }
+
+    Connections {
+        target: Notifications
+
+        function onShelvedChanged(): void {
+            root.offerUndo();
         }
     }
 

@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/moments.js"), "utf8");
-const M = new Function(src + "\nreturn { SCREENSHOT_MS, BLUETOOTH_MS, COPIED_MS, momentWanted, fileUrl, screenshotSpec, screenshotAction, editorCommand, preview, copyShape, copiedLabel, copiedSpec, audioDevice, batteryPercent, bluetoothSpec, wifiSpec, newlyConnected };")();
+const M = new Function(src + "\nreturn { SCREENSHOT_MS, BLUETOOTH_MS, COPIED_MS, momentWanted, fileUrl, screenshotSpec, screenshotAction, editorCommand, preview, copyShape, copiedLabel, copiedSpec, audioDevice, batteryPercent, bluetoothSpec, wifiSpec, undoSpec, newlyConnected };")();
 const act = fs.readFileSync(path.join(ROOT, "services/activities.js"), "utf8");
 const A = new Function(act + "\nreturn { push, itemOf, sweep };")();
 
@@ -160,5 +160,23 @@ test.describe("wifi", () => {
 
     test.it("posts nothing for a network without a name", () => {
         assert.strictEqual(M.wifiSpec("  ", "timeout", "x"), null);
+    });
+});
+
+test.describe("undo", () => {
+    test.it("says Dismissed for one card and Cleared with the count for more", () => {
+        assert.strictEqual(M.undoSpec(1).text, "Dismissed");
+        assert.strictEqual(M.undoSpec(5).text, "Cleared 5");
+        assert.deepStrictEqual(M.undoSpec(5).actions, [{ name: "undo", label: "Undo" }]);
+    });
+
+    test.it("is a valid activity that the service ends, not a timeout", () => {
+        const pushed = A.push([], M.undoSpec(2), 0);
+        assert.ok(!pushed.error, pushed.error);
+        assert.strictEqual(A.sweep(pushed.list, 60 * 60 * 1000).length, 1);
+    });
+
+    test.it("posts nothing when the shelf is empty", () => {
+        assert.strictEqual(M.undoSpec(0), null);
     });
 });

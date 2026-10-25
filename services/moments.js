@@ -155,6 +155,21 @@ function wifiSpec(name, kind, message) {
     };
 }
 
+function undoSpec(count) {
+    if (!(count > 0))
+        return null;
+    return {
+        id: "moment:undo",
+        style: "undo",
+        text: count === 1 ? "Dismissed" : `Cleared ${count}`,
+        icon: count === 1 ? "notifications_off" : "clear_all",
+        priority: 40,
+        pressable: true,
+        source: "moments",
+        actions: [{ name: "undo", label: "Undo" }]
+    };
+}
+
 function newlyConnected(before, after) {
     const had = new Set(before || []);
     return (after || []).filter(address => !had.has(address));
