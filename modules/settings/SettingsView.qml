@@ -118,8 +118,8 @@ Singleton {
     }
 
     function openHit(hit: var): void {
-        root.query = "";
-        root.go(hit.page.id);
+        if (hit.page.id !== root.current)
+            root.go(hit.page.id);
         let r = hit.row;
         while (r.parent) {
             root.setOpen(r.parent.uid, true);
@@ -220,11 +220,13 @@ Singleton {
             if (!Settings.reveal)
                 return;
             const found = Catalogue.resolve(Settings.reveal);
-            if (found?.row)
+            if (found?.row) {
+                root.query = "";
                 root.openHit({
                     page: Catalogue.PAGE_BY_ID[found.page],
                     row: found.row
                 });
+            }
             Settings.reveal = "";
         }
     }

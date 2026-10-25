@@ -27,6 +27,7 @@ LauncherConcept {
 
     readonly property real viewWiden: 0.25
     readonly property real panelWidth: Math.round(Appearance.sizes.launcherWidth * (1 + root.viewWiden * widen.value))
+    readonly property real switchWidth: Math.round(Appearance.font.size.normal * Appearance.sizes.toggleWidth / Appearance.sizes.toggleHeight)
 
 
     property var capture: null
@@ -1177,6 +1178,17 @@ LauncherConcept {
                                 color: Appearance.colour.textFaint
                             }
 
+                            SquircleRect {
+                                visible: !!line.modelData.going
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: Appearance.stroke.ring * 2
+                                height: line.height - Appearance.padding.normal * 2
+                                pill: "object"
+                                color: Appearance.colour.alarm
+                                z: 1
+                            }
+
                             MenuRow {
                                 id: row
 
@@ -1197,7 +1209,7 @@ LauncherConcept {
                                 label: line.modelData.label ?? ""
                                 detail: line.modelData.detail ?? ""
                                 columns: line.modelData.columns ?? []
-                                trailingRoom: line.modelData.columns ? Appearance.sizes.toggleWidth + Appearance.padding.normal : 0
+                                trailingRoom: line.modelData.columns ? root.switchWidth + Appearance.padding.normal * 2 : 0
 
                                 selected: line.index === root.selected && !root.answerHolds && !assistantCard.holds
 
@@ -1211,6 +1223,7 @@ LauncherConcept {
 
                                 Row {
                                     spacing: Appearance.padding.small
+                                    rightPadding: line.modelData.toggle !== undefined ? Appearance.padding.normal : 0
 
                                     Repeater {
                                         model: line.modelData.armed ? [] : [line.modelData.alias, Chords.chordText(line.modelData.hotkey ?? "")].filter(Boolean)
@@ -1292,6 +1305,8 @@ LauncherConcept {
                                         visible: active
 
                                         sourceComponent: Toggle {
+                                            height: Appearance.font.size.normal
+                                            width: root.switchWidth
                                             checked: !!line.modelData.toggle
                                             onToggled: search.activate(line.modelData)
                                         }

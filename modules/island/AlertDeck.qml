@@ -40,6 +40,8 @@ Item {
 
     property bool liftsAway: true
 
+    property bool clearQuiet: false
+
     signal dismissed(var entry)
     signal kept(var entry)
     signal history
@@ -397,6 +399,14 @@ Item {
     }
 
     implicitHeight: view.height + footer.height
+
+    Follow {
+        id: clearFade
+
+        speed: Appearance.animation.revealSpeed
+        epsilon: 0.004
+        target: root.clearQuiet ? 0.3 : 1
+    }
 
     Spring {
         id: rise
@@ -766,6 +776,8 @@ Item {
             style: "ring"
             icon: "clear_all"
             text: "clear all"
+            enabled: !root.clearQuiet
+            opacity: clearFade.value
             onClicked: root.clearAll(null)
         }
     }

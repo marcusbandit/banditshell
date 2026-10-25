@@ -66,6 +66,7 @@ Item {
             rename: "Rename",
             trash: "Move to trash",
             destroy: "Delete permanently",
+            undo: "Undo the last delete, move, rename or paste",
             properties: "Properties",
             path: "Type a path",
             view: "Switch between icons and list",
