@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-12",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A failed Wi-Fi join says why in the island and offers Try again"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-11",
       "date": "2026-10-25",
       "changes": [

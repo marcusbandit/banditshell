@@ -20,5 +20,6 @@ IslandShellUpdate 1.0 IslandShellUpdate.qml
 IslandTimers 1.0 IslandTimers.qml
 IslandUpgrade 1.0 IslandUpgrade.qml
 IslandWeather 1.0 IslandWeather.qml
+IslandWifi 1.0 IslandWifi.qml
 MockNotification 1.0 MockNotification.qml
 TaskHeader 1.0 TaskHeader.qml

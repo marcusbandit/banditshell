@@ -116,6 +116,14 @@ QtObject {
                     tone: a.data?.secret ? Appearance.colour.textDim : Appearance.colour.accent,
                     text: a.text
                 };
+            if (a.style === "wifi")
+                return {
+                    icon: a.icon,
+                    tone: Appearance.colour.alarm,
+                    text: a.text,
+                    trailing: ended ? "" : "actions",
+                    actions: a.actions ?? []
+                };
             if (a.style === "bluetooth") {
                 const battery = a.data?.battery ?? -1;
                 return {
