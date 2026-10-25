@@ -43,6 +43,9 @@ Singleton {
 
     property var openRows: ({})
 
+    property var trails: ({})
+    readonly property real resetColumn: Object.values(root.trails).reduce((a, b) => Math.max(a, b), 0)
+
     property real scroll: 0
     property real resumeScroll: 0
 
@@ -164,6 +167,20 @@ Singleton {
 
     property var toast: null
     property int toastSerial: 0
+
+    function noteTrail(uid: string, width: real): void {
+        if (!uid)
+            return;
+        const had = root.trails[uid];
+        if (width < 0 ? had === undefined : had === width)
+            return;
+        const next = Object.assign({}, root.trails);
+        if (width < 0)
+            delete next[uid];
+        else
+            next[uid] = width;
+        root.trails = next;
+    }
 
     function drop(text: string, icon: string, action: var): void {
         if (icon === "error")

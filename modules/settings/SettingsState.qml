@@ -446,6 +446,10 @@ Singleton {
         return JSON.stringify(t.write(t.read(raw))) === JSON.stringify(raw);
     }
 
+    function offersReset(k: string): bool {
+        return root.resettable(k) && Catalogue.changed(root.v(k), root.defaultOf(k));
+    }
+
     function reset(k: string): void {
         const r = root.rowOf(k);
         const before = root.v(k);
