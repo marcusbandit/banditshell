@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-2",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rail marks no longer share the active workspace's colour"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Low battery is yellow; on the rail, orange is only mic and recording"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Screen recording on the rail is a screen with a dot, not a bare dot"
+        }
+      ]
+    },
+    {
       "id": "2026-10-26",
       "date": "2026-10-26",
       "changes": [

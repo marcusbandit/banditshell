@@ -90,6 +90,8 @@ Singleton {
     function roleColour(name: string): color {
         if (name === "accent")
             return root.colour.accent;
+        if (name === "warning")
+            return root.colour.warning;
         if (name === "alarm" || name === "bright" || name === "mid" || name === "dim")
             return root.theme[name];
         return name;
@@ -141,6 +143,8 @@ Singleton {
         readonly property real veilWeight: root.config.material.accentFill
 
         readonly property color alarm: root.theme.alarm
+
+        readonly property color warning: root.theme.brass
 
         readonly property color accentText: root.rampAt(1, 1)
 
