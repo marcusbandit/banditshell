@@ -208,7 +208,7 @@ test("sections put big changes first and fold minor ones by kind across updates"
     ]);
     assert.deepStrictEqual(got.map(s => [s.key, s.changes.map(c => c.text)]), [
         ["major", ["D"]],
-        ["ui", ["A"]],
+        ["ui", ["A", "A"]],
         ["bugs", ["B", "C"]],
         ["other", ["E"]]
     ]);

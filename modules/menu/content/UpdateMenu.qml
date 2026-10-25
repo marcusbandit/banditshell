@@ -213,7 +213,7 @@ Column {
                         Icon {
                             y: Math.round((Appearance.font.line.small - size) / 2)
                             size: Appearance.font.iconSize
-                            name: root.glyph(section.modelData.key)
+                            name: section.modelData.glyph
                             color: Appearance.blend(Appearance.colour.textDim, section.hue, 0.7)
                         }
 
@@ -347,21 +347,5 @@ Column {
         if (key === "config")
             return "#e3c58f";
         return Appearance.colour.textDim;
-    }
-
-    function glyph(type: string): string {
-        if (type === "major")
-            return "new_releases";
-        if (type === "issues")
-            return "check_circle";
-        if (type === "bugs")
-            return "build";
-        if (type === "features")
-            return "add_circle";
-        if (type === "ui")
-            return "border_color";
-        if (type === "config")
-            return "tune";
-        return "chevron_right";
     }
 }

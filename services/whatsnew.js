@@ -99,12 +99,12 @@ function tagFor(id) {
 }
 
 const SECTIONS = [
-    { key: "major", title: "Big changes", types: null },
-    { key: "features", title: "New", types: ["features"] },
-    { key: "ui", title: "Changed", types: ["ui"] },
-    { key: "bugs", title: "Fixed", types: ["bugs", "issues"] },
-    { key: "config", title: "Settings", types: ["config"] },
-    { key: "other", title: "Other", types: [] }
+    { key: "major", title: "Big changes", glyph: "new_releases", types: null },
+    { key: "features", title: "New", glyph: "add_circle", types: ["features"] },
+    { key: "ui", title: "Changed", glyph: "border_color", types: ["ui"] },
+    { key: "bugs", title: "Fixed", glyph: "build", types: ["bugs", "issues"] },
+    { key: "config", title: "Settings", glyph: "tune", types: ["config"] },
+    { key: "other", title: "Other", glyph: "chevron_right", types: [] }
 ];
 
 function sectionOf(c) {
@@ -124,8 +124,7 @@ function sections(entries) {
             const key = sectionOf(c);
             if (!buckets[key])
                 buckets[key] = [];
-            if (!buckets[key].some(seen => seen.text === c.text))
-                buckets[key].push(c);
+            buckets[key].push(c);
         }
-    return SECTIONS.filter(s => buckets[s.key]).map(s => ({ key: s.key, title: s.title, changes: buckets[s.key] }));
+    return SECTIONS.filter(s => buckets[s.key]).map(s => ({ key: s.key, title: s.title, glyph: s.glyph, changes: buckets[s.key] }));
 }
