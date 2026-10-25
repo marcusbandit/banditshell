@@ -239,7 +239,7 @@ Item {
                     anchors.rightMargin: -(weatherInk.advanceWidth - weatherInk.tightBoundingRect.x - weatherInk.tightBoundingRect.width)
                     y: clockBox.line - weatherText.baselineOffset
                     spacing: Appearance.padding.hair
-                    visible: Weather.ready || Weather.wanted && Weather.failure !== ""
+                    visible: Weather.ready || Weather.failed
 
                     Icon {
                         anchors.verticalCenter: weatherText.verticalCenter

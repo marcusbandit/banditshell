@@ -517,7 +517,7 @@ ShellRoot {
                 Weather.take("", preview.forecastAnswer());
                 Weather.outlook = [];
                 Weather.fetchedAt = Date.now() - 3 * 3600000;
-                Weather.take("", "\n000");
+                Weather.take("", "\n000 6");
             },
             wait: 1200,
             expect: "the weather"
@@ -528,19 +528,19 @@ ShellRoot {
                 Weather.current = null;
                 Weather.wttrData = null;
                 Weather.outlook = [];
-                Weather.take("", "\n000");
+                Weather.take("", "\n000 6");
             },
             wait: 1200,
             expect: "the weather"
         },
         {
             name: "a place the weather does not know points to the setting",
-            run: () => Weather.take("Lyngbyy", "location not found: upstream error: opencage: invalid response\n\n500"),
+            run: () => Weather.take("Lyngbyy", "location not found: upstream error: opencage: invalid response\n\n500 0"),
             wait: 1200,
             expect: "the weather"
         },
         {
-            name: "back in the overview, the weather says it could not load",
+            name: "back in the overview, a failed weather is tried again",
             run: () => {
                 Weather.fetchedAt = Date.now();
                 island.back();
@@ -1015,7 +1015,7 @@ ShellRoot {
                         }]
                 }],
             weather: [day("2026-10-25", 11, 6, 116, "Partly cloudy", 10), day("2026-10-26", 12, 7, 296, "Light rain", 70), day("2026-10-27", 9, 4, 113, "Sunny", 0)]
-        }) + "\n200";
+        }) + "\n200 0";
     }
 
     function shot(ms: int): var {

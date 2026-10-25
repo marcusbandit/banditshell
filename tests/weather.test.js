@@ -150,7 +150,7 @@ test("rain shows from twenty percent", () => {
 });
 
 test("a wttr answer with a status of 200 gives its data", () => {
-    const answer = Forecast.readWttr(JSON.stringify({ ...WTTR, current_condition: [{ temp_C: "9" }] }) + "\n200");
+    const answer = Forecast.readWttr(JSON.stringify({ ...WTTR, current_condition: [{ temp_C: "9" }] }) + "\n200 0");
     assert.strictEqual(answer.failure, undefined);
     assert.strictEqual(answer.data.current_condition[0].temp_C, "9");
 });
@@ -158,8 +158,11 @@ test("a wttr answer with a status of 200 gives its data", () => {
 test("an unknown place is told apart from a failed fetch", () => {
     const captured = fs.readFileSync(path.join(__dirname, "fixtures/weather/wttr-unknown-place.txt"), "utf8");
     assert.deepStrictEqual(Forecast.readWttr(captured), { failure: "place" });
-    assert.deepStrictEqual(Forecast.readWttr("\n000"), { failure: "offline" });
+    assert.deepStrictEqual(Forecast.readWttr("\n000 6"), { failure: "offline" });
+    assert.deepStrictEqual(Forecast.readWttr("\n000 7"), { failure: "offline" });
+    assert.deepStrictEqual(Forecast.readWttr("\n000 28"), { failure: "service" });
     assert.deepStrictEqual(Forecast.readWttr(""), { failure: "offline" });
+    assert.strictEqual(Forecast.readWttr(JSON.stringify({ current_condition: [{ weatherDesc: [{ value: "unknown location" }] }] }) + "\n200 0").failure, undefined);
     assert.deepStrictEqual(Forecast.readWttr("<html>Bad gateway</html>\n502"), { failure: "service" });
     assert.deepStrictEqual(Forecast.readWttr("Sorry, we are running out of queries\n200"), { failure: "service" });
     assert.deepStrictEqual(Forecast.readWttr("{}\n200"), { failure: "service" });

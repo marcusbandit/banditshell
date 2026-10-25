@@ -22,8 +22,7 @@ Item {
     readonly property var range: Forecast.weekRange(root.days)
     readonly property real barWidth: Appearance.padding.small
     readonly property real barHeight: Appearance.font.line.normal * 3
-    readonly property bool failed: Weather.wanted && Weather.failure !== ""
-    readonly property bool blank: root.failed && !Weather.ready
+    readonly property bool blank: Weather.failed && !Weather.ready
     readonly property var look: Weather.failureLook
 
     implicitHeight: root.maxHeight > 0 ? Math.min(root.natural, root.maxHeight) : root.natural
@@ -59,13 +58,13 @@ Item {
                 width: parent.width
                 icon: root.blank ? root.look.icon : Weather.icon
                 title: Weather.ready ? `${Weather.temperature} ${Weather.summary.trim()}` : root.blank ? root.look.title : "Weather"
-                subtitle: Weather.stale ? `${Weather.place}, ${Weather.ageText(age.date.getTime())}` : !root.blank ? Weather.place : Weather.failure === "place" ? Weather.failedFor : root.look.detail
+                subtitle: Weather.stale ? [Weather.place, Forecast.ago(Weather.fetchedAt, age.date.getTime())].filter(Boolean).join(", ") : !root.blank ? Weather.place : Weather.failure === "place" && Weather.failedFor ? Weather.failedFor : root.look.detail
                 onClosed: root.hide()
             }
 
             StyledText {
                 width: parent.width
-                visible: !Weather.forecastReady && !root.failed
+                visible: !Weather.forecastReady && !Weather.failed
                 text: Weather.wanted ? "Loading the forecast" : "Weather is turned off in settings"
                 color: Appearance.colour.textDim
             }
@@ -170,7 +169,7 @@ Item {
             Item {
                 width: parent.width
                 height: Math.max(note.implicitHeight, again.implicitHeight)
-                visible: root.failed
+                visible: Weather.failed
 
                 StyledText {
                     id: note

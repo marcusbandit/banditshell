@@ -169,14 +169,14 @@ function rainText(day) {
 function readWttr(output) {
     const text = String(output || "");
     const cut = text.lastIndexOf("\n");
-    const status = text.slice(cut + 1).trim();
+    const tail = text.slice(cut + 1).trim().split(/\s+/);
+    const status = tail[0] || "";
+    const exit = Number(tail[1] || 0);
     const body = cut >= 0 ? text.slice(0, cut) : "";
     if (status === "" || status === "000")
-        return { failure: "offline" };
-    if (/location not found|unknown location/i.test(body))
-        return { failure: "place" };
+        return { failure: [5, 6, 7].indexOf(exit) >= 0 || !tail[1] ? "offline" : "service" };
     if (status !== "200")
-        return { failure: "service" };
+        return { failure: /location not found|unknown location/i.test(body) ? "place" : "service" };
     let data = null;
     try {
         data = JSON.parse(body);
