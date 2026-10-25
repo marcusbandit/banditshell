@@ -15,11 +15,20 @@ Item {
         anchors.fill: parent
         pill: "place"
         color: trackTone.value
+        stroke: edgeTone.value
+        strokeWidth: Appearance.stroke.ring
 
         FollowColour {
             id: trackTone
 
-            target: root.checked ? Appearance.colour.accent : Appearance.colour.fillStrong
+            target: root.checked ? Appearance.colour.accent : Appearance.colour.fill
+            speed: Appearance.animation.revealSpeed
+        }
+
+        FollowColour {
+            id: edgeTone
+
+            target: root.checked ? Appearance.colour.accent : Appearance.colour.textFaint
             speed: Appearance.animation.revealSpeed
         }
     }
@@ -27,14 +36,21 @@ Item {
     SquircleRect {
         id: knob
 
-        readonly property real gap: Math.max(2, Math.round(root.height / 9))
+        readonly property real gap: Appearance.stroke.ring + Math.max(1, Math.round(root.height / 18))
 
         y: knob.gap
         x: slide.value
         width: root.height - knob.gap * 2
         height: width
         pill: "object"
-        color: root.checked ? Appearance.colour.accentText : Appearance.colour.text
+        color: knobTone.value
+
+        FollowColour {
+            id: knobTone
+
+            target: root.checked ? Appearance.colour.accentText : Appearance.colour.textDim
+            speed: Appearance.animation.revealSpeed
+        }
 
         Follow {
             id: slide
