@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "ranking.js" as Ranking
+import "clipboard-sweep.js" as Sweep
 
 Singleton {
     id: root
@@ -439,19 +440,10 @@ Singleton {
         }
         root.sweepOwed = false;
 
-        const wanted = root.entries.filter(e => !!e.file).map(e => root.basename(e.file));
-
-        reaper.command = ["sh", "-c", `
-            dir=$1; shift
-            [ -d "$dir" ] || exit 0
-            keep=$(mktemp) || exit 0
-            printf '%s\\n' "$@" > "$keep"
-            find "$dir" -maxdepth 1 -type f -printf '%f\\n' 2>/dev/null \\
-                | grep -vxF -f "$keep" \\
-                | while IFS= read -r n; do rm -f -- "$dir/$n"; done
-            rm -f "$keep"
-            exit 0
-        `, "sh", root.blobs, ...wanted];
+        const command = Sweep.command(root.blobs, root.entries, root.keep);
+        if (!command)
+            return;
+        reaper.command = command;
         reaper.running = true;
     }
 
