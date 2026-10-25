@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import "arming.js" as Arming
 
 Item {
     id: root
@@ -15,6 +16,8 @@ Item {
     property int selected: root.resting
 
     property string arming: ""
+
+    property real armedAt: 0
 
     property string restoreTo: ""
 
@@ -40,7 +43,7 @@ Item {
     readonly property string lines: {
         const lines = [root.again];
         for (const entry of root.actions)
-            lines.push(entry.label, entry.safe ? "" : root.armedLine(entry));
+            lines.push(entry.label);
         return lines.join("\n");
     }
 
@@ -121,10 +124,6 @@ Item {
         root.choose(Math.max(0, Math.min(root.actions.length - 1, root.selected + delta)));
     }
 
-    function armedLine(entry: var): string {
-        return `to ${entry.label.toLowerCase()}`;
-    }
-
     function run(entry: var): void {
         if (entry.key === "suspend")
             Suspension.perform("suspend");
@@ -137,10 +136,13 @@ Item {
         if (!entry)
             return;
 
-        if (entry.safe || root.arming === entry.key) {
+        const now = Date.now();
+        const step = Arming.press(entry, root.arming, root.armedAt, now, Qt.styleHints.mouseDoubleClickInterval);
+        if (step === "run") {
             root.run(entry);
             root.hide();
-        } else {
+        } else if (step === "arm") {
+            root.armedAt = now;
             root.arming = entry.key;
         }
     }
@@ -244,7 +246,7 @@ Item {
                 FollowColour {
                     id: markerTone
 
-                    target: root.arming ? Appearance.colour.accentFill : Appearance.colour.fillStronger
+                    target: root.arming ? Appearance.colour.alarm : Appearance.colour.fillStronger
                     speed: Appearance.animation.revealSpeed
                 }
             }
@@ -283,7 +285,7 @@ Item {
                             FollowColour {
                                 id: glyphTone
 
-                                target: cell.armed ? Appearance.colour.accent : cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                                target: cell.armed ? Appearance.colour.ink : cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
                                 speed: Appearance.animation.trackSpeed
                             }
                         }
@@ -293,7 +295,7 @@ Item {
                             anchors.topMargin: Appearance.padding.hair
                             anchors.horizontalCenter: parent.horizontalCenter
 
-                            text: cell.armed ? `${root.again}\n${root.armedLine(cell.modelData)}` : cell.modelData.label
+                            text: cell.armed ? `${cell.modelData.label}\n${root.again}` : cell.modelData.label
                             horizontalAlignment: Text.AlignHCenter
                             color: glyphTone.value
                         }
