@@ -63,11 +63,23 @@ Singleton {
         const entry = root.stack[root.stack.length - 1];
         root.stack = root.stack.slice(0, -1);
         root.running = entry;
+        root.shown = [];
 
         if (entry.kind === "trash")
             root.start(Undo.TRASH_LISTING, text => root.start(Undo.command(entry, Undo.pick(Undo.parseTrash(text ?? ""), entry)), root.finish));
         else
             root.start(Undo.command(entry, []), root.finish);
+    }
+
+    property var shown: []
+
+    function show(names: var): void {
+        if (names.length === 0)
+            return;
+        Files.picked = names;
+        Files.cursorName = names[0];
+        Files.anchorName = names[0];
+        root.shown = names;
     }
 
     function start(command: var, done: var): void {
@@ -79,12 +91,14 @@ Singleton {
     }
 
     function finish(text: var): void {
-        const counts = Undo.outcome(text ?? "");
-        const said = Undo.summary(root.running, counts);
+        const counts = Undo.outcome(root.running, text ?? "");
+        const said = Undo.summary(root.running, counts, Files.cwd, Files.home);
         if (counts.ok > 0)
             root.say(said);
         else
             Files.failure = said;
+        if (root.running.kind !== "copy")
+            root.show(counts.done.filter(path => Undo.parentOf(path) === Files.cwd).map(path => Undo.baseName(path)));
         root.running = null;
         Files.refresh();
         if (root.stack.length === 0)

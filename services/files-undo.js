@@ -167,37 +167,81 @@ function command(entry, uris) {
     return ["sh", "-c", MOVE_BACK, "sh"].concat(args);
 }
 
-function outcome(text) {
-    var counts = {ok: 0, gone: 0, taken: 0, failed: 0};
+function items(entry) {
+    if (entry.kind === "trash")
+        return entry.paths;
+    return entry.pairs.map(function (pair) {
+        return entry.kind === "copy" ? pair.to : pair.from;
+    });
+}
+
+function outcome(entry, text) {
+    var counts = {ok: 0, gone: 0, taken: 0, failed: 0, done: []};
+    var all = items(entry);
     var lines = text.split("\n");
+    var at = 0;
     for (var i = 0; i < lines.length; i++) {
         var word = lines[i].trim();
-        if (counts[word] !== undefined)
-            counts[word] += 1;
+        if (counts[word] === undefined || word === "done")
+            continue;
+        counts[word] += 1;
+        if (word === "ok" && at < all.length)
+            counts.done.push(all[at]);
+        at += 1;
     }
     return counts;
 }
 
-function firstName(entry) {
-    return baseName(entry.kind === "trash" ? entry.paths[0] : entry.pairs[0].from);
+function parentOf(path) {
+    var cut = path.lastIndexOf("/");
+    return cut <= 0 ? "/" : path.slice(0, cut);
 }
 
-function summary(entry, counts) {
+function listed(paths, many) {
+    if (paths.length === 1)
+        return baseName(paths[0]);
+    if (paths.length === 2)
+        return baseName(paths[0]) + " and " + baseName(paths[1]);
+    return paths.length + " " + many;
+}
+
+function folder(paths, here, home) {
+    var parents = [];
+    for (var i = 0; i < paths.length; i++) {
+        var parent = parentOf(paths[i]);
+        if (parents.indexOf(parent) < 0)
+            parents.push(parent);
+    }
+    if (parents.length === 0 || parents.length === 1 && parents[0] === here)
+        return "";
+    if (parents.length > 1)
+        return parents.length + " folders";
+    return parents[0] === home ? "Home" : parents[0] === "/" ? "/" : baseName(parents[0]);
+}
+
+function summary(entry, counts, here, home) {
     var total = size(entry);
     var one = total === 1;
-    var name = firstName(entry);
-    var some = counts.ok === total ? String(total) : counts.ok + " of " + total;
+    var name = baseName(items(entry)[0]);
+    if (entry.kind === "copy")
+        name = baseName(entry.pairs[0].from);
 
     if (counts.ok > 0) {
+        var done = counts.done;
+        var where = folder(done, here, home);
+        var rest = counts.ok < total ? ", " + (total - counts.ok) + " could not be" : "";
         switch (entry.kind) {
         case "trash":
-            return (one ? name : some + " files") + " restored";
+            return listed(done, "files") + " restored" + (where ? " to " + where : "") + rest;
         case "rename":
-            return "Renamed back to " + name;
+            return "Renamed back to " + name + (where ? " in " + where : "");
         case "copy":
-            return (one ? "Copy of " + name : some + " copies") + " moved to the trash";
+            var sources = done.map(function (to) {
+                return baseName(to);
+            });
+            return (done.length === 1 ? "Copy of " + sources[0] : done.length === 2 ? "Copies of " + sources[0] + " and " + sources[1] : done.length + " copies") + " moved to the trash" + rest;
         default:
-            return (one ? name : some + " files") + " moved back";
+            return listed(done, "files") + " moved back" + (where ? " to " + where : "") + rest;
         }
     }
 
