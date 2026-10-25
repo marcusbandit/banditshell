@@ -43,9 +43,11 @@ Item {
         diverged: Update.diverged
     })
 
-    readonly property var wanted: Anomalies.list(root.reading)
+    readonly property var split: Anomalies.split(root.reading)
 
-    readonly property var dropped: Anomalies.dropped(root.reading)
+    readonly property var wanted: root.split.kept
+
+    readonly property var dropped: root.split.dropped
 
     readonly property var micIds: Audio.recording.filter(n => (n.properties?.["media.class"] ?? "").includes("Audio")).map(n => n.id)
 
@@ -152,7 +154,7 @@ Item {
                     onClicked: root.markPressed(mark.entry.opens)
 
                     HoverTip {
-                        text: area.enabled ? (mark.entry?.title ?? "") : ""
+                        text: area.enabled ? Anomalies.tip(mark.entry) : ""
                         host: mark
                     }
                 }
@@ -201,7 +203,7 @@ Item {
                 color: Appearance.colour.textDim
             }
 
-            readonly property bool pointed: tip.hovered && more.shown
+            readonly property bool pointed: tip.hovered && more.shown && more.enabled
 
             onPointedChanged: {
                 if (more.pointed)
@@ -213,7 +215,7 @@ Item {
             HoverTip {
                 id: tip
 
-                text: more.shown ? Anomalies.droppedTitle(root.dropped) : ""
+                text: more.shown && more.enabled ? Anomalies.droppedTitle(root.dropped) : ""
                 host: more
             }
 

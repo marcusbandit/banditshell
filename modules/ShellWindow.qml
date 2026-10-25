@@ -185,7 +185,7 @@ PanelWindow {
         if (opens?.menu)
             win.openMenu(opens.menu, true);
         else if (opens?.settings)
-            Settings.openAt(win.screen.name, opens.settings, opens.row ?? "");
+            Settings.openAt(win.screen?.name ?? "", opens.settings, opens.row ?? "");
         else if (opens?.stops === "awake")
             Idle.awake = false;
         else if (opens?.stops === "recording")

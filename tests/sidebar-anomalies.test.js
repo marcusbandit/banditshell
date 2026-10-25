@@ -5,7 +5,8 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const load = (file, names) => new Function(fs.readFileSync(path.join(ROOT, file), "utf8").replace(/^\.pragma .*$/m, "") + `\nreturn { ${names.join(", ")} };`)();
-const Anomalies = load("modules/sidebar/anomalies.js", ["list", "dropped", "droppedTitle", "merge", "without", "airplaneOn"]);
+const Anomalies = load("modules/sidebar/anomalies.js", ["list", "split", "tip", "droppedTitle", "merge", "without", "airplaneOn"]);
+const Catalogue = load("modules/settings/catalogue.js", ["PAGE_BY_ID", "resolve"]);
 const Scrolling = load("modules/sidebar/scrolling.js", ["scrolled"]);
 
 const calm = {
@@ -78,7 +79,7 @@ test("recording, vpn and quiet each show on their own", () => {
 test("keep-awake shows a coffee mark only while it is on", () => {
     assert.deepStrictEqual(keys({ awake: true }), ["awake"]);
     const awake = Anomalies.list(Object.assign({}, calm, { awake: true }))[0];
-    assert.deepStrictEqual([awake.icon, awake.title], ["coffee", "Keeping awake, click to stop"]);
+    assert.deepStrictEqual([awake.icon, awake.title], ["coffee", "Keeping awake"]);
 });
 
 test("a mode icon stands in for quiet instead of doubling it", () => {
@@ -115,34 +116,47 @@ test("when too many things are unusual the alarms stay and the order holds", () 
     assert.ok(!quietOnly.includes("quiet"));
 });
 
+const alone = [{ batteryPercent: 5 }, { micStreams: true }, { recording: true }, { vpn: true }, { awake: true }, { wifiOn: false, bluetoothOn: false }, { quiet: true }, { update: "available" }, { modeIcon: "target" }];
+const everyMark = () => alone.flatMap(one => Anomalies.list(Object.assign({}, calm, one)));
+
 test("every mark opens what controls it, and the two that stop say so", () => {
-    const alone = [{ batteryPercent: 5 }, { micStreams: true }, { recording: true }, { vpn: true }, { awake: true }, { wifiOn: false, bluetoothOn: false }, { quiet: true }, { update: "available" }, { modeIcon: "target" }];
     const opens = {};
-    for (const one of alone)
-        for (const e of Anomalies.list(Object.assign({}, calm, one)))
-            opens[e.key] = e.opens;
+    for (const e of everyMark())
+        opens[e.key] = e.opens;
     assert.deepStrictEqual(opens, {
         battery: { menu: "battery" },
         mic: { menu: "audio" },
         recording: { stops: "recording" },
-        vpn: { settings: "vpn", row: "tunnels" },
+        vpn: { settings: "vpn" },
         awake: { stops: "awake" },
         airplane: { menu: "network" },
         quiet: { settings: "modes", row: "dnd" },
         update: { menu: "update" },
         mode: { settings: "modes" }
     });
-    for (const e of Anomalies.list(Object.assign({}, calm, { recording: true, awake: true })))
-        assert.match(e.title, /click to stop/);
+    for (const e of Anomalies.list(Object.assign({}, calm, { recording: true, awake: true }))) {
+        assert.match(Anomalies.tip(e), /click to stop$/);
+        assert.doesNotMatch(e.title, /click/);
+    }
+    assert.strictEqual(Anomalies.tip(null), "");
+});
+
+test("every settings page and row a mark opens exists in the catalogue", () => {
+    for (const e of everyMark().filter(m => m.opens.settings)) {
+        assert.ok(Catalogue.PAGE_BY_ID[e.opens.settings], e.opens.settings);
+        if (e.opens.row)
+            assert.strictEqual(Catalogue.resolve(e.opens.row)?.row?.page, e.opens.settings, e.opens.row);
+    }
 });
 
 test("the marks the cap drops are counted and named, and none when all fit", () => {
     const crowd = Object.assign({}, calm, { batteryPercent: 5, micStreams: true, recording: true, vpn: true, quiet: true, update: "available" });
-    const gone = Anomalies.dropped(crowd);
+    const gone = Anomalies.split(crowd).dropped;
     assert.deepStrictEqual(gone.map(e => e.key), ["quiet", "update"]);
+    assert.deepStrictEqual(Anomalies.split(crowd).kept, Anomalies.list(crowd));
     assert.strictEqual(Anomalies.list(crowd).length + gone.length, 6);
     assert.strictEqual(Anomalies.droppedTitle(gone), "2 more: Do not disturb · Update available");
-    assert.deepStrictEqual(Anomalies.dropped(Object.assign({}, calm, { vpn: true })), []);
+    assert.deepStrictEqual(Anomalies.split(Object.assign({}, calm, { vpn: true })).dropped, []);
     assert.strictEqual(Anomalies.droppedTitle([]), "");
 });
 

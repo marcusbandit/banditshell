@@ -50,9 +50,9 @@ function found(state) {
     return [
         batteryEntry(s),
         micEntry(s),
-        s.recording ? { key: "recording", icon: "fiber_manual_record", tone: "alarm", title: "Recording the screen, click to stop", opens: { stops: "recording" } } : null,
-        s.vpn ? { key: "vpn", icon: "vpn_lock", tone: "accent", title: "VPN is up", opens: { settings: "vpn", row: "tunnels" } } : null,
-        s.awake ? { key: "awake", icon: "coffee", tone: "accent", title: "Keeping awake, click to stop", opens: { stops: "awake" } } : null,
+        s.recording ? { key: "recording", icon: "fiber_manual_record", tone: "alarm", title: "Recording the screen", hint: "click to stop", opens: { stops: "recording" } } : null,
+        s.vpn ? { key: "vpn", icon: "vpn_lock", tone: "accent", title: "VPN is up", opens: { settings: "vpn" } } : null,
+        s.awake ? { key: "awake", icon: "coffee", tone: "accent", title: "Keeping awake", hint: "click to stop", opens: { stops: "awake" } } : null,
         airplaneOn(s) ? { key: "airplane", icon: "flight", tone: "accent", title: "Airplane mode", opens: { menu: "network" } } : null,
         s.modeIcon ? { key: "mode", icon: s.modeIcon, tone: "accent", title: "Mode on", opens: { settings: "modes" } } : null,
         s.quiet && !s.modeIcon ? { key: "quiet", icon: "do_not_disturb_on", tone: "accent", title: "Do not disturb", opens: { settings: "modes", row: "dnd" } } : null,
@@ -72,20 +72,27 @@ function kept(all) {
     });
 }
 
-function list(state) {
+function split(state) {
     var all = found(state);
     var keep = kept(all);
-    return all.filter(function (e) {
-        return keep.indexOf(e) >= 0;
-    });
+    return {
+        kept: all.filter(function (e) {
+            return keep.indexOf(e) >= 0;
+        }),
+        dropped: all.filter(function (e) {
+            return keep.indexOf(e) < 0;
+        })
+    };
 }
 
-function dropped(state) {
-    var all = found(state);
-    var keep = kept(all);
-    return all.filter(function (e) {
-        return keep.indexOf(e) < 0;
-    });
+function list(state) {
+    return split(state).kept;
+}
+
+function tip(entry) {
+    if (!entry)
+        return "";
+    return entry.hint ? entry.title + ", " + entry.hint : entry.title;
 }
 
 function droppedTitle(entries) {
