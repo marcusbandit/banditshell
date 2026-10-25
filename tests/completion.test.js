@@ -178,7 +178,7 @@ test("update offers its verbs, and each verb its flags", () => {
     assert.deepStrictEqual(bashComplete("update", "check", ""), ["--json", "--no-fetch"]);
     assert.deepStrictEqual(bashComplete("update", "apply", ""), ["--detach", "--json", "--to"]);
     assert.deepStrictEqual(bashComplete("update", "status", ""), ["--json"]);
-    assert.deepStrictEqual(bashComplete("update", "rollback", ""), []);
+    assert.deepStrictEqual(bashComplete("update", "rollback", ""), ["--detach", "--json"]);
 });
 
 test("dev lint offers its flags, then the rule ids after --rule", () => {

@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-10",
+      "id": "2026-10-25-11",
       "date": "2026-10-25",
       "changes": [
         {
@@ -28,6 +28,17 @@
           "type": "ui",
           "severity": "minor",
           "text": "Rain chance in the forecast has a raindrop beside it"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-10",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The update menu can go back to the previous version"
         }
       ]
     },
