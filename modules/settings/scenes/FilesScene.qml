@@ -9,7 +9,7 @@ import "../catalogue.js" as Catalogue
 Item {
     id: root
 
-    readonly property real stageHeight: 280
+    readonly property real stageHeight: Math.min(560, Math.max(280, fb.y + body.y + body.fullHeight + 44))
     readonly property bool list: SettingsState.v("filesView") === "list"
     readonly property string sort: SettingsState.v("filesSort")
     readonly property bool reversed: SettingsState.v("filesReversed")
@@ -30,6 +30,16 @@ Item {
         const sign = root.reversed ? -1 : 1;
         return root.files.filter(f => root.hidden || !f[0].startsWith(".")).sort((a, b) => ((b[2] === "dir") - (a[2] === "dir")) || sign * by(a, b) || byName(a, b));
     }
+
+    function valueOf(file: var): string {
+        if (root.sort === "mtime")
+            return file[4] === 0 ? "today" : file[4] === 1 ? "yesterday" : `${file[4]} days ago`;
+        if (file[2] === "dir" || (root.sort !== "size" && !root.list))
+            return "";
+        return file[3] > 1000 ? `${(file[3] / 1024).toFixed(1)} MB` : `${file[3]} KB`;
+    }
+
+    readonly property bool valued: root.sort === "mtime" || root.sort === "size"
 
     property int cursor: 0
     readonly property string current: root.shown[root.cursor % Math.max(1, root.shown.length)]?.[0] ?? ""
@@ -84,14 +94,28 @@ Item {
 
             readonly property real previewWidth: body.width * open.value
             readonly property real itemsWidth: body.width - (open.value > 0.001 ? body.previewWidth + 8 : 0)
-            readonly property real cell: 64 * root.zoom
+            readonly property real cell: Math.max(64 * root.zoom, longest.width + 8)
             readonly property int columns: root.list ? 1 : Math.max(1, Math.floor((body.itemsWidth + 6) / (body.cell + 6)))
             readonly property real cellWidth: (body.itemsWidth - (body.columns - 1) * 6) / body.columns
+            readonly property real tileHeight: root.list ? Appearance.font.line.small + 8 : Math.round(28 * root.zoom) + 16 + 4 + 12 + (root.valued ? Appearance.font.line.small : 0)
+            readonly property real spacing: root.list ? 2 : 6
+            readonly property int fullColumns: root.list ? 1 : Math.max(1, Math.floor((body.width + 6) / (body.cell + 6)))
+            readonly property real fullHeight: Math.ceil(root.shown.length / body.fullColumns) * (body.tileHeight + body.spacing) - body.spacing
+            readonly property real currentBottom: (Math.floor(root.cursor % Math.max(1, root.shown.length) / body.columns) + 1) * (body.tileHeight + body.spacing)
+
+            TextMetrics {
+                id: longest
+
+                font.family: Appearance.font.family
+                font.pixelSize: Appearance.font.size.small
+                text: root.shown.map(f => f[0]).concat(root.valued ? root.shown.map(f => root.valueOf(f)) : []).reduce((a, b) => b.length > a.length ? b : a, "")
+            }
 
             Grid {
+                y: -Math.max(0, body.currentBottom - body.height)
                 columns: body.columns
                 columnSpacing: 6
-                rowSpacing: root.list ? 2 : 6
+                rowSpacing: body.spacing
 
                 Repeater {
                     model: root.shown
@@ -106,7 +130,7 @@ Item {
                         readonly property bool dot: fi.modelData[0].startsWith(".")
 
                         width: body.cellWidth
-                        height: root.list ? Appearance.font.line.small + 8 : Math.round(28 * root.zoom) + 16 + 4 + 12
+                        height: body.tileHeight
                         opacity: fi.dot ? Appearance.opacity.trail : 1
 
                         SquircleRect {
@@ -139,6 +163,17 @@ Item {
                                 renderType: Text.NativeRendering
                                 color: fi.sel ? Appearance.colour.text : Appearance.colour.textDim
                             }
+
+                            Text {
+                                visible: root.valued
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                                text: root.valueOf(fi.modelData)
+                                font.family: Appearance.font.family
+                                font.pixelSize: Appearance.font.size.small
+                                renderType: Text.NativeRendering
+                                color: Appearance.colour.textFaint
+                            }
                         }
 
                         Row {
@@ -167,7 +202,7 @@ Item {
                                 id: size
 
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: fi.modelData[2] === "dir" ? "" : fi.modelData[3] > 1000 ? `${(fi.modelData[3] / 1024).toFixed(1)} MB` : `${fi.modelData[3]} KB`
+                                text: root.valueOf(fi.modelData)
                                 color: Appearance.colour.textFaint
                             }
                         }
