@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-26",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings has a Weather section: place, units, refresh, on or off"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Place not found in the island opens the Place row in Settings"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-22",
       "date": "2026-10-25",
       "changes": [

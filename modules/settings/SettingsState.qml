@@ -263,6 +263,10 @@ Singleton {
             idleOff: "idle.screensOff",
             idleSuspend: "idle.sleep",
             rightForward: "calendar.rightGoesForward",
+            weatherShow: "weather.show",
+            weatherPlace: "weather.location",
+            weatherUnits: "weather.units",
+            weatherMinutes: "weather.minutes",
             shotDir: "picker.dir",
             shotEditor: "picker.editor",
             outline: "picker.outline",
@@ -1247,6 +1251,7 @@ Singleton {
     readonly property string alertsDetail: AlertSounds.available ? "notifications · low battery · errors" : "pw-play is not installed, so alerts stay silent"
     readonly property bool hotspotBlocked: Hotspot.blocker !== "" && !Hotspot.on
     readonly property string hotspotPasswordTrouble: Hotspot.passwordTrouble
+    readonly property string weatherPlaceTrouble: Weather.failed && Weather.failure === "place" && Weather.failedFor === Weather.location ? "not found" : ""
     readonly property string wifiState: Hotspot.active ? "running your hotspot" : root.wifiNet || "not connected"
 
     readonly property var outputs: Audio.sinks.map(n => [n.name, Audio.deviceLabel(n)])

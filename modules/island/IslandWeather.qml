@@ -66,7 +66,9 @@ Item {
 
             Item {
                 width: parent.width
-                height: Math.max(notes.implicitHeight, again.visible ? again.implicitHeight : 0)
+                readonly property Item beside: fix.visible ? fix : again.visible && !root.blank ? again : null
+
+                height: Math.max(notes.implicitHeight, again.visible ? again.implicitHeight : 0, fix.visible ? fix.implicitHeight : 0)
                 visible: Weather.stale || Weather.failure === "place" || root.blank && root.look.retry
 
                 Column {
@@ -74,8 +76,8 @@ Item {
 
                     anchors.left: parent.left
                     anchors.leftMargin: header.inset
-                    anchors.right: again.visible && !root.blank ? again.left : parent.right
-                    anchors.rightMargin: again.visible && !root.blank ? Appearance.padding.normal : 0
+                    anchors.right: parent.beside ? parent.beside.left : parent.right
+                    anchors.rightMargin: parent.beside ? Appearance.padding.normal : 0
                     anchors.verticalCenter: parent.verticalCenter
 
                     StyledText {
@@ -113,6 +115,19 @@ Item {
                     text: Weather.loading ? "Trying" : "Try again"
                     interactive: !Weather.loading
                     onClicked: Weather.retry()
+                }
+
+                Button {
+                    id: fix
+
+                    x: parent.width - width
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: !!root.look.fix
+                    icon: "edit_location_alt"
+                    text: "Change place"
+                    onClicked: root.act(Object.assign({
+                        kind: "settings"
+                    }, root.look.fix))
                 }
             }
 
