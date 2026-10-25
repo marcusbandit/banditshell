@@ -344,6 +344,23 @@ function outcomeText(result, running) {
     return `Update ${to} did not start, so you are back on ${from}.${why} It will be tried again when a newer version arrives.`;
 }
 
+function reportContext(result, running) {
+    const clipped = sha => String(sha ?? "").slice(0, 7);
+    const named = (label, sha) => !label || label === clipped(sha) ? clipped(sha) : `${label} (${clipped(sha)})`;
+    const back = result?.fromLabel || clipped(result?.from);
+    const current = !running || running === back ? named(back, result?.from) : running;
+    return ["Went back in the update menu.", `Skipped: ${named(result?.toLabel, result?.to)}`, `Current: ${current}`].join("\n");
+}
+
+function reportWords(words, result, running) {
+    const said = String(words ?? "").split("\n").map(line => line.replace(/\s+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    return `${said || "(no words were given)"}\n\n${reportContext(result, running)}`;
+}
+
+function reportScript(quote, cli, words, result, running) {
+    return `bash ${quote(cli)} triage ${quote(reportWords(words, result, running))}; printf '\\n%s' 'Press Enter to close. '; read -r reply`;
+}
+
 function lineValues(lines) {
     const values = {};
     for (const line of String(lines ?? "").split("\n")) {

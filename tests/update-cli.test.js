@@ -617,6 +617,22 @@ test("rollback by hand returns to the recorded version and skips the one it left
     assert.match(again.err, /no earlier version/);
 });
 
+test("reinstalling the version a rollback skipped takes it again and forgets the skip", () => {
+    const world = makeWorld();
+    startShell(world);
+    const target = advance(world, "v2", { "shell.qml": "// v2\n" });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    assert.strictEqual(run(world, ["update", "rollback"]).status, 0);
+    assert.strictEqual(readState(world, "skip"), target);
+    const got = run(world, ["update", "apply", "--to", target]);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    assert.strictEqual(liveHead(world), target);
+    assert.ok(!fs.existsSync(stateFile(world, "skip")));
+    assert.strictEqual(JSON.parse(readState(world, "result.json")).ok, true);
+    assert.strictEqual(run(world, ["update", "rollback"]).status, 0);
+    assert.strictEqual(readState(world, "skip"), target);
+});
+
 test("the check names the version a rollback returns to, and forgets it once back there", () => {
     const world = makeWorld();
     const before = liveHead(world);

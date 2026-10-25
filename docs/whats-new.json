@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-4",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "After going back, the update menu can reinstall the skipped version"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "After going back, the update menu can report what broke"
+        }
+      ]
+    },
+    {
       "id": "2026-10-26-3",
       "date": "2026-10-26",
       "changes": [
