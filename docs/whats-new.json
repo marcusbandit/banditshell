@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-11",
+      "id": "2026-10-25-12",
       "date": "2026-10-25",
       "changes": [
         {
@@ -28,6 +28,17 @@
           "type": "ui",
           "severity": "minor",
           "text": "Rain chance in the forecast has a raindrop beside it"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-11",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Keep awake shows a coffee mark on the rail; press it to turn it off"
         }
       ]
     },
