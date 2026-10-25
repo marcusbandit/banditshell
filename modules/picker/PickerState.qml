@@ -38,9 +38,12 @@ Scope {
                 names.push(s.name);
         freezer.command = ["sh", "-c", `
             for n in "$@"; do
-                f=$(mktemp "\${XDG_RUNTIME_DIR:-\${TMPDIR:-/tmp}}/banditshell-freeze-XXXXXX") || continue
-                grim -o "$n" "$f" && printf '%s\\t%s\\n' "$n" "$f" || rm -f "$f"
+                (
+                    f=$(mktemp "\${XDG_RUNTIME_DIR:-\${TMPDIR:-/tmp}}/banditshell-freeze-XXXXXX") || exit
+                    grim -t ppm -o "$n" "$f" && printf '%s\\t%s\\n' "$n" "$f" || rm -f "$f"
+                ) &
             done
+            wait
         `, "sh", ...names];
         root.freezing = true;
         freezer.running = true;
