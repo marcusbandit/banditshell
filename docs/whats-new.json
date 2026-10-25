@@ -1,8 +1,8 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-20",
-      "date": "2026-10-25",
+      "id": "2026-10-26",
+      "date": "2026-10-26",
       "changes": [
         {
           "type": "issues",
@@ -13,6 +13,65 @@
           "type": "issues",
           "severity": "minor",
           "text": "Quiet mode in the island: 1 hour, until tomorrow, or always"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-23",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings search keeps your words and shows 2 of 5; Enter steps through"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-22",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clipboard and launcher have Clear history; pinned entries stay"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clearing a broken clipboard history no longer deletes its pictures"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-21",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "An off switch has an outline, so it reads as a switch"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The chosen option in a row of choices is filled in the theme colour"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-20",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Workspace pips stay put when a rail mark comes or goes"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Rail marks sit apart from the workspace pips"
         }
       ]
     },
