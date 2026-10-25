@@ -5,7 +5,9 @@
   "owns": {
     "qml": ["modules/files", "previews/FilesPreview.qml", "previews/TerminalDebug.qml"],
     "services": ["Downloads", "Files"],
+    "js": ["services/files-order.js"],
     "tests": [
+      "tests/files-order.test.js",
       "tests/keys.test.js",
       "tests/markdown.test.js",
       "tests/marks.test.js",
