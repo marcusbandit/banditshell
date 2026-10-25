@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-15",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A typo in the launcher offers the closest match; Enter takes it"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-14",
       "date": "2026-10-25",
       "changes": [
