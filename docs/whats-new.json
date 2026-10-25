@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-16",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Colour settings say Panel shade and Highlight colour in plain words"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-15",
       "date": "2026-10-25",
       "changes": [

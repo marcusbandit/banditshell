@@ -202,6 +202,20 @@ test("dark, dark mode, light, night and theme all find the dark apps row", () =>
         assert.ok(Catalogue.search(q).some(h => h.row.k === "darkMode" && h.page.id === "colour"), q);
 });
 
+test("panel shade and highlight colour are found under their old names too", () => {
+    for (const q of ["panel shade", "surface depth", "ramp"])
+        assert.strictEqual(Catalogue.search(q)[0]?.row.k, "surface", q);
+    for (const q of ["highlight colour", "accent", "accent strength"])
+        assert.strictEqual(Catalogue.search(q)[0]?.row.k, "accent", q);
+});
+
+test("highlight colour stores dim, mid and bright under plain names", () => {
+    const row = Catalogue.ROW_BY_KEY.accent;
+    assert.deepStrictEqual(Catalogue.options(row, {}).map(o => o[0]), ["dim", "mid", "bright"]);
+    assert.strictEqual(Catalogue.show(row, "mid", {}), "normal");
+    assert.strictEqual(Catalogue.show(Catalogue.ROW_BY_KEY.surface, 3, {}), "medium");
+});
+
 test("resolve takes categories, pages, old names, row keys and config keys", () => {
     assert.deepStrictEqual(Catalogue.resolve("connections"), { cat: "connections", page: "", row: null });
     assert.strictEqual(Catalogue.resolve("wifi").page, "wifi");
