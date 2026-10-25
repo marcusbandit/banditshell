@@ -1112,6 +1112,21 @@ function search(query) {
     return hits.filter((x, i, a) => a.findIndex(y => y.label === x.label && y.page === x.page) === i).slice(0, 12);
 }
 
+function hitIndexOf(hits, openUid) {
+    return Math.max(0, hits.findIndex(h => h.row.uid === openUid));
+}
+
+function hitIsOpen(hits, index, openUid, currentPage) {
+    const h = hits[index];
+    return !!h && h.row.uid === openUid && h.page.id === currentPage;
+}
+
+function hitToOpen(hits, index, openUid, currentPage, back) {
+    if (!hitIsOpen(hits, index, openUid, currentPage) || hits.length < 2)
+        return index;
+    return (index + (back ? hits.length - 1 : 1)) % hits.length;
+}
+
 const ALIASES = {
     network: "wifi", ethernet: "wired", hotspot: "vpn", sound: "output", audio: "output", microphone: "mic", monitors: "screens", display: "screens",
     brightness: "light", theme: "colour", font: "type", appearance: "colour", general: "windows", keybinds: "shortcuts", hotkeys: "shortcuts",
