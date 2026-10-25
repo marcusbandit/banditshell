@@ -165,3 +165,46 @@ function barOf(day, range) {
 function rainText(day) {
     return day.rain >= MINIMUM_RAIN ? day.rain + "%" : "";
 }
+
+function readWttr(output) {
+    const text = String(output || "");
+    const cut = text.lastIndexOf("\n");
+    const tail = text.slice(cut + 1).trim().split(/\s+/);
+    const status = tail[0] || "";
+    const exit = Number(tail[1] || 0);
+    const body = cut >= 0 ? text.slice(0, cut) : "";
+    if (status === "" || status === "000")
+        return { failure: [5, 6, 7].indexOf(exit) >= 0 || !tail[1] ? "offline" : "service" };
+    if (status !== "200")
+        return { failure: /location not found|unknown location/i.test(body) ? "place" : "service" };
+    let data = null;
+    try {
+        data = JSON.parse(body);
+    } catch (e) {
+        return { failure: "service" };
+    }
+    if (!data || !data.current_condition || !data.current_condition[0])
+        return { failure: "service" };
+    return { data: data };
+}
+
+function failureLook(failure) {
+    if (failure === "place")
+        return { icon: "wrong_location", title: "Place not found", detail: "Fix the spelling of the town in config.json", note: "", retry: false };
+    if (failure === "service")
+        return { icon: "cloud_off", title: "No answer", detail: "The weather service did not reply", note: "the weather service did not reply", retry: true };
+    return { icon: "wifi_off", title: "You're offline", detail: "The weather loads when you're back online", note: "offline, updates when you're back online", retry: false };
+}
+
+function ago(then, now) {
+    const minutes = Math.max(0, Math.round((now - then) / 60000));
+    if (minutes < 1)
+        return "just now";
+    if (minutes < 60)
+        return minutes + " min ago";
+    const hours = Math.round(minutes / 60);
+    if (hours < 24)
+        return hours + " h ago";
+    const days = Math.round(hours / 24);
+    return days === 1 ? "yesterday" : days + " days ago";
+}

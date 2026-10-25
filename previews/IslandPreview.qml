@@ -512,6 +512,49 @@ ShellRoot {
             expect: "the weather"
         },
         {
+            name: "the forecast could not update: the last one shows with its age",
+            run: () => {
+                Weather.take("", preview.forecastAnswer());
+                Weather.outlook = [];
+                Weather.fetchedAt = Date.now() - 3 * 3600000;
+                Weather.take("", "\n000 6");
+            },
+            wait: 1200,
+            expect: "the weather"
+        },
+        {
+            name: "no forecast ever loaded while offline: it says so and waits",
+            run: () => {
+                Weather.current = null;
+                Weather.wttrData = null;
+                Weather.outlook = [];
+                Weather.take("", "\n000 6");
+            },
+            wait: 1200,
+            expect: "the weather"
+        },
+        {
+            name: "the weather service did not answer: a quiet try again",
+            run: () => Weather.take("", "\n000 28"),
+            wait: 1200,
+            expect: "the weather"
+        },
+        {
+            name: "a place the weather does not know points to the setting",
+            run: () => Weather.take("Lyngbyy", "location not found: upstream error: opencage: invalid response\n\n500 0"),
+            wait: 1200,
+            expect: "the weather"
+        },
+        {
+            name: "back in the overview, a failed weather is tried again",
+            run: () => {
+                Weather.fetchedAt = Date.now();
+                island.back();
+            },
+            wait: 1200,
+            expect: "overview"
+        },
+        {
             name: "the shell update opens in the island, not the sidebar",
             run: () => island.choose({
                     kind: "update",
@@ -977,6 +1020,40 @@ ShellRoot {
                 levels.push(Math.abs(Math.sin(i * 0.37)) * (0.35 + 0.65 * Math.abs(Math.sin(i * 0.11))));
             Dictation.levels = levels;
         }
+    }
+
+    function forecastAnswer(): string {
+        const day = (date, high, low, code, desc, rain) => ({
+                date: date,
+                maxtempC: String(high),
+                mintempC: String(low),
+                maxtempF: String(Math.round(high * 1.8 + 32)),
+                mintempF: String(Math.round(low * 1.8 + 32)),
+                hourly: [{
+                        time: "1200",
+                        weatherCode: String(code),
+                        weatherDesc: [{
+                                value: desc
+                            }],
+                        chanceofrain: String(rain)
+                    }]
+            });
+        return JSON.stringify({
+            current_condition: [{
+                    temp_C: "9",
+                    temp_F: "48",
+                    weatherCode: "116",
+                    weatherDesc: [{
+                            value: "Partly cloudy"
+                        }]
+                }],
+            nearest_area: [{
+                    areaName: [{
+                            value: "Kongens Lyngby"
+                        }]
+                }],
+            weather: [day("2026-10-25", 11, 6, 116, "Partly cloudy", 10), day("2026-10-26", 12, 7, 296, "Light rain", 70), day("2026-10-27", 9, 4, 113, "Sunny", 0)]
+        }) + "\n200 0";
     }
 
     function shot(ms: int): var {

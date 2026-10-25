@@ -1,6 +1,37 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-13",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Weather says why it could not load instead of loading forever"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "An older forecast stays up with its age when an update fails"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Weather updates by itself once you're back online"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A misspelled weather town says so and how to fix it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Rain chance in the forecast has a raindrop beside it"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-12",
       "date": "2026-10-25",
       "changes": [

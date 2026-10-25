@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const src = fs.readFileSync(path.join(__dirname, "..", "services/weather.js"), "utf8");
-const Forecast = new Function(src + "\nreturn { wttrIcon, wmo, placeOf, coordsOf, wttrDays, outlookUrl, outlookDays, dateOf, weekRange, barOf, rainText };")();
+const Forecast = new Function(src + "\nreturn { wttrIcon, wmo, placeOf, coordsOf, wttrDays, outlookUrl, outlookDays, dateOf, weekRange, barOf, rainText, readWttr, failureLook, ago };")();
 
 function hour(time, code, desc, rain) {
     return { time, weatherCode: String(code), weatherDesc: [{ value: desc }], chanceofrain: String(rain) };
@@ -147,4 +147,41 @@ test("rain shows from twenty percent", () => {
     assert.strictEqual(Forecast.rainText({ rain: 19 }), "");
     assert.strictEqual(Forecast.rainText({ rain: 20 }), "20%");
     assert.strictEqual(Forecast.rainText({ rain: -1 }), "");
+});
+
+test("a wttr answer with a status of 200 gives its data", () => {
+    const answer = Forecast.readWttr(JSON.stringify({ ...WTTR, current_condition: [{ temp_C: "9" }] }) + "\n200 0");
+    assert.strictEqual(answer.failure, undefined);
+    assert.strictEqual(answer.data.current_condition[0].temp_C, "9");
+});
+
+test("an unknown place is told apart from a failed fetch", () => {
+    const captured = fs.readFileSync(path.join(__dirname, "fixtures/weather/wttr-unknown-place.txt"), "utf8");
+    assert.deepStrictEqual(Forecast.readWttr(captured), { failure: "place" });
+    assert.deepStrictEqual(Forecast.readWttr("\n000 6"), { failure: "offline" });
+    assert.deepStrictEqual(Forecast.readWttr("\n000 7"), { failure: "offline" });
+    assert.deepStrictEqual(Forecast.readWttr("\n000 28"), { failure: "service" });
+    assert.deepStrictEqual(Forecast.readWttr(""), { failure: "offline" });
+    assert.strictEqual(Forecast.readWttr(JSON.stringify({ current_condition: [{ weatherDesc: [{ value: "unknown location" }] }] }) + "\n200 0").failure, undefined);
+    assert.deepStrictEqual(Forecast.readWttr("<html>Bad gateway</html>\n502"), { failure: "service" });
+    assert.deepStrictEqual(Forecast.readWttr("Sorry, we are running out of queries\n200"), { failure: "service" });
+    assert.deepStrictEqual(Forecast.readWttr("{}\n200"), { failure: "service" });
+});
+
+test("a failure says what went wrong and offers Try again only where it can work", () => {
+    assert.strictEqual(Forecast.failureLook("offline").title, "You're offline");
+    assert.strictEqual(Forecast.failureLook("offline").retry, false);
+    assert.strictEqual(Forecast.failureLook("service").retry, true);
+    assert.strictEqual(Forecast.failureLook("place").retry, false);
+    assert.match(Forecast.failureLook("place").detail, /config\.json/);
+});
+
+test("the age of an older forecast", () => {
+    const now = Date.UTC(2026, 9, 25, 12, 0);
+    assert.strictEqual(Forecast.ago(now - 20000, now), "just now");
+    assert.strictEqual(Forecast.ago(now - 42 * 60000, now), "42 min ago");
+    assert.strictEqual(Forecast.ago(now - 179 * 60000, now), "3 h ago");
+    assert.strictEqual(Forecast.ago(now - 30 * 3600000, now), "yesterday");
+    assert.strictEqual(Forecast.ago(now - 5 * 86400000, now), "5 days ago");
+    assert.strictEqual(Forecast.ago(now + 60000, now), "just now");
 });
