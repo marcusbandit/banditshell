@@ -33,6 +33,12 @@ PanelWindow {
 
     readonly property bool mine: win.output === Tour.screen
     readonly property string mode: Tour.parting ? "parting" : !Tour.running ? "" : Tour.phase === "finished" ? "finished" : Tour.phase
+    property string held: "ask"
+    readonly property string face: win.mode || win.held
+
+    onModeChanged: if (win.mode)
+        win.held = win.mode
+
     readonly property bool wanted: win.mine && win.mode !== "" && !(win.shell?.covering ?? false) && !(win.shell?.underFullscreen ?? false)
 
     anchors {
@@ -175,10 +181,10 @@ PanelWindow {
             opacity: shown.value
             visible: shown.value > 0.001
 
-            mode: win.mode || "ask"
-            title: win.mode === "finished" ? "Tour done" : win.mode === "parting" ? "Tour put away" : Tour.words.title ?? ""
-            payoff: win.mode === "finished" ? "Everything else in the shell hangs off these five." : win.mode === "parting" ? "It is there whenever you want it." : Tour.words.payoff ?? ""
-            ask: win.mode === "finished" || win.mode === "parting" ? "Open it again from Settings, About, or type tour in the launcher." : Tour.words.ask ?? ""
+            mode: win.face
+            title: win.face === "finished" ? "Tour done" : win.face === "parting" ? "Tour put away" : Tour.words.title ?? ""
+            payoff: win.face === "finished" ? "Everything else in the shell hangs off these five." : win.face === "parting" ? "It is there whenever you want it." : Tour.words.payoff ?? ""
+            ask: win.face === "finished" || win.face === "parting" ? "Open it again from Settings, About, or type tour in the launcher." : Tour.words.ask ?? ""
             away: Tour.words.away ?? ""
             chord: Tour.step?.chord ?? ""
             pointing: win.spot.side ?? ""
