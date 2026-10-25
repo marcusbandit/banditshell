@@ -37,6 +37,14 @@ Singleton {
                 Clipboard.importFromClipse();
                 return SettingsView.drop(waiting ? `clipse’s history is over · ${waiting} entries` : "clipse had nothing to bring over", "move_to_inbox");
             }
+        case "tour":
+            {
+                const screen = Settings.screenName;
+                Settings.hide();
+                return Panels.open("tour", {
+                    screen: screen
+                });
+            }
         case "lockNow":
             Settings.hide();
             return SessionControl.requestLock();

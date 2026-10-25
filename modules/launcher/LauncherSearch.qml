@@ -354,6 +354,15 @@ QtObject {
             run: () => Settings.show(root.screenName, "")
         },
         {
+            id: "tour",
+            icon: "tour",
+            label: "Show the tour",
+            words: "tour welcome guide introduction onboarding first run help start",
+            run: () => root.leave(() => Panels.open("tour", {
+                    screen: root.screenName
+                }))
+        },
+        {
             id: "playpause",
             icon: Media.playing ? "pause" : "play_arrow",
             label: Media.playing ? "Pause" : "Play",

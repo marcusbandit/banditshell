@@ -857,6 +857,9 @@ const PAGES_SOURCE = {
             { rows: [
                 { n: 119, kind: "w", w: "changes", kw: "what’s new changelog" },
                 { n: [120, 121], kind: "w", w: "about", kw: "device info about version compositor source design notes" }
+            ] },
+            { t: "New here", rows: [
+                { n: [], icon: "tour", label: "The tour", kind: "button", btn: "Show", act: "tour", detail: "five steps over your own desktop", kw: "tour welcome guide introduction onboarding first run help start" }
             ] }
         ]
     }
