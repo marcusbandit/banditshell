@@ -63,9 +63,24 @@ Singleton {
     onPaneOutChanged: root.remember()
     onScrollChanged: root.remember()
 
+    function takeReveal(): void {
+        if (!Settings.reveal)
+            return;
+        const found = Catalogue.resolve(Settings.reveal);
+        if (found?.row) {
+            root.query = "";
+            root.openHit({
+                page: Catalogue.PAGE_BY_ID[found.page],
+                row: found.row
+            });
+        }
+        Settings.reveal = "";
+    }
+
     Component.onCompleted: {
         if (Settings.page && Settings.page !== root.current)
             root.go(Settings.page);
+        Qt.callLater(root.takeReveal);
         const was = Relaunch.recall("settingsView");
         if (!was)
             return;
@@ -217,17 +232,7 @@ Singleton {
         }
 
         function onRevealChanged(): void {
-            if (!Settings.reveal)
-                return;
-            const found = Catalogue.resolve(Settings.reveal);
-            if (found?.row) {
-                root.query = "";
-                root.openHit({
-                    page: Catalogue.PAGE_BY_ID[found.page],
-                    row: found.row
-                });
-            }
-            Settings.reveal = "";
+            root.takeReveal();
         }
     }
 }

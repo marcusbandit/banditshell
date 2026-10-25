@@ -125,9 +125,10 @@ Item {
                     visible: !!root.look.fix
                     icon: "edit_location_alt"
                     text: "Change place"
-                    onClicked: root.act(Object.assign({
-                        kind: "settings"
-                    }, root.look.fix))
+                    onClicked: root.act({
+                        kind: "settings",
+                        row: root.look.fix
+                    })
                 }
             }
 

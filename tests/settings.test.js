@@ -132,11 +132,9 @@ test("rows that name a config key write that same key", () => {
 
 test("the island's Change place opens the row that writes weather.location", () => {
     const Forecast = lib(path.join(ROOT, "services/weather.js"), ["failureLook"]);
-    const fix = Forecast.failureLook("place").fix;
-    const found = Catalogue.resolve(fix.row);
-    assert.strictEqual(found.page, fix.page);
+    const found = Catalogue.resolve(Forecast.failureLook("place").fix);
+    assert.strictEqual(found.page, "clock");
     assert.strictEqual(found.row.cfg, "weather.location");
-    assert.strictEqual(CONFIG_BACKED[found.row.k], "weather.location");
 });
 
 test("the weather rows grey out while the weather is off", () => {

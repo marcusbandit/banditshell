@@ -202,7 +202,6 @@
     "R3 modules/settings/SettingsState.qml uses Idle of power without requiring it",
     "R3 modules/settings/SettingsState.qml uses Keyboards of cheatsheet without requiring it",
     "R3 modules/settings/SettingsState.qml uses Lid of power without requiring it",
-    "R3 modules/settings/SettingsState.qml uses Localisation, private to clock",
     "R3 modules/settings/SettingsState.qml uses Network of network without requiring it",
     "R3 modules/settings/SettingsState.qml uses Notes of launcher-tools without requiring it",
     "R3 modules/settings/SettingsState.qml uses Notifications of notifications without requiring it",

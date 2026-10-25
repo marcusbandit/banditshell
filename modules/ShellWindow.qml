@@ -242,7 +242,7 @@ PanelWindow {
             break;
         case "settings":
             islandLayer.close();
-            Settings.openAt(win.screen?.name ?? "", notice.page, notice.row ?? "");
+            Settings.openAt(win.screen?.name ?? "", "", notice.row);
             return;
         }
         if (notice.key)
