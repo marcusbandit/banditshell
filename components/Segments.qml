@@ -18,7 +18,7 @@ Item {
 
     readonly property real segment: root.count > 0 ? root.width / root.count : root.width
 
-    readonly property real swatchRoom: root.swatches.length > 0 ? 14 + Appearance.padding.small : 0
+    readonly property real swatchRoom: root.swatches.length > 0 ? 18 + Appearance.padding.small : 0
 
     readonly property string widest: {
         let out = "";
@@ -99,12 +99,12 @@ Item {
             SquircleRect {
                 x: (seg.width - root.swatchRoom - label.contentWidth) / 2
                 anchors.verticalCenter: parent.verticalCenter
-                width: 14
-                height: 14
-                radius: 5
+                width: 18
+                height: 18
+                radius: 6
                 color: root.swatches[seg.index] ?? "transparent"
-                stroke: Appearance.colour.surfaceSolid
-                strokeWidth: 1
+                stroke: label.color
+                strokeWidth: seg.covered > 0.5 ? 1.5 : 0
                 visible: root.swatchRoom > 0
             }
 
