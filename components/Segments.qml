@@ -57,7 +57,7 @@ Item {
         width: root.segment
         height: parent.height
         pill: "place"
-        color: Appearance.colour.accentFill
+        color: Appearance.colour.accent
         visible: root.count > 0
     }
 
@@ -69,6 +69,8 @@ Item {
 
             required property string modelData
             required property int index
+
+            readonly property real covered: root.segment > 0 ? Math.max(0, 1 - Math.abs(slide.value - seg.x) / root.segment) : 0
 
             x: seg.index * root.segment
             width: root.segment
@@ -83,7 +85,7 @@ Item {
 
                 text: seg.modelData
 
-                color: seg.index === root.current ? Appearance.colour.text : Appearance.colour.textFaint
+                color: Appearance.blend(Appearance.colour.textFaint, Appearance.colour.accentText, seg.covered)
             }
 
             MouseArea {
