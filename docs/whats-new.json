@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-26-5",
+      "id": "2026-10-26-6",
       "date": "2026-10-26",
       "changes": [
         {
@@ -13,6 +13,22 @@
           "type": "features",
           "severity": "minor",
           "text": "Type tour in the launcher, or use Settings, About, to see it again"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-5",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files sorts either way: oldest first, smallest first or Z to A"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files settings preview shows whole names and each date or size"
         }
       ]
     },

@@ -758,6 +758,8 @@ Singleton {
 
                 sort: "name",
 
+                reversed: false,
+
                 terminal: {
 
                     font: "CaskaydiaCove Nerd Font Mono",
