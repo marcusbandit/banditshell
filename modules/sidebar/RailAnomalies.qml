@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 import "anomalies.js" as Anomalies
 
 Item {
@@ -13,6 +14,10 @@ Item {
     property string modeIcon: ""
 
     property bool batteryWanted: false
+
+    property bool awake: false
+
+    signal awakeEnded
 
     readonly property BatteryGlance battery: BatteryGlance {}
 
@@ -26,6 +31,7 @@ Item {
         micMuted: Audio.sourceMuted,
         recording: ScreenRecorder.recording,
         vpn: Tunnels.anyOn,
+        awake: root.awake,
         wifiAvailable: Network.available,
         wifiOn: Network.enabled,
         bluetoothAvailable: Bluetooth.available,
@@ -61,6 +67,14 @@ Item {
         interval: Math.max(1, Config.values.island.glanceSeconds) * 1000
         onTriggered: root.micFresh = false
     }
+
+    readonly property var presses: ({
+            awake: () => root.awakeEnded()
+        })
+
+    property string pointedKey: ""
+
+    readonly property bool pointing: root.pointedKey !== ""
 
     property var held: []
 
@@ -112,6 +126,36 @@ Item {
                     name: mark.entry?.icon ?? mark.modelData.icon
                     fill: 1
                     color: root.toneColour(mark.entry?.tone ?? mark.modelData.tone)
+                }
+
+                readonly property bool pointed: area.visible && area.enabled && area.containsMouse
+
+                onPointedChanged: {
+                    if (mark.pointed)
+                        root.pointedKey = mark.modelData.key;
+                    else if (root.pointedKey === mark.modelData.key)
+                        root.pointedKey = "";
+                }
+
+                Component.onDestruction: {
+                    if (root.pointedKey === mark.modelData.key)
+                        root.pointedKey = "";
+                }
+
+                MouseArea {
+                    id: area
+
+                    anchors.fill: parent
+                    visible: !!root.presses[mark.modelData.key]
+                    enabled: mark.present
+                    hoverEnabled: true
+                    cursorShape: area.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: root.presses[mark.modelData.key]()
+
+                    HoverTip {
+                        text: area.enabled ? (mark.entry?.title ?? "") : ""
+                        host: mark
+                    }
                 }
 
                 Follow {
