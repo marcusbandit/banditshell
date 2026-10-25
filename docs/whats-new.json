@@ -13,6 +13,11 @@
           "type": "issues",
           "severity": "minor",
           "text": "Place not found in the island opens the Place row in Settings"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "World clocks in Settings are now headed Other time zones"
         }
       ]
     },

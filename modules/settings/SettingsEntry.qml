@@ -14,6 +14,7 @@ Column {
     readonly property string kind: root.row.kind ?? ""
     readonly property var value: root.key ? SettingsState.v(root.key) : undefined
     readonly property bool off: !!root.row.dis && !!root.row.dis(SettingsState)
+    readonly property bool bad: !!root.row.bad && !!root.row.bad(SettingsState)
     readonly property string detailText: String(Catalogue.val(root.row.detail, SettingsState) ?? "")
     readonly property bool hasLayer: !!root.row.layer
     readonly property bool unrolled: SettingsView.isOpen(root.row.uid ?? "")
@@ -77,6 +78,8 @@ Column {
         icon: root.row.icon ?? ""
         label: Catalogue.labelOf(root.row)
         detail: root.detailText
+        detailColour: root.bad ? Appearance.colour.alarm : Appearance.colour.textFaint
+        detailLines: root.bad ? 3 : 1
         off: root.off
         loose: reset.visible ? reset.width + resetGap.width + Appearance.padding.normal * 2 : 0
         flashStamp: root.flashing ? SettingsView.flash.at : 0
@@ -285,6 +288,7 @@ Column {
             text: String(root.value ?? "")
             placeholder: root.row.placeholder ?? ""
             mono: !!root.row.mono
+            alarm: root.bad
             enabled: !root.off
             onCommitted: t => root.set(t)
         }
@@ -295,7 +299,7 @@ Column {
 
         SettingsSecret {
             text: String(root.value ?? "")
-            alarm: !!root.row.bad && !!root.row.bad(SettingsState)
+            alarm: root.bad
             enabled: !root.off
             onEdited: t => root.set(t)
         }
