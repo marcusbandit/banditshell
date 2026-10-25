@@ -1,13 +1,71 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-6",
+      "id": "2026-10-25-9",
       "date": "2026-10-25",
       "changes": [
         {
           "type": "features",
           "severity": "minor",
           "text": "Settings, Colour has a Dark apps switch; search dark or night finds it"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-8",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The power menu has Sleep, and every button says what it does"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "An armed shut down or restart turns red and lets go after 4 s"
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "session.button is now the smallest a power button gets"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A double-click on Shut down or Restart no longer runs it at once"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-7",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Sorting Files by date or type in Settings now really sorts that way"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Files Sort by in Settings reads a to z, newest, biggest or type"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-6",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The screenshot key freezes the screen at once"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Hotkeys and the island stay quick when the clocks go back an hour"
         }
       ]
     },

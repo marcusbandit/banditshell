@@ -45,5 +45,6 @@ StyledText 1.0 StyledText.qml
 TerminalView 1.0 TerminalView.qml
 Toggle 1.0 Toggle.qml
 Travel 1.0 Travel.qml
+WallClock 1.0 WallClock.qml
 Waveform 1.0 Waveform.qml
 WheelStep 1.0 WheelStep.qml

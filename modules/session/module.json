@@ -3,7 +3,8 @@
   "summary": "the session power panel",
   "layer": 5,
   "owns": {
-    "qml": ["modules/session"]
+    "qml": ["modules/session"],
+    "tests": ["tests/session-arming.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor", "power"],

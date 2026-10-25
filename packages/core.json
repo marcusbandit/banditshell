@@ -71,7 +71,8 @@
       "tests/site.test.js",
       "tests/spring.test.js",
       "tests/squircle.test.js",
-      "tests/timeformat.test.js"
+      "tests/timeformat.test.js",
+      "tests/wall-clock.test.js"
     ]
   },
   "requires": {
