@@ -46,6 +46,7 @@ Item {
             FilesPaste.cancel();
             return;
         case Qt.Key_Left:
+        case Qt.Key_Backtab:
             root.selected = Math.max(0, root.selected - 1);
             return;
         case Qt.Key_Right:

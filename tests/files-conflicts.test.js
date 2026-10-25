@@ -13,8 +13,8 @@ function lib(file, names) {
 }
 
 const Conflicts = lib("services/files-conflicts.js", [
-    "numbered", "items", "probeCommand", "probed", "choices", "answer", "next", "waiting",
-    "operations", "command", "results", "leftover", "failure", "notice", "renameRefusal"
+    "numbered", "items", "loops", "placeable", "loopRefusal", "probeCommand", "probed", "choices", "answer", "next", "waiting",
+    "operations", "command", "results", "leftover", "reason", "failure", "notice", "renameRefusal"
 ]);
 const Undo = lib("services/files-undo.js", ["moved", "copied", "trashed", "batch", "command", "report", "remember"]);
 
@@ -31,7 +31,7 @@ function sandbox({ trashFails = false } = {}) {
     const home = path.join(dir, "home");
     for (const made of [bin, trash, home])
         fs.mkdirSync(made);
-    for (const tool of ["mv", "cp", "cat"])
+    for (const tool of ["mv", "cp", "cat", "realpath", "dirname"])
         fs.symlinkSync(which(tool), path.join(bin, tool));
     fs.writeFileSync(path.join(bin, "gio"), `#!/bin/sh
 ${trashFails ? "exit 1" : ""}
@@ -135,6 +135,45 @@ test.describe("files paste conflicts", () => {
         assert.deepStrictEqual(Conflicts.answer(list, Conflicts.choices(list), 0, "replace", false), ["both"]);
     });
 
+    test.it("refuses to paste a folder inside itself", () => {
+        const list = Conflicts.items(["/h/b", "/h/c.txt"], "/h/b", false);
+        assert.deepStrictEqual(Conflicts.loops(list).map(item => item.name), ["b"]);
+        assert.deepStrictEqual(Conflicts.placeable(list).map(item => item.name), ["c.txt"]);
+        assert.strictEqual(Conflicts.loopRefusal(Conflicts.loops(list)), "b cannot go inside itself");
+        assert.deepStrictEqual(Conflicts.loops(Conflicts.items(["/h/b"], "/h/bb", true)), []);
+    });
+
+    test.it("sees the same file and a holding folder through a symlink", () => {
+        const box = sandbox();
+        try {
+            write(box.at("real", "x.txt"), "only copy");
+            fs.symlinkSync(box.at("real"), box.at("link"));
+            write(box.at("Docs", "Docs", "plan.txt"), "inner");
+            fs.symlinkSync(box.at("Docs"), box.at("short"));
+            const list = Conflicts.items([box.at("link", "x.txt"), box.at("short", "Docs")], box.at("real"), false);
+            list[1].to = box.at("Docs");
+            const found = Conflicts.probed(list, box.run(Conflicts.probeCommand(list)));
+            assert.deepStrictEqual(found.map(item => [item.self, item.holds]), [[true, false], [false, true]]);
+            assert.deepStrictEqual(Conflicts.choices(found), ["both", null]);
+            assert.deepStrictEqual(Conflicts.choices(found.map(item => Object.assign({}, item, { cut: true })))[0], "skip");
+
+            box.paste([box.at("link", "x.txt")], box.at("real"), false, []);
+            assert.deepStrictEqual(fs.readdirSync(box.at("real")).sort(), ["x (2).txt", "x.txt"]);
+            assert.strictEqual(fs.readFileSync(box.at("real", "x.txt"), "utf8"), "only copy");
+            assert.deepStrictEqual(box.trashed(), []);
+        } finally {
+            box.done();
+        }
+    });
+
+    test.it("skips a second file of the same name when the first was skipped", () => {
+        const list = Conflicts.probed(Conflicts.items(["/a/x", "/b/x"], "/t", false), "t1\nt2\n");
+        const skipped = Conflicts.answer(list, Conflicts.choices(list), 0, "skip", false);
+        assert.deepStrictEqual(Conflicts.operations(list, skipped), []);
+        const kept = Conflicts.answer(list, Conflicts.choices(list), 0, "replace", false);
+        assert.deepStrictEqual(Conflicts.operations(list, kept).map(op => [op.mode, op.from]), [["replace", "/a/x"], ["both", "/b/x"]]);
+    });
+
     test.it("replaces, skips and keeps both for real, and the replaced file goes to the trash", () => {
         const box = sandbox();
         try {
@@ -209,6 +248,23 @@ test.describe("files paste conflicts", () => {
         }
     });
 
+    test.it("says the old file is in the trash when its replacement could not be copied", () => {
+        const box = sandbox();
+        try {
+            write(box.at("from", "a.txt"), "new");
+            fs.chmodSync(box.at("from", "a.txt"), 0o000);
+            write(box.at("to", "a.txt"), "old");
+            const { outcome, ops } = box.paste([box.at("from", "a.txt")], box.at("to"), false, [["replace", false]]);
+            fs.chmodSync(box.at("from", "a.txt"), 0o644);
+            assert.deepStrictEqual(fs.readdirSync(box.at("to")), []);
+            assert.deepStrictEqual(outcome.replaced, [box.at("to", "a.txt")]);
+            assert.deepStrictEqual(box.trashed().map(item => item.body), ["old"]);
+            assert.strictEqual(Conflicts.failure(outcome, false, ops.length, "cp: cannot open 'a.txt' for reading: Permission denied\n"), "a.txt could not be copied: Permission denied, the old one is in the trash");
+        } finally {
+            box.done();
+        }
+    });
+
     test.it("keeps a cut on the clipboard until it has moved, so skipped and failed files stay", () => {
         const box = sandbox();
         try {
@@ -272,10 +328,12 @@ test.describe("files paste conflicts", () => {
     });
 
     test.it("says what went wrong in one short line", () => {
-        const failed = names => ({ failed: names, kept: [] });
+        const failed = names => ({ failed: names, half: [], kept: [] });
         assert.strictEqual(Conflicts.failure(failed([]), false, 3), "");
         assert.strictEqual(Conflicts.failure(failed(["a.txt"]), false, 3), "a.txt could not be copied");
         assert.strictEqual(Conflicts.failure(failed(["a", "b"]), true, 3), "2 of 3 could not be moved");
+        assert.strictEqual(Conflicts.failure(failed(["a"]), true, 1, "mv: cannot move 'a' to 'b/a': No space left on device\n"), "a could not be moved: No space left on device");
+        assert.strictEqual(Conflicts.reason("\n"), "");
         assert.strictEqual(Conflicts.notice({ kept: ["a (2)", "b (2)"] }), "Kept both for 2 files, the new ones are numbered");
         assert.strictEqual(Conflicts.notice({ kept: [] }), "");
     });

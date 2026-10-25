@@ -65,17 +65,24 @@ Singleton {
 
     function perform(entry: var, done: var): void {
         if (entry.kind === "batch")
-            root.chain(entry.parts, [], done);
+            root.picked(entry.parts, picks => root.chain(entry.parts.map((part, i) => Undo.command(part, picks[i])), [], done));
         else if (entry.kind === "trash")
-            root.start(Undo.TRASH_LISTING, text => root.start(Undo.command(entry, Undo.pick(Undo.parseTrash(text ?? ""), entry)), out => done([out])));
+            root.picked([entry], picks => root.start(Undo.command(entry, picks[0]), out => done([out])));
         else
             root.start(Undo.command(entry, []), out => done([out]));
     }
 
-    function chain(parts: var, texts: var, done: var): void {
-        if (texts.length === parts.length)
+    function picked(parts: var, done: var): void {
+        root.start(Undo.TRASH_LISTING, text => {
+            const items = Undo.parseTrash(text ?? "");
+            done(parts.map(part => part.kind === "trash" ? Undo.pick(items, part) : []));
+        });
+    }
+
+    function chain(commands: var, texts: var, done: var): void {
+        if (texts.length === commands.length)
             return done(texts);
-        root.perform(parts[texts.length], out => root.chain(parts, texts.concat(out), done));
+        root.start(commands[texts.length], out => root.chain(commands, texts.concat([out]), done));
     }
 
     function start(command: var, done: var): void {
@@ -124,12 +131,16 @@ Singleton {
                 if (task.over)
                     return;
                 task.over = true;
-                task.done(text);
+                task.done(text, complaint.text);
                 task.destroy();
             }
 
             stdout: StdioCollector {
                 onStreamFinished: task.end(text)
+            }
+
+            stderr: StdioCollector {
+                id: complaint
             }
 
             onStarted: task.begun = true

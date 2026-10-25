@@ -1,9 +1,12 @@
 .pragma library
 
-var PROBE = 'n=$1; shift; i=0; '
-    + 'for p; do i=$((i+1)); '
-    + 'if [ "$i" -le "$n" ]; then if [ -e "$p" ] || [ -L "$p" ]; then echo "t$i"; fi; '
-    + 'elif [ -d "$p" ] && [ ! -L "$p" ]; then echo "d$((i-n))"; fi; done';
+var PROBE = 'i=0; while [ $# -ge 2 ]; do i=$((i+1)); to=$1 from=$2; shift 2; '
+    + 'if [ -e "$to" ] || [ -L "$to" ]; then echo "t$i"; fi; '
+    + 'if [ -d "$from" ] && [ ! -L "$from" ]; then echo "d$i"; fi; '
+    + 'if [ -e "$to" ] && [ "$from" -ef "$to" ]; then echo "s$i"; fi; '
+    + 'if [ -d "$to" ] && [ -e "$from" ]; then '
+    + 'r=$(realpath -- "$to") && f=$(realpath -- "$(dirname -- "$from")") && '
+    + 'case "$f/${from##*/}" in "$r"/*) echo "h$i";; esac; fi; done';
 
 var PASTE = 'verb=$1; shift; '
     + 'while [ $# -ge 5 ]; do mode=$1 from=$2 to=$3 stem=$4 ext=$5; shift 5; '
@@ -17,7 +20,8 @@ var PASTE = 'verb=$1; shift; '
     + 'gio trash -- "$to" || { echo failed; continue; }; said=replaced; fi; '
     + 'if [ "$verb" = mv ]; then mv -n -T -- "$from" "$to"; else cp -r -T -- "$from" "$to"; fi; '
     + 'if [ $? -eq 0 ] && { [ -e "$to" ] || [ -L "$to" ]; }; then echo "$said $n"; '
-    + 'elif [ "$said" = replaced ]; then echo half; else echo failed; fi; done';
+    + 'elif [ "$said" = replaced ]; then { [ ! -e "$to" ] && [ ! -L "$to" ]; } || gio trash -- "$to"; echo half; '
+    + 'else echo failed; fi; done';
 
 function baseName(path) {
     var trimmed = path.length > 1 ? path.replace(/\/+$/, "") : path;
@@ -52,17 +56,32 @@ function items(paths, dir, cut) {
         var to = join(dir, name);
         if (to === from && cut)
             continue;
-        out.push({from: from, to: to, name: name, dir: dir, folder: false, taken: false, self: to === from, twin: false, holds: inside(from, to)});
+        out.push({from: from, to: to, name: name, dir: dir, cut: cut, folder: false, taken: false, self: to === from, twin: -1, holds: inside(from, to), loop: inside(to, from)});
     }
     return out;
 }
 
+function loops(list) {
+    return list.filter(function (item) {
+        return item.loop;
+    });
+}
+
+function placeable(list) {
+    return list.filter(function (item) {
+        return !item.loop;
+    });
+}
+
+function loopRefusal(list) {
+    return list.length === 1 ? list[0].name + " cannot go inside itself" : list.length + " folders cannot go inside themselves";
+}
+
 function probeCommand(list) {
-    return ["sh", "-c", PROBE, "sh", String(list.length)].concat(list.map(function (item) {
-        return item.to;
-    }), list.map(function (item) {
-        return item.from;
-    }));
+    var args = ["sh", "-c", PROBE, "sh"];
+    for (var i = 0; i < list.length; i++)
+        args.push(list[i].to, list[i].from);
+    return args;
 }
 
 function probed(list, text) {
@@ -70,21 +89,28 @@ function probed(list, text) {
     var seen = [];
     return list.map(function (item, i) {
         var copy = Object.assign({}, item);
-        copy.taken = marks.indexOf("t" + (i + 1)) >= 0;
-        copy.folder = marks.indexOf("d" + (i + 1)) >= 0;
-        copy.twin = seen.indexOf(item.to) >= 0;
+        var has = function (letter) {
+            return marks.indexOf(letter + (i + 1)) >= 0;
+        };
+        copy.taken = has("t");
+        copy.folder = has("d");
+        copy.self = item.self || has("s");
+        copy.holds = item.holds || has("h");
+        copy.twin = seen.indexOf(item.to);
         seen.push(item.to);
         return copy;
     });
 }
 
 function asks(item) {
-    return item.taken && !item.self && !item.twin;
+    return item.taken && !item.self && item.twin < 0;
 }
 
 function choices(list) {
     return list.map(function (item) {
-        if (item.self || item.twin)
+        if (item.self)
+            return item.cut ? "skip" : "both";
+        if (item.twin >= 0)
             return "both";
         return item.taken ? null : "fresh";
     });
@@ -117,10 +143,11 @@ function waiting(list, chosen) {
 function operations(list, chosen) {
     var out = [];
     for (var i = 0; i < list.length; i++) {
-        if (chosen[i] === "skip" || chosen[i] === null)
+        var mode = list[i].twin >= 0 && chosen[list[i].twin] === "skip" ? "skip" : chosen[i];
+        if (mode === "skip" || mode === null)
             continue;
         var parts = split(list[i].name, list[i].folder);
-        out.push({mode: chosen[i], from: list[i].from, to: list[i].to, name: list[i].name, folder: list[i].folder, stem: join(list[i].dir, parts.stem), ext: parts.ext});
+        out.push({mode: mode, from: list[i].from, to: list[i].to, name: list[i].name, folder: list[i].folder, dir: list[i].dir, stem: join(list[i].dir, parts.stem), ext: parts.ext});
     }
     return out;
 }
@@ -136,12 +163,12 @@ function results(ops, text) {
     var lines = text.split("\n").filter(function (line) {
         return line.trim() !== "";
     });
-    var out = {pairs: [], replaced: [], done: [], gone: [], failed: [], kept: []};
+    var out = {pairs: [], replaced: [], done: [], gone: [], failed: [], half: [], kept: []};
     for (var i = 0; i < ops.length; i++) {
         var words = (lines[i] || "failed").trim().split(" ");
         var op = ops[i];
         var n = parseInt(words[1], 10) || 0;
-        var to = n > 0 ? op.stem + " (" + n + ")" + op.ext : op.to;
+        var to = n > 0 ? join(op.dir, numbered(op.name, op.folder, n)) : op.to;
         if (words[0] === "ok" || words[0] === "replaced") {
             out.pairs.push({from: op.from, to: to});
             out.done.push(op.from);
@@ -150,6 +177,8 @@ function results(ops, text) {
         }
         if (words[0] === "replaced" || words[0] === "half")
             out.replaced.push(op.to);
+        if (words[0] === "half")
+            out.half.push(op.name);
         if (words[0] === "gone")
             out.gone.push(op.from);
         if (words[0] !== "ok" && words[0] !== "replaced" && words[0] !== "gone")
@@ -165,12 +194,28 @@ function leftover(clipboard, outcome) {
     });
 }
 
-function failure(outcome, cut, total) {
+function reason(errors) {
+    var lines = (errors || "").split("\n").filter(function (line) {
+        return line.trim() !== "";
+    });
+    if (lines.length === 0)
+        return "";
+    var cut = lines[0].lastIndexOf(": ");
+    return cut >= 0 ? lines[0].slice(cut + 2).trim() : "";
+}
+
+function failure(outcome, cut, total, errors) {
     var count = outcome.failed.length;
     if (count === 0)
         return "";
     var verb = cut ? "moved" : "copied";
-    return count === 1 ? outcome.failed[0] + " could not be " + verb : count + " of " + total + " could not be " + verb;
+    var why = reason(errors);
+    var said = count === 1 ? outcome.failed[0] + " could not be " + verb : count + " of " + total + " could not be " + verb;
+    if (why)
+        said += ": " + why;
+    if (outcome.half.length > 0)
+        said += outcome.half.length === 1 && count === 1 ? ", the old one is in the trash" : ", the old ones are in the trash";
+    return said;
 }
 
 function notice(outcome) {

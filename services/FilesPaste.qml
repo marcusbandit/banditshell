@@ -2,7 +2,6 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import "files-conflicts.js" as Conflicts
 
 Singleton {
@@ -20,8 +19,13 @@ Singleton {
 
     function start(paths: var, dir: string, cut: bool, then: var): void {
         if (root.busy || root.question)
-            return;
-        const list = Conflicts.items(paths, dir, cut);
+            return FilesUndo.say("Still pasting, try again in a moment");
+        Files.failure = "";
+        const all = Conflicts.items(paths, dir, cut);
+        const looped = Conflicts.loops(all);
+        if (looped.length > 0)
+            Files.failure = Conflicts.loopRefusal(looped);
+        const list = Conflicts.placeable(all);
         if (list.length === 0)
             return;
         root.busy = true;
@@ -59,16 +63,15 @@ Singleton {
             return;
         const at = Date.now() / 1000;
         root.busy = true;
-        Files.failure = "";
         Files.working += 1;
-        root.run(Conflicts.command(ops, cut), text => {
+        root.run(Conflicts.command(ops, cut), (text, errors) => {
             Files.working -= 1;
             root.busy = false;
             const outcome = Conflicts.results(ops, text ?? "");
             FilesUndo.pasted(cut, outcome.pairs, outcome.replaced, at);
             if (then)
                 then(outcome);
-            const failed = Conflicts.failure(outcome, cut, ops.length);
+            const failed = Conflicts.failure(outcome, cut, ops.length, errors);
             if (failed)
                 Files.failure = failed;
             else if (Conflicts.notice(outcome))
@@ -78,39 +81,6 @@ Singleton {
     }
 
     function run(command: var, done: var): void {
-        step.createObject(root, {
-            command: command,
-            done: done,
-            running: true
-        });
-    }
-
-    Component {
-        id: step
-
-        Process {
-            id: task
-
-            property var done: null
-            property bool begun: false
-            property bool over: false
-
-            function end(text: var): void {
-                if (task.over)
-                    return;
-                task.over = true;
-                task.done(text);
-                task.destroy();
-            }
-
-            stdout: StdioCollector {
-                onStreamFinished: task.end(text)
-            }
-
-            onStarted: task.begun = true
-
-            onRunningChanged: if (!task.running && !task.begun)
-                task.end(null)
-        }
+        FilesUndo.start(command, done);
     }
 }
