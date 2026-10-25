@@ -1,13 +1,34 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-14",
+      "id": "2026-10-25-15",
       "date": "2026-10-25",
       "changes": [
         {
           "type": "features",
           "severity": "minor",
           "text": "A typo in the launcher offers the closest match; Enter takes it"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-14",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Markdown source in Settings now shows Markdown as source"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The file manager names its sorts as Settings does, in the same order"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The launcher says Sleep like the menus; suspend still finds it"
         }
       ]
     },
