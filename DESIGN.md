@@ -486,7 +486,10 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   | focus | `Appearance.stroke.ring` in `accent` | `Appearance.stroke.ring` in `accent` |
 
   Applied in `MenuRow`, `Button` (a transparent plate takes the row column, an opaque one blends
-  toward its label colour by the same fill step) and the settings tiles. `textGhost` is for
+  toward its label colour by the same fill step) and the settings tiles. A switched-on toggle,
+  a checked button and the chosen segment of a `Segments` row are one thing, a state, so they
+  share the solid `accent` plate with `accentText` on it. An off toggle is a `textFaint` ring
+  around `fill` with a `textDim` knob. Decided 2026-10-25 in #172 and #175. `textGhost` is for
   decorative rules only; readable text, placeholders and disabled glyphs use `textFaint`.
 - **Small constants have names.** `Appearance.padding.hair` (4), `Appearance.stroke.line` (1) and
   `ring` (the font stem), `Appearance.opacity.disabled` / `trail` / `glow`, the icon ladder

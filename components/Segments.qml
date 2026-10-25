@@ -45,6 +45,7 @@ Item {
     }
 
     Component.onCompleted: slide.snap()
+    onSegmentChanged: slide.snap()
 
     SquircleRect {
         anchors.fill: parent
@@ -58,7 +59,7 @@ Item {
         height: parent.height
         pill: "place"
         color: Appearance.colour.accent
-        visible: root.count > 0
+        visible: root.current >= 0 && root.current < root.count
     }
 
     Repeater {
@@ -85,7 +86,7 @@ Item {
 
                 text: seg.modelData
 
-                color: Appearance.blend(Appearance.colour.textFaint, Appearance.colour.accentText, seg.covered)
+                color: seg.covered > 0.5 ? Appearance.colour.accentText : Appearance.colour.textFaint
             }
 
             MouseArea {
