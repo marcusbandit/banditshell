@@ -12,6 +12,7 @@ Item {
     readonly property real stageHeight: 280
     readonly property bool list: SettingsState.v("filesView") === "list"
     readonly property string sort: SettingsState.v("filesSort")
+    readonly property bool reversed: SettingsState.v("filesReversed")
     readonly property bool hidden: SettingsState.v("filesHidden")
     readonly property real zoom: SettingsState.v("filesZoom")
     readonly property bool rendered: SettingsState.v("filesMarkdown") === "rendered"
@@ -19,13 +20,15 @@ Item {
     readonly property var files: [["Documents", "folder", "dir", 0, 3], ["Downloads", "folder", "dir", 0, 0], ["Pictures", "folder", "dir", 0, 12], ["Projects", "folder", "dir", 0, 1], ["notes.md", "description", "md", 4, 0], ["install.sh", "terminal", "sh", 2, 30], ["wallpaper.png", "image", "png", 2400, 6], ["todo.txt", "article", "txt", 1, 2], [".config", "folder", "dir", 0, 0], [".bashrc", "settings", "rc", 3, 90]]
 
     readonly property var shown: {
+        const byName = (a, b) => a[0].replace(".", "").localeCompare(b[0].replace(".", ""));
         const by = {
-            name: (a, b) => a[0].replace(".", "").localeCompare(b[0].replace(".", "")),
+            name: byName,
             mtime: (a, b) => a[4] - b[4],
             size: (a, b) => b[3] - a[3],
-            kind: (a, b) => a[2].localeCompare(b[2]) || a[0].localeCompare(b[0])
+            kind: (a, b) => a[2].localeCompare(b[2])
         }[root.sort] ?? ((a, b) => 0);
-        return root.files.filter(f => root.hidden || !f[0].startsWith(".")).sort((a, b) => ((b[2] === "dir") - (a[2] === "dir")) || by(a, b));
+        const sign = root.reversed ? -1 : 1;
+        return root.files.filter(f => root.hidden || !f[0].startsWith(".")).sort((a, b) => ((b[2] === "dir") - (a[2] === "dir")) || sign * by(a, b) || byName(a, b));
     }
 
     property int cursor: 0
@@ -267,6 +270,6 @@ Item {
     }
 
     SceneCaption {
-        text: `${root.list ? "list" : "icons"} · ${Catalogue.filesSortOrder(root.sort)}${root.hidden ? " · dotfiles shown" : ""}`
+        text: `${root.list ? "list" : "icons"} · ${Catalogue.filesSortOrder(root.sort, root.reversed)}${root.hidden ? " · dotfiles shown" : ""}`
     }
 }
