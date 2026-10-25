@@ -8,8 +8,8 @@ const kelvin = (s, v) => {
     return v ? `${Math.round(top - v / 100 * (top - s.v("warmest")))} K` : "off";
 };
 
-const FILES_SORTS = [["name", "name"], ["mtime", "date"], ["size", "size"], ["kind", "type"]];
-const FILES_SORT_ORDER = { name: "A to Z", mtime: "newest first", size: "biggest first", kind: "grouped by type" };
+const FILES_SORTS = [["name", "a to z"], ["mtime", "newest"], ["size", "biggest"], ["kind", "type"]];
+const FILES_SORT_ORDER = { name: "a to z", mtime: "newest first", size: "biggest first", kind: "grouped by type" };
 
 const MODES = [
     { id: "none", name: "none", icon: "radio_button_unchecked", detail: "everything as set", set: {} },
@@ -727,11 +727,11 @@ const PAGES_SOURCE = {
     },
     files: {
         id: "files", name: "Files", icon: "folder", preview: "files",
-        status: s => `${s.v("filesView")} · by ${optionLabel({o: FILES_SORTS}, s, s.v("filesSort"))}${s.v("filesHidden") ? " · hidden shown" : ""}`,
+        status: s => `${s.v("filesView")} · ${filesSortOrder(s.v("filesSort"))}${s.v("filesHidden") ? " · hidden shown" : ""}`,
         groups: [
             { rows: [
                 { n: 92, icon: "view_module", label: "View", k: "filesView", kind: "seg", o: ["icons", "list"], cfg: "files.view", kw: "files app view" },
-                { n: 92, icon: "sort", label: "Sort by", k: "filesSort", kind: "seg", o: FILES_SORTS, cfg: "files.sort", detail: s => FILES_SORT_ORDER[s.v("filesSort")] ?? "", kw: "files sort newest oldest biggest" },
+                { n: 92, icon: "sort", label: "Sort by", k: "filesSort", kind: "seg", o: FILES_SORTS, cfg: "files.sort", kw: "files sort date newest oldest size biggest name type" },
                 { n: 92, icon: "visibility_off", label: "Hidden files", k: "filesHidden", kind: "toggle", cfg: "files.hidden", detail: "ctrl + 5 or .", kw: "files hidden" },
                 { n: 92, icon: "markdown", label: "Markdown", k: "filesMarkdown", kind: "seg", o: ["rendered", "source"], cfg: "files.markdown", kw: "files previews" },
                 { n: 92, icon: "zoom_in", label: "Zoom", k: "filesZoom", kind: "slider", min: 0.6, max: 2, step: 0.1, fmt: v => `${v.toFixed(1)}×`, cfg: "files.zoom", kw: "files previews" }
@@ -1039,6 +1039,10 @@ function show(row, v, s) {
     if (row.o)
         return String(optionLabel(row, s, v));
     return format(row, v, s);
+}
+
+function filesSortOrder(v) {
+    return FILES_SORT_ORDER[v] ?? `by ${v}`;
 }
 
 function labelOf(row) {

@@ -12,7 +12,7 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Files Sort by in Settings says which way it runs, like newest first"
+          "text": "Files Sort by in Settings reads a to z, newest, biggest or type"
         }
       ]
     },

@@ -267,6 +267,6 @@ Item {
     }
 
     SceneCaption {
-        text: `${root.list ? "list" : "icons"} · by ${Catalogue.show(Catalogue.ROW_BY_KEY.filesSort, root.sort, SettingsState)}${root.hidden ? " · dotfiles shown" : ""}`
+        text: `${root.list ? "list" : "icons"} · ${Catalogue.filesSortOrder(root.sort)}${root.hidden ? " · dotfiles shown" : ""}`
     }
 }

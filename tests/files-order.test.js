@@ -11,7 +11,7 @@ function lib(file, names) {
 }
 
 const Order = lib("services/files-order.js", ["SORTS", "ordered"]);
-const Catalogue = lib("modules/settings/catalogue.js", ["ROW_BY_KEY", "PAGE_BY_ID", "options", "show"]);
+const Catalogue = lib("modules/settings/catalogue.js", ["ROW_BY_KEY", "PAGE_BY_ID", "options", "filesSortOrder"]);
 
 const entries = [
     {name: "b.txt", kind: "file", class: "text", size: 10, mtime: 300},
@@ -34,28 +34,18 @@ test.describe("files order", () => {
         const row = Catalogue.ROW_BY_KEY.filesSort;
         const byLabel = Object.fromEntries(Catalogue.options(row, {}).map(([v, l]) => [l, names(v)]));
         assert.deepStrictEqual(byLabel, {
-            name: ["zdir", "a.png", "b.txt", "c.md"],
-            date: ["zdir", "b.txt", "c.md", "a.png"],
-            size: ["zdir", "a.png", "c.md", "b.txt"],
+            "a to z": ["zdir", "a.png", "b.txt", "c.md"],
+            newest: ["zdir", "b.txt", "c.md", "a.png"],
+            biggest: ["zdir", "a.png", "c.md", "b.txt"],
             type: ["zdir", "a.png", "c.md", "b.txt"]
         });
     });
 
-    test.it("Settings says which way each sort runs", () => {
-        const row = Catalogue.ROW_BY_KEY.filesSort;
-        const said = Object.fromEntries(Catalogue.options(row, {}).map(([v, l]) => [l, row.detail({v: () => v})]));
-        assert.deepStrictEqual(said, {
-            name: "A to Z",
-            date: "newest first",
-            size: "biggest first",
-            type: "grouped by type"
-        });
-    });
-
-    test.it("the Settings summary names the sort by its label", () => {
+    test.it("the Settings summary says which way the sort runs", () => {
         const values = {filesView: "list", filesSort: "mtime", filesHidden: false};
-        assert.strictEqual(Catalogue.PAGE_BY_ID.files.status({v: k => values[k]}), "list · by date");
-        assert.strictEqual(Catalogue.show(Catalogue.ROW_BY_KEY.filesSort, "kind", {}), "type");
+        assert.strictEqual(Catalogue.PAGE_BY_ID.files.status({v: k => values[k]}), "list · newest first");
+        const said = Catalogue.options(Catalogue.ROW_BY_KEY.filesSort, {}).map(([v]) => Catalogue.filesSortOrder(v));
+        assert.deepStrictEqual(said, ["a to z", "newest first", "biggest first", "grouped by type"]);
     });
 
     test.it("does not reorder the list it was given", () => {
