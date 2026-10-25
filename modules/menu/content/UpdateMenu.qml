@@ -17,7 +17,7 @@ Column {
     property bool declineConfirm: false
     property bool goBackConfirm: false
 
-    readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, goBackButton.implicitWidth, goBackRow.implicitWidth)
+    readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, goBackRow.implicitWidth)
 
     onShowingChanged: if (!root.showing)
         root.goBackConfirm = false
@@ -123,10 +123,58 @@ Column {
             color: Appearance.colour.textFaint
             wrapMode: Text.WordWrap
         }
+    }
+
+    Row {
+        id: actionRow
+
+        visible: !root.goBackConfirm && (Update.canGoBack || Update.resultPending)
+        spacing: Appearance.padding.small
 
         Button {
+            visible: Update.canGoBack
+            text: `Go back to ${Update.previousVersion}`
+            icon: "history"
+
+            onClicked: root.goBackConfirm = true
+        }
+
+        Button {
+            visible: Update.resultPending
             text: "Dismiss"
             onClicked: Update.dismissResult()
+        }
+    }
+
+    Column {
+        width: parent.width
+        visible: Update.canGoBack && root.goBackConfirm
+        spacing: Appearance.padding.small
+
+        InkText {
+            width: parent.width
+            alignInk: true
+            text: `Go back to ${Update.previousVersion}? ${Update.version} is skipped until a newer version arrives.`
+            wrapMode: Text.Wrap
+        }
+
+        StyledText {
+            width: parent.width
+            text: "Your config.json and files this version added elsewhere stay as they are."
+            color: Appearance.colour.textFaint
+            wrapMode: Text.WordWrap
+        }
+
+        ButtonPair {
+            id: goBackRow
+
+            actions: [{ text: "Go back", icon: "history" }, { text: "Stay" }]
+
+            onTriggered: index => {
+                root.goBackConfirm = false;
+                if (index === 0)
+                    Update.goBack();
+            }
         }
     }
 
@@ -155,7 +203,7 @@ Column {
     }
 
     Button {
-        visible: Update.busy || (!Update.diverged && !Update.paused && (Update.behind > 0 || Update.state === Update.failed))
+        visible: Update.busy || (!root.goBackConfirm && !Update.diverged && !Update.paused && (Update.behind > 0 || Update.state === Update.failed))
         text: {
             if (Update.busy)
                 return Update.phaseText || "Updating...";
@@ -174,41 +222,6 @@ Column {
         interactive: !Update.busy
 
         onClicked: Update.state === Update.failed && Update.goingBack ? Update.goBack() : Update.apply()
-    }
-
-    Button {
-        id: goBackButton
-
-        visible: Update.canGoBack && !root.goBackConfirm
-        text: "Go back to the previous version"
-        icon: "history"
-
-        onClicked: root.goBackConfirm = true
-    }
-
-    Column {
-        width: parent.width
-        visible: Update.canGoBack && root.goBackConfirm
-        spacing: Appearance.padding.small
-
-        InkText {
-            width: parent.width
-            alignInk: true
-            text: `Go back to version ${Update.previousVersion}? The version you are on is skipped until a newer one arrives.`
-            wrapMode: Text.Wrap
-        }
-
-        ButtonPair {
-            id: goBackRow
-
-            actions: [{ text: "Go back", icon: "history" }, { text: "Stay" }]
-
-            onTriggered: index => {
-                root.goBackConfirm = false;
-                if (index === 0)
-                    Update.goBack();
-            }
-        }
     }
 
     Column {
@@ -304,7 +317,7 @@ Column {
     }
 
     Button {
-        visible: root.incoming.length === 0 && root.card.length > 0
+        visible: !root.goBackConfirm && root.incoming.length === 0 && root.card.length > 0
         text: "Got it"
         onClicked: WhatsNew.markSeen(root.card[0].id)
     }

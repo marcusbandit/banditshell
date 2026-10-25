@@ -282,6 +282,8 @@ Singleton {
                 root.fetchedAt = Number(data?.fetchedAt) || 0;
                 root.fetchedRemote = `${data?.remote ?? ""}`;
                 root.fetchedBranch = `${data?.branch ?? ""}`;
+                if (root.fetchedAt > 0)
+                    root.checkedAt = new Date(root.fetchedAt);
             } catch (e) {
                 console.warn(`Update: ${root.statePath} is not valid JSON; checking as if never fetched.`);
             }
