@@ -56,12 +56,12 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    under the same rules, and the menu then offers "Go back to <id>" ahead of Hide message, asks once
    in its place, and runs `rollback --detach`, whose first progress line is `goback`. Only the
    checkout moves: `config.json`, files the newer version wrote elsewhere and stashed edits stay
-   as they are, and the confirm says so (#171). After a go-back the outcome offers "Reinstall
-   <id>", asked once, which runs `update apply --detach --to <sha>` on the commit it left. Once an
+   as they are, and the confirm says so (#171). After a go-back the outcome offers a quiet
+   "Reinstall the version you just left", asked once, which runs `update apply --detach --to <sha>` on the commit it left. Once an
    applied commit starts, it leaves `update/skip`, and the shell clears `updates.skip` when
-   `result.json` names it (#178). It also offers
-   "Report what broke": a line of words, shown with the skipped and current versions as the
-   report will start, then handed to `banditshell triage` in a terminal (`scripts/in-terminal.sh`),
+   `result.json` names it (#178). It leads with
+   "Report what broke": a few lines of words, with the skipped and current versions added
+   after them, handed to `banditshell triage` in a terminal (`scripts/in-terminal.sh`),
    where triage shows the whole report and sends nothing until the person answers y (#180).
    `banditshell update status [--json]` says where the copy stands, the last outcome and the
    version before the last update. What's new shows nothing pending when the seen mark is a

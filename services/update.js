@@ -344,13 +344,17 @@ function outcomeText(result, running) {
     return `Update ${to} did not start, so you are back on ${from}.${why} It will be tried again when a newer version arrives.`;
 }
 
-function reportWords(words, result, running) {
+function reportContext(result, running) {
     const clipped = sha => String(sha ?? "").slice(0, 7);
     const named = (label, sha) => !label || label === clipped(sha) ? clipped(sha) : `${label} (${clipped(sha)})`;
-    const said = String(words ?? "").replace(/\s+/g, " ").trim();
     const back = result?.fromLabel || clipped(result?.from);
     const current = !running || running === back ? named(back, result?.from) : running;
-    return [said || "(no words were given)", "", "Went back in the update menu.", `Skipped: ${named(result?.toLabel, result?.to)}`, `Current: ${current}`].join("\n");
+    return ["Went back in the update menu.", `Skipped: ${named(result?.toLabel, result?.to)}`, `Current: ${current}`].join("\n");
+}
+
+function reportWords(words, result, running) {
+    const said = String(words ?? "").split("\n").map(line => line.replace(/\s+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    return `${said || "(no words were given)"}\n\n${reportContext(result, running)}`;
 }
 
 function reportScript(quote, cli, words, result, running) {

@@ -33,8 +33,13 @@ Column {
         root.reportHanded = false;
     }
 
+    onReportAskingChanged: if (root.reportAsking) {
+        reportBody.text = "";
+        reportBody.forceActiveFocus();
+    }
+
     function sendReport(): void {
-        Update.report(reportField.value);
+        Update.report(reportBody.text);
         root.reportOpen = false;
         root.reportHanded = true;
     }
@@ -59,6 +64,7 @@ Column {
     Row {
         id: metaRow
 
+        visible: !root.reportAsking
         spacing: Appearance.padding.small
 
         Button {
@@ -141,20 +147,6 @@ Column {
             wrapMode: Text.WordWrap
         }
 
-        Row {
-            id: afterRow
-
-            visible: !root.asking && Update.canReinstall
-            spacing: Appearance.padding.small
-
-            Button {
-                text: `Reinstall ${Update.skippedVersion}`
-                icon: "restart_alt"
-
-                onClicked: root.reinstallConfirm = true
-            }
-        }
-
         StyledText {
             width: parent.width
             visible: root.reportHanded && !root.asking
@@ -172,22 +164,70 @@ Column {
         InkText {
             width: parent.width
             alignInk: true
-            text: "What broke?"
+            text: "Report what broke"
         }
 
-        ClockTextField {
-            id: reportField
+        Item {
+            id: reportBox
 
             width: parent.width
-            placeholder: "what stopped working, in a few words"
+            height: Math.max(Appearance.font.line.small * 4, reportBody.contentHeight) + Appearance.padding.normal * 2
 
-            onAccepted: root.sendReport()
-            onCancelled: root.reportOpen = false
+            SquircleRect {
+                anchors.fill: parent
+                radius: Appearance.rounding.small
+                color: Appearance.colour.fillStrong
+                stroke: reportBody.activeFocus ? Appearance.colour.accent : "transparent"
+                strokeWidth: reportBody.activeFocus ? Appearance.stroke.ring : 0
+            }
+
+            TextEdit {
+                id: reportBody
+
+                anchors.fill: parent
+                anchors.margins: Appearance.padding.normal
+                wrapMode: TextEdit.Wrap
+                font.family: Appearance.font.family
+                font.pixelSize: Appearance.font.size.small
+                renderType: Text.NativeRendering
+                color: Appearance.colour.text
+                selectionColor: Appearance.colour.accent
+                selectedTextColor: Appearance.colour.accentText
+                selectByMouse: true
+
+                onActiveFocusChanged: {
+                    if (activeFocus)
+                        Prompts.request(reportBox);
+                    else
+                        Prompts.release(reportBox);
+                }
+
+                Keys.onEscapePressed: event => {
+                    root.reportOpen = false;
+                    event.accepted = true;
+                }
+
+                StyledText {
+                    width: parent.width
+                    visible: !reportBody.text
+                    text: "What broke, and what did you expect?"
+                    color: Appearance.colour.textFaint
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.IBeamCursor
+                acceptedButtons: Qt.NoButton
+            }
+
+            Component.onDestruction: Prompts.release(reportBox)
         }
 
         StyledText {
             width: parent.width
-            text: "The report starts with"
+            text: "Added after your words"
             color: Appearance.colour.textDim
         }
 
@@ -203,7 +243,7 @@ Column {
                 x: Appearance.padding.normal
                 y: Appearance.padding.normal
                 width: parent.width - Appearance.padding.normal * 2
-                text: Update.reportText(reportField.value)
+                text: Update.reportContext
                 color: Appearance.colour.text
                 wrapMode: Text.WordWrap
             }
@@ -211,15 +251,15 @@ Column {
 
         StyledText {
             width: parent.width
-            text: "A terminal then shows the whole report, with your config and the last log lines, secrets left out. Nothing is sent until you answer y there."
-            color: Appearance.colour.textFaint
+            text: "Review in a terminal shows the whole report, your config and the last log lines included, secrets left out. It files an issue on banditshell's GitHub only after you answer y."
+            color: Appearance.colour.textDim
             wrapMode: Text.WordWrap
         }
 
         ButtonPair {
             id: reportRow
 
-            actions: [{ text: "Review and send", icon: "bug_report" }, { text: "Cancel" }]
+            actions: [{ text: "Review in a terminal", icon: "terminal" }, { text: "Don't send" }]
 
             onTriggered: index => {
                 if (index === 0)
@@ -273,6 +313,7 @@ Column {
             visible: Update.wentBackByHand && Update.resultPending
             text: "Report what broke"
             icon: "bug_report"
+            style: "accent"
 
             onClicked: {
                 root.reportHanded = false;
@@ -284,6 +325,20 @@ Column {
             visible: Update.resultPending
             text: "Hide message"
             onClicked: Update.dismissResult()
+        }
+    }
+
+    Row {
+        id: afterRow
+
+        visible: !root.asking && Update.canReinstall
+        spacing: Appearance.padding.small
+
+        Button {
+            text: "Reinstall the version you just left"
+            style: "bare"
+
+            onClicked: root.reinstallConfirm = true
         }
     }
 

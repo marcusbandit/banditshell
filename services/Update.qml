@@ -211,9 +211,7 @@ Singleton {
         Quickshell.execDetached(["bash", root.cli, "update", "rollback", "--detach"]);
     }
 
-    function reportText(words: string): string {
-        return Words.reportWords(words, root.result, root.version);
-    }
+    readonly property string reportContext: Words.reportContext(root.result, root.version)
 
     function report(words: string): void {
         if (!root.wentBackByHand)

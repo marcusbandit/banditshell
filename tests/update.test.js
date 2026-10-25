@@ -292,8 +292,10 @@ const { posix } = new Function(quotingSrc + "\nreturn { posix };")();
 const wentBack = { ok: false, hand: true, from: "1111111aaaa", to: "2222222bbbb", fromLabel: "2026-10-24", toLabel: "2026-10-25", why: "rolled back by hand" };
 
 test("a report after going back carries the words, the skipped version and the current one", () => {
-    assert.strictEqual(Update.reportWords("  the bar\n went blank ", wentBack, "2026-10-24"),
+    assert.strictEqual(Update.reportWords("  the bar   went blank ", wentBack, "2026-10-24"),
         "the bar went blank\n\nWent back in the update menu.\nSkipped: 2026-10-25 (2222222)\nCurrent: 2026-10-24 (1111111)");
+    assert.match(Update.reportWords("\nthe bar went blank\n\n\n\nexpected  the clock \n", wentBack, "2026-10-24"),
+        /^the bar went blank\n\nexpected the clock\n\nWent back/);
     assert.match(Update.reportWords("", { ...wentBack, fromLabel: "", toLabel: "" }, ""), /^\(no words were given\)\n[^]*Skipped: 2222222\nCurrent: 1111111$/);
     assert.match(Update.reportWords("x", wentBack, "2026-10-25"), /Current: 2026-10-25$/);
 });
