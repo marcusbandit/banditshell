@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-17",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type ? in the launcher to see every search word with an example"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-16",
       "date": "2026-10-25",
       "changes": [

@@ -9,6 +9,7 @@ import qs.services
 import qs.modules.settings
 import qs.modules.launcher.sources
 import "search.js" as Search
+import "prefixes.js" as Prefixes
 import "shellcli.js" as ShellCli
 import "../files/marks.js" as Marks
 import "../settings/catalogue.js" as Catalogue
@@ -31,6 +32,9 @@ QtObject {
     property bool presents: false
 
     readonly property list<QtObject> sources: [
+        PrefixSource {
+            search: root
+        },
         FallbackSource {
             search: root
         },
@@ -825,7 +829,7 @@ QtObject {
     }
 
     function guessRow(): var {
-        if (root.intent || root.aliasId)
+        if (root.intent || root.aliasId || Prefixes.claims(root.text))
             return null;
         const apps = Apps.visible;
         const commands = root.commands.filter(c => !c.hidden);
