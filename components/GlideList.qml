@@ -12,6 +12,12 @@ ListView {
 
     property real revealMargin: 0
 
+    property int pendingReveal: -1
+
+    onContentYChanged: if (root.pendingReveal >= 0 && root.itemAtIndex(root.pendingReveal))
+        root.reveal(root.pendingReveal)
+    onMovementStarted: root.pendingReveal = -1
+
     boundsBehavior: Flickable.DragAndOvershootBounds
 
     function scrollTo(y: real): void {
@@ -21,12 +27,8 @@ ListView {
     function reveal(index: int): void {
         if (root.count <= 0)
             return;
-        let item = root.itemAtIndex(index);
-        if (!item) {
-            wheel.stop();
-            root.positionViewAtIndex(index, ListView.Contain);
-            item = root.itemAtIndex(index);
-        }
+        const item = root.itemAtIndex(index);
+        root.pendingReveal = item ? -1 : index;
         const rowHeight = root.contentHeight / root.count;
         const top = item ? item.y : index * rowHeight;
         const bottom = top + (item ? item.height : rowHeight);
@@ -38,6 +40,7 @@ ListView {
     }
 
     function reset(): void {
+        root.pendingReveal = -1;
         wheel.stop();
         root.contentY = 0;
     }
@@ -57,5 +60,6 @@ ListView {
         id: wheel
 
         flick: root
+        onWheel: root.pendingReveal = -1
     }
 }
