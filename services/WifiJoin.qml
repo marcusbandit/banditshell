@@ -3,12 +3,17 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Networking
+import "wifilist.js" as WifiList
 
 Singleton {
     id: root
 
     property string pending: ""
     property string screenName: ""
+
+    readonly property string wrongPassword: "That password did not work"
+
+    signal failed(string name, string kind, string message)
 
     function join(name: string, screenName: string): void {
         const n = Network.find(name);
@@ -25,8 +30,8 @@ Singleton {
             return;
         }
         if (n.known || !Network.secured(n)) {
+            Network.join(n, "");
             root.pending = name;
-            n.connect();
             return;
         }
         root.askFor(name, "");
@@ -48,33 +53,45 @@ Singleton {
                 const target = Network.find(name);
                 if (!target || !secret)
                     return;
-                Network.clearFailure(name);
+                Network.join(target, secret);
                 root.pending = name;
-                target.connectWithPsk(secret);
             }
         });
+    }
+
+    function reason(kind: string): string {
+        return WifiList.failureReason(kind);
+    }
+
+    function asksAgain(n: var, kind: string): bool {
+        return kind === "password" && !!n && Network.secured(n) && !Network.enterprise(n);
+    }
+
+    function retry(name: string, kind: string): void {
+        const n = Network.find(name);
+        if (!n || n.connected)
+            return;
+        if (root.asksAgain(n, kind))
+            root.askFor(name, root.wrongPassword);
+        else
+            root.join(name, Hypr.focusedScreen || root.screenName);
     }
 
     Connections {
         target: Network
 
-        function onFailedNameChanged(): void {
-            Qt.callLater(root.checkFailure);
-        }
-
-        function onActiveNameChanged(): void {
-            if (root.pending && Network.activeName === root.pending)
+        function onJoinFailed(name: string, kind: string): void {
+            const asked = root.pending === name;
+            if (asked)
                 root.pending = "";
+            if (asked && root.asksAgain(Network.find(name), kind))
+                root.askFor(name, root.wrongPassword);
+            else
+                root.failed(name, kind, WifiList.failureMessage(name, kind));
         }
-    }
 
-    function checkFailure(): void {
-        if (!root.pending || Network.failedName !== root.pending)
-            return;
-        const name = root.pending;
-        root.pending = "";
-        const n = Network.find(name);
-        if (Network.failedReason === ConnectionFailReason.NoSecrets && n && Network.secured(n) && !Network.enterprise(n))
-            root.askFor(name, "That password did not work");
+        function onTryingChanged(): void {
+            root.pending = "";
+        }
     }
 }

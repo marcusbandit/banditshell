@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-12",
+      "id": "2026-10-25-13",
       "date": "2026-10-25",
       "changes": [
         {
@@ -28,6 +28,17 @@
           "type": "ui",
           "severity": "minor",
           "text": "Rain chance in the forecast has a raindrop beside it"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-12",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A failed Wi-Fi join says why in the island and offers Try again"
         }
       ]
     },

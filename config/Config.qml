@@ -603,7 +603,9 @@ Singleton {
 
                     copied: true,
 
-                    bluetooth: true
+                    bluetooth: true,
+
+                    wifi: true
                 }
             },
 

@@ -232,6 +232,7 @@ Scope {
             copied: MomentLogic.copiedSpec(["wl-copy", "-n"], "the quick brown fox jumps over the lazy dog"),
             secret: MomentLogic.copiedSpec(["wl-copy", "--sensitive", "-n"], "hunter2"),
             headphones: MomentLogic.bluetoothSpec("WH-1000XM5", "headphones", 64),
+            wifi: MomentLogic.wifiSpec("Cafe", "timeout", "Cafe: no answer"),
             mic: PrivacyLogic.usageSpec({
                 kind: "mic",
                 apps: ["Firefox"]
@@ -1380,7 +1381,7 @@ Scope {
                                 spacing: Appearance.padding.small
 
                                 Repeater {
-                                    model: ["build", "sync", "built", "broke", "shot", "copied", "secret", "headphones", "mic", "camera", "screen"]
+                                    model: ["build", "sync", "built", "broke", "shot", "copied", "secret", "headphones", "wifi", "mic", "camera", "screen"]
 
                                     Button {
                                         required property string modelData

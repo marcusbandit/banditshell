@@ -813,6 +813,38 @@ ShellRoot {
             expect: "hidden"
         },
         {
+            name: "a Wi-Fi join fails: Wi-Fi failed, with Try again",
+            run: () => Activities.push(MomentLogic.wifiSpec("Cafe", "timeout", "Cafe: no answer")),
+            expect: "activity"
+        },
+        {
+            name: "pin the island: the same row in the overview",
+            run: () => island.pinned = true,
+            wait: 600,
+            expect: "overview"
+        },
+        {
+            name: "pressing it turns the island into the failed join",
+            run: () => island.choose(Activities.shown.find(i => i.id === "moment:wifi")),
+            wait: 600,
+            expect: "the failed Wi-Fi join"
+        },
+        {
+            name: "leave the view: the failure still waits after ten seconds",
+            run: () => {
+                island.leaveTask();
+                island.close();
+            },
+            wait: 10000,
+            expect: "activity"
+        },
+        {
+            name: "it goes once it is closed",
+            run: () => Activities.remove("moment:wifi"),
+            wait: 600,
+            expect: "hidden"
+        },
+        {
             name: "dictating, then a screenshot: it shows below the bars first",
             run: () => {
                 preview.speak("listening");

@@ -74,6 +74,22 @@ Singleton {
         }
     }
 
+    function wifiFailed(name: string, kind: string, message: string): void {
+        const spec = root.wants("wifi") ? Logic.wifiSpec(name, kind, message) : null;
+        if (spec)
+            Activities.push(Object.assign(spec, {
+                act: (entry, action) => {
+                    if (action === "retry")
+                        root.retryWifi(entry);
+                }
+            }));
+    }
+
+    function retryWifi(entry: var): void {
+        Activities.remove(entry.id);
+        WifiJoin.retry(entry.data.name, entry.data.kind);
+    }
+
     onConnectedAddressesChanged: {
         const fresh = Logic.newlyConnected(root.heard, root.connectedAddresses);
         root.heard = root.connectedAddresses;
@@ -96,6 +112,24 @@ Singleton {
 
         function onCopied(command: var, input: string): void {
             root.copied(command, input);
+        }
+    }
+
+    Connections {
+        target: Network
+
+        function onActiveNameChanged(): void {
+            const failed = Activities.entries.find(e => e.id === "moment:wifi");
+            if (failed && failed.data?.name === Network.activeName)
+                Activities.remove(failed.id);
+        }
+    }
+
+    Connections {
+        target: WifiJoin
+
+        function onFailed(name: string, kind: string, message: string): void {
+            root.wifiFailed(name, kind, message);
         }
     }
 
