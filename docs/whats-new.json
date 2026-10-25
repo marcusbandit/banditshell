@@ -1,13 +1,39 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-16",
+      "id": "2026-10-25-17",
       "date": "2026-10-25",
       "changes": [
         {
           "type": "issues",
           "severity": "minor",
           "text": "With the newest voice, Esc or Discard stops dictation untyped"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-16",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Point at a rail mark to read what it is and what a press does"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Pressing a rail mark opens what controls it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The rail counts the marks that did not fit, like +2"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A crowded rail keeps the mic, recording and Do not disturb in view"
         }
       ]
     },
