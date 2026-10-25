@@ -9,6 +9,7 @@ const kelvin = (s, v) => {
 };
 
 const FILES_SORTS = [["name", "a to z"], ["mtime", "newest"], ["size", "biggest"], ["kind", "type"]];
+const PANEL_SHADES = ["black", "deep", "dark", "medium", "light", "pale", "palest"];
 const FILES_SORT_ORDER = { name: "a to z", mtime: "newest first", size: "biggest first", kind: "grouped by type" };
 
 const MODES = [
@@ -52,7 +53,7 @@ const WIDGET_WHY = {
     nets: "Click a network to join, share or forget it in the pane. The camera button reads a Wi-Fi code.",
     devices: "Click a device to connect, trust, forget or block it in the pane.",
     volume: "Scroll the speaker in the sidebar to change it from anywhere.",
-    themes: "Themes come from ~/.config/theme. The ramp paints surfaces; the accents paint everything that’s on.",
+    themes: "Themes come from ~/.config/theme. The theme’s shades paint the panels; its highlight colours paint everything that’s on.",
     wsStyles: "Plates stack the apps in each workspace. Map draws a bar per window. Blocks draws a square per window.",
     walls: "A new wallpaper grows out from where you clicked.",
     battery: "Charge over the last day. The dashed lines are the hold point and the warning.",
@@ -240,15 +241,15 @@ const PAGES_SOURCE = {
     },
     colour: {
         id: "colour", name: "Colour", icon: "palette", preview: "chassis",
-        status: s => `${s.v("fromWall") ? "wallpaper" : s.v("theme")} · ${s.v("accent")}`,
+        status: s => s.v("fromWall") ? "wallpaper" : s.v("theme"),
         groups: [
             { rows: [
                 { n: 42, kind: "w", w: "themes", kw: "theme palette" },
                 { n: 43, icon: "colorize", label: "Take it from the wallpaper", k: "fromWall", kind: "toggle", cfg: "themeFromWallpaper", detail: s => s.v("fromWall") ? s.wallName : "", kw: "theme from wallpaper" },
-                { n: 44, icon: "contrast", label: "Accent", k: "accent", kind: "seg", o: ["dim", "mid", "bright"], cfg: "colour.accent", kw: "accent strength",
-                    why: "Which of the theme’s three accents leads. Dim sits back, bright jumps out." },
-                { n: 45, icon: "layers", label: "Surface depth", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmt: v => `ramp ${v}`, cfg: "colour.surface",
-                    why: "Which step of the theme ramp the frame and panels are painted with. Lower is darker." },
+                { n: 44, icon: "format_color_fill", label: "Highlight colour", k: "accent", kind: "seg", o: [["dim", "soft"], ["mid", "normal"], ["bright", "strong"]], swatches: true, cfg: "colour.accent", kw: "accent strength dim mid bright",
+                    why: "Which of the theme’s three highlight colours paints everything that’s on. Soft sits back, strong jumps out." },
+                { n: 45, icon: "layers", label: "Panel shade", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmt: v => PANEL_SHADES[Math.max(0, Math.min(PANEL_SHADES.length - 1, Math.round(v) || 0))], cfg: "colour.surface", kw: "surface depth ramp background darker lighter",
+                    why: "How dark the frame and panels are, picked from the theme’s own shades. Lower is darker." },
                 { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0.5, max: 1, step: 0.01, fmt: v => `${Math.round((1 - v) * 100)}%`, cfg: "material.surfaceAlpha", kw: "transparency" },
                 { n: [], icon: "dark_mode", label: "Dark apps", k: "darkMode", kind: "toggle", detail: s => s.hasDarkMode ? "asks apps to use dark colours" : "no system colour scheme found", dis: s => !s.hasDarkMode, kw: "dark mode light night theme colour scheme apps",
                     why: "Asks apps that follow the system colour scheme to use dark colours. The shell’s own colours come from the theme above." }

@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-25-25",
+      "id": "2026-10-25-26",
       "date": "2026-10-25",
       "changes": [
         {
@@ -13,6 +13,22 @@
           "type": "ui",
           "severity": "minor",
           "text": "Long launcher lists fade at the edge when more rows follow"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-25",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Colour settings say Panel shade and Highlight colour in plain words"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Each Highlight colour choice shows the colour it picks"
         }
       ]
     },

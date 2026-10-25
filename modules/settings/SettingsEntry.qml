@@ -218,6 +218,7 @@ Column {
 
         Segments {
             options: root.choices.map(o => String(o[1]))
+            swatches: root.row.swatches ? root.choices.map(o => Appearance.roleColour(String(o[0]))) : []
             current: Math.max(0, root.choices.findIndex(o => Catalogue.same(o[0], root.value)))
             enabled: !root.off
             onPicked: i => root.set(root.choices[i][0])
