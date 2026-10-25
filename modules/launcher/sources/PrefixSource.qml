@@ -12,22 +12,18 @@ QtObject {
 
     readonly property bool intent: root.alone
 
-    readonly property var caps: ({
-            prefixes: Prefixes.PREFIXES.length
-        })
-
     readonly property var groups: [
         {
             key: "prefixes",
             title: "Prefixes",
-            items: !root.alone ? [] : Prefixes.PREFIXES.map((p, i) => ({
+            items: !root.alone ? [] : Prefixes.PREFIXES.map(p => ({
                         key: `prefix:${p.word}`,
                         kind: "prefix",
                         complete: Prefixes.completion(p),
                         label: p.word,
                         detail: `${p.about}, as in ${p.example}`,
                         icon: p.icon,
-                        score: 100 - i * 0.01
+                        score: 1
                     }))
         }
     ]

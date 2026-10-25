@@ -829,12 +829,12 @@ QtObject {
     }
 
     function guessRow(): var {
-        if (root.intent || root.aliasId || Prefixes.claims(root.text))
+        if (root.intent || root.aliasId)
             return null;
         const apps = Apps.visible;
         const commands = root.commands.filter(c => !c.hidden);
         const settings = Catalogue.everyHit();
-        const found = Ranking.closest(root.text, apps.map(e => e.name ?? "").concat(commands.map(c => c.label), settings.map(hit => hit.label)));
+        const found = Prefixes.guess(root.text, apps.map(e => e.name ?? "").concat(commands.map(c => c.label), settings.map(hit => hit.label)), Ranking.closest);
         if (found < 0)
             return null;
         const target = found < apps.length ? root.appRow(apps[found]) : found < apps.length + commands.length ? root.commandRow(commands[found - apps.length]) : root.settingRow(settings[found - apps.length - commands.length]);

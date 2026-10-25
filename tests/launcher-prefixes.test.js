@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Prefixes = lib("modules/launcher/prefixes.js", ["PREFIXES", "asked", "claims", "completion"]);
+const Prefixes = lib("modules/launcher/prefixes.js", ["PREFIXES", "asked", "guess", "completion"]);
 const Ranking = lib("services/ranking.js", ["closest"]);
 
 test.describe("the ? page", () => {
@@ -32,28 +32,29 @@ test.describe("the ? page", () => {
 });
 
 test.describe("typo guesses leave prefixes alone", () => {
-    const words = Prefixes.PREFIXES.map(p => p.word);
-    const asks = ["?"].concat(words, words.map(w => `${w} `), Prefixes.PREFIXES.map(p => p.example));
+    const heads = Prefixes.PREFIXES.flatMap(p => [p.word].concat(p.also));
+    const nearly = word => word.slice(0, -1) + (word.endsWith("x") ? "y" : "x");
+    const guess = (text, labels) => Prefixes.guess(text, labels, Ranking.closest);
 
-    test.it("claims ?, every prefix and every example", () => {
-        for (const text of asks)
-            assert.strictEqual(Prefixes.claims(text.trim()), true, text);
+    test.it("never turns a prefix word into the name it is one letter from", () => {
+        const long = heads.filter(h => h.length >= 5);
+        assert.ok(long.length > 10);
+        for (const head of long) {
+            const labels = [nearly(head)];
+            assert.strictEqual(Ranking.closest(head, labels), 0, head);
+            assert.strictEqual(guess(head, labels), -1, head);
+            assert.strictEqual(guess(head.toUpperCase(), labels), -1, head);
+        }
     });
 
-    test.it("claims a prefix in any case", () => {
-        assert.strictEqual(Prefixes.claims("SSH nemurenai"), true);
+    test.it("never guesses for a lone ? or a question after it", () => {
+        assert.strictEqual(guess("?", ["?"]), -1);
+        assert.strictEqual(guess("? firefxo", ["Firefox"]), -1);
     });
 
-    test.it("leaves a plain typo free to be guessed", () => {
-        for (const text of ["frefiox", "lok screen", "nigth light", "sshd-config"])
-            assert.strictEqual(Prefixes.claims(text), false, text);
-    });
-
-    test.it("blocks the guess a prefix would otherwise get", () => {
-        const near = words.filter(w => w.length >= 5).map(w => w.slice(0, -1) + (w.endsWith("x") ? "y" : "x"));
-        const blocked = words.filter(w => Ranking.closest(w, near) >= 0);
-        assert.ok(blocked.length > 0);
-        for (const word of blocked)
-            assert.strictEqual(Prefixes.claims(word), true, word);
+    test.it("still guesses a typo, even one that follows a prefix word", () => {
+        assert.strictEqual(guess("frefiox", ["Firefox"]), 0);
+        assert.strictEqual(guess("lok screen", ["Lock screen"]), 0);
+        assert.strictEqual(guess("github desktp", ["GitHub Desktop"]), 0);
     });
 });

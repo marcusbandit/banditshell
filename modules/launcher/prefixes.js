@@ -65,15 +65,13 @@ function heads(p) {
     return [p.word].concat(p.also);
 }
 
-function starts(lower, head) {
-    return SYMBOLS.test(head) ? lower.indexOf(head) === 0 : lower === head || lower.indexOf(`${head} `) === 0;
-}
-
 function claims(text) {
     var lower = String(text || "").trim().toLowerCase();
-    if (lower.indexOf("?") === 0)
-        return true;
-    return PREFIXES.some(p => heads(p).some(head => starts(lower, head)));
+    return lower.indexOf("?") === 0 || PREFIXES.some(p => heads(p).indexOf(lower) >= 0);
+}
+
+function guess(text, labels, closest) {
+    return claims(text) ? -1 : closest(text, labels);
 }
 
 function completion(p) {
