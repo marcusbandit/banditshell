@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 import "anomalies.js" as Anomalies
 
 Item {
@@ -150,6 +151,11 @@ Item {
                     hoverEnabled: true
                     cursorShape: area.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                     onClicked: root.presses[mark.modelData.key]()
+
+                    HoverTip {
+                        text: area.enabled ? (mark.entry?.title ?? "") : ""
+                        host: mark
+                    }
                 }
 
                 Follow {

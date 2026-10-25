@@ -49,7 +49,7 @@ function list(state) {
         micEntry(s),
         s.recording ? { key: "recording", icon: "fiber_manual_record", tone: "alarm", title: "recording the screen" } : null,
         s.vpn ? { key: "vpn", icon: "vpn_lock", tone: "accent", title: "vpn is up" } : null,
-        s.awake ? { key: "awake", icon: "coffee", tone: "accent", title: "keeping awake" } : null,
+        s.awake ? { key: "awake", icon: "coffee", tone: "accent", title: "Keeping awake, press to stop" } : null,
         airplaneOn(s) ? { key: "airplane", icon: "flight", tone: "accent", title: "airplane mode" } : null,
         s.modeIcon ? { key: "mode", icon: s.modeIcon, tone: "accent", title: "mode on" } : null,
         s.quiet && !s.modeIcon ? { key: "quiet", icon: "do_not_disturb_on", tone: "accent", title: "quiet" } : null,
