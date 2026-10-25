@@ -5,12 +5,12 @@
       "date": "2026-10-25",
       "changes": [
         {
-          "type": "bugs",
+          "type": "issues",
           "severity": "minor",
           "text": "The screenshot key freezes the screen at once"
         },
         {
-          "type": "bugs",
+          "type": "issues",
           "severity": "minor",
           "text": "Hotkeys and the island stay quick when the clocks go back an hour"
         }

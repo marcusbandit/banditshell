@@ -40,7 +40,7 @@ Scope {
             for n in "$@"; do
                 (
                     f=$(mktemp "\${XDG_RUNTIME_DIR:-\${TMPDIR:-/tmp}}/banditshell-freeze-XXXXXX") || exit
-                    grim -t ppm -o "$n" "$f" && printf '%s\\t%s\\n' "$n" "$f" || rm -f "$f"
+                    timeout 3 grim -t ppm -o "$n" "$f" && printf '%s\\t%s\\n' "$n" "$f" || rm -f "$f"
                 ) &
             done
             wait

@@ -10,7 +10,7 @@ QtObject {
         Seconds
     }
 
-    property int precision: WallClock.Minutes
+    property int precision: WallClock.Seconds
     property bool enabled: true
 
     property date date: new Date(Ticks.floorTo(Date.now(), root.span))
@@ -29,7 +29,7 @@ QtObject {
         const start = Ticks.floorTo(now, root.span);
         if (start !== root.date.getTime())
             root.date = new Date(start);
-        root.ticker.interval = Ticks.after(now, root.span) - now;
+        root.ticker.interval = Math.min(Ticks.after(now, root.span) - now, 1000);
         root.ticker.restart();
     }
 
