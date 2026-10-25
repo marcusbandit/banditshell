@@ -26,7 +26,7 @@ function batteryEntry(state) {
     return {
         key: "battery",
         icon: state.batteryIcon || "battery_alert",
-        tone: state.charging ? "notice" : "warning",
+        tone: state.batteryLow && !state.charging ? "warning" : "notice",
         title: "Battery " + percent + (state.charging ? " percent, charging" : " percent"),
         hint: DETAILS,
         rank: state.charging ? 8 : 2,

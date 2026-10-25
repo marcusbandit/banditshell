@@ -12,7 +12,7 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Low battery turns brass; orange now means mic or screen recording"
+          "text": "Low battery is yellow; on the rail, orange is only mic and recording"
         }
       ]
     },

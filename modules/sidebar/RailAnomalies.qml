@@ -26,6 +26,7 @@ Item {
     readonly property var reading: ({
         battery: root.batteryWanted && root.battery.shown,
         batteryPercent: root.battery.percent,
+        batteryLow: root.battery.low,
         charging: root.battery.charging,
         batteryIcon: root.battery.icon,
         micShown: Config.values.sidebar.status.sound,

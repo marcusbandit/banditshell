@@ -45,11 +45,12 @@ test("battery shows under twenty percent and not at twenty", () => {
     assert.deepStrictEqual(keys({ batteryPercent: 0 }), ["battery"]);
 });
 
-test("a low battery is a warning until it charges, then it is only worth knowing", () => {
-    const low = Anomalies.list(Object.assign({}, calm, { batteryPercent: 12 }))[0];
+test("a battery the shell calls low is a warning until it charges, otherwise it is only worth knowing", () => {
+    const low = Anomalies.list(Object.assign({}, calm, { batteryPercent: 12, batteryLow: true }))[0];
     assert.strictEqual(low.tone, "warning");
     assert.strictEqual(low.icon, "battery_5_bar");
-    const charging = Anomalies.list(Object.assign({}, calm, { batteryPercent: 12, charging: true }))[0];
+    assert.strictEqual(Anomalies.list(Object.assign({}, calm, { batteryPercent: 18 }))[0].tone, "notice");
+    const charging = Anomalies.list(Object.assign({}, calm, { batteryPercent: 12, batteryLow: true, charging: true }))[0];
     assert.strictEqual(charging.tone, "notice");
     assert.match(charging.title, /charging/);
 });
@@ -108,7 +109,7 @@ test("updates show by state, stuck ones as warnings, and never when the button i
 
 test("only a live microphone or a screen recording sounds the alarm, and no mark wears the accent", () => {
     const every = [
-        { batteryPercent: 5 }, { batteryPercent: 5, charging: true }, { micStreams: true }, { micStreams: true, micMuted: true },
+        { batteryPercent: 5, batteryLow: true }, { batteryPercent: 5, batteryLow: true, charging: true }, { micStreams: true }, { micStreams: true, micMuted: true },
         { recording: true }, { vpn: true }, { awake: true }, { wifiOn: false, bluetoothOn: false }, { modeIcon: "target" }, { quiet: true },
         { update: "available" }, { update: "downloading" }, { update: "downloaded" }, { update: "failed" }, { update: "available", diverged: true }
     ].map(state => Anomalies.list(Object.assign({}, calm, state))[0]);
