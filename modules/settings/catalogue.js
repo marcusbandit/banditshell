@@ -1116,11 +1116,15 @@ function hitIndexOf(hits, openUid) {
     return Math.max(0, hits.findIndex(h => h.row.uid === openUid));
 }
 
-function hitToOpen(hits, index, openUid, currentPage) {
+function hitIsOpen(hits, index, openUid, currentPage) {
     const h = hits[index];
-    if (!h || h.row.uid !== openUid || h.page.id !== currentPage || hits.length < 2)
+    return !!h && h.row.uid === openUid && h.page.id === currentPage;
+}
+
+function hitToOpen(hits, index, openUid, currentPage, back) {
+    if (!hitIsOpen(hits, index, openUid, currentPage) || hits.length < 2)
         return index;
-    return (index + 1) % hits.length;
+    return (index + (back ? hits.length - 1 : 1)) % hits.length;
 }
 
 const ALIASES = {

@@ -7,7 +7,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Settings search keeps your words after a pick; Enter goes to the next"
+          "text": "Settings search keeps your words and shows 2 of 5; Enter steps through"
         }
       ]
     },

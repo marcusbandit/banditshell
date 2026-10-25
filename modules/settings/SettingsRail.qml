@@ -19,6 +19,7 @@ Item {
     readonly property var recent: SettingsState.changes.slice(0, 6)
     property int hitIndex: 0
     property string pointedUid: ""
+    readonly property bool hitOpen: Catalogue.hitIsOpen(root.hits, root.hitIndex, SettingsView.flash?.uid ?? "", SettingsView.current)
 
     onHitsChanged: root.point(Catalogue.hitIndexOf(root.hits, root.pointedUid))
 
@@ -83,7 +84,7 @@ Item {
             id: query
 
             x: glass.x + glass.width + Appearance.padding.small
-            width: (clear.visible ? clear.x : parent.width - Appearance.padding.normal) - x
+            width: (count.visible ? count.x - Appearance.padding.small : clear.visible ? clear.x : parent.width - Appearance.padding.normal) - x
             anchors.verticalCenter: parent.verticalCenter
             visible: !root.tiny || activeFocus
             clip: true
@@ -117,7 +118,7 @@ Item {
                     if (root.listingRecent)
                         root.pick(root.hitIndex);
                     else
-                        root.openHit(Catalogue.hitToOpen(root.hits, root.hitIndex, SettingsView.flash?.uid ?? "", SettingsView.current));
+                        root.openHit(Catalogue.hitToOpen(root.hits, root.hitIndex, SettingsView.flash?.uid ?? "", SettingsView.current, !!(event.modifiers & Qt.ShiftModifier)));
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Escape) {
                     if (query.text)
@@ -141,6 +142,16 @@ Item {
             visible: !query.activeFocus
             cursorShape: Qt.IBeamCursor
             onClicked: query.forceActiveFocus()
+        }
+
+        StyledText {
+            id: count
+
+            x: (clear.visible ? clear.x : parent.width - Appearance.padding.normal) - width - Appearance.padding.small
+            anchors.verticalCenter: parent.verticalCenter
+            visible: !root.tiny && !root.listingRecent && root.hits.length > 0
+            text: `${root.hitIndex + 1} of ${root.hits.length}`
+            color: Appearance.colour.textFaint
         }
 
         SettingsTool {
@@ -348,6 +359,16 @@ Item {
                 text: root.listingRecent ? (root.recent.length ? "changed lately" : "type a setting, or a number from the list") : `nothing called “${SettingsView.query.trim()}”. try fewer letters, or a number from the list.`
                 color: Appearance.colour.textFaint
                 wrapMode: Text.WordWrap
+            }
+
+            StyledText {
+                x: Appearance.padding.normal
+                width: parent.width - Appearance.padding.normal * 2
+                topPadding: Appearance.padding.small
+                bottomPadding: Appearance.padding.normal
+                visible: query.activeFocus && !root.tiny && !root.listingRecent && root.hits.length > 0 && !(root.hitOpen && root.hits.length < 2)
+                text: root.hitOpen ? "enter next\nshift+enter back" : "enter opens it"
+                color: Appearance.colour.textFaint
             }
 
             Repeater {
