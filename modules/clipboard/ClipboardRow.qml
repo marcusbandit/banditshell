@@ -14,6 +14,8 @@ Item {
 
     property bool selected: false
 
+    property bool going: false
+
     signal activated
     signal pinned
     signal discarded
@@ -51,7 +53,16 @@ Item {
     property bool leaving: false
     property real lastY: 0
 
-    opacity: leave.value
+    opacity: leave.value * goingFade.value
+
+    Follow {
+        id: goingFade
+
+        target: root.going ? Appearance.opacity.disabled : 1
+        speed: Appearance.animation.revealSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
+    }
 
     Timer {
         running: true

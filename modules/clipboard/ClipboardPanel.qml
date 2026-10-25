@@ -80,6 +80,14 @@ Item {
     onExpandedChanged: if (root.expanded)
         root.clearing = false
 
+    function items(n: int): string {
+        return n === 1 ? "1 item" : `${n} items`;
+    }
+
+    property string cleared: ""
+
+    readonly property int clearedHold: 3000
+
     function show(): void {
         if (root.shown)
             return;
@@ -102,6 +110,7 @@ Item {
         root.shown = false;
         root.reading = null;
         root.clearing = false;
+        clearedLinger.stop();
         sheet.close();
         root.stopSearch();
         keys.focus = false;
@@ -204,7 +213,11 @@ Item {
     }
 
     function clearHistory(): void {
+        const gone = root.clearable;
+        const kept = root.pinnedCount;
         root.clearing = false;
+        root.cleared = kept > 0 ? `${gone} cleared, ${kept} pinned kept` : `${gone} cleared`;
+        clearedLinger.restart();
         Clipboard.clear();
         root.selected = 0;
         list.reset();
@@ -543,7 +556,7 @@ Item {
                                 visible: root.clearing && root.pinnedCount > 0
                                 text: `${root.pinnedCount} pinned stay`
                                 font.pixelSize: Appearance.font.size.small
-                                color: Appearance.colour.textFaint
+                                color: Appearance.colour.text
                             }
 
                             Button {
@@ -557,7 +570,7 @@ Item {
                             Button {
                                 visible: root.clearing
                                 icon: "delete_sweep"
-                                text: `Clear ${root.clearable}`
+                                text: `Clear ${root.items(root.clearable)}`
                                 alarm: true
                                 onClicked: root.clearHistory()
                             }
@@ -567,6 +580,44 @@ Item {
                                 style: "bare"
                                 text: "Cancel"
                                 onClicked: root.clearing = false
+                            }
+                        }
+
+                        Row {
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: Appearance.padding.small
+
+                            opacity: clearedFade.value
+                            visible: clearedFade.value > 0.01
+
+                            Follow {
+                                id: clearedFade
+
+                                target: clearedLinger.running && !root.canClear && !root.searching ? 1 : 0
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: Appearance.animation.fadeEpsilon
+                                startsAtTarget: true
+                            }
+
+                            Timer {
+                                id: clearedLinger
+
+                                interval: root.clearedHold
+                            }
+
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: "check"
+                                size: Appearance.font.iconSize
+                                color: Appearance.colour.text
+                            }
+
+                            StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.cleared
+                                font.pixelSize: Appearance.font.size.small
+                                color: Appearance.colour.text
                             }
                         }
 
@@ -682,6 +733,7 @@ Item {
                             width: list.width
                             entry: modelData
                             selected: index === root.selected
+                            going: root.clearing && !modelData.pinned
 
                             onActivated: {
                                 root.selected = index;
