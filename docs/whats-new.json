@@ -7,7 +7,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Settings shortcuts show as keys at the row end, read from your binds"
+          "text": "Settings shortcuts show as hints like Ctrl + 5, read from your binds"
         },
         {
           "type": "issues",

@@ -1013,7 +1013,7 @@ Singleton {
             return "";
         if (sub === "hz" && live && String(live.mode).split("@")[1] === String(mine.mode).split("@")[1])
             return "";
-        return "not applied yet";
+        return "needs Apply";
     }
 
     function resetStage(): void {

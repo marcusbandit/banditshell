@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.services
 import "../../services/hyprland-lua.js" as HyprlandLua
+import "boards.js" as Boards
 
 Singleton {
     id: root
@@ -51,6 +52,10 @@ Singleton {
                 bind: null
             };
         });
+    }
+
+    function hint(combo: string): string {
+        return combo.split(" ").filter(Boolean).map(Boards.keyName).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(" + ");
     }
 
     function combosFor(ref: string): var {

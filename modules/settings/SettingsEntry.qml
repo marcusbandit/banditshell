@@ -144,9 +144,26 @@ Column {
                         color: Appearance.colour.textFaint
                     }
 
-                    KeyCaps {
+                    Item {
                         anchors.verticalCenter: parent.verticalCenter
-                        combo: alternative.modelData
+                        width: hintText.implicitWidth + Appearance.padding.normal
+                        height: hintText.implicitHeight + Appearance.padding.small
+
+                        SquircleRect {
+                            anchors.fill: parent
+                            radius: Appearance.rounding.small
+                            color: "transparent"
+                            stroke: Appearance.colour.separator
+                            strokeWidth: 1
+                        }
+
+                        StyledText {
+                            id: hintText
+
+                            anchors.centerIn: parent
+                            text: SettingsKeys.hint(alternative.modelData)
+                            color: Appearance.colour.textDim
+                        }
                     }
                 }
             }

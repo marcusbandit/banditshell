@@ -458,7 +458,7 @@ test("a desktop without a battery or a lid hides what it can't use", () => {
 test("screen rows that wait for apply say so", () => {
     for (const k of ["scr:on", "scr:mirror", "scr:res", "scr:hz", "scr:scale", "scr:rot", "scr:vrr"]) {
         const r = Catalogue.ROWS.find(x => x.k === k);
-        assert.strictEqual(r.pending({ pendingNote: () => "not applied yet", onlyOn: false }), "not applied yet", k);
+        assert.strictEqual(r.pending({ pendingNote: () => "needs Apply", onlyOn: false }), "needs Apply", k);
     }
 });
 
