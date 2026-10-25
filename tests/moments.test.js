@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/moments.js"), "utf8");
-const M = new Function(src + "\nreturn { SCREENSHOT_MS, BLUETOOTH_MS, COPIED_MS, momentWanted, fileUrl, screenshotSpec, screenshotAction, editorCommand, preview, copyShape, copiedLabel, copiedSpec, audioDevice, batteryPercent, bluetoothSpec, wifiSpec, newlyConnected };")();
+const M = new Function(src + "\nreturn { SCREENSHOT_MS, BLUETOOTH_MS, COPIED_MS, momentWanted, fileUrl, screenshotSpec, screenshotAction, editorCommand, preview, copyShape, copiedLabel, copiedSpec, audioDevice, batteryPercent, bluetoothSpec, wifiSpec, undoSpec, newlyConnected };")();
 const act = fs.readFileSync(path.join(ROOT, "services/activities.js"), "utf8");
 const A = new Function(act + "\nreturn { push, itemOf, sweep };")();
 
@@ -160,5 +160,35 @@ test.describe("wifi", () => {
 
     test.it("posts nothing for a network without a name", () => {
         assert.strictEqual(M.wifiSpec("  ", "timeout", "x"), null);
+    });
+});
+
+test.describe("undo", () => {
+    test.it("names the app for one card and counts notifications for more", () => {
+        assert.strictEqual(M.undoSpec(["Discord"]).text, "Discord dismissed");
+        assert.strictEqual(M.undoSpec(["", "Discord", "Signal"]).text, "3 notifications cleared");
+        assert.deepStrictEqual(M.undoSpec(["a", "b"]).actions, [{ name: "undo", label: "Undo" }]);
+    });
+
+    test.it("carries the one card so the row can show its app's mark", () => {
+        const card = { appName: "Signal" };
+        assert.strictEqual(M.undoSpec(["Signal"], card).data.entry, card);
+        assert.strictEqual(M.undoSpec(["Signal", "Discord"], card).data.entry, null);
+        assert.strictEqual(M.undoSpec(["Signal", "Discord"], card).icon, "notifications");
+    });
+
+    test.it("falls back to Notification and shortens a long app name", () => {
+        assert.strictEqual(M.undoSpec([""]).text, "Notification dismissed");
+        assert.ok(M.undoSpec(["A Very Long Application Name Indeed"]).text.length <= 32);
+    });
+
+    test.it("is a valid activity that the service ends, not a timeout", () => {
+        const pushed = A.push([], M.undoSpec(["Discord", "Signal"]), 0);
+        assert.ok(!pushed.error, pushed.error);
+        assert.strictEqual(A.sweep(pushed.list, 60 * 60 * 1000).length, 1);
+    });
+
+    test.it("posts nothing when the shelf is empty", () => {
+        assert.strictEqual(M.undoSpec([]), null);
     });
 });

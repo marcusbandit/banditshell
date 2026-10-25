@@ -266,7 +266,7 @@ Item {
                     SquircleRect {
                         anchors.fill: parent
                         pill: "object"
-                        color: pill.primary ? Appearance.colour.alarm : (pillPress.pressed ? Appearance.colour.fillStrong : Appearance.colour.fill)
+                        color: pill.primary ? (root.look.actionTone ?? Appearance.colour.alarm) : (pillPress.pressed ? Appearance.colour.fillStrong : Appearance.colour.fill)
                         scale: 1 + 0.06 * lift.value
                     }
 

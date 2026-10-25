@@ -1058,6 +1058,10 @@ banditshell/
 │   │                            having. THE SHELL OWNS THE DIRECTORY; see 17.
 │   │                            home and openWith forward to System, and a
 │   │                            reveal request from System lands here
+│   ├── FilesUndo.qml            what Ctrl+Z can take back in the browser:
+│   │                            trash, move, rename, paste. A delete comes
+│   │                            back through gio's own trash record, and
+│   │                            nothing is overwritten on the way back
 │   ├── FileSearch.qml           files by name under home (fd), words inside
 │   │                            them (ripgrep, one line a file, eight files,
 │   │                            stopped the moment the line changes; never

@@ -138,6 +138,16 @@ QtObject {
                     trailing: ended ? "" : "actions",
                     actions: a.actions ?? []
                 };
+            if (a.style === "undo")
+                return {
+                    entry: a.data?.entry ?? null,
+                    icon: a.icon,
+                    tone: Appearance.colour.textDim,
+                    text: a.text,
+                    trailing: ended ? "" : "actions",
+                    actions: a.actions ?? [],
+                    actionTone: Appearance.colour.accent
+                };
             if (a.style === "bluetooth") {
                 const battery = a.data?.battery ?? -1;
                 return {
