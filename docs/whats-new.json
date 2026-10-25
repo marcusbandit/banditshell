@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-25-24",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A changed setting has a reset arrow that puts its default back"
+        }
+      ]
+    },
+    {
       "id": "2026-10-25-23",
       "date": "2026-10-25",
       "changes": [
