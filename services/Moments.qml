@@ -78,11 +78,16 @@ Singleton {
         const spec = root.wants("wifi") ? Logic.wifiSpec(name, kind, message) : null;
         if (spec)
             Activities.push(Object.assign(spec, {
-                act: entry => {
-                    Activities.remove(entry.id);
-                    WifiJoin.retry(entry.data.name, entry.data.kind);
+                act: (entry, action) => {
+                    if (action === "retry")
+                        root.retryWifi(entry);
                 }
             }));
+    }
+
+    function retryWifi(entry: var): void {
+        Activities.remove(entry.id);
+        WifiJoin.retry(entry.data.name, entry.data.kind);
     }
 
     onConnectedAddressesChanged: {
@@ -107,6 +112,16 @@ Singleton {
 
         function onCopied(command: var, input: string): void {
             root.copied(command, input);
+        }
+    }
+
+    Connections {
+        target: Network
+
+        function onActiveNameChanged(): void {
+            const failed = Activities.entries.find(e => e.id === "moment:wifi");
+            if (failed && failed.data?.name === Network.activeName)
+                Activities.remove(failed.id);
         }
     }
 

@@ -214,6 +214,7 @@ Item {
             weather: "the weather",
             calendar: "the calendar",
             microphone: "the microphone",
+            wifi: "the failed Wi-Fi join",
             reading: "a notification"
         })
     readonly property var taskViews: ({
@@ -224,7 +225,8 @@ Item {
             timers: timersView,
             weather: weatherView,
             calendar: calendarView,
-            microphone: microphoneView
+            microphone: microphoneView,
+            wifi: wifiView
         })
     property bool pulling: false
     property real pullProgress: 0
@@ -519,6 +521,10 @@ Item {
     function choose(activity: var): void {
         if (activity?.kind === "privacy" && activity.data?.privacy === "mic") {
             root.openTask("microphone");
+            return;
+        }
+        if (activity?.style === "wifi" && !activity.action) {
+            root.openTask("wifi");
             return;
         }
         if (root.taskViews[activity?.kind ?? ""]) {
@@ -1892,5 +1898,11 @@ Item {
         id: microphoneView
 
         IslandMicrophone {}
+    }
+
+    Component {
+        id: wifiView
+
+        IslandWifi {}
     }
 }

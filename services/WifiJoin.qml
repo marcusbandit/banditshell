@@ -59,6 +59,10 @@ Singleton {
         });
     }
 
+    function reason(kind: string): string {
+        return WifiList.failureReason(kind);
+    }
+
     function asksAgain(n: var, kind: string): bool {
         return kind === "password" && !!n && Network.secured(n) && !Network.enterprise(n);
     }

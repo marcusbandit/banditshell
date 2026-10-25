@@ -91,10 +91,21 @@ const JOIN_FAILURES = {
     hungup: "it hung up"
 };
 
+const JOIN_REASONS = {
+    password: "The password did not work",
+    timeout: "The router did not answer",
+    lost: "The network went out of range",
+    hungup: "The router dropped the connection"
+};
+
 function failureLabel(kind) {
     return JOIN_FAILURES[kind] || "could not join";
 }
 
 function failureMessage(name, kind) {
     return `${name}: ${failureLabel(kind)}`;
+}
+
+function failureReason(kind) {
+    return JOIN_REASONS[kind] || "Something went wrong while joining";
 }

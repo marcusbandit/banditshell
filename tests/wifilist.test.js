@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/wifilist.js"), "utf8");
-const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, pick, secretLine, signInSecrets, failureLabel, failureMessage };")();
+const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, pick, secretLine, signInSecrets, failureLabel, failureMessage, failureReason };")();
 
 const STEPS = 4;
 
@@ -271,6 +271,12 @@ test.describe("join failures", () => {
         assert.strictEqual(WifiList.failureLabel("password"), "wrong password");
         assert.strictEqual(WifiList.failureLabel("timeout"), "no answer");
         assert.strictEqual(WifiList.failureLabel("hungup"), "it hung up");
+    });
+
+    test.it("explains the cause in a sentence for the island's view", () => {
+        assert.strictEqual(WifiList.failureReason("timeout"), "The router did not answer");
+        assert.strictEqual(WifiList.failureReason("password"), "The password did not work");
+        assert.strictEqual(WifiList.failureReason("nonsense"), "Something went wrong while joining");
     });
 
     test.it("falls back to a general cause for a reason it does not know", () => {

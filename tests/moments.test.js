@@ -135,21 +135,27 @@ test.describe("bluetooth", () => {
 });
 
 test.describe("wifi", () => {
-    test.it("says which network failed and why, with Try again, for eight seconds", () => {
+    test.it("says Wi-Fi failed, with the network and cause as detail and Try again", () => {
         const spec = M.wifiSpec("Cafe", "timeout", "Cafe: no answer");
-        assert.strictEqual(spec.text, "Cafe: no answer");
-        assert.strictEqual(spec.until, 8000);
+        assert.strictEqual(spec.text, "Wi-Fi failed");
+        assert.strictEqual(spec.detail, "Cafe: no answer");
+        assert.strictEqual(spec.icon, "signal_wifi_bad");
         assert.deepStrictEqual(spec.data, { name: "Cafe", kind: "timeout" });
         assert.deepStrictEqual(spec.actions, [{ name: "retry", label: "Try again" }]);
-        assert.ok(!A.push([], spec, 0).error);
+    });
+
+    test.it("waits until it is seen instead of timing out", () => {
+        const pushed = A.push([], M.wifiSpec("Cafe", "timeout", "Cafe: no answer"), 0);
+        assert.ok(!pushed.error);
+        assert.strictEqual(A.sweep(pushed.list, 24 * 60 * 60 * 1000).length, 1);
     });
 
     test.it("falls back to the network name without a message", () => {
-        assert.strictEqual(M.wifiSpec("Cafe", "timeout", "").text, "Cafe");
+        assert.strictEqual(M.wifiSpec("Cafe", "timeout", "").detail, "Cafe");
     });
 
     test.it("retries the network by its exact name, spaces and all", () => {
-        assert.strictEqual(M.wifiSpec("Cafe  5G ", "lost", "Cafe  5G : it went away").data.name, "Cafe  5G ");
+        assert.strictEqual(M.wifiSpec("Cafe  5G ", "lost", "x").data.name, "Cafe  5G ");
     });
 
     test.it("posts nothing for a network without a name", () => {

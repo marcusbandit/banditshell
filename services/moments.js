@@ -1,6 +1,5 @@
 const SCREENSHOT_MS = 6000;
 const BLUETOOTH_MS = 3000;
-const WIFI_MS = 8000;
 const COPIED_MS = 900;
 const COPIED_PREVIEW = 20;
 const MASK = "••••••••";
@@ -145,9 +144,9 @@ function wifiSpec(name, kind, message) {
     return {
         id: "moment:wifi",
         style: "wifi",
-        text: squash(message) || shown,
-        icon: "wifi_off",
-        until: WIFI_MS,
+        text: "Wi-Fi failed",
+        detail: squash(message) || shown,
+        icon: "signal_wifi_bad",
         priority: 45,
         pressable: true,
         source: "moments",
