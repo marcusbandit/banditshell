@@ -59,6 +59,7 @@ Singleton {
         const entry = root.stack[root.stack.length - 1];
         root.stack = root.stack.slice(0, -1);
         root.running = entry;
+        root.shown = [];
 
         root.perform(entry, root.finish);
     }
@@ -85,6 +86,17 @@ Singleton {
         root.start(commands[texts.length], out => root.chain(commands, texts.concat([out]), done));
     }
 
+    property var shown: []
+
+    function show(names: var): void {
+        if (names.length === 0)
+            return;
+        Files.picked = names;
+        Files.cursorName = names[0];
+        Files.anchorName = names[0];
+        root.shown = names;
+    }
+
     function start(command: var, done: var): void {
         step.createObject(root, {
             command: command,
@@ -94,11 +106,12 @@ Singleton {
     }
 
     function finish(texts: var): void {
-        const told = Undo.report(root.running, texts);
+        const told = Undo.report(root.running, texts, Files.cwd, Files.home);
         if (told.ok)
             root.say(told.text);
         else
             Files.failure = told.text;
+        root.show(told.shown.filter(path => Undo.parentOf(path) === Files.cwd).map(path => Undo.baseName(path)));
         root.running = null;
         Files.refresh();
         if (root.stack.length === 0)

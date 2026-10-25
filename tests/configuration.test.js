@@ -217,6 +217,13 @@ test.describe("upgrade", () => {
         assert.strictEqual(Configuration.upgrade(taken), taken);
     });
 
+    test.it("moves Markdown source saved by the old Settings to the value the file manager shows as source", () => {
+        assert.deepStrictEqual(Configuration.upgrade({ files: { markdown: "source", sort: "date" } }), { files: { markdown: "raw", sort: "mtime" } });
+        assert.strictEqual(Configuration.upgradeValue("files.markdown", "source"), "raw");
+        const current = { files: { markdown: "raw" } };
+        assert.strictEqual(Configuration.upgrade(current), current);
+    });
+
     test.it("leaves a config without a launcher alone", () => {
         const plain = { theme: "slate" };
         assert.strictEqual(Configuration.upgrade(plain), plain);

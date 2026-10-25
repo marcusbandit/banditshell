@@ -1991,10 +1991,20 @@ rail and not against the full column): one mark per workspace, and below them a 
 whatever is unusual and nothing for what is normal. Unusual is decided in `anomalies.js`: the
 microphone live or muted while something records from it, a
 screen recording, a VPN, keep-awake, airplane mode (every radio off), quiet or a mode, an update
-waiting or stuck. Pressing the keep-awake mark turns it off, its hover title says so through the
-shared tooltip, and pointing at it holds the rail at rest so it can be pressed before the rail
-grows; after the press the rail stays at rest until the pointer leaves it. A cap of four keeps the
-alarms and drops the quietest, and a mark that goes leaves by shrinking, not by blinking out.
+waiting or stuck. Every mark's tooltip says what it is and then what a press does ("VPN on,
+click for settings"). Battery, sound, airplane and update open their sidebar menus, so the rail
+grows under them; VPN, a mode and quiet open their Settings page; keep-awake and a screen
+recording stop. Pointing at a mark holds the rail at rest so it can be pressed before the rail
+grows; after the press the rail stays at rest until the pointer leaves it. The workspace marks
+never move for a status mark: they keep their place, leave four status slots under them wherever
+the rail is tall enough, and the status marks stay a clear gap below, so they read as their own
+group and never as one more workspace. Every mark shows while
+the rail has room for it between the workspace marks and its foot; when it runs out, the most
+important stay by a fixed rank: the microphone, a screen recording, a low battery that is not
+charging, quiet or a mode, a stuck update, then VPN, airplane, keep-awake, and last a charging
+battery or an update that is only waiting. Privacy and anything that swallows notifications stay
+in view. A `+N` under the marks counts what did not fit and names them on hover, and a mark
+that goes leaves by shrinking, not by blinking out.
 
 **THE GLANCE, 2026-10-24: the time and the battery show at rest.** People using the shell said
 an empty screen is annoying when all they want is to look up and see what time it is and how much

@@ -155,7 +155,10 @@ QtObject {
         root.progress = typeof v === "number" && isFinite(v) ? Math.max(0, Math.min(100, v)) : -1;
 
         root.live = true;
+        root.updated();
     }
+
+    signal updated
 
     onNotificationChanged: root.snapshot()
     Component.onCompleted: root.snapshot()
@@ -221,6 +224,7 @@ QtObject {
     property int leaveElapsed: 0
 
     property bool forget: false
+    property bool answered: false
 
     readonly property bool running: timeout > 0 && remaining > 0 && !held && !pinned && !leaving
 

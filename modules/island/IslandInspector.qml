@@ -278,6 +278,14 @@ Scope {
             voice: "processing"
         },
         {
+            name: "Dictation discarded, nothing typed",
+            voice: "discarded"
+        },
+        {
+            name: "Stream dictation discarded after some was typed",
+            voice: "partly"
+        },
+        {
             name: "An app opening",
             launches: ["waiting"]
         },
@@ -773,9 +781,31 @@ Scope {
         again.restart();
     }
 
+    property bool realCancel: false
+    property bool faking: false
+
     function setVoice(v: string): void {
+        if (!root.faking && v !== "off") {
+            root.realCancel = Dictation.canCancel;
+            root.faking = true;
+        }
         root.voice = v;
-        Dictation.phase = v === "off" ? "idle" : v;
+        const ended = v === "discarded" || v === "partly";
+        Dictation.canCancel = v === "off" ? root.realCancel : !ended;
+        if (v === "off")
+            root.faking = false;
+        Dictation.phase = v === "off" || ended ? "idle" : v;
+        Dictation.cancelledTyped = ended ? v === "partly" : null;
+        Dictation.cancelled = ended;
+    }
+
+    Connections {
+        target: Dictation
+
+        function onCancelledChanged(): void {
+            if (!Dictation.cancelled && (root.voice === "discarded" || root.voice === "partly"))
+                Dictation.cancelled = true;
+        }
     }
 
     function notify(spec: var, urgent: bool): void {
@@ -1216,9 +1246,9 @@ Scope {
 
                             Segments {
                                 width: parent.width
-                                options: ["off", "listening", "processing"]
-                                current: Math.max(0, ["off", "listening", "processing"].indexOf(root.voice))
-                                onPicked: index => root.setVoice(["off", "listening", "processing"][index])
+                                options: ["off", "listening", "processing", "discarded", "partly"]
+                                current: Math.max(0, ["off", "listening", "processing", "discarded", "partly"].indexOf(root.voice))
+                                onPicked: index => root.setVoice(["off", "listening", "processing", "discarded", "partly"][index])
                             }
 
                             StyledText {

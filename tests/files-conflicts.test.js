@@ -302,9 +302,10 @@ test.describe("files paste conflicts", () => {
                 assert.deepStrictEqual(fs.readdirSync(box.at("to")), ["a.txt"]);
                 assert.strictEqual(fs.readFileSync(box.at("to", "a.txt"), "utf8"), "old");
                 assert.deepStrictEqual(fs.readdirSync(box.at("from")).sort(), ["a.txt", "b.txt"]);
-                const told = Undo.report(entry, [first, second]);
+                const told = Undo.report(entry, [first, second], box.at("to"), box.home);
                 assert.strictEqual(told.ok, true);
-                assert.strictEqual(told.text, cut ? "2 files moved back, a.txt restored" : "2 copies moved to the trash, a.txt restored");
+                assert.strictEqual(told.text, cut ? "a.txt and b.txt moved back to from, a.txt restored" : "Copies of a.txt and b.txt moved to the trash, a.txt restored");
+                assert.deepStrictEqual(told.shown, cut ? [box.at("from", "a.txt"), box.at("from", "b.txt"), box.at("to", "a.txt")] : [box.at("to", "a.txt")]);
             } finally {
                 box.done();
             }
@@ -314,8 +315,8 @@ test.describe("files paste conflicts", () => {
     test.it("records a plain paste as a plain entry and an empty one as nothing", () => {
         assert.strictEqual(Undo.batch([Undo.copied([{ from: "/a", to: "/b/a" }]), Undo.trashed([], 0)]).kind, "copy");
         assert.deepStrictEqual(Undo.remember([], Undo.batch([Undo.moved([]), Undo.trashed([], 0)])), []);
-        const told = Undo.report(Undo.batch([Undo.copied([{ from: "/a", to: "/b/a" }]), Undo.trashed(["/b/a"], 0)]), ["failed\n", "gone\n"]);
-        assert.deepStrictEqual(told, { ok: false, text: "a could not be brought back" });
+        const told = Undo.report(Undo.batch([Undo.copied([{ from: "/a", to: "/b/a" }]), Undo.trashed(["/b/a"], 0)]), ["failed\n", "gone\n"], "/b", "/h");
+        assert.deepStrictEqual(told, { ok: false, text: "a could not be brought back", shown: [] });
     });
 
     test.it("refuses a rename onto a name already in the folder", () => {

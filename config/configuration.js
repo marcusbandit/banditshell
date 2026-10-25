@@ -51,14 +51,20 @@ function upgradeValue(path, value) {
         return "stacked";
     if (path === "files.sort" && (value === "date" || value === "type"))
         return value === "date" ? "mtime" : "kind";
+    if (path === "files.markdown" && value === "source")
+        return "raw";
     return value;
 }
 
-function upgradeFilesSort(values) {
+function upgradeFiles(values) {
     const files = values.files;
-    if (!isPlainObject(files) || !["date", "type"].includes(files.sort))
+    if (!isPlainObject(files) || (!["date", "type"].includes(files.sort) && files.markdown !== "source"))
         return values;
-    return Object.assign({}, values, { files: Object.assign({}, files, { sort: upgradeValue("files.sort", files.sort) }) });
+    const next = Object.assign({}, files);
+    for (const key of ["sort", "markdown"])
+        if (owns(files, key))
+            next[key] = upgradeValue(`files.${key}`, files[key]);
+    return Object.assign({}, values, { files: next });
 }
 
 function upgradeFilesUndo(values) {
@@ -97,7 +103,7 @@ function upgradeSidebarClock(values) {
 function upgrade(values) {
     if (!isPlainObject(values))
         return values;
-    return upgradeFilesUndo(upgradeFilesSort(upgradeSidebarClock(upgradeLauncher(values))));
+    return upgradeFilesUndo(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values))));
 }
 
 function holds(node, segment) {

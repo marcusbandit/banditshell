@@ -399,6 +399,22 @@ Item {
         });
     }
 
+    Connections {
+        target: Files
+
+        function onVisibleChanged(): void {
+            const at = FilesUndo.shown.map(name => Files.indexOf(name)).filter(index => index >= 0);
+            if (at.length === 0)
+                return;
+            FilesUndo.shown = [];
+            const first = Math.min(...at);
+            Files.cursorName = Files.visible[first].name;
+            Files.anchorName = Files.cursorName;
+            grid.reveal(Math.max(...at));
+            grid.reveal(first);
+        }
+    }
+
     ActionSheet {
         id: sheet
 
