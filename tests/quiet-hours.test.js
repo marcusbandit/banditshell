@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/quiet-hours.js"), "utf8");
-const Quiet = new Function(src + "\nreturn { minutesOf, nightlyActive, holding, deadlineFor, endsLabel, clockTime, parseEnds, quietLine, hushUntil, endsAt };")();
+const Quiet = new Function(src + "\nreturn { minutesOf, nightlyActive, holding, deadlineFor, endsLabel, clockTime, parseEnds, quietLine, hushUntil, endsAt, hushChoices };")();
 
 function inZone(zone, body) {
     const before = process.env.TZ;
@@ -141,4 +141,13 @@ test("an end reads as a clock time within a day, a weekday within the week, else
     assert.strictEqual(Quiet.endsAt(at(31, 8, 0), at(25, 9, 0)), "Sat 08:00");
     assert.strictEqual(Quiet.endsAt(at(31, 9, 0), at(25, 9, 0)), "31 Oct");
     assert.strictEqual(Quiet.endsAt(at(25, 8, 0), at(25, 9, 0)), "");
+});
+
+test("each choice leads with how long and ends with the time it stops", () => {
+    const at = (day, h, m) => new Date(2026, 9, day, h, m).getTime();
+    const late = Quiet.hushChoices(at(25, 23, 0), "07:30");
+    assert.deepStrictEqual(late.map(c => `${c.text} ${c.detail}`), ["1 hour · until 00:00", "until morning · 07:30"]);
+    assert.deepStrictEqual(late.map(c => c.until), [at(26, 0, 0), at(26, 7, 30)]);
+    const early = Quiet.hushChoices(at(25, 7, 0), "07:30");
+    assert.deepStrictEqual(early.map(c => c.choice), ["tomorrow", "hour"]);
 });

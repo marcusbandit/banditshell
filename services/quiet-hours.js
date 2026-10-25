@@ -64,6 +64,13 @@ function hushUntil(choice, at, wake) {
     return ends === ENDS_HOUR || ends === ENDS_TOMORROW ? deadlineFor(ends, at, wake) : -1;
 }
 
+function hushChoices(at, wake) {
+    return [["hour", "1 hour"], ["tomorrow", "until morning"]].map(([choice, text]) => {
+        const until = hushUntil(choice, at, wake);
+        return { choice: choice, until: until, text: text, detail: `· ${text.startsWith("until") ? "" : "until "}${endsAt(until, at)}` };
+    }).sort((a, b) => a.until - b.until);
+}
+
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 

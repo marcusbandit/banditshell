@@ -189,7 +189,7 @@ test.describe("undo", () => {
     });
 
     test.it("says when a reminded or muted app comes back", () => {
-        assert.strictEqual(M.undoSpec(["Discord"], null, M.hushDone("snooze", "01:30")).text, "Discord back at 01:30");
+        assert.strictEqual(M.undoSpec(["Discord"], null, M.hushDone("snooze", "01:30")).text, "Discord hidden until 01:30");
         assert.strictEqual(M.undoSpec(["Discord"], null, M.hushDone("mute", "07:30")).text, "Discord muted until 07:30");
         assert.strictEqual(M.undoSpec(["Discord"], null, M.hushDone("mute", "")).text, "Discord muted until I unmute");
         assert.strictEqual(M.undoSpec(["Discord"], null, M.hushDone("unmute", "")).text, "Discord unmuted");

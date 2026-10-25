@@ -1084,11 +1084,11 @@ ShellRoot {
             holds: () => preview.tip("Remind me or mute", true)
         },
         {
-            name: "remind me in an hour: the card goes, Discord back at that time, with Undo",
+            name: "remind me in an hour: the card goes, Discord hidden until then, with Undo",
             run: () => preview.tip("Remind me or mute", false) && preview.cardOf(preview.mine[0])?.hush("snooze", Notifications.hushUntil("hour", Date.now())),
             wait: 1500,
             expect: "2 notifications stacked, below it: activity",
-            holds: () => Notifications.snoozed.some(i => i.entry === preview.mine[0] && Math.abs(i.at - Date.now() - 3600000) < 10000) && preview.undoRow()?.text.startsWith("Discord back at ")
+            holds: () => Notifications.snoozed.some(i => i.entry === preview.mine[0] && Math.abs(i.at - Date.now() - 3600000) < 10000) && preview.undoRow()?.text.startsWith("Discord hidden until ")
         },
         {
             name: "Undo brings the card back and drops the snooze",

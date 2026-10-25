@@ -60,7 +60,7 @@ Item {
     readonly property bool appMuted: root.appMutedLabel !== ""
 
     property double hushAt: Date.now()
-    readonly property var hushEnds: [...new Set([Notifications.hushUntil("hour", root.hushAt), Notifications.hushUntil("tomorrow", root.hushAt)])].sort((a, b) => a - b)
+    readonly property var hushChoices: Notifications.hushChoices(root.hushAt)
 
     readonly property real tileInset: root.tiled ? Appearance.padding.small : 0
     readonly property real tileGap: root.tiled ? Appearance.stroke.line : 0
@@ -648,13 +648,13 @@ Item {
                         model: [
                             {
                                 label: "Remind me",
-                                timed: root.hushEnds.map(until => ["snooze", until, `at ${Notifications.endsAt(until, root.hushAt)}`]),
+                                timed: root.hushChoices.map(c => ["snooze", c.until, c.text, c.detail]),
                                 lasting: []
                             },
                             {
                                 label: root.appMuted ? `${root.appName} muted ${root.appMutedLabel}` : `Mute ${root.appName}`,
-                                timed: root.appMuted ? [["unmute", 0, "unmute"]] : root.hushEnds.map(until => ["mute", until, `until ${Notifications.endsAt(until, root.hushAt)}`]),
-                                lasting: root.appMuted ? [] : [["mute", 0, "until I unmute"]]
+                                timed: root.appMuted ? [["unmute", 0, "unmute", ""]] : root.hushChoices.map(c => ["mute", c.until, c.text, c.detail]),
+                                lasting: root.appMuted ? [] : [["mute", 0, "until I unmute", ""]]
                             }
                         ]
 
@@ -681,8 +681,10 @@ Item {
                                     id: line
 
                                     required property var modelData
+                                    required property int index
 
                                     width: group.width
+                                    topPadding: line.index > 0 ? Appearance.padding.small : 0
                                     spacing: Appearance.padding.small
 
                                     Repeater {
@@ -694,6 +696,7 @@ Item {
                                             size: 0
                                             style: "ring"
                                             text: modelData[2]
+                                            detail: modelData[3]
                                             onClicked: root.hush(modelData[0], modelData[1])
                                         }
                                     }

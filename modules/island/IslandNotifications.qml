@@ -29,7 +29,7 @@ Item {
     }
 
     property double quietAt: Date.now()
-    readonly property var quietEnds: [...new Set([Notifications.hushUntil("hour", root.quietAt), Notifications.hushUntil("tomorrow", root.quietAt)])].sort((a, b) => a - b)
+    readonly property var quietChoices: Notifications.hushChoices(root.quietAt)
 
     Timer {
         interval: 10000
@@ -70,7 +70,7 @@ Item {
             id: header
 
             width: parent.width
-            icon: "notifications"
+            icon: root.quiet ? "do_not_disturb_on" : "notifications"
             title: "Notifications"
             subtitle: root.subtitle
             onClosed: root.hide()
@@ -99,22 +99,23 @@ Item {
                 anchors.leftMargin: Appearance.padding.normal
                 anchors.right: parent.right
                 visible: !root.quiet
-                spacing: Appearance.padding.small
+                spacing: Appearance.padding.small * 1.5
 
                 Flow {
                     width: parent.width
                     spacing: Appearance.padding.small
 
                     Repeater {
-                        model: root.quietEnds
+                        model: root.quietChoices
 
                         delegate: Button {
-                            required property double modelData
+                            required property var modelData
 
                             size: 0
                             style: "ring"
-                            text: `until ${Notifications.endsAt(modelData, root.quietAt)}`
-                            onClicked: Notifications.quietTill(modelData)
+                            text: modelData.text
+                            detail: modelData.detail
+                            onClicked: Notifications.quietTill(modelData.until)
                         }
                     }
                 }

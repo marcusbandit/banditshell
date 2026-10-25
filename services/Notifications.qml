@@ -258,15 +258,24 @@ Singleton {
         return QuietHours.hushUntil(choice, at, root.nightTo);
     }
 
+    function hushChoices(at: double): var {
+        return QuietHours.hushChoices(at, root.nightTo);
+    }
+
+    function mutedEnd(appKey: string): double {
+        const until = root.ruleAt(appKey).muteUntil;
+        return until > root.now ? until : 0;
+    }
+
     function endsAt(until: double, at: double): string {
         return QuietHours.endsAt(until, at);
     }
 
     function mutedLabel(appKey: string): string {
-        const rule = root.ruleAt(appKey);
-        if (rule.muteUntil > root.now)
-            return `until ${root.endsAt(rule.muteUntil, root.now)}`;
-        return Rules.muted(rule, root.now) ? "until I\u00a0unmute" : "";
+        const end = root.mutedEnd(appKey);
+        if (end > 0)
+            return `until ${root.endsAt(end, root.now)}`;
+        return Rules.muted(root.ruleAt(appKey), root.now) ? "until I unmute" : "";
     }
 
     function endMute(appKey: string): void {

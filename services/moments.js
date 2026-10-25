@@ -174,7 +174,7 @@ function undoSpec(apps, only, done) {
 
 function hushDone(kind, ends) {
     if (kind === "snooze")
-        return `back at ${ends}`;
+        return `hidden until ${ends}`;
     if (kind === "mute")
         return ends ? `muted until ${ends}` : "muted until I unmute";
     return "unmuted";

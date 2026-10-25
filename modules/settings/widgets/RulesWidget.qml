@@ -50,13 +50,13 @@ Column {
             required property string modelData
 
             readonly property var switches: Notifications.ruleAt(rule.modelData)
-            readonly property string mutedLabel: Notifications.mutedLabel(rule.modelData)
-            readonly property bool muted: rule.mutedLabel !== ""
+            readonly property bool muted: Notifications.mutedLabel(rule.modelData) !== ""
+            readonly property double mutedEnd: Notifications.mutedEnd(rule.modelData)
 
             width: root.width
             interactive: false
             label: Apps.nameFor(rule.modelData)
-            detail: rule.muted ? `muted ${rule.mutedLabel}` : ""
+            detail: !rule.muted ? "" : rule.mutedEnd > 0 ? `muted until ${Notifications.endsAt(rule.mutedEnd, Notifications.now)}` : "muted"
             detailColour: Appearance.colour.text
             detailLines: 2
             onPointed: SettingsView.hovered = root.row
