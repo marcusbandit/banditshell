@@ -262,6 +262,7 @@ Item {
                 Setting {
                     width: body.width
                     label: "Order"
+                    detail: Files.foldersNote
 
                     SettingChoice {
                         choices: Files.orderWords.map((words, i) => ({

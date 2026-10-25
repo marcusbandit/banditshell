@@ -17,13 +17,13 @@ Item {
     readonly property real zoom: SettingsState.v("filesZoom")
     readonly property bool rendered: SettingsState.v("filesMarkdown") === "rendered"
 
-    readonly property var files: [["Documents", "folder", "dir", 0, 3], ["Downloads", "folder", "dir", 0, 0], ["Pictures", "folder", "dir", 0, 12], ["Projects", "folder", "dir", 0, 1], ["notes.md", "description", "md", 4, 0], ["install.sh", "terminal", "sh", 2, 30], ["wallpaper.png", "image", "png", 2400, 6], ["todo.txt", "article", "txt", 1, 2], [".config", "folder", "dir", 0, 0], [".bashrc", "settings", "rc", 3, 90]]
+    readonly property var files: [["Documents", "folder", "dir", 0, 3], ["Downloads", "folder", "dir", 0, 0, "14:05"], ["Pictures", "folder", "dir", 0, 12], ["Projects", "folder", "dir", 0, 1], ["notes.md", "description", "md", 4, 0, "09:12"], ["install.sh", "terminal", "sh", 2, 30], ["wallpaper.png", "image", "png", 2400, 6], ["todo.txt", "article", "txt", 1, 2], [".config", "folder", "dir", 0, 0, "11:40"], [".bashrc", "settings", "rc", 3, 90]]
 
     readonly property var shown: {
         const byName = (a, b) => a[0].replace(".", "").localeCompare(b[0].replace(".", ""));
         const by = {
             name: byName,
-            mtime: (a, b) => a[4] - b[4],
+            mtime: (a, b) => a[4] - b[4] || (b[5] ?? "").localeCompare(a[5] ?? ""),
             size: (a, b) => b[3] - a[3],
             kind: (a, b) => a[2].localeCompare(b[2])
         }[root.sort] ?? ((a, b) => 0);
@@ -33,7 +33,7 @@ Item {
 
     function valueOf(file: var): string {
         if (root.sort === "mtime")
-            return file[4] === 0 ? "today" : file[4] === 1 ? "yesterday" : `${file[4]} days ago`;
+            return file[4] === 0 ? `today ${file[5]}` : file[4] === 1 ? "yesterday" : `${file[4]} days ago`;
         if (file[2] === "dir" || (root.sort !== "size" && !root.list))
             return "";
         return file[3] > 1000 ? `${(file[3] / 1024).toFixed(1)} MB` : `${file[3]} KB`;
@@ -123,7 +123,7 @@ Item {
                         required property var modelData
                         required property int index
 
-                        readonly property bool sel: fi.modelData[0] === root.current
+                        readonly property bool sel: !SettingsView.reduceMotion && fi.modelData[0] === root.current
                         readonly property bool dot: fi.modelData[0].startsWith(".")
 
                         width: body.cellWidth
@@ -302,6 +302,6 @@ Item {
     }
 
     SceneCaption {
-        text: `${root.list ? "list" : "icons"} · ${Catalogue.filesSortOrder(root.sort, root.reversed)}${root.hidden ? " · dotfiles shown" : ""}`
+        text: `${Catalogue.filesSortOrder(root.sort, root.reversed)}, ${Catalogue.filesFoldersNote(root.sort)}${root.hidden ? " · dotfiles shown" : ""}`
     }
 }

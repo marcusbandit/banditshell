@@ -11,6 +11,10 @@ const ORDER_WORDS = {
     kind: ["a to z", "z to a"]
 };
 
+function foldersNote(key) {
+    return key === "size" ? "folders by name" : "folders on top";
+}
+
 function orderWords(key) {
     return ORDER_WORDS[key] ?? ORDER_WORDS.name;
 }

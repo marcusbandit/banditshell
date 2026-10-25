@@ -10,8 +10,8 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Order = lib("services/files-order.js", ["SORTS", "SORT_WORDS", "orderWords", "ordered"]);
-const Catalogue = lib("modules/settings/catalogue.js", ["ROW_BY_KEY", "PAGE_BY_ID", "options", "filesSortOrder"]);
+const Order = lib("services/files-order.js", ["SORTS", "SORT_WORDS", "orderWords", "foldersNote", "ordered"]);
+const Catalogue = lib("modules/settings/catalogue.js", ["ROW_BY_KEY", "PAGE_BY_ID", "options", "filesSortOrder", "filesFoldersNote"]);
 const Configuration = lib("config/configuration.js", ["merge", "upgrade"]);
 
 function defaults() {
@@ -72,6 +72,7 @@ test.describe("files order", () => {
         const row = Catalogue.ROW_BY_KEY.filesReversed;
         assert.strictEqual(row.cfg, "files.reversed");
         for (const sort of Order.SORTS) {
+            assert.strictEqual(Catalogue.filesFoldersNote(sort), Order.foldersNote(sort));
             const said = Catalogue.options(row, {v: () => sort});
             assert.deepStrictEqual(said, [[false, Order.orderWords(sort)[0]], [true, Order.orderWords(sort)[1]]]);
         }

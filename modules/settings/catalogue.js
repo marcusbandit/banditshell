@@ -1064,6 +1064,10 @@ function show(row, v, s) {
     return format(row, v, s);
 }
 
+function filesFoldersNote(sort) {
+    return sort === "size" ? "folders by name" : "folders on top";
+}
+
 function filesOrders(sort) {
     const words = FILES_ORDERS[sort] ?? FILES_ORDERS.name;
     return [[false, words[0]], [true, words[1]]];
