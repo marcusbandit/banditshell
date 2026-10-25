@@ -5,7 +5,7 @@
       "date": "2026-10-25",
       "changes": [
         {
-          "type": "issues",
+          "type": "features",
           "severity": "minor",
           "text": "Settings, Colour has a Dark mode switch; search dark or night finds it"
         }
