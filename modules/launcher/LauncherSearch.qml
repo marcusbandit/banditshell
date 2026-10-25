@@ -824,6 +824,26 @@ QtObject {
         };
     }
 
+    function guessRow(): var {
+        if (root.intent || root.aliasId)
+            return null;
+        const apps = Apps.visible;
+        const commands = root.commands.filter(c => !c.hidden);
+        const settings = Catalogue.everyHit();
+        const found = Ranking.closest(root.text, apps.map(e => e.name ?? "").concat(commands.map(c => c.label), settings.map(hit => hit.label)));
+        if (found < 0)
+            return null;
+        const target = found < apps.length ? root.appRow(apps[found]) : found < apps.length + commands.length ? root.commandRow(commands[found - apps.length]) : root.settingRow(settings[found - apps.length - commands.length]);
+        return Object.assign({}, target, {
+            key: `guess:${target.key}`,
+            kind: "guess",
+            target: target,
+            label: target.armed ? target.label : `Did you mean ${root.nameOf(target)}?`,
+            toggle: undefined,
+            score: 0
+        });
+    }
+
     readonly property int awakeFor: Search.awakeAsk(root.text)
 
     readonly property var awakeRows: root.awakeFor <= 0 ? [] : [
@@ -1462,7 +1482,17 @@ QtObject {
             note: root.contentNote,
             items: root.contentRows
         }, ...root.sourceGroupLists.reduce((out, list) => out.concat(list), []));
-        return Search.arrange(Search.remembered(groups, key => LauncherMemory.bonusOf(key, Date.now())), root.limits);
+        const arranged = Search.arrange(Search.remembered(groups, key => LauncherMemory.bonusOf(key, Date.now())), root.limits);
+        if (!Search.matchesNothing(arranged))
+            return arranged;
+        const guess = root.guessRow();
+        return guess ? Search.arrange(groups.concat([
+            {
+                key: "guess",
+                title: "Closest match",
+                items: [guess]
+            }
+        ]), root.limits) : arranged;
     }
 
     function openSetting(row: var): void {
@@ -1471,6 +1501,10 @@ QtObject {
     }
 
     function activate(row: var): void {
+        if (row?.kind === "guess") {
+            root.activate(row.target);
+            return;
+        }
         if (row?.kind !== "app" && !row?.header) {
             const used = row?.id ?? row?.key ?? "";
             Qt.callLater(() => LauncherMemory.record(used));
@@ -1653,6 +1687,8 @@ QtObject {
     }
 
     function actionsFor(row: var): var {
+        if (row?.kind === "guess")
+            return [];
         const owner = root.sourceOf(row);
         if (owner)
             return owner.actionsFor?.(row) ?? [];

@@ -1118,6 +1118,10 @@ const ALIASES = {
     device: "about", developer: "shell", cli: "shell", power: "powermode", idle: "lock", language: "region"
 };
 
+function everyHit() {
+    return INDEX;
+}
+
 function hitFor(pageId, key) {
     return INDEX.find(x => x.page.id === pageId && (x.row.k ?? x.label) === key) || null;
 }

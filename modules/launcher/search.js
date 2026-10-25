@@ -157,6 +157,10 @@ function remembered(groups, bonusOf) {
     });
 }
 
+function matchesNothing(rows) {
+    return !rows.some(r => !r.header && r.kind !== "fallback");
+}
+
 function arrange(groups, caps) {
     const best = g => g.items.reduce((m, it) => Math.max(m, it.score ?? 0), -Infinity);
     const live = (groups || []).map((g, i) => ({
