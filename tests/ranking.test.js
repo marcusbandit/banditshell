@@ -67,8 +67,8 @@ test.describe("typos", () => {
         assert.strictEqual(Ranking.typos("firefox", "fierfox"), 1);
     });
 
-    test.it("measures against the start of the name, not all of it", () => {
-        assert.strictEqual(Ranking.typos("thunderbird", "thundr"), 1);
+    test.it("measures the whole name, so a started word is not a typo", () => {
+        assert.strictEqual(Ranking.typos("thunderbird", "thunder"), 4);
     });
 });
 
@@ -78,15 +78,17 @@ test.describe("closest", () => {
     test.it("finds the name one typo away", () => {
         assert.strictEqual(names[Ranking.closest("lok screen", names)], "Lock screen");
         assert.strictEqual(names[Ranking.closest("firefxo", names)], "Firefox");
-        assert.strictEqual(names[Ranking.closest("nigth", names)], "Night light");
+        assert.strictEqual(names[Ranking.closest("nigth light", names)], "Night light");
     });
 
     test.it("takes the right letters in the wrong order", () => {
         assert.strictEqual(names[Ranking.closest("frefiox", names)], "Firefox");
     });
 
-    test.it("matches from any word start", () => {
+    test.it("matches the end of a name from a word start", () => {
         assert.strictEqual(names[Ranking.closest("screne", names)], "Lock screen");
+        assert.strictEqual(Ranking.closest("übersciht", ["Neue Übersicht"]), 0);
+        assert.strictEqual(Ranking.closest("ndern zeiit", ["Ändern Zeit"]), -1);
     });
 
     test.it("guesses nothing under five letters or past the typo limit", () => {
@@ -95,8 +97,14 @@ test.describe("closest", () => {
         assert.strictEqual(Ranking.closest("xyzzyq", names), -1);
     });
 
+    test.it("leaves ordinary words for the web search", () => {
+        const labels = ["Suspend", "Variable refresh", "Mail", "Sleep displays", "Airplane mode"];
+        for (const word of ["suspended", "maria", "email", "gmail", "sleepy", "airplay"])
+            assert.strictEqual(Ranking.closest(word, labels), -1, word);
+    });
+
     test.it("prefers fewer typos, then a match at the start of the name", () => {
         assert.strictEqual(Ranking.closest("filex", ["Firefox", "Files"]), 1);
-        assert.strictEqual(Ranking.closest("lighq", ["Night light", "Lights"]), 1);
+        assert.strictEqual(Ranking.closest("lighst", ["Night lights", "Lights"]), 1);
     });
 });

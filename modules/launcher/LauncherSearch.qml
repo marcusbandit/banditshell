@@ -835,10 +835,9 @@ QtObject {
             return null;
         const target = found < apps.length ? root.appRow(apps[found]) : found < apps.length + commands.length ? root.commandRow(commands[found - apps.length]) : root.settingRow(settings[found - apps.length - commands.length]);
         return Object.assign({}, target, {
-            key: `guess:${target.key}`,
-            kind: "guess",
-            target: target,
+            guessed: true,
             label: target.armed ? target.label : `Did you mean ${root.nameOf(target)}?`,
+            detail: "",
             toggle: undefined,
             score: 0
         });
@@ -1380,7 +1379,7 @@ QtObject {
         });
     }
 
-    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, root.sourceGroupLists, root.aloneSource, root.limits]
+    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, FileSearch.grepAnswered, root.sourceGroupLists, root.aloneSource, root.limits]
 
     property var arranged: []
     property bool arrangePending: false
@@ -1482,11 +1481,12 @@ QtObject {
             note: root.contentNote,
             items: root.contentRows
         }, ...root.sourceGroupLists.reduce((out, list) => out.concat(list), []));
-        const arranged = Search.arrange(Search.remembered(groups, key => LauncherMemory.bonusOf(key, Date.now())), root.limits);
-        if (!Search.matchesNothing(arranged))
+        const remembered = Search.remembered(groups, key => LauncherMemory.bonusOf(key, Date.now()));
+        const arranged = Search.arrange(remembered, root.limits);
+        if (!Search.matchesNothing(arranged) || root.grepFor && FileSearch.grepAnswered !== root.text)
             return arranged;
         const guess = root.guessRow();
-        return guess ? Search.arrange(groups.concat([
+        return guess ? Search.arrange(remembered.concat([
             {
                 key: "guess",
                 title: "Closest match",
@@ -1501,10 +1501,6 @@ QtObject {
     }
 
     function activate(row: var): void {
-        if (row?.kind === "guess") {
-            root.activate(row.target);
-            return;
-        }
         if (row?.kind !== "app" && !row?.header) {
             const used = row?.id ?? row?.key ?? "";
             Qt.callLater(() => LauncherMemory.record(used));
@@ -1525,7 +1521,7 @@ QtObject {
             root.launch(() => Apps.launch(row.entry));
             return;
         case "command":
-            if (row.command.confirm && root.armed !== row.command.id) {
+            if ((row.command.confirm || row.guessed) && root.armed !== row.command.id) {
                 root.armed = row.command.id;
                 return;
             }
@@ -1687,8 +1683,6 @@ QtObject {
     }
 
     function actionsFor(row: var): var {
-        if (row?.kind === "guess")
-            return [];
         const owner = root.sourceOf(row);
         if (owner)
             return owner.actionsFor?.(row) ?? [];
