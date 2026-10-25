@@ -51,7 +51,7 @@ Item {
 
     readonly property real cellWidth: Math.max(root.button, Math.ceil(widest.implicitWidth) + root.pad * 2)
 
-    readonly property real cellHeight: Math.max(root.button, Appearance.sizes.sessionIcon + Appearance.padding.hair + root.line * 2 + root.gap * 2)
+    readonly property real cellHeight: Math.max(root.button, Appearance.sizes.sessionIcon + Appearance.padding.hair + root.line + (Appearance.padding.hair * 2 + root.line) * 2)
 
     readonly property real gap: Appearance.padding.small
 
@@ -275,10 +275,11 @@ Item {
                             id: glyph
 
                             anchors.horizontalCenter: parent.horizontalCenter
-                            y: Math.round((root.cellHeight - Appearance.sizes.sessionIcon - Appearance.padding.hair - root.line * (cell.armed ? 2 : 1)) / 2)
+                            y: Math.round((root.cellHeight - Appearance.sizes.sessionIcon - Appearance.padding.hair - root.line) / 2)
 
                             name: cell.modelData.icon
                             size: Appearance.sizes.sessionIcon
+                            height: Appearance.sizes.sessionIcon
 
                             color: glyphTone.value
 
@@ -291,12 +292,23 @@ Item {
                         }
 
                         StyledText {
+                            id: name
+
                             anchors.top: glyph.bottom
                             anchors.topMargin: Appearance.padding.hair
                             anchors.horizontalCenter: parent.horizontalCenter
 
-                            text: cell.armed ? `${cell.modelData.label}\n${root.again}` : cell.modelData.label
-                            horizontalAlignment: Text.AlignHCenter
+                            text: cell.modelData.label
+                            color: glyphTone.value
+                        }
+
+                        StyledText {
+                            anchors.top: name.bottom
+                            anchors.topMargin: Appearance.padding.hair
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: cell.armed
+
+                            text: root.again
                             color: glyphTone.value
                         }
 
