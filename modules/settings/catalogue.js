@@ -1047,6 +1047,10 @@ function filesSortOrder(v) {
     return FILES_SORT_ORDER[v] ?? `by ${v}`;
 }
 
+function filesMarkdownOf(v) {
+    return v === "source" || v === "raw" ? "source" : "rendered";
+}
+
 function labelOf(row) {
     if (typeof row.label === "string")
         return row.label;
