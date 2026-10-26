@@ -76,7 +76,6 @@ launcher's groups in the config.
 | clock | 2 | Clock, Localisation, Weather | core, compositor | timer, alarm, zone | clock, weather |
 | display | 2 | Display, Backlight, DarkMode, Tablet, bs-gamma | core, compositor | screen, tablet | screen, tablet |
 | files | 2 | Files, Downloads, modules/files, bs-ls, bs-pty | core, compositor | files | files |
-| host | 2 | shell.qml, ShellWindow, Chassis, Ipc (the list of every target), the Shell window registry | core, compositor | border | none |
 | media | 2 | Media, Lyrics, modules/media | core, compositor | media | media |
 | network | 2 | Network, Hotspot, Tunnels, Tailscale, WifiJoin | core, compositor | none | network |
 | password | 2 | Keyring, PasswordRequest, modules/password | core, compositor | keyring, polkit | none |
@@ -97,13 +96,15 @@ launcher's groups in the config.
 | launcher-tools | 4 | colour, dev, notes, snippets, emoji, typing, latest files and file search sources | core, compositor, launcher, clipboard, files | none | launcher.powerTools, launcher.typing, launcher.utilities |
 | power | 4 | Battery, ChargeLimit, Power, PowerProfile, Lid, Suspension, Idle | core, compositor | none | battery, power, idle |
 | updates | 4 | Update, Pacman, WhatsNew | core, compositor | none | updates, packages |
+| tour | 4 | Tour, modules/tour (the first-run tour's card, one window per screen) | core, compositor, settings | none | none |
 | island | 5 | modules/island, Notices, Activities, Levels | core, compositor, notifications, media, apps, clock, audio, display (optional: clipboard, capture, updates, files) | island, inspect, activity | island |
 | launcher-online | 5 | browser, define, github, packages, speedtest, translate and video sources | core, compositor, launcher, files, apps | none | launcher.online |
-| launcher-shell | 5 | keys, tray, workspace, actions and recent documents sources | core, compositor, launcher, launcher-tools, bar, host, clipboard, files | none | launcher.shell |
 | lock | 5 | Lock, modules/lock | core, compositor, media, wallpaper, clock, power, notifications | none | lock |
 | screentime | 5 | Usage, UsageApps, UsageLimits | core, compositor, power | none | usage |
 | session | 5 | modules/session | core, compositor, power | session | session |
+| host | 5 | shell.qml, ShellWindow, Chassis, Ipc (the list of every target), the Shell window registry | core, compositor, tour | border | none |
 | events | 6 | Events (the event stream behind `banditshell events`) | core, compositor, host, settings, files, media, notifications, updates, island | none | events |
+| launcher-shell | 6 | keys, tray, workspace, actions and recent documents sources | core, compositor, launcher, launcher-tools, bar, host, clipboard, files | none | launcher.shell |
 
 ## Interface singletons
 

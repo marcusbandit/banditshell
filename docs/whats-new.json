@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-26-8",
+      "id": "2026-10-26-9",
       "date": "2026-10-26",
       "changes": [
         {
@@ -23,6 +23,22 @@
           "type": "issues",
           "severity": "minor",
           "text": "Dark mode shows what apps really got when the system refuses a change"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-8",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A new install opens with a short tour of the real desktop"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type tour in the launcher, or use Settings, About, to see it again"
         }
       ]
     },
