@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-8",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A new install opens with a short tour of the real desktop"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type tour in the launcher, or use Settings, About, to see it again"
+        }
+      ]
+    },
+    {
       "id": "2026-10-26-7",
       "date": "2026-10-26",
       "changes": [

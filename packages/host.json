@@ -1,7 +1,7 @@
 {
   "name": "host",
   "summary": "the shell window, chassis, window registry and the IPC front",
-  "layer": 2,
+  "layer": 5,
   "owns": {
     "qml": [
       "modules/BandProgress.qml",
@@ -47,7 +47,8 @@
   "requires": {
     "packages": [
       "core",
-      "compositor"
+      "compositor",
+      "tour"
     ],
     "optional": []
   },
