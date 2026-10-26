@@ -10,6 +10,7 @@
       "tests/files-conflicts.test.js",
       "tests/files-order.test.js",
       "tests/files-undo.test.js",
+      "tests/files-watch.test.js",
       "tests/fixtures/gio-trash-list.txt",
       "tests/keys.test.js",
       "tests/markdown.test.js",

@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-9",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The file manager updates by itself when a folder changes"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "F5 refreshes the file manager"
+        }
+      ]
+    },
+    {
       "id": "2026-10-26-8",
       "date": "2026-10-26",
       "changes": [
