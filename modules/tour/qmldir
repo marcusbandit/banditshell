@@ -1,0 +1,3 @@
+module qs.modules.tour
+TourCard 1.0 TourCard.qml
+TourWindow 1.0 TourWindow.qml

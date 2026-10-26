@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Order = lib("services/files-order.js", ["SORTS", "SORT_WORDS", "orderWords", "foldersNote", "ordered"]);
+const Order = lib("services/files-order.js", ["SORTS", "SORT_WORDS", "orderWords", "foldersNote", "ordered", "merged"]);
 const Catalogue = lib("modules/settings/catalogue.js", ["ROW_BY_KEY", "PAGE_BY_ID", "options", "filesSortOrder", "filesFoldersNote"]);
 const Configuration = lib("config/configuration.js", ["merge", "upgrade"]);
 
@@ -113,6 +113,24 @@ test.describe("files order", () => {
         const row = Catalogue.ROW_BY_KEY.filesMarkdown;
         assert.strictEqual(row.cfg, "files.markdown");
         assert.deepStrictEqual(Catalogue.options(row, {}), [["rendered", "rendered"], ["raw", "source"]]);
+    });
+
+    test.it("a big folder listed in an awkward order still sorts in n log n comparisons", () => {
+        const name = (prefix, i) => ({name: `${prefix}-${String(i).padStart(5, "0")}`, kind: "file"});
+        const listed = [];
+        for (let i = 4499; i >= 0; i--)
+            listed.push(name("new", i));
+        for (let i = 0; i < 30000; i++)
+            listed.push(name("old", i));
+        let calls = 0;
+        const sorted = Order.merged(listed, (a, b) => (calls++, a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+        assert.ok(calls < listed.length * Math.log2(listed.length), `${calls} comparisons`);
+        assert.deepStrictEqual([sorted[0].name, sorted[4499].name, sorted[4500].name, sorted.at(-1).name], ["new-00000", "new-04499", "old-00000", "old-29999"]);
+    });
+
+    test.it("keeps equal names in the order they were listed", () => {
+        const same = [{name: "A", kind: "file", tag: 1}, {name: "a", kind: "file", tag: 2}, {name: "A", kind: "file", tag: 3}];
+        assert.deepStrictEqual(Order.ordered(same, "name").map(e => e.tag), [1, 2, 3]);
     });
 
     test.it("does not reorder the list it was given", () => {
