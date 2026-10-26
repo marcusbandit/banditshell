@@ -140,3 +140,25 @@ function nextEdge(nowMs, window) {
 function warmKelvin(fraction, neutral, target) {
     return Math.round(neutral + fraction * (target - neutral));
 }
+
+function scheduled(mode, settings) {
+    if (mode === "sunset")
+        return !!settings.place;
+    if (mode === "times") {
+        const from = minutesOf(settings.from);
+        const to = minutesOf(settings.to);
+        return from >= 0 && to >= 0 && from !== to;
+    }
+    return false;
+}
+
+function nightAt(mode, nowMs, settings) {
+    if (!scheduled(mode, settings))
+        return { known: false, night: true, next: 0 };
+    const window = windowFor(mode, nowMs, settings);
+    return {
+        known: true,
+        night: !!window && nowMs >= window.start && nowMs < window.end,
+        next: nextEdge(nowMs, window)
+    };
+}

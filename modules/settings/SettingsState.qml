@@ -124,6 +124,7 @@ Singleton {
             largerText: "access.largerText",
             contrast: "access.moreContrast",
             fromWall: "themeFromWallpaper",
+            scheme: "colour.mode",
             accent: "colour.accent",
             surface: "colour.surface",
             surfaceAlpha: "material.surfaceAlpha",
@@ -395,8 +396,6 @@ Singleton {
             return Hotspot.band;
         case "warm":
             return Display.warm;
-        case "darkMode":
-            return DarkMode.dark;
         case "saver":
             return root.v("profile") === "saver";
         case "profile":
@@ -532,8 +531,6 @@ Singleton {
             return Display.setWarmth(value > 0 ? Math.round(Display.neutral - value / 100 * (Display.neutral - Display.warmest)) : 0);
         case "warm":
             return Display.toggleWarm();
-        case "darkMode":
-            return DarkMode.set(value);
         case "autoZone":
             if (value && !Localisation.geoclueInstalled) {
                 root.denied = true;
@@ -700,8 +697,11 @@ Singleton {
 
     function set(k: string, value: var): void {
         const before = root.v(k);
-        if (JSON.stringify(before) === JSON.stringify(value))
+        if (JSON.stringify(before) === JSON.stringify(value)) {
+            if (k === "scheme")
+                DarkMode.choose(value);
             return;
+        }
         root.denied = false;
         root.write(k, value);
         if (root.denied)
@@ -1298,7 +1298,6 @@ Singleton {
     readonly property var specialNames: Hypr.specials.map(s => s.label)
     readonly property bool hasBattery: Battery.available
     readonly property bool hasLid: Lid.present
-    readonly property bool hasDarkMode: DarkMode.available
     readonly property bool hibernatePossible: Suspension.hibernatePossible
     readonly property int nearlyEmptyPercent: Battery.nearlyEmptyPercent
     readonly property var profileChoices: PowerProfile.choices
@@ -1910,6 +1909,17 @@ Singleton {
             return mode === "sunset" ? "the sun does not set here now" : "";
         const span = `${TimeFormat.time(new Date(w.start), false)} to ${TimeFormat.time(new Date(w.end), false)}`;
         return mode === "sunset" ? `tonight ${span}` : span;
+    }
+
+    readonly property bool lightShell: Appearance.light
+
+    readonly property string schemeDetail: {
+        const apps = !DarkMode.available ? "apps keep their own colours" : DarkMode.appsDisagree ? `apps still ${DarkMode.dark ? "dark" : "light"}` : "shell and apps";
+        if (Appearance.mode !== "auto")
+            return apps;
+        const flip = DarkMode.nextFlip > 0 ? `${DarkMode.night ? "dark" : "light"} until ${TimeFormat.time(new Date(DarkMode.nextFlip), false)}` : DarkMode.night ? "dark" : "light all day";
+        const when = DarkMode.scheduled ? flip : "dark until night light has a schedule";
+        return `${when} · ${apps}`;
     }
 
     readonly property string zoneSuggested: Localisation.suggestedZone

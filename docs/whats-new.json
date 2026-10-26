@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-26-10",
+      "id": "2026-10-26-11",
       "date": "2026-10-26",
       "changes": [
         {
@@ -13,6 +13,32 @@
           "type": "ui",
           "severity": "minor",
           "text": "The keyboard ring appears on a key press and goes when the mouse moves"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-10",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The shell has a light look, built from your theme's own colours"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings, Colour: Light, dark or auto sets the shell and apps at once"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Auto turns dark while night light warms the screens, on its schedule"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Dark mode shows what apps really got when the system refuses a change"
         }
       ]
     },
