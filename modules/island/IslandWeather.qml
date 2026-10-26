@@ -66,6 +66,35 @@ Item {
 
             Item {
                 width: parent.width
+                height: Math.max(guess.implicitHeight, take.implicitHeight)
+                visible: !!Weather.placeSuggestion
+
+                StyledText {
+                    id: guess
+
+                    anchors.left: parent.left
+                    anchors.leftMargin: header.inset
+                    anchors.right: take.left
+                    anchors.rightMargin: Appearance.padding.normal
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: `Did you mean ${Weather.placeSuggestion?.text ?? ""}?`
+                    wrapMode: Text.Wrap
+                }
+
+                Button {
+                    id: take
+
+                    x: parent.width - width
+                    anchors.verticalCenter: parent.verticalCenter
+                    style: "accent"
+                    icon: "check"
+                    text: `Use ${Weather.placeSuggestion?.name ?? ""}`
+                    onClicked: Weather.useSuggestion()
+                }
+            }
+
+            Item {
+                width: parent.width
                 readonly property Item beside: fix.visible ? fix : again.visible && !root.blank ? again : null
 
                 height: Math.max(notes.implicitHeight, again.visible ? again.implicitHeight : 0, fix.visible ? fix.implicitHeight : 0)

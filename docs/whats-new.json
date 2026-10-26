@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-8",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A misspelt weather place offers the right town, one press to use it"
+        }
+      ]
+    },
+    {
       "id": "2026-10-26-7",
       "date": "2026-10-26",
       "changes": [

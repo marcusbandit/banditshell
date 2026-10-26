@@ -640,3 +640,11 @@ test("a reset arrow is never offered for a password, a button, a read-only path 
     assert.ok(screens.length > 0);
     assert.ok(screens.every(r => !Catalogue.resettable(r)));
 });
+
+test("a misspelt place offers the suggestion, and its press writes the place row", () => {
+    const row = Catalogue.ROW_BY_KEY.weatherPlace;
+    assert.strictEqual(row.offer({ weatherSuggestion: null }), null);
+    const offer = row.offer({ weatherSuggestion: { name: "Lyngby", country: "Denmark", text: "Lyngby, Denmark" } });
+    assert.deepStrictEqual(offer, { text: "Did you mean Lyngby, Denmark?", button: "Use Lyngby", value: "Lyngby, Denmark" });
+    assert.strictEqual(row.cfg, "weather.location");
+});

@@ -17,6 +17,7 @@ Column {
     readonly property bool bad: !!root.row.bad && !!root.row.bad(SettingsState)
     readonly property string stateText: String(Catalogue.val(root.row.state, SettingsState) ?? "")
     readonly property string pendingText: String(Catalogue.val(root.row.pending, SettingsState) ?? "")
+    readonly property var offer: Catalogue.val(root.row.offer, SettingsState) ?? null
     readonly property var combos: root.row.keys ? SettingsKeys.combosFor(root.row.keys) : []
     readonly property bool hasLayer: !!root.row.layer
     readonly property bool unrolled: SettingsView.isOpen(root.row.uid ?? "")
@@ -208,6 +209,30 @@ Column {
             turned: root.unrolled
             tip: root.unrolled ? "fold" : "more"
             onClicked: root.toggleOpen()
+        }
+    }
+
+    Flow {
+        width: root.width
+        visible: !!root.offer && !root.off
+        leftPadding: frame.padX + frame.leadWidth
+        rightPadding: frame.padX
+        bottomPadding: Appearance.padding.small
+        spacing: Appearance.padding.normal
+
+        StyledText {
+            height: offerButton.height
+            verticalAlignment: Text.AlignVCenter
+            text: root.offer?.text ?? ""
+        }
+
+        Button {
+            id: offerButton
+
+            size: 0
+            icon: "check"
+            text: root.offer?.button ?? ""
+            onClicked: root.set(root.offer.value)
         }
     }
 

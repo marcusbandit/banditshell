@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const src = fs.readFileSync(path.join(__dirname, "..", "services/weather.js"), "utf8");
-const Forecast = new Function(src + "\nreturn { wttrIcon, wmo, placeOf, coordsOf, wttrDays, outlookUrl, outlookDays, dateOf, weekRange, barOf, rainText, readWttr, failureLook, ago, suggestionQueries, geocodeUrl, editDistance, geocodeResults, suggestPlace };")();
+const Forecast = new Function(src + "\nreturn { wttrIcon, wmo, placeOf, coordsOf, wttrDays, outlookUrl, outlookDays, dateOf, weekRange, barOf, rainText, readWttr, failureLook, ago, suggestionQueries, geocodeUrl, editDistance, geocodeResults, suggestPlace, suggestionCommand };")();
 
 function hour(time, code, desc, rain) {
     return { time, weatherCode: String(code), weatherDesc: [{ value: desc }], chanceofrain: String(rain) };
@@ -256,4 +256,11 @@ test("a suggestion never repeats the place as it is written", () => {
 test("unreadable geocoder answers are skipped", () => {
     assert.deepStrictEqual(Forecast.geocodeResults(""), []);
     assert.deepStrictEqual(Forecast.geocodeResults('{"error":true,"reason":"x"}\nnot json\n{"results":[{"name":"Lyngby"}]}\n').length, 1);
+});
+
+test("the suggestion lookup is one curl over every query, and nothing for a name too short", () => {
+    const command = Forecast.suggestionCommand("Lyngbyy, Denmark");
+    assert.deepStrictEqual(command.slice(0, 6), ["curl", "-sS", "--max-time", "10", "-w", "\n"]);
+    assert.deepStrictEqual(command.slice(6), ["Lyngbyy", "Lyngby", "Lyngb", "Lyng", "Lyn"].map(Forecast.geocodeUrl));
+    assert.deepStrictEqual(Forecast.suggestionCommand("Ny"), []);
 });

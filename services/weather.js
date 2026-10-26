@@ -235,6 +235,13 @@ function geocodeUrl(name) {
     return "https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(name) + "&count=20&language=en&format=json";
 }
 
+function suggestionCommand(location) {
+    const queries = suggestionQueries(location);
+    if (!queries.length)
+        return [];
+    return ["curl", "-sS", "--max-time", "10", "-w", "\n"].concat(queries.map(geocodeUrl));
+}
+
 function folded(text) {
     let s = String(text || "").trim().toLowerCase();
     if (typeof s.normalize === "function")
