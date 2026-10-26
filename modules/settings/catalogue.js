@@ -36,7 +36,7 @@ const LAYOUTS = [
 const WIDGET_TITLES = {
     winLayouts: "Layout", via: "VIA layout", modes: "Modes", usage: "Today", recent: "Recent changes", nets: "Networks",
     devices: "Devices", volume: "Volume", apps: "Volume by app", walls: "Wallpapers", themes: "Theme", wsStyles: "Workspace style",
-    chips: "Apps", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "Places",
+    chips: "Apps", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "Other time zones",
     obs: "OBS", keys: "Keys", kbLayouts: "Layouts", battery: "Battery", update: "Updates", changes: "What’s new", about: "About",
     tunnels: "Tunnels", shortcuts: "Aliases and hotkeys", snippets: "Snippets", quicklinks: "Quicklinks"
 };
@@ -561,11 +561,21 @@ const PAGES_SOURCE = {
                 { n: 85, icon: "hourglass", label: "Longest timer", k: "timerMax", kind: "step", min: 1, max: 24, unit: " h", cfg: "clock.timerMax", kw: "timer limits" },
                 { n: 85, icon: "alarm", label: "Most alarms", k: "alarmMax", kind: "step", min: 1, max: 20, cfg: "clock.alarmMax", fmt: v => `${v}`, kw: "alarm limits" }
             ] },
-            { t: "Places", rows: [
+            { t: "Other time zones", rows: [
                 { n: 86, kind: "w", w: "clocks", kw: "world clocks" }
             ] },
             { t: "Calendar", rows: [
                 { n: 83, icon: "swipe", label: "Swiping right goes", k: "rightForward", kind: "seg", o: [[true, "forward"], [false, "back"]], cfg: "calendar.rightGoesForward", kw: "calendar scroll direction" }
+            ] },
+            { t: "Weather", preview: "weather", rows: [
+                { n: [], icon: "partly_cloudy_day", label: "Weather", k: "weatherShow", kind: "toggle", cfg: "weather.show", state: s => s.v("weatherShow") ? "beside the clock in the island" : "off", kw: "weather temperature forecast island",
+                    why: "The temperature beside the island’s clock. Pressing it opens the week ahead." },
+                { n: [], icon: "location_on", label: "Place", k: "weatherPlace", kind: "text", cfg: "weather.location", placeholder: "automatic", state: s => s.weatherPlaceState, lines: 3, bad: s => s.weatherPlaceTrouble !== "", dis: s => !s.v("weatherShow"), kw: "weather location town city",
+                    why: "A town or city. Empty lets the weather service place you by your connection." },
+                { n: [], icon: "thermostat", label: "Units", k: "weatherUnits", kind: "seg", o: [["metric", "°C"], ["imperial", "°F"]], cfg: "weather.units", dis: s => !s.v("weatherShow"), kw: "weather units celsius fahrenheit temperature",
+                    why: "For the temperature in the island and the week ahead." },
+                { n: [], icon: "update", label: "Refresh after", k: "weatherMinutes", kind: "step", min: 5, max: 180, step: 5, unit: " min", cfg: "weather.minutes", dis: s => !s.v("weatherShow"), kw: "weather refresh interval",
+                    why: "How old a reading may get before opening the island fetches a new one." }
             ] },
             { t: "Ask", rows: [
                 { n: 87, icon: "smart_toy", label: "Helper", k: "cloud", kind: "text", mono: true, cfg: "clock.cloud", kw: "clock ai helper command",
@@ -970,6 +980,7 @@ const ROW_BY_KEY = {};
 function walk(rows, page, group, parent, out) {
     for (const r of rows) {
         r.page = page.id;
+        r.group = group;
         r.parent = parent;
         r.uid = `${page.id}.${out.length}`;
         out.push(r);

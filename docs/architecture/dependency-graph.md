@@ -76,6 +76,7 @@ flowchart BT
     notifications --> apps
     quickcontrols --> audio
     quickcontrols --> display
+    settings --> clock
     settings --> display
     stream --> apps
     stream --> audio
@@ -139,7 +140,7 @@ further than its manifest allows, `node scripts/check-modules.js --explain <pack
 | capture | 2 | screen recording and region picking | `modules/picker`, `services/ScreenRecorder.qml`, `services/Screenshots.qml` | core, compositor | launcher-system, island |
 | cheatsheet | 2 | the hotkey cheat sheet and keyboard models | `modules/cheatsheet`, `services/Keyboards.qml` | core, compositor | none |
 | clipboard | 2 | clipboard history and dictation | `modules/clipboard`, `services/Clipboard.qml`, `services/Dictation.qml` | core, compositor | launcher-ai, launcher-tools, island, launcher-shell |
-| clock | 2 | timers, alarms, world clocks and weather | `modules/ipc/ClockIpc.qml`, `services/Clock.qml`, `services/Localisation.qml`, `services/Weather.qml` | core, compositor | launcher-tools, island, lock |
+| clock | 2 | timers, alarms, world clocks and weather | `modules/ipc/ClockIpc.qml`, `services/Clock.qml`, `services/Localisation.qml`, `services/Weather.qml` | core, compositor | settings, launcher-tools, island, lock |
 | display | 2 | brightness, night light, dark mode and tablet state | `modules/ipc/DisplayIpc.qml`, `services/Backlight.qml`, `services/DarkMode.qml`, `services/Display.qml`, `services/Tablet.qml` | core, compositor | bar, keyboard, quickcontrols, settings, launcher-system, island |
 | files | 2 | the file browser and its terminal | `modules/files`, `previews/FilesPreview.qml`, `previews/TerminalDebug.qml`, `services/Downloads.qml`, `services/Files.qml`, `services/FilesPaste.qml`, `services/FilesUndo.qml` | core, compositor | launcher-devops, launcher-tools, island, launcher-online, launcher-shell, events |
 | host | 2 | the shell window, chassis, window registry and the IPC front | `modules/BandProgress.qml`, `modules/Chassis.qml`, `modules/FrameExclusions.qml`, `modules/FullscreenBorder.qml`, `modules/Ipc.qml`, `modules/ShellWindow.qml`, `modules/Tooltip.qml`, `modules/ipc/HostIpc.qml`, `modules/ipc/qmldir`, `modules/qmldir`, `preview.qml`, `previews/qmldir`, `shell.qml`, `services/Shell.qml` | core, compositor | launcher-shell, events |
@@ -154,7 +155,7 @@ further than its manifest allows, `node scripts/check-modules.js --explain <pack
 | launcher | 3 | the launcher: search, concepts, edge and hotkeys | `modules/launcher/AlphabetLauncher.qml`, `modules/launcher/AlphabetRow.qml`, `modules/launcher/AnswerRow.qml`, `modules/launcher/ColourPicker.qml`, `modules/launcher/LaunchEdge.qml`, `modules/launcher/Launcher.qml`, `modules/launcher/LauncherConcept.qml`, `modules/launcher/LauncherIpc.qml`, `modules/launcher/LauncherSearch.qml`, `modules/launcher/ListLauncher.qml`, `modules/launcher/Peek.qml`, `modules/launcher/module.json`, `modules/launcher/prefixes.js`, `modules/launcher/qmldir`, `modules/launcher/search.js`, `modules/launcher/shellcli.js`, `modules/launcher/sources/FallbackSource.qml`, `modules/launcher/sources/MediaSource.qml`, `modules/launcher/sources/PrefixSource.qml`, `modules/launcher/sources/qmldir`, `modules/launcher/system-asks.js`, `services/LauncherHotkeys.qml` | core, compositor, apps | launcher-ai, launcher-devops, launcher-system, launcher-tools, launcher-online, launcher-shell |
 | notifications | 3 | the notification server, history and popups | `modules/ipc/NotificationsIpc.qml`, `modules/notifications`, `previews/NotificationPreview.qml`, `services/AlertSounds.qml`, `services/AppNotifications.qml`, `services/NotificationBrief.qml`, `services/NotificationEntry.qml`, `services/Notifications.qml` | core, compositor, apps | launcher-tools, island, lock, events |
 | quickcontrols | 3 | the quick controls panel | `modules/quickcontrols`, `previews/QuickControlsPreview.qml` | core, compositor, audio, display | none |
-| settings | 3 | the settings panel | `modules/settings`, `previews/SettingsPreview.qml`, `services/Modes.qml`, `services/Settings.qml`, `services/ThemeSwitcher.qml` | core, compositor, display | events |
+| settings | 3 | the settings panel | `modules/settings`, `previews/SettingsPreview.qml`, `services/Modes.qml`, `services/Settings.qml`, `services/ThemeSwitcher.qml` | core, compositor, clock, display | events |
 | stream | 3 | streamer mode and OBS | `modules/stream`, `services/Obs.qml`, `services/ObsLink.qml`, `services/StreamState.qml` | core, compositor, apps, audio, network | none |
 | windows | 3 | window previews, tiling layouts and the layout workshop | `modules/windows`, `modules/workshop`, `previews/WindowPreview.qml`, `services/LayoutDraft.qml`, `services/WindowLayouts.qml`, `services/WorkshopLayouts.qml` | core, compositor, apps | none |
 | launcher-ai | 4 | the launcher's assistant sources | `modules/launcher/AssistantCard.qml`, `modules/launcher/sources/AskSource.qml`, `modules/launcher/sources/RewriteSource.qml`, `services/Assistant.qml` | core, compositor, clipboard, launcher | none |
