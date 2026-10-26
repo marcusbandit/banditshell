@@ -208,3 +208,110 @@ function ago(then, now) {
     const days = Math.round(hours / 24);
     return days === 1 ? "yesterday" : days + " days ago";
 }
+
+var SUGGESTION_DEPTH = 6;
+
+var FEATURE_RANK = { PPLC: 4, PPLA: 3, PPLA2: 2, PPLA3: 1 };
+
+function placeName(location) {
+    return String(location || "").split(",")[0].trim();
+}
+
+function suggestionQueries(location) {
+    const name = placeName(location);
+    const queries = [];
+    if (name.length < 3)
+        return queries;
+    queries.push(name);
+    for (let n = name.length - 1; n >= Math.max(3, name.length - SUGGESTION_DEPTH); n--) {
+        const part = name.slice(0, n).trim();
+        if (part.length >= 3 && queries.indexOf(part) < 0)
+            queries.push(part);
+    }
+    return queries;
+}
+
+function geocodeUrl(name) {
+    return "https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(name) + "&count=20&language=en&format=json";
+}
+
+function folded(text) {
+    let s = String(text || "").trim().toLowerCase();
+    if (typeof s.normalize === "function")
+        s = s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+    return s;
+}
+
+function editDistance(a, b) {
+    const rows = [];
+    for (let i = 0; i <= a.length; i++) {
+        rows.push([i]);
+        for (let j = 1; j <= b.length; j++) {
+            if (i === 0) {
+                rows[0].push(j);
+                continue;
+            }
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            let best = Math.min(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + cost);
+            if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+                best = Math.min(best, rows[i - 2][j - 2] + 1);
+            rows[i].push(best);
+        }
+    }
+    return rows[a.length][b.length];
+}
+
+function geocodeResults(output) {
+    const lines = String(output || "").split("\n");
+    const results = [];
+    for (let i = 0; i < lines.length; i++) {
+        if (!lines[i].trim())
+            continue;
+        let data = null;
+        try {
+            data = JSON.parse(lines[i]);
+        } catch (e) {
+            continue;
+        }
+        const list = data && data.results;
+        if (list && list.length)
+            for (let j = 0; j < list.length; j++)
+                results.push(list[j]);
+    }
+    return results;
+}
+
+function suggestPlace(location, results) {
+    const typed = folded(placeName(location));
+    const hint = folded(String(location || "").split(",").slice(1).join(","));
+    if (typed.length < 3)
+        return null;
+    const allowance = typed.length <= 4 ? 1 : typed.length <= 8 ? 2 : 3;
+    const candidates = [];
+    for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        if (!r || !r.name || !/^PPL/.test(String(r.feature_code || "")))
+            continue;
+        const distance = editDistance(typed, folded(r.name));
+        if (distance > allowance)
+            continue;
+        candidates.push({
+            name: String(r.name),
+            country: String(r.country || ""),
+            text: r.country ? r.name + ", " + r.country : String(r.name),
+            distance: distance,
+            named: hint !== "" && (folded(r.country) === hint || folded(r.country_code) === hint),
+            population: Number(r.population) || 0,
+            rank: FEATURE_RANK[r.feature_code] || 0,
+            order: i
+        });
+    }
+    const anyNamed = candidates.some(c => c.named);
+    const pool = candidates.filter(c => c.named || !anyNamed);
+    if (pool.some(c => folded(c.text) === folded(location)))
+        return null;
+    const kept = pool.filter(c => c.distance > 0 || hint === "" || c.named);
+    kept.sort((x, y) => x.distance - y.distance || y.population - x.population || y.rank - x.rank || x.order - y.order);
+    const best = kept[0];
+    return best ? { name: best.name, country: best.country, text: best.text } : null;
+}
