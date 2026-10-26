@@ -464,11 +464,11 @@ QtObject {
             id: "darkmode",
             icon: "dark_mode",
             label: "Dark mode",
-            words: "dark mode light mode appearance colour color scheme apps",
-            toggle: DarkMode.dark,
-            hidden: !DarkMode.available,
+            words: "dark mode light mode appearance colour color scheme apps theme",
+            detail: Appearance.mode === "auto" ? "auto, a press picks one" : "",
+            toggle: !Appearance.light,
             stay: true,
-            run: () => DarkMode.set(!DarkMode.dark)
+            run: () => DarkMode.choose(Appearance.light ? "dark" : "light")
         },
         {
             id: "sleepdisplays",

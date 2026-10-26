@@ -96,7 +96,7 @@ Item {
         else
             b = 138.5177312231 * Math.log(t - 10) - 305.0447927307;
         const m = Math.max(r, g, b);
-        return Appearance.rgb(r / m * 0.7 + 0.3, g / m * 0.7 + 0.3, b / m * 0.7 + 0.3);
+        return Appearance.legible(Appearance.rgb(r / m * 0.7 + 0.3, g / m * 0.7 + 0.3, b / m * 0.7 + 0.3));
     }
 
     Follow {

@@ -10,6 +10,12 @@ const kelvin = (s, v) => {
 
 const FILES_SORTS = [["name", "name"], ["mtime", "date"], ["size", "size"], ["kind", "type"]];
 const PANEL_SHADES = ["black", "deep", "dark", "medium", "light", "pale", "palest"];
+const LIGHT_PANEL_SHADES = ["white", "palest", "pale", "light", "soft", "medium", "grey"];
+
+function shadeWord(light, v) {
+    const words = light ? LIGHT_PANEL_SHADES : PANEL_SHADES;
+    return words[Math.max(0, Math.min(words.length - 1, Math.round(v) || 0))];
+}
 const FILES_ORDERS = {
     name: ["a to z", "z to a"],
     mtime: ["newest", "oldest"],
@@ -249,15 +255,15 @@ const PAGES_SOURCE = {
         status: s => s.v("fromWall") ? "wallpaper" : s.v("theme"),
         groups: [
             { rows: [
+                { n: [], icon: "dark_mode", label: "Light or dark", k: "scheme", kind: "seg", o: ["light", "dark", "auto"], cfg: "colour.mode", state: s => s.schemeDetail, extra: { icon: "schedule", tip: "set night light’s schedule", act: "nightSchedule" }, kw: "dark mode dark apps light mode night theme colour scheme apps appearance auto",
+                    why: "Sets the shell and every app that follows the system colour scheme. Auto goes dark while night light warms the screens, on its schedule under Light and warmth. If apps drift, pick the same choice again." },
                 { n: 42, kind: "w", w: "themes", kw: "theme palette" },
                 { n: 43, icon: "colorize", label: "Take it from the wallpaper", k: "fromWall", kind: "toggle", cfg: "themeFromWallpaper", state: s => s.v("fromWall") ? s.wallName : "", kw: "theme from wallpaper" },
                 { n: 44, icon: "format_color_fill", label: "Highlight colour", k: "accent", kind: "seg", o: [["dim", "soft"], ["mid", "normal"], ["bright", "strong"]], swatches: true, cfg: "colour.accent", kw: "accent strength dim mid bright",
                     why: "Which of the theme’s three highlight colours paints everything that’s on. Soft sits back, strong jumps out." },
-                { n: 45, icon: "layers", label: "Panel shade", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmt: v => PANEL_SHADES[Math.max(0, Math.min(PANEL_SHADES.length - 1, Math.round(v) || 0))], cfg: "colour.surface", kw: "surface depth ramp background darker lighter",
-                    why: "How dark the frame and panels are, picked from the theme’s own shades. Lower is darker." },
-                { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0.5, max: 1, step: 0.01, fmt: v => `${Math.round((1 - v) * 100)}%`, cfg: "material.surfaceAlpha", kw: "transparency" },
-                { n: [], icon: "dark_mode", label: "Dark apps", k: "darkMode", kind: "toggle", state: s => s.hasDarkMode ? "" : "no system colour scheme found", dis: s => !s.hasDarkMode, kw: "dark mode light night theme colour scheme apps",
-                    why: "Asks apps that follow the system colour scheme to use dark colours. The shell’s own colours come from the theme above." }
+                { n: 45, icon: "layers", label: "Panel shade", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmtS: (s, v) => shadeWord(s?.lightShell, v), cfg: "colour.surface", kw: "surface depth ramp background darker lighter",
+                    why: "Which of the theme’s own shades paints the frame and panels. Lower is darker in a dark look and lighter in a light one." },
+                { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0.5, max: 1, step: 0.01, fmt: v => `${Math.round((1 - v) * 100)}%`, cfg: "material.surfaceAlpha", kw: "transparency" }
             ] }
         ]
     },
