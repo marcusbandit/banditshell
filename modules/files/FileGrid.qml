@@ -77,6 +77,7 @@ Item {
             row: root.list
             picked: Files.isPicked(modelData.name)
             focused: root.keyed && index === Files.cursor
+            keyed: root.keyed
             receiving: root.dragging && root.target === index && droppable && !Files.isPicked(modelData.name)
 
             onClicked: modifiers => root.picked(index, modifiers)

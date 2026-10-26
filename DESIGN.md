@@ -497,7 +497,9 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   Selection fills the inside of a thing. Keyboard focus is `components/FocusMark.qml`: an `accent`
   ring one stem wide, drawn a hair outside the thing with a gap between, so a selected and focused
   item wears both and neither hides the other. It shows once a key has moved focus and goes the
-  moment the pointer moves or presses; hover never draws it. `components/FocusVisible.qml` tracks
+  moment the pointer moves or presses; hover never draws it. While it shows, hover is held: a
+  pointer resting where the keys left it lights no plate and opens no tooltip until it moves, and
+  a `Button` given `keyed: keys.active` does the same. `components/FocusVisible.qml` tracks
   that for a panel, the way a browser's `:focus-visible` does. A panel whose hover moves its one
   selection, as the power menu's does, needs no mark: the highlight already is what Enter presses.
   A panel where the two can sit on different items adopts it like this:
@@ -3850,7 +3852,8 @@ the one decision behind each:
 from empty space takes what it crosses, and every action - drag, copy, trash -
 acts on the whole of it. Two states are drawn rather than one: `picked` is what
 an action would act on and the cursor is where the keyboard is, which stop being
-the same fact the moment there is more than one of them. Picked is a fill; the
+the same fact the moment there is more than one of them. Picked is the accent-tinted
+`accentFill` with its name in `accent`, apart from hover's grey `fill`; the
 cursor is the focus mark (section 6), shown once a key has moved it and gone when
 the pointer moves. The set is held as
 NAMES, not indices, because the listing is retaken after anything that might

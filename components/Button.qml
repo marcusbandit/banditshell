@@ -19,9 +19,11 @@ Item {
 
     property bool interactive: true
 
+    property bool keyed: false
+
     property bool alarm: false
 
-    readonly property bool hovered: root.interactive && press.containsMouse
+    readonly property bool hovered: root.interactive && !root.keyed && press.containsMouse
     readonly property bool pressed: root.interactive && press.pressed
 
     readonly property real labelSize: root.size < 2 ? Appearance.font.size.small : root.size < 3 ? Appearance.font.size.normal : Appearance.font.size.large

@@ -700,7 +700,7 @@ Item {
                             Follow {
                                 id: swell
 
-                                target: tap.containsMouse ? Appearance.press.lift : 1
+                                target: tap.containsMouse && !keys.active ? Appearance.press.lift : 1
                                 speed: Appearance.animation.revealSpeed
                                 epsilon: Appearance.animation.fadeEpsilon
                                 startsAtTarget: true
@@ -718,7 +718,7 @@ Item {
 
                         FloatingTooltip {
                             text: swatch.picked ? "Show every colour" : `${swatch.modelData.name[0].toUpperCase()}${swatch.modelData.name.slice(1)} (${root.countOf(swatch.modelData.name)})`
-                            shown: tap.containsMouse
+                            shown: tap.containsMouse && !keys.active
                         }
                     }
                 }
@@ -727,6 +727,7 @@ Item {
                     id: searchButton
 
                     anchors.verticalCenter: parent.verticalCenter
+                    keyed: keys.active
                     size: 0
                     style: "bare"
                     icon: "search"
@@ -864,6 +865,7 @@ Item {
                     id: shuffle
 
                     anchors.verticalCenter: parent.verticalCenter
+                    keyed: keys.active
                     visible: root.entries.length > 2
                     size: 0
                     style: "bare"
@@ -883,6 +885,7 @@ Item {
                     id: shapes
 
                     anchors.verticalCenter: parent.verticalCenter
+                    keyed: keys.active
                     visible: root.fitted.length > 0 && root.fitted.length < Wallpaper.available.length
                     size: 0
                     checkable: true
@@ -904,6 +907,7 @@ Item {
                     id: scope
 
                     anchors.verticalCenter: parent.verticalCenter
+                    keyed: keys.active
                     visible: root.manyScreens
                     size: 0
                     checkable: true
@@ -923,6 +927,7 @@ Item {
                     id: choose
 
                     anchors.verticalCenter: parent.verticalCenter
+                    keyed: keys.active
                     interactive: !!strip.currentPath
                     size: 0
                     style: "accent"

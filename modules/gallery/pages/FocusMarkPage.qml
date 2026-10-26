@@ -29,7 +29,7 @@ Item {
 
         width: Appearance.sizes.filesTile
         height: Math.round(width * 1.18)
-        color: tile.picked ? Appearance.colour.fillStrong : "transparent"
+        color: tile.picked ? Appearance.colour.accentFill : "transparent"
 
         Icon {
             anchors.centerIn: parent
@@ -44,7 +44,7 @@ Item {
             anchors.bottom: parent.bottom
             anchors.bottomMargin: Appearance.padding.small
             text: tile.caption
-            color: tile.picked || tile.focused ? Appearance.colour.text : Appearance.colour.textDim
+            color: tile.picked ? Appearance.colour.accent : tile.focused ? Appearance.colour.text : Appearance.colour.textDim
         }
 
         FocusMark {
