@@ -61,7 +61,7 @@ Column {
         width: root.width
         interactive: false
         icon: "add_location"
-        label: "Add a place"
+        label: "Add a time zone"
         onPointed: SettingsView.hovered = root.row
 
         SettingsField {

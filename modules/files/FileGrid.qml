@@ -42,7 +42,7 @@ Item {
     property string shown: ""
 
     function show(): void {
-        const view = [Files.cwd, Files.search, Config.values.files.sort, Config.values.files.hidden].join("\n");
+        const view = [Files.cwd, Files.search, Config.values.files.sort, Config.values.files.reversed, Config.values.files.hidden].join("\n");
         const y = grid.contentY;
         grid.model = root.entries;
         grid.currentIndex = Qt.binding(() => Files.cursor);

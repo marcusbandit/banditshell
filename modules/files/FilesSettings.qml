@@ -251,14 +251,27 @@ Item {
                     label: "Sort by"
 
                     SettingChoice {
-                        choices: [
-                            {label: "A to Z", value: "name"},
-                            {label: "Newest", value: "mtime"},
-                            {label: "Biggest", value: "size"},
-                            {label: "Type", value: "kind"}
-                        ]
+                        choices: ["name", "mtime", "size", "kind"].map(value => ({
+                                    label: Files.sortWords[value].replace(/^\w/, c => c.toUpperCase()),
+                                    value: value
+                                }))
                         chosen: Files.sort
                         onChose: value => Config.set("files.sort", value)
+                    }
+                }
+
+                Setting {
+                    width: body.width
+                    label: "Order"
+                    detail: Files.foldersNote
+
+                    SettingChoice {
+                        choices: Files.orderWords.map((words, i) => ({
+                                    label: words.replace(/^\w|\b[a-z]\b/g, c => c.toUpperCase()),
+                                    value: i === 1
+                                }))
+                        chosen: Files.reversed
+                        onChose: value => Config.set("files.reversed", value)
                     }
                 }
 

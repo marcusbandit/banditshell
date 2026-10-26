@@ -12,6 +12,7 @@ Item {
     property string detail: ""
     property color detailColour: Appearance.colour.textFaint
     property int detailLines: 1
+    property string pending: ""
     property bool selected: false
     property bool off: false
     property bool interactive: true
@@ -165,6 +166,26 @@ Item {
             maximumLineCount: root.detailLines
             color: root.notice ? Appearance.colour.textDim : root.detailColour
             visible: root.detail !== ""
+        }
+
+        Row {
+            visible: root.pending !== ""
+            spacing: Appearance.padding.small
+
+            SquircleRect {
+                y: (Appearance.font.line.small - height) / 2
+                width: 6
+                height: 6
+                pill: "object"
+                color: Appearance.colour.accent
+            }
+
+            StyledText {
+                width: words.width - 6 - Appearance.padding.small
+                text: root.pending
+                wrapMode: Text.Wrap
+                color: Appearance.colour.accent
+            }
         }
 
         Loader {

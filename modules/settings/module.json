@@ -9,7 +9,7 @@
     "tests": ["tests/pointing-devices.test.js", "tests/restore.test.js", "tests/settings.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor", "display"],
+    "packages": ["core", "compositor", "display", "clock"],
     "optional": []
   },
   "provides": {
@@ -31,7 +31,8 @@
       "rounding",
       "sourceEdits",
       "theme",
-      "themeFromWallpaper"
+      "themeFromWallpaper",
+      "weather"
     ]
   }
 }

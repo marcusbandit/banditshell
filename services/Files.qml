@@ -36,7 +36,7 @@ Singleton {
         const query = root.search.toLowerCase();
         const matched = query === "" ? all : all.filter(e => e.name.toLowerCase().includes(query));
 
-        return FilesOrder.ordered(matched, root.sort);
+        return FilesOrder.ordered(matched, root.sort, root.reversed);
     }
 
     function indexOf(name: string): int {
@@ -365,6 +365,10 @@ Singleton {
 
     readonly property bool showHidden: Config.values.files.hidden
     readonly property string sort: Config.values.files.sort
+    readonly property bool reversed: Config.values.files.reversed
+    readonly property var orderWords: FilesOrder.orderWords(root.sort)
+    readonly property var sortWords: FilesOrder.SORT_WORDS
+    readonly property string foldersNote: FilesOrder.foldersNote(root.sort)
 
     readonly property string view: Config.values.files.view
 
