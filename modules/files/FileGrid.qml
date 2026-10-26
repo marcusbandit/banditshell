@@ -12,6 +12,7 @@ Item {
 
     property point dragPoint: Qt.point(-1, -1)
     property bool dragging: false
+    property bool keyed: false
 
     signal picked(int index, int modifiers)
     signal activated(int index)
@@ -37,6 +38,12 @@ Item {
 
     function reveal(index: int): void {
         grid.positionViewAtIndex(index, GridView.Contain);
+        const top = Math.floor(index / root.columns) * root.cellHeight - grid.topMargin;
+        const bottom = top + root.cellHeight + grid.topMargin + grid.bottomMargin;
+        if (top < grid.contentY)
+            grid.contentY = top;
+        else if (bottom > grid.contentY + grid.height)
+            grid.contentY = bottom - grid.height;
     }
 
     property string shown: ""
@@ -66,6 +73,8 @@ Item {
 
 
         boundsBehavior: Flickable.StopAtBounds
+        topMargin: Appearance.padding.hair
+        bottomMargin: Appearance.padding.hair
 
         WheelStep {
             flick: grid
@@ -77,9 +86,11 @@ Item {
             width: grid.cellWidth
             height: grid.cellHeight
 
+            z: tile.focused ? 1 : 0
             row: root.list
             picked: Files.isPicked(modelData.name)
-            cursored: index === Files.cursor
+            focused: root.keyed && index === Files.cursor
+            keyed: root.keyed
             receiving: root.dragging && root.target === index && droppable && !Files.isPicked(modelData.name)
 
             onClicked: modifiers => root.picked(index, modifiers)

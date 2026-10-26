@@ -184,10 +184,8 @@ Item {
 
     readonly property var blobs: []
 
-    property bool keyboardNavigating: false
-
     function stepByKey(delta: int): void {
-        root.keyboardNavigating = true;
+        keys.keyed();
         strip.step(delta);
     }
 
@@ -195,7 +193,7 @@ Item {
         if (root.shown)
             return;
         root.shown = true;
-        root.keyboardNavigating = false;
+        keys.clear();
         root.touched = false;
 
         Wallpaper.refresh();
@@ -534,13 +532,8 @@ Item {
                         iconFill: Wallpaper.isFrozen(card.path) ? 0 : 1
                     }
 
-                    SquircleRect {
-                        anchors.fill: parent
-                        radius: Appearance.rounding.normal
-                        color: "transparent"
-                        stroke: Appearance.colour.accent
-                        strokeWidth: Appearance.stroke.ring * 2
-                        visible: root.keyboardNavigating && card.entry === Math.round(strip.goal)
+                    FocusMark {
+                        shown: keys.active && card.entry === Math.round(strip.goal)
                     }
                 }
             }
@@ -562,7 +555,7 @@ Item {
             property real lastAt: 0
 
             onPressed: mouse => {
-                root.keyboardNavigating = false;
+                keys.clear();
                 swipe.from = glide.value;
                 swipe.fromX = mouse.x;
                 swipe.lastX = mouse.x;
@@ -618,7 +611,7 @@ Item {
 
             WheelHandler {
                 onWheel: event => {
-                    root.keyboardNavigating = false;
+                    keys.clear();
 
                     if (scroll.feed(event))
                         return;
@@ -631,25 +624,11 @@ Item {
             }
         }
 
-        HoverHandler {
-            id: pointer
-
-            property point resting: Qt.point(-1, -1)
-
-            onPointChanged: {
-                const at = pointer.point.position;
-                if (at.x === pointer.resting.x && at.y === pointer.resting.y)
-                    return;
-                pointer.resting = at;
-                root.keyboardNavigating = false;
-            }
-        }
-
         ScrollGesture {
             id: scroll
 
             onBegan: {
-                root.keyboardNavigating = false;
+                keys.clear();
                 strip.scrubSpent = 0;
             }
             onMoved: dx => strip.scrub(dx)
@@ -721,7 +700,7 @@ Item {
                             Follow {
                                 id: swell
 
-                                target: tap.containsMouse ? Appearance.press.lift : 1
+                                target: tap.containsMouse && !keys.active ? Appearance.press.lift : 1
                                 speed: Appearance.animation.revealSpeed
                                 epsilon: Appearance.animation.fadeEpsilon
                                 startsAtTarget: true
@@ -739,7 +718,7 @@ Item {
 
                         FloatingTooltip {
                             text: swatch.picked ? "Show every colour" : `${swatch.modelData.name[0].toUpperCase()}${swatch.modelData.name.slice(1)} (${root.countOf(swatch.modelData.name)})`
-                            shown: tap.containsMouse
+                            shown: tap.containsMouse && !keys.active
                         }
                     }
                 }
@@ -748,6 +727,7 @@ Item {
                     id: searchButton
 
                     anchors.verticalCenter: parent.verticalCenter
+                    keyed: keys.active
                     size: 0
                     style: "bare"
                     icon: "search"
@@ -885,6 +865,7 @@ Item {
                     id: shuffle
 
                     anchors.verticalCenter: parent.verticalCenter
+                    keyed: keys.active
                     visible: root.entries.length > 2
                     size: 0
                     style: "bare"
@@ -904,6 +885,7 @@ Item {
                     id: shapes
 
                     anchors.verticalCenter: parent.verticalCenter
+                    keyed: keys.active
                     visible: root.fitted.length > 0 && root.fitted.length < Wallpaper.available.length
                     size: 0
                     checkable: true
@@ -925,6 +907,7 @@ Item {
                     id: scope
 
                     anchors.verticalCenter: parent.verticalCenter
+                    keyed: keys.active
                     visible: root.manyScreens
                     size: 0
                     checkable: true
@@ -944,6 +927,7 @@ Item {
                     id: choose
 
                     anchors.verticalCenter: parent.verticalCenter
+                    keyed: keys.active
                     interactive: !!strip.currentPath
                     size: 0
                     style: "accent"
@@ -960,4 +944,7 @@ Item {
         }
     }
 
+    FocusVisible {
+        id: keys
+    }
 }
