@@ -13,6 +13,8 @@ Item {
     signal detailsWanted
 
     readonly property var s: SettingsState
+    property string pendingReveal: ""
+    property double revealUntil: 0
 
     Flickable {
         id: view
@@ -23,8 +25,15 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
 
         onContentYChanged: SettingsView.scroll = view.contentY
-        onMovementStarted: SettingsView.resumeScroll = 0
-        onContentHeightChanged: root.resume()
+        onMovementStarted: {
+            SettingsView.resumeScroll = 0;
+            root.pendingReveal = "";
+        }
+        onContentHeightChanged: {
+            root.resume();
+            if (root.pendingReveal && Date.now() < root.revealUntil)
+                root.reveal(root.pendingReveal, true);
+        }
         onHeightChanged: root.resume()
 
         WheelStep {
@@ -32,7 +41,10 @@ Item {
 
             flick: view
 
-            onBegan: SettingsView.resumeScroll = 0
+            onBegan: {
+                SettingsView.resumeScroll = 0;
+                root.pendingReveal = "";
+            }
         }
 
         Column {
@@ -55,8 +67,7 @@ Item {
                 }
 
                 function onFlashChanged(): void {
-                    if (SettingsView.flash)
-                        Qt.callLater(root.reveal, SettingsView.flash.uid);
+                    root.takeFlash();
                 }
             }
 
@@ -225,20 +236,47 @@ Item {
             SettingsView.resumeScroll = 0;
     }
 
-    Component.onCompleted: Qt.callLater(root.resume)
+    Component.onCompleted: {
+        Qt.callLater(root.resume);
+        if (SettingsView.flash && Date.now() - SettingsView.flash.at < 1500)
+            root.takeFlash();
+    }
 
-    function reveal(uid: string): void {
+    function takeFlash(): void {
+        if (!SettingsView.flash)
+            return;
+        root.pendingReveal = SettingsView.flash.uid;
+        root.revealUntil = Date.now() + 1500;
+        Qt.callLater(root.reveal, SettingsView.flash.uid, false);
+    }
+
+    function reveal(uid: string, snap: bool): void {
         const target = root.findRow(body, uid);
         if (!target)
             return;
         const at = target.mapToItem(body, 0, 0).y;
-        const want = Math.max(0, Math.min(view.contentHeight - view.height, at - view.height / 3));
-        if (SettingsView.reduceMotion) {
+        let want = at - view.height / 3;
+        const group = root.groupOf(target);
+        if (group) {
+            const top = group.mapToItem(body, 0, 0).y;
+            const bottom = top + group.height + Appearance.padding.normal;
+            if (bottom - top <= view.height)
+                want = Math.min(top, Math.max(want, bottom - view.height));
+        }
+        want = Math.max(0, Math.min(view.contentHeight - view.height, want));
+        if (snap || SettingsView.reduceMotion || arrive.value > 0.01) {
             wheel.stop();
             view.contentY = want;
         }
         else
             wheel.scrollTo(want);
+    }
+
+    function groupOf(item: Item): Item {
+        for (let at = item; at && at !== body; at = at.parent)
+            if (typeof at.heading === "string")
+                return at;
+        return null;
     }
 
     function findRow(item: Item, uid: string): Item {

@@ -15,7 +15,9 @@ Singleton {
     readonly property var page: root.hub ? null : Catalogue.PAGE_BY_ID[root.current] ?? null
     readonly property var cat: root.hub ? Catalogue.CAT_BY_ID[root.current] : Catalogue.CAT_BY_ID[root.page?.cat ?? "connections"]
     readonly property string title: root.hub ? root.cat.name : Catalogue.nameOf(root.page, SettingsState)
-    readonly property string preview: root.hub ? root.cat.preview : root.page?.preview ?? ""
+    readonly property var hoveredGroup: !root.hub && root.hovered?.page === root.current && root.hovered?.group?.preview ? root.hovered.group : null
+    readonly property string preview: root.hub ? root.cat.preview : root.hoveredGroup?.preview ?? root.page?.preview ?? ""
+    readonly property string paneTitle: root.hoveredGroup ? String(Catalogue.val(root.hoveredGroup.t, SettingsState) ?? root.title) : root.title
 
     property var hovered: null
     property var pin: null
@@ -63,9 +65,24 @@ Singleton {
     onPaneOutChanged: root.remember()
     onScrollChanged: root.remember()
 
+    function takeReveal(): void {
+        if (!Settings.reveal)
+            return;
+        const found = Catalogue.resolve(Settings.reveal);
+        if (found?.row) {
+            root.query = "";
+            root.openHit({
+                page: Catalogue.PAGE_BY_ID[found.page],
+                row: found.row
+            });
+        }
+        Settings.reveal = "";
+    }
+
     Component.onCompleted: {
         if (Settings.page && Settings.page !== root.current)
             root.go(Settings.page);
+        Qt.callLater(root.takeReveal);
         const was = Relaunch.recall("settingsView");
         if (!was)
             return;
@@ -217,17 +234,7 @@ Singleton {
         }
 
         function onRevealChanged(): void {
-            if (!Settings.reveal)
-                return;
-            const found = Catalogue.resolve(Settings.reveal);
-            if (found?.row) {
-                root.query = "";
-                root.openHit({
-                    page: Catalogue.PAGE_BY_ID[found.page],
-                    row: found.row
-                });
-            }
-            Settings.reveal = "";
+            root.takeReveal();
         }
     }
 }

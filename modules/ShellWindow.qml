@@ -241,6 +241,10 @@ PanelWindow {
         case "download":
             System.reveal(notice.path);
             break;
+        case "settings":
+            islandLayer.close();
+            Settings.openAt(win.screen?.name ?? "", "", notice.row);
+            return;
         }
         if (notice.key)
             Notices.settle(notice.key);
