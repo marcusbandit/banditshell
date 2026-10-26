@@ -5,6 +5,7 @@ import qs.config
 import qs.components
 import qs.services
 import "urls.js" as Urls
+import "../../services/files-find.js" as Find
 
 Item {
     id: root
@@ -13,7 +14,8 @@ Item {
     required property int index
 
     readonly property var entry: root.modelData
-    readonly property string path: Files.join(Files.cwd, root.entry.name)
+    readonly property string path: Files.pathOf(root.entry)
+    readonly property string place: root.entry.dir ? Find.place(root.entry.dir, Files.home) : ""
 
     property bool picked: false
     property bool cursored: false
@@ -100,11 +102,22 @@ Item {
 
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
 
-            maximumLineCount: 2
+            maximumLineCount: root.place ? 1 : 2
             wrapMode: Text.Wrap
             elide: Text.ElideRight
 
-            height: label.lineHeight * 2
+            height: label.lineHeight * (root.place ? 1 : 2)
+        }
+
+        StyledText {
+            width: parent.width
+            visible: root.place !== ""
+            horizontalAlignment: Text.AlignHCenter
+
+            text: root.place
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
+            color: Appearance.colour.textFaint
+            elide: Text.ElideMiddle
         }
     }
 
@@ -137,16 +150,31 @@ Item {
         }
 
         StyledText {
+            id: rowName
+
             anchors.left: rowMark.right
             anchors.leftMargin: Appearance.padding.small
-            anchors.right: rowSize.left
-            anchors.rightMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
+            width: Math.min(rowName.implicitWidth, (rowSize.x - rowMark.width - Appearance.padding.normal) * (root.place ? 0.6 : 1))
 
             text: root.entry.name
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             elide: Text.ElideMiddle
             color: root.picked || root.cursored ? Appearance.colour.text : Appearance.colour.textDim
+        }
+
+        StyledText {
+            anchors.left: rowName.right
+            anchors.leftMargin: Appearance.padding.normal
+            anchors.right: rowSize.left
+            anchors.rightMargin: Appearance.padding.normal
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.place !== ""
+
+            text: root.place
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
+            elide: Text.ElideMiddle
+            color: Appearance.colour.textFaint
         }
 
         StyledText {

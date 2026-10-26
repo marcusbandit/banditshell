@@ -251,18 +251,43 @@ Item {
     Item {
         id: search
 
+        readonly property bool shown: Files.searching || Files.search !== ""
+        readonly property string status: {
+            if (!FilesFind.home || !search.shown)
+                return "";
+            if (FilesFind.tooShort)
+                return "keep typing";
+            if (!FilesFind.active)
+                return "";
+            if (FilesFind.running)
+                return "searching…";
+            if (FilesFind.stopped)
+                return "stopped";
+            if (FilesFind.capped)
+                return `first ${FilesFind.limit.toLocaleString()}`;
+            return Files.visible.length === 1 ? "1 found" : `${Files.visible.length.toLocaleString()} found`;
+        }
+
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
 
-        implicitWidth: Files.searching ? root.width * 0.4 : glass.implicitWidth + Appearance.padding.normal
-        implicitHeight: field.implicitHeight + Appearance.padding.small * 2
+        implicitWidth: search.shown ? root.width * 0.5 : glass.implicitWidth + Appearance.padding.normal
+        implicitHeight: Math.max(field.implicitHeight + Appearance.padding.small * 2, scope.visible ? scope.height : 0)
 
         SquircleRect {
-            anchors.fill: parent
-            visible: Files.searching
+            id: well
+
+            anchors.left: parent.left
+            anchors.right: scope.visible ? scope.left : parent.right
+            anchors.rightMargin: scope.visible ? Appearance.padding.small : 0
+            anchors.verticalCenter: parent.verticalCenter
+            height: field.implicitHeight + Appearance.padding.small * 2
+            visible: search.shown
 
             radius: Appearance.rounding.small
             color: Appearance.colour.fill
+            stroke: Files.searching ? Appearance.colour.accent : "transparent"
+            strokeWidth: Files.searching ? Appearance.stroke.ring : 0
         }
 
         Icon {
@@ -273,19 +298,19 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
 
             name: "search"
-            color: Files.searching ? Appearance.colour.text : Appearance.colour.textFaint
+            color: search.shown ? Appearance.colour.text : Appearance.colour.textFaint
         }
 
         TextInput {
             id: field
 
             anchors.left: glass.right
-            anchors.right: parent.right
+            anchors.right: said.left
             anchors.leftMargin: Appearance.padding.small
             anchors.rightMargin: Appearance.padding.small
             anchors.verticalCenter: parent.verticalCenter
 
-            visible: Files.searching
+            visible: search.shown
 
             focus: Files.searching
             activeFocusOnTab: false
@@ -302,15 +327,42 @@ Item {
             onTextChanged: Files.setSearch(text)
 
             Keys.onReturnPressed: {
+                const entry = Files.current;
+                Files.setSearching(false);
+                Files.focus = "grid";
+                Files.open(entry);
+            }
+
+            Keys.onDownPressed: {
                 Files.setSearching(false);
                 Files.focus = "grid";
             }
 
+            Keys.onTabPressed: FilesFind.toggleScope()
+            Keys.onBacktabPressed: FilesFind.toggleScope()
+
             Keys.onEscapePressed: {
+                if (FilesFind.running) {
+                    FilesFind.stop();
+                    return;
+                }
                 Files.setSearch("");
                 Files.setSearching(false);
                 Files.focus = "grid";
             }
+        }
+
+        StyledText {
+            id: said
+
+            anchors.right: well.right
+            anchors.rightMargin: search.status ? Appearance.padding.normal : 0
+            anchors.verticalCenter: parent.verticalCenter
+            visible: search.shown
+
+            text: search.status
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
+            color: Appearance.colour.textFaint
         }
 
         TapHandler {
@@ -318,6 +370,21 @@ Item {
                 Files.setSearching(true);
                 Files.focus = "grid";
             }
+        }
+
+        SettingChoice {
+            id: scope
+
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            visible: search.shown
+
+            choices: [
+                {label: "This folder", value: "folder"},
+                {label: "Home", value: "home"}
+            ]
+            chosen: FilesFind.scope
+            onChose: value => FilesFind.setScope(value)
         }
     }
 

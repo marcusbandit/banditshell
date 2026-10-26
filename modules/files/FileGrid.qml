@@ -65,9 +65,9 @@ Item {
             height: grid.cellHeight
 
             row: root.list
-            picked: Files.isPicked(modelData.name)
+            picked: Files.isPicked(Files.keyOf(modelData))
             cursored: index === Files.cursor
-            receiving: root.dragging && root.target === index && droppable && !Files.isPicked(modelData.name)
+            receiving: root.dragging && root.target === index && droppable && !Files.isPicked(Files.keyOf(modelData))
 
             onClicked: modifiers => root.picked(index, modifiers)
             onActivated: root.activated(index)
@@ -166,7 +166,7 @@ Item {
         Icon {
             anchors.horizontalCenter: parent.horizontalCenter
 
-            name: Files.error ? "lock" : "folder_open"
+            name: Files.error ? "lock" : FilesFind.active ? "search" : "folder_open"
             size: Appearance.icon.huge
             color: Files.error ? Appearance.colour.alarm : Appearance.colour.textFaint
         }
@@ -174,7 +174,16 @@ Item {
         StyledText {
             anchors.horizontalCenter: parent.horizontalCenter
 
-            text: Files.error ? Files.error : Files.search ? `nothing matching "${Files.search}"` : "empty"
+            text: Files.error ? Files.error : FilesFind.active && FilesFind.running ? "searching home…" : FilesFind.active ? `nothing matching "${Files.search}" in home` : Files.search ? `nothing matching "${Files.search}"` : "empty"
+            color: Appearance.colour.textFaint
+        }
+
+        StyledText {
+            anchors.horizontalCenter: parent.horizontalCenter
+            visible: FilesFind.active && !FilesFind.running && !Files.error
+
+            text: FilesFind.everywhere || FilesFind.stopped ? FilesFind.summary : `${FilesFind.summary}, caches and the Trash skipped`
+            font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textFaint
         }
     }
