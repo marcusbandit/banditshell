@@ -67,12 +67,16 @@ function upgradeFiles(values) {
     return Object.assign({}, values, { files: next });
 }
 
-function upgradeFilesUndo(values) {
+function giveGridKey(values, chord, action) {
     const grid = values.files?.grid;
-    if (!isPlainObject(grid) || owns(grid, "Ctrl+Z") || Object.values(grid).includes("undo"))
+    if (!isPlainObject(grid) || owns(grid, chord) || Object.values(grid).includes(action))
         return values;
-    const files = Object.assign({}, values.files, { grid: Object.assign({}, grid, { "Ctrl+Z": "undo" }) });
+    const files = Object.assign({}, values.files, { grid: Object.assign({}, grid, { [chord]: action }) });
     return Object.assign({}, values, { files });
+}
+
+function upgradeFilesGrid(values) {
+    return giveGridKey(giveGridKey(values, "Ctrl+Z", "undo"), "F5", "refresh");
 }
 
 function upgradeLauncher(values) {
@@ -103,7 +107,7 @@ function upgradeSidebarClock(values) {
 function upgrade(values) {
     if (!isPlainObject(values))
         return values;
-    return upgradeFilesUndo(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values))));
+    return upgradeFilesGrid(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values))));
 }
 
 function holds(node, segment) {

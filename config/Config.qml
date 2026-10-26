@@ -819,6 +819,7 @@ Singleton {
                     "Ctrl+L": "path",
                     "Ctrl+I": "properties",
                     "F2": "rename",
+                    "F5": "refresh",
                     "Delete": "trash",
                     "Shift+Delete": "destroy",
                     "Ctrl+Z": "undo"

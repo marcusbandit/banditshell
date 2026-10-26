@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-26-9",
+      "id": "2026-10-26-10",
       "date": "2026-10-26",
       "changes": [
         {
@@ -23,6 +23,22 @@
           "type": "issues",
           "severity": "minor",
           "text": "Dark mode shows what apps really got when the system refuses a change"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-9",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The file manager updates by itself when a folder changes"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "F5 refreshes the file manager"
         }
       ]
     },
