@@ -64,8 +64,8 @@ function fromLch(L, C, H) {
 
 function lightRamp(ramp) {
     const stops = ramp.map(toLch);
-    const ground = stops[0].l;
-    const reach = Math.max(0.0001, stops[stops.length - 1].l - ground);
+    const ground = Math.min(...stops.map(s => s.l));
+    const reach = Math.max(0.0001, Math.max(...stops.map(s => s.l)) - ground);
     return stops.map(s => {
         const t = Math.max(0, Math.min(1, (s.l - ground) / reach));
         return fromLch(GROUND - (GROUND - INK) * Math.pow(t, CURVE), s.c, s.h);

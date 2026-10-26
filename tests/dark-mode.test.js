@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/dark-mode.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Schemes = new Function(src + "\nreturn { parse, lightAfter, schemeFor, afterWrite };")();
+const Schemes = new Function(src + "\nreturn { parse, lightAfter, schemeFor, afterWrite, pending, settle };")();
 
 function gsettings(held, fails) {
     return {
@@ -24,10 +24,12 @@ function gsettings(held, fails) {
 
 function shown(store, light, on) {
     const before = Schemes.parse(store.get());
-    const wanted = Schemes.schemeFor(on, light);
-    const code = store.set(wanted);
-    const settled = Schemes.afterWrite(code, wanted, before);
-    return { settled, reread: Schemes.parse(store.get()) };
+    const sending = Schemes.pending(Schemes.schemeFor(on, light), before);
+    if (!sending)
+        return { settled: before, reread: before };
+    const after = Schemes.settle(store.set(sending), sending, before, sending);
+    assert.strictEqual(after.wanted, "");
+    return { settled: after.scheme, reread: Schemes.parse(store.get()) };
 }
 
 test("reads what gsettings prints and ignores what it is not", () => {
@@ -60,4 +62,10 @@ test("turning dark off on a machine that started dark writes default", () => {
     const store = gsettings("prefer-dark", false);
     const light = Schemes.lightAfter("default", Schemes.parse(store.get()));
     assert.strictEqual(shown(store, light, false).reread, "default");
+});
+
+test("a choice made while a write is out is sent next, and a failed write drops the queue", () => {
+    assert.deepStrictEqual(Schemes.settle(0, "prefer-dark", "default", "default"), { scheme: "prefer-dark", wanted: "default" });
+    assert.deepStrictEqual(Schemes.settle(1, "prefer-dark", "default", "default"), { scheme: "default", wanted: "" });
+    assert.strictEqual(Schemes.pending("prefer-dark", "prefer-dark"), "");
 });

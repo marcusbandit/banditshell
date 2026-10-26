@@ -456,6 +456,7 @@ QtObject {
             icon: "dark_mode",
             label: "Dark mode",
             words: "dark mode light mode appearance colour color scheme apps theme",
+            detail: Appearance.mode === "auto" ? "auto, a press picks one" : "",
             toggle: !Appearance.light,
             stay: true,
             run: () => DarkMode.choose(Appearance.light ? "dark" : "light")

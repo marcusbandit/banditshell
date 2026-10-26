@@ -692,8 +692,11 @@ Singleton {
 
     function set(k: string, value: var): void {
         const before = root.v(k);
-        if (JSON.stringify(before) === JSON.stringify(value))
+        if (JSON.stringify(before) === JSON.stringify(value)) {
+            if (k === "scheme")
+                DarkMode.choose(value);
             return;
+        }
         root.denied = false;
         root.write(k, value);
         if (root.denied)
@@ -1906,7 +1909,7 @@ Singleton {
     readonly property string schemeDetail: {
         const apps = !DarkMode.available ? "apps keep their own colours" : DarkMode.appsDisagree ? `apps still ${DarkMode.dark ? "dark" : "light"}` : "shell and apps";
         if (Appearance.mode !== "auto")
-            return apps;
+            return DarkMode.appsDisagree ? `${apps}, press ${Appearance.mode} again` : apps;
         const flip = DarkMode.nextFlip > 0 ? `${DarkMode.night ? "dark" : "light"} until ${TimeFormat.time(new Date(DarkMode.nextFlip), false)}` : DarkMode.night ? "dark" : "light all day";
         const when = DarkMode.scheduled ? flip : "dark until night light has a schedule";
         return `${when} · ${apps}`;

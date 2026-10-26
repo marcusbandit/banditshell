@@ -18,3 +18,14 @@ function schemeFor(dark, light) {
 function afterWrite(code, wanted, before) {
     return code === 0 ? wanted : before;
 }
+
+function pending(wanted, scheme) {
+    return wanted === scheme ? "" : wanted;
+}
+
+function settle(code, sending, before, wanted) {
+    return {
+        scheme: afterWrite(code, sending, before),
+        wanted: wanted === sending || code !== 0 ? "" : wanted
+    };
+}

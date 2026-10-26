@@ -46,6 +46,8 @@ Singleton {
     }
 
     function choose(next: string): void {
+        if (next === root.mode)
+            return root.set(root.wantsDark);
         Config.set("colour.mode", next);
     }
 
@@ -58,10 +60,9 @@ Singleton {
     }
 
     function write(): void {
-        if (root.wanted === "" || root.wanted === root.scheme) {
-            root.wanted = "";
+        root.wanted = Schemes.pending(root.wanted, root.scheme);
+        if (root.wanted === "")
             return;
-        }
         root.sending = root.wanted;
         root.before = root.scheme;
         root.scheme = root.sending;
@@ -69,11 +70,11 @@ Singleton {
     }
 
     function written(code: int): void {
-        root.scheme = Schemes.afterWrite(code, root.sending, root.before);
+        const after = Schemes.settle(code, root.sending, root.before, root.wanted);
+        root.scheme = after.scheme;
+        root.wanted = after.wanted;
         if (code !== 0)
             console.warn(`DarkMode: gsettings could not set color-scheme to ${root.sending} (exit ${code}), so apps keep ${root.scheme}`);
-        if (root.wanted === root.sending || code !== 0)
-            root.wanted = "";
         root.sending = "";
         reader.running = true;
         root.write();
@@ -110,7 +111,8 @@ Singleton {
         target: Display
 
         function onWarmWindowChanged(): void {
-            root.evaluate();
+            if (root.mode === "auto")
+                root.evaluate();
         }
 
         function onScheduleModeChanged(): void {
