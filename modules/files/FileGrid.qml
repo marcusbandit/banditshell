@@ -46,6 +46,21 @@ Item {
             grid.contentY = bottom - grid.height;
     }
 
+    property string shown: ""
+
+    function show(): void {
+        const view = [Files.cwd, Files.search, Config.values.files.sort, Config.values.files.reversed, Config.values.files.hidden].join("\n");
+        const y = grid.contentY;
+        grid.model = root.entries;
+        grid.currentIndex = Qt.binding(() => Files.cursor);
+        if (view === root.shown)
+            grid.contentY = Math.max(grid.originY, Math.min(y, grid.originY + grid.contentHeight - grid.height));
+        root.shown = view;
+    }
+
+    onEntriesChanged: root.show()
+    Component.onCompleted: root.show()
+
     GridView {
         id: grid
 
@@ -56,8 +71,6 @@ Item {
 
         cellHeight: root.cellHeight
 
-        model: root.entries
-        currentIndex: Files.cursor
 
         boundsBehavior: Flickable.StopAtBounds
         topMargin: Appearance.padding.hair

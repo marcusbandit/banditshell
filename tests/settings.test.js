@@ -130,6 +130,21 @@ test("rows that name a config key write that same key", () => {
             assert.strictEqual(CONFIG_BACKED[r.k], r.cfg, `${r.k} shows ${r.cfg} but writes ${CONFIG_BACKED[r.k]}`);
 });
 
+test("the island's Change place opens the row that writes weather.location", () => {
+    const Forecast = lib(path.join(ROOT, "services/weather.js"), ["failureLook"]);
+    const found = Catalogue.resolve(Forecast.failureLook("place").fix);
+    assert.strictEqual(found.page, "clock");
+    assert.strictEqual(found.row.cfg, "weather.location");
+});
+
+test("the weather rows grey out while the weather is off", () => {
+    const rows = ["weatherPlace", "weatherUnits", "weatherMinutes"].map(k => Catalogue.ROW_BY_KEY[k]);
+    for (const r of rows) {
+        assert.strictEqual(r.dis(fakeState({ weatherShow: false })), true, r.k);
+        assert.strictEqual(r.dis(fakeState({ weatherShow: true })), false, r.k);
+    }
+});
+
 test("what NetworkManager owns is never written to config, and no password is stored", () => {
     for (const k of ["hotspot", "hotspotName", "hotspotPass", "hotspotBand", "vpnFirst"])
         assert.ok(!(k in CONFIG_BACKED), `${k} must not be written to config.json`);
@@ -157,6 +172,10 @@ test("every widget and every preview has its file", () => {
         assert.ok(fs.existsSync(path.join(SETTINGS, "scenes", `${cap(c.preview)}Scene.qml`)), `scene ${c.preview}`);
     for (const p of Catalogue.PAGES)
         assert.ok(fs.existsSync(path.join(SETTINGS, "scenes", `${cap(p.preview)}Scene.qml`)), `scene ${p.preview}`);
+    for (const p of Catalogue.PAGES)
+        for (const g of p.groups)
+            if (g.preview)
+                assert.ok(fs.existsSync(path.join(SETTINGS, "scenes", `${cap(g.preview)}Scene.qml`)), `scene ${g.preview}`);
 });
 
 test("statuses, blurbs, details and options all render against a live state", () => {
@@ -171,12 +190,39 @@ test("statuses, blurbs, details and options all render against a live state", ()
     for (const p of Catalogue.PAGES)
         assert.strictEqual(typeof p.status(s), "string", p.id);
     for (const r of Catalogue.ROWS) {
-        Catalogue.val(r.detail, s);
+        for (const f of ["state", "pending"])
+            assert.strictEqual(typeof (Catalogue.val(r[f], s) ?? ""), "string", `${r.k || r.label} ${f}`);
         if (r.dis)
             r.dis(s);
         if (r.o)
             for (const o of Catalogue.options(r, s))
                 assert.strictEqual(o.length, 2, `${r.k} option`);
+    }
+});
+
+test("a row's line under its label only says what is true now, and shortcuts, explanations and pending changes each have their own field", () => {
+    const Lua = lib(path.join(ROOT, "services/hyprland-lua.js"), ["actionTable", "actionDescription", "scanLua", "bindAction"]);
+    const actions = Lua.actionTable(fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8"));
+    const bound = Lua.scanLua(fs.readFileSync(path.join(ROOT, "docs/hyprland-binds.example.lua"), "utf8")).binds.map(b => Lua.bindAction(b.expr, actions));
+    const filesActions = Object.values(DEFAULTS.files.keys).map(String);
+    for (const r of Catalogue.ROWS) {
+        const name = r.k || r.label || r.w;
+        assert.ok(!("detail" in r), `${name} has a detail; say state, keys, why or pending`);
+        for (const f of ["state", "pending"])
+            if (f in r)
+                assert.strictEqual(typeof r[f], "function", `${name} ${f} is a fixed line, which explains the row, so it belongs in why`);
+        if ("why" in r)
+            assert.strictEqual(typeof r.why, "string", `${name} why changes with the machine, which is state`);
+        if (!r.keys)
+            continue;
+        const [set, id] = r.keys.split(":");
+        if (set === "files")
+            assert.ok(filesActions.includes(id), `${name} keys ${id} is not a files action`);
+        else {
+            assert.strictEqual(set, "shell", `${name} keys ${r.keys}`);
+            assert.ok(Lua.actionDescription(id, actions), `${name} keys ${id} is not a shell action`);
+            assert.ok(bound.includes(id), `${name} keys ${id} has no bind in the example binds`);
+        }
     }
 });
 
@@ -431,7 +477,7 @@ test("a desktop without a battery or a lid hides what it can't use", () => {
 test("screen rows that wait for apply say so", () => {
     for (const k of ["scr:on", "scr:mirror", "scr:res", "scr:hz", "scr:scale", "scr:rot", "scr:vrr"]) {
         const r = Catalogue.ROWS.find(x => x.k === k);
-        assert.strictEqual(r.detail({ pendingNote: () => "not applied yet", onlyOn: false }), "not applied yet", k);
+        assert.strictEqual(r.pending({ pendingNote: () => "needs Apply", onlyOn: false }), "needs Apply", k);
     }
 });
 

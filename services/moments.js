@@ -155,14 +155,14 @@ function wifiSpec(name, kind, message) {
     };
 }
 
-function undoSpec(apps, only) {
+function undoSpec(apps, only, done) {
     const count = (apps || []).length;
     if (count === 0)
         return null;
     return {
         id: "moment:undo",
         style: "undo",
-        text: count === 1 ? `${preview(apps[0], COPIED_PREVIEW) || "Notification"} dismissed` : `${count} notifications cleared`,
+        text: count === 1 ? `${preview(apps[0], COPIED_PREVIEW) || "Notification"} ${done || "dismissed"}` : `${count} notifications cleared`,
         icon: "notifications",
         data: { entry: count === 1 ? only || null : null },
         priority: 40,
@@ -170,6 +170,14 @@ function undoSpec(apps, only) {
         source: "moments",
         actions: [{ name: "undo", label: "Undo" }]
     };
+}
+
+function hushDone(kind, ends) {
+    if (kind === "snooze")
+        return `hidden until ${ends}`;
+    if (kind === "mute")
+        return ends ? `muted until ${ends}` : "muted until I unmute";
+    return "unmuted";
 }
 
 function newlyConnected(before, after) {

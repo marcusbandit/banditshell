@@ -7,6 +7,7 @@ Item {
     id: root
 
     property string text: ""
+    property string detail: ""
     property string icon: ""
     property real iconFill: 0
     property string style: "plate"
@@ -34,6 +35,7 @@ Item {
     readonly property bool hasText: root.text !== ""
     readonly property bool hasIcon: root.icon !== ""
     readonly property real markSpan: root.hasIcon ? markSize + (root.hasText ? markGap : 0) : 0
+    readonly property real detailSpan: root.hasText && root.detail !== "" ? detailLabel.implicitWidth : 0
 
     opacity: root.interactive ? 1 : Appearance.opacity.disabled
 
@@ -98,7 +100,7 @@ Item {
 
     readonly property real pillRadius: height / 2
 
-    implicitWidth: root.hasText ? label.implicitWidth + markSpan + padX * 2 : implicitHeight
+    implicitWidth: root.hasText ? label.implicitWidth + markSpan + detailSpan + padX * 2 : implicitHeight
     implicitHeight: Math.max(Appearance.sizes.minTarget, Appearance.button.height(root.size))
     width: implicitWidth
     height: implicitHeight
@@ -155,13 +157,25 @@ Item {
 
             anchors.verticalCenter: parent.verticalCenter
             visible: root.hasText
-            width: visible ? Math.min(implicitWidth, root.width - root.padX * 2 - root.markSpan) : 0
+            width: visible ? Math.min(implicitWidth, root.width - root.padX * 2 - root.markSpan - root.detailSpan) : 0
             text: root.text
             font.pixelSize: root.labelSize
             color: root.fg
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
+        }
+
+        StyledText {
+            id: detailLabel
+
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.detailSpan > 0
+            text: `\u00a0${root.detail}`
+            font.pixelSize: root.labelSize
+            color: root.fg
+            opacity: 0.6
+            verticalAlignment: Text.AlignVCenter
         }
     }
 

@@ -86,7 +86,8 @@ Singleton {
     }
 
     function offerUndo(): void {
-        const spec = Logic.undoSpec(Notifications.shelf.map(r => r.entry.appName), Notifications.shelf[0]?.entry);
+        const hush = Notifications.hushed;
+        const spec = hush ? Logic.undoSpec([hush.app], hush.entry, Logic.hushDone(hush.kind, Notifications.endsAt(hush.until, Date.now()))) : Logic.undoSpec(Notifications.shelf.map(r => r.entry.appName), Notifications.shelf[0]?.entry);
         if (!spec) {
             Activities.remove("moment:undo");
             return;
@@ -143,6 +144,10 @@ Singleton {
         target: Notifications
 
         function onShelvedChanged(): void {
+            root.offerUndo();
+        }
+
+        function onHushedChanged(): void {
             root.offerUndo();
         }
     }

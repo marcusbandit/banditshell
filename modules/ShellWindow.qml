@@ -47,6 +47,7 @@ PanelWindow {
     readonly property LazyPanel settings: settingsLayer
 
     readonly property Island island: islandLayer
+    readonly property Chassis frame: chassis
     readonly property QuickControls quickControls: quickLayer
 
     readonly property var statusItems: sidebar.menuItems
@@ -240,6 +241,10 @@ PanelWindow {
         case "download":
             System.reveal(notice.path);
             break;
+        case "settings":
+            islandLayer.close();
+            Settings.openAt(win.screen?.name ?? "", "", notice.row);
+            return;
         }
         if (notice.key)
             Notices.settle(notice.key);

@@ -10,6 +10,7 @@ Item {
     property string placeholder: ""
     property bool mono: false
     property bool masked: false
+    property bool alarm: false
 
     signal committed(string text)
 
@@ -33,8 +34,8 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.small
         color: Appearance.colour.fillStrong
-        stroke: input.activeFocus ? Appearance.colour.accent : "transparent"
-        strokeWidth: input.activeFocus ? Appearance.stroke.ring : 0
+        stroke: root.alarm ? Appearance.colour.alarm : input.activeFocus ? Appearance.colour.accent : "transparent"
+        strokeWidth: root.alarm || input.activeFocus ? Appearance.stroke.ring : 0
     }
 
     TextInput {

@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/notification-timing.js"), "utf8");
-const Timing = new Function(src + "\nreturn { span, muteLength, snoozeLength, muted, mutedLine, due, snoozeAdd };")();
+const Timing = new Function(src + "\nreturn { span, muteLength, snoozeLength, muted, mutedLine, due, snoozeAdd, hushAllowed };")();
 
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
@@ -73,4 +73,15 @@ test("snoozing the same entry again moves its deadline", () => {
     const both = Timing.snoozeAdd(once, b, 200);
     const again = Timing.snoozeAdd(both, a, 900);
     assert.deepStrictEqual(again.map(i => [i.entry.name, i.at]), [["b", 200], ["a", 900]]);
+});
+
+test("a press needs a snooze length, or an app key to mute or unmute", () => {
+    assert.strictEqual(Timing.hushAllowed("snooze", HOUR, ""), true);
+    assert.strictEqual(Timing.hushAllowed("snooze", 0, "discord"), false);
+    assert.strictEqual(Timing.hushAllowed("mute", 0, "discord"), true);
+    assert.strictEqual(Timing.hushAllowed("mute", HOUR, ""), false);
+    assert.strictEqual(Timing.hushAllowed("mute", -1, "discord"), false);
+    assert.strictEqual(Timing.hushAllowed("unmute", 0, "discord"), true);
+    assert.strictEqual(Timing.hushAllowed("unmute", 0, ""), false);
+    assert.strictEqual(Timing.hushAllowed("shout", HOUR, "discord"), false);
 });

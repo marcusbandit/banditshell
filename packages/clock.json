@@ -13,7 +13,7 @@
     "optional": []
   },
   "provides": {
-    "singletons": ["Clock", "Weather"],
+    "singletons": ["Clock", "Localisation", "Weather"],
     "ipc": ["timer", "alarm", "zone"]
   },
   "config": {
