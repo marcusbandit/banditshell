@@ -76,3 +76,11 @@ function due(items, now) {
 function snoozeAdd(items, entry, at) {
     return (items ?? []).filter(item => item && item.entry !== entry).concat([{ entry, at }]);
 }
+
+function hushAllowed(kind, ms, key) {
+    if (kind === "snooze")
+        return ms > 0;
+    if (kind === "mute")
+        return !!key && ms >= 0;
+    return kind === "unmute" && !!key;
+}

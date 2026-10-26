@@ -83,7 +83,7 @@ Item {
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - close.width - Appearance.padding.normal
-                text: (root.pin ? SettingsView.pinTitle(root.pin) : SettingsView.title).toUpperCase()
+                text: (root.pin ? SettingsView.pinTitle(root.pin) : SettingsView.paneTitle).toUpperCase()
                 color: Appearance.colour.textDim
                 elide: Text.ElideRight
             }

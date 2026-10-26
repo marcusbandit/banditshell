@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/moments.js"), "utf8");
-const M = new Function(src + "\nreturn { SCREENSHOT_MS, BLUETOOTH_MS, COPIED_MS, momentWanted, fileUrl, screenshotSpec, screenshotAction, editorCommand, preview, copyShape, copiedLabel, copiedSpec, audioDevice, batteryPercent, bluetoothSpec, wifiSpec, undoSpec, newlyConnected };")();
+const M = new Function(src + "\nreturn { SCREENSHOT_MS, BLUETOOTH_MS, COPIED_MS, momentWanted, fileUrl, screenshotSpec, screenshotAction, editorCommand, preview, copyShape, copiedLabel, copiedSpec, audioDevice, batteryPercent, bluetoothSpec, wifiSpec, undoSpec, hushDone, newlyConnected };")();
 const act = fs.readFileSync(path.join(ROOT, "services/activities.js"), "utf8");
 const A = new Function(act + "\nreturn { push, itemOf, sweep };")();
 
@@ -186,6 +186,14 @@ test.describe("undo", () => {
         const pushed = A.push([], M.undoSpec(["Discord", "Signal"]), 0);
         assert.ok(!pushed.error, pushed.error);
         assert.strictEqual(A.sweep(pushed.list, 60 * 60 * 1000).length, 1);
+    });
+
+    test.it("says when a reminded or muted app comes back", () => {
+        assert.strictEqual(M.undoSpec(["Discord"], null, M.hushDone("snooze", "01:30")).text, "Discord hidden until 01:30");
+        assert.strictEqual(M.undoSpec(["Discord"], null, M.hushDone("mute", "07:30")).text, "Discord muted until 07:30");
+        assert.strictEqual(M.undoSpec(["Discord"], null, M.hushDone("mute", "")).text, "Discord muted until I unmute");
+        assert.strictEqual(M.undoSpec(["Discord"], null, M.hushDone("unmute", "")).text, "Discord unmuted");
+        assert.deepStrictEqual(M.undoSpec(["Discord"], null, "muted").actions, [{ name: "undo", label: "Undo" }]);
     });
 
     test.it("posts nothing when the shelf is empty", () => {

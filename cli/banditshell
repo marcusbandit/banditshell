@@ -2683,8 +2683,8 @@ EOF
 check_island() {
     local out tally
     out=$(absolute_path "${1:-$SHOT_DIR/island}")
-    echo "walking the island through its situations, about four minutes; ctrl-c stops"
-    headless_preview IslandPreview "$out" 320 '.notifications.placement = "island" | .packages.interval = 0 | .sidebar.update = "never"'
+    echo "walking the island through its situations, about six minutes; ctrl-c stops"
+    headless_preview IslandPreview "$out" 480 '.notifications.placement = "island" | .packages.interval = 0 | .sidebar.update = "never"'
     tally=$(sed 's/\x1b\[[0-9;]*m//g' "$preview_log" | grep -oE 'DONE [0-9]+/[0-9]+' | tail -1)
     tally="${tally#DONE }"
     if [ -z "$tally" ]; then
@@ -3284,6 +3284,10 @@ update_skipped() {
     grep -qxF -- "$1" <<<"$skips"
 }
 
+update_skipped_here() {
+    grep -qxF -- "$1" "$UPDATE_STATE/skip" 2>/dev/null
+}
+
 update_read() {
     U_BRANCH_NOW=$(ugit symbolic-ref --quiet --short HEAD 2>/dev/null || echo HEAD)
     U_HEAD=$(ugit rev-parse --verify --quiet HEAD 2>/dev/null || true)
@@ -3669,6 +3673,7 @@ update_finish_work() {
 
 update_conclude() {
     dry && return 0
+    ! update_skipped_here "$(cat "$UPDATE_STATE/target" 2>/dev/null || true)" || rm -f "$UPDATE_STATE/skip"
     update_result true ""
     update_phase "done" "$1"
 }

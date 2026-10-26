@@ -1639,7 +1639,12 @@ banditshell/
 │   │                            restart, Go back to <id> once one is
 │   │                            recorded, asked once in its place, and the
 │   │                            outcome of the last update, a rollback
-│   │                            included. The What's
+│   │                            included. After a go-back the outcome
+│   │                            leads with Report what broke, a few lines
+│   │                            that banditshell triage shows in a
+│   │                            terminal before anything is sent, and
+│   │                            offers a quiet Reinstall the version you
+│   │                            just left, asked once. The What's
 │   │                            new card is marked seen when dismissed
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)
@@ -2805,7 +2810,9 @@ when it answers `shell status` over IPC within `BANDITSHELL_HEALTH_WAIT` seconds
 shows no ReferenceError or "Failed to load" for `BANDITSHELL_HEALTH_SCAN` seconds (3); the last
 good copy is refreshed after that and not before. A failed check goes back by itself: `git reset
 --keep` to the recorded commit, relaunch, `update/result.json` for the next shell to read, and
-`update/skip` plus `updates.skip` so the same commit is not offered again; a newer one is.
+`update/skip` plus `updates.skip` so the same commit is not offered again; a newer one is. Once the
+skipped commit is applied and starts (`update apply --to`, the menu's Reinstall), it leaves
+`update/skip`, and the shell clears `updates.skip` when the result names it.
 
 `BANDITSHELL_DRY=1` makes `stop`, `start`, `restart`, `update apply` and `update rollback` print
 what they would do (`dry: ...`) and change nothing. `tests/update-cli.test.js` runs the whole loop
@@ -4478,7 +4485,10 @@ keyboard on demand, so the timer composer's fields can be typed into.
 
 The weather shows the next seven days from Open-Meteo, located by the
 coordinates wttr.in already sends with the current weather, and falls back to
-wttr.in's own three days when Open-Meteo cannot be reached.
+wttr.in's own three days when Open-Meteo cannot be reached. A town the
+weather service does not know says Place not found, and its Change place
+opens the Place row in Settings (Focus, Clock, Weather), where the place,
+the units, the refresh and the weather itself are set.
 
 ### Music I am already looking at
 

@@ -264,6 +264,10 @@ Singleton {
             idleOff: "idle.screensOff",
             idleSuspend: "idle.sleep",
             rightForward: "calendar.rightGoesForward",
+            weatherShow: "weather.show",
+            weatherPlace: "weather.location",
+            weatherUnits: "weather.units",
+            weatherMinutes: "weather.minutes",
             shotDir: "picker.dir",
             shotEditor: "picker.editor",
             outline: "picker.outline",
@@ -275,6 +279,7 @@ Singleton {
             lockDesat: "lock.desaturate",
             filesView: "files.view",
             filesSort: "files.sort",
+            filesReversed: "files.reversed",
             filesHidden: "files.hidden",
             filesMarkdown: "files.markdown",
             filesZoom: "files.zoom",
@@ -1013,7 +1018,7 @@ Singleton {
             return "";
         if (sub === "hz" && live && String(live.mode).split("@")[1] === String(mine.mode).split("@")[1])
             return "";
-        return "not applied yet";
+        return "needs Apply";
     }
 
     function resetStage(): void {
@@ -1268,9 +1273,11 @@ Singleton {
     readonly property string vpnOn: Tunnels.activeName
 
     readonly property string hotspotStatus: Hotspot.status
-    readonly property string alertsDetail: AlertSounds.available ? "notifications · low battery · errors" : "pw-play is not installed, so alerts stay silent"
+    readonly property string alertsDetail: AlertSounds.available ? "" : "pw-play is not installed, so alerts stay silent"
     readonly property bool hotspotBlocked: Hotspot.blocker !== "" && !Hotspot.on
     readonly property string hotspotPasswordTrouble: Hotspot.passwordTrouble
+    readonly property string weatherPlaceState: root.weatherPlaceTrouble || (Weather.location ? "" : Weather.ready && Weather.fetchedFor === "" && Weather.place ? `from your connection: ${Weather.place}` : "from your connection")
+    readonly property string weatherPlaceTrouble: Weather.failed && Weather.failure === "place" && Weather.failedFor === Weather.location ? Weather.location ? `no town called "${Weather.location}"` : "could not place you" : ""
     readonly property string wifiState: Hotspot.active ? "running your hotspot" : root.wifiNet || "not connected"
 
     readonly property var outputs: Audio.sinks.map(n => [n.name, Audio.deviceLabel(n)])
@@ -1909,7 +1916,7 @@ Singleton {
     readonly property string schemeDetail: {
         const apps = !DarkMode.available ? "apps keep their own colours" : DarkMode.appsDisagree ? `apps still ${DarkMode.dark ? "dark" : "light"}` : "shell and apps";
         if (Appearance.mode !== "auto")
-            return DarkMode.appsDisagree ? `${apps}, press ${Appearance.mode} again` : apps;
+            return apps;
         const flip = DarkMode.nextFlip > 0 ? `${DarkMode.night ? "dark" : "light"} until ${TimeFormat.time(new Date(DarkMode.nextFlip), false)}` : DarkMode.night ? "dark" : "light all day";
         const when = DarkMode.scheduled ? flip : "dark until night light has a schedule";
         return `${when} · ${apps}`;
