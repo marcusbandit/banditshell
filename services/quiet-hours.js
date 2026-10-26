@@ -57,6 +57,34 @@ function deadlineFor(choice, at, wake) {
     return 0;
 }
 
+function hushUntil(choice, at, wake) {
+    if (choice === "always")
+        return 0;
+    const ends = parseEnds(choice);
+    return ends === ENDS_HOUR || ends === ENDS_TOMORROW ? deadlineFor(ends, at, wake) : -1;
+}
+
+function hushChoices(at, wake) {
+    return [["hour", "1 hour"], ["tomorrow", "until morning"]].map(([choice, text]) => {
+        const until = hushUntil(choice, at, wake);
+        return { choice: choice, until: until, text: text, detail: `· ${text.startsWith("until") ? "" : "until "}${endsAt(until, at)}` };
+    }).sort((a, b) => a.until - b.until);
+}
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function endsAt(until, at) {
+    if (!(until > at))
+        return "";
+    if (until - at < 24 * HOUR_MS)
+        return clockTime(until);
+    const d = new Date(until);
+    if (until - at < 6 * 24 * HOUR_MS)
+        return `${WEEKDAYS[d.getDay()]} ${clockTime(until)}`;
+    return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
+
 function endsLabel(until, at, wake) {
     if (!(until > at))
         return ENDS_NEVER;

@@ -40,3 +40,12 @@ function homes(records) {
     }
     return { history: history, popups: popups, gone: gone };
 }
+
+function hushedPopups(popups, keys, entry, key, kind) {
+    const out = [];
+    popups.forEach((e, at) => {
+        if (kind === "snooze" ? e === entry : kind === "mute" && keys[at] === key)
+            out.push({ entry: e, at: at });
+    });
+    return out;
+}

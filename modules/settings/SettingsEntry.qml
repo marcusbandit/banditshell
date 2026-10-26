@@ -14,6 +14,7 @@ Column {
     readonly property string kind: root.row.kind ?? ""
     readonly property var value: root.key ? SettingsState.v(root.key) : undefined
     readonly property bool off: !!root.row.dis && !!root.row.dis(SettingsState)
+    readonly property bool bad: !!root.row.bad && !!root.row.bad(SettingsState)
     readonly property string stateText: String(Catalogue.val(root.row.state, SettingsState) ?? "")
     readonly property string pendingText: String(Catalogue.val(root.row.pending, SettingsState) ?? "")
     readonly property var combos: root.row.keys ? SettingsKeys.combosFor(root.row.keys) : []
@@ -79,6 +80,8 @@ Column {
         icon: root.row.icon ?? ""
         label: Catalogue.labelOf(root.row)
         detail: root.stateText
+        detailColour: root.bad ? Appearance.colour.alarm : Appearance.colour.textFaint
+        detailLines: root.bad ? 3 : root.row.lines ?? 1
         pending: root.pendingText
         off: root.off
         loose: reset.visible ? reset.width + resetGap.width + Appearance.padding.normal * 2 : 0
@@ -338,6 +341,7 @@ Column {
             text: String(root.value ?? "")
             placeholder: root.row.placeholder ?? ""
             mono: !!root.row.mono
+            alarm: root.bad
             enabled: !root.off
             onCommitted: t => root.set(t)
         }
@@ -348,7 +352,7 @@ Column {
 
         SettingsSecret {
             text: String(root.value ?? "")
-            alarm: !!root.row.bad && !!root.row.bad(SettingsState)
+            alarm: root.bad
             enabled: !root.off
             onEdited: t => root.set(t)
         }

@@ -100,6 +100,9 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: root.take(reader.place, text)
         }
+
+        onRunningChanged: if (!reader.running && reader.place !== root.location)
+            Qt.callLater(root.retry)
     }
 
     Process {

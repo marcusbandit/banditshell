@@ -190,7 +190,7 @@ function readWttr(output) {
 
 function failureLook(failure) {
     if (failure === "place")
-        return { icon: "wrong_location", title: "Place not found", detail: "Fix the spelling of the town in config.json", note: "", retry: false };
+        return { icon: "wrong_location", title: "Place not found", detail: "Fix the spelling of the town in Settings", note: "", retry: false, fix: "weather.location" };
     if (failure === "service")
         return { icon: "cloud_off", title: "No answer", detail: "The weather service did not reply", note: "the weather service did not reply", retry: true };
     return { icon: "wifi_off", title: "You're offline", detail: "The weather loads when you're back online", note: "offline, updates when you're back online", retry: false };

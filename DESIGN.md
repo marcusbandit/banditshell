@@ -4485,7 +4485,10 @@ keyboard on demand, so the timer composer's fields can be typed into.
 
 The weather shows the next seven days from Open-Meteo, located by the
 coordinates wttr.in already sends with the current weather, and falls back to
-wttr.in's own three days when Open-Meteo cannot be reached.
+wttr.in's own three days when Open-Meteo cannot be reached. A town the
+weather service does not know says Place not found, and its Change place
+opens the Place row in Settings (Focus, Clock, Weather), where the place,
+the units, the refresh and the weather itself are set.
 
 ### Music I am already looking at
 

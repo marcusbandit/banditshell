@@ -1,6 +1,43 @@
 {
   "entries": [
     {
+      "id": "2026-10-26-7",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings has a Weather section: place, units, refresh, on or off"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Place not found in the island opens the Place row in Settings"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "World clocks in Settings are now headed Other time zones"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-6",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Island cards can remind you later or mute their app, with an end time"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Quiet mode in the island shows when it ends and has a turn off button"
+        }
+      ]
+    },
+    {
       "id": "2026-10-26-5",
       "date": "2026-10-26",
       "changes": [
