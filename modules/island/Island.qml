@@ -1479,7 +1479,7 @@ Item {
                     y: root.pillY
                     width: root.largeWidth
                     height: Math.max(root.compactHeight, overview.implicitHeight, root.pillHeight)
-                    moving: visible
+                    moving: visible && Media.playing
                     opacity: glow.value
                     visible: glow.value > 0.005
                 }
