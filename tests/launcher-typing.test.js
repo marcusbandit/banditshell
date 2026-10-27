@@ -303,10 +303,20 @@ test.describe("quicklinks", () => {
             { name: "Half done", keyword: "", url: "https://a.b" },
             { name: "No address", keyword: "x", url: "a.b" }
         ]);
-        assert.deepStrictEqual(rows.map(r => [r.section, r.word, r.about, r.icon]), [
-            ["Quicklinks", "yt", "Search YouTube", "travel_explore"],
-            ["Quicklinks", "mail", "Open Mail", "link"]
+        assert.deepStrictEqual(rows.map(r => [r.section, r.word, r.label, r.about, r.icon]), [
+            ["Quicklinks", "yt", "yt", "Search YouTube", "travel_explore"],
+            ["Quicklinks", "mail", "mail", "Open Mail", "link"]
         ]);
+    });
+
+    test.it("puts keywords for the same address on one row", () => {
+        const wiki = "https://wiki.archlinux.org/index.php?search={query}";
+        const rows = Quicklinks.prefixes([
+            { name: "Arch Wiki", keyword: "arch", url: wiki },
+            { name: "Arch wiki again", keyword: "aw", url: ` ${wiki} ` },
+            { name: "Twice", keyword: "arch", url: wiki }
+        ]);
+        assert.deepStrictEqual(rows.map(r => [r.word, r.label, r.also, r.about]), [["arch", "arch, aw", ["aw"], "Search Arch Wiki"]]);
     });
 
     test.it("the shipped defaults are all valid and distinct", () => {

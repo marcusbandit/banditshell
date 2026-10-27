@@ -110,19 +110,31 @@ function problem(link) {
 
 function prefixes(links) {
     var out = [];
+    var byUrl = {};
     for (var i = 0; i < (links || []).length; i++) {
         var link = links[i];
         var keyword = cleanKeyword(link && link.keyword);
         if (!keyword || problem(link))
             continue;
+        var url = String(link.url).trim();
+        var same = byUrl[url];
+        if (same) {
+            if (same.word !== keyword && same.also.indexOf(keyword) < 0) {
+                same.also.push(keyword);
+                same.label = `${same.label}, ${keyword}`;
+            }
+            continue;
+        }
         var name = String(link.name).trim();
-        out.push({
+        byUrl[url] = {
             section: "Quicklinks",
             word: keyword,
+            label: keyword,
             about: takes(link) ? `Search ${name}` : `Open ${name}`,
             icon: takes(link) ? "travel_explore" : "link",
             also: []
-        });
+        };
+        out.push(byUrl[url]);
     }
     return out;
 }

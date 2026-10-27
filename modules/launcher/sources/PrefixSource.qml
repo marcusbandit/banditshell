@@ -19,7 +19,7 @@ QtObject {
                         key: `prefix:${section.title}:${p.word}`,
                         kind: "prefix",
                         complete: Prefixes.completion(p),
-                        label: p.word,
+                        label: p.label ?? p.word,
                         detail: Prefixes.detail(p),
                         icon: p.icon,
                         score: 1
@@ -39,7 +39,8 @@ QtObject {
         return [
             {
                 icon: "keyboard_tab",
-                label: "Search",
+                label: `Type ${row.complete.trim()}`,
+                button: true,
                 run: () => root.activate(row)
             }
         ];

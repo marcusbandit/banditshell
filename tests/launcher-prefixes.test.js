@@ -67,9 +67,17 @@ test.describe("the ? page", () => {
         assert.deepStrictEqual(Prefixes.sections([]), []);
     });
 
-    test.it("lists a word once per section, and under each section that answers it", () => {
-        const page = Prefixes.sections([row("Ask and look up", "gh"), row("Quicklinks", "gh"), row("Quicklinks", "gh")]);
-        assert.deepStrictEqual(page.map(s => [s.title, s.prefixes.length]), [["Ask and look up", 1], ["Quicklinks", 1]]);
+    test.it("lists a word once per section", () => {
+        const page = Prefixes.sections([row("Desktop", "tray"), row("Desktop", "tray")]);
+        assert.deepStrictEqual(page.map(s => [s.title, s.prefixes.length]), [["Desktop", 1]]);
+    });
+
+    test.it("shows a quicklink in place of the source prefix its keyword wins over", () => {
+        const page = Prefixes.sections([row("Ask and look up", "gh"), row("Ask and look up", "define"), row("Quicklinks", "hub", ["gh"]), row("Quicklinks", "gh")]);
+        assert.deepStrictEqual(page.map(s => [s.title, s.prefixes.map(p => p.word)]), [
+            ["Ask and look up", ["define"]],
+            ["Quicklinks", ["gh", "hub"]]
+        ]);
     });
 
     test.it("gives an example only when it adds something after the prefix", () => {
