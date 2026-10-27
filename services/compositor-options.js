@@ -37,3 +37,16 @@ function readOptions(text) {
         out[option.key] = answers[option.name] ? answerValue(answers[option.name], option.flag) : null;
     return out;
 }
+
+function missing(got) {
+    return OPTIONS.filter(option => got[option.key] === null).map(option => option.name);
+}
+
+function settle(got, kept) {
+    if (OPTIONS.every(option => option.flag || got[option.key] === null))
+        return null;
+    const out = {};
+    for (const option of OPTIONS)
+        out[option.key] = got[option.key] ?? kept[option.key];
+    return out;
+}

@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/compositor-options.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Options = new Function(src + "\nreturn { batch, readOptions };")();
+const Options = new Function(src + "\nreturn { batch, readOptions, missing, settle };")();
 
 const captured = fs.readFileSync(path.join(ROOT, "tests/fixtures/hyprctl/getoption-batch.txt"), "utf8");
 
@@ -49,4 +49,26 @@ test("each option can go missing on its own", () => {
 test("output with no answers reads as all null", () => {
     assert.ok(Object.values(Options.readOptions("")).every(v => v === null));
     assert.ok(Object.values(Options.readOptions("HYPRLAND_INSTANCE_SIGNATURE not set!\n")).every(v => v === null));
+});
+
+const KEPT = {
+    rounding: 15,
+    roundingPower: 2,
+    gapsOut: 10,
+    gapsIn: 0,
+    borderSize: 0,
+    naturalScrollMouse: false,
+    naturalScrollTouchpad: false
+};
+
+test("a missing option takes the value the shell keeps, the rest come from Hyprland", () => {
+    const got = Options.readOptions(fakeHyprctl(Options.batch(), "decoration:rounding"));
+    assert.deepStrictEqual(Options.settle(got, KEPT), Object.assign({}, EVERY, { rounding: 15 }));
+    assert.deepStrictEqual(Options.missing(got), ["decoration:rounding"]);
+});
+
+test("with no shape option answered the shell does not follow Hyprland", () => {
+    assert.strictEqual(Options.settle(Options.readOptions(""), KEPT), null);
+    const scrollOnly = '{"option": "input:natural_scroll", "bool": true, "set": true }\n';
+    assert.strictEqual(Options.settle(Options.readOptions(scrollOnly), KEPT), null);
 });

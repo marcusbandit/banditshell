@@ -9,6 +9,8 @@ import "compositor-options.js" as Options
 Singleton {
     id: root
 
+    property string unanswered: ""
+
     function refresh(): void {
         if (Compositor.isHyprland)
             hyprctl.running = true;
@@ -29,17 +31,25 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 const got = Options.readOptions(text);
-                const shape = ["rounding", "roundingPower", "gapsOut", "gapsIn", "borderSize"];
-                if (shape.every(key => got[key] === null))
+                const next = Options.settle(got, {
+                    rounding: Config.values.rounding.base,
+                    roundingPower: 2,
+                    gapsOut: Config.values.edge.border,
+                    gapsIn: Compositor.gapsIn,
+                    borderSize: Compositor.borderSize,
+                    naturalScrollMouse: Compositor.naturalScrollMouse,
+                    naturalScrollTouchpad: Compositor.naturalScrollTouchpad
+                });
+                if (!next)
                     return console.warn("CompositorSync: could not read Hyprland options, keeping config.json values.");
 
-                const missing = Object.keys(got).filter(key => got[key] === null);
-                if (missing.length > 0)
-                    console.warn(`CompositorSync: Hyprland did not answer for ${missing.join(", ")}, keeping the previous value for each.`);
+                const missing = Options.missing(got).join(", ");
+                if (missing && missing !== root.unanswered)
+                    console.warn(`CompositorSync: Hyprland has no ${missing}, so the shell uses its own value for each.`);
+                root.unanswered = missing;
 
-                for (const key of Object.keys(got))
-                    if (got[key] !== null)
-                        Compositor[key] = got[key];
+                for (const key of Object.keys(next))
+                    Compositor[key] = next[key];
                 Compositor.available = true;
             }
         }

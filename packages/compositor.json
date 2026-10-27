@@ -24,6 +24,6 @@
   },
   "config": {
     "namespace": ["compositor", "cli"],
-    "reads": ["anim"]
+    "reads": ["anim", "edge", "rounding"]
   }
 }
