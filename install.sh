@@ -846,7 +846,9 @@ run_step() {
 }
 
 OMARCHY_SYSTEM=/usr/share/omarchy
-ISLAND_ADD="omarchy plugin add https://github.com/marcusbandit/banditshell-island.git --enable"
+ISLAND_URL="https://github.com/marcusbandit/banditshell-island.git"
+ISLAND_ADD="omarchy plugin add $ISLAND_URL --enable"
+ISLAND_REMOVE="omarchy plugin remove banditshell.island"
 
 omarchy_present() {
     local dir
@@ -858,27 +860,77 @@ omarchy_present() {
 
 can_ask() { [ -t 0 ]; }
 
+shown_path() {
+    local home='~'
+    case "$1" in
+    "$HOME"/*) printf '%s/%s' "$home" "${1#"$HOME"/}" ;;
+    *) printf '%s' "$1" ;;
+    esac
+}
+
+omarchy_later() {
+    say "Nothing was installed. To add the island:"
+    say "    $ISLAND_ADD"
+    say "Or the full shell anyway:"
+    say "    $(shown_path "$REPO/install.sh") --beside-omarchy"
+}
+
+add_island() {
+    if ! command -v omarchy >/dev/null 2>&1; then
+        say "The omarchy command is not on your PATH, so the island was not added. Once it is:"
+        say "    $ISLAND_ADD"
+        return 1
+    fi
+    if ! omarchy plugin add "$ISLAND_URL" --enable; then
+        say ""
+        say "Adding the island did not work. To try it again yourself:"
+        say "    $ISLAND_ADD"
+        return 1
+    fi
+    say ""
+    say "banditshell island is in Omarchy's bar. To let it show your notifications:"
+    say "    omarchy plugin disable omarchy.notifications && omarchy restart shell"
+    say "To remove it again:"
+    say "    $ISLAND_REMOVE"
+    return 2
+}
+
 omarchy_check() {
     [ "$BESIDE_OMARCHY" != 1 ] && ! cli_installed && omarchy_present || return 0
-    say "Omarchy already shows your notifications, and the full banditshell would fight it for them."
-    say "banditshell island is the one made for Omarchy: the notification, music and lyrics"
-    say "pill, as an Omarchy plugin. Add it with:"
-    say "    $ISLAND_ADD"
+    say "This is Omarchy. Omarchy and the full banditshell both try to show your"
+    say "notifications, and only one of them can."
     say ""
-    [ "$DRY_RUN" -eq 0 ] || return 0
+    say "banditshell island is made to sit beside Omarchy: notifications, now playing"
+    say "with word-timed lyrics, and timers, in Omarchy's own bar. It leaves out the"
+    say "launcher, the sidebar, Settings and the rest of the full shell. To remove it"
+    say "later: $ISLAND_REMOVE"
+    say ""
+    if [ "$DRY_RUN" -eq 1 ]; then
+        say "Dry run, so this walks the full shell's steps and adds nothing."
+        say ""
+        return 0
+    fi
     if ! can_ask; then
-        say "Nothing was installed. To put the full shell beside Omarchy anyway:"
-        say "    $REPO/install.sh --beside-omarchy"
+        omarchy_later
         return 1
     fi
     local answer=""
-    printf 'Install the full shell beside Omarchy anyway? [y/N] '
+    say "  1  add banditshell island (recommended)"
+    say "  2  install the full shell anyway"
+    say "  3  cancel"
+    printf 'Choice [1]: '
     read -r answer || true
-    case "$answer" in
-    [yY] | [yY][eE][sS]) BESIDE_OMARCHY=1 ;;
-    *) say "Nothing was installed."; return 1 ;;
-    esac
     say ""
+    case "$answer" in
+    "" | 1) add_island; return ;;
+    2)
+        BESIDE_OMARCHY=1
+        say "Installing the full shell beside Omarchy. Next time, skip this question with:"
+        say "    $(shown_path "$REPO/install.sh") --beside-omarchy"
+        say ""
+        ;;
+    *) omarchy_later; return 1 ;;
+    esac
 }
 
 release_due() {
@@ -922,7 +974,12 @@ checkout_release() {
 
 main() {
     if [ "$LIST_ONLY" -eq 0 ]; then
-        omarchy_check || exit 1
+        omarchy_check
+        case $? in
+        0) ;;
+        2) exit 0 ;;
+        *) exit 1 ;;
+        esac
         if checkout_release; then
             local arg
             local -a args=()

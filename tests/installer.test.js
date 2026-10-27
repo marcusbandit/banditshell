@@ -93,13 +93,15 @@ test.describe("the password window", () => {
 });
 
 test.describe("Omarchy", () => {
-    test.it("stops before installing and points at the island plugin", () => {
+    test.it("without a terminal it stops with exit 1 and both next commands", () => {
         const dir = world();
         omarchy(dir);
-        const out = installer(dir, `omarchy_check </dev/null; echo "go $?"`);
-        assert.match(out.stdout, /fight it for them/);
-        assert.match(out.stdout, /omarchy plugin add https:\/\/github\.com\/marcusbandit\/banditshell-island\.git --enable/);
-        assert.match(out.stdout, /install\.sh --beside-omarchy\ngo 1\n$/);
+        const out = installer(dir, `REPO="${dir}/home/banditshell"; main </dev/null`);
+        assert.strictEqual(out.status, 1);
+        assert.match(out.stdout, /both try to show your\nnotifications/);
+        assert.match(out.stdout, /omarchy plugin remove banditshell\.island/);
+        assert.match(out.stdout, /To add the island:\n {4}omarchy plugin add https:\/\/github\.com\/marcusbandit\/banditshell-island\.git --enable\n/);
+        assert.match(out.stdout, /Or the full shell anyway:\n {4}~\/banditshell\/install\.sh --beside-omarchy\n$/);
     });
 
     test.it("finds the packaged install and the one OMARCHY_PATH names", () => {
@@ -112,11 +114,31 @@ test.describe("Omarchy", () => {
         assert.match(installer(dir, "omarchy_present; echo $?", { OMARCHY_PATH: `${dir}/elsewhere` }).stdout, /^0$/m);
     });
 
-    test.it("goes on when the person says yes, and only then", () => {
+    test.it("adds the island on Enter, and says how to hand it notifications and remove it", () => {
+        const dir = world({ omarchy: 'echo "$*" >>"$HOME/omarchy.log"' });
+        omarchy(dir);
+        const out = installer(dir, `can_ask() { true; }; omarchy_check <<<""; echo "go $?"`);
+        assert.strictEqual(fs.readFileSync(path.join(dir, "home/omarchy.log"), "utf8"), "plugin add https://github.com/marcusbandit/banditshell-island.git --enable\n");
+        assert.match(out.stdout, /omarchy plugin disable omarchy\.notifications && omarchy restart shell\nTo remove it again:\n {4}omarchy plugin remove banditshell\.island\ngo 2\n$/);
+        assert.strictEqual(installer(dir, `can_ask() { true; }; main <<<1 >/dev/null`).status, 0);
+    });
+
+    test.it("prints the island command when adding it fails or omarchy is missing", () => {
+        const failing = world({ omarchy: "exit 1" });
+        omarchy(failing);
+        assert.match(installer(failing, `can_ask() { true; }; omarchy_check <<<1; echo "go $?"`).stdout, /did not work.*\n {4}omarchy plugin add \S+ --enable\ngo 1\n$/);
+        const missing = world();
+        omarchy(missing);
+        assert.match(installer(missing, `can_ask() { true; }; omarchy_check <<<1; echo "go $?"`).stdout, /not on your PATH.*\n {4}omarchy plugin add \S+ --enable\ngo 1\n$/);
+    });
+
+    test.it("installs the full shell on 2, names the flag, and cancels on anything else", () => {
         const dir = world();
         omarchy(dir);
-        assert.match(installer(dir, `can_ask() { true; }; omarchy_check <<<y >/dev/null; echo "go $? $BESIDE_OMARCHY"`).stdout, /go 0 1\n$/);
-        assert.match(installer(dir, `can_ask() { true; }; omarchy_check <<<"" >/dev/null; echo "go $? $BESIDE_OMARCHY"`).stdout, /go 1 0\n$/);
+        const full = installer(dir, `can_ask() { true; }; omarchy_check <<<2; echo "go $? $BESIDE_OMARCHY"`);
+        assert.match(full.stdout, /install\.sh --beside-omarchy\n\ngo 0 1\n$/);
+        assert.match(installer(dir, `can_ask() { true; }; omarchy_check <<<3; echo "go $? $BESIDE_OMARCHY"`).stdout, /--beside-omarchy\ngo 1 0\n$/);
+        assert.strictEqual(installer(dir, `can_ask() { true; }; main <<<3 >/dev/null`).status, 1);
         assert.strictEqual(installer(dir, `BESIDE_OMARCHY=1; omarchy_check; echo "go $?"`).stdout, "go 0\n");
     });
 
@@ -124,7 +146,7 @@ test.describe("Omarchy", () => {
         const dir = world();
         omarchy(dir);
         const dry = installer(dir, `DRY_RUN=1; omarchy_check </dev/null; echo "go $?"`);
-        assert.match(dry.stdout, /--enable\n\ngo 0\n$/);
+        assert.match(dry.stdout, /adds nothing\.\n\ngo 0\n$/);
         fs.mkdirSync(path.join(dir, "cli"));
         fs.writeFileSync(path.join(dir, "cli/banditshell"), "", { mode: 0o755 });
         fs.symlinkSync("../cli/banditshell", path.join(dir, "bin/banditshell"));

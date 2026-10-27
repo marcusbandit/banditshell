@@ -12,7 +12,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "On Omarchy, the installer offers the island plugin first"
+          "text": "On Omarchy, the installer can add the island plugin for you"
         }
       ]
     },
