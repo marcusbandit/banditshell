@@ -859,12 +859,13 @@ omarchy_present() {
 can_ask() { [ -t 0 ]; }
 
 omarchy_check() {
-    [ "$BESIDE_OMARCHY" -eq 0 ] && omarchy_present || return 0
+    [ "$BESIDE_OMARCHY" != 1 ] && ! cli_installed && omarchy_present || return 0
     say "Omarchy already shows your notifications, and the full banditshell would fight it for them."
     say "banditshell island is the one made for Omarchy: the notification, music and lyrics"
     say "pill, as an Omarchy plugin. Add it with:"
     say "    $ISLAND_ADD"
     say ""
+    [ "$DRY_RUN" -eq 0 ] || return 0
     if ! can_ask; then
         say "Nothing was installed. To put the full shell beside Omarchy anyway:"
         say "    $REPO/install.sh --beside-omarchy"

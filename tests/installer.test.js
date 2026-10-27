@@ -41,7 +41,7 @@ function askpass(dir, extra) {
 }
 
 function installer(dir, snippet, extra = {}) {
-    return spawnSync("bash", ["-c", `source "${path.join(ROOT, "install.sh")}"; OMARCHY_SYSTEM="${dir}/system-omarchy"; ${snippet}`],
+    return spawnSync("bash", ["-c", `source "${path.join(ROOT, "install.sh")}"; REPO="${dir}"; OMARCHY_SYSTEM="${dir}/system-omarchy"; ${snippet}`],
         { encoding: "utf8", timeout: 15000, env: env(dir, { LANG: "C.UTF-8", ...extra }) });
 }
 
@@ -65,6 +65,12 @@ test.describe("the password window", () => {
         assert.ok(out.seconds < 5, `took ${out.seconds}s`);
         assert.strictEqual(out.stdout, "");
         assert.match(fs.readFileSync(path.join(dir, "run/why"), "utf8"), /closed without an answer/);
+    });
+
+    test.it("says so when the window never opens", () => {
+        const out = askpass(world({ qs: "exit 0" }));
+        assert.strictEqual(out.status, 1);
+        assert.match(out.stderr, /the password window did not open/);
     });
 
     test.it("stops waiting on a window that never answers", () => {
@@ -112,6 +118,23 @@ test.describe("Omarchy", () => {
         assert.match(installer(dir, `can_ask() { true; }; omarchy_check <<<y >/dev/null; echo "go $? $BESIDE_OMARCHY"`).stdout, /go 0 1\n$/);
         assert.match(installer(dir, `can_ask() { true; }; omarchy_check <<<"" >/dev/null; echo "go $? $BESIDE_OMARCHY"`).stdout, /go 1 0\n$/);
         assert.strictEqual(installer(dir, `BESIDE_OMARCHY=1; omarchy_check; echo "go $?"`).stdout, "go 0\n");
+    });
+
+    test.it("only shows the tip on a dry run, and never asks a checkout that already installed", () => {
+        const dir = world();
+        omarchy(dir);
+        const dry = installer(dir, `DRY_RUN=1; omarchy_check </dev/null; echo "go $?"`);
+        assert.match(dry.stdout, /--enable\n\ngo 0\n$/);
+        fs.mkdirSync(path.join(dir, "cli"));
+        fs.writeFileSync(path.join(dir, "cli/banditshell"), "", { mode: 0o755 });
+        fs.symlinkSync("../cli/banditshell", path.join(dir, "bin/banditshell"));
+        assert.strictEqual(installer(dir, `omarchy_check </dev/null; echo "go $?"`).stdout, "go 0\n");
+    });
+
+    test.it("asks anyway when the environment says something other than 1", () => {
+        const dir = world();
+        omarchy(dir);
+        assert.match(installer(dir, `omarchy_check </dev/null; echo "go $?"`, { BANDITSHELL_BESIDE_OMARCHY: "yes" }).stdout, /go 1\n$/);
     });
 
     test.it("keeps the choice across the move to the release, which may not know the flag", () => {
