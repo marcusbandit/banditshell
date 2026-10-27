@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "compositor-options.js" as Options
 
 Singleton {
     id: root
@@ -23,39 +24,23 @@ Singleton {
     Process {
         id: hyprctl
 
-        command: ["hyprctl", "-j", "--batch", "getoption decoration:rounding ; getoption decoration:rounding_power ; getoption general:gaps_out ; getoption general:gaps_in ; getoption general:border_size ; getoption input:natural_scroll ; getoption input:touchpad:natural_scroll"]
+        command: ["hyprctl", "-j", "--batch", Options.batch()]
 
         stdout: StdioCollector {
             onStreamFinished: {
-                const nums = text.split("\n").filter(l => l.trim().startsWith("{")).map(line => {
-                    try {
-                        const o = JSON.parse(line);
-                        const many = o.custom ?? o.css;
-                        if (many !== undefined)
-                            return parseFloat(String(many).trim().split(/\s+/)[0]);
-
-                        if (o.bool !== undefined)
-                            return o.bool ? 1 : 0;
-                        return o.float ?? o.int ?? null;
-                    } catch (e) {
-                        return null;
-                    }
-                }).filter(v => v !== null);
-
-                if (nums.length < 5)
+                const got = Options.readOptions(text);
+                const shape = ["rounding", "roundingPower", "gapsOut", "gapsIn", "borderSize"];
+                if (shape.every(key => got[key] === null))
                     return console.warn("CompositorSync: could not read Hyprland options, keeping config.json values.");
 
-                Compositor.rounding = nums[0];
-                Compositor.roundingPower = nums[1];
-                Compositor.gapsOut = nums[2];
-                Compositor.gapsIn = nums[3];
-                Compositor.borderSize = nums[4];
-                Compositor.available = true;
+                const missing = Object.keys(got).filter(key => got[key] === null);
+                if (missing.length > 0)
+                    console.warn(`CompositorSync: Hyprland did not answer for ${missing.join(", ")}, keeping the previous value for each.`);
 
-                if (nums.length > 5)
-                    Compositor.naturalScrollMouse = nums[5] !== 0;
-                if (nums.length > 6)
-                    Compositor.naturalScrollTouchpad = nums[6] !== 0;
+                for (const key of Object.keys(got))
+                    if (got[key] !== null)
+                        Compositor[key] = got[key];
+                Compositor.available = true;
             }
         }
     }
