@@ -58,5 +58,6 @@ Scope {
     SettingsIpc {}
     SidebarIpc {}
     StreamIpc {}
+    TraceIpc {}
     WallpaperIpc {}
 }

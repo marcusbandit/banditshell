@@ -21,6 +21,8 @@ Item {
     readonly property var range: Forecast.weekRange(root.days)
     readonly property real barWidth: Appearance.padding.small
     readonly property real barHeight: Appearance.font.line.normal * 3
+    readonly property bool blank: Weather.failed && !Weather.ready
+    readonly property var look: Weather.failureLook
 
     implicitHeight: root.maxHeight > 0 ? Math.min(root.natural, root.maxHeight) : root.natural
 
@@ -52,16 +54,117 @@ Item {
             spacing: Appearance.padding.card
 
             TaskHeader {
+                id: header
+
                 width: parent.width
-                icon: Weather.icon
-                title: Weather.ready ? `${Weather.temperature} ${Weather.summary.trim()}` : "Weather"
-                subtitle: Weather.place
+                icon: root.blank ? root.look.icon : Weather.icon
+                tone: !root.blank ? Appearance.colour.accent : Weather.failure === "place" ? Appearance.colour.alarm : Appearance.colour.textDim
+                title: Weather.ready ? `${Weather.temperature} ${Weather.summary.trim()}` : root.blank ? root.look.title : "Weather"
+                subtitle: !root.blank ? Weather.place : Weather.failure !== "place" ? root.look.detail : Weather.failedFor ? `No place called "${Weather.failedFor}"` : "The weather service does not know this place"
                 onClosed: root.hide()
+            }
+
+            Item {
+                width: parent.width
+                height: Math.max(guess.implicitHeight, take.implicitHeight)
+                visible: Weather.failure === "place" && !!Weather.location && Weather.failedFor === Weather.location
+
+                StyledText {
+                    id: guess
+
+                    anchors.left: parent.left
+                    anchors.leftMargin: header.inset
+                    anchors.right: take.left
+                    anchors.rightMargin: Appearance.padding.normal
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Weather.placeSuggestion ? `Did you mean ${Weather.placeSuggestion.text}?` : Weather.suggesting ? "Looking for a close spelling" : "No close spelling found"
+                    wrapMode: Text.Wrap
+                }
+
+                Button {
+                    id: take
+
+                    x: parent.width - width
+                    anchors.verticalCenter: parent.verticalCenter
+                    style: Weather.placeSuggestion ? "accent" : "ring"
+                    icon: Weather.placeSuggestion ? "location_on" : "my_location"
+                    text: Weather.placeSuggestion ? `Use ${Weather.placeSuggestion.text}` : "Use my connection's location"
+                    onClicked: Weather.placeSuggestion ? Weather.useSuggestion() : Weather.useConnection()
+                }
+            }
+
+            Item {
+                width: parent.width
+                readonly property Item beside: fix.visible ? fix : again.visible && !root.blank ? again : null
+
+                height: Math.max(notes.implicitHeight, again.visible ? again.implicitHeight : 0, fix.visible ? fix.implicitHeight : 0)
+                visible: Weather.stale || Weather.failure === "place" || root.blank && root.look.retry
+
+                Column {
+                    id: notes
+
+                    anchors.left: parent.left
+                    anchors.leftMargin: header.inset
+                    anchors.right: parent.beside ? parent.beside.left : parent.right
+                    anchors.rightMargin: parent.beside ? Appearance.padding.normal : 0
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    StyledText {
+                        width: parent.width
+                        visible: Weather.stale
+                        text: `${Forecast.ago(Weather.fetchedAt, age.date.getTime())}, ${root.look.note}`
+                        color: Appearance.colour.textDim
+                        wrapMode: Text.Wrap
+                    }
+
+                    StyledText {
+                        width: parent.width
+                        visible: Weather.failure === "place"
+                        text: root.look.detail
+                        wrapMode: Text.Wrap
+                    }
+
+                    StyledText {
+                        width: parent.width
+                        visible: Weather.failure === "place"
+                        text: "The weather updates as soon as it is saved"
+                        color: Appearance.colour.textDim
+                        wrapMode: Text.Wrap
+                    }
+                }
+
+                Button {
+                    id: again
+
+                    x: root.blank ? header.inset - again.padX : parent.width - width
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.look.retry
+                    style: "bare"
+                    icon: "refresh"
+                    text: Weather.loading ? "Trying" : "Try again"
+                    interactive: !Weather.loading
+                    onClicked: Weather.retry()
+                }
+
+                Button {
+                    id: fix
+
+                    x: parent.width - width
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: !!root.look.fix
+                    style: "ring"
+                    icon: "edit"
+                    text: "Change place"
+                    onClicked: root.act({
+                        kind: "settings",
+                        row: root.look.fix
+                    })
+                }
             }
 
             StyledText {
                 width: parent.width
-                visible: !Weather.forecastReady
+                visible: !Weather.forecastReady && !Weather.failed
                 text: Weather.wanted ? "Loading the forecast" : "Weather is turned off in settings"
                 color: Appearance.colour.textDim
             }
@@ -151,17 +254,42 @@ Item {
                                 color: Appearance.colour.textDim
                             }
 
-                            StyledText {
+                            Item {
                                 width: parent.width
                                 height: Appearance.font.line.small
-                                horizontalAlignment: Text.AlignHCenter
-                                text: Forecast.rainText(cell.modelData)
-                                color: Appearance.colour.textFaint
+
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: Appearance.padding.hair
+                                    visible: !!rain.text
+
+                                    Icon {
+                                        anchors.verticalCenter: rain.verticalCenter
+                                        name: "water_drop"
+                                        size: Appearance.font.size.small
+                                        fill: 1
+                                        color: Appearance.colour.textFaint
+                                    }
+
+                                    StyledText {
+                                        id: rain
+
+                                        text: Forecast.rainText(cell.modelData)
+                                        color: Appearance.colour.textFaint
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    WallClock {
+        id: age
+
+        precision: WallClock.Minutes
+        enabled: root.watched && Weather.stale
     }
 }

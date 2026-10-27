@@ -14,6 +14,8 @@ Item {
 
     property bool selected: false
 
+    property bool going: false
+
     signal activated
     signal pinned
     signal discarded
@@ -27,6 +29,9 @@ Item {
 
     readonly property bool isImage: root.entry.kind === "image" && !!root.entry.file
     readonly property bool hovered: hover.hovered
+
+    readonly property bool secret: Clipboard.sensitive(root.entry)
+    readonly property bool masked: root.secret && !root.hovered && !press.pressed
 
     property real thrown: 0
     property bool throwing: false
@@ -52,6 +57,15 @@ Item {
     property real lastY: 0
 
     opacity: leave.value
+
+    Follow {
+        id: goingFade
+
+        target: root.going ? 1 : 0
+        speed: Appearance.animation.revealSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
+    }
 
     Timer {
         running: true
@@ -99,6 +113,18 @@ Item {
         height: root.height - Appearance.padding.small
 
         opacity: root.thrown < 0 ? 1 - root.throwFraction * 0.7 : 1
+
+        SquircleRect {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            width: Appearance.stroke.ring * 2
+            height: parent.height - Appearance.padding.normal * 2
+            pill: "object"
+            color: Appearance.colour.alarm
+            opacity: goingFade.value
+            visible: opacity > 0.01
+            z: 1
+        }
 
         SquircleRect {
             anchors.fill: parent
@@ -180,7 +206,7 @@ Item {
             Icon {
                 anchors.centerIn: parent
                 visible: !root.isImage && root.entry.kind !== "colour"
-                name: Clipboard.markFor(root.entry.kind)
+                name: root.secret ? "visibility_off" : Clipboard.markFor(root.entry.kind)
                 size: Appearance.sizes.clipboardIcon
                 color: markTone.value
 
@@ -274,6 +300,8 @@ Item {
     }
 
     readonly property string title: {
+        if (root.masked)
+            return Clipboard.mask;
         if (!root.isImage)
             return Clipboard.summarise(root.entry);
 
@@ -284,7 +312,7 @@ Item {
 
     readonly property string detail: {
         const parts = [];
-        parts.push(root.entry.kind);
+        parts.push(root.secret ? "secret" : root.entry.kind);
         const bytes = Clipboard.size(root.entry.bytes);
         if (bytes)
             parts.push(bytes);

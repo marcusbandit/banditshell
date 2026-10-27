@@ -82,6 +82,81 @@ QtObject {
 
     readonly property var rows: !root.ask ? [] : root.secretClipboard ? [root.row(Logic.secretClipboard())] : Logic.answers(root.ask, root.input, root.drawn, Date.now()).map(answer => root.row(answer))
 
+    readonly property var prefixes: [
+        {
+            section: "Text and numbers",
+            word: "random",
+            example: "random 1 to 6",
+            about: "Random number",
+            icon: "casino",
+            also: ["roll"]
+        },
+        {
+            section: "Text and numbers",
+            word: "password",
+            example: "password 24",
+            about: "Make a password",
+            icon: "password",
+            also: ["passwd", "pin"]
+        },
+        {
+            section: "Text and numbers",
+            word: "uuid",
+            example: "uuid 3",
+            about: "Make a UUID",
+            icon: "fingerprint",
+            also: ["guid"]
+        },
+        {
+            section: "Text and numbers",
+            word: "wc",
+            example: "wc words hello there",
+            about: "Count words or characters",
+            icon: "format_list_numbered",
+            also: ["count"]
+        },
+        {
+            section: "Text and numbers",
+            word: "b64",
+            example: "b64 decode aGk=",
+            about: "Base64 encode or decode",
+            icon: "code",
+            also: ["base64"]
+        },
+        {
+            section: "Text and numbers",
+            word: "json",
+            example: "json pretty {\"a\":1}",
+            about: "Format or check JSON",
+            icon: "data_object",
+            also: []
+        },
+        {
+            section: "Text and numbers",
+            word: "jwt",
+            example: "jwt eyJhbGciOi...",
+            about: "Decode a token",
+            icon: "key",
+            also: []
+        },
+        {
+            section: "Text and numbers",
+            word: "sha256",
+            example: "sha256 hello",
+            about: "Hash text",
+            icon: "tag",
+            also: ["md5", "hash", "checksum"]
+        },
+        {
+            section: "Text and numbers",
+            word: "epoch",
+            example: "epoch 1700000000",
+            about: "Unix time to a date",
+            icon: "schedule",
+            also: ["unix", "timestamp"]
+        }
+    ]
+
     readonly property var groups: [
         {
             key: "developer",

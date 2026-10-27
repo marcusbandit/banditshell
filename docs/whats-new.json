@@ -1,18 +1,889 @@
 {
   "entries": [
     {
+      "id": "2026-10-27-9",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The launcher's ? page shows only prefixes that work, quicklinks too"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Enter on a line a banditshell command printed copies that line"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The launcher keeps learning new favourites after its first 400"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-8",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rows under an island card line up with the card's icon and title"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Island rows with nothing on the right keep room before the round end"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A live microphone is orange in the island too, as on the rail"
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "A waiting update is no longer orange, and a failed one is yellow"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Notifications header says quiet on in full"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-7",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The shell checks on missing things less and less often while idle"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Opening the wallpaper picker no longer rescans every picture"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A fullscreen window's border colour is sampled once a second"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The media card and island glow hold still while nothing plays"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-6",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "File names under icons keep their extension whole"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A previewed folder lists in the same order as the files"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files settings: Smaller, Reset and Bigger no longer look picked"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-5",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A typo in config.json no longer turns off the wallpaper and services"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Exchange rates refresh every 12 hours, not only at startup"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Notifications that ask to stay now stay until you dismiss them"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rounding and gaps follow Hyprland even when it lacks an option"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Binds and monitors in files outside ~/.config/hypr can be edited"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-4",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings search names each hit with its heading and marks the match"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Sound, Apps in Settings is now called Volume by app"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "See-through in Settings goes up as you drag it right"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Time at rest in Settings lists all six choices and ticks yours"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Low battery says it will sleep, like the power menu and launcher"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-3",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clearing clipboard history can be undone for five seconds"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Passwords in clipboard history show as dots until you hover them"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Text copies over 128 KiB now reach the clipboard history"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clearing history also clears a damaged history file on disk"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-12",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A misspelt weather place offers the right town, one press to use it"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-2",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "File search can reach all of home, this folder's matches first"
+        },
+        {
+          "type": "ui",
+          "severity": "major",
+          "text": "Enter in the files search opens the match; Down goes to the files"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27",
+      "date": "2026-10-27",
+      "impact": {
+        "cli": true
+      },
+      "changes": [
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "Updates come as tested releases now, unless you kept main"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The update menu names the release and lists what it brings"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell version and update show the release number"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-11",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files fills what is picked and rings the file the arrow keys are on"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The keyboard ring appears on a key press and goes when the mouse moves"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-10",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The shell has a light look, built from your theme's own colours"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings, Colour: Light, dark or auto sets the shell and apps at once"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Auto turns dark while night light warms the screens, on its schedule"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Dark mode shows what apps really got when the system refuses a change"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-9",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The file manager updates by itself when a folder changes"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "F5 refreshes the file manager"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-8",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A new install opens with a short tour of the real desktop"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type tour in the launcher, or use Settings, About, to see it again"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-7",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings has a Weather section: place, units, refresh, on or off"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Place not found in the island opens the Place row in Settings"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "World clocks in Settings are now headed Other time zones"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-6",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Island cards can remind you later or mute their app, with an end time"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Quiet mode in the island shows when it ends and has a turn off button"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-5",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files sorts either way: oldest first, smallest first or Z to A"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files settings preview shows whole names and each date or size"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-4",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "After going back, the update menu can reinstall the skipped version"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "After going back, the update menu can report what broke"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-3",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings shortcuts show as hints like Ctrl + 5, read from your binds"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "What a setting does is told in the side pane, not under its name"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A screen change waiting for Apply has an accent dot"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-2",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rail marks no longer share the active workspace's colour"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Low battery is yellow; on the rail, orange is only mic and recording"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Screen recording on the rail is a screen with a dot, not a bare dot"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Pasting onto a taken name asks: replace, skip or keep both"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rename refuses a name that is already in the folder"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-26",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type ? in the launcher to see every search word with an example"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Long launcher lists fade at the edge when more rows follow"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-25",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Colour settings say Panel shade and Highlight colour in plain words"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Each Highlight colour choice shows the colour it picks"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-24",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A changed setting has a reset arrow that puts its default back"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-23",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings search keeps your words and shows 2 of 5; Enter steps through"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-22",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clipboard and launcher have Clear history; pinned entries stay"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clearing a broken clipboard history no longer deletes its pictures"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-21",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "An off switch has an outline, so it reads as a switch"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The chosen option in a row of choices is filled in the theme colour"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-20",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Workspace pips stay put when a rail mark comes or goes"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Rail marks sit apart from the workspace pips"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-19",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Ctrl+Z in Files undoes a delete, move, rename or paste"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-18",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Dismissed or cleared notifications can be undone for five seconds"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-17",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "With the newest voice, Esc or Discard stops dictation untyped"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-16",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Point at a rail mark to read what it is and what a press does"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Pressing a rail mark opens what controls it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The rail counts the marks that did not fit, like +2"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A crowded rail keeps the mic, recording and Do not disturb in view"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-15",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A typo in the launcher offers the closest match; Enter takes it"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-14",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Markdown source in Settings now shows Markdown as source"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The file manager names its sorts as Settings does, in the same order"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The launcher says Sleep like the menus; suspend still finds it"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-13",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Weather says why it could not load instead of loading forever"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "An older forecast stays up with its age when an update fails"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Weather updates by itself once you're back online"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A misspelled weather town says so and how to fix it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Rain chance in the forecast has a raindrop beside it"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-12",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A failed Wi-Fi join says why in the island and offers Try again"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-11",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Keep awake shows a coffee mark on the rail; press it to turn it off"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-10",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The update menu can go back to the previous version"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-9",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings, Colour has a Dark apps switch; search dark or night finds it"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-8",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The power menu has Sleep, and every button says what it does"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "An armed shut down or restart turns red and lets go after 4 s"
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "session.button is now the smallest a power button gets"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A double-click on Shut down or Restart no longer runs it at once"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-7",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Sorting Files by date or type in Settings now really sorts that way"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Files Sort by in Settings reads a to z, newest, biggest or type"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-6",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The screenshot key freezes the screen at once"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Hotkeys and the island stay quick when the clocks go back an hour"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-5",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "What's new sorts changes into coloured New, Changed and Fixed groups"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-4",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Settings pages open up to 30 times faster the first time"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The hotkey sheet, launcher and other panels open faster the first time"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell dev perf times every menu and action step by step"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-3",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The rail clock stays at the same height when the sidebar opens"
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "Pick the resting and open sidebar clocks apart, small or large"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The open sidebar clock is stacked and large again"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Workspaces move up, or shrink to marks, instead of touching the clock"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25-2",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The resting rail shows the time and a battery level bar"
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "Settings, Sidebar, Time at rest moves them or turns them off"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The sidebar clock now defaults to one line, turned on its side"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-25",
+      "date": "2026-10-25",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "What's new says each change in one short line"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-23-3",
+      "date": "2026-10-23",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell triage files a GitHub issue after you confirm the report"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "banditshell doctor --report hides passwords and keys"
+        }
+      ]
+    },
+    {
       "id": "2026-10-23-2",
       "date": "2026-10-23",
       "changes": [
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A fresh install has a wallpaper from the first second: a moonlit pixel landscape that ships with the shell. The default used to point at a picture nothing installed, so the screen stayed black and the log showed a Cannot open warning for each screen until you picked one."
+          "text": "Fresh installs start with a wallpaper, not a black screen"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "When wallpaper.current is empty, or names a file that is no longer there, the shell shows the shipped picture instead of a black screen, and the picker lists it with your own. Your config.json is left as it is."
+          "text": "An empty or missing wallpaper.current shows the shipped picture"
         }
       ]
     },
@@ -23,7 +894,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "The shell starts even when qt6-websockets, which talks to OBS, or qt6-multimedia, which plays sound and video, is missing. One missing module used to leave the whole screen black. Now only the part that needs it waits: the stream deck says it cannot reach OBS, and video wallpapers, sound previews in the file browser and the QR scanner stay off until bash install.sh adds the package."
+          "text": "The shell starts without qt6-websockets or qt6-multimedia"
         }
       ]
     },
@@ -34,7 +905,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Signing in to a WPA2 or WPA3 enterprise Wi-Fi, such as DTUsecure or eduroam, now connects. Every attempt used to stop before the network was even asked, and the menu said \"wrong username or password\" whatever was typed."
+          "text": "Enterprise Wi-Fi such as eduroam now signs in"
         }
       ]
     },
@@ -45,12 +916,12 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "The shell no longer freezes for a few seconds every five minutes once the lock screen has been up. Each flip of the lock clock's digits made a fresh copy of its font for every frame, so after a long lock the shell held thousands of them, gigabytes of memory, and stalled while it tidied them away."
+          "text": "The lock screen no longer stalls every five minutes after a long lock"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Icons whose fill animates, such as the ones in the network menu, no longer leave a new copy of the icon font behind on every frame."
+          "text": "Animated icons, such as in the network menu, stop eating memory"
         }
       ],
       "impact": {
@@ -64,22 +935,22 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Opening and folding a group of notifications in the island is smooth. The cards slide out from behind the top one and tuck back under it, the island grows and shrinks with them without pausing or jumping, a song's colour fills it the whole way, and clicking again mid-fold turns it straight around."
+          "text": "Notification groups slide open and shut, and a click reverses mid-fold"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "An opened group of notifications stands apart from the apps above and below it, with a small gap and its own rounded corners. Folded groups still sit together."
+          "text": "An opened notification group gets its own gap and rounded corners"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Opening the island no longer stretches it past its content and back; it stops where the content ends."
+          "text": "Opening the island stops where its content ends, without overshooting"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The margin under the last notification in the island is as thin as the margin at its sides."
+          "text": "The last notification has the same bottom margin as its sides"
         }
       ]
     },
@@ -90,22 +961,22 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Pulling the launcher up from the bottom edge now keeps its top edge under your pointer the whole way. It comes out as a narrow tab that stretches as you pull, then springs open into the full launcher just before it reaches its place."
+          "text": "Pulling the launcher up keeps its top edge under your pointer"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Dragging the open launcher back down, it thins and holds on for a moment before folding back into the tab and sliding into the edge. Moving sideways while you drag makes it lean a little toward the pointer."
+          "text": "Dragging the open launcher down thins it and sideways makes it lean"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "A quick flick up opens the launcher on its way to the top, and the hotkey shows it at full size from the first frame. With reduced motion on, it simply appears."
+          "text": "A quick flick up or the hotkey opens the launcher at full size"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "The launcher's search bar now rests two fifths of the way down the screen instead of in the middle. launcher.list.searchAt in config.json sets where, as a fraction of the screen height: 0.4 by default, 0.5 for the old place."
+          "text": "The launcher search bar sits lower, set by launcher.list.searchAt"
         }
       ]
     },
@@ -116,42 +987,42 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "If an app asks for your keyring before the shell has started, for example right after logging in with face unlock, the question now waits for the shell and shows in its card. It used to open GNOME's own window, which could land unseen on another workspace and leave the app frozen until you found it."
+          "text": "Keyring questions asked before the shell starts now show in its card"
         },
         {
           "type": "config",
           "severity": "major",
-          "text": "To make that work the shell writes two files to ~/.local/share/dbus-1/services: org.gnome.keyring.SystemPrompter.service and org.gnome.keyring.PrivatePrompter.service. When banditshell is not running, GNOME's window still comes after a few seconds. If you already had your own file under either name, the shell leaves it alone."
+          "text": "The shell adds two keyring prompter files to your dbus services folder"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The password card for the keyring, polkit and Wi-Fi now looks like a page of the launcher. It rises from the bottom edge as the same frosted panel, with the password in the top row, the question under it, and the keys to press along the bottom."
+          "text": "Password cards rise from the bottom as a frosted launcher panel"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The keyring and polkit card now comes up over a fullscreen window and takes the keyboard there. It used to wait, unseen, until the window left fullscreen."
+          "text": "The keyring and polkit card now shows over fullscreen windows"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Unlocking a keyring in the card failed about once in 256 tries: the right password was called wrong for as long as that prompt stayed open. It now works every time."
+          "text": "Unlocking a keyring in the card accepts the right password every time"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Choosing the password for a new keyring in the card no longer asks whether to store your passwords unencrypted."
+          "text": "New keyrings no longer ask to store passwords unencrypted"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Restarting the shell while the card was up no longer leaves a leftover copy of its keyring helper running, which turned down keyring questions asked while the shell was off."
+          "text": "Restarting the shell no longer leaves a stray keyring helper behind"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Enter answers a yes or no question in the card, the same as the highlighted button."
+          "text": "Enter answers yes or no in the card, like the highlighted button"
         }
       ],
       "impact": {
@@ -165,32 +1036,32 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher has a dictionary that works offline and answers as you type. Type a word, and when nothing else matches it well its meaning comes first. Asking like a person works too: define serendipity, what does ephemeral mean, happy synonyms. The first time, it fetches a 10 MB English dictionary and keeps it on this computer."
+          "text": "The launcher has an offline dictionary that answers as you type"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Press Enter on a word to open its page inside the launcher: every meaning by part of speech, with examples and similar and opposite words, then Wiktionary's entry when you are online. The launcher widens and fades over to it. Enter copies the first meaning, Ctrl+Enter opens Wiktionary, and Esc goes back."
+          "text": "Enter opens a word's meanings page, and Ctrl+Enter opens Wiktionary"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Forms like geese or engineers find goose and engineer, and a define search lists the words that start with what you typed."
+          "text": "Forms like geese find goose, and define lists words that start with it"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Once you type define and a space, or pick Define a word, the launcher only looks words up. Apps, settings and files stay out of the list until you clear define from the field."
+          "text": "After define and a space, the launcher only looks up words"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Everything that scrolls in the shell now scrolls the way a web browser does. Each mouse wheel notch moves a fixed distance and glides there, and a fast spin keeps every notch, so five notches go five times as far. The touchpad follows your fingers exactly."
+          "text": "Scrolling matches a web browser, and the touchpad follows your fingers"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "The Define words switch in Settings is now called Wiktionary definitions. Turned off, it stops the online lookups and leaves the offline dictionary on."
+          "text": "The Define words switch in Settings is now Wiktionary definitions"
         }
       ]
     },
@@ -201,17 +1072,17 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "The shell now starts on Qt older than 6.12, which is what Ubuntu and Debian ship. Qt before 6.12 refused a handful of names the code used, such as final and char, and the shell would not load at all."
+          "text": "The shell now starts on Qt before 6.12, which Ubuntu and Debian ship"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Ubuntu 26.04 and 25.10 work once you build Quickshell, and docs/install-ubuntu.md walks through it. The README now says how well each distro is supported and what people there run into. Ubuntu 24.04 cannot run it: its Qt is too old for Quickshell."
+          "text": "Ubuntu 26.04 and 25.10 work once Quickshell is built, per the guide"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "For scripts that call the shell directly: qs ipc call keyboard float is now keyboard undock. banditshell panel keyboard float and your binds work as before."
+          "text": "Scripts calling qs ipc keyboard float should use keyboard undock"
         }
       ]
     },
@@ -222,7 +1093,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "The README tells people on Omarchy to keep Omarchy's shell and add the banditshell island as a plugin, listed on the Omarchy plugin marketplace."
+          "text": "Omarchy users keep its shell and add banditshell as a plugin"
         }
       ]
     },
@@ -233,22 +1104,22 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "install.sh runs on Debian, Fedora, openSUSE, Void and Alpine as well as Arch. It finds the package manager and installs each tool under that distro's own name, and ./install.sh --list shows the names it will use. On Debian 13 it takes Quickshell and Hyprland from trixie-backports."
+          "text": "install.sh now runs on Debian, Fedora, openSUSE, Void and Alpine"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "A fresh install now also gets the Qt module the OBS deck talks through, and the base tools small systems leave out, such as cmp, flock and the time zone list. Where a distro has no package for the icon fonts, the installer downloads them."
+          "text": "A fresh install adds the OBS Qt module plus cmp, flock and time zones"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "The update menu names an update by its version every time. About one check in five showed a commit hash instead."
+          "text": "The update menu always names an update by its version, not a hash"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Shut down, restart and sleep work on systems without systemd, through elogind's loginctl. The shell also finds the clipboard history it imports and the niri config when XDG_CONFIG_HOME moves them."
+          "text": "Shut down, restart and sleep work on systems without systemd"
         }
       ]
     },
@@ -259,7 +1130,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Browsing wallpapers in the picker reveals each one again instead of snapping to it. Press on while one is still sweeping in and the next sweeps over it, from the side you are browsing towards, without the half-shown picture jumping."
+          "text": "Browsing wallpapers reveals each picture instead of snapping to it"
         }
       ]
     },
@@ -270,77 +1141,77 @@
         {
           "type": "ui",
           "severity": "major",
-          "text": "Clicking a notification opens it and keeps it. The app's own action runs, or its window comes forward, and the notification stays in your history as read. It used to be deleted on every click, even when there was nothing to open. Swipe it sideways or press its close mark to get rid of one."
+          "text": "A click opens a notification and keeps it; swipe sideways to delete it"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "A notification with no app behind it, such as one from a script, opens big in the island when you click it: the whole text, its buttons and reply, and a dismiss button."
+          "text": "A notification with no app behind it opens big in the island on click"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Opening the island shows your three newest notifications under the music, as full cards you can read, click or swipe away. A row under them says how many more there are and opens the rest."
+          "text": "Opening the island shows your three newest notifications as full cards"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Everything you can grab in the island now moves like a spring. A notification you drag follows your finger, swings back to the middle with a small bounce if you let go early, and can be caught again while it is flying. Pulling the island open or shut follows your finger exactly and carries the speed of your swipe."
+          "text": "Dragged island items follow your finger and bounce back when released"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Swiping a notification away in the history closes its row up. A swipe to the left used to leave an empty gap where the card had been."
+          "text": "Swiping a history notification away closes the gap it leaves"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Pausing music keeps it in the island. It used to switch to whatever else had media, often an old video in a browser tab that nothing was playing. A player you never played is not shown at all now, even when it is the only one."
+          "text": "Paused music stays in the island, and unplayed players stay hidden"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Notifications fold by app. The app that sent something last is on top, as one card with a count beside its name. Click it to see all of them, click the count to fold them again, and swipe a folded card sideways to clear that whole app at once."
+          "text": "Notifications group by app, and a swipe clears the whole app"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Dictation stays in sight while a view fills the island. With the notifications, the player, the timers or the calendar open, your voice bars step out into a small capsule beside the island instead of disappearing behind the view."
+          "text": "Dictation bars step out beside the island while a view fills it"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The island wears your theme's surface colour, the same as the panels, instead of near-black."
+          "text": "The island uses your theme's surface colour instead of near-black"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Every notification in the island's lists is its own tile now, joined to its neighbours in one column like on Android: the app's icon large on the left, the title and time on top, the text under it, and the app's name with its count at the bottom. Start swiping one and its corners round off as it comes loose from the column."
+          "text": "Each island notification is a tile in one column, like Android"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The notifications next to the one you swipe are tugged along a little and spring back once it comes free."
+          "text": "Notifications beside a swiped one are tugged along, then spring back"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Notification cards take on the colour of the playing song's cover, like the rest of the island, instead of staying plain grey."
+          "text": "Notification cards take on the colour of the playing song's cover"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Swiping notifications away quickly no longer leaves cards stacked on top of each other or an empty gap in the list."
+          "text": "Quick swipes no longer stack cards or leave gaps in the list"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Opening the notification history no longer freezes the island for a moment when you have many notifications. It now builds one card per app, and app icons are measured once rather than once per card."
+          "text": "Opening the notification history no longer freezes the island briefly"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "control.spring in config.json sets how the springs feel: stiffness for how hard they pull back, damping for how quickly the bounce dies out, and mass. control.dragResistance is still how much a card resists your finger at first."
+          "text": "control.spring in config.json sets spring stiffness, damping and mass"
         }
       ]
     },
@@ -351,12 +1222,12 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "If the shell freezes, banditshell unstick brings it back. It keeps a trace of where it hung in ~/.local/state/banditshell/hangs, and a locked session gets its lock screen back instead of Hyprland's red screen. Run it from another tty or over ssh."
+          "text": "banditshell unstick revives a frozen shell, even over ssh"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell watchdog does the same on its own: it unsticks a shell that has stopped answering for 30 seconds, or one that is gone while the session is locked. Turn it on with the banditshell-watchdog user service in systemd/."
+          "text": "Enable the banditshell-watchdog user service to unstick a hung shell"
         }
       ]
     },
@@ -367,12 +1238,12 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "A system update no longer sits in the island the whole time it runs. After a few seconds the island lets it go and the top of the frame becomes its progress bar: a short, thin line in your accent colour that fills from left to right. The frame does not get any thicker."
+          "text": "A system update shows as a thin accent progress line on the frame top"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Open the island to see the update's row again, and press it for the full view. If pacman has a question, or the update finishes or fails, it comes back down into the island by itself."
+          "text": "Pacman questions and the update's end bring it back into the island"
         }
       ]
     },
@@ -383,17 +1254,17 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "When a program starts using the microphone, the island says Microphone on for a few seconds and then gets out of the way, instead of staying up with a long technical name. The rail's microphone mark does the same."
+          "text": "Microphone on shows briefly in the island and on the rail"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Open the island and Microphone on stays there for as long as something listens. Press it to see what is using the microphone: each program by name, with its command, and the input it listens to."
+          "text": "Microphone on stays while something listens, and a press shows who"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The camera and screen sharing read Camera on and Screen shared, and still show for as long as they run."
+          "text": "Camera and screen sharing read Camera on and Screen shared"
         }
       ]
     },
@@ -404,12 +1275,12 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The rounded edge round a fullscreen window is back, and it now takes its colour from the picture. Black bars in a film give a black edge you cannot see; a bright game or page gets a soft, darker edge in its own colours."
+          "text": "The fullscreen rounded edge is back, coloured from the picture"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Settings, Shape and motion has an Edge over fullscreen switch. Turn it off and a fullscreen window gets the whole screen with nothing drawn over it. It is edge.fullscreen in config.json."
+          "text": "Turn off Edge over fullscreen to draw nothing over fullscreen windows"
         }
       ]
     },
@@ -420,7 +1291,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell has a website at banditshell.marcusrosado.com: what the shell does, how to install it, and the roadmap of where it is going. Nothing in the shell itself changed."
+          "text": "banditshell.marcusrosado.com covers install steps and the roadmap"
         }
       ]
     },
@@ -431,22 +1302,22 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Pressing something in the island now opens it in the island instead of somewhere else. The shell's update notice shows what is new and the download right there, not in the sidebar, and the notifications row opens your history right in the island. Typing notifications in the launcher finds it too."
+          "text": "Update notices and the notifications row open in the island"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "In the island's overview, press the clock for your timers and alarms, the date for a calendar, and the temperature for the weather over the next seven days. Escape or the close mark takes you back to the overview."
+          "text": "The clock, date and temperature open timers, calendar and weather"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Updating Linux happens in the island now instead of a terminal. Pressing the kernel notice asks for your password in the shell's own prompt, then the island shows the update as it goes: downloading, checking, installing, finishing. Press it to open the update in full, where you can cancel while that is still safe, answer pacman's questions with buttons, or watch it in a terminal. Closing that terminal or restarting the shell leaves the update running."
+          "text": "Updating Linux runs from the island, with progress shown there"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "A new song only pops up in the island when it plays somewhere you are not looking. Music or a video in the window you are using stays quiet; Spotify in the background or a video in another tab still shows."
+          "text": "A new song pops up only when you are not looking at its window"
         }
       ]
     },
@@ -457,7 +1328,7 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "A fullscreen window covers the whole screen again, with no line round its edge. The bright edge stood out against the black bars of films and series; a smarter edge and a setting to switch it are on the way."
+          "text": "Fullscreen windows cover the whole screen again, with no edge line"
         }
       ]
     },
@@ -468,22 +1339,22 @@
         {
           "type": "config",
           "severity": "major",
-          "text": "media.waveLength, media.waveAmplitude and media.waveSpeed are gone from config.json, together with the wave they tuned. The shell removes them on its next start, and nothing else in your config changes."
+          "text": "The shell removes media.waveLength and two other wave keys on start"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Buttons keep their round ends when you press them or switch them on. A button that is switched on shows it in colour, as the accent plate, instead of turning square, and no button casts a shadow any more."
+          "text": "Buttons stay round when pressed or on, and no longer cast shadows"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The music seek bar is a straight line instead of a wave. The played part is bright while the music plays and dims when it is paused."
+          "text": "The music seek bar is a straight line that dims when paused"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The password fields in the keyring prompt and the Wi-Fi menu mark each character with a dot or a small grain at an angle, instead of clover and flower shapes."
+          "text": "Password fields in the keyring and Wi-Fi menu show dots, not clovers"
         }
       ]
     },
@@ -494,62 +1365,62 @@
         {
           "type": "ui",
           "severity": "major",
-          "text": "The notification list in the top right corner is gone. New notifications show in the island at the top of the screen, and the ones you have had are kept: type notifications in the launcher, or press the island's notifications row to see them in the island. banditshell panel notifications toggle (Super+N in the example binds) now opens that list in the launcher. If you want pop-ups in the corner again, set notifications.placement to corner; the corner then shows new ones only."
+          "text": "The corner notification list is gone; type notifications to see them"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The sidebar now rests as a rail: small workspace marks until you point at it, and a status icon only when something needs you, such as a low battery or a VPN that is on. Point at it and the full column grows out. Settings, Sidebar, Style switches back to the full column. Scrolling on the sound icon changes the volume in both styles."
+          "text": "The sidebar rests as small workspace marks until you point at it"
         },
         {
           "type": "config",
           "severity": "major",
-          "text": "The shell now keeps a small file called banditshell.lua next to your hyprland.lua, and a note of where the shell lives under ~/.local/state/banditshell. Nothing else in your Hyprland setup is touched. Your binds keep working as they are; the file is what lets them be written as local bs = require(\"banditshell\") and hl.bind(\"SUPER + SPACE\", bs.launcher.toggle), which keeps working whatever the banditshell command looks like after future updates."
+          "text": "Binds keep working; a banditshell.lua now sits beside hyprland.lua"
         },
         {
           "type": "config",
           "severity": "major",
-          "text": "Which What's new entries you have seen is kept outside config.json now. The first start copies the old updates.seen value over; the key stays in config.json as it was and the shell stops changing it."
+          "text": "What's new entries you have seen are kept outside config.json now"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Notification history survives a restart, every notification shows how long ago it came, a chat that sends several messages shows as one entry with a count, pressing a notification opens its app, and chat apps that support it get a reply field. Critical notifications come through quiet hours, and quiet hours show in the sidebar and the island while they are on."
+          "text": "History survives restarts, and chats group into one entry with a count"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The update button checks first and tells you what the update is: a restart or not, commands that changed, programs it needs. It tries the new version before switching to it and goes back on its own if the new version does not start. banditshell update check, apply, rollback and status do the same from a terminal."
+          "text": "Updates say what changes first and roll back if the new one fails"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The island shows running timers with the time left, a ringing alarm with Snooze and Stop, the volume, brightness and microphone when they change, the screenshot you just took with Copy, Edit, Folder and Delete, a dot while the microphone, camera or screen sharing is in use, Copied when the shell copies something, and headphones with their battery when they connect. Scripts can put their own progress there with banditshell island push."
+          "text": "The island shows timers, alarms, volume, brightness and the mic in use"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher answers keys followed by what a shortcut does, lists the tray with tray, toggles special workspaces with scratchpad or special, runs anything a keybind can with action, and opens recent documents with recent."
+          "text": "Type keys, tray, scratchpad, action or recent in the launcher"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell version says which version you run, banditshell action runs any of the shell's stable actions by name, banditshell events prints what the shell does as it happens, and banditshell doctor --report collects what a bug report needs with passwords and keys left out."
+          "text": "New commands: banditshell version, action, events and doctor --report"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Settings, Launcher has Notifications in search, off by default: when it is on, words you type also find the text of recent notifications. Settings, Sidebar can show a brightness icon you scroll to change the brightness."
+          "text": "Settings, Launcher has Notifications in search, off by default"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Movements across the shell follow the same smooth curve and no longer overshoot, and the lock screen uses the shell's three text sizes."
+          "text": "Movements across the shell share one curve and no longer overshoot"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "When a program the shell needs for a theme, an alert sound or OBS is not installed, settings now says so instead of silently doing nothing."
+          "text": "Settings warns when a theme, alert sound or OBS program is missing"
         }
       ]
     },
@@ -560,72 +1431,72 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Push a notification in the island back up to put it away. One card or the whole stack goes back into the island and stays in your history. Swiping sideways still dismisses one."
+          "text": "Push an island notification up to put it away in your history"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Anything you open with a shortcut appears at once, and Esc or the shortcut puts it away at once. Clicking still opens things from where they live, like the music card growing out of the island."
+          "text": "Shortcut-opened things appear at once, and Esc puts them away at once"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Settings, Look, Motion has a Workspace slide: how long the desktop slides when you change workspace, up to 250 ms, or off. It defaults to 200 ms, shorter than before, and needs no Hyprland edits."
+          "text": "Settings, Look, Motion sets the workspace slide, 200 ms by default"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Things that move across the screen, like the workspace marker or a menu gliding between sidebar icons, now ease in as well as out."
+          "text": "Things moving across the screen now ease in as well as out"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "With reduced motion on, sleep, restart and shut down on the lock screen need the full hold again. A tap could set them off."
+          "text": "Lock screen sleep, restart and shut down need the full hold again"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The launcher goes back down into the bottom edge when it closes, and your pinned apps arrive with it instead of one by one."
+          "text": "The launcher sinks back into the bottom edge with its pinned apps"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Once a tooltip is showing, the ones next to it show at once instead of making you wait again."
+          "text": "Once one tooltip shows, the tooltips next to it appear at once"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Quick controls at the right edge wait a moment before opening and before closing, so moving the pointer past the edge no longer flashes them open."
+          "text": "Right-edge quick controls wait a moment before opening and closing"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Nothing bounces any more: toggles, sliders, arrows and password dots move straight to where they go, and the lock screen clock no longer leans toward the pointer."
+          "text": "Nothing bounces: toggles, sliders and password dots move straight"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Switching between sidebar menus fades the new page in instead of laying it over the old one."
+          "text": "Sidebar menus fade the new page in instead of laying it over the old"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The wallpaper picker arrives in one quick rise, and browsing changes the preview at once instead of sweeping each time."
+          "text": "The wallpaper picker rises once, and browsing previews at once"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The music card drifts back up toward the island when the island opened it."
+          "text": "The music card drifts back up toward the island that opened it"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Reduced motion now means no motion at all: fades and looping animations stop too (equaliser, scrubber wave, spinners, scrolling titles, animated wallpapers), and the lock screen still shows when music is playing."
+          "text": "Reduced motion now stops fades and looping animations too"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Picking the same settings search result twice flashes its row both times, and the launcher's file preview no longer blinks as you arrow between text files."
+          "text": "The launcher file preview no longer blinks between text files"
         }
       ]
     },
@@ -636,22 +1507,22 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "PageUp and PageDown in the clipboard move one screen of rows at a time, instead of jumping past entries you never saw."
+          "text": "PageUp and PageDown in the clipboard move one screen of rows"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "When the launcher previews a file, the highlight on the matching line leaves room around the text instead of sitting flush on it."
+          "text": "File previews leave room around the highlighted matching line"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Quick controls and the power menu sit centred in their panels. Quick controls no longer leaves extra space when there is no brightness slider."
+          "text": "Quick controls and the power menu are centred in their panels"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "In a narrow settings window, the details pane sits inside the panel with even margins. Screen time shows each app's bar under its name."
+          "text": "The narrow settings window keeps the details pane inside the panel"
         }
       ]
     },
@@ -662,37 +1533,37 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Music playing with everything closed no longer keeps the screens redrawing. A seek bar hidden in the island was animating out of sight; it now waits until you can see it, and the shell sits close to idle."
+          "text": "Music with everything closed no longer keeps the screens redrawing"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Memory no longer grows with every song. The island reads its colours from each cover and now lets the cover go afterwards; before, every cover played stayed in memory until the shell restarted."
+          "text": "Memory no longer grows with each song's cover art"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Closing the launcher stops its search inside files. A word with no matches could keep reading your whole home folder for up to a minute after the launcher was gone."
+          "text": "Closing the launcher stops a search inside files at once"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Searching inside files stops after 2 seconds, and the Inside files heading says so when it does. It also skips Python and conda environments, the Android SDK and binary files such as images and archives, so a word with no matches comes back in about half a second."
+          "text": "Searches inside files stop after 2 seconds and skip binary files"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Typing in the launcher does less work for each key. Rows build a slider or a switch only when they show one, only the file results that fit in the list are prepared, and a row whose text changes is updated in place instead of built again."
+          "text": "The launcher does less work for each key you type"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "The shell no longer asks for the power profile every 30 seconds. It already hears about every change as it happens."
+          "text": "The shell no longer asks for the power profile every 30 seconds"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Rounded shapes across the shell are drawn by the graphics card now. Their edges are a little smoother, and the open media panel uses about half the CPU it did while music plays."
+          "text": "Rounded shapes are drawn by the graphics card, with smoother edges"
         }
       ]
     },
@@ -703,7 +1574,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell has a front page on GitHub now, with a short clip, install steps and the commands, and it is licensed under GPL-3.0. Nothing in the shell itself changed."
+          "text": "banditshell has a GitHub front page, and it is licensed under GPL-3.0"
         }
       ]
     },
@@ -714,12 +1585,12 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Muted sound now shows a speaker with a line through it. The Wi-Fi rows in the launcher show one, two or three bars, and a lock on secured networks you have not joined before."
+          "text": "Muted sound shows a speaker with a line through it"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Where windows overlap, the screenshot picker snaps to the one on top instead of whichever came first in Hyprland's list. A drag that has started stays a drag even when you move back near where you pressed."
+          "text": "Where windows overlap, the screenshot picker chooses the top one"
         }
       ]
     },
@@ -730,67 +1601,67 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher opens over a fullscreen window. Only the launcher appears, and closing it leaves the window fullscreen as it was."
+          "text": "The launcher opens over a fullscreen window and leaves it fullscreen"
         },
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Keys typed right after Super+Space reach the launcher instead of the window behind it. The shell now registers the launcher hotkey itself as banditshell:launcher. If your Hyprland bind runs banditshell panel launcher toggle, it still works, and changing it to bind = $mod, SPACE, global, banditshell:launcher makes it open about a tenth of a second sooner."
+          "text": "Keys typed right after Super+Space reach the launcher, not the window"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Select a colour in the launcher, or type one such as #ff8800, and the card beside the list becomes a colour picker with a hue ring, a saturation and lightness square and sliders. Copy hex, rgb and hsl copy what you picked, and a typed colour is rewritten as you pick."
+          "text": "Typing or selecting a colour opens a colour picker beside the list"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The preview card beside the launcher has a clean edge without the grey haze around it, sits level with the top of the launcher, and grows or shrinks smoothly to fit the next preview. Settings › Launcher › Animate preview turns that motion off."
+          "text": "The launcher preview card has a clean edge and resizes smoothly"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Selecting what is playing shows its cover large in the card. The row says where the sound comes from, such as Spotify or YouTube, offers Switch when more than one player has something loaded, and Left and Right seek 5 seconds right away."
+          "text": "Playing music shows its cover large, and Left and Right seek 5 seconds"
         },
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A video preview that starts when the pointer passes over a YouTube thumbnail no longer takes the now playing row from the music you were listening to."
+          "text": "YouTube thumbnail previews no longer take the now playing row"
         },
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A search with a slash in it, such as hypr/lua, finds files and folders by their path. Files under .config that a dotfiles repository there leaves untracked, such as foot.ini, are found by name and by what is inside them."
+          "text": "A slash in a search, such as hypr/lua, finds files by their path"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Files and folders whose name matches what you type now come above settings in the launcher."
+          "text": "Files and folders matching what you type now rank above settings"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Tailscale devices in the launcher show their status, system and address in lined-up columns, with online devices in the accent colour and offline ones dimmed."
+          "text": "Tailscale devices show status, system and address in aligned columns"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Running timers count down in the island, and tapping one pauses it. Type timers in the launcher to list them with the time left: Enter pauses or resumes, and Cancel removes one."
+          "text": "Timers count down in the island, and tapping one pauses it"
         },
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Monitor brightness works on monitors whose highest level is not 100, and a monitor that stops answering for a few seconds after a change no longer throws the other monitor's level off. A dragged slider ends on the value you left it at."
+          "text": "Monitor brightness works on monitors whose top level is not 100"
         },
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Emoji and other symbols picked in the launcher arrive in Chromium and Electron apps such as T3 Code. They go in as a paste, and what was on your clipboard is put back right after."
+          "text": "Emoji picked in the launcher now arrive in Chromium and Electron apps"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "config.json has a new key, launcher.animatePreview, on by default."
+          "text": "config.json has a new key, launcher.animatePreview, on by default"
         }
       ]
     },
@@ -801,12 +1672,12 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "While you dictate, the island sits over the window you are pointing at, so you can see where the words will land. It glides back to the middle when something else needs the island or the overview opens."
+          "text": "While you dictate, the island sits over the window you point at"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "When dictation is the only thing in the island, moving the pointer up to it makes it sink into the top bar so you can see what is behind it. A small bump stays to show it is still listening, and it comes back when the pointer leaves. A notification or anything else beside it keeps the island where it is."
+          "text": "The dictation island sinks into the top bar when you point at it"
         }
       ]
     },
@@ -817,7 +1688,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Shell hotkeys no longer stop working after an update that changes the banditshell command. The command your binds run is now a link to the one in the update itself, set up again on every start, so it can never be left on an older version."
+          "text": "Hotkeys keep working after an update changes the banditshell command"
         }
       ]
     },
@@ -828,102 +1699,102 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Type bandit, or banditshell, in the launcher to run the shell's own commands: bandit restart restarts the shell, bandit wallpaper next changes the picture, and the next word is suggested as you go, the same way Tab works in a terminal. What a command prints shows up underneath. Typing restart now offers both Restart shell and Restart computer."
+          "text": "Type bandit, or banditshell, in the launcher to run shell commands"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher learns: commands, settings, emoji and every other row you run come back higher next time, the way apps already did. Tab completes in the launcher. days until offers christmas, easter and other days with the count already worked out, and time in, timer, remind me, focus workspace, volume and kill offer what can follow them. So do swap, focus and move window with their directions, go to workspace, force quit, awake, noon in tokyo and week of."
+          "text": "The launcher ranks what you run higher next time, and Tab completes"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "More window rows that work in every layout: Promote window, Swap left, right, up and down, Focus left and the other directions, Move window left and so on, and focus workspace 2. Float window and Tile window are one row that names what it will do, and either word finds it; Fullscreen and Maximize turn into Exit fullscreen and Unmaximize the same way."
+          "text": "More window rows work in every layout, such as swap and focus left"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher's calculator also reads dates and colours. days until christmas, monday in 3 weeks, 10 days ago and week number answer right under the field, and #ff8800 shows its rgb and hsl with a swatch of the colour. 5pm ldn in sf or 9am pst moves a time between places, daylight saving included. Coins work like money: 0.5 btc in dkk uses prices fetched only when you type one."
+          "text": "The launcher calculator reads dates, colours, time zones and crypto"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "More switches in the launcher: Night light, Dark mode for your apps, Energy saver, Performance mode and Airplane mode flip right in the list, and Sleep displays turns the screens off until you touch the mouse or keyboard. Quit all apps asks once more first, and Dismiss notifications clears them. Typing spotify 30% or volume firefox 50 sets one app's volume, volume shows a mixer: your speakers and every app that is playing, each with a slider and a mute switch, where Left and Right nudge the selected one by 5% (1% with Shift), and keep awake 1h keeps the screen on for an hour."
+          "text": "The launcher flips night light, dark mode, airplane mode and more"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher moves the window you were in. Fullscreen, Maximize, Restore window, Float window and Center window work as rows, and Left half, First two thirds, Top right quarter and the other halves, thirds, quarters and sixths snap it into place with your gaps. Move to next display, Move to next workspace and move to workspace 3 send it elsewhere. Typing layout lists the tiling layouts, including ones your Lua config registers, and switches between them right away. Any of these can get a hotkey."
+          "text": "The launcher moves the window you were in to halves and quarters"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "A card beside the launcher shows what the selected row points at: a live picture of a window, an image, the first lines of a text file with the matching line lit, or what is inside a folder. Type windows to list every open window, last used first, and switch to one with its picture beside it. Type screenshots or downloads for your newest screenshots or downloaded files, shown beside the list, with buttons to copy, edit or find one. Type music or now playing for the song that is playing, with previous and next buttons and a bar that Left and Right move through the song 5 seconds at a time."
+          "text": "A card beside the launcher previews the selected row"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Type emoji heart, :smile or just thumbs up in the launcher and Enter types it into the app you were in. Symbols such as °, → and ½ work the same way. Snippets keep text you type often behind a keyword, with the date, time or clipboard filled in. Quicklinks such as yt cats or gh banditshell search a site straight away, and clip, or a few words you copied, finds it in your clipboard history and pastes it. Snippets and quicklinks are edited in Settings › Launcher."
+          "text": "Enter types an emoji or symbol into the app you were in"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher runs your own scripts: put one in ~/.config/banditshell/scripts and type its name, with any words after it as input. Type pick colour to grab a colour from the screen, colours for the ones you picked, projects to open a repository in your editor, notes or note something for Obsidian, and cpu, memory, disk or top to see what the machine is doing. pomodoro starts focus rounds with breaks between them, and lorem 3 copies three paragraphs of filler text. Settings › Launcher › Power tools sets the folders, and can leave a vault out of notes. A script can also show a list: add # @banditshell.mode list, print a little JSON, and type the script's name followed by what you are looking for; try unicode arrow after Create a script command."
+          "text": "The launcher runs your own scripts from ~/.config/banditshell/scripts"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Type ? and a question in the launcher and the answer appears under the search field, from a model running on your own computer. Select text in any app, open the launcher and type fix, shorter, friendlier, summarise, translate or explain to work on it, then put the result back in place or copy it. If Ollama is not set up yet, the launcher installs it, starts it and downloads a small model for you, or you can add an API key in Settings › Launcher."
+          "text": "Type ? and a question in the launcher for an answer from a local model"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Type hello in german, define serendipity or install spotify, and the launcher answers from the web, with packages from your package manager and Flatpak installed straight from the row. AUR packages ask twice and then build in a terminal, so you can read what they run first. Type gh for your GitHub repos, pull requests and notifications. Your browser bookmarks show up as you type, history and a word searches what you visited, speedtest measures your connection, and a pasted video link saves the video or its sound to Downloads. Settings › Launcher › Online turns each of these off."
+          "text": "Type hello in german or define serendipity for answers from the web"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Type brightness for a slider on every screen, or brightness 40 to set them all at once. Type wifi to see every network in range and join one, with the password on the shell's own card. Type vpn or tailscale to switch connections and exit nodes, and record screen, area or window to capture video, with a stop button in the island. Screenshot an area, or the whole desktop, from the launcher too."
+          "text": "Type brightness to get a slider for every screen, or brightness 40"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Type ssh to connect to a host from your SSH config, or ports to see what is listening and quit it. Type services, containers or phone to restart a service, follow a container's logs, or ring your phone and send it a file or link through KDE Connect. Stopping, restarting and quitting always ask for a second Enter."
+          "text": "Type ssh to connect to a host from your SSH config"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Developer tools in the launcher: type uuid, password 20, base64 hello, sha256 text, json, jwt and a token, snake case My Title or a unix time, and Enter copies the answer. It also understands everyday phrasing such as set a timer for 5 minutes, remind me tomorrow at 9 to call mum, time in india, louder, and kill port 3000."
+          "text": "Type uuid or password 20 in the launcher, and Enter copies the answer"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Draw your own tiling layout in Settings › Windows › Custom layout, or type layout workshop in the launcher. Place regions, choose where each new window goes and what happens on a narrow screen, and the shell writes a Hyprland layout and loads it right away without editing your config. Stage comes as a starting point, and your saved layouts show up next to it in the launcher's layout list."
+          "text": "Type layout workshop in the launcher to draw your own tiling layout"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Anything the shell runs with your password (installing, removing, quitting another user's process, restarting a system service) now only runs programs from the system folders, never a program of the same name placed earlier in your PATH."
+          "text": "Actions that use your password only run programs from system folders"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "The processor temperature reads the processor's own sensor. On some boards it showed a fixed reading near 17 °C."
+          "text": "The processor temperature now reads the processor's own sensor"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Uninstall in the launcher now finds apps whose shortcut sits in a subfolder, such as the ones some KDE and Wine apps install."
+          "text": "Uninstall finds apps whose shortcut sits in a subfolder"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Snapping a window to a half, third or quarter places it instead of only floating it. The shell uses far less processor while music plays: the seek bar in the island, the media card and the lock screen no longer redraws its shapes from scratch every frame, and a settings page illustration stops animating when the panel is closed. Typing in the launcher is quicker even with everything above added: the results are put together once per key instead of once for every kind of result, and app and emoji searches narrow from the letters you already typed."
+          "text": "Snapping a window to a half, third or quarter now places it"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "config.json has new groups under launcher: typing (with your snippets and quicklinks), powerTools, online, ai, systemControls, devOps and utilities, each with its own switches in Settings › Launcher. The shell also keeps launcher-rows.json (rows you ran), emoji.json, colours.json and drawn layouts (layouts.json and a layouts folder) in ~/.local/state/banditshell, AI keys there in assistant-key files only you can read, and online lookups in a private folder under ~/.cache/banditshell."
+          "text": "config.json has new launcher groups, such as typing, online and ai"
         }
       ]
     },
@@ -934,12 +1805,12 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "A fullscreen window now gets its whole monitor. The sidebar, the island and any panels on that monitor step aside, and only the thin line round the screen's edge stays, with its corners rounded as usual. The frame melts out to that line as the window grows and comes back the same way when it leaves fullscreen. Maximized windows and your other monitors are not affected."
+          "text": "A fullscreen window gets the whole monitor, and the shell steps aside"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Over a fullscreen window the shell no longer catches clicks at the screen's edges, and a panel shortcut no longer opens a launcher you cannot see that swallows your typing. On that monitor the shortcut now does nothing until the window leaves fullscreen."
+          "text": "Edge clicks reach a fullscreen window, and shortcuts do nothing there"
         }
       ]
     },
@@ -950,72 +1821,72 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The update menu no longer opens by itself when the shell starts. What changed is still in it when you open it."
+          "text": "The update menu stays closed when the shell starts"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The list launcher opens on your pinned apps as large icons, up to 12, until you type. Pick an app in the list and press Pin to add it. The arrow keys move between the icons, and Ctrl with left or right moves a pinned app. Settings › Launcher can also add a row of the apps you opened last, or turn the icons off."
+          "text": "The list launcher shows pinned apps as large icons until you type"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Typing in the launcher finds more than apps: commands such as lock, suspend and restart, settings, files in your home folder and .config, a link to open, and a web search. Results come in sections with the best match first. A setting that is on or off flips right there when you press Enter."
+          "text": "The launcher also finds commands, settings, files and web searches"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher also does small jobs as you type. timer 5m tea starts a timer, remind me at 15:00 to call mum sets a one-time alarm, and time in tokyo shows the time there with a button to add it to your world clock. Open windows come up by title, paired Bluetooth devices and saved Wi-Fi networks connect from their row, and speakers or headphones switch the sound. Volume up, volume 50, Mute sound, Mute microphone, Keep awake, Empty trash and Eject work as commands, and kill firefox lists matching processes with Quit and Force quit buttons."
+          "text": "The launcher sets timers, alarms and world clock times from typing"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Apps in the launcher can be quit, force quit or uninstalled from their row. Uninstall finds where the app came from (pacman, apt, dnf, zypper, xbps, apk, Flatpak, Snap or Steam), asks once more, then takes your password in the shell. It refuses when other packages still need the app."
+          "text": "Launcher apps can be quit, force quit or uninstalled from their row"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Any launcher row can get an alias or a hotkey from its More menu. With ff as an alias, typing ff puts Firefox first. A hotkey runs the row from anywhere, even with the launcher closed, and your Hyprland files are left alone. Settings › Launcher lists both, and a click removes one."
+          "text": "Any launcher row can get an alias or a hotkey from its More menu"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher also finds words inside the files in your home folder. When nothing fits, the end of the list offers a web search, and Settings › Launcher can add YouTube, Wikipedia, a map or running the line in a terminal, and pick the search engine."
+          "text": "The launcher searches for words inside files in your home folder"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "When something needs your password to run as admin, such as an install, the shell asks in the same card as the keyring prompt. Only one program can ask, so another password agent such as hyprpolkitagent is stopped while the shell runs. Turning off Settings › Shell › Ask for passwords starts it again."
+          "text": "Admin tasks such as installs ask for the password in the keyring card"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The selected row in the launcher shows buttons for what else it can do, such as Pin, Show in folder, Copy path and Open in settings. Ctrl+Enter presses the first one, and right-click still works."
+          "text": "The selected launcher row shows buttons such as Pin and Copy path"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Typing a path that starts with ~/ or / in the launcher lists that folder. Tab completes a name and Enter goes into a folder."
+          "text": "Typing ~/ or / in the launcher lists that folder"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Sums in the launcher keep their answer while you type, so 5+5- still says 10. Names carry across semicolons and a line with one unknown is solved, so x=5; x+2 says 7 and 2x+3=7 says x = 2. Money such as 5 eur, 50+30 jpy or 50 eur + 30 usd converts at the European Central Bank's daily rates into the currency you pick in Settings › Launcher (DKK unless you change it), written the way your region writes numbers. The rates are fetched when the shell starts and kept for when you are offline. A Symbols button next to a sum adds brackets, powers, roots and more."
+          "text": "Sums keep their answer as you type and convert money to your currency"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher's calculator runs on qalc, which also does units, dates and functions such as 5 km to miles, sqrt(2) or integrate(x^2, x). When qalc is missing, typing a sum offers to install it. The shell tries on its own, and when it needs your password it asks for it in the shell. A terminal opens only when the shell cannot ask. Money works without qalc. Finding files by name needs fd, which the installer sets up."
+          "text": "The launcher calculator runs on qalc and offers to install it"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Searching settings for wifi now finds Wi-Fi, and the same goes for other names with a dash in them."
+          "text": "Searching settings for wifi finds Wi-Fi, and dashed names match too"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "config.json has new keys under launcher: list.pinned, list.recents, hiddenFiles, currency, webSearch, contents, fallbacks, aliases and hotkeys, and polkit.agent. The shell keeps the exchange rates in ~/.local/state/banditshell/rates.json."
+          "text": "config.json gains launcher keys such as list.pinned and currency"
         }
       ]
     },
@@ -1026,37 +1897,37 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The island now copes with several things at once. The newest one takes the big spot, and the rest become small bubbles beside it that keep their state: dictation, apps opening, and the same kind stacked into one bubble. A song change, a finished download or an update has its moment and then leaves on its own."
+          "text": "The island shows several things at once, the newest in the big spot"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Notifications in the island stack up as cards behind the newest one. Each new one drops in from the top like a card dealt onto the pile, and the others step back. Resting the pointer on the stack spreads it into a list that stays on screen however long it gets; scroll it with the wheel or by dragging a card up or down. Flick a card sideways to dismiss it, click its close mark or right click it, or use clear all to send them all off at once."
+          "text": "Island notifications stack as cards, and a flick dismisses one"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The music card in the island takes its colours from the cover art, and a title too long to fit scrolls instead of wrapping. Clicking it turns the island itself into the media controller: its whole body grows into the card while the cover, the title, artist and album, the equalizer, the progress wave and the buttons each travel to their place, and a new island forms at the top. Resting the pointer on the music gets the controller ready, so the click starts the move straight away."
+          "text": "Clicking the music in the island turns it into the media controller"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The dictation line in the island is one smooth curve that fades out at both ends."
+          "text": "The dictation line in the island is one curve that fades at both ends"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The island's overview shows the weather under the date, from wttr.in every 30 minutes. weather.show set to false in config.json turns it off; weather.location, weather.units and weather.minutes set where, which units and how often."
+          "text": "The island overview shows weather under the date, every 30 minutes"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "A pinned island no longer takes the keyboard, and the screen around it stays clickable while it is open."
+          "text": "A pinned island leaves the keyboard alone and the screen clickable"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "With the media controller open, the island still opens when the pointer rests on it, and clicks on it reach the island instead of closing the controller."
+          "text": "The island still opens and takes clicks with the media controller open"
         }
       ]
     },
@@ -1067,32 +1938,32 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The hotkey sheet draws a whole keyboard: the function row, Print Screen and its neighbours, the Insert and Home block, the arrows as an inverted T and the numpad when anything on it is bound. ISO and ANSI are both drawn properly, and the ISO Enter is one stepped key instead of two boxes."
+          "text": "The hotkey sheet draws a whole keyboard, with the numpad, ISO and ANSI"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Dropdowns in Settings open again. Clicking one used to show an empty list."
+          "text": "Dropdowns in Settings open again instead of showing an empty list"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Settings › Hotkey sheet › Board offers ISO, ANSI and Custom. Custom unlocks VIA layout and VIA keymap: Import lists the VIA files in your Downloads folder and nothing else, and Browse opens the system file picker. Every file you pick gets a short check, then a note under the row says this is it or this is not it, and why."
+          "text": "Board offers ISO, ANSI and Custom, and Custom imports VIA files"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Try a sample board works again after you forget the sample, and an imported board has an open button so you can edit its file into your own board. The sheet follows your edits as you save."
+          "text": "Try a sample board works again, and imported boards open for editing"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Split is no longer offered under Board. If you had it chosen, the sheet keeps drawing it and the list shows it until you pick something else."
+          "text": "Split is no longer offered under Board"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The list on the left of Settings folds down to its icons with the button at its bottom, and the settings beside it get the room. It stays folded until you unfold it."
+          "text": "The Settings list folds down to its icons with a button at its bottom"
         }
       ]
     },
@@ -1103,7 +1974,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "When the shell restarts, it puts back what you had open: the launcher or any other panel, a pinned sidebar menu, quick controls, notifications, the island, the on-screen keyboard and the Files window in its folder. Settings reopens on the same page, with the same rows expanded, scrolled to the same place, and the calculator keeps its number. A reboot or logging out still starts you with nothing open."
+          "text": "After a shell restart, your open panels and Settings page come back"
         }
       ]
     },
@@ -1114,37 +1985,37 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The lock screen is new. It covers the whole screen with your wallpaper blurred behind it, a large clock, the date and a password field, and nothing of the shell shows through. It grows out of your desktop when it locks and folds back into the password field when you unlock."
+          "text": "The new lock screen shows a blurred wallpaper, a clock and a password"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "A wrong password is turned down at once instead of after about two seconds. A password you send while the last one is still being checked waits its turn instead of being dropped."
+          "text": "A wrong password is refused at once instead of after two seconds"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The lock screen shows how many notifications are waiting, with the apps they came from but nothing they say, and what music is playing. Point at the music to pause it or skip a track."
+          "text": "The lock screen lists waiting notifications by app and the music"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The password field shows your keyboard layout when you have more than one, and clicking it switches. It says so when Caps Lock is on, and an unplugged laptop shows its battery under the field."
+          "text": "The password field shows your keyboard layout and a Caps Lock warning"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Move the pointer to the bottom of the lock screen for sleep, restart and shut down. Each needs a press held until its ring fills, so a stray click does nothing."
+          "text": "Sleep, restart and shut down need a held press at the bottom edge"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "After 10 seconds without a key or the mouse, the lock screen dims and its clock turns thin. Any key or movement brings it back."
+          "text": "The lock screen dims after 10 seconds without a key or mouse"
         },
         {
           "type": "config",
           "severity": "major",
-          "text": "lock.dim in config.json now sets how dark a veil sits over the lock screen's wallpaper, where it used to darken the picture itself, so the same number leaves your wallpaper more visible than before. New lock keys: font (the lock screen's typeface, Adwaita Sans by default), clockShare (clock size), clockLayout (row or stacked), restAfter (seconds before it dims) and verdict (milliseconds before an unanswered password counts as wrong)."
+          "text": "lock.dim now sets a veil over the wallpaper, leaving it more visible"
         }
       ]
     },
@@ -1155,17 +2026,17 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell dev try now lists each worktree with its pull request, open, merged or closed, and first clears away every worktree whose work is already on main, along with its branch. A worktree with changes of its own is never cleared. banditshell dev tidy does the same clearing without trying anything."
+          "text": "banditshell dev try lists each worktree with its pull request status"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "When a worktree you are trying gets merged, the shell goes back to main by itself within two minutes and sends a notification. A worktree that still has unsaved changes stays on."
+          "text": "A merged worktree you are trying sends you back to main in two minutes"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "In the banditshell dev try list, main is number 0 and the one running is marked * instead of a number. Picking the one already running says so instead of restarting it; banditshell restart still reloads it. In a terminal, the list and the messages are in colour."
+          "text": "In banditshell dev try, main is 0 and the running one is marked *"
         }
       ]
     },
@@ -1176,32 +2047,32 @@
         {
           "type": "config",
           "severity": "major",
-          "text": "notch.trackWidth in config.json no longer does anything, because the notch it sized is gone. The island that replaces it keeps its settings under island, and the new kernel check reads packages."
+          "text": "notch.trackWidth is gone; island settings live under island"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The notch at the top of the screen is now the island, a floating pill at the top centre. Opening an app, dictation, a finished download, a shell update and a new kernel all show up in it. Dictation no longer follows the focused window. Resting the pointer at the top centre still opens it, now with the clock, what is playing and anything still waiting for you."
+          "text": "The notch is now a floating island at the top centre of the screen"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Notifications can drop from the island instead of the top-right corner. Pick island under Sound › Notifications › Show them. The corner stays the default and opens the history either way."
+          "text": "Notifications can drop from the island instead of the corner"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The island tells you when a new Linux kernel is waiting. Pressing it runs sudo pacman -Syu in a terminal, or the command you set in System › Updates, and once the new kernel is installed it asks you to restart. The check needs pacman-contrib."
+          "text": "The island tells you when a new Linux kernel is waiting to install"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Finished downloads show up in the island if inotify-tools is installed. You can turn them off under Sound › Notifications › The island, along with the cover it shows when the track changes."
+          "text": "Finished downloads show in the island when inotify-tools is installed"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "banditshell panel notch is now banditshell panel island. The old name still works."
+          "text": "banditshell panel island is the new name, and the old one still works"
         }
       ]
     },
@@ -1212,72 +2083,72 @@
         {
           "type": "config",
           "severity": "major",
-          "text": "The launcher's second style has a new name, alphabet. A config.json that still uses the old name for launcher.concept, or for the launcher's size settings, is moved over by itself the first time the shell starts. A script or keybind that sets the old name needs alphabet instead."
+          "text": "Scripts and keybinds must say alphabet, not the old launcher name"
         },
         {
           "type": "config",
           "severity": "major",
-          "text": "Settings you changed back when the panel said \"nothing behind it in the shell yet\" are carried into config.json once and now take effect. For example, a do not disturb switch you left on now really silences popups. Choices that belong to the system or to Hyprland, such as keyboard layouts or the power mode, start from what your machine has now. Settings you never touched keep behaving as they did: the lid, idle locking, alert sounds and startup apps change nothing until you choose something."
+          "text": "Settings you set on the old placeholder rows now take effect"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Every setting in Settings now does what it says. In Connections, the hotspot and VPN tunnels switch on and off through NetworkManager, and Add a tunnel imports a WireGuard .conf or OpenVPN .ovpn file."
+          "text": "Every setting in Settings now does what it says"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Do not disturb works: popups and sounds stop while notifications still collect, it can end in an hour, at 18:00 or tomorrow morning, and it can come on every night. Alarms can still get through, and so do low battery warnings. Each app can have its own popup, sound and lock screen rule. Modes (work, play, stream, sleep) now change their settings and put them back when you leave, and banditshell focus switches modes and quiet from a terminal or keybind."
+          "text": "Do not disturb mutes popups and sounds, and can end at a set time"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Alert sounds play for notifications, low battery and errors when you turn them on, in a soft, clear or wood set at their own volume. They start off."
+          "text": "Alert sounds for notifications and errors come in soft, clear or wood"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Night light can follow a schedule, at set times or from sunset to sunrise for your time zone, easing in over a few minutes. Less motion, larger text and more contrast now apply to the whole shell. The 24-hour clock and the date style reach every clock and date the shell shows."
+          "text": "Night light follows a schedule, from sunset to sunrise or set times"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Display › Screens can turn a screen off or mirror another one. Like the other screen changes these wait for Apply and come with the countdown to go back. The last screen that is on cannot be turned off."
+          "text": "Display › Screens can turn a screen off or mirror another one"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The sidebar can show the clock stacked, small, on one line or not at all, the date as day and month, day or nothing, and each status icon, the tray and the special workspaces can be hidden. A hidden status icon's menu still opens from its keybind. The active mode shows its icon above the status icons."
+          "text": "The sidebar shows the clock and date in several styles, or hides them"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Volume past 100% is a switch. The launcher can forget what it learned, the clipboard imports clipse's history the moment you press Import, and the wallpaper reveal replays from its button."
+          "text": "Volume past 100% is a switch"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Window layout, keyboard layouts, key repeat, mouse and touchpad speed, natural scrolling and tap to click are written to your Hyprland config, behind the existing permission to edit Hyprland files. Pen buttons can be remapped. The hotkey sheet draws an ansi, iso or split board, and an imported VIA keymap lights the keys the shell binds."
+          "text": "Layout, keyboard, mouse and touchpad save to your Hyprland config"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Power mode, what closing the lid does, the low battery warning level and what happens when the battery is nearly empty are real settings. Holding the battery's charge needs a small helper installed once with bash install.sh --charge-limit. Lock, screens off and sleep after a time of no use are off until you pick a time, and stand aside when hypridle or swayidle already does it."
+          "text": "Power mode, lid, low battery and idle timeouts are real settings now"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Default apps and startup apps are real. Startup apps lists what starts from Hyprland, systemd, ~/.config/autostart and your own autostart launcher, and switches each off where it lives. Time zone, language and formats change the system's, asking for your password. Restore from a file shows what would change before anything is written, OBS's address and password can be set here, and the terminal's colours can follow the theme."
+          "text": "Startup apps can be switched off wherever they start"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "In Display › Screens, the arrangement snaps back to start at the top-left corner when you let go of a screen, instead of drifting further off with every drag."
+          "text": "Display › Screens snaps a dropped screen back to the top-left corner"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "When your Hyprland config fails Hyprland's own check, the shell now says so and changes nothing, instead of writing an edit and quietly undoing it. Edits made close together wait their turn instead of being dropped, and a screen edit lands in the right place on every machine that shares the config."
+          "text": "A Hyprland config that fails its check is left alone, with a notice"
         }
       ]
     },
@@ -1288,7 +2159,7 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Updating no longer stops at a file you edited yourself. If an update changes a file you also changed, your edit is set aside in git stash first and the update goes through, and the update menu names the files. git stash list shows them and git stash pop brings them back. Edits to files the update does not touch stay where they are."
+          "text": "Updates set your edits to a changed file aside in git stash"
         }
       ]
     },
@@ -1299,12 +2170,12 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "An open special workspace shows its apps' icons again. Before, the card over your workspace could be an empty box."
+          "text": "Open special workspaces show their apps' icons again"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "A special workspace holding several apps shows each app's icon in the sidebar, one under the other, instead of a generic grid. An open one leaves a small dot where it sits, and its card slides along when you switch workspaces instead of jumping."
+          "text": "A special workspace with several apps shows each app's icon"
         }
       ]
     },
@@ -1315,32 +2186,32 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Settings is rebuilt. It grows out of the sidebar on the screen you are using instead of opening as a separate window, and it stays open while you work in other windows. Its X or the settings corner closes it. Settings are sorted into ten categories, each opening on an overview, and the search box finds any setting by name."
+          "text": "Settings opens from the sidebar and stays open while you work"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Pointing at a setting shows what it does, the config.json key it writes if it has one, and a moving preview of that part of the shell. The last changes you made are listed with an undo button."
+          "text": "Pointing at a setting shows what it does and its config.json key"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Changes to your screens' arrangement, resolution, scale and rotation wait until you press Apply. A new resolution, scale or rotation then asks to be kept, and goes back by itself after 15 seconds if you do not answer."
+          "text": "Screen changes wait for Apply, then a new mode reverts unless kept"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Some settings are marked new. You can set them and the panel remembers your choice, but nothing in the shell acts on them yet. They start working in later updates."
+          "text": "New settings save your choice and start working in a later update"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell panel settings open takes a category, a page or any setting's config key, so banditshell panel settings open sidebar.update opens straight at that row. The old page names, like wifi or keybinds, still work."
+          "text": "banditshell panel settings open takes a category, page or config key"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "The shell keeps the values of the new settings, and your recent changes, in ~/.local/state/banditshell/settings.json."
+          "text": "Setting values and recent changes are saved in settings.json"
         }
       ]
     },
@@ -1351,17 +2222,17 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Updating installs exactly the version the update menu found. When it cannot, the menu says why in plain words instead of showing a line of git output: it names the files you edited that are in the way, or says that GitHub could not be reached or that this copy has changes of its own. A check that hangs now gives up after a few minutes."
+          "text": "Updates install the version the menu found, or say plainly why not"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The update icon above the clock now shows only when there is something to do: an update to get, a restart to finish one, or a problem. The rest of the time it is hidden, and What's new opens from the clock instead. To keep the icon all the time, or hide it even then, set Update button under Settings, Desktop, Sidebar. Settings, System, Updates has a button to check for updates."
+          "text": "The update icon above the clock shows only when something needs doing"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "config.json has a new key, sidebar.update. The default, new, shows the update icon only when there is something to do. always keeps it there, and never hides it even when an update is waiting."
+          "text": "sidebar.update in config.json sets the icon: new, always or never"
         }
       ]
     },
@@ -1372,7 +2243,7 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Tab completion for banditshell now stays current in every terminal. Until now, after an update only the first terminal to press Tab learned the new commands, and terminals already open kept suggesting old ones, like banditshell try, until you restarted them. A terminal opened before this update needs exec zsh or exec bash once; after that it keeps up by itself."
+          "text": "Tab completion for banditshell stays current in every terminal"
         }
       ]
     },
@@ -1383,22 +2254,22 @@
         {
           "type": "features",
           "severity": "major",
-          "text": "The banditshell command is regrouped so it starts with the thing you want, then what to do with it: banditshell panel launcher toggle, banditshell screen border off, banditshell wallpaper next, banditshell clock timer start 10m. Plain banditshell lists 17 commands instead of 30, banditshell <command> help shows what one takes, and a command on its own, like banditshell screen, shows how that thing is right now. Your keybinds keep working as they are; the update menu offers to rewrite them to the new form, and banditshell doctor binds rewrite does the same."
+          "text": "Commands now start with the thing, and old binds keep working"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Volume and locking are no longer banditshell commands, because wpctl and loginctl already do them: an old banditshell volume or lock command, typed or bound, now runs the matching wpctl or loginctl command. The sound menu, the media panel and the lock screen work as before."
+          "text": "Old banditshell volume or lock commands run wpctl or loginctl"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The commands for working on the shell moved under banditshell dev: dev try, dev back, dev build, dev test, dev check, and the previews under dev preview."
+          "text": "Try, back, build, test and check moved under banditshell dev"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell screenshot full saves the whole desktop to your screenshots folder, next to the region screenshots from screenshot save and screenshot copy."
+          "text": "banditshell screenshot full saves the whole desktop"
         }
       ]
     },
@@ -1409,37 +2280,37 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The wallpaper picker sits lower and smaller. The wallpaper you are on is in the middle, and the others are cropped strips beside it that never overlap and shrink away toward the ends, the whole row within 80% of the screen's width."
+          "text": "The wallpaper picker sits lower and smaller, current one in the middle"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "While the picker is open, the wallpaper you are looking at blooms in over your windows from the bottom edge, so you see it exactly as it will look. Everything behind the picker is dimmed, and the cards and controls cast shadows."
+          "text": "The wallpaper you look at shows over your dimmed windows"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Colour swatches above the picker show only the wallpapers of that colour, and the search button (or /) filters them by name."
+          "text": "Colour swatches narrow the picker, and / searches by name"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Below the picker: the wallpaper's name, resolution, kind and position, with shuffle, fits-this-screen, this-or-every-screen and Set buttons. Each has a tooltip."
+          "text": "Under the picker: name, resolution, shuffle, fit, screen and Set"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The ring around the wallpaper you already have is gone. A ring now appears only while you move with the arrow keys."
+          "text": "A ring marks the wallpaper only while you move with the arrow keys"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Set, or Enter, always applies now, so choosing Every screen works without first moving to a different wallpaper."
+          "text": "Set or Enter always applies, so Every screen works straight away"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "The shell keeps each wallpaper's colour groups in a small cache file, ~/.cache/banditshell/wallpaper-colours.json."
+          "text": "Colour groups per wallpaper are cached in wallpaper-colours.json"
         }
       ]
     },
@@ -1450,7 +2321,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell try needs less typing. Bare, it takes the only worktree there is, or lists them numbered and asks which one. With a name, a number from that list or any unique part of a branch name works, so banditshell try 2 or banditshell try wall is enough, and Tab completes worktree names."
+          "text": "banditshell try takes a list number or a unique part of a branch"
         }
       ]
     },
@@ -1461,7 +2332,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell try runs a git worktree of the shell on your desktop in place of your installed copy, so you can try a branch before it is merged: banditshell try <branch>, or bare from inside the worktree. Bare anywhere else, it lists every worktree and marks the one running. banditshell back puts your installed copy back. While you are trying one, banditshell restart restarts it, and a worktree that fails to load puts you back on your installed copy by itself."
+          "text": "banditshell try runs an unmerged branch, banditshell back undoes it"
         }
       ]
     },
@@ -1472,7 +2343,7 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Leaving streamer mode now takes the band away and gives your other screens their frame back. The shell follows hypr-mode's streamer switch on every Hyprland reload, so Super+Ctrl+K turns it on and off without anything else to set up; banditshell set stream on without hypr-mode's streamer mode lasts only until the next reload."
+          "text": "Leaving streamer mode removes the band and restores screen frames"
         }
       ]
     },
@@ -1483,17 +2354,17 @@
         {
           "type": "config",
           "severity": "major",
-          "text": "Two config.json keys are gone: button.scale, because button labels now use the shell's three font sizes, and files.text, because Files text is the small size scaled by its zoom. The shell drops them from your config by itself; if you had changed either, that size no longer applies."
+          "text": "button.scale and files.text are gone, and their sizes no longer apply"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "All text in the shell now comes in the same three sizes, so a few button labels change size slightly."
+          "text": "All shell text uses three sizes, so a few button labels shift slightly"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "The dictation pill's language tag sits centred beside the bars again."
+          "text": "The dictation pill's language tag is centred beside the bars"
         }
       ]
     },
@@ -1504,7 +2375,7 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Starting the shell no longer writes your saved brightness to the monitors. On a Samsung Odyssey that write made the monitor reset, and the compositor crashed with it; the saved level now only shows on the slider, and the monitors get a new brightness only when you change it."
+          "text": "Starting the shell leaves monitor brightness alone until you change it"
         }
       ]
     },
@@ -1515,67 +2386,67 @@
         {
           "type": "config",
           "severity": "major",
-          "text": "Six config.json keys are gone along with what used them: apps.claude (the app-icon asker), cheatsheet.symbols, and volume.grabFraction, volume.linger, volume.meterGlyphs and volume.railWidth (the old volume rail). The shell drops them from your config by itself. If you had changed volume.grabFraction or volume.linger, the value does not carry over: set screen.grabFraction or screen.linger instead."
+          "text": "Six keys are gone; use screen.linger and screen.grabFraction now"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Streamer mode for a portrait screen: banditshell set stream on DP-1 puts a band across the top of that screen with your OBS controls, each screen's workspaces and windows, network, sound and the clock, and its menus drop down under the item you click. banditshell set stream off ends it, and a restart keeps whichever you set."
+          "text": "banditshell set stream on DP-1 puts a band across that screen's top"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The band's OBS deck: go live and end the stream (each takes a second click within three seconds), record, watch the bitrate and dropped frames while live, switch scenes, and show or hide the camera and the screen capture or mute the mic and desktop audio for viewers only. It talks to OBS's WebSocket server with the password OBS already has, and only while streamer mode is on."
+          "text": "The band has an OBS deck to go live, record and switch scenes"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "While streaming, every other screen keeps its launcher, notch and pop-ups but reserves no space and draws no frame, so no window moves. Notifications and the keyring prompt go to the band's screen, where viewers cannot read them."
+          "text": "Other screens reserve no space while streaming, so no window moves"
         },
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The dictation pill tucks out of the way when the pointer comes near and drops back when it leaves, costs far less to draw while you talk, and shows the language as a small tag beside the bars. While streaming it is a smaller, rounder capsule that floats below the edge."
+          "text": "The dictation pill tucks away when the pointer comes near"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Quick controls: a card on the right edge with sound, brightness and warmth, in place of the old volume rail."
+          "text": "A right-edge card holds sound, brightness and warmth"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Security fixes: the 802.1X Wi-Fi password reaches NetworkManager on stdin instead of a command line other programs can read, notification and other untrusted text renders as plain text (notification bodies keep bold, italic and underline), the keyring prompt names the program that asks, and the lock screen checks the account the shell runs as."
+          "text": "Security fixes for Wi-Fi passwords, notifications and keyring prompts"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The lock screen locks before the machine sleeps, stays locked through a shell reload, and after three wrong passwords makes you wait 5 seconds, doubling up to a minute."
+          "text": "The lock screen locks before sleep and survives shell reloads"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "The shell does less while idle: Wi-Fi scans only while a network list is on screen, panels and Settings pages are built when first opened, and timers run only while something is moving."
+          "text": "The shell scans Wi-Fi only while a network list is open"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Files and the built-in terminal: typed paths are quoted for the shell, names read as UTF-8, a paste can no longer break out of bracketed paste, and the terminal redraws only the rows that changed."
+          "text": "Typed paths are quoted, and the terminal redraws only changed rows"
         },
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Log out ends this session instead of every session you have open."
+          "text": "Log out ends this session, not every session you have open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell completions install sets up zsh and bash completion generated from the CLI's own help, and banditshell check compiles every QML file and runs the tests."
+          "text": "banditshell completions install sets up zsh and bash tab completion"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "New config.json keys arrive by themselves: stream (enabled, screen, height) for streamer mode, eight clock settings, cheatsheet.blocked and cheatsheet.keyboard, and screen settings for the quick controls' brightness and warmth. Nothing to do."
+          "text": "config.json gains stream and clock keys by itself, with nothing to do"
         }
       ]
     },
@@ -1586,12 +2457,12 @@
         {
           "type": "config",
           "severity": "minor",
-          "text": "The source tree is reorganised around how you would look for things: the preview windows moved out of the repo root into previews/ behind a small router, and the jargon names became the words you would actually search for - Notifications, Calculator, SystemInfo, SummonZone, the alphabet launcher, SquircleRect. Nothing about how the shell looks or behaves moved with them."
+          "text": "Source files get plain, searchable names, and the shell acts the same"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The shell is now fully legible to the QML language server: every folder carries a qmldir and the LSP's import path is wired up, so code completion finds your own singletons and the editor's warning floor went from thousands to the few that can be kept honest. If you add a QML file, run scripts/qmldirs.sh once."
+          "text": "The QML language server resolves imports; new files need qmldirs.sh"
         }
       ]
     },
@@ -1602,7 +2473,7 @@
         {
           "type": "config",
           "severity": "minor",
-          "text": "Internal: the source code shed its comment essays, cut to bare minimum, with no change to anything the shell does. Your config and setup are untouched; anyone reading the code can read it again."
+          "text": "Source comments are cut to a bare minimum, and the shell is unchanged"
         }
       ]
     },
@@ -1613,7 +2484,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Bare mode now squares the windows too (rounding and both gaps, outer and inner, go to zero), and the shell applies the compositor half itself: on the toggle, on every boot, and again after every compositor reload while bare, so the state comes back from a reboot whole instead of half-applied. Toggling back reloads the compositor, which returns your config's gaps and rounding to every open window at once."
+          "text": "Bare mode also zeroes window rounding and gaps, even after a reboot"
         }
       ]
     },
@@ -1624,12 +2495,12 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Bare mode: the whole chrome can go off at once, every screen. Band, sidebar, reserved space and the invisible edge grabs all stand down, leaving the wallpaper and your windows; the shell still answers every keybind. Super+Shift+K toggles it, and runs the compositor's gap flip beside it so the windows sit flush."
+          "text": "Super+Shift+K toggles bare mode, hiding the chrome on every screen"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "One new config.json key, edge.bare, holds the switch. It is off by default and your config gains it by itself; nothing to do."
+          "text": "edge.bare in config.json holds the bare mode switch, off by default"
         }
       ]
     },
@@ -1640,12 +2511,12 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "The sidebar can now be hidden on individual monitors. The Monitors page has a Sidebar switch for the selected one, and Super+K toggles the column on the monitor you are on; hidden means fully, with the windows taking the width back."
+          "text": "Each monitor can hide the sidebar, set on Monitors or with Super+K"
         },
         {
           "type": "config",
           "severity": "minor",
-          "text": "Two new config.json keys hold the same setting: sidebar.enabled, the default every screen follows, and sidebar.perScreen, which holds only the monitors that disagree. Your config gains them by itself; nothing to do."
+          "text": "sidebar.enabled is the default, sidebar.perScreen lists exceptions"
         }
       ]
     }

@@ -9,6 +9,7 @@
       "modules/controls",
       "modules/gallery",
       "modules/ipc/CoreIpc.qml",
+      "modules/ipc/TraceIpc.qml",
       "modules/panel",
       "previews/GalleryPreview.qml",
       "previews/QrPreview.qml",
@@ -29,7 +30,8 @@
       "SystemBinaries",
       "TimeFormat",
       "ToolInstaller",
-      "Tooltips"
+      "Tooltips",
+      "Trace"
     ],
     "js": [
       "services/colours.js",
@@ -53,8 +55,10 @@
       "scripts/write-private.sh"
     ],
     "tests": [
+      "tests/backoff.test.js",
       "tests/base64.test.js",
       "tests/check-modules.test.js",
+      "tests/colour-drift.test.js",
       "tests/cli.test.js",
       "tests/configuration.test.js",
       "tests/desktop-entries.test.js",
@@ -65,11 +69,13 @@
       "tests/notify.test.js",
       "tests/quoting.test.js",
       "tests/ranking.test.js",
+      "tests/scheme.test.js",
       "tests/secret-marks.test.js",
       "tests/site.test.js",
       "tests/spring.test.js",
       "tests/squircle.test.js",
-      "tests/timeformat.test.js"
+      "tests/timeformat.test.js",
+      "tests/wall-clock.test.js"
     ]
   },
   "requires": {
@@ -95,9 +101,10 @@
       "Themes",
       "TimeFormat",
       "ToolInstaller",
-      "Tooltips"
+      "Tooltips",
+      "Trace"
     ],
-    "ipc": ["shell"]
+    "ipc": ["shell", "trace"]
   },
   "config": {
     "namespace": [

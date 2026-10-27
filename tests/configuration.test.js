@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "config/configuration.js"), "utf8");
-const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue };")();
+const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue, readText, readFailed };")();
 
 const OPAQUE = ["files.keys", "files.grid"];
 
@@ -163,6 +163,24 @@ test.describe("lookup", () => {
 });
 
 test.describe("upgrade", () => {
+    test.it("keeps main when it was set before the upgrade with the keep-channel mark in place", () => {
+        const setOnOldCode = { updates: { channel: "main", branch: "main", interval: 30 } };
+        assert.deepStrictEqual(Configuration.upgrade(setOnOldCode, true).updates, { channel: "main", channelUpgraded: true, branch: "main", interval: 30 });
+        assert.strictEqual(Configuration.upgrade(Configuration.upgrade(setOnOldCode, true)).updates.channel, "main");
+        assert.deepStrictEqual(Configuration.upgrade({ updates: { channel: "stable" } }, true).updates, { channel: "stable", channelUpgraded: true });
+    });
+
+    test.it("moves a copy on main to the release channel once, and leaves a later choice of main alone", () => {
+        const old = { updates: { channel: "main", branch: "main", interval: 30 } };
+        const moved = Configuration.upgrade(old);
+        assert.deepStrictEqual(moved.updates, { channel: "stable", channelUpgraded: true, branch: "main", interval: 30 });
+        const chosen = { updates: Object.assign({}, moved.updates, { channel: "main" }) };
+        assert.strictEqual(Configuration.upgrade(chosen), chosen);
+        assert.deepStrictEqual(Configuration.upgrade({ updates: { channel: "stable" } }).updates, { channel: "stable", channelUpgraded: true });
+        assert.deepStrictEqual(Configuration.upgrade({ theme: "x" }), { theme: "x" });
+        assert.deepStrictEqual(Configuration.upgrade({ updates: { channel: "main", channelUpgraded: false } }).updates, { channel: "stable", channelUpgraded: true });
+    });
+
     test.it("moves the old launcher name and its sizes to alphabet", () => {
         const old = { launcher: { concept: "niagara", niagara: { width: 700 } }, theme: "slate" };
         assert.deepStrictEqual(Configuration.upgrade(old), { launcher: { concept: "alphabet", alphabet: { width: 700 } }, theme: "slate" });
@@ -177,6 +195,74 @@ test.describe("upgrade", () => {
         assert.strictEqual(Configuration.upgradeValue("launcher.concept", "niagara"), "alphabet");
         assert.strictEqual(Configuration.upgradeValue("launcher.concept", "list"), "list");
         assert.strictEqual(Configuration.upgradeValue("theme", "niagara"), "niagara");
+    });
+
+    test.it("splits the old small sidebar clock into stacked at the small size, rail and open", () => {
+        const old = { sidebar: { clock: { style: "small", date: "day" } } };
+        assert.deepStrictEqual(Configuration.upgrade(old), { sidebar: { clock: { style: "stacked", size: "small", wideStyle: "stacked", wideSize: "small", date: "day" } } });
+        assert.strictEqual(Configuration.upgradeValue("sidebar.clock.style", "small"), "stacked");
+    });
+
+    test.it("keeps an open clock that was already chosen when it upgrades the small one", () => {
+        const old = { sidebar: { clock: { style: "small", wideStyle: "one line" } } };
+        assert.deepStrictEqual(Configuration.upgrade(old).sidebar.clock, { style: "stacked", size: "small", wideStyle: "one line" });
+    });
+
+    test.it("keeps a hidden sidebar clock hidden when the sidebar opens", () => {
+        const old = { sidebar: { clock: { style: "off" } } };
+        assert.deepStrictEqual(Configuration.upgrade(old).sidebar.clock, { style: "off", wideStyle: "off" });
+    });
+
+    test.it("lets a one line clock become stacked when the sidebar opens", () => {
+        const old = { sidebar: { clock: { style: "one line" } } };
+        assert.strictEqual(Configuration.upgrade(old), old);
+    });
+
+    test.it("moves a files sort saved by the old Settings to the values the file manager sorts on", () => {
+        assert.deepStrictEqual(Configuration.upgrade({ files: { sort: "date", view: "list" } }), { files: { sort: "mtime", view: "list" } });
+        assert.deepStrictEqual(Configuration.upgrade({ files: { sort: "type" } }), { files: { sort: "kind" } });
+        assert.strictEqual(Configuration.upgradeValue("files.sort", "date"), "mtime");
+        const current = { files: { sort: "size" } };
+        assert.strictEqual(Configuration.upgrade(current), current);
+    });
+
+    test.it("gives a saved file grid keymap Ctrl+Z for undo unless undo or Ctrl+Z is already bound", () => {
+        const saved = { files: { grid: { "Ctrl+C": "copy", F5: "refresh" }, view: "list" } };
+        assert.deepStrictEqual(Configuration.upgrade(saved), { files: { grid: { "Ctrl+C": "copy", F5: "refresh", "Ctrl+Z": "undo" }, view: "list" } });
+        const moved = { files: { grid: { "Ctrl+U": "undo", F5: "refresh" } } };
+        assert.strictEqual(Configuration.upgrade(moved), moved);
+        const taken = { files: { grid: { "Ctrl+Z": "trash", F5: "refresh" } } };
+        assert.strictEqual(Configuration.upgrade(taken), taken);
+    });
+
+    test.it("moves Markdown source saved by the old Settings to the value the file manager shows as source", () => {
+        assert.deepStrictEqual(Configuration.upgrade({ files: { markdown: "source", sort: "date" } }), { files: { markdown: "raw", sort: "mtime" } });
+        assert.strictEqual(Configuration.upgradeValue("files.markdown", "source"), "raw");
+        const current = { files: { markdown: "raw" } };
+        assert.strictEqual(Configuration.upgrade(current), current);
+    });
+
+    test.it("gives a saved files grid keymap F5 for refresh unless refresh already has a key", () => {
+        assert.deepStrictEqual(Configuration.upgrade({ files: { grid: { F2: "rename", "Ctrl+Z": "undo" } } }), { files: { grid: { F2: "rename", "Ctrl+Z": "undo", F5: "refresh" } } });
+        const moved = { files: { grid: { "Ctrl+R": "refresh", "Ctrl+Z": "undo" } } };
+        assert.strictEqual(Configuration.upgrade(moved), moved);
+        const taken = { files: { grid: { F5: "view", "Ctrl+Z": "undo" } } };
+        assert.strictEqual(Configuration.upgrade(taken), taken);
+    });
+
+    test.it("moves the update colours the shell shipped as defaults off the privacy and accent colours, once", () => {
+        const colours = values => {
+            const u = Configuration.upgrade(values).updates;
+            return [u.availableColour, u.failedColour, u.readyColour, u.coloursUpgraded];
+        };
+        assert.deepStrictEqual(colours({ updates: { availableColour: "alarm", failedColour: "bright", readyColour: "accent" } }), ["text", "warning", "accent", true]);
+        assert.deepStrictEqual(colours({ updates: { availableColour: "#ff5252", failedColour: "#ffb454", readyColour: "#4da3ff" } }), ["text", "warning", "#4da3ff", true]);
+        assert.deepStrictEqual(colours({ updates: { availableColour: "mid", failedColour: "#ff0000" } }), ["mid", "#ff0000", undefined, true]);
+    });
+
+    test.it("keeps alarm or bright chosen after the colour upgrade ran", () => {
+        const chosen = { updates: { availableColour: "alarm", failedColour: "bright", coloursUpgraded: true, channelUpgraded: true } };
+        assert.strictEqual(Configuration.upgrade(chosen), chosen);
     });
 
     test.it("leaves a config without a launcher alone", () => {
@@ -215,5 +301,51 @@ test.describe("literals", () => {
     test.it("refuses other words, and the word without the allowance", () => {
         assert.strictEqual(Configuration.assign(base(), [["files.terminal.palette", "neon"]], literals).refused, "files.terminal.palette");
         assert.strictEqual(Configuration.assign(base(), [["files.terminal.palette", "theme"]]).refused, "files.terminal.palette");
+    });
+});
+
+test.describe("reading config.json", () => {
+    const boot = () => ({ values: defaults(), loaded: false });
+    const read = (raw, state) => Configuration.readText(raw, state, defaults(), false, OPAQUE, {});
+
+    test.it("boots on the defaults when the file does not parse, and writes nothing", () => {
+        const got = read('{ "theme": "slate", }', boot());
+        assert.strictEqual(got.loaded, true);
+        assert.strictEqual(got.unreadable, true);
+        assert.strictEqual(got.save, false);
+        assert.deepStrictEqual(got.values, defaults());
+        assert.match(got.problem, /JSON|token|property/i);
+    });
+
+    test.it("treats a file that parses to something other than an object as broken", () => {
+        for (const raw of ["[]", "null", "42", "\"slate\""]) {
+            const got = read(raw, boot());
+            assert.deepStrictEqual([got.loaded, got.unreadable, got.save], [true, true, false], raw);
+        }
+    });
+
+    test.it("keeps the values it had when the file breaks mid-session", () => {
+        const running = { values: Object.assign(defaults(), { theme: "dusk" }), loaded: true };
+        const got = read("{", running);
+        assert.strictEqual(got.values.theme, "dusk");
+        assert.deepStrictEqual([got.loaded, got.unreadable, got.save], [true, true, false]);
+    });
+
+    test.it("takes the file once it is fixed, and saves only what the schema added", () => {
+        const whole = read(JSON.stringify(defaults()), boot()).values;
+        const fixed = read(JSON.stringify(whole), { values: defaults(), loaded: true });
+        assert.deepStrictEqual([fixed.unreadable, fixed.save], [false, false]);
+        const short = read('{ "theme": "dusk" }', boot());
+        assert.deepStrictEqual([short.unreadable, short.save, short.values.theme], [false, true, "dusk"]);
+    });
+
+    test.it("boots on the defaults when the file cannot be read, and writes nothing", () => {
+        const got = Configuration.readFailed(false);
+        assert.deepStrictEqual([got.loaded, got.unreadable, got.fresh, got.save], [true, true, false, false]);
+    });
+
+    test.it("writes a fresh file only when there was none", () => {
+        const got = Configuration.readFailed(true);
+        assert.deepStrictEqual([got.loaded, got.unreadable, got.fresh, got.save], [true, false, true, true]);
     });
 });

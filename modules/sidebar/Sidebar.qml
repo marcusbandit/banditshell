@@ -5,6 +5,7 @@ import qs.components
 import qs.services as Services
 
 import qs.modules.menu.content
+import "placement.js" as Placement
 
 Item {
     id: root
@@ -18,6 +19,10 @@ Item {
 
     property string modeIcon: ""
 
+    property bool awake: false
+
+    property real glanceReach: 0
+
     readonly property string slotIcon: root.modeIcon || (Services.Notifications.quieted ? "do_not_disturb_on" : "")
 
     property real fullWidth: width
@@ -28,7 +33,10 @@ Item {
     readonly property real revealed: root.rail ? Math.max(0, Math.min(1, (root.expansion - 0.3) / 0.5)) : 1
     readonly property real railRestWidth: root.fullWidth - Appearance.sizes.sidebarWidth + Appearance.sizes.railWidth
 
+    readonly property real timeCentre: clock.timeShown ? foot.y + clock.y + clock.timeItem.y + clock.timeItem.height / 2 : -1
+
     property bool dwelt: false
+    property bool pressedAtRest: false
     readonly property bool holding: root.menusShown && root.menuKeys.indexOf(root.openKey) >= 0
     readonly property bool railWanted: root.rail && (root.dwelt || root.holding)
 
@@ -48,6 +56,8 @@ Item {
     signal clockPullEnded(bool open)
 
     signal updateRequested(bool deliberate)
+
+    signal markPressed(var opens)
 
     readonly property var menuItems: [...tray.items, root.updateEntry, root.clockEntry, root.calendarEntry, ...status.items]
     readonly property var menuKeys: root.menuItems.map(i => i.key)
@@ -91,7 +101,7 @@ Item {
         return group.sideGap + root.cornerRise(group.sideGap) + group.overhang - Appearance.sizes.band;
     }
 
-    readonly property var blobs: root.expansion < 0.98 ? [] : workspaces.blobs.map(b => ({
+    readonly property var blobs: root.expansion < 0.98 || !workspaces.visible ? [] : workspaces.blobs.map(b => ({
                 x: b.x + workspaces.x,
                 y: b.y + workspaces.y,
                 w: b.w,
@@ -127,14 +137,34 @@ Item {
         Workspaces {
             id: workspaces
 
+            readonly property real ceiling: tray.y + tray.height + tray.overhang + Appearance.padding.large
+            readonly property real floor: foot.y - Appearance.padding.large
+            readonly property var place: Placement.between(workspaces.implicitHeight, body.height, workspaces.ceiling, workspaces.floor)
+
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
+            y: workspaces.place.y
+            height: workspaces.implicitHeight
+            visible: workspaces.place.fits
+
+            screen: root.screen
+        }
+
+        RailPips {
+            id: crowded
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+            y: Placement.between(crowded.implicitHeight, body.height, workspaces.ceiling, workspaces.floor).y
+            height: crowded.implicitHeight
+            visible: !workspaces.place.fits
 
             screen: root.screen
         }
 
         Column {
+            id: foot
+
             anchors.bottom: parent.bottom
 
             anchors.bottomMargin: root.endMargin(status)
@@ -216,32 +246,69 @@ Item {
         id: restingContent
 
         Item {
+            id: rest
+
+            readonly property bool holdsRest: anomalies.pointing
+            readonly property int slotsReserved: 4
+            readonly property var place: Placement.rail(pips.implicitHeight, rest.height, glance.headEdge + Appearance.padding.large, rest.height - anomalies.anchors.bottomMargin, (Appearance.sizes.statusSlot + Appearance.sizes.statusGap) * rest.slotsReserved, Appearance.padding.huge)
+
             RailPips {
+                id: pips
+
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
+                y: rest.place.y
+                height: pips.implicitHeight
 
                 screen: root.screen
             }
 
+            RailGlance {
+                id: glance
+
+                anchors.fill: parent
+
+                topInset: root.endMargin(root.tray) + Appearance.padding.large
+                bottomInset: root.endMargin(root.status) + Appearance.padding.large
+                tabsReach: root.glanceReach
+                timeCentre: root.timeCentre
+            }
+
             RailAnomalies {
+                id: anomalies
+
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: root.endMargin(root.status)
+                anchors.bottomMargin: glance.footInUse ? parent.height - glance.topEdge + Appearance.padding.large : root.endMargin(root.status)
 
                 modeIcon: root.modeIcon
+                awake: root.awake
+                room: rest.place.room
+                batteryWanted: ["top", "off"].includes(Config.values.sidebar.glance)
+
+                enabled: root.revealed === 0
+
+                onMarkPressed: opens => {
+                    root.pressedAtRest = true;
+                    root.markPressed(opens);
+                }
             }
         }
     }
 
     HoverHandler {
         id: pointer
+
+        onHoveredChanged: {
+            if (!pointer.hovered)
+                root.pressedAtRest = false;
+        }
     }
 
     Timer {
         interval: Appearance.animation.dwell
-        running: root.rail && pointer.hovered && !root.dwelt
+        running: root.rail && pointer.hovered && !root.dwelt && !root.pressedAtRest && !(resting.item?.holdsRest ?? false)
         onTriggered: root.dwelt = true
     }
 

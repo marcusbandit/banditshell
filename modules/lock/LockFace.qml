@@ -182,10 +182,10 @@ Item {
         onTriggered: Weather.refresh()
     }
 
-    SystemClock {
+    WallClock {
         id: clock
 
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
     }
 
     Item {
@@ -240,7 +240,7 @@ Item {
         Rectangle {
             anchors.fill: parent
             color: Appearance.colour.ink
-            opacity: root.veil * Math.min(1, Appearance.sizes.lockDim * 0.6 + root.rested * 0.25)
+            opacity: root.veil * Math.min(1, Appearance.sizes.lockDim * 0.6 + root.rested * 0.25 + (Appearance.light ? 0.2 : 0))
         }
 
         Column {

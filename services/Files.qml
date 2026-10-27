@@ -7,6 +7,9 @@ import qs.config
 import "../components/vt.js" as TerminalEmulator
 import "../components/base64.js" as Base64
 import "quoting.js" as Quoting
+import "files-order.js" as FilesOrder
+import "files-conflicts.js" as Conflicts
+import "files-find.js" as Find
 
 Singleton {
     id: root
@@ -31,25 +34,26 @@ Singleton {
 
     readonly property var visible: {
         const all = root.entries.filter(e => root.showHidden || !e.hidden);
-        const query = root.search.toLowerCase();
+        const query = root.search.trim().toLowerCase();
         const matched = query === "" ? all : all.filter(e => e.name.toLowerCase().includes(query));
 
-        const key = root.sort;
-        return matched.slice().sort((a, b) => {
-            if ((a.kind === "dir") !== (b.kind === "dir"))
-                return a.kind === "dir" ? -1 : 1;
-            if (key === "size" && a.size !== b.size)
-                return b.size - a.size;
-            if (key === "mtime" && a.mtime !== b.mtime)
-                return b.mtime - a.mtime;
-            if (key === "kind" && a.class !== b.class)
-                return a.class < b.class ? -1 : 1;
-            return a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: "base"});
-        });
+        const order = list => FilesOrder.ordered(list, root.sort, root.reversed);
+        return FilesFind.active ? Find.grouped(matched, FilesFind.results, root.cwd, order) : order(matched);
+    }
+
+    onSearchChanged: FilesFind.ask(root.search, root.cwd, root.showHidden)
+    onShowHiddenChanged: FilesFind.ask(root.search, root.cwd, root.showHidden)
+
+    function keyOf(entry: var): string {
+        return entry.key ?? entry.name;
+    }
+
+    function pathOf(entry: var): string {
+        return entry.key ?? root.join(root.cwd, entry.name);
     }
 
     function indexOf(name: string): int {
-        return root.visible.findIndex(e => e.name === name);
+        return root.visible.findIndex(e => root.keyOf(e) === name);
     }
 
     readonly property int cursor: {
@@ -58,16 +62,16 @@ Singleton {
     }
 
     readonly property var current: root.cursor >= 0 ? root.visible[root.cursor] : null
-    readonly property string currentPath: root.current ? root.join(root.cwd, root.current.name) : ""
+    readonly property string currentPath: root.current ? root.pathOf(root.current) : ""
 
     readonly property var picks: {
         const names = root.picked;
         if (names.length === 0)
             return root.current ? [root.current] : [];
-        return root.visible.filter(e => names.includes(e.name));
+        return root.visible.filter(e => names.includes(root.keyOf(e)));
     }
 
-    readonly property var pickedPaths: root.picks.map(e => root.join(root.cwd, e.name))
+    readonly property var pickedPaths: root.picks.map(e => root.pathOf(e))
 
     readonly property var crumbs: {
         const parts = root.cwd.split("/").filter(p => p.length > 0);
@@ -95,7 +99,7 @@ Singleton {
     function setCursor(index: int): void {
         if (index < 0 || index >= root.visible.length)
             return;
-        const name = root.visible[index].name;
+        const name = root.keyOf(root.visible[index]);
         root.cursorName = name;
         root.anchorName = name;
         root.picked = [name];
@@ -104,7 +108,7 @@ Singleton {
     function togglePick(index: int): void {
         if (index < 0 || index >= root.visible.length)
             return;
-        const name = root.visible[index].name;
+        const name = root.keyOf(root.visible[index]);
         root.picked = root.isPicked(name) ? root.picked.filter(n => n !== name) : [...root.picked, name];
         root.cursorName = name;
         root.anchorName = name;
@@ -117,18 +121,18 @@ Singleton {
         const from = anchor < 0 ? index : anchor;
         const lo = Math.min(from, index);
         const hi = Math.max(from, index);
-        const name = root.visible[index].name;
-        root.picked = root.visible.slice(lo, hi + 1).map(e => e.name);
+        const name = root.keyOf(root.visible[index]);
+        root.picked = root.visible.slice(lo, hi + 1).map(e => root.keyOf(e));
         root.cursorName = name;
     }
 
     function pickRange(indices: var, add: bool): void {
-        const names = indices.filter(i => i >= 0 && i < root.visible.length).map(i => root.visible[i].name);
+        const names = indices.filter(i => i >= 0 && i < root.visible.length).map(i => root.keyOf(root.visible[i]));
         root.picked = add ? [...new Set([...root.picked, ...names])] : names;
     }
 
     function pickAll(): void {
-        root.picked = root.visible.map(e => e.name);
+        root.picked = root.visible.map(e => root.keyOf(e));
     }
 
     function clearPicked(): void {
@@ -182,9 +186,11 @@ Singleton {
     function open(entry: var): void {
         if (!entry)
             return;
-        const path = root.join(root.cwd, entry.name);
+        const path = root.pathOf(entry);
         if (entry.kind === "dir")
             root.go(path);
+        else if (entry.key)
+            root.goTo(path);
         else
             System.openWith(path);
     }
@@ -196,16 +202,26 @@ Singleton {
         root.search = "";
         root.searching = false;
         root.refresh();
+        root.watch();
         root.remember();
     }
 
     property int generation: 0
     property var latestListing: null
+    property bool listing: false
+    property real listingSince: 0
+    property bool again: false
+    property bool watched: false
+    property string lastListing: ""
 
     function refresh(): void {
         if (!root.cwd)
             return;
         root.generation += 1;
+        root.listing = true;
+        root.listingSince = Date.now();
+        root.again = false;
+        root.watched = false;
         if (root.latestListing)
             root.latestListing.running = false;
         root.latestListing = lister.createObject(root, {
@@ -218,7 +234,20 @@ Singleton {
     function take(generation: int, text: string): void {
         if (generation !== root.generation)
             return;
+        root.listing = false;
+        const again = root.again;
+        if (text !== root.lastListing) {
+            root.lastListing = text;
+            root.adopt(text);
+        }
+        if (again)
+            root.relist();
+        if (!root.watcher && !root.error && root.cwd !== root.unwatchable)
+            root.watch();
+    }
 
+    function adopt(text: string): void {
+        const began = Date.now();
         const was = root.cursor;
         try {
             const answer = JSON.parse(text);
@@ -235,8 +264,10 @@ Singleton {
         root.picked = root.picked.filter(n => root.indexOf(n) >= 0);
         if (root.cursorName && root.indexOf(root.cursorName) < 0) {
             const at = Math.min(Math.max(was, 0), root.visible.length - 1);
-            root.cursorName = at >= 0 ? root.visible[at].name : "";
+            root.cursorName = at >= 0 ? root.keyOf(root.visible[at]) : "";
         }
+        root.landedAt = root.watched ? Date.now() : 0;
+        root.cost = Date.now() - began;
     }
 
     Component {
@@ -256,12 +287,103 @@ Singleton {
         }
     }
 
+    property real landedAt: 0
+    property real cost: 0
+
+    Timer {
+        id: pace
+
+        onTriggered: root.relist()
+    }
+
+    function relist(): void {
+        const wait = root.entries.length < 5000 ? 0 : root.landedAt + root.cost * 3 - Date.now();
+        if (wait > 0) {
+            pace.interval = wait;
+            if (!pace.running)
+                pace.start();
+            return;
+        }
+        if (root.listing && Date.now() - root.listingSince < 30000)
+            root.again = true;
+        else
+            root.relistNow();
+    }
+
+    function relistNow(): void {
+        root.refresh();
+        root.watched = true;
+    }
+
+    property var watcher: null
+    property bool watching: false
+    property string unwatchable: ""
+
+    function watch(): void {
+        pace.stop();
+        root.cost = 0;
+        const old = root.watcher;
+        root.watcher = null;
+        root.watching = false;
+        if (old) {
+            old.running = false;
+            old.destroy();
+        }
+        if (!root.windowOpen)
+            root.lastListing = "";
+        if (!root.windowOpen || root.helpersMissing || !root.cwd)
+            return;
+        root.watcher = folderWatch.createObject(root, {
+            command: [root.helper("bs-ls"), "--watch", root.cwd],
+            running: true
+        });
+    }
+
+    function heard(from: var, line: string): void {
+        if (from !== root.watcher)
+            return;
+        if (line === "ready")
+            root.watching = true;
+        else if (line === "changed")
+            root.relist();
+    }
+
+    Component {
+        id: folderWatch
+
+        Process {
+            id: watcherProcess
+
+            stdinEnabled: true
+
+            stdout: SplitParser {
+                onRead: line => root.heard(watcherProcess, line)
+            }
+
+            onRunningChanged: {
+                if (watcherProcess.running || root.watcher !== watcherProcess)
+                    return;
+                const was = root.watching;
+                root.watcher = null;
+                root.watching = false;
+                root.unwatchable = was ? "" : root.cwd;
+                watcherProcess.destroy();
+                if (was)
+                    root.relist();
+            }
+        }
+    }
+
     property string focus: "grid"
     property bool terminalOpen: false
     property bool previewOpen: true
 
     readonly property bool showHidden: Config.values.files.hidden
     readonly property string sort: Config.values.files.sort
+    readonly property bool reversed: Config.values.files.reversed
+    readonly property var orderWords: FilesOrder.orderWords(root.sort)
+    readonly property var sortWords: FilesOrder.SORT_WORDS
+    readonly property string foldersNote: FilesOrder.foldersNote(root.sort)
 
     readonly property string view: Config.values.files.view
 
@@ -435,10 +557,13 @@ Singleton {
         target: root
 
         function onWindowOpenChanged(): void {
+            root.watch();
             if (!root.windowOpen)
                 return;
             if (root.entries.length === 0)
                 root.checkHelpers();
+            else
+                root.refresh();
 
             root.refreshPlaces();
         }
@@ -563,6 +688,8 @@ Singleton {
         root.restat();
     }
 
+    property int working: 0
+
     function spawn(command: var, input: string): void {
         job.createObject(root, {
             command: command,
@@ -593,6 +720,7 @@ Singleton {
 
             onStarted: {
                 task.begun = true;
+                root.working += 1;
                 if (task.input !== "") {
                     task.write(task.input);
                     task.stdinEnabled = false;
@@ -607,6 +735,7 @@ Singleton {
             }
 
             onExited: (code, status) => {
+                root.working -= 1;
                 if (code !== 0 || status !== 0)
                     root.report(task.command, code, complaint.text);
                 root.restat();
@@ -791,32 +920,40 @@ Singleton {
             root.run(["touch", "--"], [root.join(root.cwd, name)]);
     }
 
+    function renameRefusal(path: string, name: string): string {
+        return Conflicts.renameRefusal(name, path.slice(path.lastIndexOf("/") + 1), root.entries, Conflicts.folderName(root.parentOf(path), root.home));
+    }
+
     function renameTo(path: string, name: string): void {
         if (!path || !name)
             return;
         const to = root.join(root.parentOf(path), name);
         if (to !== path)
-            root.run(["mv", "-i", "--"], [path, to]);
+            FilesUndo.renaming(path, to, () => root.run(["mv", "-i", "--"], [path, to]));
     }
 
     function trash(paths: var): void {
-        if (paths.length > 0)
-            root.run(["gio", "trash", "--"], paths);
+        if (paths.length === 0)
+            return;
+        root.run(["gio", "trash", "--"], paths);
+        FilesUndo.trashed(paths);
+        FilesFind.forget(paths);
     }
 
     function deleteForever(paths: var): void {
-        if (paths.length > 0)
-            root.run(["rm", "-rf", "--"], paths);
+        if (paths.length === 0)
+            return;
+        root.run(["rm", "-rf", "--"], paths);
+        FilesFind.forget(paths);
     }
 
     function copyInto(paths: var, dir: string): void {
-        if (paths.length > 0)
-            root.run(["cp", "-ri", "--"], [...paths, dir]);
+        FilesPaste.start(paths, dir, false);
     }
 
     function moveInto(paths: var, dir: string): void {
-        if (paths.length > 0)
-            root.run(["mv", "-i", "--"], [...paths, dir]);
+        FilesPaste.start(paths, dir, true);
+        FilesFind.forget(paths);
     }
 
     property var clipboard: []
@@ -831,9 +968,12 @@ Singleton {
         if (root.clipboard.length === 0)
             return;
         if (root.clipboardCut) {
-            root.moveInto(root.clipboard, root.cwd);
-
-            root.clipboard = [];
+            const moving = root.clipboard;
+            FilesFind.forget(moving);
+            FilesPaste.start(moving, root.cwd, true, outcome => {
+                if (root.clipboard === moving)
+                    root.clipboard = Conflicts.leftover(moving, outcome);
+            });
         } else {
             root.copyInto(root.clipboard, root.cwd);
         }
@@ -856,9 +996,20 @@ Singleton {
     }
 
     function show(path: string): void {
+        const span = root.windowOpen ? null : Trace.begin("files open");
         if (path)
             root.cd(path);
+        Trace.step("listed", span);
         root.windowOpen = true;
+        Trace.step("shown", span);
+    }
+
+    function goTo(path: string): void {
+        const name = path.slice(path.lastIndexOf("/") + 1);
+        root.go(root.parentOf(path));
+        root.cursorName = name;
+        root.anchorName = name;
+        root.picked = [name];
     }
 
     function reveal(path: string): void {
@@ -870,7 +1021,9 @@ Singleton {
     }
 
     function hide(): void {
+        const span = root.windowOpen ? Trace.begin("files close") : null;
         root.windowOpen = false;
+        Trace.step("hidden", span);
     }
 
     function toggle(path: string): void {
@@ -932,7 +1085,11 @@ Singleton {
         });
     }
 
-    onWindowOpenChanged: root.remember()
+    onWindowOpenChanged: {
+        if (!root.windowOpen)
+            FilesFind.stop();
+        root.remember();
+    }
 
     Component.onCompleted: {
         const was = Relaunch.recall("files");
@@ -987,6 +1144,9 @@ Singleton {
             return true;
         case "home":
             root.go(root.home);
+            return true;
+        case "refresh":
+            root.refresh();
             return true;
         }
 

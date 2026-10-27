@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import qs.components
 import "chargelimit.js" as Logic
 
 Singleton {
@@ -126,6 +127,8 @@ fi
                 const found = Logic.parseProbe(text);
                 const judged = probe.after;
                 probe.after = -1;
+                if (root.probed && found.current !== root.current)
+                    recheck.reset();
                 root.supported = found.supported;
                 root.helper = found.helper;
                 root.current = found.current;
@@ -143,10 +146,21 @@ fi
         }
     }
 
-    Timer {
-        interval: 30000
+    Connections {
+        target: Battery
+
+        function onOnBatteryChanged(): void {
+            if (root.supported)
+                root.read();
+        }
+    }
+
+    Backoff {
+        id: recheck
+
+        base: 30000
+        cap: 600000
         running: root.supported
-        repeat: true
-        onTriggered: root.read()
+        onDue: root.read()
     }
 }

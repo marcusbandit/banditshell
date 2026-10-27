@@ -38,12 +38,11 @@ Column {
                 return;
             }
             root.error = "";
-            Network.clearFailure(root.ssid);
-            root.n.connectWithPsk(root.password);
+            Network.join(root.n, root.password);
             return;
         }
         root.error = "";
-        root.n.connect();
+        Network.join(root.n, "");
     }
 
     Item {

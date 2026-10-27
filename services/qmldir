@@ -32,6 +32,9 @@ singleton Emoji 1.0 Emoji.qml
 singleton Events 1.0 Events.qml
 singleton FileSearch 1.0 FileSearch.qml
 singleton Files 1.0 Files.qml
+singleton FilesFind 1.0 FilesFind.qml
+singleton FilesPaste 1.0 FilesPaste.qml
+singleton FilesUndo 1.0 FilesUndo.qml
 singleton Focus 1.0 Focus.qml
 singleton GitHub 1.0 GitHub.qml
 singleton Hotspot 1.0 Hotspot.qml
@@ -112,6 +115,8 @@ singleton ThemeSwitcher 1.0 ThemeSwitcher.qml
 singleton TimeFormat 1.0 TimeFormat.qml
 singleton ToolInstaller 1.0 ToolInstaller.qml
 singleton Tooltips 1.0 Tooltips.qml
+singleton Tour 1.0 Tour.qml
+singleton Trace 1.0 Trace.qml
 singleton Translator 1.0 Translator.qml
 singleton Tray 1.0 Tray.qml
 singleton Tunnels 1.0 Tunnels.qml

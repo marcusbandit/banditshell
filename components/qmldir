@@ -2,6 +2,7 @@ module qs.components
 ActionSheet 1.0 ActionSheet.qml
 AppMark 1.0 AppMark.qml
 AspectMark 1.0 AspectMark.qml
+Backoff 1.0 Backoff.qml
 BalancedText 1.0 BalancedText.qml
 BatteryMeter 1.0 BatteryMeter.qml
 BatteryTank 1.0 BatteryTank.qml
@@ -16,6 +17,8 @@ CrossfadeText 1.0 CrossfadeText.qml
 DropShadow 1.0 DropShadow.qml
 FittedImage 1.0 FittedImage.qml
 FloatingTooltip 1.0 FloatingTooltip.qml
+FocusMark 1.0 FocusMark.qml
+FocusVisible 1.0 FocusVisible.qml
 FoldedText 1.0 FoldedText.qml
 Follow 1.0 Follow.qml
 FollowColour 1.0 FollowColour.qml
@@ -45,5 +48,6 @@ StyledText 1.0 StyledText.qml
 TerminalView 1.0 TerminalView.qml
 Toggle 1.0 Toggle.qml
 Travel 1.0 Travel.qml
+WallClock 1.0 WallClock.qml
 Waveform 1.0 Waveform.qml
 WheelStep 1.0 WheelStep.qml

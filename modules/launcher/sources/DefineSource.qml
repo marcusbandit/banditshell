@@ -66,6 +66,17 @@ QtObject {
             dictionary: 8
         })
 
+    readonly property var prefixes: [
+        {
+            section: "Ask and look up",
+            word: "define",
+            example: "define serendipity",
+            about: "Look up a word",
+            icon: "menu_book",
+            also: ["def", "dict"]
+        }
+    ]
+
     readonly property var groups: [
         {
             key: "dictionary",

@@ -13,6 +13,28 @@ sentences. No internal jargon, no file paths only the author would know, no
 commit hashes as prose - the entry says what is different now, not what was
 committed.
 
+## Short, always
+
+Set by the owner on 2026-10-25, after a card full of paragraphs that nobody
+read. Each change is one bullet, and a bullet is one short line:
+
+- 70 characters at most, one sentence.
+- Say what is different now. Leave out the cause, the old behaviour and how
+  it works.
+- One bullet per thing the reader would notice. A detail of the same thing
+  folds into its bullet or goes.
+- Most entries have one or two bullets.
+
+| Too long | Right |
+| --- | --- |
+| A fresh install has a wallpaper from the first second: a moonlit pixel landscape that ships with the shell. The default used to point at a picture nothing installed, so the screen stayed black... | Fresh installs start with a wallpaper, not a black screen |
+| The shell starts even when qt6-websockets, which talks to OBS, or qt6-multimedia, which plays sound and video, is missing. One missing module used to leave the whole screen black... | The shell starts without qt6-websockets or qt6-multimedia |
+
+The long story goes elsewhere. A big release gets a post on the blog at
+banditshell.marcusrosado.com for anyone who wants to read through it; a
+small push gets no post, only its bullets. The site has no blog page yet, so
+until it does the detail lives in the PR body.
+
 ## The shape of an entry
 
 Entries are listed newest first. Each entry has:
@@ -21,7 +43,7 @@ Entries are listed newest first. Each entry has:
 | ------------------- | -------------------------------------------------------------------------- |
 | `id`                | The version line the entry ships under. Required. The push date by convention (`2026-09-27`), with `-2`, `-3`... on a second push the same day. The marker the shell stores is this id, so it must be unique and stable. |
 | `date`              | `YYYY-MM-DD`, when the push landed.                                        |
-| `changes`           | One line each, in the order a reader should meet them.                     |
+| `changes`           | One bullet per noticeable thing, in the order a reader should meet them.   |
 | `example`           | `true` on the seed entry only. The shell skips it; the first real entry replaces it. |
 | `impact`            | Optional. What the update does to the person's setup, so the update menu can say so before they press the button. See below. |
 
@@ -31,7 +53,7 @@ Each change carries:
 | --------- | ------------------------------------------------------------------------------------------------------- |
 | `type`    | One of: `issues` (a tracked issue was fixed), `bugs` (something broken was fixed), `features` (something new it can do), `ui` (something looks or moves differently), `config` (config.json keys or files the shell writes changed). |
 | `severity`| `major` or `minor`.                                                                                     |
-| `text`    | The one line the recipient reads.                                                                       |
+| `text`    | The bullet the recipient reads, 70 characters at most. See Short, always.                               |
 
 ## Impact
 
@@ -85,22 +107,20 @@ their last-seen version when they pull or update - not just the newest. Write
 each entry so it stands alone. Never write "as mentioned last time", because
 for most of your readers there was no last time.
 
-## The id is the version
+## The id and the release
 
-The `id` of the newest real entry is the version number of the build. `banditshell version`, the
-update menu and Settings > About show it, so it is what a person reads out when they report a bug.
-Keep it a date: `2026-10-17`, then `2026-10-17-2` for a second push the same day. An id that is not
-a date (`v1`) works in the shell but cannot be tagged and the promote script refuses it.
+The `id` of an entry stays a date: `2026-10-17`, then `2026-10-17-2` for a second push the same
+day. It is the seen marker, so it must be unique and stable. The version a person reads is the
+release instead: `v0.2.0`, or `v0.2.0+3` on a copy three commits past it. The id is only the
+fallback where no release tag is in reach.
 
-## Tags and the stable channel
+## Releases
 
-A commit that reaches the `stable` branch gets a git tag made from its id: `v`, then the date with
-dots, then the number if there is one. `2026-10-17` is `v2026.10.17`, and `2026-10-16-7` is
-`v2026.10.16-7`. `main` pushes are not tagged. `scripts/promote-stable.sh` (or `banditshell dev
-promote`) checks main and prints the `git push origin main:stable` and the tag commands; it pushes
-nothing unless run with `--push`, and agents never run it with `--push`. Write the entry before
-promotion: the tag is made from the newest entry on main at that moment. `docs/architecture/updates.md`
-has the whole update loop and the channels.
+Entries are written at every push to `main`, but people on the default channel only get them when
+the owner cuts a release with `banditshell dev release`. The release notes on GitHub are the entries
+on `main` that the last release tag did not have, so an entry written now is in the next release's
+notes without anything else to do. Agents never run `dev release` without `--dry-run`.
+`docs/architecture/updates.md` has the whole loop and the channels.
 
 ## The card
 

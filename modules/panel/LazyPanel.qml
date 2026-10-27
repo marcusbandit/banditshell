@@ -1,7 +1,10 @@
 import QtQuick
+import qs.services
 
 Item {
     id: root
+
+    property string name: ""
 
     property Component panel: null
 
@@ -13,21 +16,33 @@ Item {
     readonly property var blobs: root.item?.blobs ?? []
     readonly property Item maskItem: root.item?.maskItem ?? null
 
-    function build(): var {
-        loader.active = true;
+    function build(span = undefined): var {
+        if (!loader.active) {
+            loader.active = true;
+            if (span === undefined)
+                Trace.note("built");
+            else
+                Trace.step("built", span);
+        }
         return loader.item;
     }
 
     function show(): void {
-        root.build().show();
+        const span = root.open ? null : Trace.begin(`${root.name} open`, root.item ? "" : "first");
+        root.build(span).show();
+        Trace.step("shown", span);
     }
 
     function hide(): void {
+        const span = root.open ? Trace.begin(`${root.name} close`) : null;
         root.item?.hide();
+        Trace.step("hidden", span);
     }
 
     function toggle(): void {
-        root.build().toggle();
+        const span = Trace.begin(`${root.name} ${root.open ? "close" : "open"}`, root.item ? "" : "first");
+        root.build(span).toggle();
+        Trace.step(root.open ? "shown" : "hidden", span);
     }
 
     function dragTo(fraction: real, aside: real): void {

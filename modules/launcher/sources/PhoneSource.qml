@@ -193,6 +193,17 @@ QtObject {
                 }));
     }
 
+    readonly property var prefixes: !Phone.enabled ? [] : [
+            {
+                section: "System",
+                word: "phone",
+                example: "phone battery",
+                about: "Paired phones",
+                icon: "smartphone",
+                also: ["phones"]
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "phone",

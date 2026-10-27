@@ -4,28 +4,42 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.modules.settings
+import "../catalogue.js" as Catalogue
 
 Item {
     id: root
 
-    readonly property real stageHeight: 280
+    readonly property real stageHeight: 464
     readonly property bool list: SettingsState.v("filesView") === "list"
     readonly property string sort: SettingsState.v("filesSort")
+    readonly property bool reversed: SettingsState.v("filesReversed")
     readonly property bool hidden: SettingsState.v("filesHidden")
     readonly property real zoom: SettingsState.v("filesZoom")
     readonly property bool rendered: SettingsState.v("filesMarkdown") === "rendered"
 
-    readonly property var files: [["Documents", "folder", "dir", 0, 3], ["Downloads", "folder", "dir", 0, 0], ["Pictures", "folder", "dir", 0, 12], ["Projects", "folder", "dir", 0, 1], ["notes.md", "description", "md", 4, 0], ["install.sh", "terminal", "sh", 2, 30], ["wallpaper.png", "image", "png", 2400, 6], ["todo.txt", "article", "txt", 1, 2], [".config", "folder", "dir", 0, 0], [".bashrc", "settings", "rc", 3, 90]]
+    readonly property var files: [["Documents", "folder", "dir", 0, 3], ["Downloads", "folder", "dir", 0, 0, "14:05"], ["Pictures", "folder", "dir", 0, 12], ["Projects", "folder", "dir", 0, 1], ["notes.md", "description", "md", 4, 0, "09:12"], ["install.sh", "terminal", "sh", 2, 30], ["wallpaper.png", "image", "png", 2400, 6], ["todo.txt", "article", "txt", 1, 2], [".config", "folder", "dir", 0, 0, "11:40"], [".bashrc", "settings", "rc", 3, 90]]
 
     readonly property var shown: {
+        const byName = (a, b) => a[0].replace(".", "").localeCompare(b[0].replace(".", ""));
         const by = {
-            name: (a, b) => a[0].replace(".", "").localeCompare(b[0].replace(".", "")),
-            date: (a, b) => a[4] - b[4],
+            name: byName,
+            mtime: (a, b) => a[4] - b[4] || (b[5] ?? "").localeCompare(a[5] ?? ""),
             size: (a, b) => b[3] - a[3],
-            type: (a, b) => a[2].localeCompare(b[2]) || a[0].localeCompare(b[0])
+            kind: (a, b) => a[2].localeCompare(b[2])
         }[root.sort] ?? ((a, b) => 0);
-        return root.files.filter(f => root.hidden || !f[0].startsWith(".")).sort((a, b) => ((b[2] === "dir") - (a[2] === "dir")) || by(a, b));
+        const sign = root.reversed ? -1 : 1;
+        return root.files.filter(f => root.hidden || !f[0].startsWith(".")).sort((a, b) => ((b[2] === "dir") - (a[2] === "dir")) || sign * by(a, b) || byName(a, b));
     }
+
+    function valueOf(file: var): string {
+        if (root.sort === "mtime")
+            return file[4] === 0 ? `today ${file[5]}` : file[4] === 1 ? "yesterday" : `${file[4]} days ago`;
+        if (file[2] === "dir" || (root.sort !== "size" && !root.list))
+            return "";
+        return file[3] > 1000 ? `${(file[3] / 1024).toFixed(1)} MB` : `${file[3]} KB`;
+    }
+
+    readonly property bool valued: root.sort === "mtime" || root.sort === "size"
 
     property int cursor: 0
     readonly property string current: root.shown[root.cursor % Math.max(1, root.shown.length)]?.[0] ?? ""
@@ -80,14 +94,25 @@ Item {
 
             readonly property real previewWidth: body.width * open.value
             readonly property real itemsWidth: body.width - (open.value > 0.001 ? body.previewWidth + 8 : 0)
-            readonly property real cell: 64 * root.zoom
+            readonly property real cell: Math.max(64 * root.zoom, root.shown.reduce((w, f) => Math.max(w, metrics.advanceWidth(f[0]), root.valued ? metrics.advanceWidth(root.valueOf(f)) : 0), 0) + 8)
             readonly property int columns: root.list ? 1 : Math.max(1, Math.floor((body.itemsWidth + 6) / (body.cell + 6)))
             readonly property real cellWidth: (body.itemsWidth - (body.columns - 1) * 6) / body.columns
+            readonly property real tileHeight: root.list ? Appearance.font.line.small + 8 : Math.round(28 * root.zoom) + 16 + 4 + 12 + (root.valued ? Appearance.font.line.small : 0)
+            readonly property real spacing: root.list ? 2 : 6
+            readonly property real currentBottom: (Math.floor(root.cursor % Math.max(1, root.shown.length) / body.columns) + 1) * (body.tileHeight + body.spacing)
+
+            FontMetrics {
+                id: metrics
+
+                font.family: Appearance.font.family
+                font.pixelSize: Appearance.font.size.small
+            }
 
             Grid {
+                y: -Math.max(0, body.currentBottom - body.height)
                 columns: body.columns
                 columnSpacing: 6
-                rowSpacing: root.list ? 2 : 6
+                rowSpacing: body.spacing
 
                 Repeater {
                     model: root.shown
@@ -98,11 +123,11 @@ Item {
                         required property var modelData
                         required property int index
 
-                        readonly property bool sel: fi.modelData[0] === root.current
+                        readonly property bool sel: !SettingsView.reduceMotion && fi.modelData[0] === root.current
                         readonly property bool dot: fi.modelData[0].startsWith(".")
 
                         width: body.cellWidth
-                        height: root.list ? Appearance.font.line.small + 8 : Math.round(28 * root.zoom) + 16 + 4 + 12
+                        height: body.tileHeight
                         opacity: fi.dot ? Appearance.opacity.trail : 1
 
                         SquircleRect {
@@ -135,6 +160,17 @@ Item {
                                 renderType: Text.NativeRendering
                                 color: fi.sel ? Appearance.colour.text : Appearance.colour.textDim
                             }
+
+                            Text {
+                                visible: root.valued
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                                text: root.valueOf(fi.modelData)
+                                font.family: Appearance.font.family
+                                font.pixelSize: Appearance.font.size.small
+                                renderType: Text.NativeRendering
+                                color: Appearance.colour.textFaint
+                            }
                         }
 
                         Row {
@@ -163,7 +199,7 @@ Item {
                                 id: size
 
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: fi.modelData[2] === "dir" ? "" : fi.modelData[3] > 1000 ? `${(fi.modelData[3] / 1024).toFixed(1)} MB` : `${fi.modelData[3]} KB`
+                                text: root.valueOf(fi.modelData)
                                 color: Appearance.colour.textFaint
                             }
                         }
@@ -266,6 +302,6 @@ Item {
     }
 
     SceneCaption {
-        text: `${root.list ? "list" : "icons"} · by ${root.sort}${root.hidden ? " · dotfiles shown" : ""}`
+        text: `${Catalogue.filesSortOrder(root.sort, root.reversed)}, ${Catalogue.filesFoldersNote(root.sort)}${root.hidden ? " · dotfiles shown" : ""}`
     }
 }

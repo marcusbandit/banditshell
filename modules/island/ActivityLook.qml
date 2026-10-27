@@ -7,6 +7,7 @@ QtObject {
     id: root
 
     property var activity: null
+    property bool lit: false
 
     readonly property string kind: root.activity?.kind ?? ""
 
@@ -31,12 +32,25 @@ QtObject {
                 trailing: "beat"
             };
         case "dictation":
+            if (Dictation.cancelled)
+                return {
+                    icon: "mic_off",
+                    tone: Appearance.colour.textFaint,
+                    text: Dictation.outcome,
+                    dim: true
+                };
             return {
                 icon: "mic",
                 tone: Appearance.colour.accent,
                 bars: true,
-                trailing: Dictation.langTag ? "text" : "",
-                trailingText: Dictation.langTag
+                trailing: root.lit && Dictation.cancellable ? "actions" : Dictation.langTag ? "text" : "",
+                trailingText: Dictation.langTag,
+                actions: [
+                    {
+                        name: "cancel",
+                        label: "Discard"
+                    }
+                ]
             };
         case "recording":
             return {
@@ -116,6 +130,24 @@ QtObject {
                     tone: a.data?.secret ? Appearance.colour.textDim : Appearance.colour.accent,
                     text: a.text
                 };
+            if (a.style === "wifi")
+                return {
+                    icon: a.icon,
+                    tone: Appearance.colour.alarm,
+                    text: a.text,
+                    trailing: ended ? "" : "actions",
+                    actions: a.actions ?? []
+                };
+            if (a.style === "undo")
+                return {
+                    entry: a.data?.entry ?? null,
+                    icon: a.icon,
+                    tone: Appearance.colour.textDim,
+                    text: a.text,
+                    trailing: ended ? "" : "actions",
+                    actions: a.actions ?? [],
+                    actionTone: Appearance.colour.accent
+                };
             if (a.style === "bluetooth") {
                 const battery = a.data?.battery ?? -1;
                 return {
@@ -143,18 +175,16 @@ QtObject {
                 ringValue: Math.max(0, a.progress)
             };
         }
-        case "privacy": {
-            const tone = a.data?.privacy === "mic" ? Appearance.colour.accent : Appearance.colour.alarm;
+        case "privacy":
             return {
                 icon: a.icon,
-                tone: tone,
+                tone: Appearance.colour.alarm,
                 text: a.text,
                 detail: a.detail,
                 trailing: "icon",
                 trailingIcon: "fiber_manual_record",
-                trailingTone: tone
+                trailingTone: Appearance.colour.alarm
             };
-        }
         case "timer":
             return {
                 icon: a.paused ? "pause" : "timer",

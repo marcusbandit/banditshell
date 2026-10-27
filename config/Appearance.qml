@@ -2,12 +2,21 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import "scheme.js" as Scheme
 
 Singleton {
     id: root
 
     readonly property var config: Config.values
-    readonly property var theme: Themes.get(root.config.theme)
+    readonly property var chosenTheme: Themes.get(root.config.theme)
+
+    readonly property string mode: Scheme.modeOf(root.config.colour.mode)
+
+    property bool daylight: false
+
+    readonly property bool light: Scheme.isLight(root.mode, root.daylight)
+
+    readonly property var theme: root.light ? Scheme.lightTheme(root.chosenTheme) : root.chosenTheme
 
     readonly property bool follows: root.config.compositor.follow && Compositor.available && !root.config.edge.bare
 
@@ -36,7 +45,7 @@ Singleton {
 
     readonly property real fontBase: root.config.access.largerText ? root.config.access.largerBase : root.config.font.base
 
-    readonly property var labelAlphas: root.config.access.moreContrast ? root.config.access.contrastLabel : root.config.material.label
+    readonly property var labelAlphas: root.config.access.moreContrast ? root.config.access.contrastLabel : root.light ? root.config.material.lightLabel : root.config.material.label
 
     function tier(base: real, scale: var, i: int): real {
         return base * scale[Math.max(0, Math.min(i, scale.length - 1))];
@@ -90,12 +99,24 @@ Singleton {
     function roleColour(name: string): color {
         if (name === "accent")
             return root.colour.accent;
+        if (name === "warning")
+            return root.colour.warning;
+        if (name === "text")
+            return root.colour.text;
         if (name === "alarm" || name === "bright" || name === "mid" || name === "dim")
             return root.theme[name];
         return name;
     }
 
     readonly property color tint: theme.ramp[theme.ramp.length - 1]
+
+    function lightCard(card: var): var {
+        return root.light ? Scheme.lightCard(card) : card;
+    }
+
+    function legible(c: color): color {
+        return root.light ? Scheme.lightAccent(String(c)) : c;
+    }
 
     function veil(alpha: real): color {
         return root.mix(root.tint, root.tint, 0, alpha);
@@ -142,6 +163,8 @@ Singleton {
 
         readonly property color alarm: root.theme.alarm
 
+        readonly property color warning: root.theme.brass
+
         readonly property color accentText: root.rampAt(1, 1)
 
         readonly property color ink: root.rampAt(0, 1)
@@ -160,6 +183,11 @@ Singleton {
         readonly property color updateAvailable: root.roleColour(root.config.updates.availableColour)
         readonly property color updateFailed: root.roleColour(root.config.updates.failedColour)
         readonly property color updateReady: root.roleColour(root.config.updates.readyColour)
+
+        readonly property color changeNew: root.legible("#8fb8e8")
+        readonly property color changeChanged: root.legible("#b9a3e3")
+        readonly property color changeFixed: root.legible("#8fcfa6")
+        readonly property color changeSettings: root.legible("#e3c58f")
 
         readonly property color frame: root.config.edge.outerColour
 
@@ -325,7 +353,9 @@ Singleton {
         readonly property int border: root.follows ? Compositor.gapsOut : root.config.edge.border
         readonly property int sidebarWidth: root.config.sidebar.width
         readonly property bool sidebarRail: root.config.sidebar.style === "rail"
-        readonly property int railWidth: Math.min(root.config.sidebar.railWidth, root.config.sidebar.width)
+        readonly property int glanceRailWidth: 46
+        readonly property int railMarkWidth: Math.min(root.config.sidebar.railWidth, root.config.sidebar.width)
+        readonly property int railWidth: root.config.sidebar.glance === "wide" ? Math.min(Math.max(railMarkWidth, glanceRailWidth), root.config.sidebar.width) : railMarkWidth
         readonly property int sidebarReserve: sidebarRail ? railWidth : sidebarWidth
         readonly property int streamHeight: root.config.stream.height
         readonly property real sidebarFlare: root.rounding.at(root.config.sidebar.flareTier)

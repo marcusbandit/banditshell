@@ -102,6 +102,8 @@ test("a command that ends here is not also read as a placeholder", () => {
     assert.deepStrictEqual(bashComplete("panel", "close", ""), []);
     assert.deepStrictEqual(bashComplete("doctor", ""), ["--json", "--report", "api", "binds"]);
     assert.deepStrictEqual(bashComplete("doctor", "binds", ""), ["rewrite"]);
+    assert.deepStrictEqual(bashComplete("triage", ""), ["--yes"]);
+    assert.deepStrictEqual(bashComplete("triage", "words", ""), ["--yes"]);
 });
 
 test("action, api and version complete: ids after action, the three api words, --json", () => {
@@ -176,20 +178,21 @@ test("update offers its verbs, and each verb its flags", () => {
     assert.deepStrictEqual(bashComplete("update", "check", ""), ["--json", "--no-fetch"]);
     assert.deepStrictEqual(bashComplete("update", "apply", ""), ["--detach", "--json", "--to"]);
     assert.deepStrictEqual(bashComplete("update", "status", ""), ["--json"]);
-    assert.deepStrictEqual(bashComplete("update", "rollback", ""), []);
+    assert.deepStrictEqual(bashComplete("update", "rollback", ""), ["--detach", "--json"]);
 });
 
 test("dev lint offers its flags, then the rule ids after --rule", () => {
     const ids = table.find(r => r[0] === "values" && r[1] === "rule")[2].split(" ").sort();
-    assert.deepStrictEqual(ids, ["L1", "L10", "L11", "L12", "L13", "L14", "L15", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9"]);
+    assert.deepStrictEqual(ids, ["L1", "L10", "L11", "L12", "L13", "L14", "L15", "L16", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9"]);
     assert.deepStrictEqual(bashComplete("dev", "lint", ""), ["--all", "--rule", "--write-baseline"]);
     assert.deepStrictEqual(bashComplete("dev", "lint", "--rule", ""), ids);
-    assert.deepStrictEqual(bashComplete("dev", "lint", "--rule", "L1"), ["L1", "L10", "L11", "L12", "L13", "L14", "L15"]);
+    assert.deepStrictEqual(bashComplete("dev", "lint", "--rule", "L1"), ["L1", "L10", "L11", "L12", "L13", "L14", "L15", "L16"]);
 });
 
-test("dev promote offers its two flags and no push", () => {
-    assert.deepStrictEqual(bashComplete("dev", "promote", ""), ["--no-fetch", "--remote"]);
-    assert.ok(bashComplete("dev", "").includes("promote"));
+test("dev release offers its dry run", () => {
+    assert.deepStrictEqual(bashComplete("dev", "release", ""), ["--dry-run", "--skip-boot-check"]);
+    assert.ok(bashComplete("dev", "").includes("release"));
+    assert.ok(!bashComplete("dev", "").includes("promote"));
 });
 
 test("flags complete after the words they belong to", () => {
@@ -246,7 +249,7 @@ _banditshell`;
     assert.deepStrictEqual(complete("api", ""), ["check", "list", "show"]);
     assert.deepStrictEqual(complete("version", ""), ["--json"]);
     assert.deepStrictEqual(complete("dev", "lint", ""), ["--all", "--rule", "--write-baseline"]);
-    assert.deepStrictEqual(complete("dev", "lint", "--rule", ""), ["L1", "L10", "L11", "L12", "L13", "L14", "L15", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9"]);
+    assert.deepStrictEqual(complete("dev", "lint", "--rule", ""), ["L1", "L10", "L11", "L12", "L13", "L14", "L15", "L16", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9"]);
     assert.deepStrictEqual(complete("", ).sort(), tableVerbs);
 });
 

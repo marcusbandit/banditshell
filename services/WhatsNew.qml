@@ -53,8 +53,8 @@ Singleton {
         root.keep(id);
     }
 
-    function severityOf(entry: var): string {
-        return WhatsNewLog.severityOf(entry);
+    function sections(entries: var): var {
+        return WhatsNewLog.sections(entries);
     }
 
     FileView {

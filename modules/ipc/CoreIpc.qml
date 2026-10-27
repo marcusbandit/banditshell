@@ -25,7 +25,9 @@ IpcHandler {
         try {
             parsed = JSON.parse(value);
         } catch (e) {}
+        const span = Trace.begin("config write", key);
         Config.set(key, parsed);
+        Trace.step("set", span);
         return `${key} = ${JSON.stringify(parsed)}`;
     }
 }

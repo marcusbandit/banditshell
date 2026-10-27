@@ -639,8 +639,21 @@ test("--all lists every violation and the options are checked", () => {
     fs.rmSync(repo, { recursive: true, force: true });
 });
 
+test("L16 flags Quickshell's SystemClock and leaves WallClock alone", () => {
+    const text = [
+        "Item {",
+        "    SystemClock {",
+        "        precision: SystemClock.Minutes",
+        "    }",
+        "    WallClock { precision: WallClock.Minutes }",
+        "    // SystemClock in a comment",
+        "}"
+    ].join("\n");
+    assert.deepStrictEqual(lines("modules/a.qml", text, "L16"), [2, 3]);
+});
+
 test("every rule has an id in order and a reason", () => {
-    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 15 }, (_, i) => `L${i + 1}`));
+    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 16 }, (_, i) => `L${i + 1}`));
     for (const rule of lintRules.RULES)
         assert.ok(rule.reason.length > 20, rule.id);
 });

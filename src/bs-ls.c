@@ -4,14 +4,20 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <poll.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <sys/inotify.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #define SNIFF 4096
+#define QUIET_MS 100
+#define BURST_MS 1000
+#define BATCH_MS 20
 
 struct classing {
     const char *ext;
@@ -163,6 +169,62 @@ static const char *kind_of(mode_t m) {
     return "file";
 }
 
+static int print_entry(int fd, const char *name, const char *dir, int first) {
+    struct stat ls;
+    if (fstatat(fd, name, &ls, AT_SYMLINK_NOFOLLOW) != 0)
+        return 0;
+
+    struct stat st = ls;
+    int link = S_ISLNK(ls.st_mode);
+    int broken = 0;
+    if (link && fstatat(fd, name, &st, 0) != 0) {
+        broken = 1;
+        st = ls;
+    }
+
+    char ext[32];
+    extension(name, ext, sizeof ext);
+    const char *cls = S_ISDIR(st.st_mode) ? "directory" : class_of(ext);
+    int exec = !S_ISDIR(st.st_mode) && (st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH));
+
+    if (exec && strcmp(cls, "unknown") == 0)
+        cls = "program";
+
+    printf(first ? "{" : ",{");
+    if (dir) {
+        printf("\"dir\":");
+        json_string(dir);
+        printf(",");
+    }
+    printf("\"name\":");
+    json_string(name);
+    printf(",\"kind\":");
+    json_string(kind_of(st.st_mode));
+    printf(",\"class\":");
+    json_string(cls);
+    printf(",\"ext\":");
+    json_string(ext);
+
+    printf(",\"size\":%lld,\"mtime\":%lld,\"mode\":%u,\"link\":%s,\"broken\":%s,\"exec\":%s,\"hidden\":%s,\"read\":%s,\"write\":%s,\"root\":%s,\"mine\":%s,\"world\":%s",
+           (long long)st.st_size, (long long)st.st_mtime,
+           (unsigned)(st.st_mode & 07777),
+           link ? "true" : "false",
+           broken ? "true" : "false",
+           exec ? "true" : "false",
+           name[0] == '.' ? "true" : "false",
+           faccessat(fd, name, R_OK, 0) == 0 ? "true" : "false",
+           faccessat(fd, name, W_OK, 0) == 0 ? "true" : "false",
+           st.st_uid == 0 ? "true" : "false",
+           st.st_uid == getuid() ? "true" : "false",
+           (st.st_mode & S_IWOTH) ? "true" : "false");
+
+    if (S_ISDIR(st.st_mode))
+        printf(",\"open\":%s", faccessat(fd, name, R_OK | X_OK, 0) == 0 ? "true" : "false");
+
+    printf("}");
+    return 1;
+}
+
 static void list(const char *path) {
     int fd = open(path, O_RDONLY | O_DIRECTORY);
     DIR *dir = fd >= 0 ? fdopendir(fd) : NULL;
@@ -187,55 +249,8 @@ static void list(const char *path) {
         if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
             continue;
 
-        struct stat ls;
-        if (fstatat(fd, e->d_name, &ls, AT_SYMLINK_NOFOLLOW) != 0)
-            continue;
-
-        struct stat st = ls;
-        int link = S_ISLNK(ls.st_mode);
-        int broken = 0;
-        if (link && fstatat(fd, e->d_name, &st, 0) != 0) {
-            broken = 1;
-            st = ls;
-        }
-
-        char ext[32];
-        extension(e->d_name, ext, sizeof ext);
-        const char *cls = S_ISDIR(st.st_mode) ? "directory" : class_of(ext);
-        int exec = !S_ISDIR(st.st_mode) && (st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH));
-
-        if (exec && strcmp(cls, "unknown") == 0)
-            cls = "program";
-
-        printf(first ? "" : ",");
-        first = 0;
-
-        printf("{\"name\":");
-        json_string(e->d_name);
-        printf(",\"kind\":");
-        json_string(kind_of(st.st_mode));
-        printf(",\"class\":");
-        json_string(cls);
-        printf(",\"ext\":");
-        json_string(ext);
-
-        printf(",\"size\":%lld,\"mtime\":%lld,\"mode\":%u,\"link\":%s,\"broken\":%s,\"exec\":%s,\"hidden\":%s,\"read\":%s,\"write\":%s,\"root\":%s,\"mine\":%s,\"world\":%s",
-               (long long)st.st_size, (long long)st.st_mtime,
-               (unsigned)(st.st_mode & 07777),
-               link ? "true" : "false",
-               broken ? "true" : "false",
-               exec ? "true" : "false",
-               e->d_name[0] == '.' ? "true" : "false",
-               faccessat(fd, e->d_name, R_OK, 0) == 0 ? "true" : "false",
-               faccessat(fd, e->d_name, W_OK, 0) == 0 ? "true" : "false",
-               st.st_uid == 0 ? "true" : "false",
-               st.st_uid == getuid() ? "true" : "false",
-               (st.st_mode & S_IWOTH) ? "true" : "false");
-
-        if (S_ISDIR(st.st_mode))
-            printf(",\"open\":%s", faccessat(fd, e->d_name, R_OK | X_OK, 0) == 0 ? "true" : "false");
-
-        printf("}");
+        if (print_entry(fd, e->d_name, NULL, first))
+            first = 0;
     }
 
     printf("]}\n");
@@ -352,16 +367,284 @@ static void stat_one(const char *path) {
     printf("}\n");
 }
 
+struct search {
+    const char *query;
+    int hidden;
+    int deep;
+    long limit;
+    long found;
+    long scanned;
+    int capped;
+    char **names;
+    int nnames;
+    char **paths;
+    int npaths;
+};
+
+struct queue {
+    char **items;
+    size_t head;
+    size_t tail;
+    size_t cap;
+};
+
+static void push(struct queue *q, char *path) {
+    if (q->head > 0 && q->head * 2 >= q->tail) {
+        memmove(q->items, q->items + q->head, (q->tail - q->head) * sizeof *q->items);
+        q->tail -= q->head;
+        q->head = 0;
+    }
+    if (q->tail == q->cap) {
+        q->cap = q->cap ? q->cap * 2 : 256;
+        q->items = realloc(q->items, q->cap * sizeof *q->items);
+        if (!q->items)
+            exit(1);
+    }
+    q->items[q->tail++] = path;
+}
+
+static int skipped(const struct search *s, const char *name, const char *path) {
+    if (s->deep)
+        return 0;
+    for (int i = 0; i < s->nnames; i++)
+        if (strcmp(s->names[i], name) == 0)
+            return 1;
+    for (int i = 0; i < s->npaths; i++)
+        if (strcmp(s->paths[i], path) == 0)
+            return 1;
+    return 0;
+}
+
+static char *joined(const char *dir, const char *name) {
+    size_t a = strlen(dir), b = strlen(name);
+    int slash = a > 0 && dir[a - 1] == '/';
+    char *out = malloc(a + b + 2);
+    if (!out)
+        exit(1);
+    memcpy(out, dir, a);
+    if (!slash)
+        out[a++] = '/';
+    memcpy(out + a, name, b + 1);
+    return out;
+}
+
+static void progress(const struct search *s) {
+    printf("{\"scanned\":%ld,\"found\":%ld}\n", s->scanned, s->found);
+    fflush(stdout);
+}
+
+static void walk(struct search *s, const char *root, const struct stat *avoid) {
+    struct stat top;
+    if (s->capped || stat(root, &top) != 0 || !S_ISDIR(top.st_mode))
+        return;
+
+    struct queue q = {0};
+    push(&q, strdup(root));
+
+    while (q.head < q.tail && !s->capped) {
+        char *path = q.items[q.head++];
+        int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+        struct stat here;
+        DIR *dir = NULL;
+        if (fd >= 0 && fstat(fd, &here) == 0 && (s->deep || here.st_dev == top.st_dev) &&
+            !(avoid && here.st_dev == avoid->st_dev && here.st_ino == avoid->st_ino))
+            dir = fdopendir(fd);
+        if (!dir) {
+            if (fd >= 0)
+                close(fd);
+            free(path);
+            continue;
+        }
+
+        if (++s->scanned % 500 == 0)
+            progress(s);
+
+        struct dirent *e;
+        while ((e = readdir(dir)) && !s->capped) {
+            const char *name = e->d_name;
+            if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+                continue;
+            if (!s->hidden && name[0] == '.')
+                continue;
+
+            unsigned char type = e->d_type;
+            if (type == DT_UNKNOWN) {
+                struct stat ls;
+                if (fstatat(fd, name, &ls, AT_SYMLINK_NOFOLLOW) != 0)
+                    continue;
+                type = S_ISDIR(ls.st_mode) ? DT_DIR : DT_REG;
+            }
+
+            if (strcasestr(name, s->query) && print_entry(fd, name, path, 1)) {
+                putchar('\n');
+                fflush(stdout);
+                if (++s->found >= s->limit)
+                    s->capped = 1;
+            }
+
+            if (type != DT_DIR)
+                continue;
+            char *child = joined(path, name);
+            if (skipped(s, name, child))
+                free(child);
+            else
+                push(&q, child);
+        }
+
+        closedir(dir);
+        free(path);
+    }
+
+    while (q.head < q.tail)
+        free(q.items[q.head++]);
+    free(q.items);
+}
+
+static int inside(const char *path, const char *root) {
+    size_t n = strlen(root);
+    if (n == 1)
+        return path[1] != '\0';
+    return strncmp(path, root, n) == 0 && path[n] == '/';
+}
+
+static int find(int argc, char **argv) {
+    struct search s = {0};
+    s.limit = 1000;
+    s.names = calloc((size_t)argc, sizeof *s.names);
+    s.paths = calloc((size_t)argc, sizeof *s.paths);
+    const char *query = NULL, *home = NULL, *first = NULL;
+
+    for (int i = 2; i < argc; i++) {
+        const char *a = argv[i];
+        int more = i + 1 < argc;
+        if (strcmp(a, "--hidden") == 0)
+            s.hidden = 1;
+        else if (strcmp(a, "--deep") == 0)
+            s.deep = 1;
+        else if (strcmp(a, "--limit") == 0 && more)
+            s.limit = strtol(argv[++i], NULL, 10);
+        else if (strcmp(a, "--first") == 0 && more)
+            first = argv[++i];
+        else if (strcmp(a, "--skip") == 0 && more)
+            s.names[s.nnames++] = argv[++i];
+        else if (strcmp(a, "--skip-path") == 0 && more)
+            s.paths[s.npaths++] = argv[++i];
+        else if (strcmp(a, "--") == 0 && i + 2 < argc) {
+            query = argv[i + 1];
+            home = argv[i + 2];
+            break;
+        } else {
+            fprintf(stderr, "bs-ls: unknown --find argument: %s\n", a);
+            return 2;
+        }
+    }
+    if (!query || !*query || !home) {
+        fprintf(stderr, "usage: bs-ls --find [options] -- <query> <home>\n");
+        return 2;
+    }
+    if (s.limit < 1)
+        s.limit = 1;
+    s.query = query;
+
+    char *realhome = realpath(home, NULL);
+    char *realfirst = first ? realpath(first, NULL) : NULL;
+    if (!realhome) {
+        fprintf(stderr, "bs-ls: cannot search %s: %s\n", home, strerror(errno));
+        return 1;
+    }
+    struct stat avoid;
+    int nearer = realfirst && inside(realfirst, realhome) && stat(first, &avoid) == 0;
+
+    if (nearer)
+        walk(&s, first, NULL);
+    walk(&s, home, nearer ? &avoid : NULL);
+
+    printf("{\"done\":true,\"scanned\":%ld,\"found\":%ld,\"capped\":%s}\n", s.scanned, s.found, s.capped ? "true" : "false");
+    fflush(stdout);
+    free(realhome);
+    free(realfirst);
+    return 0;
+}
+
+static long long now_ms(void) {
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return (long long)t.tv_sec * 1000 + t.tv_nsec / 1000000;
+}
+
+static int watch(const char *path) {
+    int fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+    uint32_t mask = IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO | IN_CLOSE_WRITE | IN_ATTRIB |
+                    IN_DELETE_SELF | IN_MOVE_SELF | IN_ONLYDIR | IN_EXCL_UNLINK;
+    if (fd < 0 || inotify_add_watch(fd, path, mask) < 0) {
+        fprintf(stderr, "bs-ls: cannot watch %s: %s\n", path, strerror(errno));
+        return 1;
+    }
+    printf("ready\n");
+    fflush(stdout);
+
+    char buf[64 * 1024] __attribute__((aligned(__alignof__(struct inotify_event))));
+    long long first = 0, last = 0;
+    int gone = 0;
+
+    for (;;) {
+        int timeout = -1;
+        if (first) {
+            long long due = last + QUIET_MS < first + BURST_MS ? last + QUIET_MS : first + BURST_MS;
+            long long left = due - now_ms();
+            timeout = left > 0 ? (int)left : 0;
+        }
+
+        struct pollfd fds[2] = {{fd, POLLIN, 0}, {STDIN_FILENO, POLLIN, 0}};
+        if (poll(fds, 2, timeout) < 0) {
+            if (errno == EINTR)
+                continue;
+            return 1;
+        }
+        if (fds[1].revents)
+            return 0;
+
+        if (fds[0].revents & POLLIN) {
+            ssize_t got;
+            while ((got = read(fd, buf, sizeof buf)) > 0)
+                for (char *p = buf; p < buf + got;) {
+                    const struct inotify_event *event = (const struct inotify_event *)p;
+                    if (event->mask & (IN_DELETE_SELF | IN_MOVE_SELF | IN_IGNORED))
+                        gone = 1;
+                    p += sizeof *event + event->len;
+                }
+            last = now_ms();
+            if (!first)
+                first = last;
+        }
+
+        if (first && (now_ms() >= last + QUIET_MS || now_ms() >= first + BURST_MS)) {
+            printf("changed\n");
+            fflush(stdout);
+            first = 0;
+            if (gone)
+                return 0;
+        } else if (first) {
+            struct timespec pause = {0, BATCH_MS * 1000000L};
+            nanosleep(&pause, NULL);
+        }
+    }
+}
+
 int main(int argc, char **argv) {
+    if (argc >= 2 && strcmp(argv[1], "--find") == 0)
+        return find(argc, argv);
     if (argc == 3 && strcmp(argv[1], "--stat") == 0) {
         stat_one(argv[2]);
         return 0;
     }
+    if (argc == 3 && strcmp(argv[1], "--watch") == 0)
+        return watch(argv[2]);
     if (argc == 2) {
         list(argv[1]);
         return 0;
     }
 
-    fprintf(stderr, "usage: bs-ls <dir> | bs-ls --stat <path>\n");
+    fprintf(stderr, "usage: bs-ls <dir> | bs-ls --stat <path> | bs-ls --watch <dir> | bs-ls --find [options] -- <query> <home>\n");
     return 2;
 }

@@ -1,0 +1,5 @@
+{"phase": "idle", "level": 0.0, "lang": "en-DK"}
+{"phase": "listening", "level": 0.4123, "lang": "en-DK", "cancel": true}
+{"phase": "idle", "level": 0.0, "lang": "en-DK", "cancel": true, "cancelled": true, "typed": false}
+{"phase": "idle", "level": 0.0, "lang": "en-DK", "cancel": false}
+{"phase": "idle", "level": 0.0, "lang": "en-DK", "cancel": true, "cancelled": true, "typed": true}

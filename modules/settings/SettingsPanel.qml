@@ -130,6 +130,8 @@ FocusScope {
                 SettingsView.unpin();
             else if (SettingsView.paneOut && root.compact)
                 SettingsView.paneOut = false;
+            else if (SettingsView.query)
+                SettingsView.query = "";
             else
                 root.hide();
             event.accepted = true;
@@ -275,6 +277,7 @@ FocusScope {
                         anchors.fill: parent
                         compact: root.compact
                         showing: root.shown
+                        covered: root.yielded
                     }
                 }
             }

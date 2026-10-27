@@ -12,7 +12,16 @@ Item {
 
     property bool compact: false
     property bool showing: true
+    property bool covered: false
     property bool lingering: false
+
+    Binding {
+        target: SettingsView
+        property: "sceneSeen"
+        when: root.showing
+        value: !root.covered && stage.visible && stage.y + stage.height > scroll.contentY && stage.y < scroll.contentY + scroll.height
+        restoreMode: Binding.RestoreNone
+    }
 
     onShowingChanged: {
         if (root.showing)
@@ -74,7 +83,7 @@ Item {
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - close.width - Appearance.padding.normal
-                text: (root.pin ? SettingsView.pinTitle(root.pin) : SettingsView.title).toUpperCase()
+                text: (root.pin ? SettingsView.pinTitle(root.pin) : SettingsView.paneTitle).toUpperCase()
                 color: Appearance.colour.textDim
                 elide: Text.ElideRight
             }
@@ -242,17 +251,18 @@ Item {
                             return `${c.pages.length} pages ${root.tone(Appearance.colour.textDim, `${Catalogue.rowCount(c)} rows`)}`;
                         }
                         const cover = Catalogue.pagesCovered(SettingsView.page);
-                        return `covers ${root.tone(Appearance.colour.textDim, `${cover.settings} settings`)}`;
+                        return `covers ${root.tone(Appearance.colour.textDim, `${cover.settings} ${cover.settings === 1 ? "setting" : "settings"}`)}`;
                     }
                 }
 
                 StyledText {
                     readonly property string d: root.defaultText(info.r)
+                    readonly property bool back: !!info.r?.k && !(info.r.dis && info.r.dis(SettingsState)) && SettingsState.offersReset(info.r.k)
 
                     width: parent.width
                     visible: d !== ""
                     textFormat: Text.StyledText
-                    text: `default ${root.tone(Appearance.colour.textDim, d)}`
+                    text: `${back ? "reset to default," : "default"} ${root.tone(Appearance.colour.textDim, d)}`
                     color: Appearance.colour.textFaint
                     wrapMode: Text.WordWrap
                 }

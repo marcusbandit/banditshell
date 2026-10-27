@@ -24,6 +24,7 @@ PackageSource 1.0 PackageSource.qml
 PhoneSource 1.0 PhoneSource.qml
 PomodoroSource 1.0 PomodoroSource.qml
 PortSource 1.0 PortSource.qml
+PrefixSource 1.0 PrefixSource.qml
 ProjectSource 1.0 ProjectSource.qml
 QuicklinkSource 1.0 QuicklinkSource.qml
 RecentSource 1.0 RecentSource.qml

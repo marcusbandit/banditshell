@@ -11,6 +11,7 @@ import qs.components.blob
 import qs.modules.media
 import qs.modules.notifications
 import qs.services
+import "pointer-watch.js" as PointerWatch
 
 Item {
     id: root
@@ -71,7 +72,7 @@ Item {
         return out;
     }
 
-    readonly property bool voice: root.focused && Dictation.live
+    readonly property bool voice: root.focused && (Dictation.live || Dictation.cancelled)
     readonly property var voiceActivity: ({
             key: "dictation",
             kind: "dictation"
@@ -214,6 +215,7 @@ Item {
             weather: "the weather",
             calendar: "the calendar",
             microphone: "the microphone",
+            wifi: "the failed Wi-Fi join",
             reading: "a notification"
         })
     readonly property var taskViews: ({
@@ -224,7 +226,8 @@ Item {
             timers: timersView,
             weather: weatherView,
             calendar: calendarView,
-            microphone: microphoneView
+            microphone: microphoneView,
+            wifi: wifiView
         })
     property bool pulling: false
     property real pullProgress: 0
@@ -517,8 +520,16 @@ Item {
     }
 
     function choose(activity: var): void {
+        if (activity?.kind === "dictation" && activity.action === "cancel") {
+            Dictation.cancel();
+            return;
+        }
         if (activity?.kind === "privacy" && activity.data?.privacy === "mic") {
             root.openTask("microphone");
+            return;
+        }
+        if (activity?.style === "wifi" && !activity.action) {
+            root.openTask("wifi");
             return;
         }
         if (root.taskViews[activity?.kind ?? ""]) {
@@ -565,7 +576,7 @@ Item {
         root.close();
         root.spent = true;
         root.reforming = true;
-        for (const f of [glide, overviewTall, deckShare, overviewFade, wide, tall, cardRoom, swell])
+        for (const f of [glide, overviewTall, deckShare, overviewFade, wide, tall, cardRoom, underCard, swell])
             f.snap();
         presence.value = 0;
         settle.value = 0;
@@ -754,7 +765,9 @@ Item {
         const left = (root.host?.x ?? 0) + root.surfaceX + root.pillX - reach;
         const top = root.host?.y ?? 0;
         const bottom = top + root.y + root.islandTop + root.pillHeight + reach;
-        root.near = x >= left && x <= left + root.pillWidth + reach * 2 && y >= top && y <= bottom;
+        const right = left + root.pillWidth + reach * 2;
+        root.near = x >= left && x <= right && y >= top && y <= bottom;
+        pointerPoll.interval = PointerWatch.nextCheck(PointerWatch.gap(x, y, left, top, right, bottom), 80, 400, 10000);
     }
 
     onTrailingChanged: root.retrail()
@@ -812,10 +825,13 @@ Item {
     onHoveringChanged: {
         if (!root.hovering && !root.reforming)
             root.spent = false;
-        if (root.hovering)
+        if (root.hovering) {
             Notifications.pause(root);
-        else
+            Notifications.holdShelf(root);
+        } else {
             Notifications.resume(root);
+            Notifications.releaseShelf(root);
+        }
         Qt.callLater(root.arrange);
     }
 
@@ -857,6 +873,7 @@ Item {
             entry.release(root);
         Notices.release(root);
         Notifications.resume(root);
+        Notifications.releaseShelf(root);
     }
 
     Timer {
@@ -967,9 +984,12 @@ Item {
     }
 
     Timer {
+        id: pointerPoll
+
         interval: 80
         repeat: true
         running: root.watching
+        onRunningChanged: pointerPoll.interval = 80
         onTriggered: if (!pointer.connected)
             pointer.connected = true
     }
@@ -1050,6 +1070,14 @@ Item {
         speed: tall.speed
         epsilon: 0.1
         target: root.cardHeight
+    }
+
+    Follow {
+        id: underCard
+
+        speed: tall.speed
+        epsilon: 0.004
+        target: root.cardHeight > 0 ? 1 : 0
     }
 
     Follow {
@@ -1262,7 +1290,8 @@ Item {
                     readonly property real shown: peek.value * presence.value * (1 - root.opened)
                     readonly property real ghostness: layer.index === 0 && root.ghost ? (1 - roll.value) * (1 - fan.value) * presence.value : 0
                     readonly property real strip: root.pillRadius * 2 + Appearance.padding.small
-                    readonly property real stand: root.ghost && layer.index === 0 ? root.ghostHeight + (root.pillHeight - root.ghostHeight) * roll.value : root.pillHeight
+                    readonly property real floor: root.pillHeight - Math.max(0, root.pillHeight - cardRoom.value) * underCard.value
+                    readonly property real stand: root.ghost && layer.index === 0 ? root.ghostHeight + (layer.floor - root.ghostHeight) * roll.value : layer.floor
                     readonly property real reach: Appearance.padding.small * 1.2 * layer.depth * (layer.ghostness > 0 ? 1 : layer.shown)
 
                     z: layer.tucked ? -4 : -1 - layer.depth
@@ -1459,7 +1488,7 @@ Item {
                     y: root.pillY
                     width: root.largeWidth
                     height: Math.max(root.compactHeight, overview.implicitHeight, root.pillHeight)
-                    moving: visible
+                    moving: visible && Media.playing
                     opacity: glow.value
                     visible: glow.value > 0.005
                 }
@@ -1546,6 +1575,7 @@ Item {
                     y: root.deckY + root.dealY
                     width: root.largeWidth
                     entries: root.deckEntries
+                    clearQuiet: Notifications.undoable
                     fanned: fan.value
                     maxHeight: Math.max(root.compactHeight * 4, ((root.host?.height ?? 1080) - root.islandTop) * 0.55)
                     opacity: deckFade.value * presence.value
@@ -1608,7 +1638,10 @@ Item {
                         readonly property real toX: overview.x + overview.pad
                         readonly property real toWidth: overview.width - overview.pad * 2
                         readonly property real restY: cardRoom.value + offset.value
-                        readonly property real markX: row.x + row.inset
+                        readonly property real under: underCard.value * (1 - row.t)
+                        readonly property real restText: row.inset + row.slot + row.gap
+                        readonly property real cardShift: deck.x - row.x
+                        readonly property real markX: row.x + row.lead
                         readonly property real markY: row.y + (row.height - row.slot) / 2
 
                         onItemChanged: if (root.stackByKey[row.key])
@@ -1658,6 +1691,8 @@ Item {
                         y: root.pillY + root.dealY * (1 - row.t) + row.restY + (row.toY - row.restY) * row.t
                         width: row.fromWidth + (row.toWidth - row.fromWidth) * row.t
                         activity: row.item
+                        lead: deck.frontLead ? row.inset + (row.cardShift + deck.frontLead.axis - row.slot / 2 - row.inset) * row.under : row.inset
+                        textX: deck.frontLead ? row.restText + (row.cardShift + deck.frontLead.text - row.restText) * row.under : row.restText
                         lights: row.t > 0.5
                         live: root.focused && row.visible
                         opacity: presence.value * appear.value * (1 - tuck.value) * (row.carried ? 1 : Math.max(0, 1 - root.opened * 2.5))
@@ -1892,5 +1927,11 @@ Item {
         id: microphoneView
 
         IslandMicrophone {}
+    }
+
+    Component {
+        id: wifiView
+
+        IslandWifi {}
     }
 }

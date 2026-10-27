@@ -27,6 +27,7 @@ LauncherConcept {
 
     readonly property real viewWiden: 0.25
     readonly property real panelWidth: Math.round(Appearance.sizes.launcherWidth * (1 + root.viewWiden * widen.value))
+    readonly property real switchWidth: Math.round(Appearance.font.size.normal * Appearance.sizes.toggleWidth / Appearance.sizes.toggleHeight)
 
 
     property var capture: null
@@ -620,6 +621,7 @@ LauncherConcept {
     onSelectedChanged: root.selectedKey = root.results[root.selected]?.id ?? ""
 
     onResultsChanged: {
+        Trace.note("results");
         if (search.query !== root.listedQuery) {
             root.listedQuery = search.query;
             root.steered = false;
@@ -902,7 +904,7 @@ LauncherConcept {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
 
-                            text: !root.capture ? "Search" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
+                            text: !root.capture ? "Search, or ? for help" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
                         }
@@ -1149,6 +1151,17 @@ LauncherConcept {
                         opacity: (1 - gridIn.value) * viewIn.listShown
                         clip: true
 
+                        readonly property real fade: Appearance.font.line.normal * 1.5
+
+                        revealMargin: list.layer.enabled ? list.fade : 0
+
+                        layer.enabled: list.contentHeight > list.height
+                        layer.effect: ShaderEffect {
+                            readonly property vector4d fades: Qt.vector4d(list.atYBeginning ? 0 : list.fade, list.atYEnd ? 0 : list.fade, height, 1)
+
+                            fragmentShader: Qt.resolvedUrl("../../components/edgefade.frag.qsb")
+                        }
+
                         model: ScriptModel {
                             values: root.results
                             objectProp: "key"
@@ -1176,6 +1189,17 @@ LauncherConcept {
                                 color: Appearance.colour.textFaint
                             }
 
+                            SquircleRect {
+                                visible: !!line.modelData.going
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: Appearance.stroke.ring * 2
+                                height: line.height - Appearance.padding.normal * 2
+                                pill: "object"
+                                color: Appearance.colour.alarm
+                                z: 1
+                            }
+
                             MenuRow {
                                 id: row
 
@@ -1193,10 +1217,10 @@ LauncherConcept {
                                 glyph: line.modelData.glyph ?? ""
                                 icon: line.modelData.icon ?? "apps"
                                 mark: line.modelData.swatch ? swatch : null
-                                label: line.modelData.label ?? ""
+                                label: row.hovered && line.modelData.revealLabel ? line.modelData.revealLabel : line.modelData.label ?? ""
                                 detail: line.modelData.detail ?? ""
                                 columns: line.modelData.columns ?? []
-                                trailingRoom: line.modelData.columns ? Appearance.sizes.toggleWidth + Appearance.padding.normal : 0
+                                trailingRoom: line.modelData.columns ? root.switchWidth + Appearance.padding.normal * 2 : 0
 
                                 selected: line.index === root.selected && !root.answerHolds && !assistantCard.holds
 
@@ -1210,6 +1234,7 @@ LauncherConcept {
 
                                 Row {
                                     spacing: Appearance.padding.small
+                                    rightPadding: line.modelData.toggle !== undefined ? Appearance.padding.normal : 0
 
                                     Repeater {
                                         model: line.modelData.armed ? [] : [line.modelData.alias, Chords.chordText(line.modelData.hotkey ?? "")].filter(Boolean)
@@ -1237,6 +1262,21 @@ LauncherConcept {
                                                 font.pixelSize: Appearance.font.size.small
                                                 color: Appearance.colour.textDim
                                             }
+                                        }
+                                    }
+
+                                    Loader {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: active
+                                        active: !!line.modelData.reserve && !line.shownButtons.length
+
+                                        sourceComponent: Button {
+                                            opacity: 0
+                                            enabled: false
+                                            icon: line.modelData.reserve.icon
+                                            text: line.modelData.reserve.text
+                                            style: "ring"
+                                            size: 0
                                         }
                                     }
 
@@ -1291,6 +1331,8 @@ LauncherConcept {
                                         visible: active
 
                                         sourceComponent: Toggle {
+                                            height: Appearance.font.size.normal
+                                            width: root.switchWidth
                                             checked: !!line.modelData.toggle
                                             onToggled: search.activate(line.modelData)
                                         }

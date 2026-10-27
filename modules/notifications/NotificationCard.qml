@@ -26,6 +26,7 @@ Item {
     property bool belowLoose: false
 
     property real tug: 0
+    property bool hushing: false
 
     readonly property bool loose: swipe.dragging || swipe.flinging || root.leaving || Math.abs(swipe.shift) > Appearance.padding.hair
     readonly property real pull: swipe.dragging && Math.abs(swipe.pulled) < swipe.throwDistance ? swipe.shift : 0
@@ -53,6 +54,13 @@ Item {
     readonly property string age: Notifications.ageOf(root.entry?.time ?? 0)
 
     readonly property var actions: root.live && root.roomy ? (root.entry?.pressable(root.notification?.actions) ?? []) : []
+
+    readonly property string appName: root.entry?.appName || "this app"
+    readonly property string appMutedLabel: root.entry ? Notifications.mutedLabel(Notifications.ruleKeyFor(root.entry)) : ""
+    readonly property bool appMuted: root.appMutedLabel !== ""
+
+    property double hushAt: Date.now()
+    readonly property var hushChoices: Notifications.hushChoices(root.hushAt)
 
     readonly property real tileInset: root.tiled ? Appearance.padding.small : 0
     readonly property real tileGap: root.tiled ? Appearance.stroke.line : 0
@@ -93,7 +101,24 @@ Item {
     }
 
     onHeldChanged: root.holdEntry()
-    onEntryChanged: root.holdEntry()
+    onEntryChanged: {
+        root.hushing = false;
+        root.holdEntry();
+    }
+
+    function hush(kind: string, until: double): void {
+        root.hushing = false;
+        Notifications.hush(root.entry, kind, until);
+    }
+
+    onHushingChanged: root.hushAt = Date.now()
+
+    Timer {
+        interval: 10000
+        repeat: true
+        running: root.hushing
+        onTriggered: root.hushAt = Date.now()
+    }
 
     function pin(on: bool): void {
         if (root.entry)
@@ -112,7 +137,7 @@ Item {
     function dismissAfter(act: var): void {
         if (root.live)
             act();
-        Notifications.dismiss(root.entry);
+        Notifications.answered(root.entry);
     }
 
     implicitHeight: (root.compact ? slim.height : full.implicitHeight) + root.pad * 2 + root.tileGap * 2
@@ -318,7 +343,8 @@ Item {
                 Item {
                     id: headRow
 
-                    readonly property real room: headRow.width - (ageText.text ? ageText.implicitWidth + Appearance.padding.small : 0) - (pinMark.visible ? pinMark.width + Appearance.padding.small : 0)
+                    readonly property real ageRoom: Math.max(ageText.text ? ageText.implicitWidth : 0, root.roomy ? root.closeSize : 0)
+                    readonly property real room: headRow.width - (headRow.ageRoom ? headRow.ageRoom + Appearance.padding.small : 0) - (pinMark.visible ? pinMark.width + Appearance.padding.small : 0)
 
                     width: parent.width
                     height: Math.max(Appearance.font.line.small, headline.visible ? headline.implicitHeight : 0, heading.visible ? heading.implicitHeight : 0)
@@ -333,13 +359,14 @@ Item {
                         text: root.age
                         color: Appearance.colour.textFaint
                         font.family: root.family
+                        opacity: root.roomy ? 1 - hushButton.opacity : 1
                     }
 
                     Icon {
                         id: pinMark
 
-                        anchors.right: ageText.text ? ageText.left : parent.right
-                        anchors.rightMargin: ageText.text ? Appearance.padding.small : 0
+                        anchors.right: parent.right
+                        anchors.rightMargin: headRow.ageRoom ? headRow.ageRoom + Appearance.padding.small : 0
                         anchors.verticalCenter: ageText.verticalCenter
                         name: "push_pin"
                         size: Appearance.font.size.small
@@ -608,52 +635,159 @@ Item {
                         onClicked: reply.submit()
                     }
                 }
+
+                Column {
+                    id: hushPanel
+
+                    width: parent.width + root.closeRoom
+                    visible: root.hushing && root.roomy
+                    topPadding: Appearance.padding.normal
+                    spacing: Appearance.padding.small
+
+                    Repeater {
+                        model: [
+                            {
+                                label: "Remind me",
+                                timed: root.hushChoices.map(c => ["snooze", c.until, c.text, c.detail]),
+                                lasting: []
+                            },
+                            {
+                                label: root.appMuted ? `${root.appName} muted ${root.appMutedLabel}` : `Mute ${root.appName}`,
+                                timed: root.appMuted ? [["unmute", 0, "unmute", ""]] : root.hushChoices.map(c => ["mute", c.until, c.text, c.detail]),
+                                lasting: root.appMuted ? [] : [["mute", 0, "until I unmute", ""]]
+                            }
+                        ]
+
+                        delegate: Column {
+                            id: group
+
+                            required property var modelData
+
+                            width: hushPanel.width
+                            spacing: Appearance.padding.small / 2
+
+                            StyledText {
+                                width: group.width
+                                text: group.modelData.label
+                                color: Appearance.colour.textDim
+                                font.family: root.family
+                                elide: Text.ElideRight
+                            }
+
+                            Repeater {
+                                model: [group.modelData.timed, group.modelData.lasting].filter(line => line.length > 0)
+
+                                delegate: Flow {
+                                    id: line
+
+                                    required property var modelData
+                                    required property int index
+
+                                    width: group.width
+                                    topPadding: line.index > 0 ? Appearance.padding.small : 0
+                                    spacing: Appearance.padding.small
+
+                                    Repeater {
+                                        model: line.modelData
+
+                                        delegate: Button {
+                                            required property var modelData
+
+                                            size: 0
+                                            style: "ring"
+                                            text: modelData[2]
+                                            detail: modelData[3]
+                                            onClicked: root.hush(modelData[0], modelData[1])
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-    Item {
+    component CornerButton: Item {
+        id: corner
+
+        property string icon: ""
+        property string title: ""
+        property bool on: false
+
+        signal clicked
+
+        visible: opacity > 0.01
+
+        Follow {
+            id: cornerScale
+
+            speed: Appearance.animation.revealSpeed * 1.5
+            epsilon: 0.001
+            target: cornerArea.pressed ? Appearance.press.ring : cornerArea.containsMouse ? Appearance.press.ringHover : 1
+        }
+
+        Component.onCompleted: cornerScale.snap()
+
+        SquircleRect {
+            anchors.fill: parent
+            pill: "object"
+            color: corner.on ? Appearance.colour.accent : cornerArea.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
+            scale: cornerScale.value
+        }
+
+        Icon {
+            anchors.centerIn: parent
+            name: corner.icon
+            size: Appearance.font.size.small
+            color: corner.on ? Appearance.colour.accentText : cornerArea.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
+        }
+
+        MouseArea {
+            id: cornerArea
+
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+
+            onClicked: corner.clicked()
+        }
+
+        FloatingTooltip {
+            x: corner.width - width
+            y: corner.height + gap
+            text: corner.title
+            shown: cornerArea.containsMouse
+        }
+    }
+
+    CornerButton {
         id: close
 
         x: root.drift + root.width - root.tileInset - root.pad - width + Appearance.padding.small / 2
         y: root.tileGap + root.pad - Appearance.padding.small / 2
         width: root.closeSize
         height: root.closeSize
-        opacity: glow.value
-        visible: root.roomy && opacity > 0.01
+        icon: "close"
+        title: "Dismiss"
+        opacity: root.roomy ? glow.value : 0
 
-        Follow {
-            id: closeScale
+        onClicked: root.fling(1)
+    }
 
-            speed: Appearance.animation.revealSpeed * 1.5
-            epsilon: 0.001
-            target: closer.pressed ? Appearance.press.ring : closer.containsMouse ? Appearance.press.ringHover : 1
-        }
+    CornerButton {
+        id: hushButton
 
-        Component.onCompleted: closeScale.snap()
+        x: close.x - Appearance.padding.small * 1.5 - width
+        y: close.y
+        width: root.closeSize
+        height: root.closeSize
+        icon: "snooze"
+        title: "Remind me or mute"
+        on: root.hushing
+        opacity: !root.roomy ? 0 : root.hushing ? 1 : glow.value
 
-        SquircleRect {
-            anchors.fill: parent
-            pill: "object"
-            color: closer.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
-            scale: closeScale.value
-        }
-
-        Icon {
-            anchors.centerIn: parent
-            name: "close"
-            size: Appearance.font.size.small
-            color: closer.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
-        }
-
-        MouseArea {
-            id: closer
-
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-
-            onClicked: root.fling(1)
-        }
+        onClicked: root.hushing = !root.hushing
     }
 }

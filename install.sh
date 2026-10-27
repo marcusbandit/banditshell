@@ -8,6 +8,7 @@ RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 PROGRESS="$RUNTIME_DIR/banditshell-install.jsonl"
 ASKPASS_RUN="$RUNTIME_DIR/banditshell-askpass"
 
+INSTALL_ARGS=("$@")
 DRY_RUN=0
 WANT_UI=1
 LIST_ONLY=0
@@ -17,7 +18,9 @@ usage() {
     cat <<EOF
 usage: install.sh [--dry-run] [--no-ui] [--list] [--charge-limit]
 
-Installs what banditshell needs: the CLI into bin/ and, when nothing else
+A fresh clone on main first moves to the newest release, the version the
+update loop follows by default. Then it installs what banditshell needs: the
+CLI into bin/ and, when nothing else
 provides one, ~/.local/bin/banditshell, quickshell, the fonts, every package
 the shell calls, the C helpers (banditshell dev build), tab completion for zsh
 and bash, and the Lua module your Hyprland binds load (a shim beside
@@ -833,7 +836,49 @@ run_step() {
     return 0
 }
 
+release_due() {
+    local config="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json" stable
+    RELEASE_NOTE=""
+    [ -z "${BANDITSHELL_ON_RELEASE:-}" ] && [ ! -e "$config" ] || return 1
+    [ "$(git -C "$REPO" symbolic-ref --quiet --short HEAD 2>/dev/null)" = main ] || return 1
+    GIT_TERMINAL_PROMPT=0 git -C "$REPO" ls-remote --exit-code --heads origin stable >/dev/null 2>&1
+    case $? in
+    0) ;;
+    2) RELEASE_NOTE="no release on GitHub yet, so this copy stays on main"; return 1 ;;
+    *) RELEASE_NOTE="could not reach GitHub to find the newest release, so this copy stays on main"; return 1 ;;
+    esac
+    if ! GIT_TERMINAL_PROMPT=0 git -C "$REPO" fetch --quiet --no-tags origin \
+        "+refs/heads/stable:refs/remotes/origin/stable" "+refs/tags/v*:refs/tags/v*" 2>/dev/null; then
+        RELEASE_NOTE="could not fetch the newest release, so this copy stays on main"
+        return 1
+    fi
+    stable="$(git -C "$REPO" rev-parse --verify --quiet refs/remotes/origin/stable)" || return 1
+    [ "$stable" != "$(git -C "$REPO" rev-parse HEAD)" ] && git -C "$REPO" merge-base --is-ancestor "$stable" HEAD || return 1
+    if [ -n "$(git -C "$REPO" status --porcelain)" ]; then
+        RELEASE_NOTE="this copy has edits, so it stays on main"
+        return 1
+    fi
+}
+
+checkout_release() {
+    local tag
+    if ! release_due; then
+        [ -z "$RELEASE_NOTE" ] || say "  $RELEASE_NOTE"
+        return 1
+    fi
+    tag="$(git -C "$REPO" describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude 'v*-*' refs/remotes/origin/stable 2>/dev/null || echo stable)"
+    if [ "$DRY_RUN" -eq 1 ]; then
+        say "  would check out $tag, the newest release"
+        return 1
+    fi
+    git -C "$REPO" reset --quiet --keep refs/remotes/origin/stable || return 1
+    say "  checked out $tag, the newest release"
+}
+
 main() {
+    if [ "$LIST_ONLY" -eq 0 ] && checkout_release; then
+        BANDITSHELL_ON_RELEASE=1 exec bash "$REPO/install.sh" "${INSTALL_ARGS[@]}"
+    fi
     detect_manager
     build_table
     local total="${#STEP_NAME[@]}"

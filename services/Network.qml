@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
 import qs.config
+import qs.components
 import "wifilist.js" as WifiList
 
 Singleton {
@@ -119,7 +120,10 @@ Singleton {
             root.checkNow()
     }
 
-    onCarrierChanged: settle.restart()
+    onCarrierChanged: {
+        settle.restart();
+        recheck.reset();
+    }
     onWiredLabelChanged: settle.restart()
 
     onActiveNameChanged: {
@@ -131,11 +135,13 @@ Singleton {
             root.dropCard();
     }
 
-    Timer {
+    Backoff {
+        id: recheck
+
         running: root.linked && root.checking && !root.online
-        interval: 8000
-        repeat: true
-        onTriggered: root.checkNow()
+        base: 8000
+        cap: 120000
+        onDue: root.checkNow()
     }
 
     readonly property string portalUri: Config.values.network.portalUri || root.checkUri || "http://nmcheck.gnome.org/"
@@ -144,6 +150,7 @@ Singleton {
 
     function openPortal(): void {
         Quickshell.execDetached(["xdg-open", root.portalUri]);
+        recheck.reset();
     }
 
     Process {
@@ -262,6 +269,8 @@ Singleton {
 
     function forget(n: var): void {
         if (n) {
+            if (root.trying === n.name)
+                root.trying = "";
             root.clearFailure(n.name);
             root.clearEnroll(n.name);
             n.forget();
@@ -503,12 +512,7 @@ Singleton {
         if (root.enterprise(n))
             return `${card.ssid} signs in with an identity, and a card cannot carry one`;
 
-        root.clearFailure(n.name);
-
-        if (root.secured(n) && card.password)
-            n.connectWithPsk(card.password);
-        else
-            n.connect();
+        root.join(n, root.secured(n) ? card.password : "");
         return "";
     }
 
@@ -658,9 +662,50 @@ Singleton {
     property string failedName: ""
     property int failedReason: ConnectionFailReason.Unknown
 
+    property string trying: ""
+
+    signal joinFailed(string name, string kind)
+
+    function join(n: var, psk: string): void {
+        if (!n)
+            return;
+        root.clearFailure(n.name);
+        root.trying = n.name;
+        tryingExpiry.restart();
+        if (psk)
+            n.connectWithPsk(psk);
+        else
+            n.connect();
+    }
+
     function noteFailure(name: string, reason: int): void {
         root.failedName = name;
         root.failedReason = reason;
+        if (root.trying !== name)
+            return;
+        root.joinFailed(name, root.failureKind(reason));
+        root.trying = "";
+    }
+
+    Timer {
+        id: tryingExpiry
+
+        interval: 90000
+        onTriggered: root.trying = ""
+    }
+
+    function failureKind(reason: int): string {
+        switch (reason) {
+        case ConnectionFailReason.NoSecrets:
+            return "password";
+        case ConnectionFailReason.WifiAuthTimeout:
+            return "timeout";
+        case ConnectionFailReason.WifiNetworkLost:
+            return "lost";
+        case ConnectionFailReason.WifiClientDisconnected:
+            return "hungup";
+        }
+        return "unknown";
     }
 
     function clearFailure(name: string): void {
@@ -671,17 +716,7 @@ Singleton {
     }
 
     function failureLabel(): string {
-        switch (root.failedReason) {
-        case ConnectionFailReason.NoSecrets:
-            return "wrong password";
-        case ConnectionFailReason.WifiAuthTimeout:
-            return "no answer";
-        case ConnectionFailReason.WifiNetworkLost:
-            return "it went away";
-        case ConnectionFailReason.WifiClientDisconnected:
-            return "it hung up";
-        }
-        return "could not join";
+        return WifiList.failureLabel(root.failureKind(root.failedReason));
     }
 
     Instantiator {
@@ -701,6 +736,8 @@ Singleton {
 
                 function onConnectedChanged(): void {
                     if (watcher.modelData.connected) {
+                        if (root.trying === watcher.modelData.name)
+                            root.trying = "";
                         root.clearFailure(watcher.modelData.name);
                         root.clearEnroll(watcher.modelData.name);
                     }

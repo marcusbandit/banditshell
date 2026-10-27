@@ -169,14 +169,15 @@
 #                                the theme; bare, its name
 #
 # update                         the shell's own version: look, apply, go back
-#   banditshell update           one line: where this copy stands
+#   banditshell update           one line: the release this copy is on and
+#                                whether a newer one is waiting.
 #                                updates.channel in config.json picks what is
-#                                followed: main (every push, the default) or
-#                                stable (moves only when a tested main is
-#                                promoted); updates.branch, when it is not main,
-#                                follows that branch instead
+#                                followed: stable (each release, the default) or
+#                                main (every merge); updates.branch, when it is
+#                                not main, follows that branch instead
 #   banditshell update check [--json] [--no-fetch]
-#                                fetch, then say what the new version changes
+#                                fetch, then say which release is waiting and
+#                                what it changes
 #                                (restart or reload, commands, dependencies, your
 #                                edits in the way); exit 0 when current, 10 when
 #                                a version is waiting, 1 on an error; --no-fetch
@@ -185,8 +186,10 @@
 #                                stage the new version, check that it loads,
 #                                move the checkout up, restart when it needs
 #                                one and go back on its own if it does not start
-#   banditshell update rollback  the version before the last update; it is
-#                                skipped until a newer one arrives
+#   banditshell update rollback [--detach] [--json]
+#                                on stable the release before this one, on main
+#                                the version before the last update; what it
+#                                leaves is skipped until a newer one arrives
 #   banditshell update status [--json]
 #                                where this copy stands, the last update's
 #                                outcome and the version it replaced
@@ -223,6 +226,17 @@
 #                                it on its own: frozen for 30 seconds, or gone
 #                                while the session is locked
 #
+# triage                         tell the maintainer something is wrong
+#   banditshell triage [--yes]   a report with no words of yours
+#   banditshell triage [<words>] [--yes]
+#                                say what went wrong in your own words; the
+#                                report adds the version, your config with
+#                                secrets left out, the log and the checks, shows
+#                                you all of it, and files it as a github issue
+#                                once you answer y; --yes skips the question,
+#                                and without a terminal nothing is sent, the
+#                                report is saved with the command that sends it
+#
 # action                         run a stable action by its id
 #   banditshell action <id> [args...]
 #                                the names a bind keeps across updates. The id is
@@ -241,7 +255,8 @@
 #
 # version                        which build is installed
 #   banditshell version [--json]
-#                                the version (the newest what's-new id), the update
+#                                the version (the release, with +n for commits
+#                                past it, or the newest what's-new id), the update
 #                                channel and the branch it follows, the commit and
 #                                branch, the checkout, the API number and the
 #                                Quickshell and Hyprland versions
@@ -296,13 +311,16 @@
 #                                every violation with file and line, or record
 #                                today's counts as the new baseline
 #   banditshell dev lint --rule <rule>
-#                                one rule only, L1 to L15
-#   banditshell dev promote [--remote <name>] [--no-fetch]
-#                                check that main is fit to be the stable channel
-#                                (tests, modules, house rules, compile check, a
-#                                what's-new id) and print the git commands that
-#                                would move stable and tag the version; it
-#                                pushes nothing
+#                                one rule only, L1 to L16
+#   banditshell dev release [--dry-run] [--skip-boot-check]
+#                                cut the next release from a clean checkout of
+#                                origin/main: tests, modules, house rules,
+#                                compile and boot checks, then the number (minor
+#                                for a feature, patch for fixes), the tag, stable
+#                                moved and the GitHub release with what's new
+#                                since the last tag; --dry-run pushes nothing;
+#                                without gamescope it refuses unless
+#                                --skip-boot-check is given
 #   banditshell dev check island [dir]
 #                                walk the island through every situation it has
 #                                a rule for, headless: each checked, and
@@ -313,6 +331,24 @@
 #                                verbs, and fail on any runtime error in its log;
 #                                --shots photographs it at rest and with the
 #                                launcher open
+#   banditshell dev perf [--runs <n>] [--boots <n>] [--only <pattern>] [--profile] [--ns] [dir]
+#                                time every operation headless: boot the shell n
+#                                times (5), then open and close every panel, menu
+#                                and settings page n times (5), and print each
+#                                step in between with first, last, mean, median,
+#                                min and max; --profile also lists the bindings,
+#                                functions and objects that took the time inside
+#                                each one; --ns prints nanoseconds
+#   banditshell dev perf live [--runs <n>] [--only <pattern>] [--ns] [dir]
+#                                the same against the running shell, on screen
+#   banditshell dev trace [on|off|status]
+#                                record the running shell's own timings while you
+#                                use it
+#   banditshell dev trace clear [dir]
+#                                forget what was recorded, in the shell and in dir
+#   banditshell dev trace report [dir]
+#                                every operation recorded so far, grouped, as a
+#                                table and a page
 #   banditshell dev inspect island [screen]
 #                                look at every situation on the live island:
 #                                a panel on the right makes each one up, and
@@ -1012,18 +1048,14 @@ session_locked() {
 frozen_pid() {
     local pid
     for pid in $(shell_pids); do
-        (cd "$HOME" && timeout 5 qs ipc --pid "$pid" call shell status) >/dev/null 2>&1 && continue
+        answers "$pid" && continue
         kill -0 "$pid" 2>/dev/null && { echo "$pid"; return 0; }
     done
     return 1
 }
 
 shell_answering() {
-    local pid
-    for pid in $(shell_pids); do
-        (cd "$HOME" && timeout 5 qs ipc --pid "$pid" call shell status) >/dev/null 2>&1 && return 0
-    done
-    return 1
+    answering_pid >/dev/null
 }
 
 dump_frozen() {
@@ -1083,15 +1115,33 @@ unstick() {
     fi
 }
 
+answers() {
+    kill -0 "$1" 2>/dev/null && (cd "$HOME" && timeout 5 qs ipc --pid "$1" call shell status) >/dev/null 2>&1
+}
+
+answering_pid() {
+    local pid
+    for pid in $(shell_pids); do
+        answers "$pid" && { echo "$pid"; return 0; }
+    done
+    return 1
+}
+
 watchdog() {
-    local strikes=0
+    local strikes=0 known=""
     while sleep 10; do
-        reach_hyprland || { strikes=0; continue; }
+        reach_hyprland || { strikes=0; known=""; continue; }
+        if [ -n "$known" ] && answers "$known"; then
+            strikes=0
+            continue
+        fi
+        known=""
         if frozen_pid >/dev/null; then
             strikes=$((strikes + 1))
             [ "$strikes" -ge 3 ] || continue
         elif running || ! session_locked; then
             strikes=0
+            known=$(answering_pid) || known=""
             continue
         fi
         strikes=0
@@ -2064,13 +2114,14 @@ route_api() {
 
 route_version() {
     local release commit branch quickshell hyprland number channel follows
-    release=$(grep -m1 -o '"id": *"[^"]*"' "$SHELL_DIR/docs/whats-new.json" 2>/dev/null | sed 's/.*: *"\(.*\)"/\1/') || release=""
+    release=$(U_DIR="$SHELL_DIR" && update_label "$(ugit rev-parse --verify --quiet HEAD)") || release=""
+    [ -n "$release" ] || release=$(grep -m1 -o '"id": *"[^"]*"' "$SHELL_DIR/docs/whats-new.json" 2>/dev/null | sed 's/.*: *"\(.*\)"/\1/') || release=""
     commit=$(git -C "$SHELL_DIR" describe --always --dirty --tags 2>/dev/null) || commit=""
     branch=$(git -C "$SHELL_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null) || branch=""
     quickshell=$(qs --version 2>/dev/null | head -n 1 | sed 's/ (revision.*//') || quickshell=""
     hyprland=$(Hyprland --version 2>/dev/null | head -n 1 | sed 's/ built from.*//') || hyprland=""
     number=$(api_number) || number=""
-    channel=$(config_leaf updates channel main)
+    channel=$(config_channel)
     follows=$(update_branch_for "$channel" "$(config_leaf updates branch main)")
     printf '%-11s %s\n' version "${release:-unknown}" channel "$channel" follows "$follows" commit "${commit:-unknown}" branch "${branch:-unknown}" \
         checkout "$SHELL_DIR" api "${number:-none}" quickshell "${quickshell:-unknown}" hyprland "${hyprland:-unknown}"
@@ -2259,8 +2310,25 @@ redact_config() {
 }
 
 mask_log() {
-    sed -E 's/((token|secret|password|passwd|cookie|api[_-]?key)[=: ]+)[^[:space:]"]+/\1[removed]/Ig'
+    local q="'" home_escaped
+    local -a home_rule=()
+    if [ -n "${HOME:-}" ] && [ "${HOME%/}" != "" ]; then
+        home_escaped=$(printf '%s' "${HOME%/}" | sed 's/[][\\.*^$#+?(){}|]/\\&/g')
+        home_rule=(-e "s#${home_escaped}(/|[^[:alnum:]_.-]|\$)#~\\1#g")
+    fi
+    sed -E \
+        ${home_rule[@]+"${home_rule[@]}"} \
+        -e 's#(://)[^/@[:space:]]+@#\1[removed]@#g' \
+        -e "s#(authorization[\"$q]?[=: ]+[\"$q]?)((Basic|Bearer|Digest|Token)[[:space:]]+)?[^[:space:]\"$q]+#\\1[removed]#Ig" \
+        -e 's#(Bearer[[:space:]]+)[A-Za-z0-9._~+/=-]+#\1[removed]#Ig' \
+        -e 's#(gh[pousr]_|github_pat_)[A-Za-z0-9_]+#[removed]#g' \
+        -e 's#sk-ant-[A-Za-z0-9_-]+#[removed]#g' \
+        -e 's#(^|[^[:alnum:]_])sk-[A-Za-z0-9_-]{6,}#\1[removed]#g' \
+        -e "s#(cookie[\"$q]?[=:][[:space:]]*).*#\\1[removed]#I" \
+        -e "s#([A-Za-z0-9_-]*(token|secret|password|passwd|cookie|api[_-]?key|private[_-]?key)([_-][A-Za-z0-9_-]*|key)?[\"$q]?[=: ]+)(\"[^\"]*\"|${q}[^$q]*$q|[^[:space:]\"$q]+)#\\1[removed]#Ig"
 }
+
+strip_ansi() { sed 's/\x1b\[[0-9;]*m//g'; }
 
 check_summary() {
     local name="$1" script="$2" last
@@ -2272,7 +2340,7 @@ check_summary() {
     echo "$name: ${last:-no answer}"
 }
 
-doctor_report() {
+report_sections() {
     echo "## version"
     route_version
     echo
@@ -2280,11 +2348,152 @@ doctor_report() {
     redact_config
     echo
     echo "## log (last 40 lines)"
-    qs -p "$(live_dir || echo "$SHELL_DIR")" log 2>/dev/null | tail -n 40 | mask_log || true
+    qs -p "$(live_dir || echo "$SHELL_DIR")" log 2>/dev/null | tail -n 40 | strip_ansi || true
     echo
     echo "## checks"
     check_summary modules check-modules.js
     check_summary rules lint-rules.js
+}
+
+doctor_report() { report_sections | mask_log; }
+
+TRIAGE_REPO="" TRIAGE_TITLE="" TRIAGE_BODY=""
+
+triage_repo() {
+    local given="${BANDITSHELL_TRIAGE_REPO:-}" remote url=""
+    if [ -n "$given" ]; then
+        url="$given"
+    else
+        remote=$(config_leaf updates remote origin)
+        url=$(git -C "$SHELL_DIR" remote get-url "$remote" 2>/dev/null) ||
+            url=$(git -C "$SHELL_DIR" remote get-url origin 2>/dev/null) || url=""
+        case "$url" in
+        git@github.com:*) url=${url#git@github.com:} ;;
+        ssh://git@github.com/*) url=${url#ssh://git@github.com/} ;;
+        https://github.com/*) url=${url#https://github.com/} ;;
+        *) url="" ;;
+        esac
+        url=${url%/}
+        url=${url%.git}
+        url=${url%/}
+    fi
+    [[ $url =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || url=""
+    printf '%s\n' "$url"
+}
+
+triage_title() {
+    local words title
+    words=$(printf '%s' "$1" | tr '\n\r' '  ' | mask_log)
+    words=${words#"${words%%[![:space:]]*}"}
+    words=${words%"${words##*[![:space:]]}"}
+    title="triage: ${words:-a problem report}"
+    [ ${#title} -le 120 ] || title="${title:0:117}..."
+    printf '%s\n' "$title"
+}
+
+triage_body() {
+    local words="$1" owner="$2" text
+    text=$({
+        echo "## what happened"
+        if [ -n "$words" ]; then
+            printf '%s\n' "$words"
+        else
+            echo "(no words were given)"
+        fi
+        echo
+        report_sections
+    } 2>/dev/null | mask_log) || true
+    if [ ${#text} -gt 60000 ]; then
+        text="${text:0:60000}"$'\n\n'"(the report was cut here, it was too long)"
+    fi
+    printf '%s\n' "$text"
+    if [ -n "$owner" ]; then
+        printf '\ncc @%s\n' "$owner"
+    fi
+}
+
+triage_save() {
+    local file command
+    file="$STATE_DIR/triage/$(date +%Y%m%d-%H%M%S)-$$.md"
+    if ! (umask 077 && mkdir -p "$STATE_DIR/triage" && printf '%s\n' "$TRIAGE_BODY" >"$file") 2>/dev/null; then
+        complain "could not save the report under $STATE_DIR/triage"
+        return 1
+    fi
+    echo "not sent. the report is saved at $file"
+    command="gh issue create --repo $(printf '%q' "${TRIAGE_REPO:-OWNER/REPO}") --title $(printf '%q' "$TRIAGE_TITLE") --body-file $(printf '%q' "$file")"
+    echo "send it with: $command"
+}
+
+triage_keep() {
+    echo "$1"
+    triage_save || true
+    exit 1
+}
+
+triage_show() {
+    local view="title: $TRIAGE_TITLE"$'\n\n'"$TRIAGE_BODY"
+    local -a pager=()
+    if [ -t 1 ]; then
+        read -ra pager <<<"${PAGER:-less}"
+        if [ ${#pager[@]} -gt 0 ] && command -v "${pager[0]}" >/dev/null 2>&1 && "${pager[@]}" <<<"$view"; then
+            return 0
+        fi
+    fi
+    printf '%s\n' "$view"
+}
+
+triage_send() {
+    local out status=0 url
+    out=$(timeout --foreground 30 gh issue create --repo "$TRIAGE_REPO" --title "$TRIAGE_TITLE" --body-file - <<<"$TRIAGE_BODY" 2>&1) || status=$?
+    url=$(printf '%s\n' "$out" | grep -oE 'https://[^[:space:]]+' | tail -n 1) || url=""
+    if [ "$status" = 0 ] && [ -n "$url" ]; then
+        echo "sent: $url"
+        return 0
+    fi
+    printf '%s\n' "$out" | tail -n 3 | mask_log >&2
+    if [ "$status" = 0 ] || [ "$status" = 124 ]; then
+        triage_keep "gh gave no answer in time, so the issue may already exist; look at https://github.com/$TRIAGE_REPO/issues before sending this again"
+    fi
+    triage_keep "gh could not create the issue"
+}
+
+triage() {
+    local assume_yes=0 arg answer words given="${BANDITSHELL_TRIAGE_REPO:-}"
+    local -a given_words=()
+    for arg in "$@"; do
+        if [ "$arg" = --yes ]; then
+            assume_yes=1
+        else
+            given_words+=("$arg")
+        fi
+    done
+    words="${given_words[*]:-}"
+    TRIAGE_REPO=$(triage_repo)
+    TRIAGE_TITLE=$(triage_title "$words")
+    TRIAGE_BODY=$(triage_body "$words" "${TRIAGE_REPO%%/*}")
+
+    if [ -z "$TRIAGE_REPO" ] && [ -n "$given" ]; then
+        triage_keep "BANDITSHELL_TRIAGE_REPO is not in owner/repo form: $(printf '%s' "$given" | mask_log)"
+    elif [ -z "$TRIAGE_REPO" ]; then
+        triage_keep "this checkout has no github remote, and BANDITSHELL_TRIAGE_REPO is not set"
+    fi
+    command -v gh >/dev/null 2>&1 || triage_keep "gh (github-cli) is not installed"
+    timeout --foreground 10 gh auth status --hostname github.com >/dev/null 2>&1 ||
+        triage_keep "gh is not logged in to github.com (run: gh auth login)"
+    if [ "$assume_yes" = 0 ]; then
+        [ -t 0 ] || triage_keep "there is no terminal to ask on, so nothing was sent (--yes sends without asking)"
+        triage_show
+        printf 'send this to github.com/%s? [y/N] ' "$TRIAGE_REPO"
+        read -r answer || answer=""
+        case "$answer" in
+        y | Y | yes | YES | Yes) ;;
+        *)
+            echo "not sent"
+            exit 1
+            ;;
+        esac
+    fi
+    triage_send
 }
 
 doctor() {
@@ -2495,8 +2704,8 @@ EOF
 check_island() {
     local out tally
     out=$(absolute_path "${1:-$SHOT_DIR/island}")
-    echo "walking the island through its situations, about four minutes; ctrl-c stops"
-    headless_preview IslandPreview "$out" 320 '.notifications.placement = "island" | .packages.interval = 0 | .sidebar.update = "never"'
+    echo "walking the island through its situations, about six minutes; ctrl-c stops"
+    headless_preview IslandPreview "$out" 480 '.notifications.placement = "island" | .packages.interval = 0 | .sidebar.update = "never"'
     tally=$(sed 's/\x1b\[[0-9;]*m//g' "$preview_log" | grep -oE 'DONE [0-9]+/[0-9]+' | tail -1)
     tally="${tally#DONE }"
     if [ -z "$tally" ]; then
@@ -2650,6 +2859,127 @@ EOF
     [ "$boot_passed" -eq "$boot_total" ]
 }
 
+perf_usage() {
+    say_usage "dev perf [live] [--runs <n>] [--boots <n>] [--only <pattern>] [--profile] [--ns] [dir]"
+}
+
+perf_command() {
+    local out="" runs=5 boots=5 only="" raw="" live="" work src config overrides tool pid link target limit=1800
+    local -a extra=()
+    if [ "${1:-}" = live ]; then
+        live=1
+        boots=0
+        shift
+    fi
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --runs) [ $# -ge 2 ] || perf_usage; runs="$2"; shift ;;
+        --boots) [ $# -ge 2 ] && [ -z "$live" ] || perf_usage; boots="$2"; shift ;;
+        --only) [ $# -ge 2 ] || perf_usage; only="$2"; shift ;;
+        --ns) raw=1 ;;
+        --profile) [ -z "$live" ] || perf_usage; extra+=(--profile) ;;
+        -*) perf_usage ;;
+        *) out=$(absolute_path "$1") ;;
+        esac
+        shift
+    done
+    [[ $runs =~ ^[0-9]+$ && $boots =~ ^[0-9]+$ ]] || perf_usage
+    command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
+    [ -z "$only" ] || extra+=(--only "$only")
+    [ -z "$raw" ] || extra+=(--ns)
+    if [ -n "$live" ]; then
+        out="${out:-$SHOT_DIR/perf-live}"
+        resolve_target
+        [ "${qs_target[0]}" = --pid ] || { complain "not running (try: banditshell start)"; exit 3; }
+        echo "timing the running shell: every panel, menu and settings page opens and closes on your screen, $runs times; ctrl-c stops"
+        mkdir -p "$SHOT_DIR/trace"
+        exec node "$SHELL_DIR/scripts/perf.js" run --pid "${qs_target[1]}" --cli "$SHELL_DIR/cli/banditshell" --keep "$SHOT_DIR/trace/spans.json" \
+            --runs "$runs" --where "live session" --out "$out" "${extra[@]}"
+    fi
+    out="${out:-$SHOT_DIR/perf}"
+    for tool in gamescope dbus-run-session jq setsid qs pkill; do
+        command -v "$tool" >/dev/null || { echo "banditshell: $tool not found" >&2; exit 1; }
+    done
+    mkdir -p "$out"
+    rm -f "$out"/boot-*.log* "$out"/shell.log* "$out/progress.log" "$out/report.txt" "$out/session.log"
+    work=$(mktemp -d)
+    src="$work/root"
+    boot_root "$work" "$src" "" || { rm -rf "$work"; exit 1; }
+    for link in "$src"/*; do
+        [ -L "$link" ] || continue
+        target=$(readlink "$link")
+        rm "$link"
+        cp -a "$target" "$link"
+    done
+    mkdir -p "$work/config/banditshell" "$work/state" "$work/cache" "$work/runtime"
+    chmod 700 "$work/runtime"
+    config="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json"
+    overrides='. | .pen.enabled = false | .pen.grabPad = false | .polkit.agent = false | .startup.runAutostart = false | .network.keepListFresh = false'
+    overrides="$overrides | $(compositor_look)"
+    jq "$overrides" "$config" >"$work/config/banditshell/config.json" 2>/dev/null ||
+        jq -n "{} | $overrides" >"$work/config/banditshell/config.json"
+    mkdir -p "$work/shims"
+    printf '#!/bin/sh\nexit 1\n' >"$work/shims/ddcutil"
+    printf '#!/bin/sh\nexec cat\n' >"$work/shims/systemd-inhibit"
+    chmod +x "$work/shims/ddcutil" "$work/shims/systemd-inhibit"
+    cat >"$work/bus.conf" <<EOF
+<busconfig>
+  <type>session</type>
+  <listen>unix:dir=$work/runtime</listen>
+  <policy context="default">
+    <allow send_destination="*"/>
+    <allow receive_sender="*"/>
+    <allow own="*"/>
+  </policy>
+</busconfig>
+EOF
+    {
+        printf '#!/usr/bin/env bash\ncd "$HOME"\nexport BANDITSHELL_DIR=%q PATH=%q\n' "$src" "$work/shims:$PATH"
+        printf 'node %q run --shell %q --cli %q --runs %q --boots %q --where %q --out %q' \
+            "$SHELL_DIR/scripts/perf.js" "$src/shell.qml" "$src/cli/banditshell" "$runs" "$boots" "headless, private session" "$out"
+        [ ${#extra[@]} -eq 0 ] || printf ' %q' "${extra[@]}"
+        printf ' >%q 2>%q\n' "$out/report.txt" "$out/progress.log"
+    } >"$work/run.sh"
+    : >"$out/progress.log"
+    echo "booting the real shell.qml headless $boots times, then opening every panel, menu and settings page $runs times; a few minutes, ctrl-c stops"
+    (cd "$work/home" && exec setsid env -i PATH="$PATH" HOME="$work/home" LANG=C.UTF-8 \
+        XDG_CONFIG_HOME="$work/config" XDG_STATE_HOME="$work/state" XDG_CACHE_HOME="$work/cache" XDG_RUNTIME_DIR="$work/runtime" \
+        timeout -s KILL "$limit" dbus-run-session --config-file="$work/bus.conf" -- \
+        bash "$work/run.sh") </dev/null >"$out/session.log" 2>&1 &
+    pid=$!
+    trap 'kill -KILL -- -"$pid" "$pid" 2>/dev/null || true; pkill -KILL -f "$src/shell.qml" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; rm -rf "$work"; echo "stopped" >&2; exit 130' INT TERM
+    tail -n +1 -f --pid="$pid" "$out/progress.log" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+    kill -KILL -- -"$pid" 2>/dev/null || true
+    pkill -KILL -f "$src/shell.qml" 2>/dev/null || true
+    trap - INT TERM
+    rm -rf "$work" 2>/dev/null || echo "banditshell: could not clear $work" >&2
+    if [ ! -s "$out/report.txt" ]; then
+        echo "banditshell: the timing run did not finish (logs: $out)" >&2
+        sed 's/\x1b\[[0-9;]*m//g' "$out/session.log" "$out/progress.log" 2>/dev/null | tail -n 12 >&2 || true
+        exit 1
+    fi
+    cat "$out/report.txt"
+}
+
+trace_command() {
+    local out
+    case "${1:-status}" in
+    on | off | status) ipc trace "${1:-status}" ;;
+    clear)
+        rm -f "$(absolute_path "${2:-$SHOT_DIR/trace}")/spans.json"
+        ipc trace clear
+        ;;
+    report)
+        command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
+        out=$(absolute_path "${2:-$SHOT_DIR/trace}")
+        mkdir -p "$out"
+        ipc_quiet trace take | node "$SHELL_DIR/scripts/perf.js" live-report --keep "$out/spans.json" --out "$out"
+        ;;
+    *) nope dev "trace $1" ;;
+    esac
+}
+
 window_rect() {
     hyprctl -j clients | jq -r --arg title "$1" '.[] | select(.title == $title) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' | head -1
 }
@@ -2777,11 +3107,14 @@ route_dev() {
             ;;
         *) nope dev "lint $1" ;;
         esac ;;
-    promote)
-        case "${1:-}" in
-        "" | --remote | --no-fetch) exec bash "$SHELL_DIR/scripts/promote-stable.sh" "$@" ;;
-        *) nope dev "promote $1" ;;
-        esac ;;
+    release)
+        for arg in "$@"; do
+            case "$arg" in
+            --dry-run | --skip-boot-check) ;;
+            *) nope dev "release $arg" ;;
+            esac
+        done
+        exec bash "$SHELL_DIR/scripts/release.sh" "$@" ;;
     check)
         case "${1:-}" in
         "") check_everything ;;
@@ -2796,6 +3129,8 @@ route_dev() {
         *) nope dev "inspect ${1:-}" ;;
         esac ;;
     preview) route_preview "$@" ;;
+    perf) perf_command "$@" ;;
+    trace) trace_command "$@" ;;
     menu)
         case "${1:-current}" in
         current | hover | list) ipc menu "${1:-current}" ;;
@@ -2875,9 +3210,20 @@ config_leaf() {
     printf '%s' "${value:-$3}"
 }
 
+config_true() {
+    tr -d '\n' 2>/dev/null <"$CONFIG_FILE" | grep -q "\"$1\"[[:space:]]*:[[:space:]]*{[^}]*\"$2\"[[:space:]]*:[[:space:]]*true"
+}
+
+config_channel() {
+    local channel
+    channel=$(config_leaf updates channel stable)
+    [ "$channel" != main ] || config_true updates channelUpgraded || [ -s "$STATE_DIR/keep-channel" ] || channel=stable
+    printf '%s' "$channel"
+}
+
 UPDATE_JSON=0
 UPDATE_APPLYING=0
-U_DIR="" U_REMOTE="" U_CHANNEL="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET="" U_BEHIND=0 U_AHEAD=0 U_STATE=""
+U_DIR="" U_REMOTE="" U_CHANNEL="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET="" U_PREVIOUS="" U_BEHIND=0 U_AHEAD=0 U_STATE="" U_UNRELEASED="" U_FOUND_NONE=0
 A_RESTART=0 A_HELPERS=0 A_DEPS="" A_DIRTY="" A_BLOCKED="" A_BUTTON="" A_SUMMARY=""
 U_WARNINGS=()
 HEALTH_WHY=""
@@ -2903,9 +3249,10 @@ update_fail() {
             lines+=("$line")
         done <<<"$text"
         if [ "$UPDATE_APPLYING" = 1 ]; then
-            printf '{"phase":"failed","text":%s,"output":%s}\n' "$(json_quote "$(update_explain "$text")")" "$(json_list "${lines[@]}")"
+            printf '{"phase":"failed","text":%s,"output":%s,"at":%s}\n' "$(json_quote "$(update_explain "$text")")" "$(json_list "${lines[@]}")" "$(date +%s)"
         else
-            printf '{"state":"error","output":%s}\n' "$(json_list "${lines[@]}")"
+            printf '{"state":"error","output":%s,"version":%s}\n' "$(json_list "${lines[@]}")" \
+                "$(json_quote "$([ -z "$U_DIR" ] || update_label "$(ugit rev-parse --verify --quiet HEAD 2>/dev/null)")")"
         fi
     else
         echo "${red}banditshell: $(update_explain "$text")$plain" >&2
@@ -2946,7 +3293,7 @@ update_prepare() {
     SHELL_DIR="$top"
     U_DIR="$top"
     U_REMOTE=$(config_leaf updates remote origin)
-    U_CHANNEL=$(config_leaf updates channel main)
+    U_CHANNEL=$(config_channel)
     case "$U_CHANNEL" in
     stable | main) ;;
     *) update_fail "fatal: updates.channel in config.json is \"$U_CHANNEL\", and it has to be stable or main" ;;
@@ -2959,11 +3306,16 @@ update_prepare() {
 
 update_fetch() {
     local out code=0
-    out=$(GIT_TERMINAL_PROMPT=0 LC_ALL=C timeout -k 10 120 git -C "$U_DIR" fetch --quiet -- "$U_REMOTE" "$U_BRANCH" 2>&1) || code=$?
+    out=$(GIT_TERMINAL_PROMPT=0 LC_ALL=C timeout -k 10 120 git -C "$U_DIR" fetch --quiet --no-tags -- "$U_REMOTE" \
+        "+refs/heads/$U_BRANCH:refs/remotes/$U_REMOTE/$U_BRANCH" "+refs/tags/v*:refs/tags/v*" 2>&1) || code=$?
     case "$code" in
     0) ;;
     124 | 137) update_fail "timed out" ;;
-    *) update_fail "$out" ;;
+    *)
+        [ "$U_BRANCH" = stable ] && [[ $out == *"couldn't find remote ref refs/heads/stable"* ]] || update_fail "$out"
+        ugit update-ref -d "refs/remotes/$U_REMOTE/stable" 2>/dev/null || true
+        U_FOUND_NONE=1
+        ;;
     esac
 }
 
@@ -2973,10 +3325,20 @@ update_skipped() {
     grep -qxF -- "$1" <<<"$skips"
 }
 
+update_skipped_here() {
+    grep -qxF -- "$1" "$UPDATE_STATE/skip" 2>/dev/null
+}
+
 update_read() {
     U_BRANCH_NOW=$(ugit symbolic-ref --quiet --short HEAD 2>/dev/null || echo HEAD)
     U_HEAD=$(ugit rev-parse --verify --quiet HEAD 2>/dev/null || true)
     U_TARGET=$(ugit rev-parse --verify --quiet --end-of-options "$U_REMOTE/$U_BRANCH^{commit}" 2>/dev/null || true)
+    if [ -z "$U_TARGET" ] && [ "$U_BRANCH" = stable ]; then
+        U_UNRELEASED=$([ "$U_FOUND_NONE" = 1 ] && echo none || echo unchecked)
+        U_TARGET="$U_HEAD" U_STATE=current U_BEHIND=0 U_AHEAD=0 U_PREVIOUS=""
+        update_on_branch || U_STATE=paused
+        return 0
+    fi
     [ -n "$U_TARGET" ] || update_fail "fatal: there is no fetched copy of $U_REMOTE/$U_BRANCH yet"
     U_BEHIND=$(ugit rev-list --count --end-of-options "HEAD..$U_REMOTE/$U_BRANCH" 2>/dev/null || echo 0)
     U_AHEAD=$(ugit rev-list --count --end-of-options "$U_REMOTE/$U_BRANCH..HEAD" 2>/dev/null || echo 0)
@@ -2992,6 +3354,30 @@ update_read() {
     else
         U_STATE=current
     fi
+    if [ "$U_BRANCH" = stable ]; then
+        U_PREVIOUS=$(update_release_before)
+    else
+        U_PREVIOUS=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
+    fi
+    if [ "$U_STATE" = paused ] || [ "$U_AHEAD" -gt 0 ] || ! [[ $U_PREVIOUS =~ ^[0-9a-f]{40,64}$ ]] ||
+        [ "$U_PREVIOUS" = "$U_HEAD" ] || ! ugit merge-base --is-ancestor "$U_PREVIOUS" HEAD 2>/dev/null; then
+        U_PREVIOUS=""
+    fi
+}
+
+release_tags() {
+    ugit tag --merged "$1" -l 'v*' --sort=-v:refname 2>/dev/null | grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' || true
+}
+
+update_release_before() {
+    local tag sha
+    ugit rev-parse --verify --quiet HEAD^ >/dev/null 2>&1 || return 0
+    while IFS= read -r tag; do
+        sha=$(ugit rev-parse --verify --quiet "$tag^{commit}" 2>/dev/null) || continue
+        [ "$sha" != "$U_HEAD" ] && ! update_skipped "$sha" || continue
+        printf '%s' "$sha"
+        return 0
+    done < <(release_tags HEAD^)
 }
 
 update_fetched_at() {
@@ -3004,15 +3390,17 @@ update_fetched_at() {
 update_meta() {
     printf '%s\n' "state=$U_STATE" "head=$U_HEAD" "target=$U_TARGET" "channel=$U_CHANNEL" "branch=$U_BRANCH" "headBranch=$U_BRANCH_NOW" \
         "remote=$U_REMOTE" "behind=$U_BEHIND" "ahead=$U_AHEAD" "skipped=$([ "$U_STATE" = skipped ] && echo 1 || echo 0)" \
-        "checkedAt=$(update_fetched_at)" "version=$(update_label "$U_HEAD")" "targetVersion=$(update_label "$U_TARGET")"
+        "checkedAt=$(update_fetched_at)" "version=$(update_label "$U_HEAD")" "targetVersion=$(update_label "$U_TARGET")" \
+        "previous=$U_PREVIOUS" "previousVersion=$(update_label "$U_PREVIOUS")"
 }
 
 update_meta_json() {
-    printf '{"state":%s,"head":%s,"target":%s,"channel":%s,"branch":%s,"headBranch":%s,"remote":%s,"behind":%s,"ahead":%s,"skipped":%s,"checkedAt":%s,"version":%s,"targetVersion":%s' \
+    printf '{"state":%s,"head":%s,"target":%s,"channel":%s,"branch":%s,"headBranch":%s,"remote":%s,"behind":%s,"ahead":%s,"skipped":%s,"checkedAt":%s,"version":%s,"targetVersion":%s,"previous":%s,"previousVersion":%s' \
         "$(json_quote "$U_STATE")" "$(json_quote "$U_HEAD")" "$(json_quote "$U_TARGET")" "$(json_quote "$U_CHANNEL")" "$(json_quote "$U_BRANCH")" \
         "$(json_quote "$U_BRANCH_NOW")" "$(json_quote "$U_REMOTE")" "$U_BEHIND" "$U_AHEAD" \
         "$([ "$U_STATE" = skipped ] && echo true || echo false)" "$(update_fetched_at)" \
-        "$(json_quote "$(update_label "$U_HEAD")")" "$(json_quote "$(update_label "$U_TARGET")")"
+        "$(json_quote "$(update_label "$U_HEAD")")" "$(json_quote "$(update_label "$U_TARGET")")" \
+        "$(json_quote "$U_PREVIOUS")" "$(json_quote "$(update_label "$U_PREVIOUS")")"
 }
 
 update_facts() {
@@ -3064,10 +3452,17 @@ update_load_class() {
 
 update_state_text() {
     case "$U_STATE" in
-    current) echo "up to date at ${U_HEAD:0:7} on $U_BRANCH" ;;
+    current)
+        if [ "$U_UNRELEASED" = none ]; then
+            echo "there is no release on $U_BRANCH yet, so this copy stays at $(update_label "$U_HEAD")"
+        elif [ "$U_UNRELEASED" = unchecked ]; then
+            echo "$U_BRANCH has not been checked yet; banditshell update check looks"
+        else
+            echo "up to date at $(update_label "$U_HEAD") on $U_BRANCH"
+        fi ;;
     paused) echo "this copy is on ${U_BRANCH_NOW/#HEAD/no branch}, so it does not follow $U_BRANCH" ;;
     diverged) echo "$U_BEHIND new on $U_BRANCH, but this copy has $U_AHEAD commit(s) of its own, so it cannot just move forward" ;;
-    skipped) echo "${U_TARGET:0:7} did not start last time and is skipped until a newer version arrives" ;;
+    skipped) echo "$(update_label "$U_TARGET") did not start last time and is skipped until a newer version arrives" ;;
     esac
 }
 
@@ -3111,21 +3506,27 @@ update_check() {
 }
 
 update_label() {
-    local label=""
+    local label="" tag past
     [ -n "$1" ] || return 0
-    label=$(ugit show "$1:docs/whats-new.json" 2>/dev/null | awk -F'"' '!found && /^[[:space:]]*"id":[[:space:]]*"/ { print $4; found = 1 }') || label=""
+    tag=$(release_tags "$1" | head -n 1)
+    if [ -n "$tag" ] && past=$(ugit rev-list --count "$tag..$1" 2>/dev/null); then
+        label="$tag"
+        [ "$past" = 0 ] || label+="+$past"
+    else
+        label=$(ugit show "$1:docs/whats-new.json" 2>/dev/null | awk -F'"' '!found && /^[[:space:]]*"id":[[:space:]]*"/ { print $4; found = 1 }') || label=""
+    fi
     printf '%s' "${label:-${1:0:7}}"
 }
 
 update_result() {
-    local ok="$1" why="$2" from to aside_items=() line
+    local ok="$1" why="$2" hand="${3:-false}" from to aside_items=() line
     from=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
     to=$(cat "$UPDATE_STATE/target" 2>/dev/null || true)
     while IFS= read -r line; do
         [ -z "$line" ] || aside_items+=("$line")
     done 2>/dev/null <"$UPDATE_STATE/aside" || true
-    printf '{"ok":%s,"from":%s,"to":%s,"fromLabel":%s,"toLabel":%s,"why":%s,"aside":%s,"log":%s,"at":%s,"shown":false}\n' \
-        "$ok" "$(json_quote "$from")" "$(json_quote "$to")" "$(json_quote "$(update_label "$from")")" \
+    printf '{"ok":%s,"hand":%s,"from":%s,"to":%s,"fromLabel":%s,"toLabel":%s,"why":%s,"aside":%s,"log":%s,"at":%s,"shown":false}\n' \
+        "$ok" "$hand" "$(json_quote "$from")" "$(json_quote "$to")" "$(json_quote "$(update_label "$from")")" \
         "$(json_quote "$(update_label "$to")")" "$(json_quote "$why")" "$(json_list "${aside_items[@]}")" \
         "$(json_quote "$FAILED_LOG")" "$(date +%s)" >"$UPDATE_STATE/result.json.next"
     mv -f "$UPDATE_STATE/result.json.next" "$UPDATE_STATE/result.json"
@@ -3351,19 +3752,21 @@ update_finish_work() {
 
 update_conclude() {
     dry && return 0
+    ! update_skipped_here "$(cat "$UPDATE_STATE/target" 2>/dev/null || true)" || rm -f "$UPDATE_STATE/skip"
     update_result true ""
     update_phase "done" "$1"
 }
 
 update_roll_back() {
-    local why="$1" relaunch="$2" previous target out
-    previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
+    local why="$1" relaunch="$2" hand="${3:-false}" previous="${4:-}" target out
+    [ -n "$previous" ] || previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
     target=$(cat "$UPDATE_STATE/target" 2>/dev/null || true)
     if dry; then
         say_dry "git reset --keep ${previous:0:7}, relaunch, write result.json, skip ${target:0:7}"
         return 0
     fi
     if ! out=$(ugit reset --keep --quiet "$previous" 2>&1); then
+        [ "$hand" = true ] && update_fail "$out"
         update_result false "$why. Going back failed too: $(printf '%s' "$out" | tail -1)"
         update_phase failed "$why. Going back failed too."
         return 1
@@ -3379,29 +3782,53 @@ update_roll_back() {
             start_backup || true
         fi
     fi
-    update_result false "$why"
-    complain "update $(update_label "$target") did not start, back on $(update_label "$previous")"
+    update_result false "$why" "$hand"
+    [ "$hand" = true ] || complain "update $(update_label "$target") did not start, back on $(update_label "$previous")"
     update_phase rolledback "Went back to $(update_label "$previous")"
 }
 
 update_rollback() {
-    local previous target head
+    local previous target head arg detach=0
     UPDATE_JSON=0
+    [ -z "${BANDITSHELL_JSON:-}" ] || UPDATE_JSON=1
+    for arg in "$@"; do
+        case "$arg" in
+        --json) UPDATE_JSON=1 ;;
+        --detach) detach=1 ;;
+        *) say_usage "update rollback [--detach] [--json]" ;;
+        esac
+    done
     UPDATE_APPLYING=1
+    if [ "$detach" = 1 ] && ! dry; then
+        mkdir -p "$UPDATE_STATE"
+        : >"$UPDATE_STATE/progress.log"
+        (cd "$HOME" && detach "$(readlink -f "${BASH_SOURCE[0]}")" update rollback --json 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log")
+        return 0
+    fi
     update_prepare
     dry || update_lock -n
-    previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
+    [ "$UPDATE_JSON" = 0 ] || update_phase goback "Going back..."
+    update_read
+    [ "$U_STATE" != paused ] || update_fail "fatal: $(update_state_text)"
+    [ "$U_AHEAD" -eq 0 ] || update_fail "fatal: this copy has $U_AHEAD commit(s) of its own, and going back would take them off the branch"
     head=$(ugit rev-parse HEAD)
+    if [ "$U_BRANCH" = stable ]; then
+        [ -n "$U_PREVIOUS" ] || update_fail "fatal: there is no earlier release to go back to"
+        previous="$U_PREVIOUS"
+    else
+        previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
+    fi
     [ -n "$previous" ] && [ "$previous" != "$head" ] || update_fail "fatal: there is no earlier version recorded to go back to"
     ugit cat-file -e "$previous^{commit}" 2>/dev/null || update_fail "fatal: the recorded earlier version is no longer in this copy"
+    [ "$U_PREVIOUS" = "$previous" ] || update_fail "fatal: the recorded earlier version is not behind this one"
     printf '%s\n' "$head" >"$UPDATE_STATE/target"
-    update_roll_back "rolled back by hand" "$(running && echo 1 || echo 0)"
+    update_roll_back "rolled back by hand" "$(running && echo 1 || echo 0)" true "$previous"
 }
 
 update_oneline() {
     case "$U_STATE" in
-    available) echo "${U_HEAD:0:7} on $U_BRANCH, update waiting: $1" ;;
-    *) echo "${U_HEAD:0:7} on $U_BRANCH_NOW, $(update_state_text)" ;;
+    available) echo "$(update_label "$U_HEAD") on $U_BRANCH, $(update_label "$U_TARGET") is waiting: $1" ;;
+    *) echo "$(update_label "$U_HEAD") on $U_BRANCH_NOW, $(update_state_text)" ;;
     esac
 }
 
@@ -3436,14 +3863,18 @@ update_status() {
     result=$(cat "$UPDATE_STATE/result.json" 2>/dev/null || true)
     if [ "$json" = 1 ]; then
         [ -n "$summary" ] || summary="$(update_meta_json)}"
-        printf '%s,"previous":%s,"result":%s}\n' "${summary%\}}" "$(json_quote "$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)")" "${result:-null}"
+        printf '%s,"result":%s}\n' "${summary%\}}" "${result:-null}"
         exit 0
     fi
     update_oneline "$summary"
     [ "$full" = full ] || exit 0
     last=$(update_last_result "$result")
     [ -z "$last" ] || echo "$last"
-    [ ! -s "$UPDATE_STATE/previous" ] || echo "before the last update: $(head -c 7 "$UPDATE_STATE/previous") (banditshell update rollback goes back)"
+    if [ -n "$U_PREVIOUS" ]; then
+        echo "banditshell update rollback goes back to $(update_label "$U_PREVIOUS")"
+    elif [ "$U_BRANCH" != stable ] && [ -s "$UPDATE_STATE/previous" ]; then
+        echo "before the last update: $(head -c 7 "$UPDATE_STATE/previous")"
+    fi
     exit 0
 }
 
@@ -3624,6 +4055,9 @@ unstick)
 watchdog)
     [ $# -eq 0 ] || nope watchdog "$1"
     watchdog
+    ;;
+triage)
+    triage "$@"
     ;;
 status)
     [ $# -eq 0 ] || migrate_or_fail status "$@"

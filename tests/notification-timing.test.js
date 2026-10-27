@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/notification-timing.js"), "utf8");
-const Timing = new Function(src + "\nreturn { span, muteLength, snoozeLength, muted, mutedLine, due, snoozeAdd };")();
+const Timing = new Function(src + "\nreturn { span, muteLength, snoozeLength, muted, mutedLine, due, snoozeAdd, hushAllowed, popupTimeout, wakeTimeout };")();
 
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
@@ -73,4 +73,43 @@ test("snoozing the same entry again moves its deadline", () => {
     const both = Timing.snoozeAdd(once, b, 200);
     const again = Timing.snoozeAdd(both, a, 900);
     assert.deepStrictEqual(again.map(i => [i.entry.name, i.at]), [["b", 200], ["a", 900]]);
+});
+
+test("a press needs a snooze length, or an app key to mute or unmute", () => {
+    assert.strictEqual(Timing.hushAllowed("snooze", HOUR, ""), true);
+    assert.strictEqual(Timing.hushAllowed("snooze", 0, "discord"), false);
+    assert.strictEqual(Timing.hushAllowed("mute", 0, "discord"), true);
+    assert.strictEqual(Timing.hushAllowed("mute", HOUR, ""), false);
+    assert.strictEqual(Timing.hushAllowed("mute", -1, "discord"), false);
+    assert.strictEqual(Timing.hushAllowed("unmute", 0, "discord"), true);
+    assert.strictEqual(Timing.hushAllowed("unmute", 0, ""), false);
+    assert.strictEqual(Timing.hushAllowed("shout", HOUR, "discord"), false);
+});
+
+test("a popup stays for as long as the app asked", () => {
+    assert.strictEqual(Timing.popupTimeout(8000, false, 5000), 8000);
+});
+
+test("an app that asks for the server default gets the shell's timeout", () => {
+    assert.strictEqual(Timing.popupTimeout(-1, false, 5000), 5000);
+    assert.strictEqual(Timing.popupTimeout(undefined, false, 5000), 5000);
+});
+
+test("an expire timeout of 0 never expires on its own, as the spec says", () => {
+    assert.strictEqual(Timing.popupTimeout(0, false, 5000), 0);
+});
+
+test("a critical popup never expires, whatever the app asked", () => {
+    assert.strictEqual(Timing.popupTimeout(8000, true, 5000), 0);
+    assert.strictEqual(Timing.popupTimeout(-1, true, 5000), 0);
+});
+
+test("a woken popup keeps the time it had, and one that never expires still never does", () => {
+    assert.strictEqual(Timing.wakeTimeout(8000, false, true, 5000), 8000);
+    assert.strictEqual(Timing.wakeTimeout(0, false, true, 5000), 0);
+    assert.strictEqual(Timing.wakeTimeout(0, true, false, 5000), 0);
+});
+
+test("a woken popup restored from history counts down the shell's timeout", () => {
+    assert.strictEqual(Timing.wakeTimeout(0, false, false, 5000), 5000);
 });

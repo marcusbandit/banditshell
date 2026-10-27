@@ -39,10 +39,14 @@ Item {
             if (!Files.searching)
                 root.forceActiveFocus();
         }
+
+        function onWindowOpenChanged(): void {
+            keys.clear();
+        }
     }
 
     Keys.onPressed: event => {
-        if (settings.up || prompt.up)
+        if (settings.up || prompt.up || conflict.up)
             return;
 
         if (sheet.open) {
@@ -137,6 +141,8 @@ Item {
         case Qt.Key_Escape:
             if (properties.visible) {
                 properties.close();
+            } else if (FilesFind.running) {
+                FilesFind.stop();
             } else if (Files.search) {
                 Files.setSearch("");
             } else if (Files.picked.length > 0) {
@@ -210,6 +216,9 @@ Item {
         case "destroy":
             root.confirmDelete();
             return true;
+        case "undo":
+            FilesUndo.undo();
+            return true;
         case "properties":
             if (Files.currentPath)
                 properties.show(Files.currentPath);
@@ -246,6 +255,7 @@ Item {
         else
             Files.setCursor(to);
         grid.reveal(to);
+        keys.keyed();
     }
 
     function move(delta: int, extend: bool): void {
@@ -264,7 +274,17 @@ Item {
         const one = picks.length === 1 ? picks[0] : null;
         const acts = [];
 
-        if (one)
+        if (one && one.key && one.kind !== "dir")
+            acts.push({
+                icon: "folder_open",
+                label: "Show in its folder",
+                run: () => Files.reveal(Files.pathOf(one))
+            }, {
+                icon: "open_in_new",
+                label: "Open with…",
+                run: () => Files.openWith(Files.pathOf(one))
+            });
+        else if (one)
             acts.push({
                 icon: one.kind === "dir" ? "folder_open" : "open_in_new",
                 label: one.kind === "dir" ? "Open" : "Open with…",
@@ -281,7 +301,7 @@ Item {
             run: () => Files.clip(paths, true)
         });
 
-        if (one)
+        if (one && !one.key)
             acts.push({
                 icon: "edit",
                 label: "Rename…",
@@ -306,7 +326,7 @@ Item {
             acts.push({
                 icon: "info",
                 label: "Properties",
-                run: () => properties.show(Files.join(Files.cwd, one.name))
+                run: () => properties.show(Files.pathOf(one))
             });
 
         return acts;
@@ -372,17 +392,17 @@ Item {
                 Files.makeFile(name);
             else
                 Files.makeFolder(name);
-        });
+        }, null, "create");
     }
 
     function renameCurrent(): void {
         const entry = Files.current;
-        if (!entry)
+        if (!entry || entry.key)
             return;
-        const path = Files.join(Files.cwd, entry.name);
+        const path = Files.pathOf(entry);
 
         const dot = entry.name.lastIndexOf(".");
-        prompt.ask(`Rename ${entry.name}`, entry.name, dot > 0 ? dot : 0, name => Files.renameTo(path, name));
+        prompt.ask(`Rename ${entry.name}`, entry.name, dot > 0 ? dot : 0, name => Files.renameTo(path, name), name => Files.renameRefusal(path, name), "rename");
     }
 
     function confirmDelete(): void {
@@ -393,7 +413,23 @@ Item {
         prompt.ask(`Delete ${root.counted} permanently? Type "delete" to confirm`, "", 0, answer => {
             if (answer.toLowerCase() === "delete")
                 Files.deleteForever(paths);
-        });
+        }, null, "delete");
+    }
+
+    Connections {
+        target: Files
+
+        function onVisibleChanged(): void {
+            const at = FilesUndo.shown.map(name => Files.indexOf(name)).filter(index => index >= 0);
+            if (at.length === 0)
+                return;
+            FilesUndo.shown = [];
+            const first = Math.min(...at);
+            Files.cursorName = Files.visible[first].name;
+            Files.anchorName = Files.cursorName;
+            grid.reveal(Math.max(...at));
+            grid.reveal(first);
+        }
     }
 
     ActionSheet {
@@ -416,6 +452,16 @@ Item {
 
     NamePrompt {
         id: prompt
+
+        anchors.fill: parent
+
+        z: 200
+
+        onDismissed: Qt.callLater(root.forceActiveFocus)
+    }
+
+    PasteConflict {
+        id: conflict
 
         anchors.fill: parent
 
@@ -520,6 +566,8 @@ Item {
 
             entries: Files.visible
             dragging: root.dragging
+            keyed: keys.active && Files.focus === "grid"
+            marked: Files.search.trim() !== ""
             dragPoint: root.dragging ? grid.mapFromItem(root, root.dragAt.x, root.dragAt.y) : Qt.point(-1, -1)
 
             onPicked: (index, modifiers) => {
@@ -536,7 +584,7 @@ Item {
             onMenuFor: (index, position) => {
                 Files.focus = "grid";
 
-                if (!Files.isPicked(Files.visible[index].name))
+                if (!Files.isPicked(Files.keyOf(Files.visible[index])))
                     Files.setCursor(index);
                 const at = grid.mapToItem(root, position.x, position.y);
                 sheet.popup(at.x, at.y, root.fileActions());
@@ -548,7 +596,7 @@ Item {
                 sheet.popup(at.x, at.y, root.folderActions());
             }
             onLifted: index => {
-                if (!Files.isPicked(Files.visible[index].name))
+                if (!Files.isPicked(Files.keyOf(Files.visible[index])))
                     Files.setCursor(index);
                 root.dragging = true;
                 root.exported = false;
@@ -616,28 +664,39 @@ Item {
         }
     }
 
-    StyledText {
+    Item {
         id: failure
 
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: terminal.top
 
-        visible: Files.failure !== ""
-        height: failure.visible ? failure.implicitHeight : 0
+        visible: Files.failure !== "" || FilesUndo.notice !== ""
+        height: failure.visible ? failureText.implicitHeight : 0
 
-        leftPadding: Appearance.padding.normal
-        rightPadding: Appearance.padding.normal
-        topPadding: Appearance.padding.small
-        bottomPadding: Appearance.padding.small
+        StyledText {
+            id: failureText
 
-        text: Files.failure
-        font.pixelSize: Files.zoomed(Appearance.font.size.small)
-        color: Appearance.colour.alarm
-        elide: Text.ElideRight
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+
+            leftPadding: Appearance.padding.normal
+            rightPadding: Appearance.padding.normal
+            topPadding: Appearance.padding.small
+            bottomPadding: Appearance.padding.small
+
+            text: Files.failure || FilesUndo.notice
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
+            color: Files.failure ? Appearance.colour.alarm : Appearance.colour.text
+            elide: Text.ElideRight
+        }
 
         TapHandler {
-            onTapped: Files.failure = ""
+            onTapped: {
+                Files.failure = "";
+                FilesUndo.notice = "";
+            }
         }
     }
 
@@ -719,10 +778,10 @@ Item {
 
         const target = Files.visible[index];
 
-        if (!target || target.kind !== "dir" || !target.open || Files.isPicked(target.name))
+        if (!target || target.kind !== "dir" || !target.open || Files.isPicked(Files.keyOf(target)))
             return;
 
-        Files.moveInto(moving, Files.join(Files.cwd, target.name));
+        Files.moveInto(moving, Files.pathOf(target));
     }
 
     Follow {
@@ -769,5 +828,9 @@ Item {
         id: hints
 
         anchors.fill: parent
+    }
+
+    FocusVisible {
+        id: keys
     }
 }

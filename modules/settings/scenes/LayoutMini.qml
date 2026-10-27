@@ -13,6 +13,7 @@ Item {
     property bool big: false
     property bool lit: false
     property bool live: true
+    property bool seen: true
 
     readonly property color pane: Appearance.colour.pane
     readonly property color edge: root.big || root.lit ? Qt.alpha(Appearance.colour.accent, Appearance.opacity.trail) : Appearance.colour.fillStronger
@@ -55,12 +56,16 @@ Item {
     SceneClock {
         id: clock
 
+        seen: root.seen
+
         duration: 4800
         live: root.live && root.visible
     }
 
     SceneClock {
         id: orbit
+
+        seen: root.seen
 
         duration: 9000
         still: 0
@@ -69,6 +74,8 @@ Item {
 
     SceneClock {
         id: wobble
+
+        seen: root.seen
 
         duration: 2400
         still: 0

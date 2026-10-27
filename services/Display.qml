@@ -432,6 +432,14 @@ Singleton {
         });
     }
 
+    function nightAt(now: double): var {
+        return Nightlight.nightAt(root.scheduleMode, now, {
+            place: Localisation.sunPlace,
+            from: root.warmFrom,
+            to: root.warmTo
+        });
+    }
+
     function holdSchedule(): void {
         if (root.scheduleMode === "off")
             return;

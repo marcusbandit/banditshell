@@ -5,6 +5,9 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "ranking.js" as Ranking
+import "clipboard-sweep.js" as Sweep
+import "clipboard-shelf.js" as Shelf
+import "clipboard-secret.js" as Secret
 
 Singleton {
     id: root
@@ -17,9 +20,13 @@ Singleton {
 
     property var entries: []
 
+    readonly property int unpinned: root.entries.filter(e => !e.pinned).length
+
     property bool loaded: false
 
     property bool keep: true
+
+    property bool unreadable: false
 
     property bool reaped: false
 
@@ -179,8 +186,7 @@ Singleton {
     }
 
     function basename(p: string): string {
-        const cut = p.lastIndexOf("/");
-        return cut < 0 ? p : p.slice(cut + 1);
+        return Sweep.basename(p);
     }
 
     function age(recorded: real): string {
@@ -208,11 +214,13 @@ Singleton {
     }
 
     function identity(e: var): string {
-        if (e.file)
-            return `file:${e.file}`;
-        if ((e.paths ?? []).length)
-            return `paths:${e.paths.join("\u0000")}`;
-        return `text:${e.text ?? ""}`;
+        return Shelf.identity(e);
+    }
+
+    readonly property string mask: Secret.MASK
+
+    function sensitive(entry: var): bool {
+        return Secret.sensitive(entry);
     }
 
     function absorb(line: string): void {
@@ -225,7 +233,7 @@ Singleton {
             return;
         }
 
-        if (ev.state !== "data") {
+        if (ev.state !== "data" || Secret.marked(ev.types)) {
             root.current = "";
             return;
         }
@@ -270,6 +278,7 @@ Singleton {
         const rest = root.entries.filter(e => root.identity(e) !== key);
         root.entries = [entry, ...rest];
         root.current = entry.id;
+        root.wasCleared = false;
         root.prune();
         root.save();
     }
@@ -425,10 +434,81 @@ Singleton {
     }
 
     function clear(): void {
-        root.entries = root.entries.filter(e => e.pinned);
+        if (!root.entries.some(e => !e.pinned))
+            return;
+        root.letGo();
+        const unseen = !root.keep && !root.unreadable ? root.readable(Shelf.salvage(store.text())).filter(e => !e.pinned && !root.entries.some(m => root.identity(m) === root.identity(e))).length : 0;
+        root.shelf = Object.assign(Shelf.shelve(root.entries), {
+            unseen: unseen
+        });
+        root.shelfElapsed = 0;
+        root.entries = Shelf.kept(root.entries);
         root.current = "";
+        root.wasCleared = true;
         root.save();
+    }
+
+    readonly property int undoMs: 5000
+
+    property var shelf: null
+    property int shelfElapsed: 0
+    property var shelfHolders: []
+
+    readonly property bool shelfHeld: root.shelfHolders.length > 0
+
+    function holdShelf(who: var): void {
+        if (!root.shelfHolders.includes(who))
+            root.shelfHolders = [...root.shelfHolders.filter(w => w), who];
+    }
+
+    function releaseShelf(who: var): void {
+        root.shelfHolders = root.shelfHolders.filter(w => w && w !== who);
+    }
+
+    readonly property int shelved: root.shelf ? root.shelf.entries.length + (root.shelf.unseen ?? 0) : 0
+    readonly property int shelfKept: root.shelf ? root.shelf.before.length - root.shelf.entries.length : 0
+    readonly property bool clearSaves: root.keep || !root.unreadable
+
+    property bool wasCleared: false
+
+    function undo(): bool {
+        const shelf = root.shelf;
+        if (!shelf)
+            return false;
+        root.shelf = null;
+        root.wasCleared = false;
+        root.entries = Shelf.restored(root.entries, shelf);
+        root.prune();
+        root.save();
+        return true;
+    }
+
+    function letGo(): void {
+        if (!root.shelf)
+            return;
+        root.shelf = null;
+        if (!root.keep && !root.unreadable && root.loaded)
+            root.repair();
         root.sweep();
+    }
+
+    function repair(): void {
+        root.entries = Shelf.survivors(root.entries, root.readable(Shelf.salvage(store.text())));
+        root.keep = true;
+        console.log(`Clipboard: cleared while ${root.path} could not be read; it now holds the ${root.entries.length} entries that were kept.`);
+        root.write();
+    }
+
+    Timer {
+        interval: 100
+        repeat: true
+        running: root.shelf !== null && !root.shelfHeld
+
+        onTriggered: {
+            root.shelfElapsed += interval;
+            if (root.shelfElapsed >= root.undoMs)
+                root.letGo();
+        }
     }
 
     function sweep(): void {
@@ -439,19 +519,10 @@ Singleton {
         }
         root.sweepOwed = false;
 
-        const wanted = root.entries.filter(e => !!e.file).map(e => root.basename(e.file));
-
-        reaper.command = ["sh", "-c", `
-            dir=$1; shift
-            [ -d "$dir" ] || exit 0
-            keep=$(mktemp) || exit 0
-            printf '%s\\n' "$@" > "$keep"
-            find "$dir" -maxdepth 1 -type f -printf '%f\\n' 2>/dev/null \\
-                | grep -vxF -f "$keep" \\
-                | while IFS= read -r n; do rm -f -- "$dir/$n"; done
-            rm -f "$keep"
-            exit 0
-        `, "sh", root.blobs, ...wanted];
+        const command = Sweep.command(root.blobs, root.shelf ? root.entries.concat(root.shelf.entries) : root.entries, root.keep && root.loaded);
+        if (!command)
+            return;
+        reaper.command = command;
         reaper.running = true;
     }
 
@@ -618,10 +689,7 @@ Singleton {
                 root.keep = false;
             }
 
-            disk = disk.filter(e => e && (e.text || e.file || (e.paths ?? []).length));
-
-            for (const e of disk)
-                e.kind = root.classify(e);
+            disk = root.readable(disk);
 
             if (root.loaded) {
                 root.entries = root.reconcile(disk);
@@ -633,6 +701,8 @@ Singleton {
 
             if (Config.values.clipboard.importClipse)
                 clipse.reload();
+            else if (root.keep)
+                root.sweep();
         }
 
         onLoadFailed: err => {
@@ -649,8 +719,16 @@ Singleton {
 
             console.warn(`Clipboard: could not read ${root.path} (${err}); running from memory.`);
             root.keep = false;
+            root.unreadable = true;
             root.loaded = true;
         }
+    }
+
+    function readable(disk: var): var {
+        const kept = disk.filter(e => e && !Secret.marked(e.types) && (e.text || e.file || (e.paths ?? []).length));
+        for (const e of kept)
+            e.kind = root.classify(e);
+        return kept;
     }
 
     function reconcile(disk: var): var {
@@ -703,6 +781,11 @@ Singleton {
     Component.onCompleted: mkdir.running = true
 
     Component.onDestruction: {
+        if (root.shelf && !root.keep && !root.unreadable && root.loaded) {
+            store.blockWrites = true;
+            root.repair();
+            return;
+        }
         if (!saveDelay.running)
             return;
         store.blockWrites = true;

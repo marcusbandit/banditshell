@@ -1,6 +1,8 @@
 pragma ComponentBehavior: Bound
 
+import QtQuick
 import Quickshell
+import qs.config
 import qs.services
 import qs.modules
 import qs.modules.files
@@ -8,9 +10,16 @@ import qs.modules.island
 import qs.modules.lock
 import qs.modules.pen
 import qs.modules.picker
+import qs.modules.tour
 import qs.modules.wallpaper
 
 ShellRoot {
+    readonly property var trace: Trace
+    readonly property bool configLoaded: Config.loaded
+
+    onConfigLoadedChanged: Trace.mark("config loaded")
+    Component.onCompleted: Trace.mark(Config.loaded ? "shell built, config loaded" : "shell built")
+
     readonly property var compositorSync: CompositorSync
     readonly property var idle: Idle
     readonly property var screenTimeApps: UsageApps
@@ -60,7 +69,14 @@ ShellRoot {
             }
 
             ShellWindow {
+                id: shellWindow
+
                 screen: scope.modelData
+            }
+
+            TourWindow {
+                screen: scope.modelData
+                shell: shellWindow
             }
 
             FrameExclusions {

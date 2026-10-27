@@ -76,3 +76,23 @@ function due(items, now) {
 function snoozeAdd(items, entry, at) {
     return (items ?? []).filter(item => item && item.entry !== entry).concat([{ entry, at }]);
 }
+
+function hushAllowed(kind, ms, key) {
+    if (kind === "snooze")
+        return ms > 0;
+    if (kind === "mute")
+        return !!key && ms >= 0;
+    return kind === "unmute" && !!key;
+}
+
+function popupTimeout(asked, critical, fallback) {
+    if (critical || asked === 0)
+        return 0;
+    return asked > 0 ? asked : fallback;
+}
+
+function wakeTimeout(timeout, critical, live, fallback) {
+    if (timeout > 0 || critical || live)
+        return timeout;
+    return fallback;
+}

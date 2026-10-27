@@ -15,7 +15,9 @@ Singleton {
     readonly property var page: root.hub ? null : Catalogue.PAGE_BY_ID[root.current] ?? null
     readonly property var cat: root.hub ? Catalogue.CAT_BY_ID[root.current] : Catalogue.CAT_BY_ID[root.page?.cat ?? "connections"]
     readonly property string title: root.hub ? root.cat.name : Catalogue.nameOf(root.page, SettingsState)
-    readonly property string preview: root.hub ? root.cat.preview : root.page?.preview ?? ""
+    readonly property var hoveredGroup: !root.hub && root.hovered?.page === root.current && root.hovered?.group?.preview ? root.hovered.group : null
+    readonly property string preview: root.hub ? root.cat.preview : root.hoveredGroup?.preview ?? root.page?.preview ?? ""
+    readonly property string paneTitle: root.hoveredGroup ? String(Catalogue.val(root.hoveredGroup.t, SettingsState) ?? root.title) : root.title
 
     property var hovered: null
     property var pin: null
@@ -39,7 +41,12 @@ Singleton {
 
     readonly property bool reduceMotion: SettingsState.v("reduceMotion")
 
+    property bool sceneSeen: true
+
     property var openRows: ({})
+
+    property var trails: ({})
+    readonly property real resetColumn: Object.values(root.trails).reduce((a, b) => Math.max(a, b), 0)
 
     property real scroll: 0
     property real resumeScroll: 0
@@ -58,9 +65,24 @@ Singleton {
     onPaneOutChanged: root.remember()
     onScrollChanged: root.remember()
 
+    function takeReveal(): void {
+        if (!Settings.reveal)
+            return;
+        const found = Catalogue.resolve(Settings.reveal);
+        if (found?.row) {
+            root.query = "";
+            root.openHit({
+                page: Catalogue.PAGE_BY_ID[found.page],
+                row: found.row
+            });
+        }
+        Settings.reveal = "";
+    }
+
     Component.onCompleted: {
         if (Settings.page && Settings.page !== root.current)
             root.go(Settings.page);
+        Qt.callLater(root.takeReveal);
         const was = Relaunch.recall("settingsView");
         if (!was)
             return;
@@ -77,13 +99,15 @@ Singleton {
     }
 
     function go(id: string): void {
-        const known = Catalogue.CAT_BY_ID[id] || Catalogue.PAGE_BY_ID[id];
-        root.current = known ? id : "connections";
+        const target = Catalogue.CAT_BY_ID[id] || Catalogue.PAGE_BY_ID[id] ? id : "connections";
+        const span = Settings.open && root.current !== target ? Trace.begin(`settings page ${target}`, "", 150, 1500) : null;
+        root.current = target;
         root.hovered = null;
         root.pin = null;
         root.paneOut = false;
         root.turn++;
         Settings.page = root.current;
+        Trace.step("switched", span);
     }
 
     function isOpen(uid: string): bool {
@@ -111,8 +135,8 @@ Singleton {
     }
 
     function openHit(hit: var): void {
-        root.query = "";
-        root.go(hit.page.id);
+        if (hit.page.id !== root.current)
+            root.go(hit.page.id);
         let r = hit.row;
         while (r.parent) {
             root.setOpen(r.parent.uid, true);
@@ -161,6 +185,20 @@ Singleton {
     property var toast: null
     property int toastSerial: 0
 
+    function noteTrail(uid: string, width: real): void {
+        if (!uid)
+            return;
+        const had = root.trails[uid];
+        if (width < 0 ? had === undefined : had === width)
+            return;
+        const next = Object.assign({}, root.trails);
+        if (width < 0)
+            delete next[uid];
+        else
+            next[uid] = width;
+        root.trails = next;
+    }
+
     function drop(text: string, icon: string, action: var): void {
         if (icon === "error")
             Notify.alert("error");
@@ -196,15 +234,7 @@ Singleton {
         }
 
         function onRevealChanged(): void {
-            if (!Settings.reveal)
-                return;
-            const found = Catalogue.resolve(Settings.reveal);
-            if (found?.row)
-                root.openHit({
-                    page: Catalogue.PAGE_BY_ID[found.page],
-                    row: found.row
-                });
-            Settings.reveal = "";
+            root.takeReveal();
         }
     }
 }

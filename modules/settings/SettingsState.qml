@@ -79,9 +79,13 @@ Singleton {
                 read: v => Durations.choiceFromMinutes(v),
                 write: v => Durations.minutesFromChoice(v)
             },
+            surfaceAlpha: {
+                read: v => Catalogue.seeThrough(v),
+                write: v => Catalogue.seeThrough(v)
+            },
             lowAction: {
-                read: v => v === "nothing" ? v : `${v} at ${Battery.nearlyEmptyPercent}%`,
-                write: v => String(v).split(" ")[0]
+                read: v => Battery.nearlyEmptyChoice(v),
+                write: v => Battery.nearlyEmptyAction(v)
             },
             dndUntil: {
                 read: v => Notifications.endsLabel(v),
@@ -124,6 +128,7 @@ Singleton {
             largerText: "access.largerText",
             contrast: "access.moreContrast",
             fromWall: "themeFromWallpaper",
+            scheme: "colour.mode",
             accent: "colour.accent",
             surface: "colour.surface",
             surfaceAlpha: "material.surfaceAlpha",
@@ -149,6 +154,7 @@ Singleton {
             workspaceSlide: "anim.workspaceSlide",
             sidebarW: "sidebar.width",
             sbStyle: "sidebar.style",
+            sbGlance: "sidebar.glance",
             sbBright: "sidebar.status.brightness",
             wsStyle: "sidebar.workspaces.style",
             iconMode: "sidebar.workspaces.iconMode",
@@ -157,6 +163,9 @@ Singleton {
             tray: "sidebar.tray.enabled",
             specialsShown: "sidebar.workspaces.rack",
             sbClock: "sidebar.clock.style",
+            sbClockSize: "sidebar.clock.size",
+            sbClockWide: "sidebar.clock.wideStyle",
+            sbClockWideSize: "sidebar.clock.wideSize",
             sbDate: "sidebar.clock.date",
             sbSound: "sidebar.status.sound",
             sbNet: "sidebar.status.network",
@@ -259,6 +268,10 @@ Singleton {
             idleOff: "idle.screensOff",
             idleSuspend: "idle.sleep",
             rightForward: "calendar.rightGoesForward",
+            weatherShow: "weather.show",
+            weatherPlace: "weather.location",
+            weatherUnits: "weather.units",
+            weatherMinutes: "weather.minutes",
             shotDir: "picker.dir",
             shotEditor: "picker.editor",
             outline: "picker.outline",
@@ -270,6 +283,7 @@ Singleton {
             lockDesat: "lock.desaturate",
             filesView: "files.view",
             filesSort: "files.sort",
+            filesReversed: "files.reversed",
             filesHidden: "files.hidden",
             filesMarkdown: "files.markdown",
             filesZoom: "files.zoom",
@@ -427,6 +441,30 @@ Singleton {
         if (root.plannedKey(k))
             return root.planDefaults[k];
         return undefined;
+    }
+
+    function resettable(k: string): bool {
+        const cfg = root.configBacked[k];
+        if (!cfg || !Catalogue.resettable(root.rowOf(k)))
+            return false;
+        const t = root.transforms[k];
+        if (!t)
+            return true;
+        const raw = Config.get(cfg);
+        return JSON.stringify(t.write(t.read(raw))) === JSON.stringify(raw);
+    }
+
+    function offersReset(k: string): bool {
+        return root.resettable(k) && Catalogue.changed(root.v(k), root.defaultOf(k));
+    }
+
+    function reset(k: string): void {
+        const r = root.rowOf(k);
+        const before = root.v(k);
+        root.set(k, root.defaultOf(k));
+        const after = root.v(k);
+        if (r?.kind === "text" && !root.muteLog && JSON.stringify(after) !== JSON.stringify(before))
+            root.log(k, r, before, after);
     }
 
     function lookup(values: var, key: string): var {
@@ -663,8 +701,11 @@ Singleton {
 
     function set(k: string, value: var): void {
         const before = root.v(k);
-        if (JSON.stringify(before) === JSON.stringify(value))
+        if (JSON.stringify(before) === JSON.stringify(value)) {
+            if (k === "scheme")
+                DarkMode.choose(value);
             return;
+        }
         root.denied = false;
         root.write(k, value);
         if (root.denied)
@@ -981,7 +1022,7 @@ Singleton {
             return "";
         if (sub === "hz" && live && String(live.mode).split("@")[1] === String(mine.mode).split("@")[1])
             return "";
-        return "not applied yet";
+        return "needs Apply";
     }
 
     function resetStage(): void {
@@ -1236,9 +1277,12 @@ Singleton {
     readonly property string vpnOn: Tunnels.activeName
 
     readonly property string hotspotStatus: Hotspot.status
-    readonly property string alertsDetail: AlertSounds.available ? "notifications · low battery · errors" : "pw-play is not installed, so alerts stay silent"
+    readonly property string alertsDetail: AlertSounds.available ? "" : "pw-play is not installed, so alerts stay silent"
     readonly property bool hotspotBlocked: Hotspot.blocker !== "" && !Hotspot.on
     readonly property string hotspotPasswordTrouble: Hotspot.passwordTrouble
+    readonly property string weatherPlaceState: root.weatherPlaceTrouble ? "" : (Weather.location ? "" : Weather.ready && Weather.fetchedFor === "" && Weather.place ? `from your connection: ${Weather.place}` : "from your connection")
+    readonly property string weatherPlaceTrouble: Weather.failed && Weather.failure === "place" && Weather.failedFor === Weather.location ? Weather.location ? `no place called "${Weather.location}"` : "could not place you" : ""
+    readonly property var weatherSuggestion: root.weatherPlaceTrouble !== "" ? Weather.placeSuggestion : null
     readonly property string wifiState: Hotspot.active ? "running your hotspot" : root.wifiNet || "not connected"
 
     readonly property var outputs: Audio.sinks.map(n => [n.name, Audio.deviceLabel(n)])
@@ -1872,6 +1916,17 @@ Singleton {
         return mode === "sunset" ? `tonight ${span}` : span;
     }
 
+    readonly property bool lightShell: Appearance.light
+
+    readonly property string schemeDetail: {
+        const apps = !DarkMode.available ? "apps keep their own colours" : DarkMode.appsDisagree ? `apps still ${DarkMode.dark ? "dark" : "light"}` : "shell and apps";
+        if (Appearance.mode !== "auto")
+            return apps;
+        const flip = DarkMode.nextFlip > 0 ? `${DarkMode.night ? "dark" : "light"} until ${TimeFormat.time(new Date(DarkMode.nextFlip), false)}` : DarkMode.night ? "dark" : "light all day";
+        const when = DarkMode.scheduled ? flip : "dark until night light has a schedule";
+        return `${when} · ${apps}`;
+    }
+
     readonly property string zoneSuggested: Localisation.suggestedZone
 
     readonly property string autoZoneDetail: !Localisation.geoclueProbed ? "" : !Localisation.geoclueInstalled ? "needs geoclue, which is not installed" : "from where you are · password needed"
@@ -1987,8 +2042,9 @@ Singleton {
         const r = root.rowOf(change?.k);
         if (!cfg || !r)
             return change;
-        const old = Config.upgradeValue(cfg, change.old);
-        const value = Config.upgradeValue(cfg, change.v);
+        const lift = change.k === "surfaceAlpha" ? Catalogue.loggedSeeThrough : v => v;
+        const old = lift(Config.upgradeValue(cfg, change.old));
+        const value = lift(Config.upgradeValue(cfg, change.v));
         if (old === change.old && value === change.v)
             return change;
         return Object.assign({}, change, {

@@ -12,6 +12,7 @@ Item {
     property string detail: ""
     property color detailColour: Appearance.colour.textFaint
     property int detailLines: 1
+    property string pending: ""
     property bool selected: false
     property bool off: false
     property bool interactive: true
@@ -19,6 +20,7 @@ Item {
     property bool flashing: false
     property real flashStamp: 0
     property real minHeight: Appearance.sizes.rowHeight
+    property real loose: 0
     property Component lead: null
     property Component under: null
 
@@ -38,7 +40,8 @@ Item {
     readonly property real leadWidth: leadSlot.visible ? leadSlot.width + root.gapX : 0
     readonly property real inner: root.width - root.padX * 2
     readonly property real trailWidth: trail.implicitWidth
-    readonly property bool wrapped: root.trailWidth > 0 && root.leadWidth + 150 + root.gapX + root.trailWidth > root.inner
+    readonly property real fixedTrail: root.trailWidth - root.loose
+    readonly property bool wrapped: root.fixedTrail > 0 && root.leadWidth + 150 + root.gapX + root.fixedTrail > root.inner
 
     readonly property real lineHeight: Math.max(words.implicitHeight, leadSlot.visible ? leadSlot.height : 0, root.wrapped ? 0 : trail.implicitHeight)
 
@@ -163,6 +166,26 @@ Item {
             maximumLineCount: root.detailLines
             color: root.notice ? Appearance.colour.textDim : root.detailColour
             visible: root.detail !== ""
+        }
+
+        Row {
+            visible: root.pending !== ""
+            spacing: Appearance.padding.small
+
+            SquircleRect {
+                y: (Appearance.font.line.small - height) / 2
+                width: 6
+                height: 6
+                pill: "object"
+                color: Appearance.colour.accent
+            }
+
+            StyledText {
+                width: words.width - 6 - Appearance.padding.small
+                text: root.pending
+                wrapMode: Text.Wrap
+                color: Appearance.colour.accent
+            }
         }
 
         Loader {

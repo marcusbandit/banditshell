@@ -463,7 +463,8 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   `config/Appearance.qml`, so the shell and Hyprland's window borders are the same object rather
   than two things that happen to match. One hue family climbing near-black to silvery white, with a
   saturated end (`dim` / `mid` / `bright`) spent sparingly so a bright stop reads as a specular
-  highlight, plus one `alarm` outside the family.
+  highlight, plus one `alarm` outside the family and the theme's `brass` as `warning`, a second
+  colour outside it for what needs a hand soon but is no alarm.
   - **The Monocraft constraint is load-bearing.** Pixel-font stems are one device pixel, so
     anti-aliasing has nothing to work with and mid-tones turn text to mush. Pixel text goes a bright
     stop on a dark one. **Never on a mid tone.** That is why the panel is the darkest ramp stop and
@@ -483,11 +484,32 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   | pressed | `fillStrong` | `fillStronger` |
   | selected | `fillStrong`, label in `text` | `accentFill`, glyph in `accent` |
   | disabled | `Appearance.opacity.disabled` | `Appearance.opacity.disabled` |
-  | focus | `Appearance.stroke.ring` in `accent` | `Appearance.stroke.ring` in `accent` |
+  | focus | `FocusMark`: `Appearance.stroke.ring` in `accent`, a hair outside | the same |
 
   Applied in `MenuRow`, `Button` (a transparent plate takes the row column, an opaque one blends
-  toward its label colour by the same fill step) and the settings tiles. `textGhost` is for
+  toward its label colour by the same fill step) and the settings tiles. A switched-on toggle,
+  a checked button and the chosen segment of a `Segments` row are one thing, a state, so they
+  share the solid `accent` plate with `accentText` on it. An off toggle is a `textFaint` ring
+  around `fill` with a `textDim` knob. Decided 2026-10-25 in #172 and #175. `textGhost` is for
   decorative rules only; readable text, placeholders and disabled glyphs use `textFaint`.
+- **Focus is a mark around a thing, and only the keyboard draws it.** Decided 2026-10-26 in #179,
+  after two selected files with one outline on them left a reviewer asking what the outline meant.
+  Selection fills the inside of a thing. Keyboard focus is `components/FocusMark.qml`: an `accent`
+  ring one stem wide, drawn a hair outside the thing with a gap between, so a selected and focused
+  item wears both and neither hides the other. It shows once a key has moved focus and goes the
+  moment the pointer moves or presses; hover never draws it. While it shows, hover is held: a
+  pointer resting where the keys left it lights no plate and opens no tooltip until it moves, and
+  a `Button` given `keyed: keys.active` does the same. `components/FocusVisible.qml` tracks
+  that for a panel, the way a browser's `:focus-visible` does. A panel whose hover moves its one
+  selection, as the power menu's does, needs no mark: the highlight already is what Enter presses.
+  A panel where the two can sit on different items adopts it like this:
+
+      FocusVisible { id: keys }                                once, in the panel; its keys call keys.keyed()
+      FocusMark { shown: keys.active && <this one has focus> }   inside each item that can take focus
+
+  The mark takes the item's own `pill` role (`object` on a button, `place` on a switch or a
+  segments row, which take focus as one control) or its corner as `around`. Items that touch their
+  neighbours leave `FocusMark.reach` of room, or lift the focused one with `z`, as the file grid does.
 - **Small constants have names.** `Appearance.padding.hair` (4), `Appearance.stroke.line` (1) and
   `ring` (the font stem), `Appearance.opacity.disabled` / `trail` / `glow`, the icon ladder
   `Appearance.icon.small` to `hero`, `Appearance.press.lift` and `grab`, and
@@ -637,6 +659,9 @@ banditshell/
 │   ├── BatteryMeter.qml         a drawn battery: every level, and charging as motion
 │   ├── Slider.qml               a bead on a rail; read-only loses the bead
 │   ├── Toggle.qml               a switch
+│   ├── FocusMark.qml            the ring a hair outside whatever the keyboard is on
+│   ├── FocusVisible.qml         whether a panel's keys or its pointer spoke last;
+│   │                            the mark shows only while it is the keys
 │   ├── reveal.frag             the blob a new wallpaper opens through
 │   ├── RevealMask.qml          its QML side; a layer.effect, so it masks anything
 │   ├── WallpaperSource.qml      one wallpaper, whatever kind of file it turns out
@@ -1058,6 +1083,13 @@ banditshell/
 │   │                            having. THE SHELL OWNS THE DIRECTORY; see 17.
 │   │                            home and openWith forward to System, and a
 │   │                            reveal request from System lands here
+│   ├── FilesFind.qml            the file browser's search across home: one
+│   │                            bs-ls --find walk at a time, streamed in
+│   │                            batches, stopped by a keystroke or Esc
+│   ├── FilesUndo.qml            what Ctrl+Z can take back in the browser:
+│   │                            trash, move, rename, paste. A delete comes
+│   │                            back through gio's own trash record, and
+│   │                            nothing is overwritten on the way back
 │   ├── FileSearch.qml           files by name under home (fd), words inside
 │   │                            them (ripgrep, one line a file, eight files,
 │   │                            stopped the moment the line changes; never
@@ -1164,9 +1196,12 @@ banditshell/
 │   │                            last reading is older than `weather.minutes`;
 │   │                            the week ahead from Open-Meteo at the
 │   │                            coordinates wttr.in returns, else wttr.in's
-│   │                            three days
+│   │                            three days; a place wttr.in does not know is
+│   │                            looked up once in Open-Meteo's geocoder for a
+│   │                            suggestion
 │   ├── weather.js               both answers read into days, and WMO codes into
-│   │                            the icons wttr.in's codes already used
+│   │                            the icons wttr.in's codes already used; the
+│   │                            geocoder's towns ranked by edit distance
 │   ├── WhatsNew.qml              the update's own changelog, read: entries
 │   │                            newer than the marker in the user's config
 │   │                            are what the What's new card shows. The log
@@ -1533,7 +1568,7 @@ banditshell/
 │   │   │                        so the pick is seen as it will look;
 │   │   │                        everything but the picker is dimmed by a
 │   │   │                        third, and the cards and capsules cast
-│   │   │                        shadows. A focus ring only after an arrow key
+│   │   │                        shadows. The focus mark only after an arrow key
 │   │   ├── WallpaperCover.qml   the wallpaper over the windows while the picker
 │   │   │                        is up, under the chassis: it blooms in from the
 │   │   │                        bottom edge through the reveal blob once the
@@ -1628,8 +1663,15 @@ banditshell/
 │   │                            needed, commands changed"), the What's new
 │   │                            entries of the change BEFORE it is taken,
 │   │                            one button that says Update or Update and
-│   │                            restart, and the outcome of the last
-│   │                            update, a rollback included. The What's
+│   │                            restart, Go back to <id> once one is
+│   │                            recorded, asked once in its place, and the
+│   │                            outcome of the last update, a rollback
+│   │                            included. After a go-back the outcome
+│   │                            leads with Report what broke, a few lines
+│   │                            that banditshell triage shows in a
+│   │                            terminal before anything is sent, and
+│   │                            offers a quiet Reinstall the version you
+│   │                            just left, asked once. The What's
 │   │                            new card is marked seen when dismissed
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)
@@ -1706,8 +1748,12 @@ banditshell/
 │       ├── RailPips.qml         the rail at rest: one mark per workspace, drawn from
 │       │                        WorkspaceModel, a bar as long as the windows it holds
 │       ├── RailAnomalies.qml    the rail at rest: a status icon only while it is unusual
+│       ├── RailGlance.qml       the glance inside the rail: time over a level bar, or wide's digits
+│       ├── RestingGlance.qml    the glance outside it: the top pill and the rail tabs, as blobs
 │       ├── anomalies.js         which marks are unusual, in what order, and how a gone
 │       │                        one is held while it fades (tests/sidebar-anomalies)
+│       ├── placement.js         the workspaces centred, lifted off the foot, and whether
+│       │                        they fit under the tray at all (tests/sidebar-placement)
 │       └── scrolling.js         a wheel turn as a step of volume or brightness
 ├── scripts/
 │   ├── check-modules.js         the module boundary check: reads every module.json,
@@ -1716,7 +1762,7 @@ banditshell/
 │   │                            boundary the manifests do not allow; --matrix and
 │   │                            --explain <package> show the edges (node, no
 │   │                            dependencies; `banditshell dev modules`)
-│   ├── lint-rules.js            the house rules as fifteen checks (L1 to L15: comments,
+│   ├── lint-rules.js            the house rules as sixteen checks (L1 to L16: comments,
 │   │                            Rectangle radius, motion outside Follow, spring easing,
 │   │                            font sizes, colour literals, textGhost text, dashes,
 │   │                            JS the engine lacks, qmldir drift, Name.member reads
@@ -1725,7 +1771,7 @@ banditshell/
 │   │                            asking for a retired Material 3 emphasis, a variable
 │   │                            font axis that follows an unsnapped value, an optional
 │   │                            Qt module imported where a missing one would take the
-│   │                            whole shell down), counted
+│   │                            whole shell down, Quickshell's SystemClock), counted
 │   │                            per rule and file against rules.baseline.json (node, no
 │   │                            dependencies; `banditshell dev lint`)
 │   ├── boot-check.js            the pure half of `banditshell dev check boot`: which
@@ -1734,12 +1780,13 @@ banditshell/
 │   ├── boot-check-inner.sh      the other half: runs inside the private headless
 │   │                            session beside the shell, makes the calls, writes
 │   │                            PASS/FAIL rows to calls.tsv
-│   ├── promote-stable.sh        checks that main may become the stable channel (node
-│   │                            tests, check-modules, lint-rules, compile check, the
-│   │                            boot check when gamescope is there, a
-│   │                            what's-new id) on a clean export of it, then PRINTS
-│   │                            the git push and git tag commands; pushes only with
-│   │                            --push (`banditshell dev promote`)
+│   ├── release.sh               cuts a release from a clean checkout of origin/main:
+│   │                            node tests, check-modules, lint-rules, compile check
+│   │                            and the boot check (refused without gamescope unless
+│   │                            --skip-boot-check), gh logged in, then the
+│   │                            next vX.Y.Z, the tag and stable in one atomic push,
+│   │                            and the GitHub release; --dry-run pushes nothing
+│   │                            (`banditshell dev release`)
 │   ├── redact-config.js         config.json with every key named like a token, key,
 │   │                            secret, password or cookie left out (node, no
 │   │                            dependencies; `banditshell doctor --report`)
@@ -1978,13 +2025,60 @@ answer most of what the column used to be asked, so the column is allowed to be 
 the sidebar as it was. `rail` is the default since 2026-10-18 and rests as a thin strip of the band
 (`sidebar.railWidth`, which is also what `FrameExclusions` reserves, so windows tile against the
 rail and not against the full column): one mark per workspace, and below them a status icon for
-whatever is unusual and nothing for what is normal. Unusual is decided in `anomalies.js`: a
-battery under 20 percent, the microphone live or muted while something records from it, a
-screen recording, a VPN, airplane mode (every radio off), quiet or a mode, an update waiting or
-stuck. One mark is not about the unusual: with more than one keyboard layout the rail always
-shows the current one's code, dim on the first layout and in the accent on any other, because
-the switch bind changes every key with nothing else moving. A cap of four keeps the alarms and drops the quietest, and a mark that goes leaves by
-shrinking, not by blinking out.
+whatever is unusual and nothing for what is normal. Unusual is decided in `anomalies.js`: the
+microphone live or muted while something records from it, a
+screen recording, a VPN, keep-awake, airplane mode (every radio off), quiet or a mode, an update
+waiting or stuck. One mark is not about the unusual: with more than one keyboard layout the rail
+always shows the current one's code (`DK`, `US`), because the switch bind changes every key with
+nothing else moving; it is dim on the first layout and plain light on any other, and a press moves
+every keyboard to the next layout. Every mark's tooltip says what it is and then what a press does ("VPN on,
+click for settings"). Battery, sound, airplane and update open their sidebar menus, so the rail
+grows under them; VPN, a mode and quiet open their Settings page; keep-awake and a screen
+recording stop. Pointing at a mark holds the rail at rest so it can be pressed before the rail
+grows; after the press the rail stays at rest until the pointer leaves it. The workspace marks
+never move for a status mark: they keep their place, leave four status slots under them wherever
+the rail is tall enough, and the status marks stay a clear gap below, so they read as their own
+group and never as one more workspace. Every mark shows while
+the rail has room for it between the workspace marks and its foot; when it runs out, the most
+important stay by a fixed rank: the microphone, a screen recording, a low battery that is not
+charging, quiet or a mode, a stuck update or a keyboard away from its first layout, then VPN, airplane, keep-awake, and last a charging
+battery or an update that is only waiting, and the code of a keyboard on its first layout. Privacy and anything that swallows notifications stay
+in view. A `+N` under the marks counts what did not fit and names them on hover, and a mark
+that goes leaves by shrinking, not by blinking out. The marks never wear the accent, which belongs
+to the active workspace pip: what is only on (VPN, airplane, quiet, a mode, keep-awake, a muted
+microphone, a waiting update, a charging battery) is the palette's plain light, a low battery or a
+stuck update is `warning`, and `alarm` is kept for a live microphone and a screen recording.
+
+**THE GLANCE, 2026-10-24: the time and the battery show at rest.** People using the shell said
+an empty screen is annoying when all they want is to look up and see what time it is and how much
+battery is left, without pointing at anything. A plate the battery filled and digits drawn from
+pips both failed: on a 5120 px screen they read as noise in a 32 px strip. What held was the plain
+small time with the battery given a shape of its own, a level bar, beside other places that leave
+the rail's width behind. Apple's iPhone Duo met the same problem in its side column and answered
+it the same way: a small time on top, the battery as a level rather than a battery icon. `sidebar.glance` picks where (Settings, Sidebar, "Time at rest"):
+
+- `rail` (the default): near the rail's foot, the time, and under it the battery as an upright
+  level bar with a nub on top and its percent below. The time sits at the height of the open
+  sidebar's clock, centre on centre, so it stays put while the rail grows; it only rises when the
+  battery would otherwise fall off the foot. The resting clock (`sidebar.clock.style` and `size`)
+  and the open one (`wideStyle` and `wideSize`) are chosen apart: stacked or one line, small or
+  large. One line turns the time on its side so it reads as 14:32. The defaults are one line small
+  at rest and stacked large when open, so the wide column is used for something.
+- `rail top`: the same at the rail's head, where the Duo puts it.
+- `top`: a pill melts out of the top band at the centre with the time and the battery meter and
+  percent. It steps back while the island is out, since the island owns that spot.
+- `tabs`: two tabs melt out of the rail near the bottom, one with the time and one with the
+  battery. They overlap the windows a little and fold back into the rail as it grows.
+- `wide`: the rail widens to 46 px so the hours and minutes fit stacked at the normal size, with
+  the battery under them. Windows give up that width.
+- `off`: the rail rests as bare marks.
+
+The blobs go through the chassis like every panel, so the joins melt rather than butt. Without a
+battery each place shows the time alone. The low-battery anomaly stays only for `top` and `off`,
+where the battery can be out of view: the pill steps back for the island, and `off` shows
+nothing. The clock style `off` and the sidebar's battery toggle still hide each half, and bare
+mode draws no glance outside the rail. `wide` widens the rail but not its workspace marks. This
+bends 2.1 for two readings everyone asks for; nothing else joins them at rest.
 
 Pointing at the rail for `anim.dwell` grows it into the full column: the clock, tray, status
 icons and mode icon, with the workspaces turning from marks into plates. It is not a new panel.
@@ -2121,7 +2215,8 @@ checkout's own CLI, and then fails on any TypeError, ReferenceError, "is not def
 The lines a headless box always prints (no Hyprland signature, pipewire, ext-idle-notify, a
 wallpaper file missing under the fake home) are ignored; the classifier is `scripts/boot-check.js`
 and has node tests. `--shots` also photographs the shell at rest and with the launcher open.
-`banditshell dev promote` runs it as a last check when gamescope is installed.
+`banditshell dev release` runs it as its last check and refuses when it cannot run, unless
+given `--skip-boot-check`.
 
 **REVISED 2026-10-14: the thing first, in groups.** The verb-first grammar of 2026-10-01
 fixed the noun-first one's inconsistency, and it paid for that by sorting every feature by
@@ -2747,7 +2842,9 @@ when it answers `shell status` over IPC within `BANDITSHELL_HEALTH_WAIT` seconds
 shows no ReferenceError or "Failed to load" for `BANDITSHELL_HEALTH_SCAN` seconds (3); the last
 good copy is refreshed after that and not before. A failed check goes back by itself: `git reset
 --keep` to the recorded commit, relaunch, `update/result.json` for the next shell to read, and
-`update/skip` plus `updates.skip` so the same commit is not offered again; a newer one is.
+`update/skip` plus `updates.skip` so the same commit is not offered again; a newer one is. Once the
+skipped commit is applied and starts (`update apply --to`, the menu's Reinstall), it leaves
+`update/skip`, and the shell clears `updates.skip` when the result names it.
 
 `BANDITSHELL_DRY=1` makes `stop`, `start`, `restart`, `update apply` and `update rollback` print
 what they would do (`dry: ...`) and change nothing. `tests/update-cli.test.js` runs the whole loop
@@ -3772,11 +3869,30 @@ the one decision behind each:
 **Selection is a set.** Ctrl-click adds, Shift-click takes a range, a rubber band
 from empty space takes what it crosses, and every action - drag, copy, trash -
 acts on the whole of it. Two states are drawn rather than one: `picked` is what
-an action would act on and `cursored` is where the keyboard is, which stop being
-the same fact the moment there is more than one of them. The set is held as
+an action would act on and the cursor is where the keyboard is, which stop being
+the same fact the moment there is more than one of them. Picked is the accent-tinted
+`accentFill` with its name in `accent`, apart from hover's grey `fill`; the
+cursor is the focus mark (section 6), shown once a key has moved it and gone when
+the pointer moves. The set is held as
 NAMES, not indices, because the listing is retaken after anything that might
 have changed it and an index into the previous listing is a different file in the
 next one.
+
+**The open folder watches itself, and only while the window is open.** `bs-ls
+--watch` holds one inotify watch on the folder and sleeps in the kernel until
+something changes; it never polls. A burst, an unzip or a download landing, is
+one line after it goes quiet, or one a second while it does not. A listing that
+comes back identical is dropped before it reaches the grid, and a folder of
+more than 5,000 entries waits, while the storm lasts, three times what its last
+listing cost before the next, so a storm cannot take more than a quarter of the frame time. Smaller
+folders are never held back, however busy the machine is. Sorting
+is a merge sort of our own: the engine's `Array.prototype.sort` goes quadratic
+on a descending run followed by an ascending one, which is exactly how readdir
+returns a folder that just had thousands of files added, and 34,000 names took
+over a minute. The watcher dies with the window,
+moves with the folder, and exits when the shell's end of its pipe closes, so a
+crashed shell leaves nothing behind. A folder deleted and made again under it
+is watched again on the next listing.
 
 **Right click opens components/ActionSheet.qml**, the same sheet the clipboard
 and the launcher open on a row - so it arrived knowing how to be arrowed through,
@@ -3788,6 +3904,19 @@ read, repeated, or undone by hand. A file manager that does something to your
 disk and tells you nothing is the thing this is not. Deletion goes to the trash
 through `gio`; permanent deletion is a separate verb that asks you to type the
 word, because it is the one action here that reading the history cannot reverse.
+
+**Search reaches home, and the open folder answers first.** The field's switch
+picks This folder or Home, and Tab flips it. This folder filters the listing
+already in hand. Home also runs `bs-ls --find`, which walks home breadth first,
+so shallow matches arrive before deep ones, and walks the open folder before the
+rest. Its matches stream in as JSON lines in the listing's own shape plus the
+folder they live in, so a result is a tile like any other. The walk never follows
+a symlink and stays on one filesystem. It skips caches, `.git`, `node_modules`,
+the Trash and key stores unless the window's setting says otherwise. A keystroke
+kills the running walk before the next one starts, Esc stops it and keeps what
+it found, and it stops by itself at a thousand matches. A result is held by its
+full path rather than its name, because home has a hundred `README.md`s. Enter
+on a found file opens its folder with the file selected.
 
 **The path bar takes a path.** The crumbs stay - they go back several steps in one
 press, and they are drop targets - but the strip is a field as well, on Ctrl+L or
@@ -4420,7 +4549,13 @@ keyboard on demand, so the timer composer's fields can be typed into.
 
 The weather shows the next seven days from Open-Meteo, located by the
 coordinates wttr.in already sends with the current weather, and falls back to
-wttr.in's own three days when Open-Meteo cannot be reached.
+wttr.in's own three days when Open-Meteo cannot be reached. A town the
+weather service does not know says Place not found, and its Change place
+opens the Place row in Settings (Focus, Clock, Weather), where the place,
+the units, the refresh and the weather itself are set.
+When the name is a typo away from a town Open-Meteo knows, the view and the
+Place row both ask "Did you mean Lyngby, Denmark?" with a button that writes
+it. The guess is looked up once per misspelt name, never on a refresh.
 
 ### Music I am already looking at
 
@@ -4478,17 +4613,24 @@ controls, the settings volume row declare it with `LevelCover`), when the device
 just changed, and for the first seconds after the shell starts.
 `island.levels` turns it off.
 
-Four more things post through the same door, as `Moments` and `Privacy`, and each
+Five more things post through the same door, as `Moments` and `Privacy`, and each
 has its own switch under `island.moments`. A screenshot shows the picture small
 through `SquircleImage`, with Copy, Edit (the picker's editor), Folder and Delete,
 for six seconds; pressing the row opens the picture, and Delete moves it to the
 trash. It runs after `screenshot save`, `copy` and `full`. Copying anything from
 the shell gives a short Copied row with the first twenty characters; text that
 was copied as sensitive shows eight dots instead of the text. An audio device
-that connects over Bluetooth gets its name and battery for three seconds. The
-fourth is not a moment but a state: while a program holds the microphone, the
-camera or a screen cast open in PipeWire, a privacy activity stays up, coloured
-(the camera and the screen alarm red, the microphone accent), naming the app. It
+that connects over Bluetooth gets its name and battery for three seconds. A
+Wi-Fi join that fails says Wi-Fi failed in red, with the Wi-Fi-but-not-connected
+mark and Try again. Like a failed update it waits until it is seen: pressing it
+turns the island into the failed join, which names the network and says the
+cause in a sentence ("The router did not answer") with Close and Try again, and
+it also goes once that network connects. Only joins a
+person started count, through `Network.join`, so a dropped connection or a
+background retry stays quiet, and a wrong password typed into the join prompt
+goes back to the prompt instead. The fifth is not a moment but a state: while a program holds the microphone, the
+camera or a screen cast open in PipeWire, a privacy activity stays up in the
+alarm colour, the same one the rail gives a live microphone, naming the app. It
 is kind `privacy`, so it sits in the island like dictation does, but it joins
 the others as a bubble and never takes the big spot from what is already
 there; hovering the bubble names the apps, and pressing the microphone's opens

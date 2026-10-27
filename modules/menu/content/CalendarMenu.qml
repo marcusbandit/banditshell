@@ -31,10 +31,10 @@ Column {
 
     spacing: Appearance.padding.normal
 
-    SystemClock {
+    WallClock {
         id: clock
 
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
 
         enabled: root.visible
     }

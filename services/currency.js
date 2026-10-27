@@ -215,3 +215,7 @@ function readEcb(xml) {
         rates: rates
     } : null;
 }
+
+function stale(fetched, now, after) {
+    return now - fetched > after;
+}

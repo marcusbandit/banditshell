@@ -1,7 +1,7 @@
 {
   "name": "settings",
   "summary": "the settings panel",
-  "layer": 2,
+  "layer": 3,
   "owns": {
     "qml": ["modules/settings", "previews/SettingsPreview.qml"],
     "services": ["Modes", "Settings", "ThemeSwitcher"],
@@ -9,7 +9,7 @@
     "tests": ["tests/pointing-devices.test.js", "tests/restore.test.js", "tests/settings.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor"],
+    "packages": ["core", "compositor", "display", "clock"],
     "optional": []
   },
   "provides": {
@@ -31,7 +31,8 @@
       "rounding",
       "sourceEdits",
       "theme",
-      "themeFromWallpaper"
+      "themeFromWallpaper",
+      "weather"
     ]
   }
 }

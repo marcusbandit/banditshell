@@ -3,7 +3,7 @@ const BLUETOOTH_MS = 3000;
 const COPIED_MS = 900;
 const COPIED_PREVIEW = 20;
 const MASK = "••••••••";
-const MOMENT_KINDS = ["screenshot", "privacy", "copied", "bluetooth"];
+const MOMENT_KINDS = ["screenshot", "privacy", "copied", "bluetooth", "wifi"];
 const SCREENSHOT_ACTIONS = ["copy", "edit", "folder", "delete"];
 const AUDIO_ICONS = ["headphones", "speaker"];
 
@@ -135,6 +135,49 @@ function bluetoothSpec(name, icon, battery) {
         source: "moments",
         data: { battery: battery >= 0 ? battery : -1 }
     };
+}
+
+function wifiSpec(name, kind, message) {
+    const shown = squash(name);
+    if (shown === "")
+        return null;
+    return {
+        id: "moment:wifi",
+        style: "wifi",
+        text: "Wi-Fi failed",
+        detail: squash(message) || shown,
+        icon: "signal_wifi_bad",
+        priority: 45,
+        pressable: true,
+        source: "moments",
+        data: { name: String(name), kind: String(kind || "unknown") },
+        actions: [{ name: "retry", label: "Try again" }]
+    };
+}
+
+function undoSpec(apps, only, done) {
+    const count = (apps || []).length;
+    if (count === 0)
+        return null;
+    return {
+        id: "moment:undo",
+        style: "undo",
+        text: count === 1 ? `${preview(apps[0], COPIED_PREVIEW) || "Notification"} ${done || "dismissed"}` : `${count} notifications cleared`,
+        icon: "notifications",
+        data: { entry: count === 1 ? only || null : null },
+        priority: 40,
+        pressable: true,
+        source: "moments",
+        actions: [{ name: "undo", label: "Undo" }]
+    };
+}
+
+function hushDone(kind, ends) {
+    if (kind === "snooze")
+        return `hidden until ${ends}`;
+    if (kind === "mute")
+        return ends ? `muted until ${ends}` : "muted until I unmute";
+    return "unmuted";
 }
 
 function newlyConnected(before, after) {

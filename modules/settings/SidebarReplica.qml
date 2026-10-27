@@ -29,10 +29,10 @@ Item {
     width: SettingsState.v("sidebarW")
     implicitHeight: root.naturalHeight
 
-    SystemClock {
+    WallClock {
         id: now
 
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
     }
 
     Column {
@@ -173,7 +173,8 @@ Item {
             Column {
                 id: clock
 
-                readonly property string style: SettingsState.v("sbClock")
+                readonly property string style: SettingsState.v("sbClockWide")
+                readonly property real size: SettingsState.v("sbClockWideSize") === "small" ? Appearance.font.size.small : Appearance.font.size.normal
                 readonly property string dated: SettingsState.v("sbDate")
                 readonly property string hh: TimeFormat.hourPart(now.date)
                 readonly property string mm: Qt.formatDateTime(now.date, "mm")
@@ -200,7 +201,7 @@ Item {
 
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: modelData
-                                font.pixelSize: clock.style === "small" ? Appearance.font.size.small : Appearance.font.size.normal
+                                font.pixelSize: clock.size
                             }
                         }
                     }
@@ -211,14 +212,14 @@ Item {
                         anchors.centerIn: parent
                         visible: clock.style === "one line"
                         text: `${clock.hh}:${clock.mm}`
-                        font.pixelSize: Appearance.font.size.small
+                        font.pixelSize: clock.size
                         rotation: -90
                     }
 
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: root.picked("sbClock")
+                        onClicked: root.picked("sbClockWide")
                     }
 
                     HoverTip {

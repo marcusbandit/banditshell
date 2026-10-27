@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "update.js" as Words
+import "quoting.js" as Quoting
 
 Singleton {
     id: root
@@ -41,7 +42,11 @@ Singleton {
 
     property var result: null
     readonly property bool resultPending: root.result !== null && root.result.shown !== true
-    readonly property string resultText: Words.outcomeText(root.result)
+    readonly property string resultText: Words.outcomeText(root.result, root.version)
+    readonly property bool wentBackByHand: Words.byHand(root.result)
+    readonly property string skipped: root.wentBackByHand && root.commit(root.result.to ?? "") ? root.result.to : ""
+    readonly property string skippedVersion: root.skipped === "" ? "" : root.result.toLabel || root.skipped.slice(0, 7)
+    readonly property bool canReinstall: root.resultPending && root.skipped !== "" && !root.busy && !root.paused
 
     property date checkedAt: new Date(0)
 
@@ -52,8 +57,15 @@ Singleton {
     readonly property string channel: Words.channelOf(Config.values.updates.channel)
     readonly property string branch: Words.branchFor(Config.values.updates.channel, Config.values.updates.branch)
     readonly property string channelLabel: Words.channelText(Config.values.updates.channel, Config.values.updates.branch)
-    readonly property string version: WhatsNew.version
+    readonly property string haveLabel: Words.haveText(root.version, Config.values.updates.channel, Config.values.updates.branch)
+    property string release: ""
+    readonly property string version: root.release || WhatsNew.version
     property string targetVersion: ""
+    property string previous: ""
+    property string previousVersion: ""
+    readonly property bool canGoBack: root.commit(root.previous) && !root.busy && !root.paused
+    property bool goingBack: false
+    property string aimedAt: ""
     readonly property string remote: Config.values.updates.remote
 
     readonly property string dir: Quickshell.shellDir
@@ -77,21 +89,21 @@ Singleton {
         if (root.state === root.updated)
             return "Updated";
         if (root.state === root.rolledback)
-            return "Update rolled back";
+            return root.wentBackByHand ? "Back on the previous version" : "Update rolled back";
         if (root.state === root.restarting)
-            return "Restarting...";
+            return root.goingBack ? "Going back..." : "Restarting...";
         if (root.state === root.verifying)
             return "Checking it loads...";
         if (root.state === root.downloading)
             return "Updating...";
         if (root.state === root.failed)
-            return "Update failed";
+            return root.goingBack ? "Going back failed" : "Update failed";
         if (root.paused)
             return `This copy is on ${root.headBranch === "HEAD" ? "no branch" : root.headBranch}, so it does not follow ${root.branch}`;
         if (root.diverged)
             return `${root.behind} new on ${root.branch}, but this copy has ${root.ahead} of its own`;
         if (root.behind > 0)
-            return `${root.behind} new commit${root.behind === 1 ? "" : "s"} on ${root.branch}`;
+            return Words.waitingHeadline(root.branch, root.behind, root.targetVersion);
         return "You are up to date";
     }
 
@@ -147,6 +159,32 @@ Singleton {
             root.error = "Nothing has been checked yet. Refresh first.";
             return;
         }
+        root.aimedAt = "";
+        root.take(root.target);
+    }
+
+    function reinstall(): void {
+        if (!root.canReinstall)
+            return;
+
+        const sha = root.skipped;
+        root.dismissResult();
+        root.error = "";
+        root.aimedAt = sha;
+        root.take(sha);
+    }
+
+    function retry(): void {
+        if (root.goingBack)
+            root.goBack();
+        else if (root.commit(root.aimedAt) && !root.busy && !root.paused)
+            root.take(root.aimedAt);
+        else
+            root.apply();
+    }
+
+    function take(sha: string): void {
+        root.goingBack = false;
         root.state = root.downloading;
         root.phaseText = "Getting it...";
         root.warnings = [];
@@ -155,7 +193,32 @@ Singleton {
         watchdog.restart();
         silence.restart();
 
-        Quickshell.execDetached(["bash", root.cli, "update", "apply", "--detach", "--to", root.target]);
+        Quickshell.execDetached(["bash", root.cli, "update", "apply", "--detach", "--to", sha]);
+    }
+
+    function goBack(): void {
+        if (!root.canGoBack)
+            return;
+
+        root.error = "";
+        root.goingBack = true;
+        root.state = root.restarting;
+        root.phaseText = "Going back...";
+        root.warnings = [];
+        root.lastPhase = "";
+        root.startedAt = Math.floor(Date.now() / 1000) - 1;
+        watchdog.restart();
+        silence.restart();
+
+        Quickshell.execDetached(["bash", root.cli, "update", "rollback", "--detach"]);
+    }
+
+    readonly property string reportContext: Words.reportContext(root.result, root.version)
+
+    function report(words: string): void {
+        if (!root.wentBackByHand)
+            return;
+        Quickshell.execDetached([Quickshell.shellPath("scripts/in-terminal.sh"), Words.reportScript(Quoting.posix, root.cli, words, root.result, root.version)]);
     }
 
     function restart(): void {
@@ -179,11 +242,14 @@ Singleton {
         const warnings = [];
         let last = null;
         let failure = [];
+        let back = false;
         for (const line of lines) {
             const phase = Words.phaseOf(line);
             if (phase === null || (Number(phase.at) || 0) < started)
                 continue;
             last = phase;
+            if (phase.phase === "goback")
+                back = true;
             if (phase.phase === "warning")
                 warnings.push(phase.text);
             else if (phase.phase === "failed")
@@ -197,6 +263,7 @@ Singleton {
             return;
 
         silence.stop();
+        root.goingBack = back;
         root.lastPhase = last.phase;
         root.phaseText = last.text ?? "";
         root.warnings = warnings;
@@ -204,14 +271,16 @@ Singleton {
             root.state = root.downloading;
         else if (last.phase === "verify")
             root.state = root.verifying;
-        else if (last.phase === "restart" || last.phase === "health")
+        else if (last.phase === "restart" || last.phase === "health" || last.phase === "goback")
             root.state = root.restarting;
         else if (last.phase === "done") {
             root.behind = 0;
             root.ahead = 0;
             root.state = root.updated;
             resultFile.reload();
+            Qt.callLater(root.inspect, false);
         } else if (last.phase === "rolledback") {
+            root.previous = "";
             root.state = root.rolledback;
             resultFile.reload();
         } else if (last.phase === "failed") {
@@ -229,6 +298,8 @@ Singleton {
             return;
         }
         root.result = data;
+        if (data.ok && data.to && Config.values.updates.skip === data.to)
+            Config.set("updates.skip", "");
         if (data.shown === true)
             return;
         if (data.ok) {
@@ -253,6 +324,8 @@ Singleton {
                 root.fetchedAt = Number(data?.fetchedAt) || 0;
                 root.fetchedRemote = `${data?.remote ?? ""}`;
                 root.fetchedBranch = `${data?.branch ?? ""}`;
+                if (root.fetchedAt > 0)
+                    root.checkedAt = new Date(root.fetchedAt);
             } catch (e) {
                 console.warn(`Update: ${root.statePath} is not valid JSON; checking as if never fetched.`);
             }
@@ -300,10 +373,10 @@ Singleton {
 
         interval: 30000
         onTriggered: {
-            if (root.state !== root.downloading || root.lastPhase !== "")
+            if (!root.busy || root.lastPhase !== "")
                 return;
             root.state = root.failed;
-            root.error = "The update did not start. banditshell update status tells where this copy stands.";
+            root.error = `${root.goingBack ? "Going back" : "The update"} did not start. banditshell update status tells where this copy stands.`;
         }
     }
 
@@ -363,6 +436,7 @@ Singleton {
                     return;
                 }
                 if (got.state === "error") {
+                    root.release = got.version || root.release;
                     root.error = Words.explain(got.output ?? [], root.branch);
                     console.warn(`Update: ${(got.output ?? []).join(" / ")}`);
                     return;
@@ -375,7 +449,10 @@ Singleton {
                 const counts = got.state === "available" || got.state === "diverged";
                 root.headBranch = got.headBranch ?? "";
                 root.target = root.commit(got.target ?? "") ? got.target : "";
+                root.release = got.version ?? "";
                 root.targetVersion = got.targetVersion ?? "";
+                root.previous = root.commit(got.previous ?? "") ? got.previous : "";
+                root.previousVersion = got.previousVersion ?? "";
                 root.behind = counts ? Number(got.behind) || 0 : 0;
                 root.ahead = counts ? Number(got.ahead) || 0 : 0;
                 root.entries = got.entries ?? [];

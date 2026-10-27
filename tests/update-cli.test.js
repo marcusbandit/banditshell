@@ -107,6 +107,7 @@ function makeWorld() {
     execFileSync("git", ["clone", "-q", world.origin, world.live]);
     for (const helper of ["bs-pty", "bs-ls", "bs-gamma"])
         write(world.live, `bin/${helper}`, "#!/bin/sh\n", 0o755);
+    useChannel(world, "main");
     return world;
 }
 
@@ -181,7 +182,7 @@ test("check says current with exit 0 when nothing is new", () => {
     const world = makeWorld();
     const got = run(world, ["update", "check"]);
     assert.strictEqual(got.status, 0, got.err);
-    assert.match(got.out, /^up to date at [0-9a-f]{7} on main\n$/);
+    assert.match(got.out, /^up to date at v1 on main\n$/);
     const json = JSON.parse(run(world, ["update", "check", "--json"]).out);
     assert.strictEqual(json.state, "current");
     assert.strictEqual(json.behind, 0);
@@ -196,7 +197,7 @@ test("check classifies a reload and lists the incoming notes before anything is 
     });
     const text = run(world, ["update", "check"]);
     assert.strictEqual(text.status, 10, text.err);
-    assert.match(text.out, /^update waiting: 1 change, no restart needed\n {2}v2\n {4}- Change v2\.\nrun: banditshell update apply\n$/);
+    assert.match(text.out, /^v2 is waiting: 1 change, no restart needed\n {2}v2\n {4}- Change v2\.\nrun: banditshell update apply\n$/);
     const json = JSON.parse(run(world, ["update", "check", "--json"]).out);
     assert.strictEqual(json.state, "available");
     assert.strictEqual(json.behind, 1);
@@ -277,16 +278,16 @@ test("check fails with exit 1 and git's own words when the remote is unreachable
 test("the remote and branch come from config.json", () => {
     const world = makeWorld();
     git(world.live, "remote", "rename", "origin", "upstream");
-    write(world.config, "banditshell/config.json", JSON.stringify({ theme: "x", updates: { remote: "upstream", branch: "main", seen: "" } }, null, 2));
+    write(world.config, "banditshell/config.json", JSON.stringify({ theme: "x", updates: { remote: "upstream", channel: "main", channelUpgraded: true, branch: "main", seen: "" } }, null, 2));
     const got = run(world, ["update", "check", "--json"]);
     assert.strictEqual(got.status, 0, got.err);
     assert.strictEqual(JSON.parse(got.out).remote, "upstream");
-    write(world.config, "banditshell/config.json", JSON.stringify({ updates: { remote: "-bad", branch: "main" } }));
+    write(world.config, "banditshell/config.json", JSON.stringify({ updates: { remote: "-bad", channel: "main", channelUpgraded: true, branch: "main" } }));
     assert.strictEqual(run(world, ["update", "check"]).status, 1);
 });
 
 function useChannel(world, channel, branch = "main") {
-    write(world.config, "banditshell/config.json", JSON.stringify({ updates: { remote: "origin", channel, branch, seen: "" } }, null, 2));
+    write(world.config, "banditshell/config.json", JSON.stringify({ updates: { remote: "origin", channel, channelUpgraded: true, branch, seen: "" } }, null, 2));
 }
 
 test("check carries the channel and the versions on both sides of the update", () => {
@@ -312,7 +313,7 @@ test("the stable channel follows the stable branch and only moves when stable do
     assert.strictEqual(quiet.state, "current");
     assert.strictEqual(quiet.channel, "stable");
     assert.strictEqual(quiet.branch, "stable");
-    assert.match(run(world, ["update", "check"]).out, /^up to date at [0-9a-f]{7} on stable\n$/);
+    assert.match(run(world, ["update", "check"]).out, /^up to date at v1 on stable\n$/);
     git(world.work, "push", "-q", "origin", "main:refs/heads/stable");
     const waiting = JSON.parse(run(world, ["update", "check", "--json"]).out);
     assert.strictEqual(waiting.state, "available");
@@ -338,14 +339,52 @@ test("a checkout ahead of stable is up to date, never taken back", () => {
     assert.strictEqual(liveHead(world), head);
 });
 
-test("a stable channel with no stable branch yet says so in plain words", () => {
+test("a stable channel with no release yet stays where it is, calmly", () => {
     const world = makeWorld();
     useChannel(world, "stable");
+    const head = liveHead(world);
     const text = run(world, ["update", "check"]);
-    assert.strictEqual(text.status, 1);
-    assert.match(text.err, /no stable version yet/);
+    assert.strictEqual(text.status, 0, text.err);
+    assert.match(text.out, /^there is no release on stable yet, so this copy stays at v1\n$/);
+    const json = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(json.state, "current");
+    assert.strictEqual(json.version, "v1");
+    assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out).state, "current");
+    assert.match(run(world, ["update", "apply"]).out, /Already up to date/);
+    assert.strictEqual(liveHead(world), head);
+});
+
+test("with no release yet, a copy off main reads as paused, on a branch or detached", () => {
+    for (const move of [["switch", "-q", "-c", "elsewhere"], ["switch", "-q", "--detach"]]) {
+        const world = makeWorld();
+        useChannel(world, "stable");
+        git(world.live, ...move);
+        const got = run(world, ["update", "check", "--json"]);
+        assert.strictEqual(got.status, 0, got.err);
+        assert.strictEqual(JSON.parse(got.out).state, "paused");
+        const text = run(world, ["update", "check"]);
+        assert.strictEqual(text.status, 0, text.err);
+        assert.match(text.out, /so it does not follow stable/);
+    }
+});
+
+test("before stable was ever fetched, update says it has not looked yet instead of claiming no release", () => {
+    const world = makeWorld();
+    cut(world, "v0.1.0", liveHead(world));
+    useChannel(world, "stable");
+    const quick = run(world, ["update"]);
+    assert.strictEqual(quick.status, 0, quick.err);
+    assert.match(quick.out, /stable has not been checked yet; banditshell update check looks\n$/);
+    assert.doesNotMatch(quick.out, /no release/);
+    assert.match(run(world, ["update", "check"]).out, /^up to date at v0\.1\.0 on stable\n$/);
+});
+
+test("a check that fails still names the version this copy is on", () => {
+    const world = makeWorld();
+    git(world.live, "remote", "set-url", "origin", path.join(world.root, "gone.git"));
     const json = JSON.parse(run(world, ["update", "check", "--json"]).out);
     assert.strictEqual(json.state, "error");
+    assert.strictEqual(json.version, "v1");
 });
 
 test("a branch other than main overrides the channel", () => {
@@ -389,6 +428,135 @@ test("version names the version, the channel and the branch it follows", () => {
     assert.strictEqual(json.version, "v1");
     assert.strictEqual(json.channel, "stable");
     assert.strictEqual(json.follows, "stable");
+});
+
+function cut(world, tag, sha) {
+    git(world.work, "tag", "-a", tag, sha, "-m", `banditshell ${tag}`);
+    git(world.work, "push", "-q", "origin", `refs/tags/${tag}`, `${sha}:refs/heads/stable`);
+}
+
+const forget = world => fs.rmSync(path.join(world.config, "banditshell/config.json"), { force: true });
+
+test("a copy with no config, or no channel in it, follows releases", () => {
+    const world = makeWorld();
+    cut(world, "v0.1.0", liveHead(world));
+    for (const config of [null, { theme: "x" }, { updates: { remote: "origin", branch: "main" } }]) {
+        forget(world);
+        if (config)
+            write(world.config, "banditshell/config.json", JSON.stringify(config));
+        const json = JSON.parse(run(world, ["update", "check", "--json"]).out);
+        assert.strictEqual(json.channel, "stable");
+        assert.strictEqual(json.branch, "stable");
+        assert.match(run(world, ["version"]).out, /^follows\s+stable$/m);
+    }
+});
+
+test("a config the shell wrote with main before releases follows releases, and main chosen after stays main", () => {
+    const world = makeWorld();
+    cut(world, "v0.1.0", liveHead(world));
+    write(world.config, "banditshell/config.json", JSON.stringify({ updates: { channel: "main", branch: "main", remote: "origin" } }, null, 4));
+    assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json"]).out).channel, "stable");
+    write(world.config, "banditshell/config.json", JSON.stringify({ updates: { channel: "main", channelUpgraded: true, branch: "main" } }, null, 4));
+    assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json"]).out).channel, "main");
+});
+
+test("main set before the upgrade, with the keep-channel mark, stays main on the CLI side too", () => {
+    const world = makeWorld();
+    cut(world, "v0.1.0", liveHead(world));
+    write(world.config, "banditshell/config.json", JSON.stringify({ updates: { channel: "main", branch: "main", remote: "origin" } }, null, 4));
+    assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json"]).out).channel, "stable");
+    write(world.state, "banditshell/keep-channel", "main\n");
+    assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json"]).out).channel, "main");
+    assert.match(run(world, ["version"]).out, /^follows\s+main$/m);
+});
+
+test("an install on main from before releases lands on the newest release, on its own main branch", () => {
+    const world = makeWorld();
+    forget(world);
+    const old = liveHead(world);
+    const release = advance(world, "feat: two", { "services/Foo.qml": "// foo two\n", "docs/whats-new.json": whatsNew("v2", "v1") });
+    cut(world, "v0.1.0", release);
+    advance(world, "feat: three", { "services/Foo.qml": "// foo three\n", "docs/whats-new.json": whatsNew("v3", "v2", "v1") });
+    const text = run(world, ["update", "check"]);
+    assert.strictEqual(text.status, 10, text.err);
+    assert.match(text.out, /^v0\.1\.0 is waiting: 1 change, no restart needed\n {2}v2\n/);
+    const json = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(json.target, release);
+    assert.strictEqual(json.version, "v1");
+    assert.strictEqual(json.targetVersion, "v0.1.0");
+    assert.deepStrictEqual(json.entries.map(e => e.id), ["v2"]);
+    const done = applyTo(world, release);
+    assert.strictEqual(done.status, 0, done.err + done.out);
+    assert.match(done.out, /Updated to v0\.1\.0/);
+    assert.strictEqual(liveHead(world), release);
+    assert.notStrictEqual(old, release);
+    assert.strictEqual(git(world.live, "symbolic-ref", "--short", "HEAD"), "main");
+    assert.strictEqual(git(world.live, "status", "--porcelain"), "");
+    assert.match(run(world, ["update"]).out, /^v0\.1\.0 on main, up to date at v0\.1\.0 on stable\n$/);
+    assert.match(run(world, ["version"]).out, /^version\s+v0\.1\.0$/m);
+});
+
+test("a copy already past the newest release stays put and shows how far past it is", () => {
+    const world = makeWorld();
+    cut(world, "v0.1.0", liveHead(world));
+    advance(world, "fix: a", { "a.txt": "a" });
+    advance(world, "fix: b", { "b.txt": "b" });
+    git(world.live, "pull", "-q", "--ff-only");
+    const head = liveHead(world);
+    forget(world);
+    const json = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(json.state, "current");
+    assert.strictEqual(json.version, "v0.1.0+2");
+    assert.strictEqual(liveHead(world), head);
+    useChannel(world, "main");
+    assert.match(run(world, ["version"]).out, /^version\s+v0\.1\.0\+2$/m);
+});
+
+test("rollback on stable goes to the release before, even with nothing recorded, and skips the one it left", () => {
+    const world = makeWorld();
+    forget(world);
+    const first = liveHead(world);
+    cut(world, "v0.1.0", first);
+    const second = advance(world, "feat: two", { "services/Foo.qml": "// foo two\n", "docs/whats-new.json": whatsNew("v2", "v1") });
+    cut(world, "v0.2.0", second);
+    assert.strictEqual(applyTo(world, second).status, 0);
+    fs.rmSync(stateFile(world, "previous"));
+    const before = JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out);
+    assert.strictEqual(before.previous, first);
+    assert.strictEqual(before.previousVersion, "v0.1.0");
+    const back = run(world, ["update", "rollback"]);
+    assert.strictEqual(back.status, 0, back.err + back.out);
+    assert.match(back.out, /Went back to v0\.1\.0/);
+    assert.strictEqual(liveHead(world), first);
+    assert.strictEqual(readState(world, "skip"), second);
+    const after = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(after.state, "skipped");
+    assert.strictEqual(after.previous, "");
+    const again = run(world, ["update", "rollback"]);
+    assert.strictEqual(again.status, 1);
+    assert.match(again.err, /no earlier release to go back to/);
+});
+
+test("rollback on stable steps over a release that already failed on this copy", () => {
+    const world = makeWorld();
+    forget(world);
+    const first = liveHead(world);
+    cut(world, "v0.1.0", first);
+    const broken = advance(world, "fix: two", { "a.txt": "2" });
+    cut(world, "v0.1.1", broken);
+    const third = advance(world, "fix: three", { "a.txt": "3" });
+    cut(world, "v0.1.2", third);
+    fs.mkdirSync(path.dirname(stateFile(world, "skip")), { recursive: true });
+    fs.writeFileSync(stateFile(world, "skip"), `${broken}\n`);
+    assert.strictEqual(applyTo(world, third).status, 0);
+    const json = JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out);
+    assert.strictEqual(json.previousVersion, "v0.1.0");
+    fs.writeFileSync(stateFile(world, "previous"), `${broken}\n`);
+    const dry = run(world, ["update", "rollback"], { BANDITSHELL_DRY: "1" });
+    assert.strictEqual(dry.status, 0, dry.err + dry.out);
+    assert.match(dry.out, new RegExp(`git reset --keep ${first.slice(0, 7)}`));
+    assert.strictEqual(readState(world, "previous"), broken);
+    assert.strictEqual(liveHead(world), third);
 });
 
 test("a reload applies in place: previous recorded, no restart, backup refreshed, result written", () => {
@@ -610,25 +778,126 @@ test("rollback by hand returns to the recorded version and skips the one it left
     const result = JSON.parse(readState(world, "result.json"));
     assert.strictEqual(result.ok, false);
     assert.strictEqual(result.why, "rolled back by hand");
+    assert.strictEqual(result.hand, true);
     assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json"]).out).state, "skipped");
     const again = run(world, ["update", "rollback"]);
     assert.strictEqual(again.status, 1);
     assert.match(again.err, /no earlier version/);
 });
 
+test("reinstalling the version a rollback skipped takes it again and forgets the skip", () => {
+    const world = makeWorld();
+    startShell(world);
+    const target = advance(world, "v2", { "shell.qml": "// v2\n" });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    assert.strictEqual(run(world, ["update", "rollback"]).status, 0);
+    assert.strictEqual(readState(world, "skip"), target);
+    const got = run(world, ["update", "apply", "--to", target]);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    assert.strictEqual(liveHead(world), target);
+    assert.ok(!fs.existsSync(stateFile(world, "skip")));
+    assert.strictEqual(JSON.parse(readState(world, "result.json")).ok, true);
+    assert.strictEqual(run(world, ["update", "rollback"]).status, 0);
+    assert.strictEqual(readState(world, "skip"), target);
+});
+
+test("the check names the version a rollback returns to, and forgets it once back there", () => {
+    const world = makeWorld();
+    const before = liveHead(world);
+    assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out).previous, "");
+    startShell(world);
+    const target = advance(world, "v2", { "shell.qml": "// v2\n", "docs/whats-new.json": whatsNew("v2", "v1") });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    const after = JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out);
+    assert.strictEqual(after.previous, before);
+    assert.strictEqual(after.previousVersion, "v1");
+    assert.strictEqual(run(world, ["update", "rollback"]).status, 0);
+    const back = JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out);
+    assert.strictEqual(back.previous, "");
+    assert.strictEqual(back.previousVersion, "");
+});
+
+test("a detached rollback reports through progress.log and toasts no failed start", () => {
+    const world = makeWorld();
+    const before = liveHead(world);
+    startShell(world);
+    const target = advance(world, "v2", { "shell.qml": "// v2\n" });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    const got = run(world, ["update", "rollback", "--detach"]);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    assert.strictEqual(got.out, "");
+    assert.strictEqual(waitForResult(world).why, "rolled back by hand");
+    const lines = progress(world);
+    assert.strictEqual(lines[lines.length - 1].phase, "rolledback");
+    assert.ok(lines.every(l => l.at > 1700000000));
+    assert.strictEqual(liveHead(world), before);
+    const notes = fs.existsSync(path.join(world.fakeqs, "notes")) ? fs.readFileSync(path.join(world.fakeqs, "notes"), "utf8") : "";
+    assert.doesNotMatch(notes, /did not start/);
+});
+
+test("rollback refuses to take this copy's own commits off the branch, and the check offers none", () => {
+    const world = makeWorld();
+    const target = advance(world, "v2", { "shell.qml": "// v2\n" });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    write(world.live, "mine.txt", "mine\n");
+    git(world.live, "add", "mine.txt");
+    git(world.live, "commit", "-q", "-m", "mine");
+    const mine = liveHead(world);
+    assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out).previous, "");
+    const got = run(world, ["update", "rollback"]);
+    assert.strictEqual(got.status, 1);
+    assert.match(got.err, /commit\(s\) of its own/);
+    assert.strictEqual(liveHead(world), mine);
+});
+
+test("rollback refuses on a copy paused on another branch", () => {
+    const world = makeWorld();
+    const target = advance(world, "v2", { "shell.qml": "// v2\n" });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    git(world.live, "checkout", "-q", "-b", "elsewhere");
+    const got = run(world, ["update", "rollback"]);
+    assert.strictEqual(got.status, 1);
+    assert.strictEqual(liveHead(world), target);
+});
+
+test("a rollback by hand that git refuses changes nothing and skips nothing", () => {
+    const world = makeWorld();
+    const target = advance(world, "v2", { "shell.qml": "// v2\n" });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    write(world.live, "shell.qml", "// my own edit\n");
+    const got = run(world, ["update", "rollback", "--json"]);
+    assert.strictEqual(got.status, 1);
+    const lines = got.out.split("\n").filter(Boolean).map(l => JSON.parse(l));
+    assert.deepStrictEqual(lines.map(l => l.phase), ["goback", "failed"]);
+    assert.strictEqual(liveHead(world), target);
+    assert.strictEqual(JSON.parse(readState(world, "result.json")).ok, true);
+    assert.ok(!fs.existsSync(stateFile(world, "skip")));
+});
+
+test("a detached rollback with nothing recorded fails in progress.log with a time", () => {
+    const world = makeWorld();
+    assert.strictEqual(run(world, ["update", "rollback", "--detach"]).status, 0);
+    const deadline = Date.now() + 30000;
+    while (progress(world).pop()?.phase !== "failed" && Date.now() < deadline)
+        spawnSync("sleep", ["0.2"]);
+    const last = progress(world).pop();
+    assert.strictEqual(last.phase, "failed");
+    assert.ok(last.at > 1700000000);
+});
+
 test("status is one line, update alone is the same line, and --json carries the last outcome", () => {
     const world = makeWorld();
     const alone = run(world, ["update"]);
     assert.strictEqual(alone.status, 0, alone.err);
-    assert.match(alone.out, /^[0-9a-f]{7} on main, up to date at [0-9a-f]{7} on main\n$/);
+    assert.match(alone.out, /^v1 on main, up to date at v1 on main\n$/);
     const target = advance(world, "singleton", { "services/qmldir": "module qs.services\n// x\n" });
     run(world, ["update", "check"]);
     const waiting = run(world, ["update"]);
-    assert.match(waiting.out, /^[0-9a-f]{7} on main, update waiting: 1 change, restart needed\n$/);
+    assert.match(waiting.out, /^v1 on main, v1 is waiting: 1 change, restart needed\n$/);
     assert.strictEqual(applyTo(world, target).status, 0);
     const full = run(world, ["update", "status"]);
     assert.match(full.out, /last update: reached /);
-    assert.match(full.out, /before the last update: [0-9a-f]{7}/);
+    assert.match(full.out, /update rollback goes back to v1/);
     const json = JSON.parse(run(world, ["update", "status", "--json"]).out);
     assert.strictEqual(json.result.ok, true);
     assert.strictEqual(json.state, "current");

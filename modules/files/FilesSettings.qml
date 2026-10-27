@@ -55,7 +55,7 @@ Item {
             first: "First file",
             last: "Last file",
             open: "Open",
-            search: "Search in this folder",
+            search: "Search this folder or home",
             copypath: "Copy the path",
             all: "Select everything",
             copy: "Copy",
@@ -66,12 +66,14 @@ Item {
             rename: "Rename",
             trash: "Move to trash",
             destroy: "Delete permanently",
+            undo: "Undo the last delete, move, rename or paste",
             properties: "Properties",
             path: "Type a path",
             view: "Switch between icons and list",
             zoomin: "Bigger",
             zoomout: "Smaller",
             zoomreset: "Reset the size",
+            refresh: "Refresh",
             settings: "These settings"
         })
 
@@ -220,17 +222,27 @@ Item {
 
                 Setting {
                     width: body.width
-                    label: "Size"
-                    detail: `${Math.round(Files.magnification * 100)}% · text ${Files.zoomed(Appearance.font.size.small)}px`
+                    label: "Icon and text size"
+                    detail: `${Math.round(Files.magnification * 100)}%`
 
-                    SettingChoice {
-                        choices: [
-                            {label: "Smaller", value: -0.1},
-                            {label: "Reset", value: 0},
-                            {label: "Bigger", value: 0.1}
-                        ]
-                        chosen: 0
-                        onChose: value => Files.zoom(value)
+                    Row {
+                        spacing: Appearance.padding.small
+
+                        Button {
+                            text: "Reset"
+                            style: "bare"
+                            interactive: Files.magnification !== 1
+                            onClicked: Files.zoom(0)
+                        }
+
+                        ButtonPair {
+                            actions: [
+                                {text: "Smaller"},
+                                {text: "Bigger"}
+                            ]
+                            primary: -1
+                            onTriggered: index => Files.zoom(index === 0 ? -0.1 : 0.1)
+                        }
                     }
                 }
 
@@ -246,17 +258,55 @@ Item {
 
                 Setting {
                     width: body.width
-                    label: "Sort by"
+                    label: "Search reaches"
 
                     SettingChoice {
                         choices: [
-                            {label: "Name", value: "name"},
-                            {label: "Size", value: "size"},
-                            {label: "Changed", value: "mtime"},
-                            {label: "Kind", value: "kind"}
+                            {label: "The open folder", value: "folder"},
+                            {label: "All of home", value: "home"}
                         ]
+                        chosen: FilesFind.scope
+                        onChose: value => FilesFind.setScope(value)
+                    }
+                }
+
+                Setting {
+                    width: body.width
+                    label: "Search caches and the Trash"
+                    detail: "Also .git, node_modules, keys and other drives in home"
+
+                    Toggle {
+                        checked: FilesFind.everywhere
+                        onToggled: Config.set("files.searchEverywhere", !FilesFind.everywhere)
+                    }
+                }
+
+                Setting {
+                    width: body.width
+                    label: "Sort by"
+
+                    SettingChoice {
+                        choices: ["name", "mtime", "size", "kind"].map(value => ({
+                                    label: Files.sortWords[value].replace(/^\w/, c => c.toUpperCase()),
+                                    value: value
+                                }))
                         chosen: Files.sort
                         onChose: value => Config.set("files.sort", value)
+                    }
+                }
+
+                Setting {
+                    width: body.width
+                    label: "Order"
+                    detail: Files.foldersNote
+
+                    SettingChoice {
+                        choices: Files.orderWords.map((words, i) => ({
+                                    label: words.replace(/^\w|\b[a-z]\b/g, c => c.toUpperCase()),
+                                    value: i === 1
+                                }))
+                        chosen: Files.reversed
+                        onChose: value => Config.set("files.reversed", value)
                     }
                 }
 
@@ -267,7 +317,7 @@ Item {
                     SettingChoice {
                         choices: [
                             {label: "Rendered", value: "rendered"},
-                            {label: "Raw", value: "raw"}
+                            {label: "Source", value: "raw"}
                         ]
                         chosen: Files.markdownRendered ? "rendered" : "raw"
                         onChose: value => Config.set("files.markdown", value)

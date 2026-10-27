@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs.config
+import qs.services
 
 Item {
     id: root
@@ -23,21 +24,33 @@ Item {
     readonly property int resultCount: root.concept?.resultCount ?? 0
     readonly property string scrollInfo: root.concept?.scrollInfo ?? "-"
 
-    function build(): var {
-        loader.active = true;
+    function build(span = undefined): var {
+        if (!loader.active) {
+            loader.active = true;
+            if (span === undefined)
+                Trace.note("built");
+            else
+                Trace.step("built", span);
+        }
         return loader.item;
     }
 
     function show(text = ""): void {
-        root.build().show(text);
+        const span = root.open ? null : Trace.begin("launcher open", loader.active ? "" : "first");
+        root.build(span).show(text);
+        Trace.step("shown", span);
     }
 
     function hide(): void {
+        const span = root.open ? Trace.begin("launcher close") : null;
         root.concept?.hide();
+        Trace.step("hidden", span);
     }
 
     function toggle(): void {
-        root.build().toggle();
+        const span = Trace.begin(`launcher ${root.open ? "close" : "open"}`, loader.active ? "" : "first");
+        root.build(span).toggle();
+        Trace.step(root.open ? "shown" : "hidden", span);
     }
 
     readonly property real panelWidth: root.concept?.panelWidth ?? (root.alphabetical ? Config.values.launcher.alphabet.width : Appearance.sizes.launcherWidth)
@@ -68,7 +81,7 @@ Item {
         interval: 4000
         running: !loader.active
 
-        onTriggered: loader.active = true
+        onTriggered: root.build(Trace.begin("launcher warm"))
     }
 
     Loader {

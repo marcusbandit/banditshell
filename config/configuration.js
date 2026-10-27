@@ -45,11 +45,54 @@ function merge(base, over, path, opaque, literals) {
 }
 
 function upgradeValue(path, value) {
-    return path === "launcher.concept" && value === "niagara" ? "alphabet" : value;
+    if (path === "launcher.concept" && value === "niagara")
+        return "alphabet";
+    if (path === "sidebar.clock.style" && value === "small")
+        return "stacked";
+    if (path === "files.sort" && (value === "date" || value === "type"))
+        return value === "date" ? "mtime" : "kind";
+    if (path === "files.markdown" && value === "source")
+        return "raw";
+    return value;
 }
 
-function upgrade(values) {
-    if (!isPlainObject(values) || !isPlainObject(values.launcher))
+function upgradeFiles(values) {
+    const files = values.files;
+    if (!isPlainObject(files) || (!["date", "type"].includes(files.sort) && files.markdown !== "source"))
+        return values;
+    const next = Object.assign({}, files);
+    for (const key of ["sort", "markdown"])
+        if (owns(files, key))
+            next[key] = upgradeValue(`files.${key}`, files[key]);
+    return Object.assign({}, values, { files: next });
+}
+
+function upgradeUpdateColours(values) {
+    const updates = values.updates;
+    if (!isPlainObject(updates) || updates.coloursUpgraded === true || (!owns(updates, "availableColour") && !owns(updates, "failedColour")))
+        return values;
+    const next = Object.assign({}, updates, { coloursUpgraded: true });
+    if (next.availableColour === "alarm" || next.availableColour === "#ff5252")
+        next.availableColour = "text";
+    if (next.failedColour === "bright" || next.failedColour === "#ffb454")
+        next.failedColour = "warning";
+    return Object.assign({}, values, { updates: next });
+}
+
+function giveGridKey(values, chord, action) {
+    const grid = values.files?.grid;
+    if (!isPlainObject(grid) || owns(grid, chord) || Object.values(grid).includes(action))
+        return values;
+    const files = Object.assign({}, values.files, { grid: Object.assign({}, grid, { [chord]: action }) });
+    return Object.assign({}, values, { files });
+}
+
+function upgradeFilesGrid(values) {
+    return giveGridKey(giveGridKey(values, "Ctrl+Z", "undo"), "F5", "refresh");
+}
+
+function upgradeLauncher(values) {
+    if (!isPlainObject(values.launcher))
         return values;
     const launcher = Object.assign({}, values.launcher);
     if (owns(launcher, "niagara")) {
@@ -60,6 +103,33 @@ function upgrade(values) {
     if (owns(launcher, "concept"))
         launcher.concept = upgradeValue("launcher.concept", launcher.concept);
     return Object.assign({}, values, { launcher });
+}
+
+function upgradeSidebarClock(values) {
+    const clock = values.sidebar?.clock;
+    if (!isPlainObject(clock) || !["small", "off"].includes(clock.style))
+        return values;
+    const choice = clock.style === "small" ? { style: "stacked", size: "small" } : {};
+    if (!owns(clock, "wideStyle") && !owns(clock, "wideSize"))
+        Object.assign(choice, clock.style === "small" ? { wideStyle: "stacked", wideSize: "small" } : { wideStyle: "off" });
+    const sidebar = Object.assign({}, values.sidebar, { clock: Object.assign({}, clock, choice) });
+    return Object.assign({}, values, { sidebar });
+}
+
+function upgradeChannel(values, keepChannel) {
+    const updates = values.updates;
+    if (!isPlainObject(updates) || updates.channelUpgraded === true)
+        return values;
+    const next = Object.assign({}, updates, { channelUpgraded: true });
+    if (next.channel === "main" && !keepChannel)
+        next.channel = "stable";
+    return Object.assign({}, values, { updates: next });
+}
+
+function upgrade(values, keepChannel) {
+    if (!isPlainObject(values))
+        return values;
+    return upgradeUpdateColours(upgradeChannel(upgradeFilesGrid(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values)))), keepChannel === true));
 }
 
 function holds(node, segment) {
@@ -110,4 +180,24 @@ function assign(values, pairs, literals) {
     }
 
     return { values: next, refused: "" };
+}
+
+function readText(raw, state, defaults, keepChannel, opaque, literals) {
+    let parsed = null;
+    let problem = "not an object";
+    try {
+        parsed = JSON.parse(raw);
+    } catch (e) {
+        problem = e.message;
+    }
+    if (!isPlainObject(parsed))
+        return { values: state.values, loaded: true, unreadable: true, problem: problem, save: false };
+    const values = merge(defaults, upgrade(parsed, keepChannel), "", opaque, literals);
+    return { values: values, loaded: true, unreadable: false, problem: "", save: JSON.stringify(values) !== JSON.stringify(parsed) };
+}
+
+function readFailed(missing) {
+    if (!missing)
+        return { loaded: true, unreadable: true, fresh: false, save: false };
+    return { loaded: true, unreadable: false, fresh: true, save: true };
 }

@@ -1,7 +1,7 @@
 {
   "name": "host",
   "summary": "the shell window, chassis, window registry and the IPC front",
-  "layer": 2,
+  "layer": 5,
   "owns": {
     "qml": [
       "modules/BandProgress.qml",
@@ -26,6 +26,7 @@
       "scripts/boot-check-inner.sh",
       "scripts/boot-check.js",
       "scripts/completion-rules.sh",
+      "scripts/perf.js",
       "scripts/redact-config.js",
       "scripts/zsh-completion.sh"
     ],
@@ -38,13 +39,17 @@
       "tests/fixtures/ipc-targets.json",
       "tests/ipc-targets.test.js",
       "tests/lua",
-      "tests/lua-api.test.js"
+      "tests/lua-api.test.js",
+      "tests/perf.test.js",
+      "tests/switch-cases.test.js",
+      "tests/triage-cli.test.js"
     ]
   },
   "requires": {
     "packages": [
       "core",
-      "compositor"
+      "compositor",
+      "tour"
     ],
     "optional": []
   },

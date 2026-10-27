@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf"]);
+const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "hitIndexOf", "hitIsOpen", "hitToOpen", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf", "resettable", "changed", "seeThrough", "loggedSeeThrough", "hitTitle", "hitWhy", "marked"]);
 const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "anchor", "nudge", "resize", "fit"]);
 const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "extent", "rects", "board", "lit", "struck", "fromSheet"]);
 const Frames = lib(path.join(SETTINGS, "scenes/keyframes.js"), ["bezier", "STANDARD", "ARRIVE", "BACK", "at", "pulse", "steps"]);
@@ -130,6 +130,21 @@ test("rows that name a config key write that same key", () => {
             assert.strictEqual(CONFIG_BACKED[r.k], r.cfg, `${r.k} shows ${r.cfg} but writes ${CONFIG_BACKED[r.k]}`);
 });
 
+test("the island's Change place opens the row that writes weather.location", () => {
+    const Forecast = lib(path.join(ROOT, "services/weather.js"), ["failureLook"]);
+    const found = Catalogue.resolve(Forecast.failureLook("place").fix);
+    assert.strictEqual(found.page, "clock");
+    assert.strictEqual(found.row.cfg, "weather.location");
+});
+
+test("the weather rows grey out while the weather is off", () => {
+    const rows = ["weatherPlace", "weatherUnits", "weatherMinutes"].map(k => Catalogue.ROW_BY_KEY[k]);
+    for (const r of rows) {
+        assert.strictEqual(r.dis(fakeState({ weatherShow: false })), true, r.k);
+        assert.strictEqual(r.dis(fakeState({ weatherShow: true })), false, r.k);
+    }
+});
+
 test("what NetworkManager owns is never written to config, and no password is stored", () => {
     for (const k of ["hotspot", "hotspotName", "hotspotPass", "hotspotBand", "vpnFirst"])
         assert.ok(!(k in CONFIG_BACKED), `${k} must not be written to config.json`);
@@ -157,6 +172,10 @@ test("every widget and every preview has its file", () => {
         assert.ok(fs.existsSync(path.join(SETTINGS, "scenes", `${cap(c.preview)}Scene.qml`)), `scene ${c.preview}`);
     for (const p of Catalogue.PAGES)
         assert.ok(fs.existsSync(path.join(SETTINGS, "scenes", `${cap(p.preview)}Scene.qml`)), `scene ${p.preview}`);
+    for (const p of Catalogue.PAGES)
+        for (const g of p.groups)
+            if (g.preview)
+                assert.ok(fs.existsSync(path.join(SETTINGS, "scenes", `${cap(g.preview)}Scene.qml`)), `scene ${g.preview}`);
 });
 
 test("statuses, blurbs, details and options all render against a live state", () => {
@@ -171,12 +190,39 @@ test("statuses, blurbs, details and options all render against a live state", ()
     for (const p of Catalogue.PAGES)
         assert.strictEqual(typeof p.status(s), "string", p.id);
     for (const r of Catalogue.ROWS) {
-        Catalogue.val(r.detail, s);
+        for (const f of ["state", "pending"])
+            assert.strictEqual(typeof (Catalogue.val(r[f], s) ?? ""), "string", `${r.k || r.label} ${f}`);
         if (r.dis)
             r.dis(s);
         if (r.o)
             for (const o of Catalogue.options(r, s))
                 assert.strictEqual(o.length, 2, `${r.k} option`);
+    }
+});
+
+test("a row's line under its label only says what is true now, and shortcuts, explanations and pending changes each have their own field", () => {
+    const Lua = lib(path.join(ROOT, "services/hyprland-lua.js"), ["actionTable", "actionDescription", "scanLua", "bindAction"]);
+    const actions = Lua.actionTable(fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8"));
+    const bound = Lua.scanLua(fs.readFileSync(path.join(ROOT, "docs/hyprland-binds.example.lua"), "utf8")).binds.map(b => Lua.bindAction(b.expr, actions));
+    const filesActions = Object.values(DEFAULTS.files.keys).map(String);
+    for (const r of Catalogue.ROWS) {
+        const name = r.k || r.label || r.w;
+        assert.ok(!("detail" in r), `${name} has a detail; say state, keys, why or pending`);
+        for (const f of ["state", "pending"])
+            if (f in r)
+                assert.strictEqual(typeof r[f], "function", `${name} ${f} is a fixed line, which explains the row, so it belongs in why`);
+        if ("why" in r)
+            assert.strictEqual(typeof r.why, "string", `${name} why changes with the machine, which is state`);
+        if (!r.keys)
+            continue;
+        const [set, id] = r.keys.split(":");
+        if (set === "files")
+            assert.ok(filesActions.includes(id), `${name} keys ${id} is not a files action`);
+        else {
+            assert.strictEqual(set, "shell", `${name} keys ${r.keys}`);
+            assert.ok(Lua.actionDescription(id, actions), `${name} keys ${id} is not a shell action`);
+            assert.ok(bound.includes(id), `${name} keys ${id} has no bind in the example binds`);
+        }
     }
 });
 
@@ -197,6 +243,81 @@ test("search matches labels, keywords and config keys, and takes a list number",
     assert.strictEqual(Catalogue.search("nothing like this at all").length, 0);
 });
 
+test("a search hit names its row with the heading it sits under and marks what matched", () => {
+    const s = fakeState();
+    const titles = q => Catalogue.search(q).map(h => Catalogue.hitTitle(h, s));
+    assert.deepStrictEqual(titles("volume").slice(0, 4), ["Volume", "Volume by app", "Volume: keys step by", "Volume: past 100%"]);
+    assert.strictEqual(titles("snooze")[0], "Alarms: snooze");
+    assert.ok(titles("ethernet").includes("Ethernet"));
+    const mixer = Catalogue.search("volume by app")[0];
+    assert.strictEqual(Catalogue.nameOf(mixer.page, s), Catalogue.hitTitle(mixer, s));
+    assert.ok(titles("keys").includes("Shell: keys") && titles("keys").includes("In files: keys"));
+    const shown = h => `${Catalogue.hitTitle(h, s)} ${Catalogue.nameOf(h.page, s).toLowerCase()}`;
+    const modes = Catalogue.search("sleep").find(h => h.page.id === "modes" && h.row.w === "modes");
+    assert.strictEqual(Catalogue.hitWhy(modes, "sleep", shown(modes)), "sleep");
+    assert.strictEqual(Catalogue.hitWhy(modes, "modes", shown(modes)), "");
+    const after = Catalogue.search("sleep").find(h => h.row.k === "idleSuspend");
+    assert.strictEqual(Catalogue.hitWhy(after, "sleep", shown(after)), "");
+    assert.strictEqual(Catalogue.marked("Volume: keys step by", "VOLUME step", "#f00"), '<font color="#f00">Volume</font>: keys <font color="#f00">step</font> by');
+    assert.strictEqual(Catalogue.marked("a <b> & c", "b", "#f00"), 'a &lt;<font color="#f00">b</font>&gt; &amp; c');
+    assert.strictEqual(Catalogue.marked("Past 100%", "", "#f00"), "Past 100%");
+    assert.strictEqual(Catalogue.marked("Past 100%", "#100", "#f00"), "Past 100%");
+    assert.strictEqual(Catalogue.marked("İstanbul test", "test", "#f00"), "İstanbul test");
+});
+
+test("see-through is how much shows through, and config keeps the panel alpha", () => {
+    assert.strictEqual(Catalogue.seeThrough(0.88), 0.12);
+    assert.strictEqual(Catalogue.seeThrough(0.12), 0.88);
+    assert.strictEqual(Catalogue.seeThrough(Catalogue.seeThrough(0.73)), 0.73);
+    assert.strictEqual(Catalogue.seeThrough(1), 0);
+    assert.strictEqual(Catalogue.seeThrough(Catalogue.seeThrough(0.875)), 0.875);
+    assert.strictEqual(Catalogue.loggedSeeThrough(0.88), 0.12);
+    assert.strictEqual(Catalogue.loggedSeeThrough(0.12), 0.12);
+    assert.strictEqual(Catalogue.loggedSeeThrough(0.5), 0.5);
+});
+
+test("enter on a search hit that is already open steps to the next match, shift enter to the one before", () => {
+    const hits = Catalogue.search("volume");
+    assert.ok(hits.length > 2);
+    const [a, b] = hits;
+    assert.strictEqual(Catalogue.hitToOpen(hits, 0, "", a.page.id), 0);
+    assert.strictEqual(Catalogue.hitToOpen(hits, 0, a.row.uid, a.page.id), 1);
+    assert.strictEqual(Catalogue.hitToOpen(hits, 0, a.row.uid, "nowhere"), 0);
+    assert.strictEqual(Catalogue.hitToOpen(hits, 1, a.row.uid, b.page.id), 1);
+    assert.strictEqual(Catalogue.hitToOpen(hits, hits.length - 1, hits[hits.length - 1].row.uid, hits[hits.length - 1].page.id), 0);
+    assert.strictEqual(Catalogue.hitToOpen([a], 0, a.row.uid, a.page.id), 0);
+    assert.strictEqual(Catalogue.hitToOpen(hits, 1, b.row.uid, b.page.id, true), 0);
+    assert.strictEqual(Catalogue.hitToOpen(hits, 0, a.row.uid, a.page.id, true), hits.length - 1);
+    assert.strictEqual(Catalogue.hitToOpen(hits, 1, a.row.uid, a.page.id, true), 1);
+    assert.ok(Catalogue.hitIsOpen(hits, 0, a.row.uid, a.page.id));
+    assert.ok(!Catalogue.hitIsOpen(hits, 1, a.row.uid, a.page.id));
+    assert.strictEqual(Catalogue.hitIndexOf(hits, b.row.uid), 1);
+    assert.strictEqual(Catalogue.hitIndexOf(hits, "gone"), 0);
+});
+
+test("dark, dark apps, dark mode, light, night and theme all find the light or dark row", () => {
+    for (const q of ["dark", "dark apps", "dark mode", "light mode", "appearance"])
+        assert.strictEqual(Catalogue.search(q)[0]?.row.k, "scheme", q);
+    for (const q of ["light", "night", "theme", "auto"])
+        assert.ok(Catalogue.search(q).some(h => h.row.k === "scheme" && h.page.id === "colour"), q);
+});
+
+test("panel shade and highlight colour are found under their old names too", () => {
+    for (const q of ["panel shade", "surface depth", "ramp"])
+        assert.strictEqual(Catalogue.search(q)[0]?.row.k, "surface", q);
+    for (const q of ["highlight colour", "accent", "accent strength"])
+        assert.strictEqual(Catalogue.search(q)[0]?.row.k, "accent", q);
+});
+
+test("highlight colour keeps dim, mid and bright, and every panel shade has a word", () => {
+    const row = Catalogue.ROW_BY_KEY.accent;
+    assert.deepStrictEqual(Catalogue.options(row, {}).map(o => o[0]), ["dim", "mid", "bright"]);
+    assert.strictEqual(Catalogue.show(row, "mid", {}), "normal");
+    const shade = Catalogue.ROW_BY_KEY.surface;
+    assert.deepStrictEqual([3, 8, -1, NaN].map(v => Catalogue.show(shade, v, {})), ["medium", "palest", "black", "black"]);
+    assert.deepStrictEqual([0, 3, 8].map(v => Catalogue.show(shade, v, { lightShell: true })), ["white", "light", "grey"]);
+});
+
 test("resolve takes categories, pages, old names, row keys and config keys", () => {
     assert.deepStrictEqual(Catalogue.resolve("connections"), { cat: "connections", page: "", row: null });
     assert.strictEqual(Catalogue.resolve("wifi").page, "wifi");
@@ -213,7 +334,7 @@ test("values read the way the rows say them", () => {
     assert.strictEqual(Catalogue.show(row("wifi"), true, s), "on");
     assert.strictEqual(Catalogue.show(row("volStep"), 0.05, s), "5%");
     assert.strictEqual(Catalogue.format(row("snooze"), 9, s), "9 min");
-    assert.strictEqual(Catalogue.format(row("surfaceAlpha"), 0.88, s), "12%");
+    assert.strictEqual(Catalogue.format(row("surfaceAlpha"), 0.12, s), "12%");
     assert.strictEqual(Catalogue.format(row("wallReveal"), 0, s), "cut");
     assert.strictEqual(Catalogue.format(row("mouseSpeed"), 0, s), "as is");
     assert.strictEqual(Catalogue.format(row("warmth"), 0, s), "off");
@@ -392,7 +513,7 @@ test("a desktop without a battery or a lid hides what it can't use", () => {
 test("screen rows that wait for apply say so", () => {
     for (const k of ["scr:on", "scr:mirror", "scr:res", "scr:hz", "scr:scale", "scr:rot", "scr:vrr"]) {
         const r = Catalogue.ROWS.find(x => x.k === k);
-        assert.strictEqual(r.detail({ pendingNote: () => "not applied yet", onlyOn: false }), "not applied yet", k);
+        assert.strictEqual(r.pending({ pendingNote: () => "needs Apply", onlyOn: false }), "needs Apply", k);
     }
 });
 
@@ -444,7 +565,7 @@ test("hibernate is greyed where the machine cannot do it", () => {
         assert.strictEqual(off.length, 1, k);
         assert.ok(Catalogue.options(row, cannot).some(o => o[0] === off[0] && /^hibernate/.test(o[0])), k);
     }
-    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[1]), ["suspend at 5%", "hibernate at 5%", "nothing"]);
+    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[1]), ["sleep at 5%", "hibernate at 5%", "nothing"]);
 });
 
 test("the power mode row offers what the daemon offers and greys without one", () => {
@@ -535,4 +656,35 @@ test("the settings preview draws the sheet's own keys, the ISO enter as its two 
     assert.ok(Boards.struck(keys[1], { super: true }));
     assert.strictEqual(keys[2].label, "Space");
     assert.ok(Boards.struck(keys[0], { return: true }));
+});
+
+test("a row offers its default back only when its value really differs", () => {
+    assert.ok(Catalogue.changed(true, false));
+    assert.ok(!Catalogue.changed(0.1 + 0.2, 0.3));
+    assert.ok(!Catalogue.changed("2", 2));
+    assert.ok(!Catalogue.changed(["a", "b"], ["a", "b"]));
+    assert.ok(Catalogue.changed(["a"], ["a", "b"]));
+    assert.ok(!Catalogue.changed(true, undefined));
+});
+
+test("a reset arrow is never offered for a password, a button, a read-only path or a screen row", () => {
+    assert.ok(Catalogue.resettable({ k: "x", cfg: "a.b", kind: "toggle" }));
+    assert.ok(!Catalogue.resettable({ k: "x", cfg: "a.b", kind: "secret" }));
+    assert.ok(!Catalogue.resettable({ k: "x", cfg: "a.b", kind: "button" }));
+    assert.ok(!Catalogue.resettable({ k: "x", cfg: "a.b", kind: "path", ro: true }));
+    const screens = Object.values(Catalogue.ROWS).filter(r => r.k && r.k.startsWith("scr:"));
+    assert.ok(screens.length > 0);
+    assert.ok(screens.every(r => !Catalogue.resettable(r)));
+});
+
+test("a place the weather does not know gets one message under the row, with a way out", () => {
+    const row = Catalogue.ROW_BY_KEY.weatherPlace;
+    const state = (place, trouble, guess) => ({ v: k => k === "weatherPlace" ? place : true, weatherPlaceTrouble: trouble, weatherSuggestion: guess });
+    assert.strictEqual(row.offer(state("Lyngby, Denmark", "", null)), null);
+    assert.deepStrictEqual(row.offer(state("Lyngbyy", "x", { name: "Lyngby", country: "Denmark", text: "Lyngby, Denmark" })), {
+        text: 'No place called "Lyngbyy". Did you mean Lyngby, Denmark?', alarm: true, buttons: [["Use Lyngby, Denmark", "Lyngby, Denmark"]]
+    });
+    assert.deepStrictEqual(row.offer(state("Xqzwvb", "x", null)).buttons, [["Use my connection's location", ""]]);
+    assert.deepStrictEqual(row.offer(state("", "x", null)).buttons, []);
+    assert.strictEqual(row.cfg, "weather.location");
 });

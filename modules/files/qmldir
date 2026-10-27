@@ -1,5 +1,6 @@
 module qs.modules.files
 ChordHints 1.0 ChordHints.qml
+ConflictSide 1.0 ConflictSide.qml
 FileGrid 1.0 FileGrid.qml
 FileMark 1.0 FileMark.qml
 FileTile 1.0 FileTile.qml
@@ -9,7 +10,9 @@ FilesSettings 1.0 FilesSettings.qml
 FilesSidebar 1.0 FilesSidebar.qml
 FilesWindow 1.0 FilesWindow.qml
 HelpersMissing 1.0 HelpersMissing.qml
+KeyHints 1.0 KeyHints.qml
 NamePrompt 1.0 NamePrompt.qml
+PasteConflict 1.0 PasteConflict.qml
 PathBar 1.0 PathBar.qml
 PreviewPane 1.0 PreviewPane.qml
 PreviewPlayer 1.0 PreviewPlayer.qml

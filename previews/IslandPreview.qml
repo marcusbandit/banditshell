@@ -175,6 +175,93 @@ ShellRoot {
             expect: "hidden"
         },
         {
+            name: "dictating, and the daemon can cancel: the capsule stays bars and language",
+            run: () => {
+                Dictation.canCancel = true;
+                Dictation.lang = "da-DK";
+                preview.speak("listening");
+            },
+            expect: "dictation",
+            holds: () => island.rowOfKind("dictation")?.actions.length === 0
+        },
+        {
+            name: "open the island: the dictation row offers Discard",
+            run: () => island.pinned = true,
+            wait: 400,
+            expect: "overview",
+            holds: () => island.rowOfKind("dictation")?.actions[0]?.label === "Discard"
+        },
+        {
+            name: "discard: the row says Nothing typed",
+            run: () => {
+                Dictation.phase = "idle";
+                Dictation.cancelledTyped = false;
+                Dictation.cancelled = true;
+            },
+            wait: 400,
+            expect: "overview",
+            holds: () => island.rowOfKind("dictation")?.look.text === "Nothing typed"
+        },
+        {
+            name: "close the island: it says so at rest, with no button beside it",
+            run: () => island.pinned = false,
+            wait: 600,
+            expect: "dictation",
+            holds: () => island.rowOfKind("dictation")?.look.text === "Nothing typed" && !island.rowOfKind("dictation")?.look.trailing
+        },
+        {
+            name: "then it leaves",
+            run: () => {},
+            wait: 2600,
+            expect: "hidden"
+        },
+        {
+            name: "streaming, some words already typed, then discard: Partly typed",
+            run: () => {
+                preview.speak("listening");
+                Dictation.phase = "idle";
+                Dictation.cancelledTyped = true;
+                Dictation.cancelled = true;
+            },
+            wait: 1400,
+            expect: "dictation",
+            holds: () => island.rowOfKind("dictation")?.look.text === "Partly typed"
+        },
+        {
+            name: "and that leaves too",
+            run: () => {},
+            wait: 1800,
+            expect: "hidden"
+        },
+        {
+            name: "an older daemon: no Discard even with the island open",
+            run: () => {
+                Dictation.canCancel = false;
+                Dictation.lang = "auto";
+                preview.speak("listening");
+                island.pinned = true;
+            },
+            wait: 400,
+            expect: "overview",
+            holds: () => !island.rowOfKind("dictation")?.actions.length
+        },
+        {
+            name: "close it and stop dictating: on its way out it never claims a discard",
+            run: () => {
+                island.pinned = false;
+                preview.speak("idle");
+            },
+            wait: 100,
+            expect: "hidden",
+            holds: () => !["Nothing typed", "Partly typed", "Discarded"].includes(island.rowOfKind("dictation")?.look.text)
+        },
+        {
+            name: "and it is gone",
+            run: () => {},
+            wait: 1500,
+            expect: "hidden"
+        },
+        {
             name: "dictating",
             run: () => preview.speak("listening"),
             expect: "dictation"
@@ -540,6 +627,49 @@ ShellRoot {
             expect: "the weather"
         },
         {
+            name: "the forecast could not update: the last one shows with its age",
+            run: () => {
+                Weather.take("", preview.forecastAnswer());
+                Weather.outlook = [];
+                Weather.fetchedAt = Date.now() - 3 * 3600000;
+                Weather.take("", "\n000 6");
+            },
+            wait: 1200,
+            expect: "the weather"
+        },
+        {
+            name: "no forecast ever loaded while offline: it says so and waits",
+            run: () => {
+                Weather.current = null;
+                Weather.wttrData = null;
+                Weather.outlook = [];
+                Weather.take("", "\n000 6");
+            },
+            wait: 1200,
+            expect: "the weather"
+        },
+        {
+            name: "the weather service did not answer: a quiet try again",
+            run: () => Weather.take("", "\n000 28"),
+            wait: 1200,
+            expect: "the weather"
+        },
+        {
+            name: "a place the weather does not know points to the setting",
+            run: () => Weather.take("Lyngbyy", "location not found: upstream error: opencage: invalid response\n\n500 0"),
+            wait: 1200,
+            expect: "the weather"
+        },
+        {
+            name: "back in the overview, a failed weather is tried again",
+            run: () => {
+                Weather.fetchedAt = Date.now();
+                island.back();
+            },
+            wait: 1200,
+            expect: "overview"
+        },
+        {
             name: "the shell update opens in the island, not the sidebar",
             run: () => island.choose({
                     kind: "update",
@@ -798,6 +928,38 @@ ShellRoot {
             expect: "hidden"
         },
         {
+            name: "a Wi-Fi join fails: Wi-Fi failed, with Try again",
+            run: () => Activities.push(MomentLogic.wifiSpec("Cafe", "timeout", "Cafe: no answer")),
+            expect: "activity"
+        },
+        {
+            name: "pin the island: the same row in the overview",
+            run: () => island.pinned = true,
+            wait: 600,
+            expect: "overview"
+        },
+        {
+            name: "pressing it turns the island into the failed join",
+            run: () => island.choose(Activities.shown.find(i => i.id === "moment:wifi")),
+            wait: 600,
+            expect: "the failed Wi-Fi join"
+        },
+        {
+            name: "leave the view: the failure still waits after ten seconds",
+            run: () => {
+                island.leaveTask();
+                island.close();
+            },
+            wait: 10000,
+            expect: "activity"
+        },
+        {
+            name: "it goes once it is closed",
+            run: () => Activities.remove("moment:wifi"),
+            wait: 600,
+            expect: "hidden"
+        },
+        {
             name: "dictating, then a screenshot: it shows below the bars first",
             run: () => {
                 preview.speak("listening");
@@ -873,8 +1035,222 @@ ShellRoot {
             },
             wait: 1500,
             expect: "hidden"
+        },
+        {
+            name: "three notifications pop up",
+            run: () => {
+                Moments.offerUndo();
+                preview.notify("Firefox", "Download finished", "linux-zen-6.17.tar.zst", false);
+                preview.notify("Signal", "Mum", "call me when you get a minute", false);
+                preview.notify("Discord", "marcus", "are you coming tonight?", false);
+                preview.order = Notifications.popups.map(e => e.summary).join("|");
+                preview.mine = Notifications.popups.slice();
+            },
+            wait: 1200,
+            expect: "3 notifications stacked"
+        },
+        {
+            name: "flick the front one away: Discord dismissed, its mark and Undo",
+            run: () => island.flickFront(1),
+            wait: 1500,
+            expect: "2 notifications stacked, below it: activity",
+            holds: () => Notifications.shelved === 1 && preview.undoRow()?.text === "Discord dismissed" && preview.undoRow()?.data?.entry === preview.mine[0]
+        },
+        {
+            name: "Undo puts it back on top of the stack",
+            run: () => preview.pressUndo(),
+            wait: 1500,
+            expect: "3 notifications stacked",
+            holds: () => Notifications.shelved === 0 && !preview.undoRow() && Notifications.popups.map(e => e.summary).join("|") === preview.order
+        },
+        {
+            name: "clear all: 3 notifications cleared, with Undo",
+            run: () => island.clearNotifications(null),
+            wait: 2000,
+            expect: "activity",
+            holds: () => Notifications.shelved === 3 && preview.undoRow()?.text === "3 notifications cleared" && !Notifications.history.some(e => preview.mine.includes(e))
+        },
+        {
+            name: "Undo brings all three back as they were",
+            run: () => preview.pressUndo(),
+            wait: 1500,
+            expect: "3 notifications stacked",
+            holds: () => Notifications.shelved === 0 && Notifications.popups.map(e => e.summary).join("|") === preview.order
+        },
+        {
+            name: "clear all and wait: the row goes after five seconds and so do they",
+            run: () => island.clearNotifications(null),
+            wait: Notifications.undoMs + 2500,
+            expect: "hidden",
+            holds: () => Notifications.shelved === 0 && !preview.undoRow() && !Notifications.history.some(e => preview.mine.includes(e))
+        },
+        {
+            name: "three more pop up for snoozing and muting",
+            run: () => {
+                Moments.offerUndo();
+                preview.notify("Firefox", "Download finished", "linux-zen-6.17.tar.zst", false);
+                preview.notify("Signal", "Mum", "call me when you get a minute", false);
+                preview.notify("Discord", "marcus", "are you coming tonight?", false);
+                preview.order = Notifications.popups.map(e => e.summary).join("|");
+                preview.mine = Notifications.popups.slice();
+            },
+            wait: 1200,
+            expect: "3 notifications stacked"
+        },
+        {
+            name: "the snooze button on Discord's card opens snooze and mute choices",
+            run: () => preview.hushing(true),
+            wait: 1200,
+            expect: "3 notifications stacked",
+            holds: () => preview.cardOf(preview.mine[0])?.hushing === true
+        },
+        {
+            name: "pointing at the snooze button names it",
+            run: () => preview.tip("Remind me or mute", true),
+            wait: 1200,
+            expect: "3 notifications stacked",
+            holds: () => preview.tip("Remind me or mute", true)
+        },
+        {
+            name: "remind me in an hour: the card goes, Discord hidden until then, with Undo",
+            run: () => preview.tip("Remind me or mute", false) && preview.cardOf(preview.mine[0])?.hush("snooze", Notifications.hushUntil("hour", Date.now())),
+            wait: 1500,
+            expect: "2 notifications stacked, below it: activity",
+            holds: () => Notifications.snoozed.some(i => i.entry === preview.mine[0] && Math.abs(i.at - Date.now() - 3600000) < 10000) && preview.undoRow()?.text.startsWith("Discord hidden until ")
+        },
+        {
+            name: "Undo brings the card back and drops the snooze",
+            run: () => preview.pressUndo(),
+            wait: 1500,
+            expect: "3 notifications stacked",
+            holds: () => Notifications.snoozed.length === 0 && !preview.undoRow() && Notifications.popups.map(e => e.summary).join("|") === preview.order
+        },
+        {
+            name: "mute Discord until I unmute: its card goes, popups and sound off, with Undo",
+            run: () => {
+                preview.hushing(true);
+                preview.cardOf(preview.mine[0])?.hush("mute", 0);
+            },
+            wait: 1500,
+            expect: "2 notifications stacked, below it: activity",
+            holds: () => {
+                const rule = Notifications.ruleAt(Notifications.ruleKeyFor(preview.mine[0]));
+                return !rule.pop && !rule.snd && preview.undoRow()?.text === "Discord muted until I unmute";
+            }
+        },
+        {
+            name: "Undo unmutes and leaves no rule behind",
+            run: () => preview.pressUndo(),
+            wait: 1500,
+            expect: "3 notifications stacked",
+            holds: () => !(Notifications.ruleKeyFor(preview.mine[0]) in Notifications.rules) && Notifications.popups.map(e => e.summary).join("|") === preview.order
+        },
+        {
+            name: "mute for an hour and let the undo lapse: the mute stays",
+            run: () => {
+                preview.hushing(true);
+                preview.cardOf(preview.mine[0])?.hush("mute", Notifications.hushUntil("hour", Date.now()));
+            },
+            wait: Notifications.undoMs + 2500,
+            expect: "2 notifications stacked",
+            holds: () => Notifications.mutedUntil(Notifications.ruleKeyFor(preview.mine[0])) > Date.now() + 3500000 && !preview.undoRow()
+        },
+        {
+            name: "a muted app's card offers unmute instead",
+            run: () => {
+                preview.notify("Discord", "marcus", "still coming?", false);
+                preview.mine = [Notifications.popups[0]];
+                preview.hushing(true);
+            },
+            wait: 1500,
+            expect: "3 notifications stacked",
+            holds: () => preview.cardOf(preview.mine[0])?.appMuted === true
+        },
+        {
+            name: "unmute: Discord unmuted, with Undo",
+            run: () => preview.cardOf(preview.mine[0])?.hush("unmute", 0),
+            wait: 1500,
+            expect: "3 notifications stacked, below it: activity",
+            holds: () => Notifications.mutedUntil(Notifications.ruleKeyFor(preview.mine[0])) === 0 && preview.undoRow()?.text === "Discord unmuted"
+        },
+        {
+            name: "the notifications view offers quiet until an hour from now, the night's end, or until turned off",
+            run: () => {
+                Notifications.letGo();
+                island.choose({
+                    kind: "notifications"
+                });
+            },
+            wait: 1500,
+            expect: "the notifications"
+        },
+        {
+            name: "quiet for an hour: the row says until when, with turn off",
+            run: () => Notifications.quietTill(Notifications.hushUntil("hour", Date.now())),
+            wait: 1200,
+            expect: "the notifications",
+            holds: () => Notifications.quiet && Math.abs(Notifications.quietUntil - Date.now() - 3600000) < 10000
+        },
+        {
+            name: "quiet until tomorrow: it ends when the night does",
+            run: () => Notifications.quietTill(Notifications.hushUntil("tomorrow", Date.now())),
+            wait: 1200,
+            expect: "the notifications",
+            holds: () => Notifications.quiet && Notifications.quietUntil === Notifications.deadlineFor(Notifications.parseEnds("tomorrow"))
+        },
+        {
+            name: "quiet until evening, set elsewhere: the row says so too",
+            run: () => Notifications.setQuiet(true, Notifications.parseEnds("evening")),
+            wait: 1200,
+            expect: "the notifications",
+            holds: () => Notifications.quiet && new Date(Notifications.quietUntil).getHours() === 18
+        },
+        {
+            name: "quiet always: on until turned off",
+            run: () => Notifications.quietTill(0),
+            wait: 1200,
+            expect: "the notifications",
+            holds: () => Notifications.quiet && Notifications.quietUntil === 0
         }
     ]
+
+    function tip(text: string, up: bool): bool {
+        const find = item => {
+            for (const child of item?.children ?? []) {
+                if (child.text === text && child.up !== undefined)
+                    return child;
+                const deeper = find(child);
+                if (deeper)
+                    return deeper;
+            }
+            return null;
+        };
+        const found = find(preview.cardOf(preview.mine[0]));
+        if (found)
+            found.up = up;
+        return !!found;
+    }
+
+    function hushing(on: bool): void {
+        const card = preview.cardOf(preview.mine[0]);
+        if (card)
+            card.hushing = on;
+    }
+
+    property string order: ""
+    property var mine: []
+
+    function undoRow(): var {
+        return Activities.shown.find(i => i.id === "moment:undo") ?? null;
+    }
+
+    function pressUndo(): void {
+        const row = preview.undoRow();
+        if (row)
+            Activities.activate(Object.assign({}, row, {
+                action: "undo"
+            }));
+    }
 
     function remember(app: string, summary: string, body: string): void {
         const entry = entryComponent.createObject(preview, {
@@ -973,6 +1349,40 @@ ShellRoot {
                 levels.push(Math.abs(Math.sin(i * 0.37)) * (0.35 + 0.65 * Math.abs(Math.sin(i * 0.11))));
             Dictation.levels = levels;
         }
+    }
+
+    function forecastAnswer(): string {
+        const day = (date, high, low, code, desc, rain) => ({
+                date: date,
+                maxtempC: String(high),
+                mintempC: String(low),
+                maxtempF: String(Math.round(high * 1.8 + 32)),
+                mintempF: String(Math.round(low * 1.8 + 32)),
+                hourly: [{
+                        time: "1200",
+                        weatherCode: String(code),
+                        weatherDesc: [{
+                                value: desc
+                            }],
+                        chanceofrain: String(rain)
+                    }]
+            });
+        return JSON.stringify({
+            current_condition: [{
+                    temp_C: "9",
+                    temp_F: "48",
+                    weatherCode: "116",
+                    weatherDesc: [{
+                            value: "Partly cloudy"
+                        }]
+                }],
+            nearest_area: [{
+                    areaName: [{
+                            value: "Kongens Lyngby"
+                        }]
+                }],
+            weather: [day("2026-10-25", 11, 6, 116, "Partly cloudy", 10), day("2026-10-26", 12, 7, 296, "Light rain", 70), day("2026-10-27", 9, 4, 113, "Sunny", 0)]
+        }) + "\n200 0";
     }
 
     function shot(ms: int): var {

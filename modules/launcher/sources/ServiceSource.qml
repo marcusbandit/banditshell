@@ -11,7 +11,8 @@ QtObject {
 
     readonly property var kinds: ["service"]
 
-    readonly property var asked: SystemdUnits.enabled && SystemdUnits.found ? Logic.ask(root.search.text) : null
+    readonly property bool usable: SystemdUnits.enabled && SystemdUnits.found
+    readonly property var asked: root.usable ? Logic.ask(root.search.text) : null
 
     onAskedChanged: {
         if (root.asked)
@@ -90,6 +91,17 @@ QtObject {
         }
         return root.found.map((f, i) => root.row(f.unit, root.scoreAt(i)));
     }
+
+    readonly property var prefixes: !root.usable ? [] : [
+            {
+                section: "System",
+                word: "services",
+                example: "services pipewire",
+                about: "systemd services",
+                icon: "settings_applications",
+                also: []
+            }
+        ]
 
     readonly property var groups: [
         {

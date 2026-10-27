@@ -116,3 +116,11 @@ test("a choice goes into every list that exists and the plain one, and never int
     ]);
     assert.deepStrictEqual(Defaults.terminalWrites([{ name: "xdg-terminals.list", text: "", exists: true, readable: false }], "foot.desktop"), []);
 });
+
+test("handledTypes answers the same for an entry it has seen before, wildcards included", () => {
+    const entry = { mimeTypes: ["image/*", "video/mp4"] };
+    const group = { types: ["image/png", "video/mp4", "video/webm"] };
+    assert.deepStrictEqual(Defaults.handledTypes(entry, group), ["image/png", "video/mp4"]);
+    assert.deepStrictEqual(Defaults.handledTypes(entry, group), ["image/png", "video/mp4"]);
+    assert.deepStrictEqual(Defaults.handledTypes(entry, { types: ["video/webm"] }), []);
+});

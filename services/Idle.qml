@@ -28,7 +28,7 @@ Singleton {
 
     readonly property int presenceSeconds: 60
 
-    readonly property int handlerRecheckMs: 60 * 1000
+    readonly property int handlerRecheckMs: 30 * 1000
 
     readonly property string planText: root.handledElsewhere ? "[]" : JSON.stringify(Plan.plan({
             lock: Config.values.idle.lock,
@@ -153,7 +153,14 @@ Singleton {
     Timer {
         interval: root.handlerRecheckMs
         running: true
-        repeat: true
         onTriggered: root.recheck()
+    }
+
+    IdleMonitor {
+        timeout: root.presenceSeconds / 2
+        respectInhibitors: true
+
+        onIsIdleChanged: if (isIdle)
+            root.recheck()
     }
 }

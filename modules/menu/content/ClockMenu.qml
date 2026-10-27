@@ -27,10 +27,10 @@ Column {
 
     readonly property int mark: Appearance.font.stem
 
-    SystemClock {
+    WallClock {
         id: clock
 
-        precision: SystemClock.Minutes
+        precision: WallClock.Minutes
 
         enabled: root.visible
     }
