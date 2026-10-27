@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "launcher-memory.js" as Memory
 
 Singleton {
     id: root
@@ -14,8 +15,7 @@ Singleton {
     property var usage: ({})
 
     function scoreOf(key: string, now: real): real {
-        const rec = root.usage[key];
-        return rec ? rec.score * Apps.decay(rec.last, now) : 0;
+        return Memory.scoreOf(root.usage, key, now, (from, to) => Apps.decay(from, to));
     }
 
     function bonusOf(key: string, now: real): real {
@@ -41,19 +41,7 @@ Singleton {
     function record(key: string): void {
         if (!root.remembers(key))
             return;
-        const now = Date.now();
-        const next = Object.assign({}, root.usage, {
-            [key]: {
-                score: root.scoreOf(key, now) + 1,
-                last: now
-            }
-        });
-        const keys = Object.keys(next);
-        if (keys.length > root.keep) {
-            keys.sort((a, b) => root.scoreOf(b, now) - root.scoreOf(a, now) || next[b].last - next[a].last);
-            for (const gone of keys.slice(root.keep))
-                delete next[gone];
-        }
+        const next = Memory.record(root.usage, key, Date.now(), root.keep, (from, to) => Apps.decay(from, to));
         root.usage = next;
         store.setText(JSON.stringify(next));
     }
