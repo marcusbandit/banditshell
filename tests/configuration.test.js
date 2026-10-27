@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "config/configuration.js"), "utf8");
-const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue };")();
+const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue, readText, readFailed };")();
 
 const OPAQUE = ["files.keys", "files.grid"];
 
@@ -301,5 +301,51 @@ test.describe("literals", () => {
     test.it("refuses other words, and the word without the allowance", () => {
         assert.strictEqual(Configuration.assign(base(), [["files.terminal.palette", "neon"]], literals).refused, "files.terminal.palette");
         assert.strictEqual(Configuration.assign(base(), [["files.terminal.palette", "theme"]]).refused, "files.terminal.palette");
+    });
+});
+
+test.describe("reading config.json", () => {
+    const boot = () => ({ values: defaults(), loaded: false });
+    const read = (raw, state) => Configuration.readText(raw, state, defaults(), false, OPAQUE, {});
+
+    test.it("boots on the defaults when the file does not parse, and writes nothing", () => {
+        const got = read('{ "theme": "slate", }', boot());
+        assert.strictEqual(got.loaded, true);
+        assert.strictEqual(got.unreadable, true);
+        assert.strictEqual(got.save, false);
+        assert.deepStrictEqual(got.values, defaults());
+        assert.match(got.problem, /JSON|token|property/i);
+    });
+
+    test.it("treats a file that parses to something other than an object as broken", () => {
+        for (const raw of ["[]", "null", "42", "\"slate\""]) {
+            const got = read(raw, boot());
+            assert.deepStrictEqual([got.loaded, got.unreadable, got.save], [true, true, false], raw);
+        }
+    });
+
+    test.it("keeps the values it had when the file breaks mid-session", () => {
+        const running = { values: Object.assign(defaults(), { theme: "dusk" }), loaded: true };
+        const got = read("{", running);
+        assert.strictEqual(got.values.theme, "dusk");
+        assert.deepStrictEqual([got.loaded, got.unreadable, got.save], [true, true, false]);
+    });
+
+    test.it("takes the file once it is fixed, and saves only what the schema added", () => {
+        const whole = read(JSON.stringify(defaults()), boot()).values;
+        const fixed = read(JSON.stringify(whole), { values: defaults(), loaded: true });
+        assert.deepStrictEqual([fixed.unreadable, fixed.save], [false, false]);
+        const short = read('{ "theme": "dusk" }', boot());
+        assert.deepStrictEqual([short.unreadable, short.save, short.values.theme], [false, true, "dusk"]);
+    });
+
+    test.it("boots on the defaults when the file cannot be read, and writes nothing", () => {
+        const got = Configuration.readFailed(false);
+        assert.deepStrictEqual([got.loaded, got.unreadable, got.fresh, got.save], [true, true, false, false]);
+    });
+
+    test.it("writes a fresh file only when there was none", () => {
+        const got = Configuration.readFailed(true);
+        assert.deepStrictEqual([got.loaded, got.unreadable, got.fresh, got.save], [true, false, true, true]);
     });
 });
