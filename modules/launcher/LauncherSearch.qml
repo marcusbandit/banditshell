@@ -1860,6 +1860,14 @@ QtObject {
                     run: () => root.activate(row)
                 }
             ];
+        case "printed":
+            return [
+                {
+                    icon: "content_copy",
+                    label: "Copy",
+                    run: () => root.activate(row)
+                }
+            ];
         case "output":
         case "timer":
         case "reminder":
