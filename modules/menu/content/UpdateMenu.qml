@@ -57,7 +57,7 @@ Column {
     InkText {
         width: parent.width
         alignInk: true
-        text: Update.version === "" ? Update.channelLabel : `Version ${Update.version}, ${Update.channelLabel}`
+        text: Update.haveLabel
         color: Appearance.colour.textFaint
     }
 

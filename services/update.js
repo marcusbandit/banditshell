@@ -16,6 +16,12 @@ function following(head, branch) {
     return head === branch || (branch === "stable" && head === "main");
 }
 
+function haveText(version, channel, branch) {
+    const followed = branchFor(channel, branch);
+    const where = followed === "stable" || followed === "main" ? `on the ${followed} channel` : `following ${followed}`;
+    return version ? `You have ${version}, ${where}` : `${where[0].toUpperCase()}${where.slice(1)}`;
+}
+
 function channelText(channel, branch) {
     const followed = branchFor(channel, branch);
     if (followed !== "stable" && followed !== "main")
@@ -253,6 +259,7 @@ function classify(input) {
     return {
         files: files.length,
         commits: Number(given.commits) || 0,
+        notes: (Array.isArray(given.entries) ? given.entries : []).reduce((n, e) => n + (Array.isArray(e?.changes) ? e.changes.length : 0), 0),
         kind: restart ? "restart" : runs ? "reload" : "none",
         restart: restart,
         restartReasons: reasons,
@@ -280,16 +287,14 @@ function listed(items) {
 }
 
 function summary(c) {
-    const count = c.commits > 0 ? c.commits : c.files;
+    const count = c.notes > 0 ? c.notes : c.commits > 0 ? c.commits : c.files;
     if (count === 0)
         return "no changes";
     const parts = [plural(count, "change", "changes")];
     if (c.kind === "restart")
         parts.push("restart needed");
-    else if (c.kind === "reload")
-        parts.push("no restart needed");
     else
-        parts.push("nothing the shell runs changed");
+        parts.push("no restart needed");
     if (c.cli)
         parts.push("commands changed");
     if (c.apiRemoved.length > 0)

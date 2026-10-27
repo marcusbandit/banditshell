@@ -57,6 +57,7 @@ Singleton {
     readonly property string channel: Words.channelOf(Config.values.updates.channel)
     readonly property string branch: Words.branchFor(Config.values.updates.channel, Config.values.updates.branch)
     readonly property string channelLabel: Words.channelText(Config.values.updates.channel, Config.values.updates.branch)
+    readonly property string haveLabel: Words.haveText(root.version, Config.values.updates.channel, Config.values.updates.branch)
     property string release: ""
     readonly property string version: root.release || WhatsNew.version
     property string targetVersion: ""

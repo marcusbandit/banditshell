@@ -171,7 +171,7 @@ definition. Where it shows:
 - `banditshell update` and `update check` name the version this copy is on and the one waiting.
 - `banditshell update check --json` carries `version` (this copy), `targetVersion` (what is
   waiting) and `previousVersion` (where rollback goes).
-- The update menu shows `Version <release>, stable channel`; on stable a waiting update is headed
+- The update menu says `You have <release>, on the stable channel`; on stable a waiting update is headed
   `<release> is ready`, with that release's what's-new entries under "In this update".
 - Settings > About shows the same version.
 
