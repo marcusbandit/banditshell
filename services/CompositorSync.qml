@@ -4,9 +4,12 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "compositor-options.js" as Options
 
 Singleton {
     id: root
+
+    property string unanswered: ""
 
     function refresh(): void {
         if (Compositor.isHyprland)
@@ -23,39 +26,31 @@ Singleton {
     Process {
         id: hyprctl
 
-        command: ["hyprctl", "-j", "--batch", "getoption decoration:rounding ; getoption decoration:rounding_power ; getoption general:gaps_out ; getoption general:gaps_in ; getoption general:border_size ; getoption input:natural_scroll ; getoption input:touchpad:natural_scroll"]
+        command: ["hyprctl", "-j", "--batch", Options.batch()]
 
         stdout: StdioCollector {
             onStreamFinished: {
-                const nums = text.split("\n").filter(l => l.trim().startsWith("{")).map(line => {
-                    try {
-                        const o = JSON.parse(line);
-                        const many = o.custom ?? o.css;
-                        if (many !== undefined)
-                            return parseFloat(String(many).trim().split(/\s+/)[0]);
-
-                        if (o.bool !== undefined)
-                            return o.bool ? 1 : 0;
-                        return o.float ?? o.int ?? null;
-                    } catch (e) {
-                        return null;
-                    }
-                }).filter(v => v !== null);
-
-                if (nums.length < 5)
+                const got = Options.readOptions(text);
+                const next = Options.settle(got, {
+                    rounding: Config.values.rounding.base,
+                    roundingPower: 2,
+                    gapsOut: Config.values.edge.border,
+                    gapsIn: Compositor.gapsIn,
+                    borderSize: Compositor.borderSize,
+                    naturalScrollMouse: Compositor.naturalScrollMouse,
+                    naturalScrollTouchpad: Compositor.naturalScrollTouchpad
+                });
+                if (!next)
                     return console.warn("CompositorSync: could not read Hyprland options, keeping config.json values.");
 
-                Compositor.rounding = nums[0];
-                Compositor.roundingPower = nums[1];
-                Compositor.gapsOut = nums[2];
-                Compositor.gapsIn = nums[3];
-                Compositor.borderSize = nums[4];
-                Compositor.available = true;
+                const missing = Options.missing(got).join(", ");
+                if (missing && missing !== root.unanswered)
+                    console.warn(`CompositorSync: Hyprland has no ${missing}, so the shell uses its own value for each.`);
+                root.unanswered = missing;
 
-                if (nums.length > 5)
-                    Compositor.naturalScrollMouse = nums[5] !== 0;
-                if (nums.length > 6)
-                    Compositor.naturalScrollTouchpad = nums[6] !== 0;
+                for (const key of Object.keys(next))
+                    Compositor[key] = next[key];
+                Compositor.available = true;
             }
         }
     }
