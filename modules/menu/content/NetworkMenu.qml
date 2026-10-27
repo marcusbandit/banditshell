@@ -521,12 +521,25 @@ Column {
                         id: signIn
 
                         IdentityField {
-                            placeholder: entry.name
+                            readonly property string kind: Network.signInKind(entry.modelData)
 
-                            onAccepted: (identity, password, eap, phase2) => {
+                            placeholder: entry.name
+                            methods: Network.signInMethods(kind)
+                            refusal: Network.signInRefusal(kind)
+                            domain: Network.knownServer(entry.name)
+                            busy: Network.enrollingName === entry.name
+                            note: Network.enrollFailedName === entry.name ? Network.enrollDetail : Network.checkedName === entry.name ? Network.checkedNote : ""
+                            noteIsTrouble: Network.enrollFailedName === entry.name
+                            suggestion: Network.checkedName === entry.name ? Network.checkedServer : ""
+
+                            onAccepted: (form, password) => {
                                 if (Network.find(entry.name))
-                                    Network.joinEnterprise(entry.name, identity, password, eap, phase2);
+                                    Network.joinEnterprise(entry.name, kind, form, password);
                                 root.asking = "";
+                            }
+                            onCheck: form => {
+                                if (Network.find(entry.name))
+                                    Network.checkServer(entry.name, kind, form);
                             }
                             onCancelled: root.asking = ""
                         }
