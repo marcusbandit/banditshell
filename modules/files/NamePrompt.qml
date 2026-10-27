@@ -98,6 +98,8 @@ Item {
 
                 text: root.title
                 font.pixelSize: Appearance.font.size.normal
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                maximumLineCount: 4
                 elide: Text.ElideRight
             }
 

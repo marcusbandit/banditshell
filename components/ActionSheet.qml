@@ -60,6 +60,15 @@ Item {
 
     readonly property real rowHeight: Math.max(Appearance.sizes.rowHeight, Appearance.font.iconSize + root.inset * 2)
     readonly property real step: root.rowHeight + root.gap
+    readonly property real split: root.gap * 2 + 1
+
+    function rowTop(index: int): real {
+        let breaks = 0;
+        for (let i = 1; i <= index && i < root.actions.length; i++)
+            if (root.actions[i].apart)
+                breaks += 1;
+        return index * root.step + breaks * root.split;
+    }
 
     readonly property real rowWidth: Math.min(root.width - root.edge * 2 - root.gap * 2, root.inset * 3 + Appearance.font.iconSize + measure.childrenRect.width)
 
@@ -68,7 +77,7 @@ Item {
 
     readonly property real edge: Appearance.padding.normal
     readonly property real fullWidth: root.rowWidth + root.gap * 2
-    readonly property real fullHeight: root.actions.length * root.step - root.gap + root.gap * 2
+    readonly property real fullHeight: root.rowTop(root.actions.length - 1) + root.rowHeight + root.gap * 2
 
     readonly property bool flipX: root.atX + root.fullWidth > root.width - root.edge
     readonly property bool flipY: root.atY + root.fullHeight > root.height - root.edge
@@ -87,7 +96,7 @@ Item {
         id: marker
 
         speed: Appearance.animation.trackSpeed
-        target: root.selected * root.step
+        target: root.rowTop(root.selected)
     }
 
     visible: unroll.value > 0.001
@@ -166,59 +175,75 @@ Item {
                     readonly property bool chosen: root.selected === cell.index
                     readonly property bool worn: root.worn === cell.index
 
+                    readonly property real lead: cell.index > 0 && cell.modelData.apart ? root.split : 0
+
                     width: root.rowWidth
-                    height: root.rowHeight
+                    height: root.rowHeight + cell.lead
 
-                    Icon {
-                        id: mark
+                    Separator {
+                        visible: cell.lead > 0
+                        width: parent.width
+                        y: (cell.lead - root.gap - height) / 2
+                    }
 
-                        opacity: cell.worn ? 0 : 1
+                    Item {
+                        y: cell.lead
+                        width: parent.width
+                        height: root.rowHeight
 
-                        x: root.inset
-                        anchors.verticalCenter: parent.verticalCenter
+                        Icon {
+                            id: mark
 
-                        name: cell.modelData.icon
-                        size: Appearance.font.iconSize
-                        color: markTone.value
+                            opacity: cell.worn ? 0 : 1
 
-                        FollowColour {
-                            id: markTone
+                            x: root.inset
+                            anchors.verticalCenter: parent.verticalCenter
 
-                            target: cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
-                            speed: Appearance.animation.trackSpeed
+                            name: cell.modelData.icon
+                            size: Appearance.font.iconSize
+                            color: markTone.value
+
+                            FollowColour {
+                                id: markTone
+
+                                target: cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                                speed: Appearance.animation.trackSpeed
+                            }
                         }
-                    }
 
-                    SquircleRect {
-                        visible: cell.worn
+                        SquircleRect {
+                            visible: cell.worn
 
-                        anchors.centerIn: mark
+                            anchors.centerIn: mark
 
-                        width: mark.width
-                        height: width
-                        pill: "object"
-                        color: Appearance.colour.accent
-                    }
+                            width: mark.width
+                            height: width
+                            pill: "object"
+                            color: Appearance.colour.accent
+                        }
 
-                    StyledText {
-                        anchors.left: mark.right
-                        anchors.leftMargin: root.inset
-                        anchors.verticalCenter: parent.verticalCenter
+                        StyledText {
+                            anchors.left: mark.right
+                            anchors.leftMargin: root.inset
+                            anchors.verticalCenter: parent.verticalCenter
 
-                        text: cell.modelData.label
+                            text: cell.modelData.label
 
-                        color: labelTone.value
+                            color: labelTone.value
 
-                        FollowColour {
-                            id: labelTone
+                            FollowColour {
+                                id: labelTone
 
-                            target: cell.worn || cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
-                            speed: Appearance.animation.trackSpeed
+                                target: cell.worn || cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                                speed: Appearance.animation.trackSpeed
+                            }
                         }
                     }
 
                     MouseArea {
-                        anchors.fill: parent
+                        y: cell.lead
+                        width: parent.width
+                        height: root.rowHeight
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
 
