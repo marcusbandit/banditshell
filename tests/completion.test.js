@@ -190,7 +190,7 @@ test("dev lint offers its flags, then the rule ids after --rule", () => {
 });
 
 test("dev release offers its dry run", () => {
-    assert.deepStrictEqual(bashComplete("dev", "release", ""), ["--dry-run"]);
+    assert.deepStrictEqual(bashComplete("dev", "release", ""), ["--dry-run", "--skip-boot-check"]);
     assert.ok(bashComplete("dev", "").includes("release"));
     assert.ok(!bashComplete("dev", "").includes("promote"));
 });

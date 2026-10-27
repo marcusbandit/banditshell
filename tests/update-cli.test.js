@@ -354,6 +354,31 @@ test("a stable channel with no release yet stays where it is, calmly", () => {
     assert.strictEqual(liveHead(world), head);
 });
 
+test("with no release yet, a copy off main reads as paused, on a branch or detached", () => {
+    for (const move of [["switch", "-q", "-c", "elsewhere"], ["switch", "-q", "--detach"]]) {
+        const world = makeWorld();
+        useChannel(world, "stable");
+        git(world.live, ...move);
+        const got = run(world, ["update", "check", "--json"]);
+        assert.strictEqual(got.status, 0, got.err);
+        assert.strictEqual(JSON.parse(got.out).state, "paused");
+        const text = run(world, ["update", "check"]);
+        assert.strictEqual(text.status, 0, text.err);
+        assert.match(text.out, /so it does not follow stable/);
+    }
+});
+
+test("before stable was ever fetched, update says it has not looked yet instead of claiming no release", () => {
+    const world = makeWorld();
+    cut(world, "v0.1.0", liveHead(world));
+    useChannel(world, "stable");
+    const quick = run(world, ["update"]);
+    assert.strictEqual(quick.status, 0, quick.err);
+    assert.match(quick.out, /stable has not been checked yet; banditshell update check looks\n$/);
+    assert.doesNotMatch(quick.out, /no release/);
+    assert.match(run(world, ["update", "check"]).out, /^up to date at v0\.1\.0 on stable\n$/);
+});
+
 test("a check that fails still names the version this copy is on", () => {
     const world = makeWorld();
     git(world.live, "remote", "set-url", "origin", path.join(world.root, "gone.git"));

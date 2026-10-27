@@ -10,7 +10,7 @@
         {
           "type": "config",
           "severity": "major",
-          "text": "Updates now come as tested releases; your channel moved to stable"
+          "text": "Updates come as tested releases now, unless you kept main"
         },
         {
           "type": "features",

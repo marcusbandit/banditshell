@@ -131,9 +131,10 @@ the version shows as a release number from the first check on.
 
 ### Cutting a release
 
-`banditshell dev release [--dry-run]`, which runs `scripts/release.sh`. It refuses unless the copy
-is a clean checkout of `origin/main` (no edits, no untracked files, HEAD equal to `origin/main` after
-a fetch). Then:
+`banditshell dev release [--dry-run] [--skip-boot-check]`, which runs `scripts/release.sh`. It
+refuses unless the copy is a clean checkout of `origin/main` (no edits, no untracked files, HEAD
+equal to `origin/main` after a fetch), and unless `gh` is installed and logged in; a dry run only
+warns about `gh`. Then:
 
 1. The last release is the highest `vX.Y.Z` tag on `main`. Nothing since it means nothing to
    release, and it stops.
@@ -142,8 +143,8 @@ a fetch). Then:
    the owner calls 1.0; from 1.0 on, a `!` is a major bump.
 3. `main` as committed is exported and checked: `node --test tests/*.test.js`,
    `scripts/check-modules.js`, `scripts/lint-rules.js`, `scripts/qml-compile-check.sh`, and the
-   headless boot check when gamescope is installed. Any failure stops it, and every failing check
-   is named.
+   headless boot check. Any failure stops it, and every failing check is named. A boot check that
+   cannot run (no gamescope) counts as a failure unless `--skip-boot-check` is given.
 4. The release notes are the what's-new entries on `main` that the last tag did not have, grouped
    the way the What's new card groups them.
 5. `git tag -a`, then one `git push --atomic origin <tag> <sha>:stable`, so the tag and `stable`

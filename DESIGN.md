@@ -1776,7 +1776,8 @@ banditshell/
 │   │                            PASS/FAIL rows to calls.tsv
 │   ├── release.sh               cuts a release from a clean checkout of origin/main:
 │   │                            node tests, check-modules, lint-rules, compile check
-│   │                            and the boot check when gamescope is there, then the
+│   │                            and the boot check (refused without gamescope unless
+│   │                            --skip-boot-check), gh logged in, then the
 │   │                            next vX.Y.Z, the tag and stable in one atomic push,
 │   │                            and the GitHub release; --dry-run pushes nothing
 │   │                            (`banditshell dev release`)
@@ -2205,7 +2206,8 @@ checkout's own CLI, and then fails on any TypeError, ReferenceError, "is not def
 The lines a headless box always prints (no Hyprland signature, pipewire, ext-idle-notify, a
 wallpaper file missing under the fake home) are ignored; the classifier is `scripts/boot-check.js`
 and has node tests. `--shots` also photographs the shell at rest and with the launcher open.
-`banditshell dev release` runs it as a last check when gamescope is installed.
+`banditshell dev release` runs it as its last check and refuses when it cannot run, unless
+given `--skip-boot-check`.
 
 **REVISED 2026-10-14: the thing first, in groups.** The verb-first grammar of 2026-10-01
 fixed the noun-first one's inconsistency, and it paid for that by sorting every feature by

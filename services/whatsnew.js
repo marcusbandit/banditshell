@@ -230,7 +230,7 @@ function main(argv) {
     if (argv[0] === "next") {
         const next = nextRelease(argv[1] ?? "", stdin());
         if (next === null)
-            return 1;
+            return 3;
         process.stdout.write(`${next.tag} ${next.bump}\n`);
         return 0;
     }

@@ -312,13 +312,15 @@
 #                                today's counts as the new baseline
 #   banditshell dev lint --rule <rule>
 #                                one rule only, L1 to L16
-#   banditshell dev release [--dry-run]
+#   banditshell dev release [--dry-run] [--skip-boot-check]
 #                                cut the next release from a clean checkout of
 #                                origin/main: tests, modules, house rules,
 #                                compile and boot checks, then the number (minor
 #                                for a feature, patch for fixes), the tag, stable
 #                                moved and the GitHub release with what's new
-#                                since the last tag; --dry-run pushes nothing
+#                                since the last tag; --dry-run pushes nothing;
+#                                without gamescope it refuses unless
+#                                --skip-boot-check is given
 #   banditshell dev check island [dir]
 #                                walk the island through every situation it has
 #                                a rule for, headless: each checked, and
@@ -3092,10 +3094,13 @@ route_dev() {
         *) nope dev "lint $1" ;;
         esac ;;
     release)
-        case "${1:-}" in
-        "" | --dry-run) exec bash "$SHELL_DIR/scripts/release.sh" "$@" ;;
-        *) nope dev "release $1" ;;
-        esac ;;
+        for arg in "$@"; do
+            case "$arg" in
+            --dry-run | --skip-boot-check) ;;
+            *) nope dev "release $arg" ;;
+            esac
+        done
+        exec bash "$SHELL_DIR/scripts/release.sh" "$@" ;;
     check)
         case "${1:-}" in
         "") check_everything ;;
@@ -3204,7 +3209,7 @@ config_channel() {
 
 UPDATE_JSON=0
 UPDATE_APPLYING=0
-U_DIR="" U_REMOTE="" U_CHANNEL="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET="" U_PREVIOUS="" U_BEHIND=0 U_AHEAD=0 U_STATE="" U_UNRELEASED=0
+U_DIR="" U_REMOTE="" U_CHANNEL="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET="" U_PREVIOUS="" U_BEHIND=0 U_AHEAD=0 U_STATE="" U_UNRELEASED="" U_FOUND_NONE=0
 A_RESTART=0 A_HELPERS=0 A_DEPS="" A_DIRTY="" A_BLOCKED="" A_BUTTON="" A_SUMMARY=""
 U_WARNINGS=()
 HEALTH_WHY=""
@@ -3295,6 +3300,7 @@ update_fetch() {
     *)
         [ "$U_BRANCH" = stable ] && [[ $out == *"couldn't find remote ref refs/heads/stable"* ]] || update_fail "$out"
         ugit update-ref -d "refs/remotes/$U_REMOTE/stable" 2>/dev/null || true
+        U_FOUND_NONE=1
         ;;
     esac
 }
@@ -3313,8 +3319,10 @@ update_read() {
     U_BRANCH_NOW=$(ugit symbolic-ref --quiet --short HEAD 2>/dev/null || echo HEAD)
     U_HEAD=$(ugit rev-parse --verify --quiet HEAD 2>/dev/null || true)
     U_TARGET=$(ugit rev-parse --verify --quiet --end-of-options "$U_REMOTE/$U_BRANCH^{commit}" 2>/dev/null || true)
-    if [ -z "$U_TARGET" ] && [ "$U_BRANCH" = stable ] && update_on_branch; then
-        U_UNRELEASED=1 U_TARGET="$U_HEAD" U_STATE=current U_BEHIND=0 U_AHEAD=0 U_PREVIOUS=""
+    if [ -z "$U_TARGET" ] && [ "$U_BRANCH" = stable ]; then
+        U_UNRELEASED=$([ "$U_FOUND_NONE" = 1 ] && echo none || echo unchecked)
+        U_TARGET="$U_HEAD" U_STATE=current U_BEHIND=0 U_AHEAD=0 U_PREVIOUS=""
+        update_on_branch || U_STATE=paused
         return 0
     fi
     [ -n "$U_TARGET" ] || update_fail "fatal: there is no fetched copy of $U_REMOTE/$U_BRANCH yet"
@@ -3431,8 +3439,10 @@ update_load_class() {
 update_state_text() {
     case "$U_STATE" in
     current)
-        if [ "$U_UNRELEASED" = 1 ]; then
+        if [ "$U_UNRELEASED" = none ]; then
             echo "there is no release on $U_BRANCH yet, so this copy stays at $(update_label "$U_HEAD")"
+        elif [ "$U_UNRELEASED" = unchecked ]; then
+            echo "$U_BRANCH has not been checked yet; banditshell update check looks"
         else
             echo "up to date at $(update_label "$U_HEAD") on $U_BRANCH"
         fi ;;

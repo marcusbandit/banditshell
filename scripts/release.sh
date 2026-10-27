@@ -2,19 +2,21 @@
 set -euo pipefail
 
 usage() {
-    echo "usage: release.sh [--dry-run] [--repo <dir>]"
+    echo "usage: release.sh [--dry-run] [--skip-boot-check] [--repo <dir>]"
     echo "  cut the next release from origin/main: check it, pick the number from"
     echo "  the commit types since the last tag, tag it, push the tag and move"
     echo "  stable in one atomic push, then write the GitHub release from the"
     echo "  what's-new entries since the last tag. --dry-run does every check and"
-    echo "  prints what it would do, and pushes nothing"
+    echo "  prints what it would do, and pushes nothing. Without gamescope the boot"
+    echo "  check cannot run, and it refuses unless --skip-boot-check is given"
     exit "${1:-2}"
 }
 
-repo="" dry=0
+repo="" dry=0 skip_boot=0
 while [ $# -gt 0 ]; do
     case "$1" in
     --dry-run) dry=1 ;;
+    --skip-boot-check) skip_boot=1 ;;
     --repo)
         [ $# -ge 2 ] || usage
         repo="$2"
@@ -41,8 +43,16 @@ stop() {
 
 show() { printf '%q ' "$@" | sed 's/ $//'; echo; }
 
+said() { grep -m1 -E '^[A-Za-z]*Error:' <<<"$1" || tail -n 1 <<<"$1"; }
+
 command -v node >/dev/null || stop "node is not installed"
-[ "$dry" = 1 ] || command -v gh >/dev/null || stop "gh is not installed, so the GitHub release cannot be written"
+gh_ready=1
+if ! command -v gh >/dev/null; then
+    gh_ready=0 gh_why="gh is not installed, so the GitHub release cannot be written"
+elif ! gh auth status >/dev/null 2>&1; then
+    gh_ready=0 gh_why="gh is not logged in, so the GitHub release cannot be written; run gh auth login"
+fi
+[ "$gh_ready" = 1 ] || [ "$dry" = 1 ] || stop "$gh_why"
 git remote get-url "$remote" >/dev/null 2>&1 || stop "this copy has no remote called $remote"
 
 git fetch --quiet --no-tags "$remote" "+refs/heads/main:refs/remotes/$remote/main" "+refs/tags/v*:refs/tags/v*" 2>/dev/null ||
@@ -59,13 +69,19 @@ head_sha="$(git rev-parse HEAD)"
 [ "$head_sha" = "$main_sha" ] || stop "this copy is at ${head_sha:0:7}, not $remote/main (${main_sha:0:7}); check out $remote/main first"
 
 helper="$repo/services/whatsnew.js"
-last="$(git tag --merged "$main_sha" -l 'v*' | node "$helper" newest)"
+last="$(git tag --merged "$main_sha" -l 'v*' | node "$helper" newest 2>&1)" || stop "could not read the release tags: $(said "$last")"
 if [ -n "$last" ]; then
     subjects="$(git log --format=%s "$last..$main_sha")"
 else
     subjects="$(git log --format=%s "$main_sha")"
 fi
-read -r tag bump < <(node "$helper" next "$last" <<<"$subjects") || stop "main has nothing new since $last"
+since="${last:-the start}"
+next="$(node "$helper" next "$last" <<<"$subjects" 2>&1)" && status=0 || status=$?
+case "$status" in
+0) read -r tag bump <<<"$next" ;;
+3) stop "main has nothing new since $since" ;;
+*) stop "could not work out the next number from the commits since $since: $(said "$next")" ;;
+esac
 
 if git rev-parse -q --verify "refs/tags/$tag" >/dev/null || git ls-remote --exit-code --tags "$remote" "refs/tags/$tag" >/dev/null 2>&1; then
     stop "the tag $tag exists already, but not on main"
@@ -107,10 +123,14 @@ check "node tests" bash -c 'node --test tests/*.test.js'
 check "check-modules" node scripts/check-modules.js
 check "lint-rules" node scripts/lint-rules.js
 check "qml-compile-check" bash scripts/qml-compile-check.sh "$tree"
-if command -v gamescope >/dev/null && [ -x "$tree/cli/banditshell" ]; then
+if [ "$skip_boot" = 1 ]; then
+    echo "${dim}skip boot check: --skip-boot-check${plain}"
+elif command -v gamescope >/dev/null && [ -x "$tree/cli/banditshell" ]; then
     check "boot check" env -u BANDITSHELL_DIR "$tree/cli/banditshell" dev check boot "$tree.boot"
 else
-    echo "${dim}skip boot check: needs gamescope${plain}"
+    if command -v gamescope >/dev/null; then why="main has no cli/banditshell to boot"; else why="it needs gamescope, which is not installed"; fi
+    echo "${red}FAIL${plain} boot check: $why; --skip-boot-check releases without it" >&2
+    failed+=("boot check")
 fi
 
 [ "${#failed[@]}" -eq 0 ] || stop "${failed[*]} did not pass on main (${main_sha:0:7})"
@@ -136,6 +156,7 @@ if [ "$dry" = 1 ]; then
         echo -n "  "; show "${words[@]}"
         unset -n words
     done
+    [ "$gh_ready" = 1 ] || echo "${red}a real run would refuse: $gh_why${plain}"
     echo "${dim}dry run: nothing was tagged or pushed${plain}"
     exit 0
 fi

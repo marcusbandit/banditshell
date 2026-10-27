@@ -37,7 +37,7 @@ const PASSING_NODE = "process.exit(0);\n";
 const FAILING_NODE = 'console.log("3 violations"); process.exit(1);\n';
 const PASSING_SH = "#!/usr/bin/env bash\necho CHECKED 0 failures\n";
 const FAILING_SH = "#!/usr/bin/env bash\necho FAIL shell.qml\nexit 1\n";
-const FAKE_GH = '#!/usr/bin/env bash\nprintf "%s\\n" "$*" >>"$GH_LOG"\nfor a in "$@"; do [ "$prev" = --notes-file ] && cat "$a" >>"$GH_LOG"; prev="$a"; done\nexit "${GH_EXIT:-0}"\n';
+const FAKE_GH = '#!/usr/bin/env bash\n[ "$1 $2" = "auth status" ] && exit "${GH_AUTH_EXIT:-0}"\nprintf "%s\\n" "$*" >>"$GH_LOG"\nfor a in "$@"; do [ "$prev" = --notes-file ] && cat "$a" >>"$GH_LOG"; prev="$a"; done\nexit "${GH_EXIT:-0}"\n';
 
 const change = (type, text) => ({ type, severity: "minor", text });
 const whatsNew = (...entries) => JSON.stringify({ entries }, null, 4);
@@ -76,7 +76,8 @@ function commit(world, files, message) {
 function release(world, ...args) {
     const env = { ...GIT_ENV, HOME: world.root, PATH: `${world.bin}:${process.env.PATH}`, GH_LOG: world.ghLog, ...(world.env ?? {}) };
     delete env.NODE_TEST_CONTEXT;
-    const got = spawnSync("bash", [SCRIPT, "--repo", world.work, ...args], { encoding: "utf8", env, timeout: 120000 });
+    const flags = world.boot ? args : ["--skip-boot-check", ...args];
+    const got = spawnSync("bash", [SCRIPT, "--repo", world.work, ...flags], { encoding: "utf8", env, timeout: 120000 });
     return { status: got.status, out: got.stdout, err: got.stderr };
 }
 
@@ -269,4 +270,32 @@ test("the installer leaves a copy alone once it has a config, edits, or no relea
     write(edited, "a.txt", "mine");
     assert.match(installer(world, edited, "checkout_release; echo \"moved $?\"").stdout, /this copy has edits, so it stays on main\nmoved 1/);
     assert.strictEqual(git(edited, "rev-parse", "HEAD"), head);
+});
+
+test("a logged out gh is refused before anything is pushed, and a dry run warns about it", () => {
+    const world = makeWorld();
+    world.env = { GH_AUTH_EXIT: "1" };
+    refused(world, /gh is not logged in/);
+    assert.strictEqual(git(world.work, "tag", "-l"), "");
+    const dry = release(world, "--dry-run");
+    assert.strictEqual(dry.status, 0, dry.err + dry.out);
+    assert.match(dry.out, /a real run would refuse: gh is not logged in/);
+});
+
+test("a boot check that cannot run refuses unless it is skipped on purpose", () => {
+    const world = makeWorld();
+    world.boot = true;
+    const got = refused(world, /not released: boot check did not pass/, "--dry-run");
+    assert.match(got.err, /FAIL boot check: .*--skip-boot-check releases without it/);
+    world.boot = false;
+    assert.match(release(world, "--dry-run").out, /skip boot check: --skip-boot-check/);
+});
+
+test("a broken number helper is reported as broken, not as nothing new", () => {
+    const world = makeWorld();
+    commit(world, { "services/whatsnew.js": 'if (process.argv[2] === "next") throw new Error("helper broke");\n' }, "fix: break the helper");
+    const got = refused(world, /could not work out the next number from the commits since the start: Error: helper broke/, "--dry-run");
+    assert.doesNotMatch(got.err, /nothing new/);
+    commit(world, { "services/whatsnew.js": 'throw new Error("all broke");\n' }, "fix: break it all");
+    refused(world, /could not read the release tags: Error: all broke/, "--dry-run");
 });
