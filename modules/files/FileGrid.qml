@@ -13,6 +13,7 @@ Item {
     property point dragPoint: Qt.point(-1, -1)
     property bool dragging: false
     property bool keyed: false
+    property bool marked: false
 
     signal picked(int index, int modifiers)
     signal activated(int index)
@@ -89,7 +90,7 @@ Item {
             z: tile.focused ? 1 : 0
             row: root.list
             picked: Files.isPicked(Files.keyOf(modelData))
-            focused: root.keyed && index === Files.cursor
+            focused: (root.keyed || root.marked) && index === Files.cursor
             keyed: root.keyed
             receiving: root.dragging && root.target === index && droppable && !Files.isPicked(Files.keyOf(modelData))
 

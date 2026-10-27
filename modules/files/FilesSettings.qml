@@ -252,8 +252,8 @@ Item {
 
                     SettingChoice {
                         choices: [
-                            {label: "This folder", value: "folder"},
-                            {label: "Home", value: "home"}
+                            {label: "The open folder", value: "folder"},
+                            {label: "All of home", value: "home"}
                         ]
                         chosen: FilesFind.scope
                         onChose: value => FilesFind.setScope(value)

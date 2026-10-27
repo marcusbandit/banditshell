@@ -69,6 +69,29 @@ function place(dir, home) {
     return within(dir, home) ? `~/${dir.slice(home.length).replace(/^\/+/, "")}` : dir;
 }
 
+function fitPlace(place, room) {
+    if (place.length <= room)
+        return place;
+    const parts = place.split("/");
+    const last = parts[parts.length - 1];
+    const lead = parts[0];
+    let tail = last;
+    for (let i = parts.length - 2; i >= 1; i--) {
+        const next = `${parts[i]}/${tail}`;
+        if (`${lead}/…/${next}`.length > room)
+            break;
+        tail = next;
+    }
+    const out = `${lead}/…/${tail}`;
+    if (out.length <= room)
+        return out;
+    if (`…/${last}`.length <= room)
+        return `…/${last}`;
+    if (last.length <= room)
+        return last;
+    return room > 1 ? `…${last.slice(last.length - room + 1)}` : "…";
+}
+
 function named(entries, query) {
     const q = query.trim().toLowerCase();
     return entries.filter(e => e.name.toLowerCase().includes(q));

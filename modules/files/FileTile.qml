@@ -6,7 +6,6 @@ import qs.components
 import qs.services
 import "urls.js" as Urls
 import "../../services/files-find.js" as Find
-import "../../services/files-conflicts.js" as Conflicts
 
 Item {
     id: root
@@ -16,8 +15,19 @@ Item {
 
     readonly property var entry: root.modelData
     readonly property string path: Files.pathOf(root.entry)
-    readonly property string place: root.entry.dir ? Find.place(root.entry.dir, Files.home) : ""
-    readonly property string folder: root.entry.dir ? Conflicts.folderName(root.entry.dir, Files.home) : ""
+    readonly property string place: root.entry.dir ? Find.place(root.entry.dir, Files.home) : FilesFind.active ? Find.place(Files.cwd, Files.home) : ""
+
+    function fitted(width: real): string {
+        return Find.fitPlace(root.place, Math.max(1, Math.floor(width / Math.max(1, digit.advanceWidth))));
+    }
+
+    TextMetrics {
+        id: digit
+
+        font.family: Appearance.font.family
+        font.pixelSize: Files.zoomed(Appearance.font.size.small)
+        text: "0"
+    }
 
     property bool picked: false
     property bool focused: false
@@ -124,14 +134,15 @@ Item {
         }
 
         StyledText {
+            id: tilePlace
+
             width: parent.width
             visible: root.place !== ""
             horizontalAlignment: Text.AlignHCenter
 
-            text: root.folder
+            text: root.fitted(tilePlace.width)
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
-            color: Appearance.colour.textFaint
-            elide: Text.ElideRight
+            color: Appearance.colour.textDim
         }
     }
 
@@ -170,7 +181,7 @@ Item {
             anchors.leftMargin: Appearance.padding.small
             anchors.verticalCenter: parent.verticalCenter
             readonly property real room: rowSize.x - rowName.x - Appearance.padding.normal * 2
-            width: Math.min(rowName.implicitWidth, root.place ? Math.max(rowName.room - placeInk.advanceWidth, rowName.room * 0.65) : rowName.room)
+            width: Math.min(rowName.implicitWidth, root.place ? Math.max(rowName.room - root.place.length * digit.advanceWidth, rowName.room * 0.7) : rowName.room)
 
             text: root.entry.name
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
@@ -188,17 +199,9 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             visible: root.place !== ""
 
-            text: placeInk.advanceWidth <= rowPlace.width ? root.place : root.folder
+            text: root.fitted(rowPlace.width)
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
-            elide: Text.ElideRight
-            color: Appearance.colour.textFaint
-
-            TextMetrics {
-                id: placeInk
-
-                font: rowPlace.font
-                text: root.place
-            }
+            color: Appearance.colour.textDim
         }
 
         StyledText {

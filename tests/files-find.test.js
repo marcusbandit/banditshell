@@ -12,7 +12,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Find = lib("services/files-find.js", ["LEAST", "LIMIT", "SKIP_NAMES", "SKIP_PATHS", "command", "parse", "place", "without", "named", "narrows", "merged", "grouped", "searchable"]);
+const Find = lib("services/files-find.js", ["LEAST", "LIMIT", "SKIP_NAMES", "SKIP_PATHS", "command", "parse", "place", "fitPlace", "without", "named", "narrows", "merged", "grouped", "searchable"]);
 const Order = lib("services/files-order.js", ["ordered"]);
 
 const HOME = "/home/ada";
@@ -74,6 +74,20 @@ test.describe("reading what the walk says", () => {
             assert.strictEqual(said.entry.name, name);
             assert.strictEqual(said.entry.key, `${HOME}/a b/${name}`);
         }
+    });
+
+    test.it("shortens a place from the middle and keeps the last folder whole", () => {
+        const where = "~/Documents/folder 59/sub 6";
+        assert.strictEqual(Find.fitPlace(where, 40), where);
+        assert.strictEqual(Find.fitPlace(where, 20), "~/…/folder 59/sub 6");
+        assert.strictEqual(Find.fitPlace(where, 12), "~/…/sub 6");
+        assert.strictEqual(Find.fitPlace(where, 8), "…/sub 6");
+        assert.strictEqual(Find.fitPlace(where, 6), "sub 6");
+        assert.strictEqual(Find.fitPlace(where, 4), "…b 6");
+        assert.strictEqual(Find.fitPlace("~/Documents", 10), "Documents");
+        assert.strictEqual(Find.fitPlace("/srv/data/archive", 12), "/…/archive");
+        for (let room = 1; room < 30; room++)
+            assert.ok(Find.fitPlace(where, room).length <= room, String(room));
     });
 
     test.it("reads progress, the end, and ignores noise", () => {

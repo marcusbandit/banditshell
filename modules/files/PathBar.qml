@@ -5,6 +5,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.controls
+import "../../services/files-conflicts.js" as Conflicts
 
 Item {
     id: root
@@ -262,7 +263,7 @@ Item {
             if (!FilesFind.active)
                 return "";
             if (FilesFind.running)
-                return "searching…";
+                return Files.visible.length > 0 ? `${Files.visible.length.toLocaleString()} so far…` : "searching…";
             if (FilesFind.failed)
                 return "could not search";
             if (FilesFind.stopped)
@@ -383,9 +384,11 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             visible: Files.searching
 
+            readonly property string here: Conflicts.folderName(Files.cwd, Files.home)
+
             choices: [
-                {label: "This folder", value: "folder"},
-                {label: "Home", value: "home"}
+                {label: `Only ${scope.here.length > 16 ? `${scope.here.slice(0, 15)}…` : scope.here}`, value: "folder"},
+                {label: "All of home", value: "home"}
             ]
             chosen: FilesFind.scope
             onChose: value => FilesFind.setScope(value)
