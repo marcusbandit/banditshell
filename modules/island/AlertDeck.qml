@@ -587,7 +587,7 @@ Item {
                 readonly property real open: slot.tucks ? unfold.value : Math.max(0, arrival.value - departure.value)
                 readonly property real cardHeight: card.implicitHeight
                 readonly property var lead: ({
-                        mark: card.tileInset + card.pad,
+                        axis: card.tileInset + card.pad + card.markSize / 2,
                         text: card.textX
                     })
                 readonly property real room: slot.tucks && !root.sweeping ? Math.max(0, Math.min(slot.cardHeight + gap.value, slot.tailReveal - slot.fullBefore)) : (slot.cardHeight + gap.value) * (root.sweeping ? 1 : slot.open)

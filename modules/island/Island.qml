@@ -1685,7 +1685,7 @@ Item {
                         y: root.pillY + root.dealY * (1 - row.t) + row.restY + (row.toY - row.restY) * row.t
                         width: row.fromWidth + (row.toWidth - row.fromWidth) * row.t
                         activity: row.item
-                        lead: deck.frontLead ? row.inset + (row.cardShift + deck.frontLead.mark - row.inset) * row.under : row.inset
+                        lead: deck.frontLead ? row.inset + (row.cardShift + deck.frontLead.axis - row.slot / 2 - row.inset) * row.under : row.inset
                         textX: deck.frontLead ? row.restText + (row.cardShift + deck.frontLead.text - row.restText) * row.under : row.restText
                         lights: row.t > 0.5
                         live: root.focused && row.visible
