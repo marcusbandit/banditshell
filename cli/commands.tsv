@@ -142,7 +142,7 @@ rule	dev modules --explain @package
 rule	dev lint
 rule	dev lint --all,--write-baseline
 rule	dev lint --rule @rule
-rule	dev promote --remote,--no-fetch
+rule	dev release --dry-run,--skip-boot-check
 rule	dev check island @dir
 rule	dev check boot @dir --shots
 rule	dev perf @dir --runs,--boots,--only,--profile,--ns

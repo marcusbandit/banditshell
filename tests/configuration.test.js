@@ -163,6 +163,24 @@ test.describe("lookup", () => {
 });
 
 test.describe("upgrade", () => {
+    test.it("keeps main when it was set before the upgrade with the keep-channel mark in place", () => {
+        const setOnOldCode = { updates: { channel: "main", branch: "main", interval: 30 } };
+        assert.deepStrictEqual(Configuration.upgrade(setOnOldCode, true).updates, { channel: "main", channelUpgraded: true, branch: "main", interval: 30 });
+        assert.strictEqual(Configuration.upgrade(Configuration.upgrade(setOnOldCode, true)).updates.channel, "main");
+        assert.deepStrictEqual(Configuration.upgrade({ updates: { channel: "stable" } }, true).updates, { channel: "stable", channelUpgraded: true });
+    });
+
+    test.it("moves a copy on main to the release channel once, and leaves a later choice of main alone", () => {
+        const old = { updates: { channel: "main", branch: "main", interval: 30 } };
+        const moved = Configuration.upgrade(old);
+        assert.deepStrictEqual(moved.updates, { channel: "stable", channelUpgraded: true, branch: "main", interval: 30 });
+        const chosen = { updates: Object.assign({}, moved.updates, { channel: "main" }) };
+        assert.strictEqual(Configuration.upgrade(chosen), chosen);
+        assert.deepStrictEqual(Configuration.upgrade({ updates: { channel: "stable" } }).updates, { channel: "stable", channelUpgraded: true });
+        assert.deepStrictEqual(Configuration.upgrade({ theme: "x" }), { theme: "x" });
+        assert.deepStrictEqual(Configuration.upgrade({ updates: { channel: "main", channelUpgraded: false } }).updates, { channel: "stable", channelUpgraded: true });
+    });
+
     test.it("moves the old launcher name and its sizes to alphabet", () => {
         const old = { launcher: { concept: "niagara", niagara: { width: 700 } }, theme: "slate" };
         assert.deepStrictEqual(Configuration.upgrade(old), { launcher: { concept: "alphabet", alphabet: { width: 700 } }, theme: "slate" });

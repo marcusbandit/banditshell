@@ -55,7 +55,7 @@ Item {
             first: "First file",
             last: "Last file",
             open: "Open",
-            search: "Search in this folder",
+            search: "Search this folder or home",
             copypath: "Copy the path",
             all: "Select everything",
             copy: "Copy",
@@ -243,6 +243,31 @@ Item {
                     Toggle {
                         checked: Files.showHidden
                         onToggled: Config.set("files.hidden", !Files.showHidden)
+                    }
+                }
+
+                Setting {
+                    width: body.width
+                    label: "Search reaches"
+
+                    SettingChoice {
+                        choices: [
+                            {label: "The open folder", value: "folder"},
+                            {label: "All of home", value: "home"}
+                        ]
+                        chosen: FilesFind.scope
+                        onChose: value => FilesFind.setScope(value)
+                    }
+                }
+
+                Setting {
+                    width: body.width
+                    label: "Search caches and the Trash"
+                    detail: "Also .git, node_modules, keys and other drives in home"
+
+                    Toggle {
+                        checked: FilesFind.everywhere
+                        onToggled: Config.set("files.searchEverywhere", !FilesFind.everywhere)
                     }
                 }
 

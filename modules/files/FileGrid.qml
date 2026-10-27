@@ -13,6 +13,7 @@ Item {
     property point dragPoint: Qt.point(-1, -1)
     property bool dragging: false
     property bool keyed: false
+    property bool marked: false
 
     signal picked(int index, int modifiers)
     signal activated(int index)
@@ -88,10 +89,10 @@ Item {
 
             z: tile.focused ? 1 : 0
             row: root.list
-            picked: Files.isPicked(modelData.name)
-            focused: root.keyed && index === Files.cursor
+            picked: Files.isPicked(Files.keyOf(modelData))
+            focused: (root.keyed || root.marked) && index === Files.cursor
             keyed: root.keyed
-            receiving: root.dragging && root.target === index && droppable && !Files.isPicked(modelData.name)
+            receiving: root.dragging && root.target === index && droppable && !Files.isPicked(Files.keyOf(modelData))
 
             onClicked: modifiers => root.picked(index, modifiers)
             onActivated: root.activated(index)
@@ -190,7 +191,7 @@ Item {
         Icon {
             anchors.horizontalCenter: parent.horizontalCenter
 
-            name: Files.error ? "lock" : "folder_open"
+            name: Files.error ? "lock" : FilesFind.active ? "search" : "folder_open"
             size: Appearance.icon.huge
             color: Files.error ? Appearance.colour.alarm : Appearance.colour.textFaint
         }
@@ -198,7 +199,16 @@ Item {
         StyledText {
             anchors.horizontalCenter: parent.horizontalCenter
 
-            text: Files.error ? Files.error : Files.search ? `nothing matching "${Files.search}"` : "empty"
+            text: Files.error ? Files.error : FilesFind.active && FilesFind.running ? "searching home…" : FilesFind.active ? `nothing matching "${Files.search}" in home` : Files.search ? `nothing matching "${Files.search}"` : "empty"
+            color: Appearance.colour.textFaint
+        }
+
+        StyledText {
+            anchors.horizontalCenter: parent.horizontalCenter
+            visible: FilesFind.active && !FilesFind.running && !Files.error
+
+            text: FilesFind.everywhere || FilesFind.stopped || FilesFind.failed ? FilesFind.summary : `${FilesFind.summary}, caches and the Trash skipped`
+            font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textFaint
         }
     }

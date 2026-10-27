@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/whatsnew.js"), "utf8");
 const WhatsNew = new Function(src
-    + "\nreturn { parse, accumulated, severityOf, readSeen, lastSeen, legacyToMove, newestId, tagFor, sections, TYPES, IMPACT_KEYS };")();
+    + "\nreturn { parse, accumulated, severityOf, readSeen, lastSeen, legacyToMove, newestId, newestRelease, nextRelease, entriesSince, releaseNotes, sections, TYPES, IMPACT_KEYS };")();
 
 const log = [
     { id: "third", date: "2026-09-03", changes: [{ type: "bugs", severity: "minor", text: "Fixed the thing." }] },
@@ -205,11 +205,39 @@ test("the version is the newest real entry's id, the example skipped", () => {
     assert.strictEqual(WhatsNew.newestId(undefined), "");
 });
 
-test("a date id becomes the git tag for it, anything else becomes none", () => {
-    assert.strictEqual(WhatsNew.tagFor("2026-10-17"), "v2026.10.17");
-    assert.strictEqual(WhatsNew.tagFor("2026-10-16-7"), "v2026.10.16-7");
-    assert.strictEqual(WhatsNew.tagFor("v1"), "");
-    assert.strictEqual(WhatsNew.tagFor(""), "");
+test("the newest release is the highest semver tag, by number and not by text", () => {
+    assert.strictEqual(WhatsNew.newestRelease(["v0.9.3", "v0.10.0", "v0.2.1", ""]), "v0.10.0");
+    assert.strictEqual(WhatsNew.newestRelease(["v2026.10.17-3", "v0.1.0-rc1", "0.4.0", "v01.0.0", "v0.1.0"]), "v0.1.0");
+    assert.strictEqual(WhatsNew.newestRelease(["nope"]), "");
+    assert.strictEqual(WhatsNew.newestRelease([]), "");
+});
+
+test("the next release is minor for a feature, patch for fixes only, none for nothing", () => {
+    assert.deepStrictEqual(WhatsNew.nextRelease("v0.1.0", ["fix(island): a (#3)", "feat(files): b (#4)"]), { tag: "v0.2.0", bump: "minor" });
+    assert.deepStrictEqual(WhatsNew.nextRelease("v0.2.5", ["fix(island): a", "docs: b", "chore: c", "perf(x): d"]), { tag: "v0.2.6", bump: "patch" });
+    assert.deepStrictEqual(WhatsNew.nextRelease("v0.2.5", ["refactor(x)!: a breaking change"]), { tag: "v0.3.0", bump: "minor" });
+    assert.deepStrictEqual(WhatsNew.nextRelease("v0.2.5", ["Merge branch x", "featherweight: not a feat"]), { tag: "v0.2.6", bump: "patch" });
+    assert.deepStrictEqual(WhatsNew.nextRelease("v1.4.2", ["feat: c"]), { tag: "v1.5.0", bump: "minor" });
+    assert.deepStrictEqual(WhatsNew.nextRelease("v1.4.2", ["fix: a", "feat(x)!: c"]), { tag: "v2.0.0", bump: "major" });
+    assert.deepStrictEqual(WhatsNew.nextRelease("", ["fix: a"]), { tag: "v0.1.0", bump: "first" });
+    assert.strictEqual(WhatsNew.nextRelease("v0.1.0", []), null);
+    assert.strictEqual(WhatsNew.nextRelease("v0.1.0", ["", "  "]), null);
+});
+
+test("release notes list only entries the last release did not have, by section", () => {
+    const entry = (id, ...changes) => ({ id, changes: changes.map(([type, text, severity]) => ({ type, text, severity: severity ?? "minor" })) });
+    const before = JSON.stringify({ entries: [entry("2026-10-20", ["features", "Old thing"])] });
+    const after = JSON.stringify({ entries: [
+        { id: "shape", example: true, changes: [{ type: "ui", severity: "minor", text: "Example" }] },
+        entry("2026-10-22", ["bugs", "Fixed thing"], ["config", "Renamed key", "major"]),
+        entry("2026-10-21", ["features", "New thing"]),
+        entry("2026-10-20", ["features", "Old thing"])
+    ] });
+    const got = WhatsNew.entriesSince(before, after);
+    assert.deepStrictEqual(got.map(e => e.id), ["2026-10-22", "2026-10-21"]);
+    assert.strictEqual(WhatsNew.releaseNotes(got, false), "## Big changes\n\n- Renamed key\n\n## New\n\n- New thing\n\n## Fixed\n\n- Fixed thing\n");
+    assert.match(WhatsNew.releaseNotes([], false), /nothing you will notice/);
+    assert.match(WhatsNew.releaseNotes([], true), /first numbered release/);
 });
 
 test("sections put big changes first and fold minor ones by kind across updates", () => {

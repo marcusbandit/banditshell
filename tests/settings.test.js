@@ -676,3 +676,15 @@ test("a reset arrow is never offered for a password, a button, a read-only path 
     assert.ok(screens.length > 0);
     assert.ok(screens.every(r => !Catalogue.resettable(r)));
 });
+
+test("a place the weather does not know gets one message under the row, with a way out", () => {
+    const row = Catalogue.ROW_BY_KEY.weatherPlace;
+    const state = (place, trouble, guess) => ({ v: k => k === "weatherPlace" ? place : true, weatherPlaceTrouble: trouble, weatherSuggestion: guess });
+    assert.strictEqual(row.offer(state("Lyngby, Denmark", "", null)), null);
+    assert.deepStrictEqual(row.offer(state("Lyngbyy", "x", { name: "Lyngby", country: "Denmark", text: "Lyngby, Denmark" })), {
+        text: 'No place called "Lyngbyy". Did you mean Lyngby, Denmark?', alarm: true, buttons: [["Use Lyngby, Denmark", "Lyngby, Denmark"]]
+    });
+    assert.deepStrictEqual(row.offer(state("Xqzwvb", "x", null)).buttons, [["Use my connection's location", ""]]);
+    assert.deepStrictEqual(row.offer(state("", "x", null)).buttons, []);
+    assert.strictEqual(row.cfg, "weather.location");
+});
