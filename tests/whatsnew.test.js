@@ -218,6 +218,7 @@ test("the next release is minor for a feature, patch for fixes only, none for no
     assert.deepStrictEqual(WhatsNew.nextRelease("v0.2.5", ["refactor(x)!: a breaking change"]), { tag: "v0.3.0", bump: "minor" });
     assert.deepStrictEqual(WhatsNew.nextRelease("v0.2.5", ["Merge branch x", "featherweight: not a feat"]), { tag: "v0.2.6", bump: "patch" });
     assert.deepStrictEqual(WhatsNew.nextRelease("v1.4.2", ["feat: c"]), { tag: "v1.5.0", bump: "minor" });
+    assert.deepStrictEqual(WhatsNew.nextRelease("v1.4.2", ["fix: a", "feat(x)!: c"]), { tag: "v2.0.0", bump: "major" });
     assert.deepStrictEqual(WhatsNew.nextRelease("", ["fix: a"]), { tag: "v0.1.0", bump: "first" });
     assert.strictEqual(WhatsNew.nextRelease("v0.1.0", []), null);
     assert.strictEqual(WhatsNew.nextRelease("v0.1.0", ["", "  "]), null);

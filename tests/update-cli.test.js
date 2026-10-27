@@ -339,14 +339,27 @@ test("a checkout ahead of stable is up to date, never taken back", () => {
     assert.strictEqual(liveHead(world), head);
 });
 
-test("a stable channel with no stable branch yet says so in plain words", () => {
+test("a stable channel with no release yet stays where it is, calmly", () => {
     const world = makeWorld();
     useChannel(world, "stable");
+    const head = liveHead(world);
     const text = run(world, ["update", "check"]);
-    assert.strictEqual(text.status, 1);
-    assert.match(text.err, /no release on GitHub yet/);
+    assert.strictEqual(text.status, 0, text.err);
+    assert.match(text.out, /^there is no release on stable yet, so this copy stays at v1\n$/);
+    const json = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(json.state, "current");
+    assert.strictEqual(json.version, "v1");
+    assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out).state, "current");
+    assert.match(run(world, ["update", "apply"]).out, /Already up to date/);
+    assert.strictEqual(liveHead(world), head);
+});
+
+test("a check that fails still names the version this copy is on", () => {
+    const world = makeWorld();
+    git(world.live, "remote", "set-url", "origin", path.join(world.root, "gone.git"));
     const json = JSON.parse(run(world, ["update", "check", "--json"]).out);
     assert.strictEqual(json.state, "error");
+    assert.strictEqual(json.version, "v1");
 });
 
 test("a branch other than main overrides the channel", () => {
@@ -487,6 +500,28 @@ test("rollback on stable goes to the release before, even with nothing recorded,
     const again = run(world, ["update", "rollback"]);
     assert.strictEqual(again.status, 1);
     assert.match(again.err, /no earlier release to go back to/);
+});
+
+test("rollback on stable steps over a release that already failed on this copy", () => {
+    const world = makeWorld();
+    forget(world);
+    const first = liveHead(world);
+    cut(world, "v0.1.0", first);
+    const broken = advance(world, "fix: two", { "a.txt": "2" });
+    cut(world, "v0.1.1", broken);
+    const third = advance(world, "fix: three", { "a.txt": "3" });
+    cut(world, "v0.1.2", third);
+    fs.mkdirSync(path.dirname(stateFile(world, "skip")), { recursive: true });
+    fs.writeFileSync(stateFile(world, "skip"), `${broken}\n`);
+    assert.strictEqual(applyTo(world, third).status, 0);
+    const json = JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out);
+    assert.strictEqual(json.previousVersion, "v0.1.0");
+    fs.writeFileSync(stateFile(world, "previous"), `${broken}\n`);
+    const dry = run(world, ["update", "rollback"], { BANDITSHELL_DRY: "1" });
+    assert.strictEqual(dry.status, 0, dry.err + dry.out);
+    assert.match(dry.out, new RegExp(`git reset --keep ${first.slice(0, 7)}`));
+    assert.strictEqual(readState(world, "previous"), broken);
+    assert.strictEqual(liveHead(world), third);
 });
 
 test("a reload applies in place: previous recorded, no restart, backup refreshed, result written", () => {

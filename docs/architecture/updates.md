@@ -107,7 +107,9 @@ The checkout stays on its local `main` while following `stable`. The paused rule
 (`update_on_branch`, `following` in `update.js`); any other local branch is still paused. A copy
 that is ahead of `stable`, for example one that took a merge from `main` before releases existed,
 reads as up to date and joins at the next release. Stable never moves a copy backwards. A copy on
-`stable` when GitHub has no `stable` yet says there is no release and stays as it is.
+`stable` when GitHub has no `stable` yet reads as current ("there is no release on stable yet"),
+not as an error, so the time between this landing and the first release is quiet. A check that
+does fail still carries `version` in its JSON, so the menu keeps the release number.
 
 ### Why a stable branch and not the newest tag
 
@@ -129,7 +131,7 @@ a fetch). Then:
    release, and it stops.
 2. The commit titles since it pick the number (`nextRelease` in `services/whatsnew.js`): any `feat`
    or `!` is a minor bump, anything else a patch. The first release is `v0.1.0`. It stays 0.x until
-   the owner calls 1.0.
+   the owner calls 1.0; from 1.0 on, a `!` is a major bump.
 3. `main` as committed is exported and checked: `node --test tests/*.test.js`,
    `scripts/check-modules.js`, `scripts/lint-rules.js`, `scripts/qml-compile-check.sh`, and the
    headless boot check when gamescope is installed. Any failure stops it, and every failing check
@@ -166,7 +168,8 @@ definition. Where it shows:
 - Settings > About shows the same version.
 
 `update rollback` on `stable` goes to the release before the one this copy is on, found from the
-tags rather than from `update/previous`, so it works on a copy that never updated. On `main` it
+tags rather than from `update/previous`, so it works on a copy that never updated. A release that
+already failed here (`update/skip`) is stepped over. On `main` it
 goes to the commit before the last update, as before.
 
 ## Design note: signed updates (not built)

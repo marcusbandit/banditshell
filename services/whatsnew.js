@@ -145,9 +145,12 @@ function bumpOf(subjects) {
         if (!line)
             continue;
         const hit = /^([a-z]+)(\([^)]*\))?(!)?:/.exec(line);
-        if (hit && (hit[1] === "feat" || hit[3]))
-            return "minor";
-        bump = "patch";
+        if (hit && hit[3])
+            return "breaking";
+        if (hit && hit[1] === "feat")
+            bump = "minor";
+        else if (bump === "")
+            bump = "patch";
     }
     return bump;
 }
@@ -160,7 +163,11 @@ function nextRelease(last, subjects) {
     if (parts === null)
         return { tag: "v0.1.0", bump: "first" };
     const [major, minor, patch] = parts;
-    return bump === "minor" ? { tag: `v${major}.${minor + 1}.0`, bump } : { tag: `v${major}.${minor}.${patch + 1}`, bump };
+    if (bump === "breaking" && major > 0)
+        return { tag: `v${major + 1}.0.0`, bump: "major" };
+    if (bump === "patch")
+        return { tag: `v${major}.${minor}.${patch + 1}`, bump };
+    return { tag: `v${major}.${minor + 1}.0`, bump: "minor" };
 }
 
 function entriesSince(beforeText, afterText) {

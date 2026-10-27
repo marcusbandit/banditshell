@@ -435,6 +435,7 @@ Singleton {
                     return;
                 }
                 if (got.state === "error") {
+                    root.release = got.version || root.release;
                     root.error = Words.explain(got.output ?? [], root.branch);
                     console.warn(`Update: ${(got.output ?? []).join(" / ")}`);
                     return;

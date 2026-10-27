@@ -841,9 +841,15 @@ release_due() {
     RELEASE_NOTE=""
     [ -z "${BANDITSHELL_ON_RELEASE:-}" ] && [ ! -e "$config" ] || return 1
     [ "$(git -C "$REPO" symbolic-ref --quiet --short HEAD 2>/dev/null)" = main ] || return 1
+    GIT_TERMINAL_PROMPT=0 git -C "$REPO" ls-remote --exit-code --heads origin stable >/dev/null 2>&1
+    case $? in
+    0) ;;
+    2) RELEASE_NOTE="no release on GitHub yet, so this copy stays on main"; return 1 ;;
+    *) RELEASE_NOTE="could not reach GitHub to find the newest release, so this copy stays on main"; return 1 ;;
+    esac
     if ! GIT_TERMINAL_PROMPT=0 git -C "$REPO" fetch --quiet --no-tags origin \
         "+refs/heads/stable:refs/remotes/origin/stable" "+refs/tags/v*:refs/tags/v*" 2>/dev/null; then
-        RELEASE_NOTE="no release found on GitHub, so this copy stays on main"
+        RELEASE_NOTE="could not fetch the newest release, so this copy stays on main"
         return 1
     fi
     stable="$(git -C "$REPO" rev-parse --verify --quiet refs/remotes/origin/stable)" || return 1

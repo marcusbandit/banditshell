@@ -106,7 +106,7 @@ function upgradeSidebarClock(values) {
 
 function upgradeChannel(values) {
     const updates = values.updates;
-    if (!isPlainObject(updates) || owns(updates, "channelUpgraded"))
+    if (!isPlainObject(updates) || updates.channelUpgraded === true)
         return values;
     const next = Object.assign({}, updates, { channelUpgraded: true });
     if (next.channel === "main")

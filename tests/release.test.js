@@ -254,7 +254,7 @@ test("the installer moves a fresh clone of main back to the newest release, on m
 test("the installer leaves a copy alone once it has a config, edits, or no release to go to", () => {
     const world = makeWorld();
     const none = freshClone(world);
-    assert.match(installer(world, none, "checkout_release; echo \"moved $?\"").stdout, /no release found on GitHub, so this copy stays on main\nmoved 1/);
+    assert.match(installer(world, none, "checkout_release; echo \"moved $?\"").stdout, /no release on GitHub yet, so this copy stays on main\nmoved 1/);
     assert.strictEqual(release(world).status, 0);
     commit(world, { "a.txt": "1" }, "feat: after the release");
 

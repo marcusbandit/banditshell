@@ -118,7 +118,8 @@ fi
 count="$(grep -c . <<<"$subjects" || true)"
 case "$bump" in
 first) echo "main ${main_sha:0:7} becomes $tag, the first release" ;;
-minor) echo "main ${main_sha:0:7} becomes $tag: $count commits since $last, with a feature" ;;
+minor) echo "main ${main_sha:0:7} becomes $tag: $count commits since $last, with a feature or a breaking change" ;;
+major) echo "main ${main_sha:0:7} becomes $tag: $count commits since $last, with a breaking change" ;;
 *) echo "main ${main_sha:0:7} becomes $tag: $count commits since $last, fixes only" ;;
 esac
 echo "${dim}release notes:${plain}"

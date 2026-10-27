@@ -171,6 +171,7 @@ test.describe("upgrade", () => {
         assert.strictEqual(Configuration.upgrade(chosen), chosen);
         assert.deepStrictEqual(Configuration.upgrade({ updates: { channel: "stable" } }).updates, { channel: "stable", channelUpgraded: true });
         assert.deepStrictEqual(Configuration.upgrade({ theme: "x" }), { theme: "x" });
+        assert.deepStrictEqual(Configuration.upgrade({ updates: { channel: "main", channelUpgraded: false } }).updates, { channel: "stable", channelUpgraded: true });
     });
 
     test.it("moves the old launcher name and its sizes to alphabet", () => {

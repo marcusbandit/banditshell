@@ -3202,11 +3202,9 @@ config_channel() {
     printf '%s' "$channel"
 }
 
-RELEASE_TAGS=(--match 'v[0-9]*.[0-9]*.[0-9]*' --exclude 'v*-*')
-
 UPDATE_JSON=0
 UPDATE_APPLYING=0
-U_DIR="" U_REMOTE="" U_CHANNEL="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET="" U_PREVIOUS="" U_BEHIND=0 U_AHEAD=0 U_STATE=""
+U_DIR="" U_REMOTE="" U_CHANNEL="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET="" U_PREVIOUS="" U_BEHIND=0 U_AHEAD=0 U_STATE="" U_UNRELEASED=0
 A_RESTART=0 A_HELPERS=0 A_DEPS="" A_DIRTY="" A_BLOCKED="" A_BUTTON="" A_SUMMARY=""
 U_WARNINGS=()
 HEALTH_WHY=""
@@ -3234,7 +3232,8 @@ update_fail() {
         if [ "$UPDATE_APPLYING" = 1 ]; then
             printf '{"phase":"failed","text":%s,"output":%s,"at":%s}\n' "$(json_quote "$(update_explain "$text")")" "$(json_list "${lines[@]}")" "$(date +%s)"
         else
-            printf '{"state":"error","output":%s}\n' "$(json_list "${lines[@]}")"
+            printf '{"state":"error","output":%s,"version":%s}\n' "$(json_list "${lines[@]}")" \
+                "$(json_quote "$([ -z "$U_DIR" ] || update_label "$(ugit rev-parse --verify --quiet HEAD 2>/dev/null)")")"
         fi
     else
         echo "${red}banditshell: $(update_explain "$text")$plain" >&2
@@ -3293,7 +3292,10 @@ update_fetch() {
     case "$code" in
     0) ;;
     124 | 137) update_fail "timed out" ;;
-    *) update_fail "$out" ;;
+    *)
+        [ "$U_BRANCH" = stable ] && [[ $out == *"couldn't find remote ref refs/heads/stable"* ]] || update_fail "$out"
+        ugit update-ref -d "refs/remotes/$U_REMOTE/stable" 2>/dev/null || true
+        ;;
     esac
 }
 
@@ -3311,6 +3313,10 @@ update_read() {
     U_BRANCH_NOW=$(ugit symbolic-ref --quiet --short HEAD 2>/dev/null || echo HEAD)
     U_HEAD=$(ugit rev-parse --verify --quiet HEAD 2>/dev/null || true)
     U_TARGET=$(ugit rev-parse --verify --quiet --end-of-options "$U_REMOTE/$U_BRANCH^{commit}" 2>/dev/null || true)
+    if [ -z "$U_TARGET" ] && [ "$U_BRANCH" = stable ] && update_on_branch; then
+        U_UNRELEASED=1 U_TARGET="$U_HEAD" U_STATE=current U_BEHIND=0 U_AHEAD=0 U_PREVIOUS=""
+        return 0
+    fi
     [ -n "$U_TARGET" ] || update_fail "fatal: there is no fetched copy of $U_REMOTE/$U_BRANCH yet"
     U_BEHIND=$(ugit rev-list --count --end-of-options "HEAD..$U_REMOTE/$U_BRANCH" 2>/dev/null || echo 0)
     U_AHEAD=$(ugit rev-list --count --end-of-options "$U_REMOTE/$U_BRANCH..HEAD" 2>/dev/null || echo 0)
@@ -3337,10 +3343,19 @@ update_read() {
     fi
 }
 
+release_tags() {
+    ugit tag --merged "$1" -l 'v*' --sort=-v:refname 2>/dev/null | grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' || true
+}
+
 update_release_before() {
-    local tag
-    tag=$(ugit describe --tags --abbrev=0 "${RELEASE_TAGS[@]}" HEAD^ 2>/dev/null) || return 0
-    ugit rev-parse --verify --quiet "$tag^{commit}" 2>/dev/null || true
+    local tag sha
+    ugit rev-parse --verify --quiet HEAD^ >/dev/null 2>&1 || return 0
+    while IFS= read -r tag; do
+        sha=$(ugit rev-parse --verify --quiet "$tag^{commit}" 2>/dev/null) || continue
+        [ "$sha" != "$U_HEAD" ] && ! update_skipped "$sha" || continue
+        printf '%s' "$sha"
+        return 0
+    done < <(release_tags HEAD^)
 }
 
 update_fetched_at() {
@@ -3415,7 +3430,12 @@ update_load_class() {
 
 update_state_text() {
     case "$U_STATE" in
-    current) echo "up to date at $(update_label "$U_HEAD") on $U_BRANCH" ;;
+    current)
+        if [ "$U_UNRELEASED" = 1 ]; then
+            echo "there is no release on $U_BRANCH yet, so this copy stays at $(update_label "$U_HEAD")"
+        else
+            echo "up to date at $(update_label "$U_HEAD") on $U_BRANCH"
+        fi ;;
     paused) echo "this copy is on ${U_BRANCH_NOW/#HEAD/no branch}, so it does not follow $U_BRANCH" ;;
     diverged) echo "$U_BEHIND new on $U_BRANCH, but this copy has $U_AHEAD commit(s) of its own, so it cannot just move forward" ;;
     skipped) echo "$(update_label "$U_TARGET") did not start last time and is skipped until a newer version arrives" ;;
@@ -3462,12 +3482,12 @@ update_check() {
 }
 
 update_label() {
-    local label="" described
+    local label="" tag past
     [ -n "$1" ] || return 0
-    described=$(ugit describe --tags --long "${RELEASE_TAGS[@]}" "$1" 2>/dev/null) || described=""
-    if [[ $described =~ ^(v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*))-([0-9]+)-g[0-9a-f]+$ ]]; then
-        label="${BASH_REMATCH[1]}"
-        [ "${BASH_REMATCH[5]}" = 0 ] || label+="+${BASH_REMATCH[5]}"
+    tag=$(release_tags "$1" | head -n 1)
+    if [ -n "$tag" ] && past=$(ugit rev-list --count "$tag..$1" 2>/dev/null); then
+        label="$tag"
+        [ "$past" = 0 ] || label+="+$past"
     else
         label=$(ugit show "$1:docs/whats-new.json" 2>/dev/null | awk -F'"' '!found && /^[[:space:]]*"id":[[:space:]]*"/ { print $4; found = 1 }') || label=""
     fi
@@ -3714,8 +3734,8 @@ update_conclude() {
 }
 
 update_roll_back() {
-    local why="$1" relaunch="$2" hand="${3:-false}" previous target out
-    previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
+    local why="$1" relaunch="$2" hand="${3:-false}" previous="${4:-}" target out
+    [ -n "$previous" ] || previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
     target=$(cat "$UPDATE_STATE/target" 2>/dev/null || true)
     if dry; then
         say_dry "git reset --keep ${previous:0:7}, relaunch, write result.json, skip ${target:0:7}"
@@ -3770,15 +3790,15 @@ update_rollback() {
     head=$(ugit rev-parse HEAD)
     if [ "$U_BRANCH" = stable ]; then
         [ -n "$U_PREVIOUS" ] || update_fail "fatal: there is no earlier release to go back to"
-        mkdir -p "$UPDATE_STATE"
-        printf '%s\n' "$U_PREVIOUS" >"$UPDATE_STATE/previous"
+        previous="$U_PREVIOUS"
+    else
+        previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
     fi
-    previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
     [ -n "$previous" ] && [ "$previous" != "$head" ] || update_fail "fatal: there is no earlier version recorded to go back to"
     ugit cat-file -e "$previous^{commit}" 2>/dev/null || update_fail "fatal: the recorded earlier version is no longer in this copy"
     [ "$U_PREVIOUS" = "$previous" ] || update_fail "fatal: the recorded earlier version is not behind this one"
     printf '%s\n' "$head" >"$UPDATE_STATE/target"
-    update_roll_back "rolled back by hand" "$(running && echo 1 || echo 0)" true
+    update_roll_back "rolled back by hand" "$(running && echo 1 || echo 0)" true "$previous"
 }
 
 update_oneline() {
