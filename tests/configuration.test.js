@@ -325,13 +325,12 @@ test.describe("reading config.json", () => {
     });
 
     test.it("boots on the defaults when the file cannot be read, and writes nothing", () => {
-        const got = Configuration.readFailed(false, boot());
+        const got = Configuration.readFailed(false);
         assert.deepStrictEqual([got.loaded, got.unreadable, got.fresh, got.save], [true, true, false, false]);
-        assert.deepStrictEqual(got.values, defaults());
     });
 
     test.it("writes a fresh file only when there was none", () => {
-        const got = Configuration.readFailed(true, boot());
+        const got = Configuration.readFailed(true);
         assert.deepStrictEqual([got.loaded, got.unreadable, got.fresh, got.save], [true, false, true, true]);
     });
 });

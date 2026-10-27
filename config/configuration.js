@@ -184,8 +184,8 @@ function readText(raw, state, defaults, keepChannel, opaque, literals) {
     return { values: values, loaded: true, unreadable: false, problem: "", save: JSON.stringify(values) !== JSON.stringify(parsed) };
 }
 
-function readFailed(missing, state) {
+function readFailed(missing) {
     if (!missing)
-        return { values: state.values, loaded: true, unreadable: true, fresh: false, save: false };
-    return { values: state.values, loaded: true, unreadable: false, fresh: true, save: true };
+        return { loaded: true, unreadable: true, fresh: false, save: false };
+    return { loaded: true, unreadable: false, fresh: true, save: true };
 }

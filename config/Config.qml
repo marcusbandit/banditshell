@@ -1144,16 +1144,18 @@ Singleton {
 
         onLoadFailed: err => {
             const kept = root.loaded ? "the values it had" : "the defaults";
-            const got = Configuration.readFailed(err === FileViewError.FileNotFound, root);
+            const got = Configuration.readFailed(err === FileViewError.FileNotFound);
             root.unreadable = got.unreadable;
             root.fresh = got.fresh;
             root.loaded = got.loaded;
 
             if (got.unreadable)
-                return console.warn(`Config: could not read ${root.path} (${FileViewError.toString(err)}), so it is left untouched and the shell runs on ${kept}.`);
+                console.warn(`Config: could not read ${root.path} (${FileViewError.toString(err)}), so it is left untouched and the shell runs on ${kept}.`);
 
-            root.rewatch = true;
-            Qt.callLater(root.save);
+            if (got.save) {
+                root.rewatch = true;
+                Qt.callLater(root.save);
+            }
         }
 
         onSaved: {
