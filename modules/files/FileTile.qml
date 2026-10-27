@@ -6,6 +6,7 @@ import qs.components
 import qs.services
 import "urls.js" as Urls
 import "../../services/files-find.js" as Find
+import "../../services/files-conflicts.js" as Conflicts
 
 Item {
     id: root
@@ -16,7 +17,7 @@ Item {
     readonly property var entry: root.modelData
     readonly property string path: Files.pathOf(root.entry)
     readonly property string place: root.entry.dir ? Find.place(root.entry.dir, Files.home) : ""
-    readonly property string folder: root.entry.dir ? Find.folderName(root.entry.dir, Files.home) : ""
+    readonly property string folder: root.entry.dir ? Conflicts.folderName(root.entry.dir, Files.home) : ""
 
     property bool picked: false
     property bool focused: false

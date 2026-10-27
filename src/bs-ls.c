@@ -433,9 +433,9 @@ static void progress(const struct search *s) {
     fflush(stdout);
 }
 
-static void walk(struct search *s, const char *root, const char *avoid) {
+static void walk(struct search *s, const char *root, const struct stat *avoid) {
     struct stat top;
-    if (s->capped || lstat(root, &top) != 0 || !S_ISDIR(top.st_mode))
+    if (s->capped || stat(root, &top) != 0 || !S_ISDIR(top.st_mode))
         return;
 
     struct queue q = {0};
@@ -446,7 +446,8 @@ static void walk(struct search *s, const char *root, const char *avoid) {
         int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
         struct stat here;
         DIR *dir = NULL;
-        if (fd >= 0 && fstat(fd, &here) == 0 && (s->deep || here.st_dev == top.st_dev))
+        if (fd >= 0 && fstat(fd, &here) == 0 && (s->deep || here.st_dev == top.st_dev) &&
+            !(avoid && here.st_dev == avoid->st_dev && here.st_ino == avoid->st_ino))
             dir = fdopendir(fd);
         if (!dir) {
             if (fd >= 0)
@@ -484,7 +485,7 @@ static void walk(struct search *s, const char *root, const char *avoid) {
             if (type != DT_DIR)
                 continue;
             char *child = joined(path, name);
-            if (skipped(s, name, child) || (avoid && strcmp(child, avoid) == 0))
+            if (skipped(s, name, child))
                 free(child);
             else
                 push(&q, child);
@@ -551,14 +552,12 @@ static int find(int argc, char **argv) {
         fprintf(stderr, "bs-ls: cannot search %s: %s\n", home, strerror(errno));
         return 1;
     }
-    if (realfirst && !inside(realfirst, realhome)) {
-        free(realfirst);
-        realfirst = NULL;
-    }
+    struct stat avoid;
+    int nearer = realfirst && inside(realfirst, realhome) && stat(first, &avoid) == 0;
 
-    if (realfirst)
-        walk(&s, realfirst, NULL);
-    walk(&s, realhome, realfirst);
+    if (nearer)
+        walk(&s, first, NULL);
+    walk(&s, home, nearer ? &avoid : NULL);
 
     printf("{\"done\":true,\"scanned\":%ld,\"found\":%ld,\"capped\":%s}\n", s.scanned, s.found, s.capped ? "true" : "false");
     fflush(stdout);

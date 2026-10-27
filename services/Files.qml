@@ -34,7 +34,7 @@ Singleton {
 
     readonly property var visible: {
         const all = root.entries.filter(e => root.showHidden || !e.hidden);
-        const query = root.search.toLowerCase();
+        const query = root.search.trim().toLowerCase();
         const matched = query === "" ? all : all.filter(e => e.name.toLowerCase().includes(query));
 
         const order = list => FilesOrder.ordered(list, root.sort, root.reversed);
@@ -190,7 +190,7 @@ Singleton {
         if (entry.kind === "dir")
             root.go(path);
         else if (entry.key)
-            root.reveal(path);
+            root.goTo(path);
         else
             System.openWith(path);
     }
@@ -937,11 +937,14 @@ Singleton {
             return;
         root.run(["gio", "trash", "--"], paths);
         FilesUndo.trashed(paths);
+        FilesFind.forget(paths);
     }
 
     function deleteForever(paths: var): void {
-        if (paths.length > 0)
-            root.run(["rm", "-rf", "--"], paths);
+        if (paths.length === 0)
+            return;
+        root.run(["rm", "-rf", "--"], paths);
+        FilesFind.forget(paths);
     }
 
     function copyInto(paths: var, dir: string): void {
@@ -950,6 +953,7 @@ Singleton {
 
     function moveInto(paths: var, dir: string): void {
         FilesPaste.start(paths, dir, true);
+        FilesFind.forget(paths);
     }
 
     property var clipboard: []
@@ -965,6 +969,7 @@ Singleton {
             return;
         if (root.clipboardCut) {
             const moving = root.clipboard;
+            FilesFind.forget(moving);
             FilesPaste.start(moving, root.cwd, true, outcome => {
                 if (root.clipboard === moving)
                     root.clipboard = Conflicts.leftover(moving, outcome);
@@ -997,6 +1002,14 @@ Singleton {
         Trace.step("listed", span);
         root.windowOpen = true;
         Trace.step("shown", span);
+    }
+
+    function goTo(path: string): void {
+        const name = path.slice(path.lastIndexOf("/") + 1);
+        root.go(root.parentOf(path));
+        root.cursorName = name;
+        root.anchorName = name;
+        root.picked = [name];
     }
 
     function reveal(path: string): void {

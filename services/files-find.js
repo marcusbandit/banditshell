@@ -69,12 +69,6 @@ function place(dir, home) {
     return within(dir, home) ? `~/${dir.slice(home.length).replace(/^\/+/, "")}` : dir;
 }
 
-function folderName(dir, home) {
-    if (dir === home)
-        return "~";
-    return dir.slice(dir.lastIndexOf("/") + 1) || "/";
-}
-
 function named(entries, query) {
     const q = query.trim().toLowerCase();
     return entries.filter(e => e.name.toLowerCase().includes(q));
@@ -82,6 +76,12 @@ function named(entries, query) {
 
 function narrows(before, after) {
     return searchable(before) && after.trim().toLowerCase().includes(before.trim().toLowerCase());
+}
+
+function without(entries, paths) {
+    if (paths.length === 0)
+        return entries;
+    return entries.filter(e => !paths.some(p => e.key === p || within(e.key, p)));
 }
 
 function merged(fresh, provisional) {

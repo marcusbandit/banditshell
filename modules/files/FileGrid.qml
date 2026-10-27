@@ -206,7 +206,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             visible: FilesFind.active && !FilesFind.running && !Files.error
 
-            text: FilesFind.everywhere || FilesFind.stopped ? FilesFind.summary : `${FilesFind.summary}, caches and the Trash skipped`
+            text: FilesFind.everywhere || FilesFind.stopped || FilesFind.failed ? FilesFind.summary : `${FilesFind.summary}, caches and the Trash skipped`
             font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textFaint
         }

@@ -12,7 +12,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Find = lib("services/files-find.js", ["LEAST", "LIMIT", "SKIP_NAMES", "SKIP_PATHS", "command", "parse", "place", "folderName", "named", "narrows", "merged", "grouped", "searchable"]);
+const Find = lib("services/files-find.js", ["LEAST", "LIMIT", "SKIP_NAMES", "SKIP_PATHS", "command", "parse", "place", "without", "named", "narrows", "merged", "grouped", "searchable"]);
 const Order = lib("services/files-order.js", ["ordered"]);
 
 const HOME = "/home/ada";
@@ -87,8 +87,6 @@ test.describe("reading what the walk says", () => {
         assert.strictEqual(Find.place(HOME, HOME), "~");
         assert.strictEqual(Find.place(`${HOME}/Documents/work`, HOME), "~/Documents/work");
         assert.strictEqual(Find.place("/home/adam/x", HOME), "/home/adam/x");
-        assert.strictEqual(Find.folderName(`${HOME}/Pictures/Scans`, HOME), "Scans");
-        assert.strictEqual(Find.folderName(HOME, HOME), "~");
     });
 });
 
@@ -120,6 +118,12 @@ test.describe("ordering results", () => {
         assert.ok(!Find.narrows("report", "rep"));
         assert.ok(!Find.narrows("r", "re"));
         assert.deepStrictEqual(Find.named(found, "C REP").map(x => x.name), ["c report.txt"]);
+    });
+
+    test.it("drops results that were trashed or moved, and what was inside them", () => {
+        const out = Find.without(found, [`${cwd}/deep`, `${HOME}/b report.txt`]);
+        assert.deepStrictEqual(out.map(x => x.key), [`${cwd}/a report.txt`, `${HOME}/Other/a report.txt`]);
+        assert.strictEqual(Find.without(found, []), found);
     });
 
     test.it("lets fresh results replace kept ones without doubling them", () => {
@@ -192,6 +196,20 @@ test.describe("the walk itself", {skip: cc ? false : "no C compiler"}, () => {
         const {entries} = walk("report", path.join(home, "Music"));
         assert.strictEqual(rel(entries[0]), "Music/Report.flac");
         assert.strictEqual(entries.length, 4);
+    });
+
+    test.it("keeps a symlinked home's own path and still skips its private places", () => {
+        const real = path.join(scratch, "real home");
+        const linked = path.join(scratch, "linked home");
+        for (const rel of ["Docs/report.txt", "Docs/deep/report.md", ".ssh/report_key", ".local/share/Trash/files/report.old"]) {
+            fs.mkdirSync(path.dirname(path.join(real, rel)), {recursive: true});
+            fs.writeFileSync(path.join(real, rel), "");
+        }
+        fs.symlinkSync(real, linked);
+        const words = Find.command(helper, "report", linked, path.join(linked, "Docs"), {hidden: true});
+        const out = execFileSync(words[0], words.slice(1), {encoding: "utf8"});
+        const keys = out.split("\n").filter(Boolean).map(Find.parse).filter(s => s.entry).map(s => s.entry.key);
+        assert.deepStrictEqual(keys.sort(), [path.join(linked, "Docs/deep/report.md"), path.join(linked, "Docs/report.txt")]);
     });
 
     test.it("stops at the cap in a home of thirty thousand files", () => {

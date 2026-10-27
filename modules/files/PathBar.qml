@@ -255,12 +255,16 @@ Item {
         readonly property string status: {
             if (!FilesFind.home || !search.shown)
                 return "";
+            if (FilesFind.slashed)
+                return "names only, no /";
             if (FilesFind.tooShort)
                 return "keep typing";
             if (!FilesFind.active)
                 return "";
             if (FilesFind.running)
                 return "searching…";
+            if (FilesFind.failed)
+                return "could not search";
             if (FilesFind.stopped)
                 return "stopped";
             if (FilesFind.capped)
@@ -271,7 +275,7 @@ Item {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
 
-        implicitWidth: Files.searching ? root.width * 0.5 : search.shown ? root.width * 0.4 : glass.implicitWidth + Appearance.padding.normal
+        implicitWidth: Files.searching ? root.width * 0.5 : search.shown ? root.width * 0.3 : glass.implicitWidth + Appearance.padding.normal
         implicitHeight: Math.max(field.implicitHeight + Appearance.padding.small * 2, scope.visible ? scope.height : 0)
 
         SquircleRect {
@@ -327,7 +331,7 @@ Item {
             onTextChanged: Files.setSearch(text)
 
             Keys.onReturnPressed: {
-                const entry = Files.current;
+                const entry = Files.search.trim() ? Files.current : null;
                 Files.setSearching(false);
                 Files.focus = "grid";
                 Files.open(entry);
@@ -377,7 +381,7 @@ Item {
 
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            visible: search.shown
+            visible: Files.searching
 
             choices: [
                 {label: "This folder", value: "folder"},

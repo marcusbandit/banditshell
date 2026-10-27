@@ -19,7 +19,8 @@ Singleton {
     property bool hidden: false
 
     readonly property bool active: root.home && Find.searchable(root.query)
-    readonly property bool tooShort: root.home && root.query.trim() !== "" && !root.active
+    readonly property bool slashed: root.home && root.query.includes("/")
+    readonly property bool tooShort: root.home && root.query.trim() !== "" && !root.active && !root.slashed
 
     property var results: []
     property var fresh: []
@@ -30,6 +31,7 @@ Singleton {
     property bool stopped: false
     property bool capped: false
     property bool finished: false
+    property bool failed: false
     property string finishedFor: ""
 
     property int generation: 0
@@ -39,6 +41,8 @@ Singleton {
         const folders = `${root.scanned.toLocaleString()} ${root.scanned === 1 ? "folder" : "folders"}`;
         if (root.running)
             return root.scanned > 0 ? `searching, ${folders} so far` : "searching";
+        if (root.failed)
+            return "the search could not run";
         if (root.stopped)
             return root.scanned > 0 ? `stopped after ${folders}` : "stopped";
         if (root.capped)
@@ -75,6 +79,7 @@ Singleton {
         root.hidden = hidden;
         root.halt();
         root.stopped = false;
+        root.failed = false;
 
         if (!root.active) {
             settle.stop();
@@ -132,8 +137,10 @@ Singleton {
             return;
         if (said.entry) {
             root.pending.push(said.entry);
-            if (!flush.running)
+            if (!flush.running) {
+                flush.interval = root.fresh.length ? 300 : 80;
                 flush.start();
+            }
             return;
         }
         root.scanned = said.scanned;
@@ -163,6 +170,13 @@ Singleton {
         root.take(root.generation);
         root.run = null;
         root.running = false;
+        root.failed = !root.finished;
+    }
+
+    function forget(paths: var): void {
+        root.results = Find.without(root.results, paths);
+        root.fresh = Find.without(root.fresh, paths);
+        root.provisional = Find.without(root.provisional, paths);
     }
 
     Timer {
@@ -179,7 +193,7 @@ Singleton {
         interval: 120
 
         onTriggered: {
-            const command = Find.command(`${Quickshell.shellDir}/bin/bs-ls`, root.query, System.home, root.cwd, {
+            const command = Find.command(Files.helper("bs-ls"), root.query, System.home, root.cwd, {
                 hidden: root.hidden,
                 deep: root.everywhere
             });
