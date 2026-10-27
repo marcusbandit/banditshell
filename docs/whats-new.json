@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-27",
+      "id": "2026-10-27-2",
       "date": "2026-10-27",
       "changes": [
         {
@@ -28,6 +28,30 @@
           "type": "issues",
           "severity": "minor",
           "text": "The Notifications header says quiet on in full"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27",
+      "date": "2026-10-27",
+      "impact": {
+        "cli": true
+      },
+      "changes": [
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "Updates come as tested releases now, unless you kept main"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The update menu names the release and lists what it brings"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell version and update show the release number"
         }
       ]
     },

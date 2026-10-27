@@ -107,22 +107,20 @@ their last-seen version when they pull or update - not just the newest. Write
 each entry so it stands alone. Never write "as mentioned last time", because
 for most of your readers there was no last time.
 
-## The id is the version
+## The id and the release
 
-The `id` of the newest real entry is the version number of the build. `banditshell version`, the
-update menu and Settings > About show it, so it is what a person reads out when they report a bug.
-Keep it a date: `2026-10-17`, then `2026-10-17-2` for a second push the same day. An id that is not
-a date (`v1`) works in the shell but cannot be tagged and the promote script refuses it.
+The `id` of an entry stays a date: `2026-10-17`, then `2026-10-17-2` for a second push the same
+day. It is the seen marker, so it must be unique and stable. The version a person reads is the
+release instead: `v0.2.0`, or `v0.2.0+3` on a copy three commits past it. The id is only the
+fallback where no release tag is in reach.
 
-## Tags and the stable channel
+## Releases
 
-A commit that reaches the `stable` branch gets a git tag made from its id: `v`, then the date with
-dots, then the number if there is one. `2026-10-17` is `v2026.10.17`, and `2026-10-16-7` is
-`v2026.10.16-7`. `main` pushes are not tagged. `scripts/promote-stable.sh` (or `banditshell dev
-promote`) checks main and prints the `git push origin main:stable` and the tag commands; it pushes
-nothing unless run with `--push`, and agents never run it with `--push`. Write the entry before
-promotion: the tag is made from the newest entry on main at that moment. `docs/architecture/updates.md`
-has the whole update loop and the channels.
+Entries are written at every push to `main`, but people on the default channel only get them when
+the owner cuts a release with `banditshell dev release`. The release notes on GitHub are the entries
+on `main` that the last release tag did not have, so an entry written now is in the next release's
+notes without anything else to do. Agents never run `dev release` without `--dry-run`.
+`docs/architecture/updates.md` has the whole loop and the channels.
 
 ## The card
 

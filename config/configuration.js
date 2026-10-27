@@ -119,10 +119,20 @@ function upgradeSidebarClock(values) {
     return Object.assign({}, values, { sidebar });
 }
 
-function upgrade(values) {
+function upgradeChannel(values, keepChannel) {
+    const updates = values.updates;
+    if (!isPlainObject(updates) || updates.channelUpgraded === true)
+        return values;
+    const next = Object.assign({}, updates, { channelUpgraded: true });
+    if (next.channel === "main" && !keepChannel)
+        next.channel = "stable";
+    return Object.assign({}, values, { updates: next });
+}
+
+function upgrade(values, keepChannel) {
     if (!isPlainObject(values))
         return values;
-    return upgradeUpdateColours(upgradeFilesGrid(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values)))));
+    return upgradeUpdateColours(upgradeChannel(upgradeFilesGrid(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values)))), keepChannel === true));
 }
 
 function holds(node, segment) {

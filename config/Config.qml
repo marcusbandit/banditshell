@@ -1010,7 +1010,9 @@ Singleton {
 
             updates: {
 
-                channel: "main",
+                channel: "stable",
+
+                channelUpgraded: true,
 
                 branch: "main",
 
@@ -1057,7 +1059,11 @@ Singleton {
     }
 
     function upgrade(values: var): var {
-        return Configuration.upgrade(values);
+        return Configuration.upgrade(values, root.keepsChannel());
+    }
+
+    function keepsChannel(): bool {
+        return keepChannel.text().trim() !== "";
     }
 
     function upgradeValue(key: string, value: var): var {
@@ -1094,6 +1100,15 @@ Singleton {
     }
 
     FileView {
+        id: keepChannel
+
+        path: `${root.stateDir}/keep-channel`
+        blockLoading: true
+        watchChanges: false
+        printErrors: false
+    }
+
+    FileView {
         id: file
 
         path: root.path
@@ -1121,7 +1136,7 @@ Singleton {
             }
 
             root.unreadable = false;
-            root.values = Configuration.merge(root.defaults, Configuration.upgrade(parsed), "", root.opaque, root.literals);
+            root.values = Configuration.merge(root.defaults, Configuration.upgrade(parsed, root.keepsChannel()), "", root.opaque, root.literals);
             root.loaded = true;
 
             if (JSON.stringify(root.values) !== JSON.stringify(parsed)) {
