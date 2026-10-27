@@ -401,6 +401,8 @@ const PAGES_SOURCE = {
             { t: "Layout", rows: [
                 { n: 69, icon: "view_agenda", label: "Concept", k: "concept", kind: "seg", o: ["list", "alphabet"], cfg: "launcher.concept", kw: "launcher layout",
                     why: "List is a plain search list. Alphabet is a thumb-sized rail of letters with favourites on a bow." },
+                { n: [], icon: "vertical_align_center", label: "Position", k: "searchAt", kind: "slider", min: 0.1, max: 0.6, step: 0.01, fmt: v => Math.round(v * 100) === 50 ? "centre" : `${Math.round(v * 100)}% down`, cfg: "launcher.list.searchAt", dis: s => s.v("concept") !== "list", kw: "launcher position height vertical move up down raise lower top centre center search bar",
+                    why: "Where the search bar sits, measured down from the top of the screen. Results grow down from it." },
                 { n: [], icon: "push_pin", label: "Show pinned", k: "listPinned", kind: "toggle", cfg: "launcher.list.pinned", dis: s => s.v("concept") !== "list", kw: "pinned favourites quick launch grid icons",
                     why: "Pick an app in the list and press Pin to put it here." },
                 { n: [], icon: "schedule", label: "Show recents", k: "listRecents", kind: "toggle", cfg: "launcher.list.recents", dis: s => s.v("concept") !== "list", kw: "recent apps launcher icons" },

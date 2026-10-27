@@ -182,6 +182,7 @@ Singleton {
             concept: "launcher.concept",
             listPinned: "launcher.list.pinned",
             listRecents: "launcher.list.recents",
+            searchAt: "launcher.list.searchAt",
             hiddenFiles: "launcher.hiddenFiles",
             animatePreview: "launcher.animatePreview",
             polkitAgent: "polkit.agent",
