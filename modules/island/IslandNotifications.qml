@@ -25,7 +25,7 @@ Item {
 
     readonly property string subtitle: {
         const count = `${root.total} notification${root.total === 1 ? "" : "s"}`;
-        return root.quiet ? `${count} · quiet mode on` : count;
+        return root.quiet ? `${count} · quiet on` : count;
     }
 
     property double quietAt: Date.now()

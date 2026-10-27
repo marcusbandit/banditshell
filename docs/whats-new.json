@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-27-8",
+      "id": "2026-10-27-9",
       "date": "2026-10-27",
       "changes": [
         {
@@ -18,6 +18,37 @@
           "type": "issues",
           "severity": "minor",
           "text": "The launcher keeps learning new favourites after its first 400"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-8",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rows under an island card line up with the card's icon and title"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Island rows with nothing on the right keep room before the round end"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A live microphone is orange in the island too, as on the rail"
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "A waiting update is no longer orange, and a failed one is yellow"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Notifications header says quiet on in full"
         }
       ]
     },
