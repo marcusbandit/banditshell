@@ -29,7 +29,7 @@ Item {
     readonly property Component cardPart: root.row?.peekCard ?? null
     readonly property bool carded: root.cardPart !== null
     readonly property var clip: root.row?.kind === "clipboard" ? root.row.entry : null
-    readonly property string clipText: root.row?.peekText ? root.row.peekText : root.clip && !root.clip.file && ((root.clip.text ?? "").length > 48 || (root.clip.text ?? "").trim().indexOf("\n") >= 0) ? root.clip.text : ""
+    readonly property string clipText: root.row?.peekText ? root.row.peekText : root.clip && !root.row.masked && !root.clip.file && ((root.clip.text ?? "").length > 48 || (root.clip.text ?? "").trim().indexOf("\n") >= 0) ? root.clip.text : ""
     readonly property string picture: root.isFile && Search.isPicture(root.peekPath) ? root.peekPath : root.clip?.kind === "image" && root.clip.file ? root.clip.file : ""
     readonly property string pictureSource: root.row?.peekImage || (root.picture ? Search.fileUrl(root.picture) : "")
     readonly property string document: root.isFile && !root.picture && Search.isText(root.peekPath) && !Search.isSecretish(root.peekPath) ? root.peekPath : ""
