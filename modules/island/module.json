@@ -7,7 +7,7 @@
     "services": ["Activities", "Levels", "Moments", "Notices", "Privacy"],
     "js": ["services/activities.js", "services/moments.js", "services/privacy.js"],
     "assets": ["assets/inspector"],
-    "tests": ["tests/activities.test.js", "tests/moments.test.js", "tests/privacy.test.js"]
+    "tests": ["tests/activities.test.js", "tests/island-pointer.test.js", "tests/moments.test.js", "tests/privacy.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor", "notifications", "media", "apps", "clock", "audio", "display", "bar", "calculator", "network"],

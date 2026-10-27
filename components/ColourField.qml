@@ -1,5 +1,6 @@
 import QtQuick
 import qs.config
+import "colour-drift.js" as Drift
 
 Item {
     id: root
@@ -25,7 +26,7 @@ Item {
 
     FrameAnimation {
         running: root.moving && root.visible && !Appearance.lessMotion
-        onTriggered: root.drift = (Date.now() % root.period) / root.period
+        onTriggered: root.drift = Drift.phaseAt(Date.now(), root.period)
     }
 
     readonly property real fadeSpeed: Appearance.animation.settleSpeed * 0.5

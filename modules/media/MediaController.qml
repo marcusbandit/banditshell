@@ -386,7 +386,7 @@ Item {
                 anchors.fill: parent
                 radius: hull.radius
                 source: Media.available ? Media.artUrl : ""
-                moving: panel.visible
+                moving: panel.visible && Media.playing
                 opacity: root.grown ? root.mix(root.origin?.glow ?? 0, 0.62) : 0.62
             }
 
