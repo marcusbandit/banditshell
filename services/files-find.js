@@ -89,7 +89,7 @@ function fitPlace(place, room) {
         return `…/${last}`;
     if (last.length <= room)
         return last;
-    return room > 1 ? `…${last.slice(last.length - room + 1)}` : "…";
+    return room > 1 ? `${last.slice(0, room - 1)}…` : "…";
 }
 
 function named(entries, query) {

@@ -387,7 +387,7 @@ Item {
             readonly property string here: Conflicts.folderName(Files.cwd, Files.home)
 
             choices: [
-                {label: `Only ${scope.here.length > 16 ? `${scope.here.slice(0, 15)}…` : scope.here}`, value: "folder"},
+                {label: Files.cwd === Files.home ? "Top of home" : `In ${scope.here.length > 16 ? `${scope.here.slice(0, 15)}…` : scope.here}`, value: "folder"},
                 {label: "All of home", value: "home"}
             ]
             chosen: FilesFind.scope

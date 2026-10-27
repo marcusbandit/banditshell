@@ -83,11 +83,17 @@ test.describe("reading what the walk says", () => {
         assert.strictEqual(Find.fitPlace(where, 12), "~/…/sub 6");
         assert.strictEqual(Find.fitPlace(where, 8), "…/sub 6");
         assert.strictEqual(Find.fitPlace(where, 6), "sub 6");
-        assert.strictEqual(Find.fitPlace(where, 4), "…b 6");
+        assert.strictEqual(Find.fitPlace(where, 4), "sub…");
         assert.strictEqual(Find.fitPlace("~/Documents", 10), "Documents");
+        assert.strictEqual(Find.fitPlace("~/Documents", 8), "Documen…");
+        assert.strictEqual(Find.fitPlace("~/Downloads", 7), "Downlo…");
         assert.strictEqual(Find.fitPlace("/srv/data/archive", 12), "/…/archive");
-        for (let room = 1; room < 30; room++)
-            assert.ok(Find.fitPlace(where, room).length <= room, String(room));
+        for (const place of [where, "~/Documents", "~/Downloads/a very long folder name"])
+            for (let room = 1; room < 40; room++) {
+                const out = Find.fitPlace(place, room);
+                assert.ok(out.length <= room, `${place} ${room}`);
+                assert.ok(!/^…[^/]/.test(out), `${out} starts inside a name`);
+            }
     });
 
     test.it("reads progress, the end, and ignores noise", () => {
