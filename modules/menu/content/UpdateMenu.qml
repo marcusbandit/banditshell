@@ -57,7 +57,7 @@ Column {
     InkText {
         width: parent.width
         alignInk: true
-        text: Update.version === "" ? Update.channelLabel : `Version ${Update.version}, ${Update.channelLabel}`
+        text: Update.haveLabel
         color: Appearance.colour.textFaint
     }
 
@@ -100,7 +100,7 @@ Column {
 
     StyledText {
         width: parent.width
-        visible: Update.behind > 0 && !!Update.remoteHead
+        visible: Update.behind > 0 && !!Update.remoteHead && Update.branch !== "stable"
         text: `latest: ${Update.targetVersion || Update.remoteHead}`
         color: Appearance.colour.textFaint
     }

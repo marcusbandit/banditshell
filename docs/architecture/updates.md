@@ -79,13 +79,28 @@ a shell run from `lastgood` can still update the real one.
 
 ## Channels
 
-`updates.channel` in `config.json` is `stable` or `main`. The default is `main`, which is what every
-copy did before channels existed, so nothing moved when they were added.
+`updates.channel` in `config.json` is `stable` or `main`. The default is `stable`: other people get
+releases, and only the owner's own desktop follows `main`.
 
 | Channel  | Follows                | Moves when                                  |
 | -------- | ---------------------- | ------------------------------------------- |
-| `main`   | `origin/main`          | any push                                    |
-| `stable` | `origin/stable`        | the owner promotes a main that passed the checks |
+| `stable` | `origin/stable`        | the owner cuts a release with `banditshell dev release` |
+| `main`   | `origin/main`          | any merge                                   |
+
+Before releases existed, the shell wrote `"channel": "main"` into every `config.json` it touched, so
+that value says nothing about a choice. The config upgrade in `config/configuration.js` moves it to
+`stable` once and records `"channelUpgraded": true` beside it; a `main` set after that stays `main`.
+The CLI reads a `main` without the marker as `stable` too (`config_channel`), so the shell and the
+command agree before the shell has rewritten the file. To follow every merge, set it back:
+`banditshell config set updates.channel main`.
+
+A copy still on the code from before releases cannot record the marker: its config loader drops
+keys it does not know. So the move also stops when `~/.local/state/banditshell/keep-channel` is a
+non-empty file, which no version of the shell rewrites. The shell reads it before the upgrade
+(`keepsChannel` in `config/Config.qml`) and the CLI reads it in `config_channel`. To keep a copy on
+`main` whichever version it runs:
+
+    mkdir -p ~/.local/state/banditshell && echo main > ~/.local/state/banditshell/keep-channel && banditshell config set updates.channel main
 
 `updates.branch` still works as an override. The rule is one sentence: a branch other than `main`
 wins over the channel, and `main` (the default value in every config) means "let the channel
@@ -93,68 +108,85 @@ decide". Someone who follows `dev` keeps following `dev` on either channel. The 
 places that must agree: `branchFor` in `services/update.js` for the menu and `update_branch_for` in
 `cli/banditshell` for the CLI. `banditshell version` prints `channel` and `follows`.
 
-A bad channel value is refused with a plain message instead of being read as `main`, because
-silently giving a non-developer every push is the failure channels exist to prevent. The menu
-reads a bad value as `main` only for display, and the CLI error shows in its place.
+A bad channel value is refused with a plain message instead of being guessed at. The menu reads a
+bad value as `stable` only for display, and the CLI error shows in its place.
 
 The checkout stays on its local `main` while following `stable`. The paused rule accepts that
 (`update_on_branch`, `following` in `update.js`); any other local branch is still paused. A copy
-that is ahead of `stable`, for example the owner's own checkout, reads as up to date. Stable never
-moves a copy backwards. A copy on `stable` that has no `origin/stable` yet (nothing promoted) gets
-"GitHub has no stable version yet" and the way out.
+that is ahead of `stable`, for example one that took a merge from `main` before releases existed,
+reads as up to date and joins at the next release. Stable never moves a copy backwards. A copy on
+`stable` when GitHub has no `stable` yet reads as current ("there is no release on stable yet"),
+not as an error, so the time between this landing and the first release is quiet. A check that
+does fail still carries `version` in its JSON, so the menu keeps the release number.
 
-The channel is config-only. Settings > Updates has the Branch row from the settings mockup and the
-mockup has no channel row, so none was added. Set `"channel": "stable"` under `updates` in
-`config.json`. The Branch row keeps working as the override. Settings > About shows the version and
-the branch followed, read-only.
+### Why a stable branch and not the newest tag
 
-### Promoting main to stable
+Every release is a tag, and `stable` is a branch fast-forwarded to that tag in the same atomic push.
+The update loop follows the branch. That keeps check, apply and rollback to one fetched ref and a
+fast-forward, exactly as on `main`: no tag sorting on the user's machine, no question of what to do
+with a tag that is not on `main`, and a copy that has never fetched a tag still lands on the release
+because the branch already points at it. A push to `stable` that is not a fast-forward is refused
+by git, so `stable` can never move backwards or sideways. Each fetch also brings the `v*` tags, so
+the version shows as a release number from the first check on.
 
-`scripts/promote-stable.sh`, also `banditshell dev promote [--remote <name>] [--no-fetch]`. It
-exports `main` as committed (working-tree edits do not count) and runs on it:
+### Cutting a release
 
-- `node --test tests/*.test.js`
-- `node scripts/check-modules.js`
-- `node scripts/lint-rules.js`
-- `scripts/qml-compile-check.sh`
+`banditshell dev release [--dry-run] [--skip-boot-check]`, which runs `scripts/release.sh`. It
+refuses unless the copy is a clean checkout of `origin/main` (no edits, no untracked files, HEAD
+equal to `origin/main` after a fetch), and unless `gh` is installed and logged in; a dry run only
+warns about `gh`. Then:
 
-It also requires that local `main` equals `origin/main`, that the newest real entry in
-`docs/whats-new.json` has a date id, and that `stable`, when it exists, is an ancestor of `main`
-and not already equal to it. Then it prints the commands and stops:
+1. The last release is the highest `vX.Y.Z` tag on `main`. Nothing since it means nothing to
+   release, and it stops.
+2. The commit titles since it pick the number (`nextRelease` in `services/whatsnew.js`): any `feat`
+   or `!` is a minor bump, anything else a patch. The first release is `v0.1.0`. It stays 0.x until
+   the owner calls 1.0; from 1.0 on, a `!` is a major bump.
+3. `main` as committed is exported and checked: `node --test tests/*.test.js`,
+   `scripts/check-modules.js`, `scripts/lint-rules.js`, `scripts/qml-compile-check.sh`, and the
+   headless boot check. Any failure stops it, and every failing check is named. A boot check that
+   cannot run (no gamescope) counts as a failure unless `--skip-boot-check` is given.
+4. The release notes are the what's-new entries on `main` that the last tag did not have, grouped
+   the way the What's new card groups them.
+5. `git tag -a`, then one `git push --atomic origin <tag> <sha>:stable`, so the tag and `stable`
+   move together or not at all. Last, `gh release create` writes the GitHub release. If only that
+   step fails, the command to finish it is printed; people already have the update.
 
-    git push origin main:stable
-    git tag -a v2026.10.17 <sha> -m banditshell\ 2026-10-17
-    git push origin v2026.10.17
+`--dry-run` does every check and prints the notes and the three commands, and pushes nothing.
+`tests/release.test.js` runs it against throwaway bare repos with a fake `gh`.
 
-The script pushes only when run with `--push`. Agents never pass `--push`; the owner runs the
-printed commands or the flag. `tests/promote-stable.test.js` runs the script against throwaway
-repos under the temp folder and checks after each run that the throwaway origin did not change.
+### Installing
+
+A fresh clone is on `main`. `install.sh` moves it back to `origin/stable`, the newest release,
+before it does anything else, then runs again from the released copy. It only does that for a clone
+on `main` with no `config.json` yet, no edits, and a release to go to; anything else is left where
+it is and the update loop takes over.
 
 ## Versions
 
-The version is the id of the newest real entry in `docs/whats-new.json`, such as `2026-10-17` or
-`2026-10-16-7`. It is already unique, already written at every push, and already readable, so no
-second number exists to drift from it. Where it shows:
+The version is the release: `v0.2.0` on a tagged commit, `v0.2.0+3` three commits past it, which is
+what a copy on `main` shows. With no release tag in reach it falls back to the id of the newest real
+entry in `docs/whats-new.json`, then the short sha. `update_label` in `cli/banditshell` is the one
+definition. Where it shows:
 
 - `banditshell version` prints `version`, and `--json` has the same key.
-- `banditshell update check --json` carries `version` (this copy) and `targetVersion` (what is
-  waiting), each read from `docs/whats-new.json` at that commit, with the short sha as the
-  fallback.
-- The update menu shows `Version <id>, stable channel`, and `latest: <id>` when one is waiting.
-- Settings > About shows `BanditShell <id>`, taken from the same log. `Device.version` (git
-  describe) is only the fallback.
+- `banditshell update` and `update check` name the version this copy is on and the one waiting.
+- `banditshell update check --json` carries `version` (this copy), `targetVersion` (what is
+  waiting) and `previousVersion` (where rollback goes).
+- The update menu says `You have <release>, on the stable channel`; on stable a waiting update is headed
+  `<release> is ready`, with that release's what's-new entries under "In this update".
+- Settings > About shows the same version.
 
-Git tags follow the id: `v` plus the id with dots for the date, so `2026-10-17` is `v2026.10.17`
-and `2026-10-16-7` is `v2026.10.16-7`. `tagFor` in `services/whatsnew.js` is the one definition
-and the promote script prints the tag command from the same rule. A tag marks a commit that
-reached `stable`. `main` pushes are not tagged.
+`update rollback` on `stable` goes to the release before the one this copy is on, found from the
+tags rather than from `update/previous`, so it works on a copy that never updated. A release that
+already failed here (`update/skip`) is stepped over. On `main` it
+goes to the commit before the last update, as before.
 
 ## Design note: signed updates (not built)
 
 Nothing here is implemented. It is the plan for the day the repository goes public, when anyone
 could try to push to the account that updates read from.
 
-**What is signed.** The annotated tag the promote script already makes, one per stable release,
+**What is signed.** The annotated tag `dev release` already makes, one per stable release,
 signed with an SSH key (`git tag -s` with `gpg.format=ssh`). The signature covers the commit the
 tag points at, so the commit that `stable` moves to is the signed thing. The `main` channel is
 the developer edge and is not verified.
@@ -181,8 +213,7 @@ old key signed the change. A lost private key means everyone reinstalls once to 
 
 **What it costs a non-developer.** Day to day, nothing: no prompt, no key to manage, one small
 extra fetch for tags. The costs are on failure paths. An update whose tag is missing does not
-arrive, so forgetting the tag step stops stable (the promote script already prints it, and could
-make the tag mandatory). A key rotation needs one `update trust` confirmation. A machine without
+arrive, so a release without a tag stops stable (`dev release` always makes one). A key rotation needs one `update trust` confirmation. A machine without
 `ssh-keygen` cannot take stable updates until it is installed, and `doctor` should say so. It does
 not protect against the owner's own machine being compromised, and it does not make `main` safe.
 
@@ -193,5 +224,6 @@ not protect against the owner's own machine being compromised, and it does not m
 | What the update says or classifies | `services/update.js`, then `tests/update.test.js`          |
 | The loop itself                   | `update_*` in `cli/banditshell`, then `tests/update-cli.test.js` |
 | The menu or the state shown       | `services/Update.qml`, `modules/menu/content/UpdateMenu.qml` |
-| What counts as promotable         | `scripts/promote-stable.sh`, `tests/promote-stable.test.js` |
-| The tag or version rule           | `services/whatsnew.js` and the promote script together     |
+| What a release checks and pushes  | `scripts/release.sh`, `tests/release.test.js`              |
+| The release number or notes       | `services/whatsnew.js`, `tests/whatsnew.test.js`           |
+| The version shown                 | `update_label` in `cli/banditshell`                        |

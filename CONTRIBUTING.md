@@ -18,6 +18,22 @@ the branch, every commit, the PR title and the squash commit it becomes.
 7. **Squash merge** with `gh pr merge --squash --delete-branch`. The PR title
    becomes the one commit on main, with `(#N)` appended by GitHub.
 
+## Releases
+
+Merging to `main` reaches only the owner's desktop, which follows `main`.
+Everyone else follows releases. The loop is:
+
+1. Merge the PR to `main`.
+2. The owner runs it for a while.
+3. When the owner says "release", run `banditshell dev release --dry-run`
+   from a clean checkout of `origin/main`, then the same without
+   `--dry-run`. It checks main, picks the number (minor for a `feat`, patch
+   otherwise), tags it, moves `stable` and writes the GitHub release from
+   what's new since the last tag.
+
+Never cut a release the owner did not ask for. `docs/architecture/updates.md`
+has the details.
+
 ## Types
 
 | Type       | Use it for                                          |
