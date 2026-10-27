@@ -6,6 +6,7 @@ import qs.components
 import qs.services
 import "urls.js" as Urls
 import "keys.js" as Chords
+import "deletion.js" as Deletion
 
 Item {
     id: root
@@ -265,9 +266,6 @@ Item {
         root.select(Math.max(0, Files.cursor) + delta, extend ?? false);
     }
 
-    readonly property int count: Files.picks.length
-    readonly property string counted: root.count !== 1 ? `${root.count} items` : Files.originPlace(Files.picks[0]) ? `${Files.picks[0].name} from ${Files.originPlace(Files.picks[0])}` : Files.picks[0].name
-
     function fileActions(): var {
         const picks = Files.picks;
         if (picks.length === 0)
@@ -432,10 +430,11 @@ Item {
         if (paths.length === 0)
             return;
 
-        prompt.ask(`Delete ${root.counted} permanently? Type "delete" to confirm`, "", 0, answer => {
-            if (answer.toLowerCase() === "delete")
-                Files.deleteForever(paths);
-        }, null, "delete");
+        const items = Files.picks.map(e => ({
+                    name: e.name,
+                    origin: Files.originPlace(e)
+                }));
+        prompt.ask(Deletion.question(items), "", 0, answer => Files.deleteForever(Deletion.approved(answer, paths)), null, "delete");
     }
 
     Connections {

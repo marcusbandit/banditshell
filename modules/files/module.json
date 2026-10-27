@@ -8,6 +8,7 @@
     "js": ["services/files-conflicts.js", "services/files-find.js", "services/files-order.js", "services/files-trash.js", "services/files-undo.js"],
     "tests": [
       "tests/files-conflicts.test.js",
+      "tests/files-delete.test.js",
       "tests/files-find.test.js",
       "tests/files-order.test.js",
       "tests/files-trash.test.js",
