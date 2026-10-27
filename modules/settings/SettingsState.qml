@@ -79,9 +79,13 @@ Singleton {
                 read: v => Durations.choiceFromMinutes(v),
                 write: v => Durations.minutesFromChoice(v)
             },
+            surfaceAlpha: {
+                read: v => Catalogue.seeThrough(v),
+                write: v => Catalogue.seeThrough(v)
+            },
             lowAction: {
-                read: v => v === "nothing" ? v : `${v} at ${Battery.nearlyEmptyPercent}%`,
-                write: v => String(v).split(" ")[0]
+                read: v => Battery.nearlyEmptyChoice(v),
+                write: v => Battery.nearlyEmptyAction(v)
             },
             dndUntil: {
                 read: v => Notifications.endsLabel(v),
@@ -2038,8 +2042,9 @@ Singleton {
         const r = root.rowOf(change?.k);
         if (!cfg || !r)
             return change;
-        const old = Config.upgradeValue(cfg, change.old);
-        const value = Config.upgradeValue(cfg, change.v);
+        const lift = change.k === "surfaceAlpha" ? Catalogue.loggedSeeThrough : v => v;
+        const old = lift(Config.upgradeValue(cfg, change.old));
+        const value = lift(Config.upgradeValue(cfg, change.v));
         if (old === change.old && value === change.v)
             return change;
         return Object.assign({}, change, {

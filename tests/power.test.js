@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const load = (file, names) => new Function(fs.readFileSync(path.join(ROOT, "services", file), "utf8") + `\nreturn { ${names.join(", ")} };`)();
 
-const Battery = load("battery.js", ["lowStep", "countdownMessage", "afterResume", "nearlyEmptyFraction", "rearmMargin", "graceSeconds"]);
+const Battery = load("battery.js", ["lowStep", "countdownMessage", "nearlyEmptyChoice", "nearlyEmptyAction", "afterResume", "nearlyEmptyFraction", "rearmMargin", "graceSeconds"]);
 const Suspension = load("suspension.js", ["parseHibernate", "resolve", "commandFor", "logindCommand"]);
 const Lid = load("lid.js", ["internalOutput", "hasLid", "externalScreens", "differsFromLogind", "chooseAction", "closedFrom", "closedFromProperty"]);
 const Profile = load("powerprofile.js", ["nameFor", "profileFor", "parseProbe", "parseActive", "choices"]);
@@ -73,7 +73,17 @@ test("the warning moves with the key", () => {
     assert.deepStrictEqual(Battery.lowStep("ok", onBattery(0.25, { warnAt: 0.3 })), { stage: "warned", say: "warn" });
     assert.deepStrictEqual(Battery.lowStep("warned", onBattery(0.3, { warnAt: 0.1 })), { stage: "ok", say: "" });
     assert.match(Battery.countdownMessage("hibernate", 30), /^Hibernating in 30 seconds/);
-    assert.match(Battery.countdownMessage("suspend", 30), /^Suspending in 30 seconds/);
+    assert.match(Battery.countdownMessage("suspend", 30), /^Sleeping in 30 seconds/);
+});
+
+test("nearly empty reads sleep in Settings and still stores suspend", () => {
+    assert.strictEqual(Battery.nearlyEmptyChoice("suspend", 5), "sleep at 5%");
+    assert.strictEqual(Battery.nearlyEmptyChoice("hibernate", 5), "hibernate at 5%");
+    assert.strictEqual(Battery.nearlyEmptyChoice("nothing", 5), "nothing");
+    assert.strictEqual(Battery.nearlyEmptyAction("sleep at 5%"), "suspend");
+    assert.strictEqual(Battery.nearlyEmptyAction("suspend at 5%"), "suspend");
+    assert.strictEqual(Battery.nearlyEmptyAction("hibernate at 5%"), "hibernate");
+    assert.strictEqual(Battery.nearlyEmptyAction("nothing"), "nothing");
 });
 
 test("hibernate needs the disk state and a yes from logind, or swap when logind is silent", () => {

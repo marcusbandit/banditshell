@@ -1,6 +1,37 @@
 {
   "entries": [
     {
+      "id": "2026-10-27-4",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings search names each hit with its heading and marks the match"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Sound, Apps in Settings is now called Volume by app"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "See-through in Settings goes up as you drag it right"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Time at rest in Settings lists all six choices and ticks yours"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Low battery says it will sleep, like the power menu and launcher"
+        }
+      ]
+    },
+    {
       "id": "2026-10-27-3",
       "date": "2026-10-27",
       "changes": [
