@@ -651,7 +651,7 @@ Item {
         }
     }
 
-    StyledText {
+    Item {
         id: failure
 
         anchors.left: parent.left
@@ -659,17 +659,25 @@ Item {
         anchors.bottom: terminal.top
 
         visible: Files.failure !== "" || FilesUndo.notice !== ""
-        height: failure.visible ? failure.implicitHeight : 0
+        height: failure.visible ? failureText.implicitHeight : 0
 
-        leftPadding: Appearance.padding.normal
-        rightPadding: Appearance.padding.normal
-        topPadding: Appearance.padding.small
-        bottomPadding: Appearance.padding.small
+        StyledText {
+            id: failureText
 
-        text: Files.failure || FilesUndo.notice
-        font.pixelSize: Files.zoomed(Appearance.font.size.small)
-        color: Files.failure ? Appearance.colour.alarm : Appearance.colour.text
-        elide: Text.ElideRight
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+
+            leftPadding: Appearance.padding.normal
+            rightPadding: Appearance.padding.normal
+            topPadding: Appearance.padding.small
+            bottomPadding: Appearance.padding.small
+
+            text: Files.failure || FilesUndo.notice
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
+            color: Files.failure ? Appearance.colour.alarm : Appearance.colour.text
+            elide: Text.ElideRight
+        }
 
         TapHandler {
             onTapped: {
