@@ -90,7 +90,7 @@ Item {
     readonly property string cleared: {
         const gone = `${Clipboard.shelved} cleared`;
         if (!Clipboard.clearSaves)
-            return `${gone}, unreadable file left as is`;
+            return `${gone} · history file not read`;
         return Clipboard.shelfKept > 0 ? `${gone}, ${Clipboard.shelfKept} pinned kept` : gone;
     }
 
@@ -629,7 +629,7 @@ Item {
                                 }
 
                                 HoverTip {
-                                    text: "The history file could not be read, so it was not changed"
+                                    text: "The history file on disk could not be read, so it was left unchanged. These copies were never saved to it."
                                     asked: !Clipboard.clearSaves && clearedTextHover.hovered
                                 }
                             }
