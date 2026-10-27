@@ -435,6 +435,16 @@ test("a config the shell wrote with main before releases follows releases, and m
     assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json"]).out).channel, "main");
 });
 
+test("main set before the upgrade, with the keep-channel mark, stays main on the CLI side too", () => {
+    const world = makeWorld();
+    cut(world, "v0.1.0", liveHead(world));
+    write(world.config, "banditshell/config.json", JSON.stringify({ updates: { channel: "main", branch: "main", remote: "origin" } }, null, 4));
+    assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json"]).out).channel, "stable");
+    write(world.state, "banditshell/keep-channel", "main\n");
+    assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json"]).out).channel, "main");
+    assert.match(run(world, ["version"]).out, /^follows\s+main$/m);
+});
+
 test("an install on main from before releases lands on the newest release, on its own main branch", () => {
     const world = makeWorld();
     forget(world);

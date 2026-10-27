@@ -3198,7 +3198,7 @@ config_true() {
 config_channel() {
     local channel
     channel=$(config_leaf updates channel stable)
-    [ "$channel" != main ] || config_true updates channelUpgraded || channel=stable
+    [ "$channel" != main ] || config_true updates channelUpgraded || [ -s "$STATE_DIR/keep-channel" ] || channel=stable
     printf '%s' "$channel"
 }
 

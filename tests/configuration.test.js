@@ -163,6 +163,13 @@ test.describe("lookup", () => {
 });
 
 test.describe("upgrade", () => {
+    test.it("keeps main when it was set before the upgrade with the keep-channel mark in place", () => {
+        const setOnOldCode = { updates: { channel: "main", branch: "main", interval: 30 } };
+        assert.deepStrictEqual(Configuration.upgrade(setOnOldCode, true).updates, { channel: "main", channelUpgraded: true, branch: "main", interval: 30 });
+        assert.strictEqual(Configuration.upgrade(Configuration.upgrade(setOnOldCode, true)).updates.channel, "main");
+        assert.deepStrictEqual(Configuration.upgrade({ updates: { channel: "stable" } }, true).updates, { channel: "stable", channelUpgraded: true });
+    });
+
     test.it("moves a copy on main to the release channel once, and leaves a later choice of main alone", () => {
         const old = { updates: { channel: "main", branch: "main", interval: 30 } };
         const moved = Configuration.upgrade(old);
