@@ -163,6 +163,16 @@ test.describe("lookup", () => {
 });
 
 test.describe("upgrade", () => {
+    test.it("moves a copy on main to the release channel once, and leaves a later choice of main alone", () => {
+        const old = { updates: { channel: "main", branch: "main", interval: 30 } };
+        const moved = Configuration.upgrade(old);
+        assert.deepStrictEqual(moved.updates, { channel: "stable", channelUpgraded: true, branch: "main", interval: 30 });
+        const chosen = { updates: Object.assign({}, moved.updates, { channel: "main" }) };
+        assert.strictEqual(Configuration.upgrade(chosen), chosen);
+        assert.deepStrictEqual(Configuration.upgrade({ updates: { channel: "stable" } }).updates, { channel: "stable", channelUpgraded: true });
+        assert.deepStrictEqual(Configuration.upgrade({ theme: "x" }), { theme: "x" });
+    });
+
     test.it("moves the old launcher name and its sizes to alphabet", () => {
         const old = { launcher: { concept: "niagara", niagara: { width: 700 } }, theme: "slate" };
         assert.deepStrictEqual(Configuration.upgrade(old), { launcher: { concept: "alphabet", alphabet: { width: 700 } }, theme: "slate" });

@@ -104,10 +104,20 @@ function upgradeSidebarClock(values) {
     return Object.assign({}, values, { sidebar });
 }
 
+function upgradeChannel(values) {
+    const updates = values.updates;
+    if (!isPlainObject(updates) || owns(updates, "channelUpgraded"))
+        return values;
+    const next = Object.assign({}, updates, { channelUpgraded: true });
+    if (next.channel === "main")
+        next.channel = "stable";
+    return Object.assign({}, values, { updates: next });
+}
+
 function upgrade(values) {
     if (!isPlainObject(values))
         return values;
-    return upgradeFilesGrid(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values))));
+    return upgradeChannel(upgradeFilesGrid(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values)))));
 }
 
 function holds(node, segment) {

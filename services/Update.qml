@@ -57,7 +57,8 @@ Singleton {
     readonly property string channel: Words.channelOf(Config.values.updates.channel)
     readonly property string branch: Words.branchFor(Config.values.updates.channel, Config.values.updates.branch)
     readonly property string channelLabel: Words.channelText(Config.values.updates.channel, Config.values.updates.branch)
-    readonly property string version: WhatsNew.version
+    property string release: ""
+    readonly property string version: root.release || WhatsNew.version
     property string targetVersion: ""
     property string previous: ""
     property string previousVersion: ""
@@ -101,7 +102,7 @@ Singleton {
         if (root.diverged)
             return `${root.behind} new on ${root.branch}, but this copy has ${root.ahead} of its own`;
         if (root.behind > 0)
-            return `${root.behind} new commit${root.behind === 1 ? "" : "s"} on ${root.branch}`;
+            return Words.waitingHeadline(root.branch, root.behind, root.targetVersion);
         return "You are up to date";
     }
 
@@ -446,6 +447,7 @@ Singleton {
                 const counts = got.state === "available" || got.state === "diverged";
                 root.headBranch = got.headBranch ?? "";
                 root.target = root.commit(got.target ?? "") ? got.target : "";
+                root.release = got.version ?? "";
                 root.targetVersion = got.targetVersion ?? "";
                 root.previous = root.commit(got.previous ?? "") ? got.previous : "";
                 root.previousVersion = got.previousVersion ?? "";

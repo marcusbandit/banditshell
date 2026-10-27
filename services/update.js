@@ -2,7 +2,7 @@ const CHANNELS = ["stable", "main"];
 
 function channelOf(raw) {
     const name = String(raw ?? "").trim();
-    return CHANNELS.indexOf(name) >= 0 ? name : "main";
+    return CHANNELS.indexOf(name) >= 0 ? name : "stable";
 }
 
 function branchFor(channel, branch) {
@@ -21,6 +21,12 @@ function channelText(channel, branch) {
     if (followed !== "stable" && followed !== "main")
         return `following ${followed}`;
     return `${followed} channel`;
+}
+
+function waitingHeadline(branch, behind, targetVersion) {
+    if (branch === "stable" && targetVersion)
+        return `${targetVersion} is ready`;
+    return `${behind} new commit${behind === 1 ? "" : "s"} on ${branch}`;
 }
 
 function report(text) {
@@ -77,7 +83,7 @@ function explain(output, branch) {
     if (/Could not resolve host|Failed to connect|Connection timed out|Connection refused|Network is unreachable|Could not connect/.test(text))
         return "Could not reach GitHub. Check the internet connection, then refresh.";
     if (/couldn't find remote ref/.test(text) && branch === "stable")
-        return "GitHub has no stable version yet, so the stable channel has nothing to follow. Switch updates.channel to main in config.json, or wait for the first stable release.";
+        return "There is no release on GitHub yet, so nothing is waiting. This copy stays as it is until the first one.";
     if (/couldn't find remote ref/.test(text))
         return `GitHub has no branch called "${branch}".`;
     if (/Repository not found|does not appear to be a git repository|Could not read from remote repository|Permission denied|Authentication failed|terminal prompts disabled|Host key verification failed/.test(text))
@@ -398,7 +404,7 @@ function assess(facts) {
 }
 
 function waitingText(report) {
-    const out = [`update waiting: ${report.summary}`];
+    const out = [`${report.targetVersion ? `${report.targetVersion} is` : "update"} waiting: ${report.summary}`];
     for (const entry of report.entries) {
         out.push(`  ${entry.id}`);
         for (const change of entry.changes.slice(0, 6))

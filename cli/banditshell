@@ -169,14 +169,15 @@
 #                                the theme; bare, its name
 #
 # update                         the shell's own version: look, apply, go back
-#   banditshell update           one line: where this copy stands
+#   banditshell update           one line: the release this copy is on and
+#                                whether a newer one is waiting.
 #                                updates.channel in config.json picks what is
-#                                followed: main (every push, the default) or
-#                                stable (moves only when a tested main is
-#                                promoted); updates.branch, when it is not main,
-#                                follows that branch instead
+#                                followed: stable (each release, the default) or
+#                                main (every merge); updates.branch, when it is
+#                                not main, follows that branch instead
 #   banditshell update check [--json] [--no-fetch]
-#                                fetch, then say what the new version changes
+#                                fetch, then say which release is waiting and
+#                                what it changes
 #                                (restart or reload, commands, dependencies, your
 #                                edits in the way); exit 0 when current, 10 when
 #                                a version is waiting, 1 on an error; --no-fetch
@@ -186,8 +187,9 @@
 #                                move the checkout up, restart when it needs
 #                                one and go back on its own if it does not start
 #   banditshell update rollback [--detach] [--json]
-#                                the version before the last update; it is
-#                                skipped until a newer one arrives
+#                                on stable the release before this one, on main
+#                                the version before the last update; what it
+#                                leaves is skipped until a newer one arrives
 #   banditshell update status [--json]
 #                                where this copy stands, the last update's
 #                                outcome and the version it replaced
@@ -253,7 +255,8 @@
 #
 # version                        which build is installed
 #   banditshell version [--json]
-#                                the version (the newest what's-new id), the update
+#                                the version (the release, with +n for commits
+#                                past it, or the newest what's-new id), the update
 #                                channel and the branch it follows, the commit and
 #                                branch, the checkout, the API number and the
 #                                Quickshell and Hyprland versions
@@ -309,12 +312,13 @@
 #                                today's counts as the new baseline
 #   banditshell dev lint --rule <rule>
 #                                one rule only, L1 to L16
-#   banditshell dev promote [--remote <name>] [--no-fetch]
-#                                check that main is fit to be the stable channel
-#                                (tests, modules, house rules, compile check, a
-#                                what's-new id) and print the git commands that
-#                                would move stable and tag the version; it
-#                                pushes nothing
+#   banditshell dev release [--dry-run]
+#                                cut the next release from a clean checkout of
+#                                origin/main: tests, modules, house rules,
+#                                compile and boot checks, then the number (minor
+#                                for a feature, patch for fixes), the tag, stable
+#                                moved and the GitHub release with what's new
+#                                since the last tag; --dry-run pushes nothing
 #   banditshell dev check island [dir]
 #                                walk the island through every situation it has
 #                                a rule for, headless: each checked, and
@@ -2094,13 +2098,14 @@ route_api() {
 
 route_version() {
     local release commit branch quickshell hyprland number channel follows
-    release=$(grep -m1 -o '"id": *"[^"]*"' "$SHELL_DIR/docs/whats-new.json" 2>/dev/null | sed 's/.*: *"\(.*\)"/\1/') || release=""
+    release=$(U_DIR="$SHELL_DIR" && update_label "$(ugit rev-parse --verify --quiet HEAD)") || release=""
+    [ -n "$release" ] || release=$(grep -m1 -o '"id": *"[^"]*"' "$SHELL_DIR/docs/whats-new.json" 2>/dev/null | sed 's/.*: *"\(.*\)"/\1/') || release=""
     commit=$(git -C "$SHELL_DIR" describe --always --dirty --tags 2>/dev/null) || commit=""
     branch=$(git -C "$SHELL_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null) || branch=""
     quickshell=$(qs --version 2>/dev/null | head -n 1 | sed 's/ (revision.*//') || quickshell=""
     hyprland=$(Hyprland --version 2>/dev/null | head -n 1 | sed 's/ built from.*//') || hyprland=""
     number=$(api_number) || number=""
-    channel=$(config_leaf updates channel main)
+    channel=$(config_channel)
     follows=$(update_branch_for "$channel" "$(config_leaf updates branch main)")
     printf '%-11s %s\n' version "${release:-unknown}" channel "$channel" follows "$follows" commit "${commit:-unknown}" branch "${branch:-unknown}" \
         checkout "$SHELL_DIR" api "${number:-none}" quickshell "${quickshell:-unknown}" hyprland "${hyprland:-unknown}"
@@ -3086,10 +3091,10 @@ route_dev() {
             ;;
         *) nope dev "lint $1" ;;
         esac ;;
-    promote)
+    release)
         case "${1:-}" in
-        "" | --remote | --no-fetch) exec bash "$SHELL_DIR/scripts/promote-stable.sh" "$@" ;;
-        *) nope dev "promote $1" ;;
+        "" | --dry-run) exec bash "$SHELL_DIR/scripts/release.sh" "$@" ;;
+        *) nope dev "release $1" ;;
         esac ;;
     check)
         case "${1:-}" in
@@ -3186,6 +3191,19 @@ config_leaf() {
     printf '%s' "${value:-$3}"
 }
 
+config_true() {
+    tr -d '\n' 2>/dev/null <"$CONFIG_FILE" | grep -q "\"$1\"[[:space:]]*:[[:space:]]*{[^}]*\"$2\"[[:space:]]*:[[:space:]]*true"
+}
+
+config_channel() {
+    local channel
+    channel=$(config_leaf updates channel stable)
+    [ "$channel" != main ] || config_true updates channelUpgraded || channel=stable
+    printf '%s' "$channel"
+}
+
+RELEASE_TAGS=(--match 'v[0-9]*.[0-9]*.[0-9]*' --exclude 'v*-*')
+
 UPDATE_JSON=0
 UPDATE_APPLYING=0
 U_DIR="" U_REMOTE="" U_CHANNEL="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET="" U_PREVIOUS="" U_BEHIND=0 U_AHEAD=0 U_STATE=""
@@ -3257,7 +3275,7 @@ update_prepare() {
     SHELL_DIR="$top"
     U_DIR="$top"
     U_REMOTE=$(config_leaf updates remote origin)
-    U_CHANNEL=$(config_leaf updates channel main)
+    U_CHANNEL=$(config_channel)
     case "$U_CHANNEL" in
     stable | main) ;;
     *) update_fail "fatal: updates.channel in config.json is \"$U_CHANNEL\", and it has to be stable or main" ;;
@@ -3270,7 +3288,8 @@ update_prepare() {
 
 update_fetch() {
     local out code=0
-    out=$(GIT_TERMINAL_PROMPT=0 LC_ALL=C timeout -k 10 120 git -C "$U_DIR" fetch --quiet -- "$U_REMOTE" "$U_BRANCH" 2>&1) || code=$?
+    out=$(GIT_TERMINAL_PROMPT=0 LC_ALL=C timeout -k 10 120 git -C "$U_DIR" fetch --quiet --no-tags -- "$U_REMOTE" \
+        "+refs/heads/$U_BRANCH:refs/remotes/$U_REMOTE/$U_BRANCH" "+refs/tags/v*:refs/tags/v*" 2>&1) || code=$?
     case "$code" in
     0) ;;
     124 | 137) update_fail "timed out" ;;
@@ -3307,11 +3326,21 @@ update_read() {
     else
         U_STATE=current
     fi
-    U_PREVIOUS=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
+    if [ "$U_BRANCH" = stable ]; then
+        U_PREVIOUS=$(update_release_before)
+    else
+        U_PREVIOUS=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
+    fi
     if [ "$U_STATE" = paused ] || [ "$U_AHEAD" -gt 0 ] || ! [[ $U_PREVIOUS =~ ^[0-9a-f]{40,64}$ ]] ||
         [ "$U_PREVIOUS" = "$U_HEAD" ] || ! ugit merge-base --is-ancestor "$U_PREVIOUS" HEAD 2>/dev/null; then
         U_PREVIOUS=""
     fi
+}
+
+update_release_before() {
+    local tag
+    tag=$(ugit describe --tags --abbrev=0 "${RELEASE_TAGS[@]}" HEAD^ 2>/dev/null) || return 0
+    ugit rev-parse --verify --quiet "$tag^{commit}" 2>/dev/null || true
 }
 
 update_fetched_at() {
@@ -3386,10 +3415,10 @@ update_load_class() {
 
 update_state_text() {
     case "$U_STATE" in
-    current) echo "up to date at ${U_HEAD:0:7} on $U_BRANCH" ;;
+    current) echo "up to date at $(update_label "$U_HEAD") on $U_BRANCH" ;;
     paused) echo "this copy is on ${U_BRANCH_NOW/#HEAD/no branch}, so it does not follow $U_BRANCH" ;;
     diverged) echo "$U_BEHIND new on $U_BRANCH, but this copy has $U_AHEAD commit(s) of its own, so it cannot just move forward" ;;
-    skipped) echo "${U_TARGET:0:7} did not start last time and is skipped until a newer version arrives" ;;
+    skipped) echo "$(update_label "$U_TARGET") did not start last time and is skipped until a newer version arrives" ;;
     esac
 }
 
@@ -3433,9 +3462,15 @@ update_check() {
 }
 
 update_label() {
-    local label=""
+    local label="" described
     [ -n "$1" ] || return 0
-    label=$(ugit show "$1:docs/whats-new.json" 2>/dev/null | awk -F'"' '!found && /^[[:space:]]*"id":[[:space:]]*"/ { print $4; found = 1 }') || label=""
+    described=$(ugit describe --tags --long "${RELEASE_TAGS[@]}" "$1" 2>/dev/null) || described=""
+    if [[ $described =~ ^(v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*))-([0-9]+)-g[0-9a-f]+$ ]]; then
+        label="${BASH_REMATCH[1]}"
+        [ "${BASH_REMATCH[5]}" = 0 ] || label+="+${BASH_REMATCH[5]}"
+    else
+        label=$(ugit show "$1:docs/whats-new.json" 2>/dev/null | awk -F'"' '!found && /^[[:space:]]*"id":[[:space:]]*"/ { print $4; found = 1 }') || label=""
+    fi
     printf '%s' "${label:-${1:0:7}}"
 }
 
@@ -3732,8 +3767,13 @@ update_rollback() {
     update_read
     [ "$U_STATE" != paused ] || update_fail "fatal: $(update_state_text)"
     [ "$U_AHEAD" -eq 0 ] || update_fail "fatal: this copy has $U_AHEAD commit(s) of its own, and going back would take them off the branch"
-    previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
     head=$(ugit rev-parse HEAD)
+    if [ "$U_BRANCH" = stable ]; then
+        [ -n "$U_PREVIOUS" ] || update_fail "fatal: there is no earlier release to go back to"
+        mkdir -p "$UPDATE_STATE"
+        printf '%s\n' "$U_PREVIOUS" >"$UPDATE_STATE/previous"
+    fi
+    previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
     [ -n "$previous" ] && [ "$previous" != "$head" ] || update_fail "fatal: there is no earlier version recorded to go back to"
     ugit cat-file -e "$previous^{commit}" 2>/dev/null || update_fail "fatal: the recorded earlier version is no longer in this copy"
     [ "$U_PREVIOUS" = "$previous" ] || update_fail "fatal: the recorded earlier version is not behind this one"
@@ -3743,8 +3783,8 @@ update_rollback() {
 
 update_oneline() {
     case "$U_STATE" in
-    available) echo "${U_HEAD:0:7} on $U_BRANCH, update waiting: $1" ;;
-    *) echo "${U_HEAD:0:7} on $U_BRANCH_NOW, $(update_state_text)" ;;
+    available) echo "$(update_label "$U_HEAD") on $U_BRANCH, $(update_label "$U_TARGET") is waiting: $1" ;;
+    *) echo "$(update_label "$U_HEAD") on $U_BRANCH_NOW, $(update_state_text)" ;;
     esac
 }
 
@@ -3786,7 +3826,11 @@ update_status() {
     [ "$full" = full ] || exit 0
     last=$(update_last_result "$result")
     [ -z "$last" ] || echo "$last"
-    [ ! -s "$UPDATE_STATE/previous" ] || echo "before the last update: $(head -c 7 "$UPDATE_STATE/previous") (banditshell update rollback goes back)"
+    if [ -n "$U_PREVIOUS" ]; then
+        echo "banditshell update rollback goes back to $(update_label "$U_PREVIOUS")"
+    elif [ "$U_BRANCH" != stable ] && [ -s "$UPDATE_STATE/previous" ]; then
+        echo "before the last update: $(head -c 7 "$UPDATE_STATE/previous")"
+    fi
     exit 0
 }
 

@@ -100,7 +100,7 @@ Column {
 
     StyledText {
         width: parent.width
-        visible: Update.behind > 0 && !!Update.remoteHead
+        visible: Update.behind > 0 && !!Update.remoteHead && Update.branch !== "stable"
         text: `latest: ${Update.targetVersion || Update.remoteHead}`
         color: Appearance.colour.textFaint
     }

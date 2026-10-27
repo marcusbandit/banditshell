@@ -119,7 +119,9 @@ bin/banditshell start
 ```
 
 `./install.sh --dry-run` walks every step without installing anything, and
-`--list` prints the steps.
+`--list` prints the steps. A fresh clone is moved to the newest release first,
+and `banditshell update` takes it to each new one. To follow every merge to
+`main` instead, run `banditshell config set updates.channel main`.
 
 The first start links the command into `~/bin/banditshell`. To bring the shell
 up with Hyprland, add it to your config:

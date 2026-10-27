@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, following, reportWords, reportScript };")();
+const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, following, waitingHeadline, reportWords, reportScript };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -257,6 +257,7 @@ test("a report from facts joins meta, classification, summary and entries", () =
     assert.strictEqual(report.button, "Update and restart");
     assert.deepStrictEqual(report.entries.map(e => e.id), ["n"]);
     assert.match(Update.waitingText(report), /^update waiting: 2 changes, restart needed\n  n\n    - Looks different\.\nrun: banditshell update apply$/);
+    assert.match(Update.waitingText(Object.assign({}, report, { targetVersion: "v0.2.0" })), /^v0\.2\.0 is waiting: 2 changes, restart needed\n/);
     const lines = Update.linesOf(report).split("\n");
     assert.ok(lines.includes("kind=restart"));
     assert.ok(lines.includes("restart=1"));
@@ -321,11 +322,11 @@ test("the report command hands the words to triage as one argument, whatever the
     }
 });
 
-test("a channel is stable or main, and anything else reads as main", () => {
+test("a channel is stable or main, and anything else reads as stable, the default", () => {
     assert.strictEqual(Update.channelOf("stable"), "stable");
     assert.strictEqual(Update.channelOf(" main "), "main");
-    assert.strictEqual(Update.channelOf("beta"), "main");
-    assert.strictEqual(Update.channelOf(undefined), "main");
+    assert.strictEqual(Update.channelOf("beta"), "stable");
+    assert.strictEqual(Update.channelOf(undefined), "stable");
 });
 
 test("the channel picks the branch, and a branch other than main overrides it", () => {
@@ -334,7 +335,7 @@ test("the channel picks the branch, and a branch other than main overrides it", 
     assert.strictEqual(Update.branchFor("stable", ""), "stable");
     assert.strictEqual(Update.branchFor("stable", "dev"), "dev");
     assert.strictEqual(Update.branchFor("main", "dev"), "dev");
-    assert.strictEqual(Update.branchFor(undefined, undefined), "main");
+    assert.strictEqual(Update.branchFor(undefined, undefined), "stable");
 });
 
 test("the menu names the channel, or the branch followed in its place", () => {
@@ -351,8 +352,15 @@ test("a copy on main follows stable, any other branch only follows itself", () =
     assert.strictEqual(Update.following("dev", "dev"), true);
 });
 
-test("a missing stable branch says there is no stable version yet", () => {
+test("a missing stable branch says there is no release yet, without sending anyone to main", () => {
     const text = "fatal: couldn't find remote ref stable";
-    assert.match(Update.explain(text.split("\n"), "stable"), /no stable version yet.*updates\.channel to main/);
+    assert.match(Update.explain(text.split("\n"), "stable"), /no release on GitHub yet/);
+    assert.doesNotMatch(Update.explain(text.split("\n"), "stable"), /main/);
     assert.strictEqual(Update.explain(text.split("\n"), "dev"), 'GitHub has no branch called "dev".');
+});
+
+test("a waiting release on stable is named by its number, anything else by its commits", () => {
+    assert.strictEqual(Update.waitingHeadline("stable", 4, "v0.2.0"), "v0.2.0 is ready");
+    assert.strictEqual(Update.waitingHeadline("stable", 1, ""), "1 new commit on stable");
+    assert.strictEqual(Update.waitingHeadline("main", 3, "v0.1.0+3"), "3 new commits on main");
 });

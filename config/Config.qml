@@ -1010,7 +1010,9 @@ Singleton {
 
             updates: {
 
-                channel: "main",
+                channel: "stable",
+
+                channelUpgraded: true,
 
                 branch: "main",
 
