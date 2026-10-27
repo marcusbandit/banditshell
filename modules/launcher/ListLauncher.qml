@@ -8,6 +8,7 @@ import qs.components
 import qs.services
 import qs.modules.controls
 import "search.js" as Search
+import "placement.js" as Placement
 import "../../services/chords.js" as Chords
 import "../../services/colours.js" as Colours
 
@@ -19,7 +20,6 @@ LauncherConcept {
     view: list
     rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
     travel: panel.restLift
-    reach: panel.restLift
     tabWidth: panel.barHeight * 2
 
     readonly property int resultCount: results.length
@@ -657,8 +657,8 @@ LauncherConcept {
 
     property bool unsized: false
 
-    onShownChanged: panel.judgeArrival()
-    onDraggingChanged: panel.judgeArrival()
+    onShownChanged: panel.unjudge()
+    onDraggingChanged: panel.unjudge()
 
     Spring {
         id: stretch
@@ -673,7 +673,7 @@ LauncherConcept {
 
         target: panel.arrived ? 1 : 0
         stiffness: Appearance.spring.stiffness * 1.9
-        damping: 1.6 * Math.sqrt(wide.stiffness * wide.mass)
+        damping: (root.dragging ? 1.6 : 2) * Math.sqrt(wide.stiffness * wide.mass)
         epsilon: 0.002
     }
 
@@ -686,7 +686,7 @@ LauncherConcept {
     FrameAnimation {
         id: motion
 
-        running: panel.visible && (root.dragging || panel.lift !== panel.lastLift || Math.abs(panel.speed) > 1)
+        running: panel.unjudged || panel.visible && Math.abs(panel.speed) > 1
 
         onTriggered: panel.track(motion.frameTime)
     }
@@ -728,7 +728,7 @@ LauncherConcept {
         readonly property real barOffset: Appearance.padding.large + field.height / 2
         readonly property real barHeight: barOffset * 2
 
-        readonly property real restY: root.height * Config.values.launcher.list.searchAt - barOffset
+        readonly property real restY: Placement.restTop(root.height, Config.values.launcher.list.searchAt, barOffset, root.inset, barHeight + root.rowPitch * 3)
 
         readonly property real bandY: root.height - root.inset
 
@@ -750,11 +750,13 @@ LauncherConcept {
 
         property bool stuck: true
         property bool arrived: false
+        property bool unjudged: false
+        property real judgedLift: 0
 
         readonly property real swayRoom: barHeight * 0.5
 
         function swayFor(aside: real): real {
-            const given = swayRoom * (1 - 1 / (1 + Math.abs(aside) * 0.35 / swayRoom));
+            const given = swayRoom * (1 - 1 / (1 + Math.abs(aside) * Config.values.control.dragResistance / swayRoom));
             return aside < 0 ? -given : given;
         }
 
@@ -780,7 +782,35 @@ LauncherConcept {
                 wide.snap();
         }
 
+        function unjudge(): void {
+            if (Appearance.still)
+                judge();
+            else
+                unjudged = true;
+        }
+
+        function judge(): void {
+            unjudged = false;
+            if (stuck && lift > barHeight + stretchRoom) {
+                stuck = false;
+                stretch.release();
+                stretch.velocity *= 0.3;
+                if (Appearance.still) {
+                    stretch.target = 0;
+                    stretch.snap();
+                }
+            } else if (!stuck && lift <= tabShapeHeight) {
+                stuck = true;
+            }
+            if (stuck && lift !== judgedLift)
+                stretch.hold(Math.max(0, lift / barHeight - 1));
+            judgedLift = lift;
+            judgeArrival();
+        }
+
         function track(dt: real): void {
+            if (unjudged)
+                judge();
             if (Appearance.still) {
                 speed = 0;
                 lastLift = lift;
@@ -795,22 +825,7 @@ LauncherConcept {
             stretch.target = !root.dragging ? 0 : Math.min(0.5, Math.abs(speed) / 6000) + (arrived && root.shown ? 0.12 * reluctance : 0);
         }
 
-        onLiftChanged: {
-            if (stuck && lift > barHeight + stretchRoom) {
-                stuck = false;
-                stretch.release();
-                stretch.velocity *= 0.3;
-                if (Appearance.still) {
-                    stretch.target = 0;
-                    stretch.snap();
-                }
-            } else if (!stuck && lift <= tabShapeHeight) {
-                stuck = true;
-            }
-            if (stuck)
-                stretch.hold(Math.max(0, lift / barHeight - 1));
-            panel.judgeArrival();
-        }
+        onLiftChanged: unjudge()
 
         onVisibleChanged: if (!visible) {
             speed = 0;
@@ -825,7 +840,7 @@ LauncherConcept {
 
         implicitHeight: Math.min(root.shownView ? Math.round(root.height * 0.75) : root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
 
-        height: tabShapeHeight + (fullHeight * (1 + bodyStretch) - tabShapeHeight) * wide.value
+        height: Math.min(lift, tabShapeHeight + (fullHeight * (1 + bodyStretch) - tabShapeHeight) * wide.value)
 
         visible: height > 0
 
@@ -1428,7 +1443,7 @@ LauncherConcept {
             row: root.results[root.selected] ?? null
             colour: root.answerColour || (root.answerHolds || !peek.row?.peekColour ? "" : search.colourEdit?.key === peek.row.key ? search.colourEdit.hex : peek.row.peekColour)
             growsLeft: !peek.roomRight
-            wanted: root.open && !root.quick && root.settled && !root.capture && !root.shownView && !root.asking && (!root.answerHolds || !!root.answerColour) && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
+            wanted: root.open && panel.arrived && !root.quick && root.settled && !root.capture && !root.shownView && !root.asking && (!root.answerHolds || !!root.answerColour) && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
             longestFrame: root.longestFrame
 
             onColourPicked: (hex, done) => root.takeColour(hex, done)

@@ -17,7 +17,6 @@ Item {
     property Item view: null
     property real rowPitch: 0
     property real travel: 0
-    property real reach: 0
     property real tabWidth: 0
 
     property bool shown: false
