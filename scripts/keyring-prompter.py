@@ -567,16 +567,45 @@ def redirect_activation(bus: Gio.DBusConnection) -> None:
         None,
     )
 
-EXIT_LOST_NAME = 3
+REPLACE_EXISTING = 2
+IN_QUEUE = 2
 
-_exit_code = 0
+def wait_for_name(bus: Gio.DBusConnection, prompter, name: str) -> None:
+    def ask(flags: int) -> None:
+        reply = bus.call_sync(
+            "org.freedesktop.DBus",
+            "/org/freedesktop/DBus",
+            "org.freedesktop.DBus",
+            "RequestName",
+            GLib.Variant("(su)", (name, flags)),
+            GLib.VariantType.new("(u)"),
+            Gio.DBusCallFlags.NONE,
+            -1,
+            None,
+        )
+        if reply.unpack()[0] == IN_QUEUE:
+            prompter.lost(name)
+            print(f"keyring-prompter: waiting for {name}", file=sys.stderr)
 
-def _lost(prompter, name) -> None:
-    global _exit_code
-    _exit_code = EXIT_LOST_NAME
-    loop.quit()
-    prompter.lost(name)
-    print(f"keyring-prompter: lost {name}", file=sys.stderr)
+    def heard(_conn, _sender, _path, _iface, signal, params) -> None:
+        if params.unpack()[0] != name:
+            return
+        if signal == "NameAcquired":
+            prompter.acquired(name)
+        else:
+            ask(0)
+
+    for signal in ("NameAcquired", "NameLost"):
+        bus.signal_subscribe(
+            "org.freedesktop.DBus",
+            "org.freedesktop.DBus",
+            signal,
+            "/org/freedesktop/DBus",
+            name,
+            Gio.DBusSignalFlags.NONE,
+            heard,
+        )
+    ask(REPLACE_EXISTING)
 
 def main() -> int:
     global loop
@@ -594,17 +623,8 @@ def main() -> int:
         PROMPTER_PATH, info.interfaces[0], prompter.method, None, None
     )
 
-    flags = (
-        Gio.BusNameOwnerFlags.REPLACE | Gio.BusNameOwnerFlags.DO_NOT_QUEUE
-    )
     for name in (PROMPTER_NAME, PRIVATE_NAME):
-        Gio.bus_own_name_on_connection(
-            bus,
-            name,
-            flags,
-            lambda _c, n: prompter.acquired(n),
-            lambda _c, n: _lost(prompter, n),
-        )
+        wait_for_name(bus, prompter, name)
 
     prompter.start_listening()
 
@@ -612,7 +632,7 @@ def main() -> int:
         GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, sig, lambda: (loop.quit(), True)[1])
 
     loop.run()
-    return _exit_code
+    return 0
 
 class _PyGObject(ctypes.Structure):
 

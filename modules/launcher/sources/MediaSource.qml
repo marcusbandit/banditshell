@@ -19,6 +19,16 @@ QtObject {
         return Math.max(Ranking.place("now playing", root.text), Ranking.place("music song track media player playing", root.text) - 0.5, Ranking.place(Media.title, root.text), Ranking.place(Media.artist, root.text) - 0.25, Ranking.place(Media.app, root.text) - 0.5, Ranking.place(Media.source, root.text) - 0.5);
     }
 
+    property int tick: 0
+    readonly property real heard: root.tick >= 0 ? Media.now() : 0
+
+    property Timer ticker: Timer {
+        interval: 250
+        repeat: true
+        running: root.score > 0 && Media.playing
+        onTriggered: root.tick++
+    }
+
     readonly property var groups: [
         {
             key: "media",
@@ -33,14 +43,14 @@ QtObject {
                     peekImage: Media.artUrl,
                     icon: "music_note",
                     slider: {
-                        value: () => Media.position,
+                        value: () => root.heard,
                         set: v => Media.seekTo(v),
                         nudge: offset => Media.seekBy(offset),
                         to: Media.length > 0 ? Media.length : 1,
                         warnAbove: Media.length,
                         bare: !Media.canSeek || Media.length <= 0,
                         step: 5,
-                        text: () => Media.canSeek ? Media.timeLabel(Media.position) : "can't seek"
+                        text: () => Media.canSeek ? Media.timeLabel(root.heard) : "can't seek"
                     },
                     score: root.score
                 }

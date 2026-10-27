@@ -33,6 +33,15 @@ Item {
     readonly property real shown: pointer.pressed ? root.dragged : glide.value
 
     property real live: 0
+    property real untimed: 0
+
+    Timer {
+        interval: 1000
+        repeat: true
+        triggeredOnStart: true
+        running: root.watched && root.visible && Media.playing && !root.timed
+        onTriggered: root.untimed = Media.now()
+    }
 
     implicitWidth: Appearance.sizes.menuWidth / 2
     implicitHeight: root.band + Appearance.padding.small + elapsed.implicitHeight
@@ -44,7 +53,7 @@ Item {
     }
 
     function catchUp(): void {
-        root.live = Media.progress;
+        root.live = Media.progressNow();
         glide.snap();
     }
 
@@ -63,7 +72,7 @@ Item {
         }
 
         function onTrackKeyChanged(): void {
-            root.live = Media.progress;
+            root.live = Media.progressNow();
         }
     }
 
@@ -176,7 +185,7 @@ Item {
         anchors.left: parent.left
         anchors.leftMargin: -elapsedInk.tightBoundingRect.x
         anchors.bottom: parent.bottom
-        text: Media.timeLabel(root.timed ? root.shown * Media.length : Media.position)
+        text: Media.timeLabel(root.timed ? root.shown * Media.length : Media.playing ? root.untimed : Media.position)
         color: Appearance.colour.textDim
         font.family: root.family
     }
