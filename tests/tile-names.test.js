@@ -22,8 +22,9 @@ test.describe("tile names: wrapping a name under an icon", () => {
         assert.deepStrictEqual(Names.lines("quarterly summary.xlsx", 2, room(14)), ["quarterly", "summary.xlsx"]);
     });
 
-    test.it("elides the middle of a long stem and keeps the extension whole", () => {
-        assert.deepStrictEqual(Names.lines("averyverylongfilenamewithoutspaces.tar.gz", 2, room(12)), ["averyverylon", "\u2026aces.tar.gz"]);
+    test.it("cuts a word too long for a line with an ellipsis instead of wrapping it", () => {
+        assert.deepStrictEqual(Names.lines("Projects", 2, room(7)), ["Projec\u2026"]);
+        assert.deepStrictEqual(Names.lines("averyverylongfilenamewithoutspaces.tar.gz", 2, room(12)), ["averyverylo\u2026", "tar.gz"]);
     });
 
     test.it("keeps the end of the stem, where numbered files differ", () => {

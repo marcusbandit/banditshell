@@ -35,12 +35,13 @@ function wrapped(units, fits) {
         }
         if (line !== "")
             close();
-        for (const ch of fits(trimmed(unit)) ? [unit] : unit) {
-            if (line !== "" && !fits(trimmed(line + ch)))
-                close();
-            line += ch;
-            used += ch.length;
+        used += unit.length;
+        if (fits(trimmed(unit))) {
+            line = unit;
+            continue;
         }
+        line = cropped(trimmed(unit), fits);
+        close();
     }
     if (line !== "")
         close();
