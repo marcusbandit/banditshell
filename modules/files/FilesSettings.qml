@@ -225,14 +225,14 @@ Item {
                     label: "Size"
                     detail: `${Math.round(Files.magnification * 100)}% · text ${Files.zoomed(Appearance.font.size.small)}px`
 
-                    SettingChoice {
-                        choices: [
-                            {label: "Smaller", value: -0.1},
-                            {label: "Reset", value: 0},
-                            {label: "Bigger", value: 0.1}
+                    ButtonPair {
+                        actions: [
+                            {text: "Smaller"},
+                            {text: "Reset"},
+                            {text: "Bigger"}
                         ]
-                        chosen: 0
-                        onChose: value => Files.zoom(value)
+                        primary: -1
+                        onTriggered: index => Files.zoom([-0.1, 0, 0.1][index])
                     }
                 }
 
