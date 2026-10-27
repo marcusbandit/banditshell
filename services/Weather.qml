@@ -105,6 +105,7 @@ Singleton {
         const command = Forecast.suggestionCommand(place);
         if (!command.length)
             return;
+        suggester.place = place;
         suggester.command = command;
         suggester.running = true;
     }
@@ -117,8 +118,11 @@ Singleton {
     Process {
         id: suggester
 
+        property string place: ""
+
         stdout: StdioCollector {
-            onStreamFinished: root.suggestion = Forecast.suggestPlace(root.suggestedFor, Forecast.geocodeResults(text))
+            onStreamFinished: if (suggester.place === root.suggestedFor)
+                root.suggestion = Forecast.suggestPlace(suggester.place, Forecast.geocodeResults(text))
         }
 
         onRunningChanged: if (!suggester.running)

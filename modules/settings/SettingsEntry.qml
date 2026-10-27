@@ -221,8 +221,10 @@ Column {
         spacing: Appearance.padding.normal
 
         StyledText {
-            height: offerButton.height
+            width: Math.min(implicitWidth, parent.width - parent.leftPadding - parent.rightPadding)
+            height: Math.max(implicitHeight, offerButton.height)
             verticalAlignment: Text.AlignVCenter
+            wrapMode: Text.Wrap
             text: root.offer?.text ?? ""
         }
 

@@ -211,7 +211,9 @@ function ago(then, now) {
 
 var SUGGESTION_DEPTH = 6;
 
-var FEATURE_RANK = { PPLC: 4, PPLA: 3, PPLA2: 2, PPLA3: 1 };
+var TOWN_RANK = { PPLC: 4, PPLA: 3, PPLA2: 2, PPLA3: 1, PPLA4: 1, PPL: 0, PPLG: 0, PPLL: 0, PPLS: 0, PPLF: 0, PPLR: 0 };
+
+var FOLDED_LETTERS = { "ø": "o", "æ": "ae", "ß": "ss", "ł": "l", "đ": "d", "ð": "d", "þ": "th", "œ": "oe", "ı": "i" };
 
 function placeName(location) {
     return String(location || "").split(",")[0].trim();
@@ -239,14 +241,14 @@ function suggestionCommand(location) {
     const queries = suggestionQueries(location);
     if (!queries.length)
         return [];
-    return ["curl", "-sS", "--max-time", "10", "-w", "\n"].concat(queries.map(geocodeUrl));
+    return ["curl", "-sS", "--max-time", "4", "-w", "\n"].concat(queries.map(geocodeUrl));
 }
 
 function folded(text) {
     let s = String(text || "").trim().toLowerCase();
     if (typeof s.normalize === "function")
         s = s.normalize("NFD").replace(/[̀-ͯ]/g, "");
-    return s;
+    return s.replace(/[øæßłđðþœı]/g, c => FOLDED_LETTERS[c]);
 }
 
 function editDistance(a, b) {
@@ -297,19 +299,21 @@ function suggestPlace(location, results) {
     const candidates = [];
     for (let i = 0; i < results.length; i++) {
         const r = results[i];
-        if (!r || !r.name || !/^PPL/.test(String(r.feature_code || "")))
+        if (!r || !r.name || !TOWN_RANK.hasOwnProperty(r.feature_code))
             continue;
         const distance = editDistance(typed, folded(r.name));
         if (distance > allowance)
             continue;
+        const byRegion = hint !== "" && !!r.admin1 && folded(r.admin1) === hint;
+        const parts = [String(r.name)].concat(byRegion ? [String(r.admin1)] : [], r.country ? [String(r.country)] : []);
         candidates.push({
             name: String(r.name),
             country: String(r.country || ""),
-            text: r.country ? r.name + ", " + r.country : String(r.name),
+            text: parts.join(", "),
             distance: distance,
-            named: hint !== "" && (folded(r.country) === hint || folded(r.country_code) === hint),
+            named: byRegion || hint !== "" && (folded(r.country) === hint || folded(r.country_code) === hint),
             population: Number(r.population) || 0,
-            rank: FEATURE_RANK[r.feature_code] || 0,
+            rank: TOWN_RANK[r.feature_code],
             order: i
         });
     }
@@ -317,8 +321,7 @@ function suggestPlace(location, results) {
     const pool = candidates.filter(c => c.named || !anyNamed);
     if (pool.some(c => folded(c.text) === folded(location)))
         return null;
-    const kept = pool.filter(c => c.distance > 0 || hint === "" || c.named);
-    kept.sort((x, y) => x.distance - y.distance || y.population - x.population || y.rank - x.rank || x.order - y.order);
-    const best = kept[0];
-    return best ? { name: best.name, country: best.country, text: best.text } : null;
+    pool.sort((x, y) => x.distance - y.distance || y.population - x.population || y.rank - x.rank || x.order - y.order);
+    const best = pool[0];
+    return best ? { name: best.name, country: best.country, text: best.text, short: best.distance > 0 ? best.name : best.text } : null;
 }

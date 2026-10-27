@@ -88,7 +88,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     style: "accent"
                     icon: "check"
-                    text: `Use ${Weather.placeSuggestion?.name ?? ""}`
+                    text: `Use ${Weather.placeSuggestion?.short ?? ""}`
                     onClicked: Weather.useSuggestion()
                 }
             }
