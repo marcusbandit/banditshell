@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-27",
+      "id": "2026-10-27-3",
       "date": "2026-10-27",
       "changes": [
         {
@@ -23,6 +23,57 @@
           "type": "issues",
           "severity": "minor",
           "text": "Clearing history also clears a damaged history file on disk"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-26-12",
+      "date": "2026-10-26",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A misspelt weather place offers the right town, one press to use it"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-2",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "File search can reach all of home, this folder's matches first"
+        },
+        {
+          "type": "ui",
+          "severity": "major",
+          "text": "Enter in the files search opens the match; Down goes to the files"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27",
+      "date": "2026-10-27",
+      "impact": {
+        "cli": true
+      },
+      "changes": [
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "Updates come as tested releases now, unless you kept main"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The update menu names the release and lists what it brings"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell version and update show the release number"
         }
       ]
     },

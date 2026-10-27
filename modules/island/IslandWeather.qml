@@ -60,8 +60,37 @@ Item {
                 icon: root.blank ? root.look.icon : Weather.icon
                 tone: !root.blank ? Appearance.colour.accent : Weather.failure === "place" ? Appearance.colour.alarm : Appearance.colour.textDim
                 title: Weather.ready ? `${Weather.temperature} ${Weather.summary.trim()}` : root.blank ? root.look.title : "Weather"
-                subtitle: !root.blank ? Weather.place : Weather.failure !== "place" ? root.look.detail : Weather.failedFor ? `No town called "${Weather.failedFor}"` : "The weather service does not know this place"
+                subtitle: !root.blank ? Weather.place : Weather.failure !== "place" ? root.look.detail : Weather.failedFor ? `No place called "${Weather.failedFor}"` : "The weather service does not know this place"
                 onClosed: root.hide()
+            }
+
+            Item {
+                width: parent.width
+                height: Math.max(guess.implicitHeight, take.implicitHeight)
+                visible: Weather.failure === "place" && !!Weather.location && Weather.failedFor === Weather.location
+
+                StyledText {
+                    id: guess
+
+                    anchors.left: parent.left
+                    anchors.leftMargin: header.inset
+                    anchors.right: take.left
+                    anchors.rightMargin: Appearance.padding.normal
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Weather.placeSuggestion ? `Did you mean ${Weather.placeSuggestion.text}?` : Weather.suggesting ? "Looking for a close spelling" : "No close spelling found"
+                    wrapMode: Text.Wrap
+                }
+
+                Button {
+                    id: take
+
+                    x: parent.width - width
+                    anchors.verticalCenter: parent.verticalCenter
+                    style: Weather.placeSuggestion ? "accent" : "ring"
+                    icon: Weather.placeSuggestion ? "location_on" : "my_location"
+                    text: Weather.placeSuggestion ? `Use ${Weather.placeSuggestion.text}` : "Use my connection's location"
+                    onClicked: Weather.placeSuggestion ? Weather.useSuggestion() : Weather.useConnection()
+                }
             }
 
             Item {
@@ -123,7 +152,8 @@ Item {
                     x: parent.width - width
                     anchors.verticalCenter: parent.verticalCenter
                     visible: !!root.look.fix
-                    icon: "edit_location_alt"
+                    style: "ring"
+                    icon: "edit"
                     text: "Change place"
                     onClicked: root.act({
                         kind: "settings",

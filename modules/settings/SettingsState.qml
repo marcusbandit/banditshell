@@ -1276,8 +1276,9 @@ Singleton {
     readonly property string alertsDetail: AlertSounds.available ? "" : "pw-play is not installed, so alerts stay silent"
     readonly property bool hotspotBlocked: Hotspot.blocker !== "" && !Hotspot.on
     readonly property string hotspotPasswordTrouble: Hotspot.passwordTrouble
-    readonly property string weatherPlaceState: root.weatherPlaceTrouble || (Weather.location ? "" : Weather.ready && Weather.fetchedFor === "" && Weather.place ? `from your connection: ${Weather.place}` : "from your connection")
-    readonly property string weatherPlaceTrouble: Weather.failed && Weather.failure === "place" && Weather.failedFor === Weather.location ? Weather.location ? `no town called "${Weather.location}"` : "could not place you" : ""
+    readonly property string weatherPlaceState: root.weatherPlaceTrouble ? "" : (Weather.location ? "" : Weather.ready && Weather.fetchedFor === "" && Weather.place ? `from your connection: ${Weather.place}` : "from your connection")
+    readonly property string weatherPlaceTrouble: Weather.failed && Weather.failure === "place" && Weather.failedFor === Weather.location ? Weather.location ? `no place called "${Weather.location}"` : "could not place you" : ""
+    readonly property var weatherSuggestion: root.weatherPlaceTrouble !== "" ? Weather.placeSuggestion : null
     readonly property string wifiState: Hotspot.active ? "running your hotspot" : root.wifiNet || "not connected"
 
     readonly property var outputs: Audio.sinks.map(n => [n.name, Audio.deviceLabel(n)])

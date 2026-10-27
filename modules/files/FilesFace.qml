@@ -141,6 +141,8 @@ Item {
         case Qt.Key_Escape:
             if (properties.visible) {
                 properties.close();
+            } else if (FilesFind.running) {
+                FilesFind.stop();
             } else if (Files.search) {
                 Files.setSearch("");
             } else if (Files.picked.length > 0) {
@@ -272,7 +274,17 @@ Item {
         const one = picks.length === 1 ? picks[0] : null;
         const acts = [];
 
-        if (one)
+        if (one && one.key && one.kind !== "dir")
+            acts.push({
+                icon: "folder_open",
+                label: "Show in its folder",
+                run: () => Files.reveal(Files.pathOf(one))
+            }, {
+                icon: "open_in_new",
+                label: "Open with…",
+                run: () => Files.openWith(Files.pathOf(one))
+            });
+        else if (one)
             acts.push({
                 icon: one.kind === "dir" ? "folder_open" : "open_in_new",
                 label: one.kind === "dir" ? "Open" : "Open with…",
@@ -289,7 +301,7 @@ Item {
             run: () => Files.clip(paths, true)
         });
 
-        if (one)
+        if (one && !one.key)
             acts.push({
                 icon: "edit",
                 label: "Rename…",
@@ -314,7 +326,7 @@ Item {
             acts.push({
                 icon: "info",
                 label: "Properties",
-                run: () => properties.show(Files.join(Files.cwd, one.name))
+                run: () => properties.show(Files.pathOf(one))
             });
 
         return acts;
@@ -385,9 +397,9 @@ Item {
 
     function renameCurrent(): void {
         const entry = Files.current;
-        if (!entry)
+        if (!entry || entry.key)
             return;
-        const path = Files.join(Files.cwd, entry.name);
+        const path = Files.pathOf(entry);
 
         const dot = entry.name.lastIndexOf(".");
         prompt.ask(`Rename ${entry.name}`, entry.name, dot > 0 ? dot : 0, name => Files.renameTo(path, name), name => Files.renameRefusal(path, name), "rename");
@@ -555,6 +567,7 @@ Item {
             entries: Files.visible
             dragging: root.dragging
             keyed: keys.active && Files.focus === "grid"
+            marked: Files.search.trim() !== ""
             dragPoint: root.dragging ? grid.mapFromItem(root, root.dragAt.x, root.dragAt.y) : Qt.point(-1, -1)
 
             onPicked: (index, modifiers) => {
@@ -571,7 +584,7 @@ Item {
             onMenuFor: (index, position) => {
                 Files.focus = "grid";
 
-                if (!Files.isPicked(Files.visible[index].name))
+                if (!Files.isPicked(Files.keyOf(Files.visible[index])))
                     Files.setCursor(index);
                 const at = grid.mapToItem(root, position.x, position.y);
                 sheet.popup(at.x, at.y, root.fileActions());
@@ -583,7 +596,7 @@ Item {
                 sheet.popup(at.x, at.y, root.folderActions());
             }
             onLifted: index => {
-                if (!Files.isPicked(Files.visible[index].name))
+                if (!Files.isPicked(Files.keyOf(Files.visible[index])))
                     Files.setCursor(index);
                 root.dragging = true;
                 root.exported = false;
@@ -757,10 +770,10 @@ Item {
 
         const target = Files.visible[index];
 
-        if (!target || target.kind !== "dir" || !target.open || Files.isPicked(target.name))
+        if (!target || target.kind !== "dir" || !target.open || Files.isPicked(Files.keyOf(target)))
             return;
 
-        Files.moveInto(moving, Files.join(Files.cwd, target.name));
+        Files.moveInto(moving, Files.pathOf(target));
     }
 
     Follow {
