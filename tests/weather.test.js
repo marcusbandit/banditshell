@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const src = fs.readFileSync(path.join(__dirname, "..", "services/weather.js"), "utf8");
-const Forecast = new Function(src + "\nreturn { wttrIcon, wmo, placeOf, coordsOf, wttrDays, outlookUrl, outlookDays, dateOf, weekRange, barOf, rainText, readWttr, failureLook, ago };")();
+const Forecast = new Function(src + "\nreturn { wttrIcon, wmo, placeOf, coordsOf, wttrDays, outlookUrl, outlookDays, dateOf, weekRange, barOf, rainText, readWttr, failureLook, ago, suggestionQueries, geocodeUrl, editDistance, geocodeResults, suggestPlace, suggestionCommand };")();
 
 function hour(time, code, desc, rain) {
     return { time, weatherCode: String(code), weatherDesc: [{ value: desc }], chanceofrain: String(rain) };
@@ -173,7 +173,8 @@ test("a failure says what went wrong and offers Try again only where it can work
     assert.strictEqual(Forecast.failureLook("offline").retry, false);
     assert.strictEqual(Forecast.failureLook("service").retry, true);
     assert.strictEqual(Forecast.failureLook("place").retry, false);
-    assert.match(Forecast.failureLook("place").detail, /Settings/);
+    assert.match(Forecast.failureLook("place").detail, /^Change place/);
+    assert.doesNotMatch(Forecast.failureLook("place").detail, /config\.json/);
     assert.strictEqual(Forecast.failureLook("service").fix, undefined);
 });
 
@@ -185,4 +186,86 @@ test("the age of an older forecast", () => {
     assert.strictEqual(Forecast.ago(now - 30 * 3600000, now), "yesterday");
     assert.strictEqual(Forecast.ago(now - 5 * 86400000, now), "5 days ago");
     assert.strictEqual(Forecast.ago(now + 60000, now), "just now");
+});
+
+function geocoded(name) {
+    return Forecast.geocodeResults(fs.readFileSync(path.join(__dirname, `fixtures/weather/geocode-${name}.txt`), "utf8"));
+}
+
+function town(name, country, extra) {
+    return { name, country, country_code: country.slice(0, 2).toUpperCase(), feature_code: "PPL", ...extra };
+}
+
+test("a misspelt place is looked up whole, then a letter shorter at a time", () => {
+    assert.deepStrictEqual(Forecast.suggestionQueries("Lyngbyy"), ["Lyngbyy", "Lyngby", "Lyngb", "Lyng", "Lyn"]);
+    assert.deepStrictEqual(Forecast.suggestionQueries("Lyngbyy, Denmark"), ["Lyngbyy", "Lyngby", "Lyngb", "Lyng", "Lyn"]);
+    assert.deepStrictEqual(Forecast.suggestionQueries("Copenhgenn").length, 7);
+    assert.deepStrictEqual(Forecast.suggestionQueries("New Yrok"), ["New Yrok", "New Yro", "New Yr", "New Y", "New"]);
+    assert.deepStrictEqual(Forecast.suggestionQueries("Ny"), []);
+    assert.deepStrictEqual(Forecast.suggestionQueries(""), []);
+    assert.strictEqual(Forecast.geocodeUrl("Nørre Lyngby"), "https://geocoding-api.open-meteo.com/v1/search?name=N%C3%B8rre%20Lyngby&count=20&language=en&format=json");
+});
+
+test("edit distance counts a swap of two letters as one", () => {
+    assert.strictEqual(Forecast.editDistance("lyngbyy", "lyngby"), 1);
+    assert.strictEqual(Forecast.editDistance("lygnby", "lyngby"), 1);
+    assert.strictEqual(Forecast.editDistance("lyngvy", "lyngby"), 1);
+    assert.strictEqual(Forecast.editDistance("", "abc"), 3);
+    assert.strictEqual(Forecast.editDistance("paris", "paris"), 0);
+});
+
+test("a doubled letter suggests the town", () => {
+    assert.deepStrictEqual(Forecast.suggestPlace("Lyngbyy", geocoded("lyngbyy")), { name: "Lyngby", country: "Denmark", text: "Lyngby, Denmark" });
+});
+
+test("a missing letter suggests the town", () => {
+    assert.deepStrictEqual(Forecast.suggestPlace("Copenhgen", geocoded("copenhgen")), { name: "Copenhagen", country: "Denmark", text: "Copenhagen, Denmark" });
+});
+
+test("a one-letter typo suggests the town, in any case and accent", () => {
+    const results = geocoded("lyngbyy");
+    assert.strictEqual(Forecast.suggestPlace("Lyngvy", results).text, "Lyngby, Denmark");
+    assert.strictEqual(Forecast.suggestPlace("lygnby", results).text, "Lyngby, Denmark");
+    assert.strictEqual(Forecast.suggestPlace("Lyngbo", [town("Lyngbø", "Norway")]).text, "Lyngbø, Norway");
+    assert.strictEqual(Forecast.suggestPlace("Lodz", [town("Łódź", "Poland")]).text, "Łódź, Poland");
+});
+
+test("of towns sharing a name, the most populous wins unless a country was named", () => {
+    assert.strictEqual(Forecast.suggestPlace("Pariss", geocoded("pariss")).text, "Paris, France");
+    assert.strictEqual(Forecast.suggestPlace("Pariss, US", geocoded("pariss")).text, "Paris, United States");
+    assert.strictEqual(Forecast.suggestPlace("Lyngbyy, Sweden", geocoded("lyngbyy")).text, "Lyngby, Sweden");
+    assert.strictEqual(Forecast.suggestPlace("Pariss, Texas", [town("Paris", "France", { population: 2138551 }), town("Paris", "United States", { admin1: "Texas", population: 24782 })]).text, "Paris, Texas, United States");
+    assert.strictEqual(Forecast.suggestPlace("Lyngby, Danmark", geocoded("lyngbyy")).text, "Lyngby, Denmark");
+    assert.strictEqual(Forecast.suggestPlace("Pariss", [town("Paris", "United States", { population: 24782, feature_code: "PPLA2" }), town("Paris", "France", { population: 2138551, feature_code: "PPLC" })]).text, "Paris, France");
+});
+
+test("a closer spelling beats a bigger town", () => {
+    assert.strictEqual(Forecast.suggestPlace("Lyngbyy", [town("Lynge", "Denmark", { population: 4425 }), town("Lyngby", "Denmark")]).text, "Lyngby, Denmark");
+});
+
+test("no suggestion when nothing is close, or only non-towns are", () => {
+    assert.strictEqual(Forecast.suggestPlace("Xqzwvb", geocoded("xqzwvb")), null);
+    assert.strictEqual(Forecast.suggestPlace("Lynby", [{ name: "Lynbye Slough", country: "United States", feature_code: "PRK" }]), null);
+    assert.strictEqual(Forecast.suggestPlace("Pompei", [town("Pompeii", "Italy", { feature_code: "PPLH" })]), null);
+    assert.strictEqual(Forecast.suggestPlace("Lyngbyy", []), null);
+    assert.strictEqual(Forecast.suggestPlace("Ly", geocoded("lyngbyy")), null);
+});
+
+test("a suggestion never repeats the place as it is written", () => {
+    const results = geocoded("lyngbyy");
+    assert.strictEqual(Forecast.suggestPlace("Lyngby", results).text, "Lyngby, Denmark");
+    assert.strictEqual(Forecast.suggestPlace("lyngby, denmark", results), null);
+    assert.strictEqual(Forecast.suggestPlace("Lyngby, Sweden", results), null);
+});
+
+test("unreadable geocoder answers are skipped", () => {
+    assert.deepStrictEqual(Forecast.geocodeResults(""), []);
+    assert.deepStrictEqual(Forecast.geocodeResults('{"error":true,"reason":"x"}\nnot json\n{"results":[{"name":"Lyngby"}]}\n').length, 1);
+});
+
+test("the suggestion lookup is one curl over every query, and nothing for a name too short", () => {
+    const command = Forecast.suggestionCommand("Lyngbyy, Denmark");
+    assert.deepStrictEqual(command.slice(0, 6), ["curl", "-sS", "--max-time", "4", "-w", "\n"]);
+    assert.deepStrictEqual(command.slice(6), ["Lyngbyy", "Lyngby", "Lyngb", "Lyng", "Lyn"].map(Forecast.geocodeUrl));
+    assert.deepStrictEqual(Forecast.suggestionCommand("Ny"), []);
 });

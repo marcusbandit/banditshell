@@ -1196,9 +1196,12 @@ banditshell/
 │   │                            last reading is older than `weather.minutes`;
 │   │                            the week ahead from Open-Meteo at the
 │   │                            coordinates wttr.in returns, else wttr.in's
-│   │                            three days
+│   │                            three days; a place wttr.in does not know is
+│   │                            looked up once in Open-Meteo's geocoder for a
+│   │                            suggestion
 │   ├── weather.js               both answers read into days, and WMO codes into
-│   │                            the icons wttr.in's codes already used
+│   │                            the icons wttr.in's codes already used; the
+│   │                            geocoder's towns ranked by edit distance
 │   ├── WhatsNew.qml              the update's own changelog, read: entries
 │   │                            newer than the marker in the user's config
 │   │                            are what the What's new card shows. The log
@@ -4547,6 +4550,9 @@ wttr.in's own three days when Open-Meteo cannot be reached. A town the
 weather service does not know says Place not found, and its Change place
 opens the Place row in Settings (Focus, Clock, Weather), where the place,
 the units, the refresh and the weather itself are set.
+When the name is a typo away from a town Open-Meteo knows, the view and the
+Place row both ask "Did you mean Lyngby, Denmark?" with a button that writes
+it. The guess is looked up once per misspelt name, never on a refresh.
 
 ### Music I am already looking at
 
