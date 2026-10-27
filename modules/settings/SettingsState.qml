@@ -79,9 +79,13 @@ Singleton {
                 read: v => Durations.choiceFromMinutes(v),
                 write: v => Durations.minutesFromChoice(v)
             },
+            surfaceAlpha: {
+                read: v => Catalogue.seeThrough(v),
+                write: v => Catalogue.seeThrough(v)
+            },
             lowAction: {
-                read: v => v === "nothing" ? v : `${v} at ${Battery.nearlyEmptyPercent}%`,
-                write: v => String(v).split(" ")[0]
+                read: v => Battery.nearlyEmptyChoice(v),
+                write: v => Battery.nearlyEmptyAction(v)
             },
             dndUntil: {
                 read: v => Notifications.endsLabel(v),
