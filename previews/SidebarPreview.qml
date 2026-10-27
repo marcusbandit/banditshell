@@ -3,6 +3,7 @@ import Quickshell
 import qs.config
 import qs.modules
 import qs.modules.sidebar
+import qs.services
 
 ShellRoot {
     id: preview
@@ -13,10 +14,16 @@ ShellRoot {
     property bool forced: false
     property int step: 0
 
-    function shoot(name: string): void {
+    function shoot(name: string, then: var): void {
         console.log(`SHOT ${name}`);
-        if (preview.shots !== "")
-            stage.grabToImage(r => r.saveToFile(`${preview.shots}/${name}.png`));
+        if (preview.shots === "") {
+            then?.();
+            return;
+        }
+        stage.grabToImage(r => {
+            r.saveToFile(`${preview.shots}/${name}.png`);
+            then?.();
+        });
     }
 
     Timer {
@@ -26,18 +33,30 @@ ShellRoot {
 
         onTriggered: {
             if (preview.step === 0) {
-                preview.shoot(preview.rail ? "rest" : "full");
-                if (preview.rail) {
-                    preview.forced = true;
-                    preview.step = 1;
-                    return;
-                }
-                preview.step = 2;
+                preview.shoot(preview.rail ? "rest" : "full", () => {
+                    Keymap.name = "Danish";
+                    Keymap.layouts = ["dk", "us"];
+                    Keymap.index = 0;
+                });
+                preview.step = 1;
                 return;
             }
             if (preview.step === 1) {
-                preview.shoot("open");
+                preview.shoot(preview.rail ? "rest-layout-first" : "full-layout-first", () => {
+                    Keymap.name = "English (US)";
+                    Keymap.index = 1;
+                });
                 preview.step = 2;
+                return;
+            }
+            if (preview.step === 2) {
+                preview.shoot(preview.rail ? "rest-layout-other" : "full-layout-other", () => preview.forced = preview.rail);
+                preview.step = preview.rail ? 3 : 4;
+                return;
+            }
+            if (preview.step === 3) {
+                preview.shoot("open");
+                preview.step = 4;
                 return;
             }
             Qt.exit(0);
