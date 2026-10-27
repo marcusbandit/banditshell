@@ -99,6 +99,17 @@ QtObject {
         return out.concat(problems);
     }
 
+    readonly property var prefixes: !Containers.enabled ? [] : [
+            {
+                section: "System",
+                word: "containers",
+                example: "containers postgres",
+                about: "Podman and Docker containers",
+                icon: "deployed_code",
+                also: ["podman", "docker"]
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "containers",

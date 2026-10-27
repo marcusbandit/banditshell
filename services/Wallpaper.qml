@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "wallpaper-library.js" as Library
 
 Singleton {
     id: root
@@ -118,31 +119,6 @@ Singleton {
         return root.frozen[path] === true;
     }
 
-    function findFrozen(): void {
-        const svgs = root.available.filter(p => p.toLowerCase().endsWith(".svg"));
-        if (!svgs.length) {
-            root.frozen = {};
-            return;
-        }
-
-        freezer.command = ["grep", "-l", "-E", "-e", "<animate", "-e", "@keyframes", "-e", "animation *:", ...svgs];
-        freezer.running = true;
-    }
-
-    Process {
-        id: freezer
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const out = {};
-                for (const line of text.trim().split("\n"))
-                    if (line)
-                        out[line] = true;
-                root.frozen = out;
-            }
-        }
-    }
-
     property var shapes: ({})
 
     function aspectOf(path: string): real {
@@ -212,62 +188,6 @@ Singleton {
     function screenAspect(screen: string): real {
         const s = Quickshell.screens.find(m => m.name === screen);
         return s && s.height > 0 ? s.width / s.height : 0;
-    }
-
-    function measureShapes(): void {
-        if (!root.available.length) {
-            root.shapes = {};
-            return;
-        }
-
-        const known = {};
-        for (const p of root.available)
-            if (root.shapes[p] !== undefined)
-                known[p] = root.shapes[p];
-
-        const fresh = root.available.filter(p => root.shapes[p] === undefined);
-
-        if (!fresh.length) {
-
-            if (Object.keys(known).length !== Object.keys(root.shapes).length)
-                root.shapes = known;
-            return;
-        }
-
-        if (shaper.running)
-            return;
-
-        shaper.known = known;
-        shaper.command = ["sh", "-c", `for f in "$@"; do
-  s=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$f" </dev/null 2>/dev/null)
-  case "$s" in
-    [0-9]*,[0-9]*) printf '%s\\t%s\\n' "$f" "$s" ;;
-  esac
-done`, "sh", ...fresh];
-        shaper.running = true;
-    }
-
-    Process {
-        id: shaper
-
-        property var known: ({})
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const out = Object.assign({}, shaper.known);
-                for (const line of text.trim().split("\n")) {
-                    const tab = line.indexOf("\t");
-                    if (tab <= 0)
-                        continue;
-                    const wh = line.slice(tab + 1).split(",");
-                    const w = parseInt(wh[0], 10);
-                    const h = parseInt(wh[1], 10);
-                    if (w > 0 && h > 0)
-                        out[line.slice(0, tab)] = Qt.size(w, h);
-                }
-                root.shapes = out;
-            }
-        }
     }
 
     readonly property bool enabled: Config.values.wallpaper.enabled
@@ -446,38 +366,6 @@ done`, "sh", ...fresh];
 
     readonly property string posterDir: `${Config.cacheDir}/posters`
 
-    function makePosters(): void {
-        const videos = root.available.filter(p => root.kindOf(p) === "video");
-        if (!videos.length) {
-            root.posters = {};
-            return;
-        }
-        posterer.command = ["sh", "-c", `mkdir -p "$0" || exit 0
-for f in "$@"; do
-  h=$(printf %s "$f" | md5sum | cut -d" " -f1)
-  out="$0/$h.jpg"
-  [ -f "$out" ] || ffmpeg -v error -y -ss 0 -i "$f" -frames:v 1 -vf scale=640:-2 "$out" </dev/null >/dev/null 2>&1
-  [ -f "$out" ] && printf '%s\\t%s\\n' "$f" "$out"
-done`, root.posterDir, ...videos];
-        posterer.running = true;
-    }
-
-    Process {
-        id: posterer
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const out = {};
-                for (const line of text.trim().split("\n")) {
-                    const tab = line.indexOf("\t");
-                    if (tab > 0)
-                        out[line.slice(0, tab)] = line.slice(tab + 1);
-                }
-                root.posters = out;
-            }
-        }
-    }
-
     property var palette: []
 
     readonly property bool wantsPalette: Config.values.themeFromWallpaper
@@ -525,12 +413,13 @@ done`, root.posterDir, ...videos];
         }
     }
 
-    function refresh(): void {
+    readonly property string libraryCache: `${Config.cacheDir}/wallpaper-library.json`
 
-        if (!root.dir)
+    function refresh(): void {
+        if (!Config.loaded || !root.dir)
             return;
 
-        const cmd = ["sh", "-c", `exec find -L "$1" -type f -iregex "$2" -printf '%D:%i\\t%p\\n'`, "sh", root.dir, `.*\\.\\(${root.extensions.join("\\|")}\\)$`];
+        const cmd = ["python3", Quickshell.shellPath("scripts/wallpaper-library.py"), root.libraryCache, root.posterDir, root.dir, root.extensions.join(","), root.formats.video.join(","), root.fallback];
 
         if (lister.running) {
             if (JSON.stringify(lister.command) === JSON.stringify(cmd))
@@ -538,6 +427,11 @@ done`, root.posterDir, ...videos];
             lister.running = false;
         }
 
+        lister.listening = false;
+        lister.found = [];
+        lister.shapes = {};
+        lister.posters = {};
+        lister.frozen = {};
         lister.command = cmd;
         lister.running = true;
     }
@@ -546,33 +440,94 @@ done`, root.posterDir, ...videos];
 
     onDirChanged: refresh()
 
+    Connections {
+        target: Config
+
+        function onLoadedChanged(): void {
+            root.refresh();
+        }
+    }
+
+    function hear(line: string): void {
+        const heard = Library.read(line);
+        if (!heard)
+            return;
+        if (heard.kind === "begin") {
+            lister.listening = heard.path === lister.command[4];
+            return;
+        }
+        if (!lister.listening)
+            return;
+        if (heard.kind === "file") {
+            lister.found.push(heard.path);
+        } else if (heard.kind === "listed") {
+            root.list(lister.found, heard.changed);
+            lister.found = [];
+        } else if (heard.kind === "shape") {
+            lister.shapes[heard.path] = heard.width > 0 ? Qt.size(heard.width, heard.height) : null;
+            publish.start();
+        } else if (heard.kind === "poster") {
+            lister.posters[heard.path] = heard.poster || null;
+            publish.start();
+        } else if (heard.kind === "frozen") {
+            lister.frozen[heard.path] = heard.frozen || null;
+            publish.start();
+        } else if (heard.kind === "done") {
+            root.publishMeasures();
+        }
+    }
+
+    function list(found: var, changed: bool): void {
+        const scanned = found.filter(p => p !== root.fallback);
+        if (!scanned.length)
+            console.info(`Wallpaper: nothing usable in ${root.dir}, so only the shipped picture is offered`);
+        const next = [...scanned, root.fallback];
+        if (JSON.stringify(next) !== JSON.stringify(root.available))
+            root.available = next;
+        root.measured(Library.kept(root.shapes, next), Library.kept(root.posters, next), Library.kept(root.frozen, next));
+        if (changed || !Object.keys(root.colours).length)
+            root.measureColours();
+        root.reconcile();
+    }
+
+    function measured(shapes: var, posters: var, frozen: var): void {
+        if (shapes !== root.shapes)
+            root.shapes = shapes;
+        if (posters !== root.posters)
+            root.posters = posters;
+        if (frozen !== root.frozen)
+            root.frozen = frozen;
+    }
+
+    function publishMeasures(): void {
+        publish.stop();
+        root.measured(Library.merged(root.shapes, lister.shapes), Library.merged(root.posters, lister.posters), Library.merged(root.frozen, lister.frozen));
+        lister.shapes = {};
+        lister.posters = {};
+        lister.frozen = {};
+    }
+
+    Timer {
+        id: publish
+
+        interval: 200
+        onTriggered: root.publishMeasures()
+    }
+
     Process {
         id: lister
 
-        stdout: StdioCollector {
-            onStreamFinished: {
+        property bool listening: false
+        property var found: []
+        property var shapes: ({})
+        property var posters: ({})
+        property var frozen: ({})
 
-                const byFile = {};
-                for (const line of text.trim().split("\n")) {
-                    const tab = line.indexOf("\t");
-                    if (tab <= 0)
-                        continue;
-                    const key = line.slice(0, tab);
-                    const path = line.slice(tab + 1);
-                    if (byFile[key] === undefined || path < byFile[key])
-                        byFile[key] = path;
-                }
-                const found = Object.keys(byFile).map(k => byFile[k]).sort();
-                if (!found.length)
-                    console.info(`Wallpaper: nothing usable in ${root.dir}, so only the shipped picture is offered`);
-                root.available = [...found, root.fallback];
-                root.makePosters();
-                root.findFrozen();
-                root.measureShapes();
-                root.measureColours();
-                root.reconcile();
-            }
+        stdout: SplitParser {
+            onRead: line => root.hear(line)
         }
+
+        onExited: root.publishMeasures()
     }
 
     property var asked: ({})

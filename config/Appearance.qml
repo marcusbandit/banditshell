@@ -101,6 +101,8 @@ Singleton {
             return root.colour.accent;
         if (name === "warning")
             return root.colour.warning;
+        if (name === "text")
+            return root.colour.text;
         if (name === "alarm" || name === "bright" || name === "mid" || name === "dim")
             return root.theme[name];
         return name;

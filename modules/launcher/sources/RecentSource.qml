@@ -46,6 +46,17 @@ QtObject {
             recent: 24
         })
 
+    readonly property var prefixes: !root.enabled ? [] : [
+            {
+                section: "Files and clipboard",
+                word: "recent",
+                example: "recent invoice",
+                about: "Recently used documents",
+                icon: "history",
+                also: []
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "recent",

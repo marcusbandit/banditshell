@@ -148,4 +148,41 @@ print(json.dumps({"exited": not alive(helper)}))
 `, { bus: true });
         assert.strictEqual(result.exited, true);
     });
+    test("waits in line for the prompter name and takes it once the holder lets go", { skip: !hasBus && "dbus-run-session missing" }, () => {
+        const result = python(`
+import json, queue, subprocess, sys, threading, time
+from gi.repository import Gio, GLib
+
+NAME = "org.gnome.keyring.SystemPrompter"
+bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+
+def call(method, args, reply):
+    return bus.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", method, args, GLib.VariantType.new(reply), Gio.DBusCallFlags.NONE, -1, None).unpack()[0]
+
+held = call("RequestName", GLib.Variant("(su)", (NAME, 4)), "(u)")
+helper = subprocess.Popen([sys.executable, "-I", sys.argv[1]], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+events = queue.Queue()
+threading.Thread(target=lambda: [events.put(json.loads(line)) for line in helper.stdout], daemon=True).start()
+
+def next_about(timeout=10):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            event = events.get(timeout=0.05)
+        except queue.Empty:
+            continue
+        if event.get("name") == NAME:
+            return event["event"]
+    return None
+
+first = next_about()
+time.sleep(0.3)
+waiting = helper.poll() is None
+call("ReleaseName", GLib.Variant("(s)", (NAME,)), "(u)")
+second = next_about()
+helper.kill()
+print(json.dumps({"held": held, "first": first, "waiting": waiting, "second": second}))
+`, { bus: true });
+        assert.deepStrictEqual(result, { held: 1, first: "owner", waiting: true, second: "acquired" });
+    });
 });

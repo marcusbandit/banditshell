@@ -1048,18 +1048,14 @@ session_locked() {
 frozen_pid() {
     local pid
     for pid in $(shell_pids); do
-        (cd "$HOME" && timeout 5 qs ipc --pid "$pid" call shell status) >/dev/null 2>&1 && continue
+        answers "$pid" && continue
         kill -0 "$pid" 2>/dev/null && { echo "$pid"; return 0; }
     done
     return 1
 }
 
 shell_answering() {
-    local pid
-    for pid in $(shell_pids); do
-        (cd "$HOME" && timeout 5 qs ipc --pid "$pid" call shell status) >/dev/null 2>&1 && return 0
-    done
-    return 1
+    answering_pid >/dev/null
 }
 
 dump_frozen() {
@@ -1119,15 +1115,33 @@ unstick() {
     fi
 }
 
+answers() {
+    kill -0 "$1" 2>/dev/null && (cd "$HOME" && timeout 5 qs ipc --pid "$1" call shell status) >/dev/null 2>&1
+}
+
+answering_pid() {
+    local pid
+    for pid in $(shell_pids); do
+        answers "$pid" && { echo "$pid"; return 0; }
+    done
+    return 1
+}
+
 watchdog() {
-    local strikes=0
+    local strikes=0 known=""
     while sleep 10; do
-        reach_hyprland || { strikes=0; continue; }
+        reach_hyprland || { strikes=0; known=""; continue; }
+        if [ -n "$known" ] && answers "$known"; then
+            strikes=0
+            continue
+        fi
+        known=""
         if frozen_pid >/dev/null; then
             strikes=$((strikes + 1))
             [ "$strikes" -ge 3 ] || continue
         elif running || ! session_locked; then
             strikes=0
+            known=$(answering_pid) || known=""
             continue
         fi
         strikes=0

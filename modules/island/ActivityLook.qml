@@ -175,18 +175,16 @@ QtObject {
                 ringValue: Math.max(0, a.progress)
             };
         }
-        case "privacy": {
-            const tone = a.data?.privacy === "mic" ? Appearance.colour.accent : Appearance.colour.alarm;
+        case "privacy":
             return {
                 icon: a.icon,
-                tone: tone,
+                tone: Appearance.colour.alarm,
                 text: a.text,
                 detail: a.detail,
                 trailing: "icon",
                 trailingIcon: "fiber_manual_record",
-                trailingTone: tone
+                trailingTone: Appearance.colour.alarm
             };
-        }
         case "timer":
             return {
                 icon: a.paused ? "pause" : "timer",

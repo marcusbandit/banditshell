@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import qs.components
 import "obs.js" as ObsProtocol
 import "../components/base64.js" as Base64
 
@@ -94,10 +95,13 @@ Singleton {
         root.recording = false;
         root.recordPaused = false;
         root.recordMs = 0;
-        root.scenes = [];
+        if (root.scenes.length)
+            root.scenes = [];
         root.scene = "";
-        root.items = [];
-        root.audio = [];
+        if (root.items.length)
+            root.items = [];
+        if (root.audio.length)
+            root.audio = [];
     }
 
     function call(type: string, data: var, then: var): void {
@@ -370,6 +374,7 @@ Singleton {
         if (!root.installed)
             return;
         Quickshell.execDetached(["obs"]);
+        redial.reset();
     }
 
     FileView {
@@ -404,12 +409,14 @@ Singleton {
         }
     }
 
-    Timer {
-        interval: 3000
-        repeat: true
+    Backoff {
+        id: redial
+
+        base: 3000
+        cap: 30000
         running: !!root.socket && root.canConnect && root.link === "closed"
 
-        onTriggered: {
+        onDue: {
             root.socket.active = false;
             root.socket.active = true;
         }

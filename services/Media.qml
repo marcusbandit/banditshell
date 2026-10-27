@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.Mpris
+import qs.components
 import "player-choice.js" as PlayerChoice
 
 Singleton {
@@ -250,6 +251,7 @@ Singleton {
         root.runs = !!root.active?.isPlaying;
         root.anchorRate = root.active?.rate > 0 ? root.active.rate : 1;
         root.position = root.now();
+        root.armEnd();
     }
 
     onRateChanged: root.place(root.now())
@@ -318,6 +320,13 @@ Singleton {
     readonly property real length: root.heldLength
 
     readonly property real progress: length > 0 ? Math.max(0, Math.min(1, position / length)) : 0
+
+    function progressNow(): real {
+        return root.length > 0 ? Math.max(0, Math.min(1, root.now() / root.length)) : 0;
+    }
+
+    onLengthChanged: root.armEnd()
+    onLoopsTrackChanged: root.armEnd()
 
     function toggle(): void {
         if (!active)
@@ -399,26 +408,33 @@ Singleton {
         return h > 0 ? `${h}:${m.toString().padStart(2, "0")}:${ss}` : `${m}:${ss}`;
     }
 
-    property real stuckSince: 0
+    property bool overrun: false
+
+    function armEnd(): void {
+        ending.stop();
+        root.overrun = false;
+        if (!root.playing || root.length <= 0 || root.loopsTrack)
+            return;
+        const left = (root.length - 0.05 - root.now()) / root.anchorRate;
+        ending.interval = Math.max(0, left * 1000) + root.seekGuard;
+        ending.start();
+    }
 
     Timer {
-        interval: 250
-        repeat: true
-        running: root.playing
+        id: ending
 
         onTriggered: {
             root.position = root.now();
-
-            const atEnd = root.length > 0 && !root.loopsTrack && root.position >= root.length - 0.05;
-            if (!atEnd)
-                root.stuckSince = 0;
-            else if (root.stuckSince === 0)
-                root.stuckSince = Date.now();
-            else if (Date.now() - root.stuckSince > 2500) {
-                root.stuckSince = Date.now();
-                root.sync();
-            }
+            root.overrun = true;
+            root.sync();
         }
+    }
+
+    Backoff {
+        base: root.seekGuard
+        cap: 60000
+        running: root.overrun && root.playing
+        onDue: root.sync()
     }
 
     function sync(): void {

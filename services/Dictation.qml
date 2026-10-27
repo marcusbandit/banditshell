@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.components
 import "dictation-events.js" as DictationEvents
 
 Singleton {
@@ -122,11 +123,11 @@ Singleton {
         }
     }
 
-    Timer {
-        interval: 2000
+    Backoff {
+        base: 2000
+        cap: 30000
         running: !events.up
-        repeat: true
-        onTriggered: {
+        onDue: {
             events.active = false;
             events.active = true;
         }

@@ -24,6 +24,17 @@ QtObject {
     readonly property var answer: root.wanted ? Translator.lookup.answers[root.wanted] : undefined
     readonly property bool pending: !!root.wanted && root.answer === undefined && Translator.lookup.failures[root.wanted] === undefined
 
+    readonly property var prefixes: !Translator.enabled ? [] : [
+            {
+                section: "Ask and look up",
+                word: "translate",
+                example: "translate hola to english",
+                about: "Translate text",
+                icon: "translate",
+                also: ["tr"]
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "translation",

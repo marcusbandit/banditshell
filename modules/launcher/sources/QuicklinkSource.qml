@@ -28,6 +28,8 @@ QtObject {
         }
     ]
 
+    readonly property var prefixes: Quicklinks.prefixes(root.links)
+
     readonly property var phrases: root.links.filter(link => Quicklinks.takes(link) && Quicklinks.cleanKeyword(link.keyword)).map(link => ({
                 head: `${Quicklinks.cleanKeyword(link.keyword)} `,
                 picks: [""]

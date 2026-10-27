@@ -33,6 +33,17 @@ QtObject {
             actions: 12
         })
 
+    readonly property var prefixes: !root.enabled ? [] : [
+            {
+                section: "Desktop",
+                word: "actions",
+                example: "actions lock",
+                about: "Shell actions",
+                icon: "bolt",
+                also: ["action"]
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "actions",
