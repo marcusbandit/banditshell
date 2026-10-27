@@ -118,11 +118,11 @@ Singleton {
     }
 
     function shortName(path: string): string {
-        return path.startsWith(`${root.hyprDir}/lua/`) ? `lua/${path.slice(`${root.hyprDir}/lua/`.length)}` : path.startsWith(`${root.hyprDir}/`) ? path.slice(root.hyprDir.length + 1) : path;
+        return HyprlandLua.shortName(path, root.hyprDir);
     }
 
     function pathOf(name: string): string {
-        return `${root.hyprDir}/${name}`;
+        return HyprlandLua.pathOf(name, root.hyprDir);
     }
 
     FileView {
