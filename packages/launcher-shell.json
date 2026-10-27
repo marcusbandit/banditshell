@@ -1,7 +1,7 @@
 {
   "name": "launcher-shell",
   "summary": "the launcher's sources for the shell's own state: keybinds, tray, special workspaces, actions and recent documents",
-  "layer": 5,
+  "layer": 6,
   "owns": {
     "qml": [
       "modules/launcher/sources/ActionsSource.qml",

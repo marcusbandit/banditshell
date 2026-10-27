@@ -358,6 +358,15 @@ QtObject {
             run: () => Settings.show(root.screenName, "")
         },
         {
+            id: "tour",
+            icon: "tour",
+            label: "Show the tour",
+            words: "tour welcome guide introduction onboarding first run help start",
+            run: () => root.leave(() => Panels.open("tour", {
+                    screen: root.screenName
+                }))
+        },
+        {
             id: "playpause",
             icon: Media.playing ? "pause" : "play_arrow",
             label: Media.playing ? "Pause" : "Play",
@@ -455,11 +464,11 @@ QtObject {
             id: "darkmode",
             icon: "dark_mode",
             label: "Dark mode",
-            words: "dark mode light mode appearance colour color scheme apps",
-            toggle: DarkMode.dark,
-            hidden: !DarkMode.available,
+            words: "dark mode light mode appearance colour color scheme apps theme",
+            detail: Appearance.mode === "auto" ? "auto, a press picks one" : "",
+            toggle: !Appearance.light,
             stay: true,
-            run: () => DarkMode.set(!DarkMode.dark)
+            run: () => DarkMode.choose(Appearance.light ? "dark" : "light")
         },
         {
             id: "sleepdisplays",

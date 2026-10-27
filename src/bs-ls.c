@@ -4,14 +4,20 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <poll.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <sys/inotify.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #define SNIFF 4096
+#define QUIET_MS 100
+#define BURST_MS 1000
+#define BATCH_MS 20
 
 struct classing {
     const char *ext;
@@ -561,6 +567,71 @@ static int find(int argc, char **argv) {
     return 0;
 }
 
+static long long now_ms(void) {
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return (long long)t.tv_sec * 1000 + t.tv_nsec / 1000000;
+}
+
+static int watch(const char *path) {
+    int fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+    uint32_t mask = IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO | IN_CLOSE_WRITE | IN_ATTRIB |
+                    IN_DELETE_SELF | IN_MOVE_SELF | IN_ONLYDIR | IN_EXCL_UNLINK;
+    if (fd < 0 || inotify_add_watch(fd, path, mask) < 0) {
+        fprintf(stderr, "bs-ls: cannot watch %s: %s\n", path, strerror(errno));
+        return 1;
+    }
+    printf("ready\n");
+    fflush(stdout);
+
+    char buf[64 * 1024] __attribute__((aligned(__alignof__(struct inotify_event))));
+    long long first = 0, last = 0;
+    int gone = 0;
+
+    for (;;) {
+        int timeout = -1;
+        if (first) {
+            long long due = last + QUIET_MS < first + BURST_MS ? last + QUIET_MS : first + BURST_MS;
+            long long left = due - now_ms();
+            timeout = left > 0 ? (int)left : 0;
+        }
+
+        struct pollfd fds[2] = {{fd, POLLIN, 0}, {STDIN_FILENO, POLLIN, 0}};
+        if (poll(fds, 2, timeout) < 0) {
+            if (errno == EINTR)
+                continue;
+            return 1;
+        }
+        if (fds[1].revents)
+            return 0;
+
+        if (fds[0].revents & POLLIN) {
+            ssize_t got;
+            while ((got = read(fd, buf, sizeof buf)) > 0)
+                for (char *p = buf; p < buf + got;) {
+                    const struct inotify_event *event = (const struct inotify_event *)p;
+                    if (event->mask & (IN_DELETE_SELF | IN_MOVE_SELF | IN_IGNORED))
+                        gone = 1;
+                    p += sizeof *event + event->len;
+                }
+            last = now_ms();
+            if (!first)
+                first = last;
+        }
+
+        if (first && (now_ms() >= last + QUIET_MS || now_ms() >= first + BURST_MS)) {
+            printf("changed\n");
+            fflush(stdout);
+            first = 0;
+            if (gone)
+                return 0;
+        } else if (first) {
+            struct timespec pause = {0, BATCH_MS * 1000000L};
+            nanosleep(&pause, NULL);
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     if (argc >= 2 && strcmp(argv[1], "--find") == 0)
         return find(argc, argv);
@@ -568,11 +639,13 @@ int main(int argc, char **argv) {
         stat_one(argv[2]);
         return 0;
     }
+    if (argc == 3 && strcmp(argv[1], "--watch") == 0)
+        return watch(argv[2]);
     if (argc == 2) {
         list(argv[1]);
         return 0;
     }
 
-    fprintf(stderr, "usage: bs-ls <dir> | bs-ls --stat <path> | bs-ls --find [options] -- <query> <home>\n");
+    fprintf(stderr, "usage: bs-ls <dir> | bs-ls --stat <path> | bs-ls --watch <dir> | bs-ls --find [options] -- <query> <home>\n");
     return 2;
 }

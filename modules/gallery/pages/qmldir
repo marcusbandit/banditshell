@@ -1,5 +1,6 @@
 module qs.modules.gallery.pages
 ButtonsPage 1.0 ButtonsPage.qml
+FocusMarkPage 1.0 FocusMarkPage.qml
 SegmentedButtonsPage 1.0 SegmentedButtonsPage.qml
 SlidersPage 1.0 SlidersPage.qml
 SwitchPage 1.0 SwitchPage.qml

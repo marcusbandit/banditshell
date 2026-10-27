@@ -2683,8 +2683,8 @@ EOF
 check_island() {
     local out tally
     out=$(absolute_path "${1:-$SHOT_DIR/island}")
-    echo "walking the island through its situations, about four minutes; ctrl-c stops"
-    headless_preview IslandPreview "$out" 320 '.notifications.placement = "island" | .packages.interval = 0 | .sidebar.update = "never"'
+    echo "walking the island through its situations, about six minutes; ctrl-c stops"
+    headless_preview IslandPreview "$out" 480 '.notifications.placement = "island" | .packages.interval = 0 | .sidebar.update = "never"'
     tally=$(sed 's/\x1b\[[0-9;]*m//g' "$preview_log" | grep -oE 'DONE [0-9]+/[0-9]+' | tail -1)
     tally="${tally#DONE }"
     if [ -z "$tally" ]; then

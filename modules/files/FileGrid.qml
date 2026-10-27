@@ -12,6 +12,7 @@ Item {
 
     property point dragPoint: Qt.point(-1, -1)
     property bool dragging: false
+    property bool keyed: false
 
     signal picked(int index, int modifiers)
     signal activated(int index)
@@ -37,7 +38,28 @@ Item {
 
     function reveal(index: int): void {
         grid.positionViewAtIndex(index, GridView.Contain);
+        const top = Math.floor(index / root.columns) * root.cellHeight - grid.topMargin;
+        const bottom = top + root.cellHeight + grid.topMargin + grid.bottomMargin;
+        if (top < grid.contentY)
+            grid.contentY = top;
+        else if (bottom > grid.contentY + grid.height)
+            grid.contentY = bottom - grid.height;
     }
+
+    property string shown: ""
+
+    function show(): void {
+        const view = [Files.cwd, Files.search, Config.values.files.sort, Config.values.files.reversed, Config.values.files.hidden].join("\n");
+        const y = grid.contentY;
+        grid.model = root.entries;
+        grid.currentIndex = Qt.binding(() => Files.cursor);
+        if (view === root.shown)
+            grid.contentY = Math.max(grid.originY, Math.min(y, grid.originY + grid.contentHeight - grid.height));
+        root.shown = view;
+    }
+
+    onEntriesChanged: root.show()
+    Component.onCompleted: root.show()
 
     GridView {
         id: grid
@@ -49,10 +71,10 @@ Item {
 
         cellHeight: root.cellHeight
 
-        model: root.entries
-        currentIndex: Files.cursor
 
         boundsBehavior: Flickable.StopAtBounds
+        topMargin: Appearance.padding.hair
+        bottomMargin: Appearance.padding.hair
 
         WheelStep {
             flick: grid
@@ -64,9 +86,11 @@ Item {
             width: grid.cellWidth
             height: grid.cellHeight
 
+            z: tile.focused ? 1 : 0
             row: root.list
             picked: Files.isPicked(Files.keyOf(modelData))
-            cursored: index === Files.cursor
+            focused: root.keyed && index === Files.cursor
+            keyed: root.keyed
             receiving: root.dragging && root.target === index && droppable && !Files.isPicked(Files.keyOf(modelData))
 
             onClicked: modifiers => root.picked(index, modifiers)

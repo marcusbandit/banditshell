@@ -10,6 +10,12 @@ const kelvin = (s, v) => {
 
 const FILES_SORTS = [["name", "name"], ["mtime", "date"], ["size", "size"], ["kind", "type"]];
 const PANEL_SHADES = ["black", "deep", "dark", "medium", "light", "pale", "palest"];
+const LIGHT_PANEL_SHADES = ["white", "palest", "pale", "light", "soft", "medium", "grey"];
+
+function shadeWord(light, v) {
+    const words = light ? LIGHT_PANEL_SHADES : PANEL_SHADES;
+    return words[Math.max(0, Math.min(words.length - 1, Math.round(v) || 0))];
+}
 const FILES_ORDERS = {
     name: ["a to z", "z to a"],
     mtime: ["newest", "oldest"],
@@ -36,7 +42,7 @@ const LAYOUTS = [
 const WIDGET_TITLES = {
     winLayouts: "Layout", via: "VIA layout", modes: "Modes", usage: "Today", recent: "Recent changes", nets: "Networks",
     devices: "Devices", volume: "Volume", apps: "Volume by app", walls: "Wallpapers", themes: "Theme", wsStyles: "Workspace style",
-    chips: "Apps", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "Places",
+    chips: "Apps", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "Other time zones",
     obs: "OBS", keys: "Keys", kbLayouts: "Layouts", battery: "Battery", update: "Updates", changes: "What’s new", about: "About",
     tunnels: "Tunnels", shortcuts: "Aliases and hotkeys", snippets: "Snippets", quicklinks: "Quicklinks"
 };
@@ -249,15 +255,15 @@ const PAGES_SOURCE = {
         status: s => s.v("fromWall") ? "wallpaper" : s.v("theme"),
         groups: [
             { rows: [
+                { n: [], icon: "dark_mode", label: "Light or dark", k: "scheme", kind: "seg", o: ["light", "dark", "auto"], cfg: "colour.mode", state: s => s.schemeDetail, extra: { icon: "schedule", tip: "set night light’s schedule", act: "nightSchedule" }, kw: "dark mode dark apps light mode night theme colour scheme apps appearance auto",
+                    why: "Sets the shell and every app that follows the system colour scheme. Auto goes dark while night light warms the screens, on its schedule under Light and warmth. If apps drift, pick the same choice again." },
                 { n: 42, kind: "w", w: "themes", kw: "theme palette" },
                 { n: 43, icon: "colorize", label: "Take it from the wallpaper", k: "fromWall", kind: "toggle", cfg: "themeFromWallpaper", state: s => s.v("fromWall") ? s.wallName : "", kw: "theme from wallpaper" },
                 { n: 44, icon: "format_color_fill", label: "Highlight colour", k: "accent", kind: "seg", o: [["dim", "soft"], ["mid", "normal"], ["bright", "strong"]], swatches: true, cfg: "colour.accent", kw: "accent strength dim mid bright",
                     why: "Which of the theme’s three highlight colours paints everything that’s on. Soft sits back, strong jumps out." },
-                { n: 45, icon: "layers", label: "Panel shade", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmt: v => PANEL_SHADES[Math.max(0, Math.min(PANEL_SHADES.length - 1, Math.round(v) || 0))], cfg: "colour.surface", kw: "surface depth ramp background darker lighter",
-                    why: "How dark the frame and panels are, picked from the theme’s own shades. Lower is darker." },
-                { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0.5, max: 1, step: 0.01, fmt: v => `${Math.round((1 - v) * 100)}%`, cfg: "material.surfaceAlpha", kw: "transparency" },
-                { n: [], icon: "dark_mode", label: "Dark apps", k: "darkMode", kind: "toggle", state: s => s.hasDarkMode ? "" : "no system colour scheme found", dis: s => !s.hasDarkMode, kw: "dark mode light night theme colour scheme apps",
-                    why: "Asks apps that follow the system colour scheme to use dark colours. The shell’s own colours come from the theme above." }
+                { n: 45, icon: "layers", label: "Panel shade", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmtS: (s, v) => shadeWord(s?.lightShell, v), cfg: "colour.surface", kw: "surface depth ramp background darker lighter",
+                    why: "Which of the theme’s own shades paints the frame and panels. Lower is darker in a dark look and lighter in a light one." },
+                { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0.5, max: 1, step: 0.01, fmt: v => `${Math.round((1 - v) * 100)}%`, cfg: "material.surfaceAlpha", kw: "transparency" }
             ] }
         ]
     },
@@ -561,11 +567,21 @@ const PAGES_SOURCE = {
                 { n: 85, icon: "hourglass", label: "Longest timer", k: "timerMax", kind: "step", min: 1, max: 24, unit: " h", cfg: "clock.timerMax", kw: "timer limits" },
                 { n: 85, icon: "alarm", label: "Most alarms", k: "alarmMax", kind: "step", min: 1, max: 20, cfg: "clock.alarmMax", fmt: v => `${v}`, kw: "alarm limits" }
             ] },
-            { t: "Places", rows: [
+            { t: "Other time zones", rows: [
                 { n: 86, kind: "w", w: "clocks", kw: "world clocks" }
             ] },
             { t: "Calendar", rows: [
                 { n: 83, icon: "swipe", label: "Swiping right goes", k: "rightForward", kind: "seg", o: [[true, "forward"], [false, "back"]], cfg: "calendar.rightGoesForward", kw: "calendar scroll direction" }
+            ] },
+            { t: "Weather", preview: "weather", rows: [
+                { n: [], icon: "partly_cloudy_day", label: "Weather", k: "weatherShow", kind: "toggle", cfg: "weather.show", state: s => s.v("weatherShow") ? "beside the clock in the island" : "off", kw: "weather temperature forecast island",
+                    why: "The temperature beside the island’s clock. Pressing it opens the week ahead." },
+                { n: [], icon: "location_on", label: "Place", k: "weatherPlace", kind: "text", cfg: "weather.location", placeholder: "automatic", state: s => s.weatherPlaceState, lines: 3, bad: s => s.weatherPlaceTrouble !== "", dis: s => !s.v("weatherShow"), kw: "weather location town city",
+                    why: "A town or city. Empty lets the weather service place you by your connection." },
+                { n: [], icon: "thermostat", label: "Units", k: "weatherUnits", kind: "seg", o: [["metric", "°C"], ["imperial", "°F"]], cfg: "weather.units", dis: s => !s.v("weatherShow"), kw: "weather units celsius fahrenheit temperature",
+                    why: "For the temperature in the island and the week ahead." },
+                { n: [], icon: "update", label: "Refresh after", k: "weatherMinutes", kind: "step", min: 5, max: 180, step: 5, unit: " min", cfg: "weather.minutes", dis: s => !s.v("weatherShow"), kw: "weather refresh interval",
+                    why: "How old a reading may get before opening the island fetches a new one." }
             ] },
             { t: "Ask", rows: [
                 { n: 87, icon: "smart_toy", label: "Helper", k: "cloud", kind: "text", mono: true, cfg: "clock.cloud", kw: "clock ai helper command",
@@ -864,6 +880,9 @@ const PAGES_SOURCE = {
             { rows: [
                 { n: 119, kind: "w", w: "changes", kw: "what’s new changelog" },
                 { n: [120, 121], kind: "w", w: "about", kw: "device info about version compositor source design notes" }
+            ] },
+            { t: "New here", rows: [
+                { n: [], icon: "tour", label: "The tour", kind: "button", btn: "Show", act: "tour", why: "A few short steps over your own desktop: the launcher, the island, the rail, the hotkey sheet and Settings, each opened for real.", kw: "tour welcome guide introduction onboarding first run help start" }
             ] }
         ]
     }
@@ -970,6 +989,7 @@ const ROW_BY_KEY = {};
 function walk(rows, page, group, parent, out) {
     for (const r of rows) {
         r.page = page.id;
+        r.group = group;
         r.parent = parent;
         r.uid = `${page.id}.${out.length}`;
         out.push(r);

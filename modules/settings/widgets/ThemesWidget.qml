@@ -16,14 +16,14 @@ Item {
     readonly property real gap: Appearance.padding.small
     readonly property real cell: (root.width - Appearance.padding.normal * 2 - (root.columns - 1) * root.gap) / root.columns
 
-    readonly property var cards: Themes.catalogue.map(t => ({
+    readonly property var cards: Themes.catalogue.map(t => Appearance.lightCard({
                 name: t.name,
                 dim: t.dim,
                 mid: t.mid,
                 bright: t.bright,
                 alarm: t.alarm,
-                background: t.background || Appearance.theme.ramp[1],
-                foreground: t.foreground || Appearance.theme.ramp[9],
+                background: t.background || Appearance.chosenTheme.ramp[1],
+                foreground: t.foreground || Appearance.chosenTheme.ramp[9],
                 wall: false
             })).concat([{
                     name: "wallpaper",

@@ -16,6 +16,8 @@ CrossfadeText 1.0 CrossfadeText.qml
 DropShadow 1.0 DropShadow.qml
 FittedImage 1.0 FittedImage.qml
 FloatingTooltip 1.0 FloatingTooltip.qml
+FocusMark 1.0 FocusMark.qml
+FocusVisible 1.0 FocusVisible.qml
 FoldedText 1.0 FoldedText.qml
 Follow 1.0 Follow.qml
 FollowColour 1.0 FollowColour.qml

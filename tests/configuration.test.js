@@ -209,11 +209,11 @@ test.describe("upgrade", () => {
     });
 
     test.it("gives a saved file grid keymap Ctrl+Z for undo unless undo or Ctrl+Z is already bound", () => {
-        const saved = { files: { grid: { "Ctrl+C": "copy" }, view: "list" } };
-        assert.deepStrictEqual(Configuration.upgrade(saved), { files: { grid: { "Ctrl+C": "copy", "Ctrl+Z": "undo" }, view: "list" } });
-        const moved = { files: { grid: { "Ctrl+U": "undo" } } };
+        const saved = { files: { grid: { "Ctrl+C": "copy", F5: "refresh" }, view: "list" } };
+        assert.deepStrictEqual(Configuration.upgrade(saved), { files: { grid: { "Ctrl+C": "copy", F5: "refresh", "Ctrl+Z": "undo" }, view: "list" } });
+        const moved = { files: { grid: { "Ctrl+U": "undo", F5: "refresh" } } };
         assert.strictEqual(Configuration.upgrade(moved), moved);
-        const taken = { files: { grid: { "Ctrl+Z": "trash" } } };
+        const taken = { files: { grid: { "Ctrl+Z": "trash", F5: "refresh" } } };
         assert.strictEqual(Configuration.upgrade(taken), taken);
     });
 
@@ -222,6 +222,14 @@ test.describe("upgrade", () => {
         assert.strictEqual(Configuration.upgradeValue("files.markdown", "source"), "raw");
         const current = { files: { markdown: "raw" } };
         assert.strictEqual(Configuration.upgrade(current), current);
+    });
+
+    test.it("gives a saved files grid keymap F5 for refresh unless refresh already has a key", () => {
+        assert.deepStrictEqual(Configuration.upgrade({ files: { grid: { F2: "rename", "Ctrl+Z": "undo" } } }), { files: { grid: { F2: "rename", "Ctrl+Z": "undo", F5: "refresh" } } });
+        const moved = { files: { grid: { "Ctrl+R": "refresh", "Ctrl+Z": "undo" } } };
+        assert.strictEqual(Configuration.upgrade(moved), moved);
+        const taken = { files: { grid: { F5: "view", "Ctrl+Z": "undo" } } };
+        assert.strictEqual(Configuration.upgrade(taken), taken);
     });
 
     test.it("leaves a config without a launcher alone", () => {

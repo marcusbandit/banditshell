@@ -115,6 +115,7 @@ singleton ThemeSwitcher 1.0 ThemeSwitcher.qml
 singleton TimeFormat 1.0 TimeFormat.qml
 singleton ToolInstaller 1.0 ToolInstaller.qml
 singleton Tooltips 1.0 Tooltips.qml
+singleton Tour 1.0 Tour.qml
 singleton Trace 1.0 Trace.qml
 singleton Translator 1.0 Translator.qml
 singleton Tray 1.0 Tray.qml

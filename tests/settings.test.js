@@ -130,6 +130,21 @@ test("rows that name a config key write that same key", () => {
             assert.strictEqual(CONFIG_BACKED[r.k], r.cfg, `${r.k} shows ${r.cfg} but writes ${CONFIG_BACKED[r.k]}`);
 });
 
+test("the island's Change place opens the row that writes weather.location", () => {
+    const Forecast = lib(path.join(ROOT, "services/weather.js"), ["failureLook"]);
+    const found = Catalogue.resolve(Forecast.failureLook("place").fix);
+    assert.strictEqual(found.page, "clock");
+    assert.strictEqual(found.row.cfg, "weather.location");
+});
+
+test("the weather rows grey out while the weather is off", () => {
+    const rows = ["weatherPlace", "weatherUnits", "weatherMinutes"].map(k => Catalogue.ROW_BY_KEY[k]);
+    for (const r of rows) {
+        assert.strictEqual(r.dis(fakeState({ weatherShow: false })), true, r.k);
+        assert.strictEqual(r.dis(fakeState({ weatherShow: true })), false, r.k);
+    }
+});
+
 test("what NetworkManager owns is never written to config, and no password is stored", () => {
     for (const k of ["hotspot", "hotspotName", "hotspotPass", "hotspotBand", "vpnFirst"])
         assert.ok(!(k in CONFIG_BACKED), `${k} must not be written to config.json`);
@@ -157,6 +172,10 @@ test("every widget and every preview has its file", () => {
         assert.ok(fs.existsSync(path.join(SETTINGS, "scenes", `${cap(c.preview)}Scene.qml`)), `scene ${c.preview}`);
     for (const p of Catalogue.PAGES)
         assert.ok(fs.existsSync(path.join(SETTINGS, "scenes", `${cap(p.preview)}Scene.qml`)), `scene ${p.preview}`);
+    for (const p of Catalogue.PAGES)
+        for (const g of p.groups)
+            if (g.preview)
+                assert.ok(fs.existsSync(path.join(SETTINGS, "scenes", `${cap(g.preview)}Scene.qml`)), `scene ${g.preview}`);
 });
 
 test("statuses, blurbs, details and options all render against a live state", () => {
@@ -243,9 +262,11 @@ test("enter on a search hit that is already open steps to the next match, shift 
     assert.strictEqual(Catalogue.hitIndexOf(hits, "gone"), 0);
 });
 
-test("dark, dark mode, light, night and theme all find the dark apps row", () => {
-    for (const q of ["dark", "dark mode", "light", "night", "theme"])
-        assert.ok(Catalogue.search(q).some(h => h.row.k === "darkMode" && h.page.id === "colour"), q);
+test("dark, dark apps, dark mode, light, night and theme all find the light or dark row", () => {
+    for (const q of ["dark", "dark apps", "dark mode", "light mode", "appearance"])
+        assert.strictEqual(Catalogue.search(q)[0]?.row.k, "scheme", q);
+    for (const q of ["light", "night", "theme", "auto"])
+        assert.ok(Catalogue.search(q).some(h => h.row.k === "scheme" && h.page.id === "colour"), q);
 });
 
 test("panel shade and highlight colour are found under their old names too", () => {
@@ -261,6 +282,7 @@ test("highlight colour keeps dim, mid and bright, and every panel shade has a wo
     assert.strictEqual(Catalogue.show(row, "mid", {}), "normal");
     const shade = Catalogue.ROW_BY_KEY.surface;
     assert.deepStrictEqual([3, 8, -1, NaN].map(v => Catalogue.show(shade, v, {})), ["medium", "palest", "black", "black"]);
+    assert.deepStrictEqual([0, 3, 8].map(v => Catalogue.show(shade, v, { lightShell: true })), ["white", "light", "grey"]);
 });
 
 test("resolve takes categories, pages, old names, row keys and config keys", () => {
