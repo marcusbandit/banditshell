@@ -244,27 +244,31 @@ Item {
         width: root.width
         height: root.footerHeight - 1
 
-        Row {
+        Icon {
+            id: book
+
             anchors.left: parent.left
             anchors.leftMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Appearance.padding.normal
+            name: "menu_book"
+            size: Appearance.font.size.normal
+            color: Appearance.colour.accent
+        }
 
-            Icon {
-                anchors.verticalCenter: parent.verticalCenter
-                name: "menu_book"
-                size: Appearance.font.size.normal
-                color: Appearance.colour.accent
-            }
-
-            StyledText {
-                anchors.verticalCenter: parent.verticalCenter
-                text: Dictionary.building ? "Dictionary · getting the offline copy" : "Dictionary"
-                color: Appearance.colour.textFaint
-            }
+        StyledText {
+            anchors.left: book.right
+            anchors.leftMargin: Appearance.padding.normal
+            anchors.right: actions.left
+            anchors.rightMargin: Appearance.padding.large
+            anchors.verticalCenter: parent.verticalCenter
+            text: Dictionary.building ? "Dictionary · getting the offline copy" : "Dictionary"
+            elide: Text.ElideRight
+            color: Appearance.colour.textFaint
         }
 
         Row {
+            id: actions
+
             anchors.right: parent.right
             anchors.rightMargin: Appearance.padding.small
             anchors.verticalCenter: parent.verticalCenter
