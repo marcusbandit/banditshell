@@ -5,14 +5,15 @@
   "owns": {
     "qml": ["modules/files", "previews/FilesPreview.qml", "previews/TerminalDebug.qml"],
     "services": ["Downloads", "Files", "FilesFind", "FilesPaste", "FilesUndo"],
-    "js": ["services/files-conflicts.js", "services/files-find.js", "services/files-order.js", "services/files-undo.js"],
+    "js": ["services/files-conflicts.js", "services/files-find.js", "services/files-order.js", "services/files-trash.js", "services/files-undo.js"],
     "tests": [
       "tests/files-conflicts.test.js",
       "tests/files-find.test.js",
       "tests/files-order.test.js",
+      "tests/files-trash.test.js",
       "tests/files-undo.test.js",
       "tests/files-watch.test.js",
-      "tests/fixtures/gio-trash-list.txt",
+      "tests/fixtures/gio-trash.js",
       "tests/keys.test.js",
       "tests/markdown.test.js",
       "tests/marks.test.js",

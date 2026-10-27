@@ -10,6 +10,7 @@ import "quoting.js" as Quoting
 import "files-order.js" as FilesOrder
 import "files-conflicts.js" as Conflicts
 import "files-find.js" as Find
+import "files-trash.js" as Trash
 
 Singleton {
     id: root
@@ -21,6 +22,11 @@ Singleton {
     }
 
     property string cwd: root.home
+
+    readonly property string trashHome: `${Quickshell.env("XDG_DATA_HOME") || root.home + "/.local/share"}/Trash`
+    readonly property string trashFiles: `${root.trashHome}/files`
+    readonly property bool trashTop: root.cwd === root.trashFiles
+    readonly property bool inTrash: Trash.within(root.cwd, root.trashFiles)
 
     property var entries: []
     property string error: ""
@@ -41,8 +47,8 @@ Singleton {
         return FilesFind.active ? Find.grouped(matched, FilesFind.results, root.cwd, order) : order(matched);
     }
 
-    onSearchChanged: FilesFind.ask(root.search, root.cwd, root.showHidden)
-    onShowHiddenChanged: FilesFind.ask(root.search, root.cwd, root.showHidden)
+    onSearchChanged: FilesFind.ask(root.inTrash ? "" : root.search, root.cwd, root.showHidden)
+    onShowHiddenChanged: FilesFind.ask(root.inTrash ? "" : root.search, root.cwd, root.showHidden)
 
     function keyOf(entry: var): string {
         return entry.key ?? entry.name;
@@ -74,9 +80,10 @@ Singleton {
     readonly property var pickedPaths: root.picks.map(e => root.pathOf(e))
 
     readonly property var crumbs: {
-        const parts = root.cwd.split("/").filter(p => p.length > 0);
-        const out = [{name: "/", path: "/"}];
-        let path = "";
+        const inside = root.inTrash;
+        const parts = (inside ? root.cwd.slice(root.trashFiles.length) : root.cwd).split("/").filter(p => p.length > 0);
+        const out = [inside ? {name: "Trash", path: root.trashFiles} : {name: "/", path: "/"}];
+        let path = inside ? root.trashFiles : "";
         for (const part of parts) {
             path += `/${part}`;
             out.push({name: part, path: path});
@@ -189,7 +196,7 @@ Singleton {
         const path = root.pathOf(entry);
         if (entry.kind === "dir")
             root.go(path);
-        else if (entry.key)
+        else if (entry.key && !entry.trash)
             root.goTo(path);
         else
             System.openWith(path);
@@ -209,6 +216,7 @@ Singleton {
     property int generation: 0
     property var latestListing: null
     property bool listing: false
+    property bool listingTrash: false
     property real listingSince: 0
     property bool again: false
     property bool watched: false
@@ -219,13 +227,14 @@ Singleton {
             return;
         root.generation += 1;
         root.listing = true;
+        root.listingTrash = root.cwd === root.trashFiles;
         root.listingSince = Date.now();
         root.again = false;
         root.watched = false;
         if (root.latestListing)
             root.latestListing.running = false;
         root.latestListing = lister.createObject(root, {
-            command: [root.helper("bs-ls"), root.cwd],
+            command: root.listingTrash ? Trash.readCommand(root.helper("bs-ls"), root.trashHome, root.drives.map(d => d.path)) : [root.helper("bs-ls"), root.cwd],
             generation: root.generation,
             running: true
         });
@@ -250,7 +259,11 @@ Singleton {
         const began = Date.now();
         const was = root.cursor;
         try {
-            const answer = JSON.parse(text);
+            const answer = root.listingTrash ? {
+                path: root.cwd,
+                ok: true,
+                entries: Trash.entries(Trash.parse(text))
+            } : JSON.parse(text);
 
             if (answer.path !== root.cwd)
                 return;
@@ -437,6 +450,9 @@ Singleton {
 
     property var drives: []
 
+    onDrivesChanged: if (root.trashTop)
+        root.refresh()
+
     function refreshPlaces(): void {
         placer.running = false;
         placer.command = ["sh", "-c", root.placeSpec.map(p => `test -d ${root.quote(p.path)} && echo ${root.quote(p.path)}`).join("; ")];
@@ -453,7 +469,7 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 const found = text.split("\n").filter(l => l.length > 0);
-                root.places = root.placeSpec.filter(p => found.includes(p.path));
+                root.places = [...root.placeSpec.filter(p => found.includes(p.path)), {name: "Trash", icon: "delete", path: root.trashFiles}];
             }
         }
     }
@@ -932,7 +948,8 @@ Singleton {
             FilesUndo.renaming(path, to, () => root.run(["mv", "-i", "--"], [path, to]));
     }
 
-    function trash(paths: var): void {
+    function trash(given: var): void {
+        const paths = given.filter(path => !Trash.within(path, root.trashFiles));
         if (paths.length === 0)
             return;
         root.run(["gio", "trash", "--"], paths);
@@ -943,7 +960,8 @@ Singleton {
     function deleteForever(paths: var): void {
         if (paths.length === 0)
             return;
-        root.run(["rm", "-rf", "--"], paths);
+        const infos = root.entries.filter(e => e.trash && paths.includes(e.key)).map(e => Trash.infoPath(e.trash));
+        root.run(["rm", "-rf", "--"], [...paths, ...infos]);
         FilesFind.forget(paths);
     }
 
@@ -951,7 +969,13 @@ Singleton {
         FilesPaste.start(paths, dir, false);
     }
 
+    function restore(entries: var): void {
+        FilesUndo.restore(entries.filter(e => e.trash?.path).map(e => e.trash));
+    }
+
     function moveInto(paths: var, dir: string): void {
+        if (Trash.within(dir, root.trashFiles))
+            return root.trash(paths);
         FilesPaste.start(paths, dir, true);
         FilesFind.forget(paths);
     }
@@ -965,7 +989,7 @@ Singleton {
     }
 
     function paste(): void {
-        if (root.clipboard.length === 0)
+        if (root.clipboard.length === 0 || root.inTrash)
             return;
         if (root.clipboardCut) {
             const moving = root.clipboard;

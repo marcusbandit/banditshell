@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-27-3",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files has a Trash in its sidebar, and Restore puts things back"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Undo brings back a file trashed again under the same name"
+        }
+      ]
+    },
+    {
       "id": "2026-10-27-2",
       "date": "2026-10-27",
       "changes": [

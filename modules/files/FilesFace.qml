@@ -211,7 +211,10 @@ Item {
             root.renameCurrent();
             return true;
         case "trash":
-            Files.trash(Files.pickedPaths);
+            if (Files.inTrash)
+                root.confirmDelete();
+            else
+                Files.trash(Files.pickedPaths);
             return true;
         case "destroy":
             root.confirmDelete();
@@ -273,8 +276,16 @@ Item {
         const paths = Files.pickedPaths;
         const one = picks.length === 1 ? picks[0] : null;
         const acts = [];
+        const restorable = picks.filter(e => e.trash?.path);
 
-        if (one && one.key && one.kind !== "dir")
+        if (restorable.length > 0)
+            acts.push({
+                icon: "restore_from_trash",
+                label: restorable.length === picks.length ? "Restore" : `Restore ${restorable.length} of ${picks.length}`,
+                run: () => Files.restore(restorable)
+            });
+
+        if (one && one.key && !one.trash && one.kind !== "dir")
             acts.push({
                 icon: "folder_open",
                 label: "Show in its folder",
@@ -295,13 +306,16 @@ Item {
             icon: "content_copy",
             label: "Copy",
             run: () => Files.clip(paths, false)
-        }, {
-            icon: "content_cut",
-            label: "Cut",
-            run: () => Files.clip(paths, true)
         });
 
-        if (one && !one.key)
+        if (!Files.inTrash)
+            acts.push({
+                icon: "content_cut",
+                label: "Cut",
+                run: () => Files.clip(paths, true)
+            });
+
+        if (one && !one.key && !Files.inTrash)
             acts.push({
                 icon: "edit",
                 label: "Rename…",
@@ -312,11 +326,16 @@ Item {
             icon: "link",
             label: paths.length === 1 ? "Copy path" : "Copy paths",
             run: () => Files.copyText(paths.join("\n"))
-        }, {
-            icon: "delete",
-            label: "Move to trash",
-            run: () => Files.trash(paths)
-        }, {
+        });
+
+        if (!Files.inTrash)
+            acts.push({
+                icon: "delete",
+                label: "Move to trash",
+                run: () => Files.trash(paths)
+            });
+
+        acts.push({
             icon: "delete_forever",
             label: "Delete permanently…",
             run: () => root.confirmDelete()
@@ -333,7 +352,7 @@ Item {
     }
 
     function folderActions(): var {
-        const acts = [
+        const acts = Files.inTrash ? [] : [
             {
                 icon: "create_new_folder",
                 label: "New folder…",
@@ -346,7 +365,7 @@ Item {
             }
         ];
 
-        if (Files.clipboard.length > 0)
+        if (Files.clipboard.length > 0 && !Files.inTrash)
             acts.push({
                 icon: "content_paste",
                 label: `${Files.clipboardCut ? "Move" : "Paste"} ${Files.clipboard.length} here`,
@@ -387,6 +406,8 @@ Item {
     }
 
     function newThing(file: bool): void {
+        if (Files.inTrash)
+            return;
         prompt.ask(file ? "New file" : "New folder", file ? "untitled" : "untitled folder", 0, name => {
             if (file)
                 Files.makeFile(name);
