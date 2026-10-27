@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-27-6",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "File names under icons keep their extension whole"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A previewed folder lists in the same order as the files"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files settings: Smaller, Reset and Bigger no longer look picked"
+        }
+      ]
+    },
+    {
       "id": "2026-10-27-5",
       "date": "2026-10-27",
       "changes": [
