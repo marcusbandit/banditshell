@@ -19,7 +19,9 @@ const Conflicts = lib("services/files-conflicts.js", [
     "operations", "command", "results", "leftover", "reason", "failure", "notice", "renameRefusal",
     "picture", "newer", "larger", "day", "keptName", "clashes", "clashLabel", "folderName"
 ]);
-const Undo = lib("services/files-undo.js", ["moved", "copied", "trashed", "batch", "command", "report", "remember"]);
+const Undo = lib("services/files-undo.js", ["moved", "copied", "trashed", "batch", "command", "report", "remember", "pick"]);
+const Trash = lib("services/files-trash.js", ["readCommand", "parse", "restoreCommand"]);
+const GioTrash = require("./fixtures/gio-trash.js");
 
 const ODD = ["two words", "it's \"quoted\"", "-leading-dash", "new\nline", "tab\there", "$(touch pwned)"];
 
@@ -30,36 +32,20 @@ function which(tool) {
 function sandbox({ trashFails = false } = {}) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "files-conflicts-"));
     const bin = path.join(dir, "bin");
-    const trash = path.join(dir, "trash");
+    const trash = path.join(dir, "data", "Trash");
     const home = path.join(dir, "home");
-    for (const made of [bin, trash, home])
+    for (const made of [bin, home])
         fs.mkdirSync(made);
-    for (const tool of ["mv", "cp", "cat", "realpath", "dirname", "find", "wc", "stat"])
+    for (const tool of ["mv", "cp", "cat", "realpath", "dirname", "find", "wc", "stat", "id", "mkdir", "rm", "awk"])
         fs.symlinkSync(which(tool), path.join(bin, tool));
-    fs.writeFileSync(path.join(bin, "gio"), `#!/bin/sh
-${trashFails ? "exit 1" : ""}
-if [ "$1 $2" = "trash --restore" ]; then
-    shift 3
-    [ -e "${trash}/$1" ] || exit 1
-    [ -e "$(cat "${trash}/$1.origin")" ] && exit 1
-    mv -- "${trash}/$1" "$(cat "${trash}/$1.origin")"
-    exit
-fi
-[ "$1 $2" = "trash --" ] || exit 2
-shift 2
-for p; do
-    n=$(cat "${dir}/count" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "${dir}/count"
-    mv -- "$p" "${trash}/$n" && printf %s "$p" > "${trash}/$n.origin"
-done
-`);
-    fs.chmodSync(path.join(bin, "gio"), 0o755);
+    GioTrash.install(bin, trash, { fails: trashFails });
     const run = argv => spawnSync("/bin/sh", argv.slice(1), { env: { PATH: bin }, cwd: dir, encoding: "utf8" }).stdout;
     return {
         home,
         trash,
         at: (...parts) => path.join(home, ...parts),
         run,
-        trashed: () => fs.readdirSync(trash).filter(name => !name.endsWith(".origin")).map(uri => ({ uri, path: fs.readFileSync(path.join(trash, `${uri}.origin`), "utf8"), body: fs.statSync(path.join(trash, uri)).isFile() ? fs.readFileSync(path.join(trash, uri), "utf8") : null })),
+        trashed: () => GioTrash.trashed(trash),
         paste: (paths, dir, cut, answers) => {
             const list = Conflicts.probed(Conflicts.items(paths, dir, cut), run(Conflicts.probeCommand(Conflicts.items(paths, dir, cut))));
             let chosen = Conflicts.choices(list);
@@ -286,29 +272,33 @@ test.describe("files paste conflicts", () => {
         }
     });
 
-    test.it("undoes a replace in one step: the paste goes back and the replaced file returns", () => {
+    test.it("undoes a replace in one step, again and again under the same trash name", () => {
         for (const cut of [false, true]) {
             const box = sandbox();
             try {
-                write(box.at("from", "a.txt"), "new");
-                write(box.at("from", "b.txt"), "new b");
-                write(box.at("to", "a.txt"), "old");
-                const { outcome } = box.paste([box.at("from", "a.txt"), box.at("from", "b.txt")], box.at("to"), cut, [["replace", false]]);
-                const entry = Undo.batch([cut ? Undo.moved(outcome.pairs) : Undo.copied(outcome.pairs), Undo.trashed(outcome.replaced, 0)]);
-                assert.strictEqual(entry.kind, "batch");
-                assert.strictEqual(Undo.remember([], entry).length, 1);
+                for (let round = 0; round < 2; round++) {
+                    write(box.at("from", "a.txt"), "new");
+                    write(box.at("from", "b.txt"), "new b");
+                    write(box.at("to", "a.txt"), "old");
+                    const { outcome } = box.paste([box.at("from", "a.txt"), box.at("from", "b.txt")], box.at("to"), cut, [["replace", false]]);
+                    const entry = Undo.batch([cut ? Undo.moved(outcome.pairs) : Undo.copied(outcome.pairs), Undo.trashed(outcome.replaced, Date.now() / 1000)]);
+                    assert.strictEqual(entry.kind, "batch");
+                    assert.strictEqual(Undo.remember([], entry).length, 1);
+                    assert.deepStrictEqual(box.trashed().filter(item => item.body === "old").map(item => item.name), ["a.txt"]);
 
-                const first = box.run(Undo.command(entry.parts[0], []));
-                const uri = box.trashed().find(item => item.path === box.at("to", "a.txt") && item.body === "old").uri;
-                const second = box.run(Undo.command(entry.parts[1], [uri]));
+                    const picks = Undo.pick(Trash.parse(box.run(Trash.readCommand("-", box.trash, []))).items, entry.parts[1]);
+                    const first = box.run(Undo.command(entry.parts[0]));
+                    const second = box.run(Trash.restoreCommand(picks));
 
-                assert.deepStrictEqual(fs.readdirSync(box.at("to")), ["a.txt"]);
-                assert.strictEqual(fs.readFileSync(box.at("to", "a.txt"), "utf8"), "old");
-                assert.deepStrictEqual(fs.readdirSync(box.at("from")).sort(), ["a.txt", "b.txt"]);
-                const told = Undo.report(entry, [first, second], box.at("to"), box.home);
-                assert.strictEqual(told.ok, true);
-                assert.strictEqual(told.text, cut ? "a.txt and b.txt moved back to from, a.txt restored" : "Copies of a.txt and b.txt moved to the trash, a.txt restored");
-                assert.deepStrictEqual(told.shown, cut ? [box.at("from", "a.txt"), box.at("from", "b.txt"), box.at("to", "a.txt")] : [box.at("to", "a.txt")]);
+                    assert.deepStrictEqual(fs.readdirSync(box.at("to")), ["a.txt"]);
+                    assert.strictEqual(fs.readFileSync(box.at("to", "a.txt"), "utf8"), "old");
+                    assert.deepStrictEqual(fs.readdirSync(box.at("from")).sort(), ["a.txt", "b.txt"]);
+                    const told = Undo.report(entry, [first, second], box.at("to"), box.home);
+                    assert.strictEqual(told.ok, true);
+                    assert.strictEqual(told.text, cut ? "a.txt and b.txt moved back to from, a.txt restored" : "Copies of a.txt and b.txt moved to the trash, a.txt restored");
+                    assert.deepStrictEqual(told.shown, cut ? [box.at("from", "a.txt"), box.at("from", "b.txt"), box.at("to", "a.txt")] : [box.at("to", "a.txt")]);
+                    GioTrash.age(box.trash, 3600);
+                }
             } finally {
                 box.done();
             }

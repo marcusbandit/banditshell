@@ -40,16 +40,21 @@ function merged(list, before) {
     return from;
 }
 
+function trashOrder(key, reversed) {
+    return key === "size" || key === "kind" ? {key: key, reversed: reversed} : {key: "trashed", reversed: key === "mtime" && reversed};
+}
+
 function ordered(entries, key, reversed) {
     const sign = reversed ? -1 : 1;
     const byName = (a, b) => a.name.localeCompare(b.name, undefined, NATURAL);
     const primary = {
         size: (a, b) => b.size - a.size,
         mtime: (a, b) => b.mtime - a.mtime,
+        trashed: (a, b) => b.trashed - a.trashed,
         kind: (a, b) => a.class < b.class ? -1 : a.class > b.class ? 1 : 0
     }[key] ?? byName;
     return merged(entries, (a, b) => {
-        if ((a.kind === "dir") !== (b.kind === "dir"))
+        if (key !== "trashed" && (a.kind === "dir") !== (b.kind === "dir"))
             return a.kind === "dir" ? -1 : 1;
         return sign * primary(a, b) || byName(a, b);
     });

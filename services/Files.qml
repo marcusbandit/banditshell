@@ -10,6 +10,7 @@ import "quoting.js" as Quoting
 import "files-order.js" as FilesOrder
 import "files-conflicts.js" as Conflicts
 import "files-find.js" as Find
+import "files-trash.js" as Trash
 
 Singleton {
     id: root
@@ -21,6 +22,11 @@ Singleton {
     }
 
     property string cwd: root.home
+
+    readonly property string trashHome: `${Quickshell.env("XDG_DATA_HOME") || root.home + "/.local/share"}/Trash`
+    readonly property string trashFiles: `${root.trashHome}/files`
+    readonly property bool trashTop: root.cwd === root.trashFiles
+    readonly property bool inTrash: Trash.within(root.cwd, root.trashFiles)
 
     property var entries: []
     property string error: ""
@@ -37,12 +43,13 @@ Singleton {
         const query = root.search.trim().toLowerCase();
         const matched = query === "" ? all : all.filter(e => e.name.toLowerCase().includes(query));
 
-        const order = list => FilesOrder.ordered(list, root.sort, root.reversed);
+        const how = root.trashTop ? FilesOrder.trashOrder(root.sort, root.reversed) : {key: root.sort, reversed: root.reversed};
+        const order = list => FilesOrder.ordered(list, how.key, how.reversed);
         return FilesFind.active ? Find.grouped(matched, FilesFind.results, root.cwd, order) : order(matched);
     }
 
-    onSearchChanged: FilesFind.ask(root.search, root.cwd, root.showHidden)
-    onShowHiddenChanged: FilesFind.ask(root.search, root.cwd, root.showHidden)
+    onSearchChanged: FilesFind.ask(root.inTrash ? "" : root.search, root.cwd, root.showHidden)
+    onShowHiddenChanged: FilesFind.ask(root.inTrash ? "" : root.search, root.cwd, root.showHidden)
 
     function keyOf(entry: var): string {
         return entry.key ?? entry.name;
@@ -74,9 +81,10 @@ Singleton {
     readonly property var pickedPaths: root.picks.map(e => root.pathOf(e))
 
     readonly property var crumbs: {
-        const parts = root.cwd.split("/").filter(p => p.length > 0);
-        const out = [{name: "/", path: "/"}];
-        let path = "";
+        const inside = root.inTrash;
+        const parts = (inside ? root.cwd.slice(root.trashFiles.length) : root.cwd).split("/").filter(p => p.length > 0);
+        const out = [inside ? {name: "Trash", path: root.trashFiles} : {name: "/", path: "/"}];
+        let path = inside ? root.trashFiles : "";
         for (const part of parts) {
             path += `/${part}`;
             out.push({name: part, path: path});
@@ -189,7 +197,7 @@ Singleton {
         const path = root.pathOf(entry);
         if (entry.kind === "dir")
             root.go(path);
-        else if (entry.key)
+        else if (entry.key && !entry.trash)
             root.goTo(path);
         else
             System.openWith(path);
@@ -209,6 +217,7 @@ Singleton {
     property int generation: 0
     property var latestListing: null
     property bool listing: false
+    property bool listingTrash: false
     property real listingSince: 0
     property bool again: false
     property bool watched: false
@@ -219,13 +228,14 @@ Singleton {
             return;
         root.generation += 1;
         root.listing = true;
+        root.listingTrash = root.cwd === root.trashFiles;
         root.listingSince = Date.now();
         root.again = false;
         root.watched = false;
         if (root.latestListing)
             root.latestListing.running = false;
         root.latestListing = lister.createObject(root, {
-            command: [root.helper("bs-ls"), root.cwd],
+            command: root.listingTrash ? Trash.readCommand(root.helper("bs-ls"), root.trashHome, root.mounts) : [root.helper("bs-ls"), root.cwd],
             generation: root.generation,
             running: true
         });
@@ -250,7 +260,11 @@ Singleton {
         const began = Date.now();
         const was = root.cursor;
         try {
-            const answer = JSON.parse(text);
+            const answer = root.listingTrash ? {
+                path: root.cwd,
+                ok: true,
+                entries: Trash.entries(Trash.parse(text))
+            } : JSON.parse(text);
 
             if (answer.path !== root.cwd)
                 return;
@@ -436,6 +450,10 @@ Singleton {
     ]
 
     property var drives: []
+    property var mounts: []
+
+    onMountsChanged: if (root.trashTop)
+        root.refresh()
 
     function refreshPlaces(): void {
         placer.running = false;
@@ -453,7 +471,7 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 const found = text.split("\n").filter(l => l.length > 0);
-                root.places = root.placeSpec.filter(p => found.includes(p.path));
+                root.places = [...root.placeSpec.filter(p => found.includes(p.path)), {name: "Trash", icon: "delete", path: root.trashFiles}];
             }
         }
     }
@@ -466,6 +484,7 @@ Singleton {
                 try {
                     const tree = JSON.parse(text).blockdevices ?? [];
                     const out = [];
+                    const mounted = [];
 
                     const walk = (node, removable) => {
                         const rm = removable || node.rm === true || node.rm === "1";
@@ -473,6 +492,8 @@ Singleton {
                         for (const where of node.mountpoints ?? []) {
                             if (!where)
                                 continue;
+                            if (where.startsWith("/") && !mounted.includes(where))
+                                mounted.push(where);
                             const volume = where.startsWith("/mnt/") || where.startsWith("/media/") || where.startsWith("/run/media/");
                             if (!rm && !volume)
                                 continue;
@@ -495,6 +516,8 @@ Singleton {
                         walk(device, false);
 
                     root.drives = out;
+                    if (mounted.join("\n") !== root.mounts.join("\n"))
+                        root.mounts = mounted;
 
                     if (out.length > 0) {
                         usage.running = false;
@@ -911,12 +934,12 @@ Singleton {
     }
 
     function makeFolder(name: string): void {
-        if (name)
+        if (name && !root.inTrash)
             root.run(["mkdir", "-p", "--"], [root.join(root.cwd, name)]);
     }
 
     function makeFile(name: string): void {
-        if (name)
+        if (name && !root.inTrash)
             root.run(["touch", "--"], [root.join(root.cwd, name)]);
     }
 
@@ -928,11 +951,12 @@ Singleton {
         if (!path || !name)
             return;
         const to = root.join(root.parentOf(path), name);
-        if (to !== path)
+        if (to !== path && !Trash.trashed(path, root.trashFiles))
             FilesUndo.renaming(path, to, () => root.run(["mv", "-i", "--"], [path, to]));
     }
 
-    function trash(paths: var): void {
+    function trash(given: var): void {
+        const paths = given.filter(path => !Trash.trashed(path, root.trashFiles));
         if (paths.length === 0)
             return;
         root.run(["gio", "trash", "--"], paths);
@@ -943,7 +967,8 @@ Singleton {
     function deleteForever(paths: var): void {
         if (paths.length === 0)
             return;
-        root.run(["rm", "-rf", "--"], paths);
+        const infos = root.entries.filter(e => e.trash && paths.includes(e.key)).map(e => Trash.infoPath(e.trash));
+        root.run(["rm", "-rf", "--"], [...paths, ...infos]);
         FilesFind.forget(paths);
     }
 
@@ -951,7 +976,26 @@ Singleton {
         FilesPaste.start(paths, dir, false);
     }
 
+    function placeOf(dir: string): string {
+        const place = Find.place(dir, root.home);
+        return place === "~" ? "~/" : place;
+    }
+
+    function originPlace(entry: var): string {
+        return entry && entry.trash && entry.dir ? root.placeOf(entry.dir) : "";
+    }
+
+    function restore(entries: var): void {
+        FilesUndo.restore(entries.filter(e => e.trash?.path).map(e => e.trash));
+    }
+
     function moveInto(paths: var, dir: string): void {
+        if (Trash.within(dir, root.trashFiles))
+            return root.trash(paths);
+        if (paths.some(path => Trash.trashed(path, root.trashFiles))) {
+            root.failure = "Restore takes things out of the trash";
+            return;
+        }
         FilesPaste.start(paths, dir, true);
         FilesFind.forget(paths);
     }
@@ -960,12 +1004,14 @@ Singleton {
     property bool clipboardCut: false
 
     function clip(paths: var, cut: bool): void {
+        if (cut && paths.some(path => Trash.trashed(path, root.trashFiles)))
+            return;
         root.clipboard = paths;
         root.clipboardCut = cut;
     }
 
     function paste(): void {
-        if (root.clipboard.length === 0)
+        if (root.clipboard.length === 0 || root.inTrash)
             return;
         if (root.clipboardCut) {
             const moving = root.clipboard;

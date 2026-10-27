@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Order = lib("services/files-order.js", ["SORTS", "SORT_WORDS", "orderWords", "foldersNote", "ordered", "merged"]);
+const Order = lib("services/files-order.js", ["SORTS", "SORT_WORDS", "orderWords", "foldersNote", "ordered", "merged", "trashOrder"]);
 const Catalogue = lib("modules/settings/catalogue.js", ["ROW_BY_KEY", "PAGE_BY_ID", "options", "filesSortOrder", "filesFoldersNote"]);
 const Configuration = lib("config/configuration.js", ["merge", "upgrade"]);
 
@@ -85,6 +85,16 @@ test.describe("files order", () => {
         assert.deepStrictEqual([run("mtime"), back("mtime")], ["zdir adir b.txt c.md a.png d.png", "adir zdir a.png d.png c.md b.txt"]);
         assert.deepStrictEqual([run("size"), back("size")], ["adir zdir a.png d.png c.md b.txt", "adir zdir b.txt c.md a.png d.png"]);
         assert.deepStrictEqual([run("kind"), back("kind")], ["adir zdir a.png d.png c.md b.txt", "adir zdir b.txt c.md a.png d.png"]);
+    });
+
+    test.it("the trash lists the newest trashed first, folders among files, unless sorted by size or type", () => {
+        const trashed = entries.map((e, i) => Object.assign({}, e, {trashed: [100, 400, 200, 300][i]}));
+        const listed = how => Order.ordered(trashed, how.key, how.reversed).map(e => e.name);
+        assert.deepStrictEqual(listed(Order.trashOrder("name", false)), ["a.png", "zdir", "c.md", "b.txt"]);
+        assert.deepStrictEqual(listed(Order.trashOrder("name", true)), ["a.png", "zdir", "c.md", "b.txt"]);
+        assert.deepStrictEqual(listed(Order.trashOrder("mtime", true)), ["b.txt", "c.md", "zdir", "a.png"]);
+        assert.deepStrictEqual(Order.trashOrder("size", true), {key: "size", reversed: true});
+        assert.deepStrictEqual(Order.trashOrder("kind", false), {key: "kind", reversed: false});
     });
 
     test.it("an unknown sort runs by name, and Z to A turns it round", () => {

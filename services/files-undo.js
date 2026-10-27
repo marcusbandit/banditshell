@@ -16,13 +16,6 @@ var TRASH_COPIES = 'for p; do '
     + 'elif gio trash -- "$p"; then echo ok; '
     + 'else echo failed; fi; done';
 
-var RESTORE = 'for u; do '
-    + 'if [ "$u" = - ]; then echo gone; '
-    + 'elif gio trash --restore -- "$u"; then echo ok; '
-    + 'else echo taken; fi; done';
-
-var TRASH_LISTING = ["gio", "list", "-u", "-a", "trash::orig-path,trash::deletion-date", "trash:///"];
-
 function baseName(path) {
     var trimmed = path.length > 1 ? path.replace(/\/+$/, "") : path;
     return trimmed.slice(trimmed.lastIndexOf("/") + 1);
@@ -106,46 +99,6 @@ function existing(paths, text) {
     return out;
 }
 
-function unescapeBytes(text) {
-    if (text.indexOf("\\x") < 0)
-        return text;
-    var encoded = text.replace(/\\x([0-9a-fA-F]{2})|[^\\]+|\\/g, function (piece, hex) {
-        return hex !== undefined ? "%" + hex : encodeURIComponent(piece);
-    });
-    try {
-        return decodeURIComponent(encoded);
-    } catch (e) {
-        return text;
-    }
-}
-
-function stampSeconds(stamp) {
-    var m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)/.exec(stamp);
-    if (!m)
-        return NaN;
-    return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) / 1000;
-}
-
-function parseTrash(text) {
-    var out = [];
-    var lines = text.split("\n");
-    for (var i = 0; i < lines.length; i++) {
-        var fields = lines[i].split("\t");
-        if (fields.length < 4 || fields[0].indexOf("trash:///") !== 0)
-            continue;
-        var attributes = fields.slice(3).join("\t");
-        var date = /(?:^| )trash::deletion-date=(\S+)/.exec(attributes);
-        if (!date)
-            continue;
-        var rest = attributes.slice(0, date.index) + attributes.slice(date.index + date[0].length);
-        var origin = /(?:^| )trash::orig-path=(.*)$/.exec(rest);
-        if (!origin)
-            continue;
-        out.push({uri: fields[0], path: unescapeBytes(origin[1].replace(/ +$/, "")), deleted: stampSeconds(date[1])});
-    }
-    return out;
-}
-
 function pick(items, entry) {
     var taken = [];
     var out = [];
@@ -153,21 +106,19 @@ function pick(items, entry) {
         var best = null;
         for (var j = 0; j < items.length; j++) {
             var item = items[j];
-            if (item.path !== entry.paths[i] || taken.indexOf(item.uri) >= 0 || !(item.deleted >= entry.at - SLACK))
+            if (item.path !== entry.paths[i] || taken.indexOf(item) >= 0 || !(item.deleted >= entry.at - SLACK))
                 continue;
             if (!best || Math.abs(item.deleted - entry.at) < Math.abs(best.deleted - entry.at))
                 best = item;
         }
         if (best)
-            taken.push(best.uri);
-        out.push(best ? best.uri : "-");
+            taken.push(best);
+        out.push(best);
     }
     return out;
 }
 
-function command(entry, uris) {
-    if (entry.kind === "trash")
-        return ["sh", "-c", RESTORE, "sh"].concat(uris);
+function command(entry) {
     if (entry.kind === "copy")
         return ["sh", "-c", TRASH_COPIES, "sh"].concat(entry.pairs.map(function (pair) {
             return pair.to;
@@ -216,7 +167,7 @@ function listed(paths, many) {
     return paths.length + " " + many;
 }
 
-function folder(paths, here, home) {
+function folder(paths, here, home, named) {
     var parents = [];
     for (var i = 0; i < paths.length; i++) {
         var parent = parentOf(paths[i]);
@@ -227,10 +178,12 @@ function folder(paths, here, home) {
         return "";
     if (parents.length > 1)
         return parents.length + " folders";
+    if (named)
+        return named(parents[0]);
     return parents[0] === home ? "Home" : parents[0] === "/" ? "/" : baseName(parents[0]);
 }
 
-function summary(entry, counts, here, home) {
+function summary(entry, counts, here, home, named) {
     var total = size(entry);
     var one = total === 1;
     var name = baseName(items(entry)[0]);
@@ -239,7 +192,7 @@ function summary(entry, counts, here, home) {
 
     if (counts.ok > 0) {
         var done = counts.done;
-        var where = folder(done, here, home);
+        var where = folder(done, here, home, named);
         var rest = counts.ok < total ? ", " + (total - counts.ok) + " could not be" : "";
         switch (entry.kind) {
         case "trash":
@@ -267,13 +220,13 @@ function summary(entry, counts, here, home) {
     return one ? name + " could not be brought back" : "Nothing could be brought back";
 }
 
-function report(entry, texts, here, home) {
+function report(entry, texts, here, home, named) {
     if (entry.kind !== "batch") {
         var counts = outcome(entry, texts[0] || "");
-        return {ok: counts.ok > 0, text: summary(entry, counts, here, home), shown: entry.kind === "copy" ? [] : counts.done};
+        return {ok: counts.ok > 0, text: summary(entry, counts, here, home, named), shown: entry.kind === "copy" ? [] : counts.done};
     }
     var told = entry.parts.map(function (part, i) {
-        return report(part, [texts[i] || ""], here, home);
+        return report(part, [texts[i] || ""], here, home, named);
     });
     var ok = told.some(function (one) {
         return one.ok;
