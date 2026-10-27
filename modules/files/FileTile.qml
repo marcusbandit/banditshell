@@ -16,6 +16,7 @@ Item {
     readonly property var entry: root.modelData
     readonly property string path: Files.pathOf(root.entry)
     readonly property string place: root.entry.dir ? Find.place(root.entry.dir, Files.home) : ""
+    readonly property string folder: root.entry.dir ? Find.folderName(root.entry.dir, Files.home) : ""
 
     property bool picked: false
     property bool focused: false
@@ -126,10 +127,10 @@ Item {
             visible: root.place !== ""
             horizontalAlignment: Text.AlignHCenter
 
-            text: root.place
+            text: root.folder
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
-            elide: Text.ElideMiddle
+            elide: Text.ElideRight
         }
     }
 
@@ -167,7 +168,8 @@ Item {
             anchors.left: rowMark.right
             anchors.leftMargin: Appearance.padding.small
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(rowName.implicitWidth, (rowSize.x - rowMark.width - Appearance.padding.normal) * (root.place ? 0.6 : 1))
+            readonly property real room: rowSize.x - rowName.x - Appearance.padding.normal * 2
+            width: Math.min(rowName.implicitWidth, root.place ? Math.max(rowName.room - placeInk.advanceWidth, rowName.room * 0.65) : rowName.room)
 
             text: root.entry.name
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
@@ -176,6 +178,8 @@ Item {
         }
 
         StyledText {
+            id: rowPlace
+
             anchors.left: rowName.right
             anchors.leftMargin: Appearance.padding.normal
             anchors.right: rowSize.left
@@ -183,10 +187,17 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             visible: root.place !== ""
 
-            text: root.place
+            text: placeInk.advanceWidth <= rowPlace.width ? root.place : root.folder
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
-            elide: Text.ElideMiddle
+            elide: Text.ElideRight
             color: Appearance.colour.textFaint
+
+            TextMetrics {
+                id: placeInk
+
+                font: rowPlace.font
+                text: root.place
+            }
         }
 
         StyledText {

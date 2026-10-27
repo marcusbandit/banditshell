@@ -38,9 +38,9 @@ Singleton {
     readonly property string summary: {
         const folders = `${root.scanned.toLocaleString()} ${root.scanned === 1 ? "folder" : "folders"}`;
         if (root.running)
-            return `searching, ${folders} so far`;
+            return root.scanned > 0 ? `searching, ${folders} so far` : "searching";
         if (root.stopped)
-            return `stopped after ${folders}`;
+            return root.scanned > 0 ? `stopped after ${folders}` : "stopped";
         if (root.capped)
             return `the first ${root.limit.toLocaleString()} matches`;
         return root.finished ? `${folders} searched` : "";

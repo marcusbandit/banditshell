@@ -271,7 +271,7 @@ Item {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
 
-        implicitWidth: search.shown ? root.width * 0.5 : glass.implicitWidth + Appearance.padding.normal
+        implicitWidth: Files.searching ? root.width * 0.5 : search.shown ? root.width * 0.4 : glass.implicitWidth + Appearance.padding.normal
         implicitHeight: Math.max(field.implicitHeight + Appearance.padding.small * 2, scope.visible ? scope.height : 0)
 
         SquircleRect {

@@ -1083,6 +1083,9 @@ banditshell/
 │   │                            having. THE SHELL OWNS THE DIRECTORY; see 17.
 │   │                            home and openWith forward to System, and a
 │   │                            reveal request from System lands here
+│   ├── FilesFind.qml            the file browser's search across home: one
+│   │                            bs-ls --find walk at a time, streamed in
+│   │                            batches, stopped by a keystroke or Esc
 │   ├── FilesUndo.qml            what Ctrl+Z can take back in the browser:
 │   │                            trash, move, rename, paste. A delete comes
 │   │                            back through gio's own trash record, and
@@ -3893,6 +3896,19 @@ read, repeated, or undone by hand. A file manager that does something to your
 disk and tells you nothing is the thing this is not. Deletion goes to the trash
 through `gio`; permanent deletion is a separate verb that asks you to type the
 word, because it is the one action here that reading the history cannot reverse.
+
+**Search reaches home, and the open folder answers first.** The field's switch
+picks This folder or Home, and Tab flips it. This folder filters the listing
+already in hand. Home also runs `bs-ls --find`, which walks home breadth first,
+so shallow matches arrive before deep ones, and walks the open folder before the
+rest. Its matches stream in as JSON lines in the listing's own shape plus the
+folder they live in, so a result is a tile like any other. The walk never follows
+a symlink and stays on one filesystem. It skips caches, `.git`, `node_modules`,
+the Trash and key stores unless the window's setting says otherwise. A keystroke
+kills the running walk before the next one starts, Esc stops it and keeps what
+it found, and it stops by itself at a thousand matches. A result is held by its
+full path rather than its name, because home has a hundred `README.md`s. Enter
+on a found file opens its folder with the file selected.
 
 **The path bar takes a path.** The crumbs stay - they go back several steps in one
 press, and they are drop targets - but the strip is a field as well, on Ctrl+L or

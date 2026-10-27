@@ -69,6 +69,12 @@ function place(dir, home) {
     return within(dir, home) ? `~/${dir.slice(home.length).replace(/^\/+/, "")}` : dir;
 }
 
+function folderName(dir, home) {
+    if (dir === home)
+        return "~";
+    return dir.slice(dir.lastIndexOf("/") + 1) || "/";
+}
+
 function named(entries, query) {
     const q = query.trim().toLowerCase();
     return entries.filter(e => e.name.toLowerCase().includes(q));

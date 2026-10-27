@@ -12,7 +12,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Find = lib("services/files-find.js", ["LEAST", "LIMIT", "SKIP_NAMES", "SKIP_PATHS", "command", "parse", "place", "named", "narrows", "merged", "grouped", "searchable"]);
+const Find = lib("services/files-find.js", ["LEAST", "LIMIT", "SKIP_NAMES", "SKIP_PATHS", "command", "parse", "place", "folderName", "named", "narrows", "merged", "grouped", "searchable"]);
 const Order = lib("services/files-order.js", ["ordered"]);
 
 const HOME = "/home/ada";
@@ -87,6 +87,8 @@ test.describe("reading what the walk says", () => {
         assert.strictEqual(Find.place(HOME, HOME), "~");
         assert.strictEqual(Find.place(`${HOME}/Documents/work`, HOME), "~/Documents/work");
         assert.strictEqual(Find.place("/home/adam/x", HOME), "/home/adam/x");
+        assert.strictEqual(Find.folderName(`${HOME}/Pictures/Scans`, HOME), "Scans");
+        assert.strictEqual(Find.folderName(HOME, HOME), "~");
     });
 });
 
