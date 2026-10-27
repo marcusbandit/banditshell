@@ -13,10 +13,11 @@ DRY_RUN=0
 WANT_UI=1
 LIST_ONLY=0
 WANT_CHARGE_LIMIT=0
+BESIDE_OMARCHY="${BANDITSHELL_BESIDE_OMARCHY:-0}"
 
 usage() {
     cat <<EOF
-usage: install.sh [--dry-run] [--no-ui] [--list] [--charge-limit]
+usage: install.sh [--dry-run] [--no-ui] [--list] [--charge-limit] [--beside-omarchy]
 
 A fresh clone on main first moves to the newest release, the version the
 update loop follows by default. Then it installs what banditshell needs: the
@@ -38,6 +39,10 @@ installing.
   --no-ui     stay in the terminal; no progress window
   --list      print the steps and exit
 
+  --beside-omarchy  install the full shell on Omarchy without asking. Its
+                    notifications then fight Omarchy's own; the island plugin
+                    is the one meant for Omarchy.
+
   --charge-limit   opt in to holding the battery charge. Writing the battery's
                    charge_control_end_threshold needs root, so this installs a
                    small helper into /usr/local/libexec and a polkit action that
@@ -53,6 +58,7 @@ for arg in "$@"; do
     --no-ui) WANT_UI=0 ;;
     --list) LIST_ONLY=1 ;;
     --charge-limit) WANT_CHARGE_LIMIT=1 ;;
+    --beside-omarchy) BESIDE_OMARCHY=1 ;;
     -h | --help) usage; exit 0 ;;
     *) echo "install.sh: unknown option: $arg" >&2; usage >&2; exit 2 ;;
     esac
@@ -350,7 +356,10 @@ need_root() {
             askpass_stop
             return 0
         fi
+        local why
+        why="$(head -n 1 "$ASKPASS_RUN/why" 2>/dev/null)"
         askpass_stop
+        [ -z "$why" ] || say "  $why"
         say "  (graphical prompt did not complete, falling back to the terminal)"
     fi
 
@@ -836,6 +845,41 @@ run_step() {
     return 0
 }
 
+OMARCHY_SYSTEM=/usr/share/omarchy
+ISLAND_ADD="omarchy plugin add https://github.com/marcusbandit/banditshell-island.git --enable"
+
+omarchy_present() {
+    local dir
+    for dir in "${OMARCHY_PATH:-}" "$HOME/.local/share/omarchy" "$OMARCHY_SYSTEM"; do
+        [ -n "$dir" ] && [ -e "$dir/bin/omarchy-version" ] && return 0
+    done
+    return 1
+}
+
+can_ask() { [ -t 0 ]; }
+
+omarchy_check() {
+    [ "$BESIDE_OMARCHY" -eq 0 ] && omarchy_present || return 0
+    say "Omarchy already shows your notifications, and the full banditshell would fight it for them."
+    say "banditshell island is the one made for Omarchy: the notification, music and lyrics"
+    say "pill, as an Omarchy plugin. Add it with:"
+    say "    $ISLAND_ADD"
+    say ""
+    if ! can_ask; then
+        say "Nothing was installed. To put the full shell beside Omarchy anyway:"
+        say "    $REPO/install.sh --beside-omarchy"
+        return 1
+    fi
+    local answer=""
+    printf 'Install the full shell beside Omarchy anyway? [y/N] '
+    read -r answer || true
+    case "$answer" in
+    [yY] | [yY][eE][sS]) BESIDE_OMARCHY=1 ;;
+    *) say "Nothing was installed."; return 1 ;;
+    esac
+    say ""
+}
+
 release_due() {
     local config="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json" stable
     RELEASE_NOTE=""
@@ -876,8 +920,16 @@ checkout_release() {
 }
 
 main() {
-    if [ "$LIST_ONLY" -eq 0 ] && checkout_release; then
-        BANDITSHELL_ON_RELEASE=1 exec bash "$REPO/install.sh" "${INSTALL_ARGS[@]}"
+    if [ "$LIST_ONLY" -eq 0 ]; then
+        omarchy_check || exit 1
+        if checkout_release; then
+            local arg
+            local -a args=()
+            for arg in "${INSTALL_ARGS[@]}"; do
+                [ "$arg" = --beside-omarchy ] || args+=("$arg")
+            done
+            BANDITSHELL_ON_RELEASE=1 BANDITSHELL_BESIDE_OMARCHY="$BESIDE_OMARCHY" exec bash "$REPO/install.sh" "${args[@]}"
+        fi
     fi
     detect_manager
     build_table

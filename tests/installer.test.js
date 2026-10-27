@@ -1,0 +1,129 @@
+const test = require("node:test");
+const assert = require("node:assert");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const { spawnSync } = require("node:child_process");
+
+const ROOT = path.resolve(__dirname, "..");
+const ASKPASS = path.join(ROOT, "installer/askpass.sh");
+const roots = [];
+
+test.after(() => {
+    for (const dir of roots) {
+        try { process.kill(Number(fs.readFileSync(path.join(dir, "run/ui.pid"), "utf8"))); } catch {}
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+function world(tools = {}) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "installer-"));
+    roots.push(dir);
+    fs.mkdirSync(path.join(dir, "bin"));
+    fs.mkdirSync(path.join(dir, "home"));
+    for (const [name, body] of Object.entries(tools)) {
+        fs.writeFileSync(path.join(dir, "bin", name), `#!/usr/bin/env bash\n${body}\n`);
+        fs.chmodSync(path.join(dir, "bin", name), 0o755);
+    }
+    return dir;
+}
+
+const WINDOW = 'd="$BANDITSHELL_ASKPASS_DIR"; touch "$d/ready"; read -r line <"$d/req"';
+
+function env(dir, extra = {}) {
+    return { PATH: `${dir}/bin:${process.env.PATH}`, HOME: `${dir}/home`, BANDITSHELL_ASKPASS_DIR: `${dir}/run`, ...extra };
+}
+
+function askpass(dir, extra) {
+    const started = Date.now();
+    const out = spawnSync("bash", [ASKPASS], { encoding: "utf8", timeout: 15000, env: env(dir, extra) });
+    return { ...out, seconds: (Date.now() - started) / 1000 };
+}
+
+function installer(dir, snippet, extra = {}) {
+    return spawnSync("bash", ["-c", `source "${path.join(ROOT, "install.sh")}"; OMARCHY_SYSTEM="${dir}/system-omarchy"; ${snippet}`],
+        { encoding: "utf8", timeout: 15000, env: env(dir, { LANG: "C.UTF-8", ...extra }) });
+}
+
+function omarchy(dir, where = "home/.local/share/omarchy") {
+    fs.mkdirSync(path.join(dir, where, "bin"), { recursive: true });
+    fs.writeFileSync(path.join(dir, where, "bin/omarchy-version"), "");
+}
+
+test.describe("the password window", () => {
+    test.it("hands back what the window answered", () => {
+        const dir = world({ qs: `${WINDOW}; printf 'hunter 2\\n' >"$d/rsp"; exec sleep 30` });
+        const out = askpass(dir);
+        assert.strictEqual(out.status, 0, out.stderr);
+        assert.strictEqual(out.stdout, "hunter 2\n");
+    });
+
+    test.it("gives up at once when the window dies after taking the request", () => {
+        const dir = world({ qs: `${WINDOW}; exit 0` });
+        const out = askpass(dir);
+        assert.strictEqual(out.status, 1);
+        assert.ok(out.seconds < 5, `took ${out.seconds}s`);
+        assert.strictEqual(out.stdout, "");
+        assert.match(fs.readFileSync(path.join(dir, "run/why"), "utf8"), /closed without an answer/);
+    });
+
+    test.it("stops waiting on a window that never answers", () => {
+        const dir = world({ qs: `${WINDOW}; exec sleep 30` });
+        const out = askpass(dir, { BANDITSHELL_ASKPASS_WAIT: "2" });
+        assert.strictEqual(out.status, 1);
+        assert.ok(out.seconds < 6, `took ${out.seconds}s`);
+        assert.match(out.stderr, /no answer from the password window in 2 seconds/);
+    });
+
+    test.it("tells the installer why, then falls back to the terminal", () => {
+        const dir = world({
+            qs: `${WINDOW}; exit 0`,
+            sudo: '[ "$1" = -A ] && { "$SUDO_ASKPASS" >/dev/null || exit 1; exit 0; }\nexit 1'
+        });
+        const out = installer(dir, `UI_DIR="${ROOT}/installer"; ASKPASS_RUN="${dir}/run"; need_root; echo "root $?"`, { WAYLAND_DISPLAY: "wayland-test" });
+        assert.match(out.stdout, /the password window closed without an answer\n.*falling back to the terminal/);
+        assert.match(out.stdout, /authentication failed \(3 of 3\)\nroot 1\n$/);
+    });
+});
+
+test.describe("Omarchy", () => {
+    test.it("stops before installing and points at the island plugin", () => {
+        const dir = world();
+        omarchy(dir);
+        const out = installer(dir, `omarchy_check </dev/null; echo "go $?"`);
+        assert.match(out.stdout, /fight it for them/);
+        assert.match(out.stdout, /omarchy plugin add https:\/\/github\.com\/marcusbandit\/banditshell-island\.git --enable/);
+        assert.match(out.stdout, /install\.sh --beside-omarchy\ngo 1\n$/);
+    });
+
+    test.it("finds the packaged install and the one OMARCHY_PATH names", () => {
+        const dir = world();
+        omarchy(dir, "system-omarchy");
+        omarchy(dir, "elsewhere");
+        assert.match(installer(dir, "omarchy_present; echo $?").stdout, /^0$/m);
+        fs.rmSync(path.join(dir, "system-omarchy"), { recursive: true });
+        assert.match(installer(dir, "omarchy_present; echo $?").stdout, /^1$/m);
+        assert.match(installer(dir, "omarchy_present; echo $?", { OMARCHY_PATH: `${dir}/elsewhere` }).stdout, /^0$/m);
+    });
+
+    test.it("goes on when the person says yes, and only then", () => {
+        const dir = world();
+        omarchy(dir);
+        assert.match(installer(dir, `can_ask() { true; }; omarchy_check <<<y >/dev/null; echo "go $? $BESIDE_OMARCHY"`).stdout, /go 0 1\n$/);
+        assert.match(installer(dir, `can_ask() { true; }; omarchy_check <<<"" >/dev/null; echo "go $? $BESIDE_OMARCHY"`).stdout, /go 1 0\n$/);
+        assert.strictEqual(installer(dir, `BESIDE_OMARCHY=1; omarchy_check; echo "go $?"`).stdout, "go 0\n");
+    });
+
+    test.it("keeps the choice across the move to the release, which may not know the flag", () => {
+        const dir = world();
+        omarchy(dir);
+        fs.writeFileSync(path.join(dir, "install.sh"), 'echo "args [$*] beside $BANDITSHELL_BESIDE_OMARCHY release $BANDITSHELL_ON_RELEASE"\n');
+        const out = installer(dir, `REPO="${dir}"; INSTALL_ARGS=(--dry-run --beside-omarchy); BESIDE_OMARCHY=1; checkout_release() { return 0; }; main`);
+        assert.strictEqual(out.stdout, "args [--dry-run] beside 1 release 1\n");
+    });
+
+    test.it("says nothing where there is no Omarchy", () => {
+        const out = installer(world(), `omarchy_check </dev/null; echo "go $?"`);
+        assert.strictEqual(out.stdout, "go 0\n");
+    });
+});

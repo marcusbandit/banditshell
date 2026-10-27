@@ -41,13 +41,36 @@ attempt="$(cat "$TRIES" 2>/dev/null || echo 1)"
 token="ask"
 [ "$attempt" -gt 1 ] && token="retry"
 
-if ! timeout 20 sh -c 'printf "%s\n" "$1" > "$2"' _ "$token" "$REQ"; then
+give_up() {
+    printf '%s\n' "$1" >"$DIR/why"
+    printf 'askpass: %s\n' "$1" >&2
     exit 1
+}
+
+rm -f "$DIR/why"
+
+if ! timeout 20 sh -c 'printf "%s\n" "$1" > "$2"' _ "$token" "$REQ"; then
+    give_up "the password window did not take the request"
 fi
 
-if ! IFS= read -r -t 300 secret <"$RSP"; then
-    exit 1
-fi
+exec 3<>"$RSP" || exit 1
+secret=""
+waited=0
+wait_limit="${BANDITSHELL_ASKPASS_WAIT:-300}"
+while :; do
+    alive=0
+    ui_alive && alive=1
+    IFS= read -r -t 1 part <&3
+    status=$?
+    secret="$secret$part"
+    [ "$status" -eq 0 ] && break
+    [ "$status" -gt 128 ] || give_up "the password window closed without an answer"
+    [ "$alive" -eq 1 ] || give_up "the password window closed without an answer"
+    waited=$((waited + 1))
+    [ "$waited" -lt "$wait_limit" ] || give_up "no answer from the password window in $wait_limit seconds"
+done
+unset part
+exec 3<&-
 
 if [ -f "$DIR/cancelled" ]; then
     unset secret

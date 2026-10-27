@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-28",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The installer stops waiting when its password window closes"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "On Omarchy, the installer offers the island plugin first"
+        }
+      ]
+    },
+    {
       "id": "2026-10-27-7",
       "date": "2026-10-27",
       "changes": [
