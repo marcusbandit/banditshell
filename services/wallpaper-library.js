@@ -4,6 +4,11 @@ function read(line) {
     const bits = String(line ?? "").split("\t");
     const path = bits[1] ?? "";
     switch (bits[0]) {
+    case "begin":
+        return bits.length === 2 && path ? {
+            kind: "begin",
+            path
+        } : null;
     case "file":
         return bits.length === 2 && path ? {
             kind: "file",

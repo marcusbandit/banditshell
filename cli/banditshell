@@ -1048,18 +1048,14 @@ session_locked() {
 frozen_pid() {
     local pid
     for pid in $(shell_pids); do
-        (cd "$HOME" && timeout 5 qs ipc --pid "$pid" call shell status) >/dev/null 2>&1 && continue
+        answers "$pid" && continue
         kill -0 "$pid" 2>/dev/null && { echo "$pid"; return 0; }
     done
     return 1
 }
 
 shell_answering() {
-    local pid
-    for pid in $(shell_pids); do
-        (cd "$HOME" && timeout 5 qs ipc --pid "$pid" call shell status) >/dev/null 2>&1 && return 0
-    done
-    return 1
+    answering_pid >/dev/null
 }
 
 dump_frozen() {

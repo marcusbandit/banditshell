@@ -100,11 +100,13 @@ PanelWindow {
 
     onHeldTitleChanged: if (sampler.running)
         picture.captureFrame()
+    onHeldChanged: if (sampler.running)
+        picture.captureFrame()
 
     Timer {
         id: sampler
 
-        interval: 1000
+        interval: picture.hasContent ? 1000 : 125
         repeat: true
         triggeredOnStart: true
         running: picture.captureSource !== null && win.covering

@@ -427,6 +427,7 @@ Singleton {
             lister.running = false;
         }
 
+        lister.listening = false;
         lister.found = [];
         lister.shapes = {};
         lister.posters = {};
@@ -451,10 +452,17 @@ Singleton {
         const heard = Library.read(line);
         if (!heard)
             return;
+        if (heard.kind === "begin") {
+            lister.listening = heard.path === lister.command[4];
+            return;
+        }
+        if (!lister.listening)
+            return;
         if (heard.kind === "file") {
             lister.found.push(heard.path);
         } else if (heard.kind === "listed") {
             root.list(lister.found, heard.changed);
+            lister.found = [];
         } else if (heard.kind === "shape") {
             lister.shapes[heard.path] = heard.width > 0 ? Qt.size(heard.width, heard.height) : null;
             publish.start();
@@ -509,6 +517,7 @@ Singleton {
     Process {
         id: lister
 
+        property bool listening: false
         property var found: []
         property var shapes: ({})
         property var posters: ({})

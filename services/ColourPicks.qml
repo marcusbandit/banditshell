@@ -156,17 +156,10 @@ Singleton {
                 return;
             }
             root.installing = "terminal";
-            terminal.running = true;
+            Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `${Shells.quote(root.installer)} --ask ${root.packages.map(Shells.quote).join(" ")}`]);
             watch.started = Date.now();
             watch.spent = false;
         }
-    }
-
-    Process {
-        id: terminal
-
-        command: [`${Quickshell.shellDir}/scripts/in-terminal.sh`, `${Shells.quote(root.installer)} --ask ${root.packages.map(Shells.quote).join(" ")}`]
-        onExited: root.probe()
     }
 
     Backoff {

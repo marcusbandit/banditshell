@@ -49,7 +49,7 @@ Item {
     FrameAnimation {
         running: root.watched && root.visible && Media.playing && root.timed
 
-        onTriggered: root.live = Math.max(0, Math.min(1, Media.now() / Media.length))
+        onTriggered: root.live = Media.progressNow()
     }
 
     function catchUp(): void {

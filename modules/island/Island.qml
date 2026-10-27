@@ -767,7 +767,7 @@ Item {
         const bottom = top + root.y + root.islandTop + root.pillHeight + reach;
         const right = left + root.pillWidth + reach * 2;
         root.near = x >= left && x <= right && y >= top && y <= bottom;
-        pointerPoll.interval = PointerWatch.nextCheck(PointerWatch.gap(x, y, left, top, right, bottom), 80, 400, 4000);
+        pointerPoll.interval = PointerWatch.nextCheck(PointerWatch.gap(x, y, left, top, right, bottom), 80, 400, 10000);
     }
 
     onTrailingChanged: root.retrail()

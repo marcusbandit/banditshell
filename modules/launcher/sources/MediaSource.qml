@@ -25,7 +25,7 @@ QtObject {
     property Timer ticker: Timer {
         interval: 250
         repeat: true
-        running: root.score > 0 && Media.playing
+        running: root.search.active && root.score > 0 && Media.playing
         onTriggered: root.tick++
     }
 

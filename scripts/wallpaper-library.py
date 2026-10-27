@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -83,9 +84,10 @@ def frozen_of(path):
 
 
 def measure(path, kind, posters, fresh):
-    entry = {"shape": shape_of(path)}
+    entry = {"shape": shape_of(path), "probed": bool(shutil.which("ffprobe"))}
     if kind == "video":
         entry["poster"] = poster_of(path, posters, fresh)
+        entry["posed"] = bool(shutil.which("ffmpeg"))
     if path.lower().endswith(".svg"):
         entry["frozen"] = frozen_of(path)
     return entry
@@ -106,6 +108,16 @@ def save(cache_path, cache):
     with open(temporary, "w") as handle:
         json.dump(cache, handle)
     os.replace(temporary, cache_path)
+
+
+def settled(entry, stamp, tools):
+    if entry.get("stamp") != stamp:
+        return False
+    if entry.get("shape", [0, 0])[0] <= 0 and tools["ffprobe"] and not entry.get("probed"):
+        return False
+    if "poster" in entry and not entry["poster"] and tools["ffmpeg"] and not entry.get("posed"):
+        return False
+    return not entry.get("poster") or os.path.isfile(entry["poster"])
 
 
 def say(line):
@@ -130,6 +142,7 @@ def main():
     except (OSError, ValueError):
         cache = {}
 
+    say(f"begin\t{top}")
     found = walk(top, extensions)
     for path in extras:
         stamp = stamp_of(path)
@@ -142,10 +155,10 @@ def main():
     known = {path: entry for path, entry in cache.items() if isinstance(entry, dict)}
     kept = {}
     fresh = []
+    tools = {"ffprobe": bool(shutil.which("ffprobe")), "ffmpeg": bool(shutil.which("ffmpeg"))}
     for path, stamp in found:
         entry = known.get(path)
-        poster = entry.get("poster") if isinstance(entry, dict) else ""
-        if entry is not None and entry.get("stamp") == stamp and (not poster or os.path.isfile(poster)):
+        if entry is not None and settled(entry, stamp, tools):
             kept[path] = entry
         else:
             fresh.append((path, stamp, entry is not None))

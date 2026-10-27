@@ -7,6 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const SCRIPT = path.join(ROOT, "scripts/wallpaper-library.py");
+const PYTHON = spawnSync("sh", ["-c", "command -v python3"], { encoding: "utf8" }).stdout.trim();
 const src = fs.readFileSync(path.join(ROOT, "services/wallpaper-library.js"), "utf8").replace(/^\.pragma .*$/m, "");
 const Library = new Function(src + "\nreturn { read, kept, merged };")();
 
@@ -19,11 +20,13 @@ function rig() {
     fs.writeFileSync(path.join(bin, "ffprobe"), '#!/bin/sh\nfor a; do f="$a"; done\necho "ffprobe $f" >>"$CALLS"\necho 1920,1080\n', { mode: 0o755 });
     fs.writeFileSync(path.join(bin, "ffmpeg"), '#!/bin/sh\nfor a; do out="$a"; done\necho "ffmpeg $out" >>"$CALLS"\n: >"$out"\n', { mode: 0o755 });
     const calls = path.join(dir, "calls");
-    const run = () => {
+    const bare = path.join(dir, "bare");
+    fs.mkdirSync(bare);
+    const run = ({ tools = true } = {}) => {
         fs.writeFileSync(calls, "");
-        const out = spawnSync("python3", ["-I", SCRIPT, path.join(dir, "cache.json"), path.join(dir, "posters"), walls, "png,svg,mp4", "mp4"], {
+        const out = spawnSync(PYTHON, ["-I", SCRIPT, path.join(dir, "cache.json"), path.join(dir, "posters"), walls, "png,svg,mp4", "mp4"], {
             encoding: "utf8",
-            env: { PATH: `${bin}:/usr/bin:/bin`, CALLS: calls }
+            env: { PATH: tools ? `${bin}:/usr/bin:/bin` : bare, CALLS: calls }
         });
         assert.strictEqual(out.status, 0, out.stderr);
         const lines = out.stdout.trim().split("\n");
@@ -78,6 +81,19 @@ test.describe("wallpaper-library.py", () => {
         fs.rmSync(dir, { recursive: true, force: true });
     });
 
+    test.it("measures again once ffprobe and ffmpeg are installed, not before", () => {
+        const { dir, walls, run } = rig();
+        fs.writeFileSync(path.join(walls, "a.png"), "a");
+        fs.writeFileSync(path.join(walls, "b.mp4"), "b");
+        const without = run({ tools: false });
+        assert.ok(without.lines.includes(`shape\t${walls}/a.png\t0\t0`));
+        assert.ok(without.lines.includes(`poster\t${walls}/b.mp4\t`));
+        const installed = run();
+        assert.deepStrictEqual(installed.probed.map(c => c.split(" ")[0]).sort(), ["ffmpeg", "ffprobe", "ffprobe"]);
+        assert.deepStrictEqual(run().probed, []);
+        fs.rmSync(dir, { recursive: true, force: true });
+    });
+
     test.it("lists a file reached twice once, by its first name, and survives a link loop", () => {
         const { dir, walls, run } = rig();
         fs.mkdirSync(path.join(walls, "sub"));
@@ -91,6 +107,7 @@ test.describe("wallpaper-library.py", () => {
 
 test.describe("library lines", () => {
     test.it("reads every kind of line and refuses broken ones", () => {
+        assert.deepStrictEqual(Library.read("begin\t/w"), { kind: "begin", path: "/w" });
         assert.deepStrictEqual(Library.read("file\t/w/a b.png"), { kind: "file", path: "/w/a b.png" });
         assert.deepStrictEqual(Library.read("listed\tsame"), { kind: "listed", changed: false });
         assert.deepStrictEqual(Library.read("shape\t/w/a.png\t1920\t1080"), { kind: "shape", path: "/w/a.png", width: 1920, height: 1080 });

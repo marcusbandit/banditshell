@@ -16,9 +16,9 @@ test.describe("island pointer watch", () => {
 
     test.it("never waits long enough for a pointer at full speed to reach the zone unseen", () => {
         for (const distance of [0, 10, 320, 800, 1600, 5000]) {
-            const wait = Pointer.nextCheck(distance, 80, 400, 4000);
+            const wait = Pointer.nextCheck(distance, 80, 400, 10000);
             assert.ok(wait >= 80 && wait <= 400, `${distance}: ${wait}`);
-            assert.ok(wait <= 80 || distance / 4000 * 1000 >= wait - 1, `${distance}: ${wait}`);
+            assert.ok(wait <= 80 || distance / 10000 * 1000 >= wait - 1, `${distance}: ${wait}`);
         }
     });
 });
