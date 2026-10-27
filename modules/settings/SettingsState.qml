@@ -2041,8 +2041,9 @@ Singleton {
         const r = root.rowOf(change?.k);
         if (!cfg || !r)
             return change;
-        const old = Config.upgradeValue(cfg, change.old);
-        const value = Config.upgradeValue(cfg, change.v);
+        const lift = change.k === "surfaceAlpha" ? Catalogue.loggedSeeThrough : v => v;
+        const old = lift(Config.upgradeValue(cfg, change.old));
+        const value = lift(Config.upgradeValue(cfg, change.v));
         if (old === change.old && value === change.v)
             return change;
         return Object.assign({}, change, {

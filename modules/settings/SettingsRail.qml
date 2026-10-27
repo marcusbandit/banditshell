@@ -521,6 +521,8 @@ Item {
                 width: parent.width
                 textFormat: Text.StyledText
                 text: Catalogue.marked(hr.detail, hr.query, Appearance.colour.accent)
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
                 elide: Text.ElideRight
                 color: Appearance.colour.textFaint
             }

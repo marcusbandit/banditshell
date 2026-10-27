@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "hitIndexOf", "hitIsOpen", "hitToOpen", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf", "resettable", "changed", "seeThrough", "hitTitle", "hitWhy", "marked"]);
+const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "hitIndexOf", "hitIsOpen", "hitToOpen", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf", "resettable", "changed", "seeThrough", "loggedSeeThrough", "hitTitle", "hitWhy", "marked"]);
 const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "anchor", "nudge", "resize", "fit"]);
 const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "extent", "rects", "board", "lit", "struck", "fromSheet"]);
 const Frames = lib(path.join(SETTINGS, "scenes/keyframes.js"), ["bezier", "STANDARD", "ARRIVE", "BACK", "at", "pulse", "steps"]);
@@ -251,12 +251,18 @@ test("a search hit names its row with the heading it sits under and marks what m
     assert.ok(titles("ethernet").includes("Ethernet"));
     const mixer = Catalogue.search("volume by app")[0];
     assert.strictEqual(Catalogue.nameOf(mixer.page, s), Catalogue.hitTitle(mixer, s));
-    const modes = Catalogue.search("sleep").find(h => h.row.k === undefined || h.page.id === "modes");
-    assert.strictEqual(Catalogue.hitWhy(modes, "sleep", "Modes focus · modes"), "sleep");
-    assert.strictEqual(Catalogue.hitWhy(modes, "modes", "Modes focus · modes"), "");
+    assert.ok(titles("keys").includes("Shell: keys") && titles("keys").includes("In files: keys"));
+    const shown = h => `${Catalogue.hitTitle(h, s)} ${Catalogue.CAT_BY_ID[h.page.cat].name.toLowerCase()} · ${Catalogue.nameOf(h.page, s).toLowerCase()}`;
+    const modes = Catalogue.search("sleep").find(h => h.page.id === "modes" && h.row.w === "modes");
+    assert.strictEqual(Catalogue.hitWhy(modes, "sleep", shown(modes)), "sleep");
+    assert.strictEqual(Catalogue.hitWhy(modes, "modes", shown(modes)), "");
+    const after = Catalogue.search("sleep").find(h => h.row.k === "idleSuspend");
+    assert.strictEqual(Catalogue.hitWhy(after, "sleep", shown(after)), "");
     assert.strictEqual(Catalogue.marked("Volume: keys step by", "VOLUME step", "#f00"), '<font color="#f00">Volume</font>: keys <font color="#f00">step</font> by');
     assert.strictEqual(Catalogue.marked("a <b> & c", "b", "#f00"), 'a &lt;<font color="#f00">b</font>&gt; &amp; c');
     assert.strictEqual(Catalogue.marked("Past 100%", "", "#f00"), "Past 100%");
+    assert.strictEqual(Catalogue.marked("Past 100%", "#100", "#f00"), "Past 100%");
+    assert.strictEqual(Catalogue.marked("İstanbul test", "test", "#f00"), "İstanbul test");
 });
 
 test("see-through is how much shows through, and config keeps the panel alpha", () => {
@@ -264,6 +270,10 @@ test("see-through is how much shows through, and config keeps the panel alpha", 
     assert.strictEqual(Catalogue.seeThrough(0.12), 0.88);
     assert.strictEqual(Catalogue.seeThrough(Catalogue.seeThrough(0.73)), 0.73);
     assert.strictEqual(Catalogue.seeThrough(1), 0);
+    assert.strictEqual(Catalogue.seeThrough(Catalogue.seeThrough(0.875)), 0.875);
+    assert.strictEqual(Catalogue.loggedSeeThrough(0.88), 0.12);
+    assert.strictEqual(Catalogue.loggedSeeThrough(0.12), 0.12);
+    assert.strictEqual(Catalogue.loggedSeeThrough(0.5), 0.5);
 });
 
 test("enter on a search hit that is already open steps to the next match, shift enter to the one before", () => {

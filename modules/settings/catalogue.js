@@ -1085,7 +1085,11 @@ function show(row, v, s) {
 }
 
 function seeThrough(alpha) {
-    return Math.round((1 - alpha) * 100) / 100;
+    return Math.round((1 - alpha) * 1000) / 1000;
+}
+
+function loggedSeeThrough(v) {
+    return typeof v === "number" && v > 0.5 ? seeThrough(v) : v;
 }
 
 function filesFoldersNote(sort) {
@@ -1166,7 +1170,7 @@ function search(query) {
         const lead = x => x.label.toLowerCase().indexOf(q) === 0 ? 1 : 0;
         hits = hits.map((x, i) => ({ x: x, i: i })).sort((a, b) => lead(b.x) - lead(a.x) || a.i - b.i).map(e => e.x);
     }
-    return hits.filter((x, i, a) => a.findIndex(y => y.label === x.label && y.page === x.page) === i).slice(0, 12);
+    return hits.filter((x, i, a) => a.findIndex(y => y.label === x.label && y.page === x.page && y.group === x.group && y.row.parent === x.row.parent) === i).slice(0, 12);
 }
 
 const PROPER_WORDS = ["Bluetooth", "Ethernet", "Wikipedia", "Wiktionary"];
@@ -1178,14 +1182,15 @@ function inSentence(label) {
 
 function hitTitle(hit, s) {
     const g = hit.group;
-    const context = hit.row.parent ? labelOf(hit.row.parent) : typeof g.t === "string" ? g.t : g.topic || nameOf(hit.page, s);
-    if (!context || hit.label.toLowerCase().indexOf(context.toLowerCase()) >= 0)
+    const context = (hit.row.parent && labelOf(hit.row.parent)) || (typeof g.t === "string" && g.t) || g.topic || nameOf(hit.page, s);
+    if (!context || ` ${hit.label.toLowerCase()} `.indexOf(` ${context.toLowerCase()} `) >= 0)
         return hit.label;
     return `${context}: ${inSentence(hit.label)}`;
 }
 
 function queryWords(query) {
-    return String(query || "").trim().toLowerCase().replace(/^#/, "").split(/\s+/).filter(Boolean);
+    const q = String(query || "").trim().toLowerCase();
+    return /^#?\d{1,3}$/.test(q) ? [] : q.split(/\s+/).filter(Boolean);
 }
 
 function hitWhy(hit, query, shown) {
@@ -1209,6 +1214,8 @@ function escaped(text) {
 function marked(text, query, colour) {
     const t = String(text);
     const low = t.toLowerCase();
+    if (low.length !== t.length)
+        return escaped(t);
     const on = [];
     for (let i = 0; i < t.length; i++)
         on.push(false);
