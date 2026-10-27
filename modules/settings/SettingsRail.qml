@@ -313,7 +313,8 @@ Item {
 
             function locate(): void {
                 const target = SettingsView.current;
-                let y = 0;
+                const home = Catalogue.PAGE_BY_ID[target]?.cat ?? "";
+                let fallback = -1;
                 for (let i = 0; i < children.length; i++) {
                     const c = children[i];
                     if (!c.modelData)
@@ -322,6 +323,8 @@ Item {
                         tree.markY = c.y;
                         return;
                     }
+                    if (c.modelData.id === home)
+                        fallback = c.y;
                     const pages = c.modelData.pages.filter(p => Catalogue.present(p, SettingsState));
                     const at = pages.findIndex(p => p.id === target);
                     if (at >= 0) {
@@ -329,6 +332,8 @@ Item {
                         return;
                     }
                 }
+                if (fallback >= 0)
+                    tree.markY = fallback;
             }
 
             onImplicitHeightChanged: locate()
@@ -512,8 +517,6 @@ Item {
                 width: parent.width
                 textFormat: Text.StyledText
                 text: Catalogue.marked(hr.label, hr.query, Appearance.colour.accent)
-                wrapMode: Text.WordWrap
-                maximumLineCount: 2
                 elide: Text.ElideRight
             }
 
@@ -521,8 +524,6 @@ Item {
                 width: parent.width
                 textFormat: Text.StyledText
                 text: Catalogue.marked(hr.detail, hr.query, Appearance.colour.accent)
-                wrapMode: Text.WordWrap
-                maximumLineCount: 2
                 elide: Text.ElideRight
                 color: Appearance.colour.textFaint
             }
