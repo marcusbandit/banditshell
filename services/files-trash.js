@@ -61,6 +61,11 @@ function stampSeconds(stamp) {
     return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) / 1000;
 }
 
+function localSeconds(wall) {
+    var d = new Date(wall * 1000);
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds()).getTime() / 1000;
+}
+
 function topOf(dir) {
     var named = /^(.*)\/\.Trash-\d+$/.exec(dir) || /^(.*)\/\.Trash\/\d+$/.exec(dir);
     return named ? named[1] || "/" : null;
@@ -142,6 +147,7 @@ function entries(parsed) {
                 name: name,
                 hidden: name.charAt(0) === ".",
                 dir: path ? parentOf(path) : "",
+                trashed: item && isFinite(item.deleted) ? localSeconds(item.deleted) : entry.mtime,
                 trash: {dir: listing.dir, name: entry.name, path: path, deleted: item ? item.deleted : NaN}
             }));
         }

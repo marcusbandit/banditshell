@@ -26,7 +26,7 @@ function sandbox() {
         fs.symlinkSync(spawnSync("sh", ["-c", `command -v ${tool}`], { encoding: "utf8" }).stdout.trim(), path.join(bin, tool));
     const lister = path.join(bin, "bs-ls");
     fs.writeFileSync(lister, `#!/bin/sh
-exec ${JSON.stringify(process.execPath)} -e 'const fs = require("fs"); const d = process.argv[1]; console.log(JSON.stringify({path: d, ok: true, entries: fs.readdirSync(d).map(name => ({name, kind: fs.statSync(d + "/" + name).isDirectory() ? "dir" : "file", hidden: name[0] === "."}))}))' "$1"
+exec ${JSON.stringify(process.execPath)} -e 'const fs = require("fs"); const d = process.argv[1]; console.log(JSON.stringify({path: d, ok: true, entries: fs.readdirSync(d).map(name => ({name, kind: fs.statSync(d + "/" + name).isDirectory() ? "dir" : "file", hidden: name[0] === ".", mtime: Math.floor(fs.statSync(d + "/" + name).mtimeMs / 1000)}))}))' "$1"
 `);
     fs.chmodSync(lister, 0o755);
     const put = (trash, name, info, body = name) => {
@@ -109,6 +109,9 @@ test.describe("files trash", () => {
                 ["stray", "", path.join(box.home, "files", "stray")]
             ]);
             const music = listed.find(e => e.dir === "/h/Music");
+            assert.strictEqual(music.trashed, new Date(2026, 9, 25, 22, 34, 34).getTime() / 1000);
+            const stray = listed.find(e => e.name === "stray");
+            assert.ok(stray.mtime > 0 && stray.trashed === stray.mtime);
             assert.deepStrictEqual(music.trash, { dir: box.home, name: "a.2.txt", path: "/h/Music/a.txt", deleted: Date.UTC(2026, 9, 25, 22, 34, 34) / 1000 });
             assert.strictEqual(Trash.infoPath(music.trash), path.join(box.home, "info", "a.2.txt.trashinfo"));
             assert.deepStrictEqual(Trash.entries(Trash.parse(box.run(Trash.readCommand(box.lister, box.at("empty"), [])))), []);

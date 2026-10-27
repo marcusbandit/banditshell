@@ -167,7 +167,7 @@ function listed(paths, many) {
     return paths.length + " " + many;
 }
 
-function folder(paths, here, home) {
+function folder(paths, here, home, named) {
     var parents = [];
     for (var i = 0; i < paths.length; i++) {
         var parent = parentOf(paths[i]);
@@ -178,10 +178,12 @@ function folder(paths, here, home) {
         return "";
     if (parents.length > 1)
         return parents.length + " folders";
+    if (named)
+        return named(parents[0]);
     return parents[0] === home ? "Home" : parents[0] === "/" ? "/" : baseName(parents[0]);
 }
 
-function summary(entry, counts, here, home) {
+function summary(entry, counts, here, home, named) {
     var total = size(entry);
     var one = total === 1;
     var name = baseName(items(entry)[0]);
@@ -190,7 +192,7 @@ function summary(entry, counts, here, home) {
 
     if (counts.ok > 0) {
         var done = counts.done;
-        var where = folder(done, here, home);
+        var where = folder(done, here, home, named);
         var rest = counts.ok < total ? ", " + (total - counts.ok) + " could not be" : "";
         switch (entry.kind) {
         case "trash":
@@ -218,13 +220,13 @@ function summary(entry, counts, here, home) {
     return one ? name + " could not be brought back" : "Nothing could be brought back";
 }
 
-function report(entry, texts, here, home) {
+function report(entry, texts, here, home, named) {
     if (entry.kind !== "batch") {
         var counts = outcome(entry, texts[0] || "");
-        return {ok: counts.ok > 0, text: summary(entry, counts, here, home), shown: entry.kind === "copy" ? [] : counts.done};
+        return {ok: counts.ok > 0, text: summary(entry, counts, here, home, named), shown: entry.kind === "copy" ? [] : counts.done};
     }
     var told = entry.parts.map(function (part, i) {
-        return report(part, [texts[i] || ""], here, home);
+        return report(part, [texts[i] || ""], here, home, named);
     });
     var ok = told.some(function (one) {
         return one.ok;

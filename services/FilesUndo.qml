@@ -91,7 +91,7 @@ Singleton {
             return;
         const entry = Undo.trashed(items.map(item => item.path), 0);
         root.start(Trash.restoreCommand(items), out => {
-            const told = Undo.report(entry, [out ?? ""], Files.cwd, Files.home);
+            const told = Undo.report(entry, [out ?? ""], Files.cwd, Files.home, dir => Files.placeOf(dir));
             if (told.ok)
                 root.say(told.text);
             else

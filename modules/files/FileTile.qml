@@ -15,7 +15,8 @@ Item {
 
     readonly property var entry: root.modelData
     readonly property string path: Files.pathOf(root.entry)
-    readonly property string place: root.entry.dir ? Find.place(root.entry.dir, Files.home) : FilesFind.active ? Find.place(Files.cwd, Files.home) : ""
+    readonly property string place: root.entry.trash ? Files.originPlace(root.entry) : root.entry.dir ? Find.place(root.entry.dir, Files.home) : FilesFind.active ? Find.place(Files.cwd, Files.home) : ""
+    readonly property int placeEnd: root.place === "" ? 0 : root.place.slice(root.place.lastIndexOf("/") + 1).length + 2
 
     function fitted(width: real): string {
         return Find.fitPlace(root.place, Math.max(1, Math.floor(width / Math.max(1, digit.advanceWidth))));
@@ -181,7 +182,7 @@ Item {
             anchors.leftMargin: Appearance.padding.small
             anchors.verticalCenter: parent.verticalCenter
             readonly property real room: rowSize.x - rowName.x - Appearance.padding.normal * 2
-            width: Math.min(rowName.implicitWidth, root.place ? Math.max(rowName.room - root.place.length * digit.advanceWidth, rowName.room * 0.7) : rowName.room)
+            width: Math.min(rowName.implicitWidth, root.place ? Math.max(rowName.room - root.place.length * digit.advanceWidth, Math.min(rowName.room * 0.7, rowName.room - root.placeEnd * digit.advanceWidth), rowName.room * 0.4) : rowName.room)
 
             text: root.entry.name
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
@@ -227,7 +228,7 @@ Item {
             width: parent.dateWidth
 
             horizontalAlignment: Text.AlignRight
-            text: Files.humanTime(root.entry.mtime)
+            text: Files.humanTime(root.entry.trashed ?? root.entry.mtime)
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
         }

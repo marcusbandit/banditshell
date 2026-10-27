@@ -283,6 +283,7 @@ test.describe("files undo", () => {
         assert.strictEqual(Undo.summary(one, back(one.paths), "/h/Pictures", "/h"), "notes.txt restored to Documents");
         const home = Undo.trashed(["/h/notes.txt"], 0);
         assert.strictEqual(Undo.summary(home, back(home.paths), "/h/Pictures", "/h"), "notes.txt restored to Home");
+        assert.strictEqual(Undo.summary(one, back(one.paths), "/h/Pictures", "/h", dir => dir.replace("/h", "~")), "notes.txt restored to ~/Documents");
         const spread = Undo.trashed(["/h/a/x", "/h/b/y"], 0);
         assert.strictEqual(Undo.summary(spread, back(spread.paths), "/h", "/h"), "x and y restored to 2 folders");
         const renamed = Undo.renamed("/h/Documents/draft.md", "/h/Documents/final.md");

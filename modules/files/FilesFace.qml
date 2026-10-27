@@ -266,7 +266,7 @@ Item {
     }
 
     readonly property int count: Files.picks.length
-    readonly property string counted: root.count === 1 ? Files.picks[0].name : `${root.count} items`
+    readonly property string counted: root.count !== 1 ? `${root.count} items` : Files.originPlace(Files.picks[0]) ? `${Files.picks[0].name} from ${Files.originPlace(Files.picks[0])}` : Files.picks[0].name
 
     function fileActions(): var {
         const picks = Files.picks;
@@ -335,18 +335,19 @@ Item {
                 run: () => Files.trash(paths)
             });
 
-        acts.push({
-            icon: "delete_forever",
-            label: "Delete permanently…",
-            run: () => root.confirmDelete()
-        });
-
         if (one)
             acts.push({
                 icon: "info",
                 label: "Properties",
                 run: () => properties.show(Files.pathOf(one))
             });
+
+        acts.push({
+            icon: "delete_forever",
+            label: "Delete permanently…",
+            apart: true,
+            run: () => root.confirmDelete()
+        });
 
         return acts;
     }
@@ -608,13 +609,13 @@ Item {
                 if (!Files.isPicked(Files.keyOf(Files.visible[index])))
                     Files.setCursor(index);
                 const at = grid.mapToItem(root, position.x, position.y);
-                sheet.popup(at.x, at.y, root.fileActions());
+                sheet.popup(at.x, at.y, root.fileActions(), -1);
             }
             onMenuForEmpty: position => {
                 Files.focus = "grid";
                 Files.clearPicked();
                 const at = grid.mapToItem(root, position.x, position.y);
-                sheet.popup(at.x, at.y, root.folderActions());
+                sheet.popup(at.x, at.y, root.folderActions(), -1);
             }
             onLifted: index => {
                 if (!Files.isPicked(Files.keyOf(Files.visible[index])))

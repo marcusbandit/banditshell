@@ -43,7 +43,8 @@ Singleton {
         const query = root.search.trim().toLowerCase();
         const matched = query === "" ? all : all.filter(e => e.name.toLowerCase().includes(query));
 
-        const order = list => FilesOrder.ordered(list, root.sort, root.reversed);
+        const how = root.trashTop ? FilesOrder.trashOrder(root.sort, root.reversed) : {key: root.sort, reversed: root.reversed};
+        const order = list => FilesOrder.ordered(list, how.key, how.reversed);
         return FilesFind.active ? Find.grouped(matched, FilesFind.results, root.cwd, order) : order(matched);
     }
 
@@ -973,6 +974,15 @@ Singleton {
 
     function copyInto(paths: var, dir: string): void {
         FilesPaste.start(paths, dir, false);
+    }
+
+    function placeOf(dir: string): string {
+        const place = Find.place(dir, root.home);
+        return place === "~" ? "~/" : place;
+    }
+
+    function originPlace(entry: var): string {
+        return entry && entry.trash && entry.dir ? root.placeOf(entry.dir) : "";
     }
 
     function restore(entries: var): void {
