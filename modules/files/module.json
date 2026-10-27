@@ -18,6 +18,7 @@
       "tests/keys.test.js",
       "tests/markdown.test.js",
       "tests/marks.test.js",
+      "tests/tile-names.test.js",
       "tests/urls.test.js",
       "tests/vt.test.js"
     ],
