@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-27-6",
+      "id": "2026-10-27-8",
       "date": "2026-10-27",
       "changes": [
         {
@@ -28,6 +28,53 @@
           "type": "issues",
           "severity": "minor",
           "text": "The Notifications header says quiet on in full"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-7",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The shell checks on missing things less and less often while idle"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Opening the wallpaper picker no longer rescans every picture"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A fullscreen window's border colour is sampled once a second"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The media card and island glow hold still while nothing plays"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-6",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "File names under icons keep their extension whole"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A previewed folder lists in the same order as the files"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files settings: Smaller, Reset and Bigger no longer look picked"
         }
       ]
     },

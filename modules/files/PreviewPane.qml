@@ -7,6 +7,7 @@ import qs.components
 import qs.services
 import "urls.js" as Urls
 import "markdown.js" as Markdown
+import "../../services/files-order.js" as FilesOrder
 import "../../services/files-find.js" as Find
 
 Item {
@@ -94,11 +95,7 @@ Item {
                         return;
                     root.contentsError = answer.ok ? "" : answer.error;
 
-                    root.contents = answer.ok ? answer.entries.filter(e => Files.showHidden || !e.hidden).sort((a, b) => {
-                        if ((a.kind === "dir") !== (b.kind === "dir"))
-                            return a.kind === "dir" ? -1 : 1;
-                        return a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: "base"});
-                    }) : [];
+                    root.contents = answer.ok ? answer.entries.filter(e => Files.showHidden || !e.hidden) : [];
                 } catch (e) {
                     root.contents = [];
                 }
@@ -380,7 +377,7 @@ Item {
             visible: root.isFolder && root.contents.length > 0
             clip: true
 
-            model: root.contents
+            model: FilesOrder.ordered(root.contents, Files.sort, Files.reversed)
 
             delegate: Row {
                 id: line

@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import qs.components
 import "colour-picks.js" as Picks
 import "projects.js" as Shells
 
@@ -156,18 +157,23 @@ Singleton {
             }
             root.installing = "terminal";
             Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `${Shells.quote(root.installer)} --ask ${root.packages.map(Shells.quote).join(" ")}`]);
-            watch.restart();
+            watch.started = Date.now();
+            watch.spent = false;
         }
     }
 
-    Timer {
+    Backoff {
         id: watch
 
-        interval: 3000
-        repeat: true
-        onTriggered: {
-            if (root.found || root.installing !== "terminal")
-                watch.stop();
+        property real started: 0
+        property bool spent: false
+
+        base: 3000
+        cap: 30000
+        running: root.installing === "terminal" && !root.found && !watch.spent
+        onDue: {
+            if (Date.now() - watch.started >= 900000)
+                watch.spent = true;
             else
                 root.probe();
         }

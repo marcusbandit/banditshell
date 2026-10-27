@@ -11,6 +11,7 @@ import qs.components.blob
 import qs.modules.media
 import qs.modules.notifications
 import qs.services
+import "pointer-watch.js" as PointerWatch
 
 Item {
     id: root
@@ -764,7 +765,9 @@ Item {
         const left = (root.host?.x ?? 0) + root.surfaceX + root.pillX - reach;
         const top = root.host?.y ?? 0;
         const bottom = top + root.y + root.islandTop + root.pillHeight + reach;
-        root.near = x >= left && x <= left + root.pillWidth + reach * 2 && y >= top && y <= bottom;
+        const right = left + root.pillWidth + reach * 2;
+        root.near = x >= left && x <= right && y >= top && y <= bottom;
+        pointerPoll.interval = PointerWatch.nextCheck(PointerWatch.gap(x, y, left, top, right, bottom), 80, 400, 10000);
     }
 
     onTrailingChanged: root.retrail()
@@ -981,9 +984,12 @@ Item {
     }
 
     Timer {
+        id: pointerPoll
+
         interval: 80
         repeat: true
         running: root.watching
+        onRunningChanged: pointerPoll.interval = 80
         onTriggered: if (!pointer.connected)
             pointer.connected = true
     }
@@ -1482,7 +1488,7 @@ Item {
                     y: root.pillY
                     width: root.largeWidth
                     height: Math.max(root.compactHeight, overview.implicitHeight, root.pillHeight)
-                    moving: visible
+                    moving: visible && Media.playing
                     opacity: glow.value
                     visible: glow.value > 0.005
                 }

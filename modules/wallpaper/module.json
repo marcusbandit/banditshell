@@ -5,8 +5,10 @@
   "owns": {
     "qml": ["modules/wallpaper"],
     "services": ["Wallpaper"],
-    "scripts": ["scripts/palette.py", "scripts/wallpaper-colours.py"],
-    "assets": ["assets/wallpapers"]
+    "js": ["services/wallpaper-library.js"],
+    "scripts": ["scripts/palette.py", "scripts/wallpaper-colours.py", "scripts/wallpaper-library.py"],
+    "assets": ["assets/wallpapers"],
+    "tests": ["tests/wallpaper-library.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor"],
