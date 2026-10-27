@@ -12,11 +12,11 @@ QtObject {
 
     readonly property bool intent: root.alone
 
-    readonly property var groups: !root.alone ? [] : Prefixes.SECTIONS.map(section => ({
+    readonly property var groups: !root.alone ? [] : Prefixes.sections(root.search.prefixes).map(section => ({
                 key: `prefixes:${section.title}`,
                 title: section.title,
                 items: section.prefixes.map(p => ({
-                        key: `prefix:${p.word}`,
+                        key: `prefix:${section.title}:${p.word}`,
                         kind: "prefix",
                         complete: Prefixes.completion(p),
                         label: p.word,

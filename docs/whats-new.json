@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-27",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The launcher's ? page shows only prefixes that work, quicklinks too"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Enter on a line a banditshell command printed copies that line"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The launcher keeps learning new favourites after its first 400"
+        }
+      ]
+    },
+    {
       "id": "2026-10-26-11",
       "date": "2026-10-26",
       "changes": [

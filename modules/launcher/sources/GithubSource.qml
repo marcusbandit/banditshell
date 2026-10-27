@@ -21,6 +21,17 @@ QtObject {
             github: 14
         })
 
+    readonly property var prefixes: !GitHub.enabled ? [] : [
+            {
+                section: "Ask and look up",
+                word: "gh",
+                example: "gh dotfiles",
+                about: "GitHub pull requests and issues",
+                icon: "merge",
+                also: ["github"]
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "github",

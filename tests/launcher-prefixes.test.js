@@ -10,8 +10,10 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Prefixes = lib("modules/launcher/prefixes.js", ["SECTIONS", "PREFIXES", "asked", "guess", "completion", "detail"]);
+const Prefixes = lib("modules/launcher/prefixes.js", ["SECTIONS", "OWN", "asked", "guess", "completion", "detail", "sections"]);
 const Ranking = lib("services/ranking.js", ["closest"]);
+
+const row = (section, word, also) => ({ section: section, word: word, about: word, icon: "x", also: also || [] });
 
 test.describe("the ? page", () => {
     test.it("opens on a lone question mark and nothing else", () => {
@@ -20,21 +22,33 @@ test.describe("the ? page", () => {
             assert.strictEqual(Prefixes.asked(text), false, text);
     });
 
-    test.it("lists each prefix once, under a titled section", () => {
-        const seen = new Set();
-        for (const section of Prefixes.SECTIONS) {
-            assert.ok(section.title && section.prefixes.length, section.title);
-            for (const p of section.prefixes) {
-                assert.ok(!seen.has(p.word), `${p.word} listed twice`);
-                seen.add(p.word);
-                assert.ok(p.about && p.icon, p.word);
-            }
-        }
-        assert.strictEqual(seen.size, Prefixes.PREFIXES.length);
+    test.it("keeps only the prefixes no source owns", () => {
+        assert.deepStrictEqual(Prefixes.OWN.map(p => p.word).sort(), [":", "=", "~"]);
+        for (const p of Prefixes.OWN)
+            assert.ok(Prefixes.SECTIONS.includes(p.section) && p.about && p.icon, p.word);
+    });
+
+    test.it("groups what the sources declare in section order, symbols then A to Z", () => {
+        const page = Prefixes.sections([row("System", "vpn"), row("Quicklinks", "yt"), row("System", "kill"), row("Files and clipboard", "recent"), row("Files and clipboard", "~")]);
+        assert.deepStrictEqual(page.map(s => [s.title, s.prefixes.map(p => p.word)]), [
+            ["Files and clipboard", ["~", "recent"]],
+            ["System", ["kill", "vpn"]],
+            ["Quicklinks", ["yt"]]
+        ]);
+    });
+
+    test.it("drops a section when every source behind it is off", () => {
+        assert.deepStrictEqual(Prefixes.sections([row("Desktop", "tray")]).map(s => s.title), ["Desktop"]);
+        assert.deepStrictEqual(Prefixes.sections([]), []);
+    });
+
+    test.it("lists a word once per section, and under each section that answers it", () => {
+        const page = Prefixes.sections([row("Ask and look up", "gh"), row("Quicklinks", "gh"), row("Quicklinks", "gh")]);
+        assert.deepStrictEqual(page.map(s => [s.title, s.prefixes.length]), [["Ask and look up", 1], ["Quicklinks", 1]]);
     });
 
     test.it("gives an example only when it adds something after the prefix", () => {
-        for (const p of Prefixes.PREFIXES.filter(p => p.example !== undefined)) {
+        for (const p of Prefixes.OWN.filter(p => p.example !== undefined)) {
             const typed = Prefixes.completion(p);
             assert.ok(p.example.startsWith(typed) && p.example.trim().length > typed.trim().length, `${p.word}: ${p.example}`);
         }
@@ -47,19 +61,22 @@ test.describe("the ? page", () => {
 });
 
 test.describe("typo guesses leave prefixes alone", () => {
-    const heads = Prefixes.PREFIXES.flatMap(p => [p.word].concat(p.also));
+    const declared = [row("System", "containers", ["podman", "docker"]), row("Ask and look up", "translate"), row("Desktop", "screenshots")];
+    const heads = declared.flatMap(p => [p.word].concat(p.also));
     const nearly = word => word.slice(0, -1) + (word.endsWith("x") ? "y" : "x");
-    const guess = (text, labels) => Prefixes.guess(text, labels, Ranking.closest);
+    const guess = (text, labels) => Prefixes.guess(text, labels, Ranking.closest, declared);
 
     test.it("never turns a prefix word into the name it is one letter from", () => {
-        const long = heads.filter(h => h.length >= 5);
-        assert.ok(long.length > 10);
-        for (const head of long) {
+        for (const head of heads.filter(h => h.length >= 5)) {
             const labels = [nearly(head)];
             assert.strictEqual(Ranking.closest(head, labels), 0, head);
             assert.strictEqual(guess(head, labels), -1, head);
             assert.strictEqual(guess(head.toUpperCase(), labels), -1, head);
         }
+    });
+
+    test.it("guesses again for a word whose source is off", () => {
+        assert.strictEqual(Prefixes.guess("translate", ["Translatx"], Ranking.closest, []), 0);
     });
 
     test.it("never guesses for a lone ? or a question after it", () => {

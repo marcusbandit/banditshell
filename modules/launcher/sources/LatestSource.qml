@@ -42,6 +42,25 @@ QtObject {
         };
     }
 
+    readonly property var prefixes: [
+        {
+            section: "Files and clipboard",
+            word: "downloads",
+            example: "downloads pdf",
+            about: "Latest downloads",
+            icon: "download",
+            also: ["download"]
+        },
+        {
+            section: "Files and clipboard",
+            word: "screenshots",
+            example: "screenshots terminal",
+            about: "Latest screenshots",
+            icon: "screenshot_monitor",
+            also: []
+        }
+    ]
+
     readonly property var groups: [
         {
             key: "latest",

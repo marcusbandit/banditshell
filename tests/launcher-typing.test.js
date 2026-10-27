@@ -13,7 +13,7 @@ function lib(file, names) {
 const Table = lib("services/emoji-table.js", ["TABLE", "GROUPS", "FIRST_SYMBOL_GROUP"]);
 const Emoji = lib("services/emoji.js", ["parse", "index", "ask", "search", "toned", "modifierFor", "remember", "codeOf", "TONES", "POPULAR"]);
 const Snippets = lib("services/snippets.js", ["ask", "find", "expand", "preview", "previewText", "suggestName", "newId", "cleanKeyword", "withSnippet", "withoutSnippet", "keywordHolder"]);
-const Quicklinks = lib("services/quicklinks.js", ["KEYWORD_SCORE", "match", "resolve", "hostOf", "takes", "cleanKeyword", "withLink", "keywordHolder", "problem"]);
+const Quicklinks = lib("services/quicklinks.js", ["KEYWORD_SCORE", "match", "resolve", "hostOf", "takes", "cleanKeyword", "withLink", "keywordHolder", "problem", "prefixes"]);
 const ClipboardSearch = lib("services/clipboard-search.js", ["ask", "index", "find", "firstLine"]);
 const { spawnSync } = require("node:child_process");
 const os = require("node:os");
@@ -294,6 +294,19 @@ test.describe("quicklinks", () => {
         assert.strictEqual(Quicklinks.problem({ name: "A", keyword: "a", url: "https://a.b/?q={query}" }), "");
         assert.strictEqual(Quicklinks.keywordHolder(LINKS, "GH", 0).name, "GitHub");
         assert.strictEqual(Quicklinks.keywordHolder(LINKS, "gh", 1), null);
+    });
+
+    test.it("puts each finished link's keyword on the ? page", () => {
+        const rows = Quicklinks.prefixes([
+            { name: "YouTube", keyword: " YT ", url: "https://youtube.com/results?q={query}" },
+            { name: "Mail", keyword: "mail", url: "https://mail.example.com" },
+            { name: "Half done", keyword: "", url: "https://a.b" },
+            { name: "No address", keyword: "x", url: "a.b" }
+        ]);
+        assert.deepStrictEqual(rows.map(r => [r.section, r.word, r.about, r.icon]), [
+            ["Quicklinks", "yt", "Search YouTube", "travel_explore"],
+            ["Quicklinks", "mail", "Open Mail", "link"]
+        ]);
     });
 
     test.it("the shipped defaults are all valid and distinct", () => {

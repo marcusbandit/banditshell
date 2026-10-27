@@ -127,6 +127,17 @@ QtObject {
         return [];
     }
 
+    readonly property var prefixes: !(ListeningPorts.enabled && ListeningPorts.found) ? [] : [
+            {
+                section: "System",
+                word: "ports",
+                example: "ports 5432",
+                about: "Listening ports",
+                icon: "lan",
+                also: ["port"]
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "ports",

@@ -70,6 +70,16 @@ QtObject {
         return out;
     }
 
+    readonly property var prefixes: [
+        {
+            section: "Files and clipboard",
+            word: "colours",
+            about: "Colours you picked",
+            icon: "palette",
+            also: ["pick"]
+        }
+    ]
+
     readonly property var groups: [
         {
             key: "colours",

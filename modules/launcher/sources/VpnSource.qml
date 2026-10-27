@@ -34,6 +34,25 @@ QtObject {
 
     readonly property var kinds: ["vpn", "vpnadd", "tailscale", "tailscaleinstall", "tailscaleexit", "tailscalepeer", "tailscalenone"]
 
+    readonly property var prefixes: !root.enabled ? [] : [
+            {
+                section: "System",
+                word: "vpn",
+                example: "vpn work",
+                about: "VPN connections",
+                icon: "vpn_key",
+                also: ["wireguard"]
+            },
+            {
+                section: "System",
+                word: "tailscale",
+                example: "tailscale up",
+                about: "Tailscale",
+                icon: "vpn_lock",
+                also: []
+            }
+        ]
+
     readonly property var phrases: [
         {
             head: "tailscale ",

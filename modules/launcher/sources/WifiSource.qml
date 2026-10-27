@@ -104,6 +104,17 @@ QtObject {
         return out;
     }
 
+    readonly property var prefixes: !(root.settings.wifi !== false && Network.available) ? [] : [
+            {
+                section: "System",
+                word: "wifi",
+                example: "wifi home",
+                about: "Wi-Fi networks",
+                icon: "wifi",
+                also: ["wlan", "wireless"]
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "wifi",

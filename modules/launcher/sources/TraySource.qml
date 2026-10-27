@@ -39,6 +39,17 @@ QtObject {
             tray: 12
         })
 
+    readonly property var prefixes: !root.enabled ? [] : [
+            {
+                section: "Desktop",
+                word: "tray",
+                example: "tray discord",
+                about: "Tray icons",
+                icon: "widgets",
+                also: ["systray"]
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "tray",

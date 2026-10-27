@@ -23,6 +23,17 @@ QtObject {
             keys: 12
         })
 
+    readonly property var prefixes: !root.enabled ? [] : [
+            {
+                section: "Desktop",
+                word: "keys",
+                example: "keys screenshot",
+                about: "Keybinds",
+                icon: "keyboard",
+                also: ["shortcuts", "keybinds"]
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "keys",

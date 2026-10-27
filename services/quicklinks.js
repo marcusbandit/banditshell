@@ -107,3 +107,22 @@ function problem(link) {
         return "needs a full address like https://…";
     return "";
 }
+
+function prefixes(links) {
+    var out = [];
+    for (var i = 0; i < (links || []).length; i++) {
+        var link = links[i];
+        var keyword = cleanKeyword(link && link.keyword);
+        if (!keyword || problem(link))
+            continue;
+        var name = String(link.name).trim();
+        out.push({
+            section: "Quicklinks",
+            word: keyword,
+            about: takes(link) ? `Search ${name}` : `Open ${name}`,
+            icon: takes(link) ? "travel_explore" : "link",
+            also: []
+        });
+    }
+    return out;
+}

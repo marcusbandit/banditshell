@@ -91,6 +91,17 @@ QtObject {
         return root.found.map((f, i) => root.row(f.unit, root.scoreAt(i)));
     }
 
+    readonly property var prefixes: !(SystemdUnits.enabled && SystemdUnits.found) ? [] : [
+            {
+                section: "System",
+                word: "services",
+                example: "services pipewire",
+                about: "systemd services",
+                icon: "settings_applications",
+                also: []
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "services",

@@ -29,6 +29,17 @@ QtObject {
 
     readonly property bool clearing: root.search.armed === "clipboardclear"
 
+    readonly property var prefixes: [
+        {
+            section: "Files and clipboard",
+            word: "clip",
+            example: "clip api key",
+            about: "Clipboard history",
+            icon: "content_paste",
+            also: ["clips", "clipboard"]
+        }
+    ]
+
     readonly property var groups: [
         {
             key: "clipboard",
