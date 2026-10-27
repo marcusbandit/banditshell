@@ -1024,6 +1024,8 @@ Singleton {
 
                 skip: "",
 
+                coloursUpgraded: true,
+
                 availableColour: "text",
                 failedColour: "warning",
                 readyColour: "accent"

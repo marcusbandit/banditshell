@@ -250,12 +250,18 @@ test.describe("upgrade", () => {
         assert.strictEqual(Configuration.upgrade(taken), taken);
     });
 
-    test.it("moves the update colours the shell shipped as defaults off the privacy and accent colours", () => {
-        const roles = { updates: { availableColour: "alarm", failedColour: "bright", readyColour: "accent" } };
-        assert.deepStrictEqual(Configuration.upgrade(roles), { updates: { availableColour: "text", failedColour: "warning", readyColour: "accent" } });
-        const hex = { updates: { availableColour: "#ff5252", failedColour: "#ffb454" } };
-        assert.deepStrictEqual(Configuration.upgrade(hex), { updates: { availableColour: "text", failedColour: "warning" } });
-        const chosen = { updates: { availableColour: "mid", failedColour: "#ff0000" } };
+    test.it("moves the update colours the shell shipped as defaults off the privacy and accent colours, once", () => {
+        const colours = values => {
+            const u = Configuration.upgrade(values).updates;
+            return [u.availableColour, u.failedColour, u.readyColour, u.coloursUpgraded];
+        };
+        assert.deepStrictEqual(colours({ updates: { availableColour: "alarm", failedColour: "bright", readyColour: "accent" } }), ["text", "warning", "accent", true]);
+        assert.deepStrictEqual(colours({ updates: { availableColour: "#ff5252", failedColour: "#ffb454", readyColour: "#4da3ff" } }), ["text", "warning", "#4da3ff", true]);
+        assert.deepStrictEqual(colours({ updates: { availableColour: "mid", failedColour: "#ff0000" } }), ["mid", "#ff0000", undefined, true]);
+    });
+
+    test.it("keeps alarm or bright chosen after the colour upgrade ran", () => {
+        const chosen = { updates: { availableColour: "alarm", failedColour: "bright", coloursUpgraded: true, channelUpgraded: true } };
         assert.strictEqual(Configuration.upgrade(chosen), chosen);
     });
 

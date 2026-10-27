@@ -58,7 +58,7 @@ Item {
             TaskHeader {
                 width: parent.width
                 icon: "mic"
-                tone: root.rows.length > 0 ? Appearance.colour.alarm : Appearance.colour.textDim
+                tone: root.rows.length > 0 ? Appearance.colour.alarm : Appearance.colour.accent
                 title: "Microphone"
                 subtitle: root.rows.length === 0 ? "nothing is listening" : root.device !== "" ? root.device : `${root.rows.length} listening`
                 onClosed: root.hide()
