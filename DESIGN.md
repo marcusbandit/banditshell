@@ -1777,12 +1777,13 @@ banditshell/
 │   ├── boot-check-inner.sh      the other half: runs inside the private headless
 │   │                            session beside the shell, makes the calls, writes
 │   │                            PASS/FAIL rows to calls.tsv
-│   ├── promote-stable.sh        checks that main may become the stable channel (node
-│   │                            tests, check-modules, lint-rules, compile check, the
-│   │                            boot check when gamescope is there, a
-│   │                            what's-new id) on a clean export of it, then PRINTS
-│   │                            the git push and git tag commands; pushes only with
-│   │                            --push (`banditshell dev promote`)
+│   ├── release.sh               cuts a release from a clean checkout of origin/main:
+│   │                            node tests, check-modules, lint-rules, compile check
+│   │                            and the boot check (refused without gamescope unless
+│   │                            --skip-boot-check), gh logged in, then the
+│   │                            next vX.Y.Z, the tag and stable in one atomic push,
+│   │                            and the GitHub release; --dry-run pushes nothing
+│   │                            (`banditshell dev release`)
 │   ├── redact-config.js         config.json with every key named like a token, key,
 │   │                            secret, password or cookie left out (node, no
 │   │                            dependencies; `banditshell doctor --report`)
@@ -2208,7 +2209,8 @@ checkout's own CLI, and then fails on any TypeError, ReferenceError, "is not def
 The lines a headless box always prints (no Hyprland signature, pipewire, ext-idle-notify, a
 wallpaper file missing under the fake home) are ignored; the classifier is `scripts/boot-check.js`
 and has node tests. `--shots` also photographs the shell at rest and with the launcher open.
-`banditshell dev promote` runs it as a last check when gamescope is installed.
+`banditshell dev release` runs it as its last check and refuses when it cannot run, unless
+given `--skip-boot-check`.
 
 **REVISED 2026-10-14: the thing first, in groups.** The verb-first grammar of 2026-10-01
 fixed the noun-first one's inconsistency, and it paid for that by sorting every feature by
