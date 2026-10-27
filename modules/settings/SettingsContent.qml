@@ -16,6 +16,8 @@ Item {
     property string pendingReveal: ""
     property double revealUntil: 0
     property var recent: []
+    readonly property real fade: SettingsView.reduceMotion ? 1 : 1 - arrive.value
+    readonly property real slide: SettingsView.reduceMotion ? 0 : arrive.value * 8
 
     Flickable {
         id: view
@@ -53,11 +55,6 @@ Item {
 
             width: view.width
 
-            opacity: SettingsView.reduceMotion ? 1 : 1 - arrive.value
-            transform: Translate {
-                y: SettingsView.reduceMotion ? 0 : arrive.value * 8
-            }
-
             Connections {
                 target: SettingsView
 
@@ -89,6 +86,10 @@ Item {
 
                 width: parent.width
                 height: Math.max(back.visible ? back.height + 4 : 0, words.implicitHeight) + 2 + Appearance.padding.card
+                opacity: root.fade
+                transform: Translate {
+                    y: root.slide
+                }
 
                 SettingsTool {
                     id: back
@@ -145,6 +146,10 @@ Item {
                 height: Math.round(folded.full * drop.value)
                 visible: height > 0.5
                 clip: true
+                opacity: root.fade
+                transform: Translate {
+                    y: root.slide
+                }
 
                 Follow {
                     id: drop
@@ -188,8 +193,17 @@ Item {
                     readonly property double born: Date.now()
                     readonly property int budget: Math.ceil(view.height / Appearance.sizes.rowHeight) + 1
 
-                    width: body.width
                     visible: shelf.pageId === SettingsView.current
+                    opacity: shelf.visible ? root.fade : 1
+                    transform: Translate {
+                        y: shelf.visible ? root.slide : 0
+                    }
+
+                    Binding on width {
+                        value: body.width
+                        when: shelf.visible
+                        restoreMode: Binding.RestoreNone
+                    }
 
                     Loader {
                         width: parent.width
@@ -212,7 +226,7 @@ Item {
                             readonly property string heading: String(Catalogue.val(group.modelData.t, root.s) ?? "")
                             readonly property int before: shelf.page.groups.slice(0, shelf.page.groups.indexOf(group.modelData)).reduce((n, g) => n + g.rows.length, 0)
 
-                            width: body.width
+                            width: shelf.width
                             topPadding: Appearance.padding.card
 
                             StyledText {
@@ -242,7 +256,7 @@ Item {
                                     required property var modelData
                                     required property int index
 
-                                    width: body.width
+                                    width: shelf.width
                                     row: modelData
                                     asynchronous: Date.now() - shelf.born < 1000 && group.before + index >= shelf.budget
                                 }
