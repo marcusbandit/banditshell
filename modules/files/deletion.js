@@ -1,6 +1,7 @@
 .pragma library
 
 var WORD = "delete";
+var REST = "will be deleted and cannot be brought back.";
 
 function named(item) {
     return item.origin ? item.name + " from " + item.origin : item.name;
@@ -15,7 +16,7 @@ function what(items) {
 }
 
 function question(items) {
-    return "Delete " + what(items) + " permanently? Type \"" + WORD + "\" to confirm";
+    return what(items) + " " + REST;
 }
 
 function approved(answer, paths) {

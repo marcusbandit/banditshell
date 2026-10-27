@@ -7,6 +7,7 @@ import qs.services
 import "urls.js" as Urls
 import "keys.js" as Chords
 import "deletion.js" as Deletion
+import "../../services/files-find.js" as Find
 
 Item {
     id: root
@@ -47,7 +48,7 @@ Item {
     }
 
     Keys.onPressed: event => {
-        if (settings.up || prompt.up || conflict.up)
+        if (settings.up || prompt.up || confirm.up || conflict.up)
             return;
 
         if (sheet.open) {
@@ -278,8 +279,8 @@ Item {
 
         if (restorable.length > 0)
             acts.push({
-                icon: "restore_from_trash",
-                label: restorable.length === picks.length ? "Restore" : `Restore ${restorable.length} of ${picks.length}`,
+                icon: "undo",
+                label: picks.length === 1 ? `Restore to ${Find.fitPlace(Files.originPlace(picks[0]), 24)}` : restorable.length === picks.length ? `Restore ${picks.length} items` : `Restore ${restorable.length} of ${picks.length}`,
                 run: () => Files.restore(restorable)
             });
 
@@ -434,7 +435,7 @@ Item {
                     name: e.name,
                     origin: Files.originPlace(e)
                 }));
-        prompt.ask(Deletion.question(items), "", 0, answer => Files.deleteForever(Deletion.approved(answer, paths)), null, "delete");
+        confirm.ask(Deletion.what(items), Deletion.REST, "Delete", "delete_forever", answer => Files.deleteForever(Deletion.approved(answer, paths)));
     }
 
     Connections {
@@ -473,6 +474,16 @@ Item {
 
     NamePrompt {
         id: prompt
+
+        anchors.fill: parent
+
+        z: 200
+
+        onDismissed: Qt.callLater(root.forceActiveFocus)
+    }
+
+    ConfirmPrompt {
+        id: confirm
 
         anchors.fill: parent
 

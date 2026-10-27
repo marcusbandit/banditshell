@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Deletion = lib("modules/files/deletion.js", ["question", "approved"]);
+const Deletion = lib("modules/files/deletion.js", ["question", "what", "approved"]);
 
 function qmlFiles(dir) {
     const found = [];
@@ -39,11 +39,11 @@ test.describe("files permanent delete", () => {
         }
     });
 
-    test.it("asks by naming what goes, and where a trashed item came from", () => {
-        assert.strictEqual(Deletion.question([{ name: "a.txt", origin: "~/Documents" }]), 'Delete a.txt from ~/Documents permanently? Type "delete" to confirm');
-        assert.strictEqual(Deletion.question([{ name: "plan.md", origin: "" }]), 'Delete plan.md permanently? Type "delete" to confirm');
-        assert.strictEqual(Deletion.question([{ name: "a.txt", origin: "~/Music" }, { name: "a.txt", origin: "~/Documents" }]), 'Delete a.txt from ~/Music and a.txt from ~/Documents permanently? Type "delete" to confirm');
-        assert.strictEqual(Deletion.question([{ name: "a", origin: "" }, { name: "b", origin: "" }, { name: "c", origin: "" }, { name: "d", origin: "" }]), 'Delete a, b and 2 more permanently? Type "delete" to confirm');
+    test.it("asks in one sentence that names what goes, where a trashed item came from, and that it cannot come back", () => {
+        assert.strictEqual(Deletion.question([{ name: "a.txt", origin: "~/Documents" }]), "a.txt from ~/Documents will be deleted and cannot be brought back.");
+        assert.strictEqual(Deletion.question([{ name: "plan.md", origin: "" }]), "plan.md will be deleted and cannot be brought back.");
+        assert.strictEqual(Deletion.what([{ name: "a.txt", origin: "~/Music" }, { name: "a.txt", origin: "~/Documents" }]), "a.txt from ~/Music and a.txt from ~/Documents");
+        assert.strictEqual(Deletion.what([{ name: "a", origin: "" }, { name: "b", origin: "" }, { name: "c", origin: "" }, { name: "d", origin: "" }]), "a, b and 2 more");
     });
 
     test.it("every permanent delete in the shell goes through that answer", () => {
