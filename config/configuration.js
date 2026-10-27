@@ -67,6 +67,18 @@ function upgradeFiles(values) {
     return Object.assign({}, values, { files: next });
 }
 
+function upgradeUpdateColours(values) {
+    const updates = values.updates;
+    if (!isPlainObject(updates) || updates.coloursUpgraded === true || (!owns(updates, "availableColour") && !owns(updates, "failedColour")))
+        return values;
+    const next = Object.assign({}, updates, { coloursUpgraded: true });
+    if (next.availableColour === "alarm" || next.availableColour === "#ff5252")
+        next.availableColour = "text";
+    if (next.failedColour === "bright" || next.failedColour === "#ffb454")
+        next.failedColour = "warning";
+    return Object.assign({}, values, { updates: next });
+}
+
 function giveGridKey(values, chord, action) {
     const grid = values.files?.grid;
     if (!isPlainObject(grid) || owns(grid, chord) || Object.values(grid).includes(action))
@@ -117,7 +129,7 @@ function upgradeChannel(values, keepChannel) {
 function upgrade(values, keepChannel) {
     if (!isPlainObject(values))
         return values;
-    return upgradeChannel(upgradeFilesGrid(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values)))), keepChannel === true);
+    return upgradeUpdateColours(upgradeChannel(upgradeFilesGrid(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values)))), keepChannel === true));
 }
 
 function holds(node, segment) {

@@ -1028,8 +1028,10 @@ Singleton {
 
                 skip: "",
 
-                availableColour: "alarm",
-                failedColour: "bright",
+                coloursUpgraded: true,
+
+                availableColour: "text",
+                failedColour: "warning",
                 readyColour: "accent"
             }
         })
