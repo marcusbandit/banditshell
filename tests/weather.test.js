@@ -173,7 +173,8 @@ test("a failure says what went wrong and offers Try again only where it can work
     assert.strictEqual(Forecast.failureLook("offline").retry, false);
     assert.strictEqual(Forecast.failureLook("service").retry, true);
     assert.strictEqual(Forecast.failureLook("place").retry, false);
-    assert.match(Forecast.failureLook("place").detail, /Settings/);
+    assert.match(Forecast.failureLook("place").detail, /^Change place/);
+    assert.doesNotMatch(Forecast.failureLook("place").detail, /config\.json/);
     assert.strictEqual(Forecast.failureLook("service").fix, undefined);
 });
 

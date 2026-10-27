@@ -577,7 +577,7 @@ const PAGES_SOURCE = {
                 { n: [], icon: "partly_cloudy_day", label: "Weather", k: "weatherShow", kind: "toggle", cfg: "weather.show", state: s => s.v("weatherShow") ? "beside the clock in the island" : "off", kw: "weather temperature forecast island",
                     why: "The temperature beside the island’s clock. Pressing it opens the week ahead." },
                 { n: [], icon: "location_on", label: "Place", k: "weatherPlace", kind: "text", cfg: "weather.location", placeholder: "automatic", state: s => s.weatherPlaceState, bad: s => s.weatherPlaceTrouble !== "", offer: s => placeOffer(s), dis: s => !s.v("weatherShow"), kw: "weather location town city",
-                    why: "A town or city. Empty lets the weather service place you by your connection." },
+                    why: "A town or city. Left empty, the weather uses your connection's location." },
                 { n: [], icon: "thermostat", label: "Units", k: "weatherUnits", kind: "seg", o: [["metric", "°C"], ["imperial", "°F"]], cfg: "weather.units", dis: s => !s.v("weatherShow"), kw: "weather units celsius fahrenheit temperature",
                     why: "For the temperature in the island and the week ahead." },
                 { n: [], icon: "update", label: "Refresh after", k: "weatherMinutes", kind: "step", min: 5, max: 180, step: 5, unit: " min", cfg: "weather.minutes", dis: s => !s.v("weatherShow"), kw: "weather refresh interval",
@@ -991,11 +991,11 @@ function placeOffer(s) {
         return null;
     const typed = String(s.v("weatherPlace") ?? "");
     if (!typed)
-        return { text: "The weather service could not place you by your connection.", alarm: true, buttons: [] };
+        return { text: "The weather service could not find your connection's location.", alarm: true, buttons: [] };
     const guess = s.weatherSuggestion;
     if (guess)
         return { text: `No place called "${typed}". Did you mean ${guess.text}?`, alarm: true, buttons: [[`Use ${guess.text}`, guess.text]] };
-    return { text: `No place called "${typed}". Check the spelling, or let your connection place you.`, alarm: true, buttons: [["Use my connection's location", ""]] };
+    return { text: `No place called "${typed}". Fix the spelling, or:`, alarm: true, buttons: [["Use my connection's location", ""]] };
 }
 
 function walk(rows, page, group, parent, out) {

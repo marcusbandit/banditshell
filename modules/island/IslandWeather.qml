@@ -67,7 +67,7 @@ Item {
             Item {
                 width: parent.width
                 height: Math.max(guess.implicitHeight, take.implicitHeight)
-                visible: !!Weather.placeSuggestion
+                visible: Weather.failure === "place" && !!Weather.location && Weather.failedFor === Weather.location
 
                 StyledText {
                     id: guess
@@ -77,7 +77,7 @@ Item {
                     anchors.right: take.left
                     anchors.rightMargin: Appearance.padding.normal
                     anchors.verticalCenter: parent.verticalCenter
-                    text: `Did you mean ${Weather.placeSuggestion?.text ?? ""}?`
+                    text: Weather.placeSuggestion ? `Did you mean ${Weather.placeSuggestion.text}?` : Weather.suggesting ? "Looking for a close spelling" : "No close spelling found"
                     wrapMode: Text.Wrap
                 }
 
@@ -86,10 +86,10 @@ Item {
 
                     x: parent.width - width
                     anchors.verticalCenter: parent.verticalCenter
-                    style: "accent"
-                    icon: "location_on"
-                    text: `Use ${Weather.placeSuggestion?.text ?? ""}`
-                    onClicked: Weather.useSuggestion()
+                    style: Weather.placeSuggestion ? "accent" : "ring"
+                    icon: Weather.placeSuggestion ? "location_on" : "my_location"
+                    text: Weather.placeSuggestion ? `Use ${Weather.placeSuggestion.text}` : "Use my connection's location"
+                    onClicked: Weather.placeSuggestion ? Weather.useSuggestion() : Weather.useConnection()
                 }
             }
 
@@ -152,8 +152,8 @@ Item {
                     x: parent.width - width
                     anchors.verticalCenter: parent.verticalCenter
                     visible: !!root.look.fix
-                    style: Weather.placeSuggestion ? "ring" : "accent"
-                    icon: "edit_location_alt"
+                    style: "ring"
+                    icon: "edit"
                     text: "Change place"
                     onClicked: root.act({
                         kind: "settings",
