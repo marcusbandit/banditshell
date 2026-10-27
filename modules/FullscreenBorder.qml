@@ -96,9 +96,19 @@ PanelWindow {
         visible: false
     }
 
+    readonly property string heldTitle: win.held?.title ?? ""
+
+    onHeldTitleChanged: if (sampler.running)
+        picture.captureFrame()
+    onHeldChanged: if (sampler.running)
+        picture.captureFrame()
+
     Timer {
-        interval: 125
+        id: sampler
+
+        interval: picture.hasContent ? 1000 : 125
         repeat: true
+        triggeredOnStart: true
         running: picture.captureSource !== null && win.covering
         onTriggered: picture.captureFrame()
     }

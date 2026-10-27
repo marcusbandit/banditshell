@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-10-27-7",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The shell checks on missing things less and less often while idle"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Opening the wallpaper picker no longer rescans every picture"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A fullscreen window's border colour is sampled once a second"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The media card and island glow hold still while nothing plays"
+        }
+      ]
+    },
+    {
       "id": "2026-10-27-6",
       "date": "2026-10-27",
       "changes": [

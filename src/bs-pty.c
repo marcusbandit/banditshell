@@ -19,6 +19,8 @@
 
 #define CHUNK 16384
 #define DRAIN_ROUNDS 4
+#define LOOK_SOON 300
+#define LOOK_IDLE 4800
 
 static int master = -1;
 static pid_t child = -1;
@@ -439,6 +441,7 @@ int main(int argc, char **argv) {
     char cwd[4096] = "";
     char last[4096] = "";
     long long next_cwd = 0;
+    long long step = LOOK_SOON;
     long long give_up_at = now_ms() + 8000;
     int last_busy = -1;
 
@@ -460,6 +463,7 @@ int main(int argc, char **argv) {
     int hung_up = 0;
 
     while (running) {
+        int busy = 0;
         short wanted = (short)(pending_length() > 0 ? POLLIN | POLLOUT : POLLIN);
         struct pollfd fds[2] = {{master, wanted, 0}, {STDIN_FILENO, POLLIN, 0}};
         int ready = poll(fds, 2, 100);
@@ -473,6 +477,7 @@ int main(int argc, char **argv) {
             for (int round = 0; round < DRAIN_ROUNDS; round++) {
                 ssize_t n = read(master, chunk, sizeof chunk);
                 if (n > 0) {
+                    busy = 1;
                     emit("o", chunk, (size_t)n);
                     continue;
                 }
@@ -489,6 +494,7 @@ int main(int argc, char **argv) {
             ssize_t n = read(STDIN_FILENO, in, sizeof in);
             if (n <= 0)
                 break;
+            busy = 1;
             for (ssize_t i = 0; i < n; i++) {
                 if (in[i] != '\n') {
                     if (len + 2 > cap) {
@@ -509,8 +515,15 @@ int main(int argc, char **argv) {
         }
 
         long long t = now_ms();
+        if (busy || !session_settled) {
+            step = LOOK_SOON;
+            if (next_cwd > t + LOOK_SOON)
+                next_cwd = t + LOOK_SOON;
+        }
         if (t >= next_cwd) {
-            next_cwd = t + 300;
+            next_cwd = t + step;
+            if (step < LOOK_IDLE)
+                step *= 2;
 
             if (!session_settled)
                 adopt_session(t >= give_up_at);
