@@ -5,6 +5,7 @@ import qs.config
 import qs.components
 import qs.services
 import "urls.js" as Urls
+import "tile-names.js" as TileNames
 
 Item {
     id: root
@@ -107,16 +108,23 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignTop
 
-            text: root.entry.name
+            function fitted(name: string, most: int, width: real, font: font): string {
+                ink.font = font;
+                return TileNames.lines(name, most, s => ink.advanceWidth(s) <= width).join("\n");
+            }
+
+            text: label.fitted(root.entry.name, label.maximumLineCount, label.width, label.font)
             color: root.picked ? Appearance.colour.accent : Appearance.colour.text
 
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
 
             maximumLineCount: 2
-            wrapMode: Text.Wrap
-            elide: Text.ElideRight
 
             height: label.lineHeight * 2
+
+            FontMetrics {
+                id: ink
+            }
         }
     }
 
