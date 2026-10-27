@@ -25,7 +25,6 @@ Singleton {
     readonly property var known: [...root.codes, ...Object.keys(Money.COINS)]
     readonly property var every: Object.assign({}, root.rates, root.coins)
     readonly property string home: Config.values.launcher.currency
-    readonly property bool stale: Date.now() - root.fetched > root.staleAfter
     readonly property bool linked: Network.connected
 
     function answer(text: string, evaluate: var): var {
@@ -56,6 +55,10 @@ Singleton {
         };
     }
 
+    function stale(): bool {
+        return Money.stale(root.fetched, Date.now(), root.staleAfter);
+    }
+
     function refresh(): void {
         if (!fetcher.running)
             fetcher.running = true;
@@ -66,7 +69,7 @@ Singleton {
     function wake(text: string, evaluate: var): void {
         const ask = Money.parse(text, root.known, root.home, evaluate);
         const now = Date.now();
-        if (Money.coinsIn(ask) && now - root.coinsFetched > root.coinsStaleAfter && now - root.coinsTried > 30000 && !coinFetcher.running) {
+        if (Money.coinsIn(ask) && Money.stale(root.coinsFetched, now, root.coinsStaleAfter) && now - root.coinsTried > 30000 && !coinFetcher.running) {
             root.coinsTried = now;
             coinFetcher.running = true;
         }
@@ -82,14 +85,14 @@ Singleton {
         }));
     }
 
-    onLinkedChanged: if (root.linked && root.stale)
+    onLinkedChanged: if (root.linked && root.stale())
         root.refresh()
 
     Timer {
         interval: 3600 * 1000
         repeat: true
         running: true
-        onTriggered: if (root.stale)
+        onTriggered: if (root.stale())
             root.refresh()
     }
 
@@ -157,7 +160,7 @@ Singleton {
                 root.coins = kept.coins ?? {};
                 root.coinsFetched = kept.coinsFetched ?? 0;
             } catch (e) {}
-            if (root.stale)
+            if (root.stale())
                 root.refresh();
         }
         onLoadFailed: root.refresh()
