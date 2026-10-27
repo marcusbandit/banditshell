@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "config/configuration.js"), "utf8");
-const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue, readText, readFailed };")();
+const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue, readText, readFailed, reuse, saveDelay };")();
 
 const OPAQUE = ["files.keys", "files.grid"];
 
@@ -148,6 +148,111 @@ test.describe("assign", () => {
         const out = Configuration.assign(defaults(), [["font.scale.1", 7]]);
         assert.deepStrictEqual(out.values.font.scale, [2, 7, 4]);
         assert.strictEqual(Configuration.assign(defaults(), [["font.scale.3", 7]]).refused, "font.scale.3");
+    });
+
+    test.it("copies only the path to a changed key and names the sections it touched", () => {
+        const values = defaults();
+        const out = Configuration.assign(values, [["sidebar.workspaces.slot", 40], ["theme", "paper"]]);
+        assert.deepStrictEqual(out.changed, ["sidebar", "theme"]);
+        assert.notStrictEqual(out.values.sidebar, values.sidebar);
+        assert.notStrictEqual(out.values.sidebar.workspaces, values.sidebar.workspaces);
+        assert.strictEqual(out.values.sidebar.perScreen, values.sidebar.perScreen);
+        assert.strictEqual(out.values.font, values.font);
+        assert.strictEqual(out.values.files, values.files);
+        assert.strictEqual(values.sidebar.workspaces.slot, 32);
+        assert.strictEqual(values.theme, "slate");
+    });
+
+    test.it("leaves the values as they were when nothing would change", () => {
+        const values = defaults();
+        const out = Configuration.assign(values, [["sidebar.width", 52], ["clock.cloud", ["claude", "-p"]]]);
+        assert.strictEqual(out.refused, "");
+        assert.deepStrictEqual(out.changed, []);
+        assert.strictEqual(out.values, values);
+    });
+
+    test.it("keeps every step of a slider drag and ends on the last one", () => {
+        let values = defaults();
+        for (const width of [53, 60, 71, 88, 90])
+            values = Configuration.assign(values, [["sidebar.width", width]]).values;
+        assert.strictEqual(values.sidebar.width, 90);
+        assert.strictEqual(JSON.parse(JSON.stringify(values, null, 4)).sidebar.width, 90);
+    });
+
+    test.it("stores its own copy of an object, so later edits to it do not leak in", () => {
+        const perScreen = { "DP-1": true };
+        const out = Configuration.assign(defaults(), [["sidebar.perScreen", perScreen]]);
+        perScreen["DP-2"] = true;
+        assert.deepStrictEqual(out.values.sidebar.perScreen, { "DP-1": true });
+    });
+});
+
+test.describe("reuse", () => {
+    test.it("keeps the old object for every part that did not change", () => {
+        const before = defaults();
+        const after = defaults();
+        after.sidebar.width = 90;
+        const out = Configuration.reuse(before, after);
+        assert.deepStrictEqual(out, after);
+        assert.notStrictEqual(out, before);
+        assert.notStrictEqual(out.sidebar, before.sidebar);
+        assert.strictEqual(out.sidebar.perScreen, before.sidebar.perScreen);
+        assert.strictEqual(out.sidebar.workspaces, before.sidebar.workspaces);
+        assert.strictEqual(out.font, before.font);
+        assert.strictEqual(out.files, before.files);
+    });
+
+    test.it("returns the old values whole when the file says the same thing", () => {
+        const before = defaults();
+        assert.strictEqual(Configuration.reuse(before, defaults()), before);
+    });
+
+    test.it("notices keys that came or went and arrays that changed length", () => {
+        const before = defaults();
+        const grew = defaults();
+        grew.sidebar.perScreen = { "DP-1": true };
+        assert.deepStrictEqual(Configuration.reuse(before, grew).sidebar.perScreen, { "DP-1": true });
+        const longer = defaults();
+        longer.font.scale.push(5);
+        assert.deepStrictEqual(Configuration.reuse(before, longer).font.scale, [2, 3, 4, 5]);
+        const shorter = defaults();
+        delete shorter.files.zoom;
+        assert.strictEqual("zoom" in Configuration.reuse(before, shorter).files, false);
+        assert.strictEqual(before.files.zoom, 1.0);
+    });
+});
+
+test.describe("saveDelay", () => {
+    const quiet = 300;
+    const longest = 2000;
+
+    test.it("waits for the writes to go quiet", () => {
+        assert.strictEqual(Configuration.saveDelay(1000, 1000, quiet, longest), 300);
+        assert.strictEqual(Configuration.saveDelay(1000, 1250, quiet, longest), 300);
+    });
+
+    test.it("never holds an unsaved change past the longest wait, however long a drag goes on", () => {
+        assert.strictEqual(Configuration.saveDelay(1000, 2800, quiet, longest), 200);
+        assert.strictEqual(Configuration.saveDelay(1000, 3000, quiet, longest), 0);
+        assert.strictEqual(Configuration.saveDelay(1000, 9000, quiet, longest), 0);
+    });
+
+    test.it("saves a drag once, a quiet spell after the last step", () => {
+        const steps = [0, 40, 80, 120, 160, 200, 240];
+        let since = null;
+        let due = null;
+        const saves = [];
+        for (const at of steps) {
+            if (due !== null && at >= due) {
+                saves.push(due);
+                since = null;
+            }
+            if (since === null)
+                since = at;
+            due = at + Configuration.saveDelay(since, at, quiet, longest);
+        }
+        saves.push(due);
+        assert.deepStrictEqual(saves, [540]);
     });
 });
 

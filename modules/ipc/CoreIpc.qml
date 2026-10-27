@@ -28,6 +28,12 @@ IpcHandler {
         const span = Trace.begin("config write", key);
         Config.set(key, parsed);
         Trace.step("set", span);
+        Config.flush();
         return `${key} = ${JSON.stringify(parsed)}`;
+    }
+
+    function flush(): string {
+        Config.flush();
+        return "saved";
     }
 }

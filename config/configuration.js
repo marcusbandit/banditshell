@@ -156,30 +156,80 @@ function lookup(values, key) {
     return node;
 }
 
+function refusal(key) {
+    return { values: null, refused: key, changed: [] };
+}
+
+function fork(node, fresh) {
+    if (fresh.has(node))
+        return node;
+    const copy = Array.isArray(node) ? node.slice() : Object.assign({}, node);
+    fresh.add(copy);
+    return copy;
+}
+
+function detached(value) {
+    return value !== null && typeof value === "object" ? JSON.parse(JSON.stringify(value)) : value;
+}
+
 function assign(values, pairs, literals) {
-    const next = JSON.parse(JSON.stringify(values));
+    const fresh = new Set();
+    const changed = [];
+    let next = values;
 
     for (const pair of pairs) {
         const key = String(pair[0]);
         const segments = key.split(".");
         if (segments.some(segment => segment === "" || reservedSegments.includes(segment)))
-            return { values: null, refused: key };
+            return refusal(key);
 
+        const path = segments.slice(0, -1);
         let node = next;
-        for (const segment of segments.slice(0, -1)) {
+        for (const segment of path) {
             if (!holds(node, segment))
-                return { values: null, refused: key };
+                return refusal(key);
             node = node[segment];
         }
 
         const last = segments[segments.length - 1];
         if (!holds(node, last) || !fits(node[last], pair[1], literals, key))
-            return { values: null, refused: key };
+            return refusal(key);
+        if (JSON.stringify(node[last]) === JSON.stringify(pair[1]))
+            continue;
 
-        node[last] = pair[1];
+        next = fork(next, fresh);
+        let at = next;
+        for (const segment of path) {
+            at[segment] = fork(at[segment], fresh);
+            at = at[segment];
+        }
+        at[last] = detached(pair[1]);
+        if (!changed.includes(segments[0]))
+            changed.push(segments[0]);
     }
 
-    return { values: next, refused: "" };
+    return { values: next, refused: "", changed };
+}
+
+function reuse(before, after) {
+    if (before === after)
+        return before;
+    const lists = Array.isArray(before) && Array.isArray(after);
+    if (!lists && !(isPlainObject(before) && isPlainObject(after)))
+        return after;
+    const keys = Object.keys(after);
+    let same = keys.length === Object.keys(before).length;
+    const out = lists ? [] : {};
+    for (const key of keys) {
+        out[key] = owns(before, key) ? reuse(before[key], after[key]) : after[key];
+        if (!owns(before, key) || out[key] !== before[key])
+            same = false;
+    }
+    return same ? before : out;
+}
+
+function saveDelay(unsavedSince, now, quiet, longest) {
+    return Math.max(0, Math.min(quiet, unsavedSince + longest - now));
 }
 
 function readText(raw, state, defaults, keepChannel, opaque, literals) {
