@@ -91,9 +91,7 @@ Singleton {
     }
 
     function timeoutFor(n: var): int {
-        if (n?.urgency === NotificationUrgency.Critical)
-            return 0;
-        return n?.expireTimeout > 0 ? n.expireTimeout : root.defaultTimeout;
+        return Timing.popupTimeout(n?.expireTimeout, n?.urgency === NotificationUrgency.Critical, root.defaultTimeout);
     }
 
     readonly property int maxHistory: Config.values.notifications.maxHistory
@@ -468,8 +466,7 @@ Singleton {
     function wake(entry: var): void {
         if (!root.history.includes(entry) || entry.leaving)
             return;
-        if (!(entry.timeout > 0) && entry.urgency !== NotificationUrgency.Critical)
-            entry.timeout = root.defaultTimeout;
+        entry.timeout = Timing.wakeTimeout(entry.timeout, entry.urgency === NotificationUrgency.Critical, entry.live, root.defaultTimeout);
         entry.remaining = 1;
         entry.seen = false;
         root.showPopups([entry, ...root.popups.filter(e => e !== entry)]);

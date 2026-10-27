@@ -169,3 +169,23 @@ function assign(values, pairs, literals) {
 
     return { values: next, refused: "" };
 }
+
+function readText(raw, state, defaults, keepChannel, opaque, literals) {
+    let parsed = null;
+    let problem = "not an object";
+    try {
+        parsed = JSON.parse(raw);
+    } catch (e) {
+        problem = e.message;
+    }
+    if (!isPlainObject(parsed))
+        return { values: state.values, loaded: true, unreadable: true, problem: problem, save: false };
+    const values = merge(defaults, upgrade(parsed, keepChannel), "", opaque, literals);
+    return { values: values, loaded: true, unreadable: false, problem: "", save: JSON.stringify(values) !== JSON.stringify(parsed) };
+}
+
+function readFailed(missing) {
+    if (!missing)
+        return { loaded: true, unreadable: true, fresh: false, save: false };
+    return { loaded: true, unreadable: false, fresh: true, save: true };
+}

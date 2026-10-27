@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-27-5",
+      "id": "2026-10-27-6",
       "date": "2026-10-27",
       "changes": [
         {
@@ -18,6 +18,37 @@
           "type": "issues",
           "severity": "minor",
           "text": "The launcher keeps learning new favourites after its first 400"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-5",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A typo in config.json no longer turns off the wallpaper and services"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Exchange rates refresh every 12 hours, not only at startup"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Notifications that ask to stay now stay until you dismiss them"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rounding and gaps follow Hyprland even when it lacks an option"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Binds and monitors in files outside ~/.config/hypr can be edited"
         }
       ]
     },

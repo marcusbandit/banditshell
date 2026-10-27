@@ -1119,6 +1119,16 @@ function confSources(text, dir, home) {
     return out;
 }
 
+function shortName(path, dir) {
+    if (path.startsWith(`${dir}/lua/`))
+        return `lua/${path.slice(`${dir}/lua/`.length)}`;
+    return path.startsWith(`${dir}/`) ? path.slice(dir.length + 1) : path;
+}
+
+function pathOf(name, dir) {
+    return name.startsWith("/") ? name : `${dir}/${name}`;
+}
+
 function appendSplice(src, addition) {
     const lines = String(src ?? "").split("\n");
     const last = lines[lines.length - 1];

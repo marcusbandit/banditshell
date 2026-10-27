@@ -6,7 +6,8 @@
     "qml": ["modules/calculator", "previews/CalculatorPreview.qml"],
     "services": ["Calculator", "Currency"],
     "js": ["services/calculation.js", "services/currency.js", "services/dates.js"],
-    "assets": ["assets/applications"]
+    "assets": ["assets/applications"],
+    "tests": ["tests/currency.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor", "network"],

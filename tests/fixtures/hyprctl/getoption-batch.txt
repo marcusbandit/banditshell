@@ -1,0 +1,19 @@
+{"option": "decoration:rounding", "int": 30, "set": true }
+
+
+{"option": "decoration:rounding_power", "float": 4.000000, "set": true }
+
+
+{"option": "general:gaps_out", "css": "10 10 10 10", "set": true }
+
+
+{"option": "general:gaps_in", "css": "5 5 5 5", "set": true }
+
+
+{"option": "general:border_size", "int": 2, "set": true }
+
+
+{"option": "input:natural_scroll", "bool": false, "set": false }
+
+
+{"option": "input:touchpad:natural_scroll", "bool": true, "set": true }
