@@ -1066,8 +1066,8 @@ QtObject {
     }
 
     readonly property var outputRows: !root.cliOutput || root.cliOutput.line !== (root.cliLine ?? "").trim() ? [] : root.cliOutput.lines.map((text, i) => ({
-                key: `output:${i}:${text}`,
-                kind: "output",
+                key: `printed:${i}:${text}`,
+                kind: "printed",
                 label: text,
                 detail: "",
                 icon: "subdirectory_arrow_right",
@@ -1600,7 +1600,7 @@ QtObject {
         case "cli":
             root.runCli(row.line);
             return;
-        case "output":
+        case "printed":
             root.leave(() => System.copyText(row.label));
             return;
         }
