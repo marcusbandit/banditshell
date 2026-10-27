@@ -12,6 +12,22 @@
       ]
     },
     {
+      "id": "2026-10-27-2",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "File search can reach all of home, this folder's matches first"
+        },
+        {
+          "type": "ui",
+          "severity": "major",
+          "text": "Enter in the files search opens the match; Down goes to the files"
+        }
+      ]
+    },
+    {
       "id": "2026-10-27",
       "date": "2026-10-27",
       "impact": {

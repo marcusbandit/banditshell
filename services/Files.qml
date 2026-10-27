@@ -9,6 +9,7 @@ import "../components/base64.js" as Base64
 import "quoting.js" as Quoting
 import "files-order.js" as FilesOrder
 import "files-conflicts.js" as Conflicts
+import "files-find.js" as Find
 
 Singleton {
     id: root
@@ -33,14 +34,26 @@ Singleton {
 
     readonly property var visible: {
         const all = root.entries.filter(e => root.showHidden || !e.hidden);
-        const query = root.search.toLowerCase();
+        const query = root.search.trim().toLowerCase();
         const matched = query === "" ? all : all.filter(e => e.name.toLowerCase().includes(query));
 
-        return FilesOrder.ordered(matched, root.sort, root.reversed);
+        const order = list => FilesOrder.ordered(list, root.sort, root.reversed);
+        return FilesFind.active ? Find.grouped(matched, FilesFind.results, root.cwd, order) : order(matched);
+    }
+
+    onSearchChanged: FilesFind.ask(root.search, root.cwd, root.showHidden)
+    onShowHiddenChanged: FilesFind.ask(root.search, root.cwd, root.showHidden)
+
+    function keyOf(entry: var): string {
+        return entry.key ?? entry.name;
+    }
+
+    function pathOf(entry: var): string {
+        return entry.key ?? root.join(root.cwd, entry.name);
     }
 
     function indexOf(name: string): int {
-        return root.visible.findIndex(e => e.name === name);
+        return root.visible.findIndex(e => root.keyOf(e) === name);
     }
 
     readonly property int cursor: {
@@ -49,16 +62,16 @@ Singleton {
     }
 
     readonly property var current: root.cursor >= 0 ? root.visible[root.cursor] : null
-    readonly property string currentPath: root.current ? root.join(root.cwd, root.current.name) : ""
+    readonly property string currentPath: root.current ? root.pathOf(root.current) : ""
 
     readonly property var picks: {
         const names = root.picked;
         if (names.length === 0)
             return root.current ? [root.current] : [];
-        return root.visible.filter(e => names.includes(e.name));
+        return root.visible.filter(e => names.includes(root.keyOf(e)));
     }
 
-    readonly property var pickedPaths: root.picks.map(e => root.join(root.cwd, e.name))
+    readonly property var pickedPaths: root.picks.map(e => root.pathOf(e))
 
     readonly property var crumbs: {
         const parts = root.cwd.split("/").filter(p => p.length > 0);
@@ -86,7 +99,7 @@ Singleton {
     function setCursor(index: int): void {
         if (index < 0 || index >= root.visible.length)
             return;
-        const name = root.visible[index].name;
+        const name = root.keyOf(root.visible[index]);
         root.cursorName = name;
         root.anchorName = name;
         root.picked = [name];
@@ -95,7 +108,7 @@ Singleton {
     function togglePick(index: int): void {
         if (index < 0 || index >= root.visible.length)
             return;
-        const name = root.visible[index].name;
+        const name = root.keyOf(root.visible[index]);
         root.picked = root.isPicked(name) ? root.picked.filter(n => n !== name) : [...root.picked, name];
         root.cursorName = name;
         root.anchorName = name;
@@ -108,18 +121,18 @@ Singleton {
         const from = anchor < 0 ? index : anchor;
         const lo = Math.min(from, index);
         const hi = Math.max(from, index);
-        const name = root.visible[index].name;
-        root.picked = root.visible.slice(lo, hi + 1).map(e => e.name);
+        const name = root.keyOf(root.visible[index]);
+        root.picked = root.visible.slice(lo, hi + 1).map(e => root.keyOf(e));
         root.cursorName = name;
     }
 
     function pickRange(indices: var, add: bool): void {
-        const names = indices.filter(i => i >= 0 && i < root.visible.length).map(i => root.visible[i].name);
+        const names = indices.filter(i => i >= 0 && i < root.visible.length).map(i => root.keyOf(root.visible[i]));
         root.picked = add ? [...new Set([...root.picked, ...names])] : names;
     }
 
     function pickAll(): void {
-        root.picked = root.visible.map(e => e.name);
+        root.picked = root.visible.map(e => root.keyOf(e));
     }
 
     function clearPicked(): void {
@@ -173,9 +186,11 @@ Singleton {
     function open(entry: var): void {
         if (!entry)
             return;
-        const path = root.join(root.cwd, entry.name);
+        const path = root.pathOf(entry);
         if (entry.kind === "dir")
             root.go(path);
+        else if (entry.key)
+            root.goTo(path);
         else
             System.openWith(path);
     }
@@ -249,7 +264,7 @@ Singleton {
         root.picked = root.picked.filter(n => root.indexOf(n) >= 0);
         if (root.cursorName && root.indexOf(root.cursorName) < 0) {
             const at = Math.min(Math.max(was, 0), root.visible.length - 1);
-            root.cursorName = at >= 0 ? root.visible[at].name : "";
+            root.cursorName = at >= 0 ? root.keyOf(root.visible[at]) : "";
         }
         root.landedAt = root.watched ? Date.now() : 0;
         root.cost = Date.now() - began;
@@ -922,11 +937,14 @@ Singleton {
             return;
         root.run(["gio", "trash", "--"], paths);
         FilesUndo.trashed(paths);
+        FilesFind.forget(paths);
     }
 
     function deleteForever(paths: var): void {
-        if (paths.length > 0)
-            root.run(["rm", "-rf", "--"], paths);
+        if (paths.length === 0)
+            return;
+        root.run(["rm", "-rf", "--"], paths);
+        FilesFind.forget(paths);
     }
 
     function copyInto(paths: var, dir: string): void {
@@ -935,6 +953,7 @@ Singleton {
 
     function moveInto(paths: var, dir: string): void {
         FilesPaste.start(paths, dir, true);
+        FilesFind.forget(paths);
     }
 
     property var clipboard: []
@@ -950,6 +969,7 @@ Singleton {
             return;
         if (root.clipboardCut) {
             const moving = root.clipboard;
+            FilesFind.forget(moving);
             FilesPaste.start(moving, root.cwd, true, outcome => {
                 if (root.clipboard === moving)
                     root.clipboard = Conflicts.leftover(moving, outcome);
@@ -982,6 +1002,14 @@ Singleton {
         Trace.step("listed", span);
         root.windowOpen = true;
         Trace.step("shown", span);
+    }
+
+    function goTo(path: string): void {
+        const name = path.slice(path.lastIndexOf("/") + 1);
+        root.go(root.parentOf(path));
+        root.cursorName = name;
+        root.anchorName = name;
+        root.picked = [name];
     }
 
     function reveal(path: string): void {
@@ -1057,7 +1085,11 @@ Singleton {
         });
     }
 
-    onWindowOpenChanged: root.remember()
+    onWindowOpenChanged: {
+        if (!root.windowOpen)
+            FilesFind.stop();
+        root.remember();
+    }
 
     Component.onCompleted: {
         const was = Relaunch.recall("files");
