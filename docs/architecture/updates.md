@@ -94,6 +94,14 @@ The CLI reads a `main` without the marker as `stable` too (`config_channel`), so
 command agree before the shell has rewritten the file. To follow every merge, set it back:
 `banditshell config set updates.channel main`.
 
+A copy still on the code from before releases cannot record the marker: its config loader drops
+keys it does not know. So the move also stops when `~/.local/state/banditshell/keep-channel` is a
+non-empty file, which no version of the shell rewrites. The shell reads it before the upgrade
+(`keepsChannel` in `config/Config.qml`) and the CLI reads it in `config_channel`. To keep a copy on
+`main` whichever version it runs:
+
+    mkdir -p ~/.local/state/banditshell && echo main > ~/.local/state/banditshell/keep-channel && banditshell config set updates.channel main
+
 `updates.branch` still works as an override. The rule is one sentence: a branch other than `main`
 wins over the channel, and `main` (the default value in every config) means "let the channel
 decide". Someone who follows `dev` keeps following `dev` on either channel. The rule exists in two
