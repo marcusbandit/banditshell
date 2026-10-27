@@ -252,7 +252,7 @@ test("a search hit names its row with the heading it sits under and marks what m
     const mixer = Catalogue.search("volume by app")[0];
     assert.strictEqual(Catalogue.nameOf(mixer.page, s), Catalogue.hitTitle(mixer, s));
     assert.ok(titles("keys").includes("Shell: keys") && titles("keys").includes("In files: keys"));
-    const shown = h => `${Catalogue.hitTitle(h, s)} ${Catalogue.CAT_BY_ID[h.page.cat].name.toLowerCase()} · ${Catalogue.nameOf(h.page, s).toLowerCase()}`;
+    const shown = h => `${Catalogue.hitTitle(h, s)} ${Catalogue.nameOf(h.page, s).toLowerCase()}`;
     const modes = Catalogue.search("sleep").find(h => h.page.id === "modes" && h.row.w === "modes");
     assert.strictEqual(Catalogue.hitWhy(modes, "sleep", shown(modes)), "sleep");
     assert.strictEqual(Catalogue.hitWhy(modes, "modes", shown(modes)), "");

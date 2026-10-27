@@ -387,7 +387,7 @@ Item {
 
                     width: found.width
                     icon: root.listingRecent ? "history" : hit.modelData.page.icon
-                    readonly property string place: root.listingRecent ? "" : `${Catalogue.CAT_BY_ID[hit.modelData.page.cat].name.toLowerCase()} · ${Catalogue.nameOf(hit.modelData.page, SettingsState).toLowerCase()}`
+                    readonly property string place: root.listingRecent ? "" : Catalogue.nameOf(hit.modelData.page, SettingsState).toLowerCase()
                     readonly property string why: root.listingRecent ? "" : Catalogue.hitWhy(hit.modelData, SettingsView.query, `${hit.label} ${hit.place}`)
 
                     label: root.listingRecent ? hit.modelData.label : Catalogue.hitTitle(hit.modelData, SettingsState)
@@ -517,6 +517,8 @@ Item {
                 width: parent.width
                 textFormat: Text.StyledText
                 text: Catalogue.marked(hr.label, hr.query, Appearance.colour.accent)
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
                 elide: Text.ElideRight
             }
 
