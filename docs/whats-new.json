@@ -15,19 +15,9 @@
           "text": "The dictionary page's footer no longer runs under its keys"
         },
         {
-          "type": "issues",
+          "type": "bugs",
           "severity": "minor",
-          "text": "Dragging the launcher down keeps it inside the frame"
-        },
-        {
-          "type": "issues",
-          "severity": "minor",
-          "text": "A colour or file preview leaves with the launcher as it folds away"
-        },
-        {
-          "type": "issues",
-          "severity": "minor",
-          "text": "The launcher opens without a bounce unless you are dragging it"
+          "text": "Dragging the launcher down keeps it in the frame and folds its preview"
         }
       ]
     },

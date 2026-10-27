@@ -783,14 +783,14 @@ LauncherConcept {
         }
 
         function unjudge(): void {
+            unjudged = true;
             if (Appearance.still)
-                judge();
-            else
-                unjudged = true;
+                track(0);
         }
 
         function judge(): void {
             unjudged = false;
+            const wasStuck = stuck;
             if (stuck && lift > barHeight + stretchRoom) {
                 stuck = false;
                 stretch.release();
@@ -802,7 +802,7 @@ LauncherConcept {
             } else if (!stuck && lift <= tabShapeHeight) {
                 stuck = true;
             }
-            if (stuck && lift !== judgedLift)
+            if (stuck && (lift !== judgedLift || !wasStuck))
                 stretch.hold(Math.max(0, lift / barHeight - 1));
             judgedLift = lift;
             judgeArrival();

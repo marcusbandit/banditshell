@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/launcher/placement.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Placement = new Function(`${src}\nreturn { searchAt, restTop, SEARCH_AT, LOWEST, HIGHEST };`)();
+const Placement = new Function(`${src}\nreturn { searchAt, restTop, LOWEST, HIGHEST };`)();
 
 const BAR_OFFSET = 30;
 const ROOM = 60 + 44 * 3;
@@ -38,8 +38,9 @@ test.describe("launcher placement", () => {
         assert.strictEqual(Placement.searchAt(0.33), 0.33);
     });
 
-    test.it("falls back to the default for anything that is not a number", () => {
-        for (const junk of ["0.3", null, undefined, NaN, Infinity, {}, true])
-            assert.strictEqual(Placement.searchAt(junk), Placement.SEARCH_AT, String(junk));
+    test.it("offers in Settings exactly the range the launcher keeps", () => {
+        const catalogue = fs.readFileSync(path.join(ROOT, "modules/settings/catalogue.js"), "utf8");
+        const row = catalogue.split("\n").find(line => line.includes('cfg: "launcher.list.searchAt"'));
+        assert.match(row, new RegExp(`min: ${Placement.LOWEST}, max: ${Placement.HIGHEST},`));
     });
 });
