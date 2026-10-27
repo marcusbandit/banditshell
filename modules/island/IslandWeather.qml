@@ -60,7 +60,7 @@ Item {
                 icon: root.blank ? root.look.icon : Weather.icon
                 tone: !root.blank ? Appearance.colour.accent : Weather.failure === "place" ? Appearance.colour.alarm : Appearance.colour.textDim
                 title: Weather.ready ? `${Weather.temperature} ${Weather.summary.trim()}` : root.blank ? root.look.title : "Weather"
-                subtitle: !root.blank ? Weather.place : Weather.failure !== "place" ? root.look.detail : Weather.failedFor ? `No town called "${Weather.failedFor}"` : "The weather service does not know this place"
+                subtitle: !root.blank ? Weather.place : Weather.failure !== "place" ? root.look.detail : Weather.failedFor ? `No place called "${Weather.failedFor}"` : "The weather service does not know this place"
                 onClosed: root.hide()
             }
 
@@ -87,8 +87,8 @@ Item {
                     x: parent.width - width
                     anchors.verticalCenter: parent.verticalCenter
                     style: "accent"
-                    icon: "check"
-                    text: `Use ${Weather.placeSuggestion?.short ?? ""}`
+                    icon: "location_on"
+                    text: `Use ${Weather.placeSuggestion?.text ?? ""}`
                     onClicked: Weather.useSuggestion()
                 }
             }
@@ -152,6 +152,7 @@ Item {
                     x: parent.width - width
                     anchors.verticalCenter: parent.verticalCenter
                     visible: !!root.look.fix
+                    style: Weather.placeSuggestion ? "ring" : "accent"
                     icon: "edit_location_alt"
                     text: "Change place"
                     onClicked: root.act({

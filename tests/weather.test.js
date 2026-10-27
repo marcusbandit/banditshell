@@ -214,11 +214,11 @@ test("edit distance counts a swap of two letters as one", () => {
 });
 
 test("a doubled letter suggests the town", () => {
-    assert.deepStrictEqual(Forecast.suggestPlace("Lyngbyy", geocoded("lyngbyy")), { name: "Lyngby", country: "Denmark", text: "Lyngby, Denmark", short: "Lyngby" });
+    assert.deepStrictEqual(Forecast.suggestPlace("Lyngbyy", geocoded("lyngbyy")), { name: "Lyngby", country: "Denmark", text: "Lyngby, Denmark" });
 });
 
 test("a missing letter suggests the town", () => {
-    assert.deepStrictEqual(Forecast.suggestPlace("Copenhgen", geocoded("copenhgen")), { name: "Copenhagen", country: "Denmark", text: "Copenhagen, Denmark", short: "Copenhagen" });
+    assert.deepStrictEqual(Forecast.suggestPlace("Copenhgen", geocoded("copenhgen")), { name: "Copenhagen", country: "Denmark", text: "Copenhagen, Denmark" });
 });
 
 test("a one-letter typo suggests the town, in any case and accent", () => {
@@ -252,7 +252,7 @@ test("no suggestion when nothing is close, or only non-towns are", () => {
 
 test("a suggestion never repeats the place as it is written", () => {
     const results = geocoded("lyngbyy");
-    assert.strictEqual(Forecast.suggestPlace("Lyngby", results).short, "Lyngby, Denmark");
+    assert.strictEqual(Forecast.suggestPlace("Lyngby", results).text, "Lyngby, Denmark");
     assert.strictEqual(Forecast.suggestPlace("lyngby, denmark", results), null);
     assert.strictEqual(Forecast.suggestPlace("Lyngby, Sweden", results), null);
 });

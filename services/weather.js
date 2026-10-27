@@ -190,7 +190,7 @@ function readWttr(output) {
 
 function failureLook(failure) {
     if (failure === "place")
-        return { icon: "wrong_location", title: "Place not found", detail: "Fix the spelling of the town in Settings", note: "", retry: false, fix: "weather.location" };
+        return { icon: "wrong_location", title: "Place not found", detail: "Fix the spelling of the place in Settings", note: "", retry: false, fix: "weather.location" };
     if (failure === "service")
         return { icon: "cloud_off", title: "No answer", detail: "The weather service did not reply", note: "the weather service did not reply", retry: true };
     return { icon: "wifi_off", title: "You're offline", detail: "The weather loads when you're back online", note: "offline, updates when you're back online", retry: false };
@@ -323,5 +323,5 @@ function suggestPlace(location, results) {
         return null;
     pool.sort((x, y) => x.distance - y.distance || y.population - x.population || y.rank - x.rank || x.order - y.order);
     const best = pool[0];
-    return best ? { name: best.name, country: best.country, text: best.text, short: best.distance > 0 ? best.name : best.text } : null;
+    return best ? { name: best.name, country: best.country, text: best.text } : null;
 }

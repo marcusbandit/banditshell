@@ -222,19 +222,23 @@ Column {
 
         StyledText {
             width: Math.min(implicitWidth, parent.width - parent.leftPadding - parent.rightPadding)
-            height: Math.max(implicitHeight, offerButton.height)
+            height: Math.max(implicitHeight, Appearance.button.height(0))
             verticalAlignment: Text.AlignVCenter
             wrapMode: Text.Wrap
             text: root.offer?.text ?? ""
+            color: root.offer?.alarm ? Appearance.colour.alarm : Appearance.colour.text
         }
 
-        Button {
-            id: offerButton
+        Repeater {
+            model: root.offer?.buttons ?? []
 
-            size: 0
-            icon: "check"
-            text: root.offer?.button ?? ""
-            onClicked: root.set(root.offer.value)
+            delegate: Button {
+                required property var modelData
+
+                size: 0
+                text: modelData[0]
+                onClicked: root.set(modelData[1])
+            }
         }
     }
 
