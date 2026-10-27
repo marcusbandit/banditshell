@@ -12,10 +12,13 @@ function record(usage, key, now, keep, decay) {
             last: now
         }
     });
-    const keys = Object.keys(next);
-    if (keys.length > keep) {
-        keys.sort((a, b) => scoreOf(next, b, now, decay) - scoreOf(next, a, now, decay) || next[b].last - next[a].last);
-        for (const gone of keys.slice(keep))
+    const others = Object.keys(next).filter(k => k !== key);
+    if (others.length >= keep) {
+        const scores = {};
+        for (const k of others)
+            scores[k] = scoreOf(next, k, now, decay);
+        others.sort((a, b) => scores[b] - scores[a] || next[b].last - next[a].last);
+        for (const gone of others.slice(keep - 1))
             delete next[gone];
     }
     return next;

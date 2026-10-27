@@ -14,8 +14,10 @@ Singleton {
 
     property var usage: ({})
 
+    readonly property var decay: (from, to) => Apps.decay(from, to)
+
     function scoreOf(key: string, now: real): real {
-        return Memory.scoreOf(root.usage, key, now, (from, to) => Apps.decay(from, to));
+        return Memory.scoreOf(root.usage, key, now, root.decay);
     }
 
     function bonusOf(key: string, now: real): real {
@@ -41,7 +43,7 @@ Singleton {
     function record(key: string): void {
         if (!root.remembers(key))
             return;
-        const next = Memory.record(root.usage, key, Date.now(), root.keep, (from, to) => Apps.decay(from, to));
+        const next = Memory.record(root.usage, key, Date.now(), root.keep, root.decay);
         root.usage = next;
         store.setText(JSON.stringify(next));
     }

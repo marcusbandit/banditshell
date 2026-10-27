@@ -32,6 +32,17 @@ test("the faintest habit makes room, not the one just used", () => {
     assert.strictEqual(Object.keys(usage).length, 400);
 });
 
+test("a new key is kept even when every stored habit is stronger", () => {
+    const now = 1.8e12;
+    const usage = {};
+    for (let i = 0; i < 400; i++)
+        usage[`key${i}`] = { score: 5 + i / 1000, last: now };
+    const next = Memory.record(usage, "newest", now, 400, decay);
+    assert.ok(next.newest);
+    assert.strictEqual(next.key0, undefined);
+    assert.strictEqual(Object.keys(next).length, 400);
+});
+
 test("using a key again adds to its decayed score", () => {
     const usage = Memory.record({ a: { score: 2, last: 0 } }, "a", 14 * DAY, 400, decay);
     assert.deepStrictEqual(usage.a, { score: 2, last: 14 * DAY });
