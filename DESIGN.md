@@ -4601,8 +4601,8 @@ it also goes once that network connects. Only joins a
 person started count, through `Network.join`, so a dropped connection or a
 background retry stays quiet, and a wrong password typed into the join prompt
 goes back to the prompt instead. The fifth is not a moment but a state: while a program holds the microphone, the
-camera or a screen cast open in PipeWire, a privacy activity stays up, coloured
-(the camera and the screen alarm red, the microphone accent), naming the app. It
+camera or a screen cast open in PipeWire, a privacy activity stays up in the
+alarm colour, the same one the rail gives a live microphone, naming the app. It
 is kind `privacy`, so it sits in the island like dictation does, but it joins
 the others as a bubble and never takes the big spot from what is already
 there; hovering the bubble names the apps, and pressing the microphone's opens

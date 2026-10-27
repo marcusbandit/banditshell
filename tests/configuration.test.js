@@ -232,6 +232,15 @@ test.describe("upgrade", () => {
         assert.strictEqual(Configuration.upgrade(taken), taken);
     });
 
+    test.it("moves the update colours the shell shipped as defaults off the privacy and accent colours", () => {
+        const roles = { updates: { availableColour: "alarm", failedColour: "bright", readyColour: "accent" } };
+        assert.deepStrictEqual(Configuration.upgrade(roles), { updates: { availableColour: "text", failedColour: "warning", readyColour: "accent" } });
+        const hex = { updates: { availableColour: "#ff5252", failedColour: "#ffb454" } };
+        assert.deepStrictEqual(Configuration.upgrade(hex), { updates: { availableColour: "text", failedColour: "warning" } });
+        const chosen = { updates: { availableColour: "mid", failedColour: "#ff0000" } };
+        assert.strictEqual(Configuration.upgrade(chosen), chosen);
+    });
+
     test.it("leaves a config without a launcher alone", () => {
         const plain = { theme: "slate" };
         assert.strictEqual(Configuration.upgrade(plain), plain);

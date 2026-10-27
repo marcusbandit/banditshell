@@ -1067,6 +1067,14 @@ Item {
     }
 
     Follow {
+        id: underCard
+
+        speed: tall.speed
+        epsilon: 0.004
+        target: root.cardHeight > 0 ? 1 : 0
+    }
+
+    Follow {
         id: deckFade
 
         speed: root.fadeSpeed(deckFade)
@@ -1276,7 +1284,8 @@ Item {
                     readonly property real shown: peek.value * presence.value * (1 - root.opened)
                     readonly property real ghostness: layer.index === 0 && root.ghost ? (1 - roll.value) * (1 - fan.value) * presence.value : 0
                     readonly property real strip: root.pillRadius * 2 + Appearance.padding.small
-                    readonly property real stand: root.ghost && layer.index === 0 ? root.ghostHeight + (root.pillHeight - root.ghostHeight) * roll.value : root.pillHeight
+                    readonly property real floor: Math.min(root.pillHeight, cardRoom.value)
+                    readonly property real stand: root.ghost && layer.index === 0 ? root.ghostHeight + (layer.floor - root.ghostHeight) * roll.value : layer.floor
                     readonly property real reach: Appearance.padding.small * 1.2 * layer.depth * (layer.ghostness > 0 ? 1 : layer.shown)
 
                     z: layer.tucked ? -4 : -1 - layer.depth
@@ -1582,7 +1591,7 @@ Item {
                             return;
                         root.thirdLayer = forward ? count >= 4 : count >= 3;
                         if (forward) {
-                            root.ghostHeight = root.pillHeight;
+                            root.ghostHeight = Math.min(root.pillHeight, cardRoom.value);
                             root.ghost = previous;
                             roll.value = 0;
                             roll.target = 1;
@@ -1623,7 +1632,8 @@ Item {
                         readonly property real toX: overview.x + overview.pad
                         readonly property real toWidth: overview.width - overview.pad * 2
                         readonly property real restY: cardRoom.value + offset.value
-                        readonly property real markX: row.x + row.inset
+                        readonly property real under: underCard.value * (1 - row.t)
+                        readonly property real markX: row.x + row.lead
                         readonly property real markY: row.y + (row.height - row.slot) / 2
 
                         onItemChanged: if (root.stackByKey[row.key])
@@ -1673,6 +1683,8 @@ Item {
                         y: root.pillY + root.dealY * (1 - row.t) + row.restY + (row.toY - row.restY) * row.t
                         width: row.fromWidth + (row.toWidth - row.fromWidth) * row.t
                         activity: row.item
+                        lead: row.inset + ((deck.frontLead?.mark ?? row.inset) - row.inset) * row.under
+                        textX: row.inset + row.slot + row.gap + ((deck.frontLead?.text ?? row.inset + row.slot + row.gap) - row.inset - row.slot - row.gap) * row.under
                         lights: row.t > 0.5
                         live: root.focused && row.visible
                         opacity: presence.value * appear.value * (1 - tuck.value) * (row.carried ? 1 : Math.max(0, 1 - root.opened * 2.5))

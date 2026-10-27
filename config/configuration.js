@@ -53,6 +53,10 @@ function upgradeValue(path, value) {
         return value === "date" ? "mtime" : "kind";
     if (path === "files.markdown" && value === "source")
         return "raw";
+    if (path === "updates.availableColour" && (value === "alarm" || value === "#ff5252"))
+        return "text";
+    if (path === "updates.failedColour" && (value === "bright" || value === "#ffb454"))
+        return "warning";
     return value;
 }
 
@@ -65,6 +69,17 @@ function upgradeFiles(values) {
         if (owns(files, key))
             next[key] = upgradeValue(`files.${key}`, files[key]);
     return Object.assign({}, values, { files: next });
+}
+
+function upgradeUpdateColours(values) {
+    const updates = values.updates;
+    if (!isPlainObject(updates))
+        return values;
+    const next = Object.assign({}, updates);
+    for (const key of ["availableColour", "failedColour"])
+        if (owns(updates, key))
+            next[key] = upgradeValue(`updates.${key}`, updates[key]);
+    return next.availableColour === updates.availableColour && next.failedColour === updates.failedColour ? values : Object.assign({}, values, { updates: next });
 }
 
 function giveGridKey(values, chord, action) {
@@ -107,7 +122,7 @@ function upgradeSidebarClock(values) {
 function upgrade(values) {
     if (!isPlainObject(values))
         return values;
-    return upgradeFilesGrid(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values))));
+    return upgradeUpdateColours(upgradeFilesGrid(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values)))));
 }
 
 function holds(node, segment) {

@@ -291,6 +291,16 @@ Item {
         return slots.itemAt(0)?.cardHeight ?? 0;
     }
 
+    readonly property var frontLead: {
+        root.reshaped;
+        for (let i = 0; i < slots.count; i++) {
+            const slot = slots.itemAt(i);
+            if (slot?.isFront)
+                return slot.lead;
+        }
+        return slots.itemAt(0)?.lead ?? null;
+    }
+
     readonly property real viewMax: Math.max(root.foldedHeight, root.maxHeight - root.footerHeight)
     readonly property real settledFull: {
         root.reshaped;
@@ -576,6 +586,10 @@ Item {
                 readonly property bool outgoing: card.flinging
                 readonly property real open: slot.tucks ? unfold.value : Math.max(0, arrival.value - departure.value)
                 readonly property real cardHeight: card.implicitHeight
+                readonly property var lead: ({
+                        mark: card.tileInset + card.pad,
+                        text: card.textX
+                    })
                 readonly property real room: slot.tucks && !root.sweeping ? Math.max(0, Math.min(slot.cardHeight + gap.value, slot.tailReveal - slot.fullBefore)) : (slot.cardHeight + gap.value) * (root.sweeping ? 1 : slot.open)
                 readonly property bool tucks: root.grouped && !!slot.group && !slot.head && !slot.leaving
                 readonly property Item tailFirst: !slot.tucks ? null : slot.above?.tucks && slot.above.group === slot.group ? slot.above.tailFirst : slot
