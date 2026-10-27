@@ -20,6 +20,10 @@ Singleton {
     readonly property string paneTitle: root.hoveredGroup ? String(Catalogue.val(root.hoveredGroup.t, SettingsState) ?? root.title) : root.title
 
     property var hovered: null
+    property int replays: 0
+
+    onHoveredChanged: if (root.hovered)
+        root.replays++
     property var pin: null
 
     property bool paneOut: false
