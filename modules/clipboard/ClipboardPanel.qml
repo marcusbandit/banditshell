@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 Item {
     id: root
@@ -84,9 +85,14 @@ Item {
         return n === 1 ? "1 item" : `${n} items`;
     }
 
-    property string cleared: ""
+    readonly property bool undoing: !root.speech && !root.searching && Clipboard.shelved > 0
 
-    readonly property int clearedHold: 3000
+    readonly property string cleared: {
+        const gone = `${Clipboard.shelved} cleared`;
+        if (!Clipboard.clearLasts)
+            return `${gone} until restart`;
+        return Clipboard.shelfKept > 0 ? `${gone}, ${Clipboard.shelfKept} pinned kept` : gone;
+    }
 
     function show(): void {
         if (root.shown)
@@ -110,7 +116,7 @@ Item {
         root.shown = false;
         root.reading = null;
         root.clearing = false;
-        clearedLinger.stop();
+        Clipboard.releaseShelf(root);
         sheet.close();
         root.stopSearch();
         keys.focus = false;
@@ -213,11 +219,7 @@ Item {
     }
 
     function clearHistory(): void {
-        const gone = root.clearable;
-        const kept = root.pinnedCount;
         root.clearing = false;
-        root.cleared = kept > 0 ? `${gone} cleared, ${kept} pinned kept` : `${gone} cleared`;
-        clearedLinger.restart();
         Clipboard.clear();
         root.selected = 0;
         list.reset();
@@ -359,6 +361,12 @@ Item {
 
             if (root.clearing && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
                 root.clearHistory();
+                event.accepted = true;
+                return;
+            }
+
+            if (event.key === Qt.Key_Z && (event.modifiers & Qt.ControlModifier) && !root.speech) {
+                Clipboard.undo();
                 event.accepted = true;
                 return;
             }
@@ -545,7 +553,7 @@ Item {
                             Follow {
                                 id: clearFade
 
-                                target: root.canClear ? 1 : 0
+                                target: root.canClear && !root.undoing ? 1 : 0
                                 speed: Appearance.animation.revealSpeed
                                 epsilon: Appearance.animation.fadeEpsilon
                                 startsAtTarget: true
@@ -584,6 +592,8 @@ Item {
                         }
 
                         Row {
+                            id: undoRow
+
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: Appearance.padding.small
@@ -594,16 +604,17 @@ Item {
                             Follow {
                                 id: clearedFade
 
-                                target: clearedLinger.running && !root.canClear && !root.searching ? 1 : 0
+                                target: root.undoing ? 1 : 0
                                 speed: Appearance.animation.revealSpeed
                                 epsilon: Appearance.animation.fadeEpsilon
                                 startsAtTarget: true
                             }
 
-                            Timer {
-                                id: clearedLinger
-
-                                interval: root.clearedHold
+                            HoverHandler {
+                                onHoveredChanged: if (hovered && root.shown)
+                                    Clipboard.holdShelf(root);
+                                else
+                                    Clipboard.releaseShelf(root)
                             }
 
                             Icon {
@@ -614,10 +625,28 @@ Item {
                             }
 
                             StyledText {
+                                id: clearedText
+
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: root.cleared
                                 font.pixelSize: Appearance.font.size.small
                                 color: Appearance.colour.text
+
+                                HoverHandler {
+                                    id: clearedTextHover
+                                }
+
+                                HoverTip {
+                                    text: "The history file could not be read, so this clear is not saved"
+                                    asked: !Clipboard.clearLasts && clearedTextHover.hovered
+                                }
+                            }
+
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                icon: "undo"
+                                text: "Undo"
+                                onClicked: Clipboard.undo()
                             }
                         }
 

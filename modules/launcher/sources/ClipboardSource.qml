@@ -8,7 +8,7 @@ QtObject {
 
     required property var search
 
-    readonly property var kinds: ["clipboard", "clipboardclear"]
+    readonly property var kinds: ["clipboard", "clipboardclear", "clipboardundo"]
 
     readonly property var asked: ClipboardSearch.ask(root.search.text)
     readonly property bool explicit: root.asked.explicit
@@ -29,11 +29,27 @@ QtObject {
 
     readonly property bool clearing: root.search.armed === "clipboardclear"
 
+    readonly property bool offersUndo: root.explicit && Clipboard.shelved > 0 && (root.asked.term === "" || "undo clear".startsWith(root.asked.term.toLowerCase()))
+
+    property string revealed: ""
+
+    onActiveChanged: if (!root.active)
+        root.revealed = ""
+
+    readonly property var rows: {
+        const rows = root.found.map(entry => root.row(entry));
+        if (root.offersUndo)
+            return [root.undoRow()].concat(rows);
+        if (!root.offersClear)
+            return rows;
+        return root.asked.term !== "" ? [root.clearRow()].concat(rows) : rows.concat([root.clearRow()]);
+    }
+
     readonly property var groups: [
         {
             key: "clipboard",
             title: "Clipboard",
-            items: root.offersClear && root.asked.term !== "" ? [root.clearRow()].concat(root.found.map(entry => root.row(entry))) : root.found.map(entry => root.row(entry)).concat(root.offersClear ? [root.clearRow()] : [])
+            items: root.rows
         }
     ]
 
@@ -46,10 +62,15 @@ QtObject {
 
     function row(entry: var): var {
         const picture = entry.kind === "image" && !!entry.file;
+        const secret = Clipboard.sensitive(entry);
+        const masked = secret && root.revealed !== entry.id;
+        const text = picture ? entry.w > 0 ? `${entry.w} × ${entry.h}` : "Picture" : ClipboardSearch.firstLine(Clipboard.summarise(entry), 160);
         const parts = [];
         if (entry.pinned)
             parts.push("pinned");
-        if (entry.kind !== "text")
+        if (secret)
+            parts.push("secret");
+        else if (entry.kind !== "text")
             parts.push(entry.kind);
         const bytes = Clipboard.size(entry.bytes);
         if (bytes)
@@ -60,9 +81,12 @@ QtObject {
             kind: "clipboard",
             entry: entry,
             going: root.clearing && !entry.pinned,
-            label: picture ? entry.w > 0 ? `${entry.w} × ${entry.h}` : "Picture" : ClipboardSearch.firstLine(Clipboard.summarise(entry), 160),
+            label: masked ? Clipboard.mask : text,
+            revealLabel: masked ? text : "",
+            masked: masked,
+            secret: secret,
             detail: parts.join(" · "),
-            icon: Clipboard.markFor(entry.kind),
+            icon: secret ? "visibility_off" : Clipboard.markFor(entry.kind),
             iconSource: picture ? `file://${entry.file}` : "",
             score: root.explicit ? Infinity : 0.3
         };
@@ -77,6 +101,17 @@ QtObject {
             label: root.clearing ? `Enter clears ${root.clearable === 1 ? "1 item" : `${root.clearable} items`}` : "Clear history",
             detail: pinned > 0 ? `${pinned} pinned stay` : "",
             icon: "delete_sweep",
+            score: Infinity
+        };
+    }
+
+    function undoRow(): var {
+        return {
+            key: "clipboardundo",
+            kind: "clipboardundo",
+            label: "Undo clear",
+            detail: `${Clipboard.shelved} cleared`,
+            icon: "undo",
             score: Infinity
         };
     }
@@ -98,6 +133,10 @@ QtObject {
     }
 
     function activate(row: var): void {
+        if (row.kind === "clipboardundo") {
+            Clipboard.undo();
+            return;
+        }
         if (row.kind === "clipboardclear") {
             if (row.armed)
                 root.clear();
@@ -123,6 +162,14 @@ QtObject {
     }
 
     function actionsFor(row: var): var {
+        if (row.kind === "clipboardundo")
+            return [
+                {
+                    icon: "undo",
+                    label: "Undo",
+                    run: () => Clipboard.undo()
+                }
+            ];
         if (row.kind === "clipboardclear")
             return [
                 {
@@ -144,6 +191,12 @@ QtObject {
                 icon: "content_copy",
                 label: "Copy",
                 run: () => root.copy(row)
+            });
+        if (row.secret)
+            acts.push({
+                icon: row.masked ? "visibility" : "visibility_off",
+                label: row.masked ? "Show" : "Hide",
+                run: () => root.revealed = row.masked ? row.entry.id : ""
             });
         acts.push({
             icon: "push_pin",

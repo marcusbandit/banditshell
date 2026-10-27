@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-10-27",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clearing clipboard history can be undone for five seconds"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Passwords in clipboard history show as dots until you hover them"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Text copies over 128 KiB now reach the clipboard history"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clearing history also clears a damaged history file on disk"
+        }
+      ]
+    },
+    {
       "id": "2026-10-26-11",
       "date": "2026-10-26",
       "changes": [
