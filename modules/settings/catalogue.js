@@ -143,7 +143,7 @@ const PAGES_SOURCE = {
         id: "output", name: "Output", icon: "speaker", preview: "sound",
         status: s => s.outputName,
         groups: [
-            { rows: [
+            { topic: "Volume", rows: [
                 { n: 17, kind: "w", w: "volume", kw: "volume mute", fmt: pct },
                 { n: 15, icon: "speaker", label: "Play through", k: "output", kind: "choice", o: s => s.outputs, kw: "output device",
                     why: "Where sound goes. The speaker in the sidebar switches it too." },
@@ -168,7 +168,7 @@ const PAGES_SOURCE = {
         ]
     },
     mixer: {
-        id: "mixer", name: "Apps", icon: "tune", preview: "sound",
+        id: "mixer", name: "Volume by app", icon: "tune", preview: "sound",
         status: s => s.appsPlaying ? `${s.appsPlaying} playing` : "nothing playing",
         groups: [
             { rows: [
@@ -263,7 +263,7 @@ const PAGES_SOURCE = {
                     why: "Which of the theme’s three highlight colours paints everything that’s on. Soft sits back, strong jumps out." },
                 { n: 45, icon: "layers", label: "Panel shade", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmtS: (s, v) => shadeWord(s?.lightShell, v), cfg: "colour.surface", kw: "surface depth ramp background darker lighter",
                     why: "Which of the theme’s own shades paints the frame and panels. Lower is darker in a dark look and lighter in a light one." },
-                { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0.5, max: 1, step: 0.01, fmt: v => `${Math.round((1 - v) * 100)}%`, cfg: "material.surfaceAlpha", kw: "transparency" }
+                { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0, max: 0.5, step: 0.01, fmt: pct, cfg: "material.surfaceAlpha", kw: "transparency" }
             ] }
         ]
     },
@@ -335,7 +335,7 @@ const PAGES_SOURCE = {
                 { n: 58, icon: "side_navigation", label: "Sidebar", k: "sidebar", kind: "toggle", cfg: "sidebar.enabled", keys: "shell:screen.sidebar.toggle" },
                 { n: [], icon: "view_column_2", label: "Style", k: "sbStyle", kind: "seg", o: ["full", "rail"], cfg: "sidebar.style", dis: s => !s.v("sidebar"), kw: "sidebar rail simplified expand hover pips anomalies",
                     why: "Full keeps everything on show. Rail rests as workspace marks and shows a status icon only when something is unusual; point at it and it grows into the full column." },
-                { n: [], icon: "schedule", label: "Time at rest", k: "sbGlance", kind: "seg", o: [["rail", "rail"], ["rail top", "rail top"], ["top", "top"], ["tabs", "tabs"], ["wide", "wide"], ["off", "off"]], cfg: "sidebar.glance", dis: s => s.v("sbStyle") !== "rail", kw: "clock time battery glance rest rail top tabs wide",
+                { n: [], icon: "schedule", label: "Time at rest", k: "sbGlance", kind: "choice", o: [["rail", "rail"], ["rail top", "rail top"], ["top", "top"], ["tabs", "tabs"], ["wide", "wide"], ["off", "off"]], cfg: "sidebar.glance", dis: s => s.v("sbStyle") !== "rail", kw: "clock time battery glance rest rail top tabs wide",
                     why: "Where the time and the battery sit while the rail rests. Rail stacks the time over a battery level bar at the rail's foot, rail top at its head. Top hangs them from the top edge, tabs grow them out of the rail, wide widens the rail to hold them." },
                 { n: 59, icon: "width", label: "Width", k: "sidebarW", kind: "slider", min: 40, max: 72, fmt: v => `${v} px`, cfg: "sidebar.width", dis: s => !s.v("sidebar") }
             ] },
@@ -576,8 +576,8 @@ const PAGES_SOURCE = {
             { t: "Weather", preview: "weather", rows: [
                 { n: [], icon: "partly_cloudy_day", label: "Weather", k: "weatherShow", kind: "toggle", cfg: "weather.show", state: s => s.v("weatherShow") ? "beside the clock in the island" : "off", kw: "weather temperature forecast island",
                     why: "The temperature beside the island’s clock. Pressing it opens the week ahead." },
-                { n: [], icon: "location_on", label: "Place", k: "weatherPlace", kind: "text", cfg: "weather.location", placeholder: "automatic", state: s => s.weatherPlaceState, lines: 3, bad: s => s.weatherPlaceTrouble !== "", dis: s => !s.v("weatherShow"), kw: "weather location town city",
-                    why: "A town or city. Empty lets the weather service place you by your connection." },
+                { n: [], icon: "location_on", label: "Place", k: "weatherPlace", kind: "text", cfg: "weather.location", placeholder: "automatic", state: s => s.weatherPlaceState, bad: s => s.weatherPlaceTrouble !== "", offer: s => placeOffer(s), dis: s => !s.v("weatherShow"), kw: "weather location town city",
+                    why: "A town or city. Left empty, the weather uses your connection's location." },
                 { n: [], icon: "thermostat", label: "Units", k: "weatherUnits", kind: "seg", o: [["metric", "°C"], ["imperial", "°F"]], cfg: "weather.units", dis: s => !s.v("weatherShow"), kw: "weather units celsius fahrenheit temperature",
                     why: "For the temperature in the island and the week ahead." },
                 { n: [], icon: "update", label: "Refresh after", k: "weatherMinutes", kind: "step", min: 5, max: 180, step: 5, unit: " min", cfg: "weather.minutes", dis: s => !s.v("weatherShow"), kw: "weather refresh interval",
@@ -691,7 +691,7 @@ const PAGES_SOURCE = {
                 { n: 106, icon: "battery_charging_80", label: "Hold the charge", k: "chargeLimit", kind: "toggle", cfg: "battery.holdCharge", state: s => s.chargeTrouble, why: "Stops charging short of full, which is kinder to the cells.", dis: s => !s.chargeSupported, kw: "charge limit" },
                 { n: 106, icon: "battery_full", label: "Stop at", k: "chargeMax", kind: "slider", cfg: "battery.holdAt", min: 60, max: 100, step: 5, fmt: v => `${v}%`, dis: s => !s.v("chargeLimit") || !s.chargeSupported, kw: "charge limit" },
                 { n: 107, icon: "battery_alert", label: "Warn at", k: "lowWarn", kind: "slider", cfg: "battery.warnAt", min: 5, max: 30, fmt: v => `${v}%`, kw: "low battery warning" },
-                { n: 107, icon: "battery_0_bar", label: "Nearly empty", k: "lowAction", kind: "choice", cfg: "battery.nearlyEmpty", o: s => [`suspend at ${s.nearlyEmptyPercent}%`, `hibernate at ${s.nearlyEmptyPercent}%`, "nothing"], unavailable: s => s.hibernatePossible ? [] : [`hibernate at ${s.nearlyEmptyPercent}%`], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", why: "What happens when the battery is nearly empty. It warns first, then acts.", kw: "low battery" }
+                { n: 107, icon: "battery_0_bar", label: "Nearly empty", k: "lowAction", kind: "choice", cfg: "battery.nearlyEmpty", o: s => [`sleep at ${s.nearlyEmptyPercent}%`, `hibernate at ${s.nearlyEmptyPercent}%`, "nothing"], unavailable: s => s.hibernatePossible ? [] : [`hibernate at ${s.nearlyEmptyPercent}%`], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", why: "What happens when the battery is nearly empty. It warns first, then acts.", kw: "low battery" }
             ] }
         ]
     },
@@ -986,6 +986,18 @@ const PAGE_BY_ID = {};
 const ROWS = [];
 const ROW_BY_KEY = {};
 
+function placeOffer(s) {
+    if (s.weatherPlaceTrouble === "")
+        return null;
+    const typed = String(s.v("weatherPlace") ?? "");
+    if (!typed)
+        return { text: "The weather service could not find your connection's location.", alarm: true, buttons: [] };
+    const guess = s.weatherSuggestion;
+    if (guess)
+        return { text: `No place called "${typed}". Did you mean ${guess.text}?`, alarm: true, buttons: [[`Use ${guess.text}`, guess.text]] };
+    return { text: `No place called "${typed}". Fix the spelling, or:`, alarm: true, buttons: [["Use my connection's location", ""]] };
+}
+
 function walk(rows, page, group, parent, out) {
     for (const r of rows) {
         r.page = page.id;
@@ -1084,6 +1096,14 @@ function show(row, v, s) {
     return format(row, v, s);
 }
 
+function seeThrough(alpha) {
+    return Math.round((1 - alpha) * 1000) / 1000;
+}
+
+function loggedSeeThrough(v) {
+    return typeof v === "number" && v > 0.5 ? seeThrough(v) : v;
+}
+
 function filesFoldersNote(sort) {
     return sort === "size" ? "folders by name" : "folders on top";
 }
@@ -1162,7 +1182,70 @@ function search(query) {
         const lead = x => x.label.toLowerCase().indexOf(q) === 0 ? 1 : 0;
         hits = hits.map((x, i) => ({ x: x, i: i })).sort((a, b) => lead(b.x) - lead(a.x) || a.i - b.i).map(e => e.x);
     }
-    return hits.filter((x, i, a) => a.findIndex(y => y.label === x.label && y.page === x.page) === i).slice(0, 12);
+    return hits.filter((x, i, a) => a.findIndex(y => y.label === x.label && y.page === x.page && y.group === x.group && y.row.parent === x.row.parent) === i).slice(0, 12);
+}
+
+const PROPER_WORDS = ["Bluetooth", "Ethernet", "Wikipedia", "Wiktionary"];
+
+function inSentence(label) {
+    const first = label.split(" ")[0];
+    return /^[A-Z][a-z’'-]*$/.test(first) && PROPER_WORDS.indexOf(first) < 0 ? label.charAt(0).toLowerCase() + label.slice(1) : label;
+}
+
+function hitTitle(hit, s) {
+    const g = hit.group;
+    const context = (hit.row.parent && labelOf(hit.row.parent)) || (typeof g.t === "string" && g.t) || g.topic || nameOf(hit.page, s);
+    if (!context || ` ${hit.label.toLowerCase()} `.indexOf(` ${context.toLowerCase()} `) >= 0)
+        return hit.label;
+    return `${context}: ${inSentence(hit.label)}`;
+}
+
+function queryWords(query) {
+    const q = String(query || "").trim().toLowerCase();
+    return /^#?\d{1,3}$/.test(q) ? [] : q.split(/\s+/).filter(Boolean);
+}
+
+function hitWhy(hit, query, shown) {
+    const seen = String(shown).toLowerCase();
+    const pool = `${hit.row.kw || ""} ${hit.row.cfg || ""} ${typeof hit.group.t === "string" ? hit.group.t : ""}`.split(/\s+/).filter(Boolean);
+    const out = [];
+    for (const w of queryWords(query)) {
+        if (seen.indexOf(w) >= 0)
+            continue;
+        const word = pool.find(t => t.toLowerCase().indexOf(w) >= 0);
+        if (word && out.indexOf(word) < 0)
+            out.push(word);
+    }
+    return out.join(" ");
+}
+
+function escaped(text) {
+    return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function marked(text, query, colour) {
+    const t = String(text);
+    const low = t.toLowerCase();
+    if (low.length !== t.length)
+        return escaped(t);
+    const on = [];
+    for (let i = 0; i < t.length; i++)
+        on.push(false);
+    for (const w of queryWords(query))
+        for (let i = low.indexOf(w); i >= 0; i = low.indexOf(w, i + 1))
+            for (let j = i; j < i + w.length; j++)
+                on[j] = true;
+    let out = "";
+    let i = 0;
+    while (i < t.length) {
+        let j = i;
+        while (j < t.length && on[j] === on[i])
+            j++;
+        const part = escaped(t.slice(i, j));
+        out += on[i] ? `<font color="${colour}">${part}</font>` : part;
+        i = j;
+    }
+    return out;
 }
 
 function hitIndexOf(hits, openUid) {

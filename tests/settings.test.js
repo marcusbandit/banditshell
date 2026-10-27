@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "hitIndexOf", "hitIsOpen", "hitToOpen", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf", "resettable", "changed"]);
+const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "hitIndexOf", "hitIsOpen", "hitToOpen", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf", "resettable", "changed", "seeThrough", "loggedSeeThrough", "hitTitle", "hitWhy", "marked"]);
 const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "anchor", "nudge", "resize", "fit"]);
 const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "extent", "rects", "board", "lit", "struck", "fromSheet"]);
 const Frames = lib(path.join(SETTINGS, "scenes/keyframes.js"), ["bezier", "STANDARD", "ARRIVE", "BACK", "at", "pulse", "steps"]);
@@ -243,6 +243,39 @@ test("search matches labels, keywords and config keys, and takes a list number",
     assert.strictEqual(Catalogue.search("nothing like this at all").length, 0);
 });
 
+test("a search hit names its row with the heading it sits under and marks what matched", () => {
+    const s = fakeState();
+    const titles = q => Catalogue.search(q).map(h => Catalogue.hitTitle(h, s));
+    assert.deepStrictEqual(titles("volume").slice(0, 4), ["Volume", "Volume by app", "Volume: keys step by", "Volume: past 100%"]);
+    assert.strictEqual(titles("snooze")[0], "Alarms: snooze");
+    assert.ok(titles("ethernet").includes("Ethernet"));
+    const mixer = Catalogue.search("volume by app")[0];
+    assert.strictEqual(Catalogue.nameOf(mixer.page, s), Catalogue.hitTitle(mixer, s));
+    assert.ok(titles("keys").includes("Shell: keys") && titles("keys").includes("In files: keys"));
+    const shown = h => `${Catalogue.hitTitle(h, s)} ${Catalogue.nameOf(h.page, s).toLowerCase()}`;
+    const modes = Catalogue.search("sleep").find(h => h.page.id === "modes" && h.row.w === "modes");
+    assert.strictEqual(Catalogue.hitWhy(modes, "sleep", shown(modes)), "sleep");
+    assert.strictEqual(Catalogue.hitWhy(modes, "modes", shown(modes)), "");
+    const after = Catalogue.search("sleep").find(h => h.row.k === "idleSuspend");
+    assert.strictEqual(Catalogue.hitWhy(after, "sleep", shown(after)), "");
+    assert.strictEqual(Catalogue.marked("Volume: keys step by", "VOLUME step", "#f00"), '<font color="#f00">Volume</font>: keys <font color="#f00">step</font> by');
+    assert.strictEqual(Catalogue.marked("a <b> & c", "b", "#f00"), 'a &lt;<font color="#f00">b</font>&gt; &amp; c');
+    assert.strictEqual(Catalogue.marked("Past 100%", "", "#f00"), "Past 100%");
+    assert.strictEqual(Catalogue.marked("Past 100%", "#100", "#f00"), "Past 100%");
+    assert.strictEqual(Catalogue.marked("İstanbul test", "test", "#f00"), "İstanbul test");
+});
+
+test("see-through is how much shows through, and config keeps the panel alpha", () => {
+    assert.strictEqual(Catalogue.seeThrough(0.88), 0.12);
+    assert.strictEqual(Catalogue.seeThrough(0.12), 0.88);
+    assert.strictEqual(Catalogue.seeThrough(Catalogue.seeThrough(0.73)), 0.73);
+    assert.strictEqual(Catalogue.seeThrough(1), 0);
+    assert.strictEqual(Catalogue.seeThrough(Catalogue.seeThrough(0.875)), 0.875);
+    assert.strictEqual(Catalogue.loggedSeeThrough(0.88), 0.12);
+    assert.strictEqual(Catalogue.loggedSeeThrough(0.12), 0.12);
+    assert.strictEqual(Catalogue.loggedSeeThrough(0.5), 0.5);
+});
+
 test("enter on a search hit that is already open steps to the next match, shift enter to the one before", () => {
     const hits = Catalogue.search("volume");
     assert.ok(hits.length > 2);
@@ -301,7 +334,7 @@ test("values read the way the rows say them", () => {
     assert.strictEqual(Catalogue.show(row("wifi"), true, s), "on");
     assert.strictEqual(Catalogue.show(row("volStep"), 0.05, s), "5%");
     assert.strictEqual(Catalogue.format(row("snooze"), 9, s), "9 min");
-    assert.strictEqual(Catalogue.format(row("surfaceAlpha"), 0.88, s), "12%");
+    assert.strictEqual(Catalogue.format(row("surfaceAlpha"), 0.12, s), "12%");
     assert.strictEqual(Catalogue.format(row("wallReveal"), 0, s), "cut");
     assert.strictEqual(Catalogue.format(row("mouseSpeed"), 0, s), "as is");
     assert.strictEqual(Catalogue.format(row("warmth"), 0, s), "off");
@@ -532,7 +565,7 @@ test("hibernate is greyed where the machine cannot do it", () => {
         assert.strictEqual(off.length, 1, k);
         assert.ok(Catalogue.options(row, cannot).some(o => o[0] === off[0] && /^hibernate/.test(o[0])), k);
     }
-    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[1]), ["suspend at 5%", "hibernate at 5%", "nothing"]);
+    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[1]), ["sleep at 5%", "hibernate at 5%", "nothing"]);
 });
 
 test("the power mode row offers what the daemon offers and greys without one", () => {
@@ -642,4 +675,16 @@ test("a reset arrow is never offered for a password, a button, a read-only path 
     const screens = Object.values(Catalogue.ROWS).filter(r => r.k && r.k.startsWith("scr:"));
     assert.ok(screens.length > 0);
     assert.ok(screens.every(r => !Catalogue.resettable(r)));
+});
+
+test("a place the weather does not know gets one message under the row, with a way out", () => {
+    const row = Catalogue.ROW_BY_KEY.weatherPlace;
+    const state = (place, trouble, guess) => ({ v: k => k === "weatherPlace" ? place : true, weatherPlaceTrouble: trouble, weatherSuggestion: guess });
+    assert.strictEqual(row.offer(state("Lyngby, Denmark", "", null)), null);
+    assert.deepStrictEqual(row.offer(state("Lyngbyy", "x", { name: "Lyngby", country: "Denmark", text: "Lyngby, Denmark" })), {
+        text: 'No place called "Lyngbyy". Did you mean Lyngby, Denmark?', alarm: true, buttons: [["Use Lyngby, Denmark", "Lyngby, Denmark"]]
+    });
+    assert.deepStrictEqual(row.offer(state("Xqzwvb", "x", null)).buttons, [["Use my connection's location", ""]]);
+    assert.deepStrictEqual(row.offer(state("", "x", null)).buttons, []);
+    assert.strictEqual(row.cfg, "weather.location");
 });

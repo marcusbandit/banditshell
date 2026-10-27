@@ -53,8 +53,19 @@ function lowStep(stage, input) {
 }
 
 function countdownMessage(action, seconds) {
-    const verb = action === "hibernate" ? "Hibernating" : "Suspending";
+    const verb = action === "hibernate" ? "Hibernating" : "Sleeping";
     return `${verb} in ${seconds} seconds unless you plug in.`;
+}
+
+function nearlyEmptyChoice(action, percent) {
+    if (action === "nothing")
+        return action;
+    return `${action === "suspend" ? "sleep" : action} at ${percent}%`;
+}
+
+function nearlyEmptyAction(choice) {
+    const word = String(choice).split(" ")[0];
+    return word === "sleep" ? "suspend" : word;
 }
 
 function afterResume(stage) {

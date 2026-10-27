@@ -1083,6 +1083,9 @@ banditshell/
 │   │                            having. THE SHELL OWNS THE DIRECTORY; see 17.
 │   │                            home and openWith forward to System, and a
 │   │                            reveal request from System lands here
+│   ├── FilesFind.qml            the file browser's search across home: one
+│   │                            bs-ls --find walk at a time, streamed in
+│   │                            batches, stopped by a keystroke or Esc
 │   ├── FilesUndo.qml            what Ctrl+Z can take back in the browser:
 │   │                            trash, move, rename, paste. A delete comes
 │   │                            back through gio's own trash record, and
@@ -1193,9 +1196,12 @@ banditshell/
 │   │                            last reading is older than `weather.minutes`;
 │   │                            the week ahead from Open-Meteo at the
 │   │                            coordinates wttr.in returns, else wttr.in's
-│   │                            three days
+│   │                            three days; a place wttr.in does not know is
+│   │                            looked up once in Open-Meteo's geocoder for a
+│   │                            suggestion
 │   ├── weather.js               both answers read into days, and WMO codes into
-│   │                            the icons wttr.in's codes already used
+│   │                            the icons wttr.in's codes already used; the
+│   │                            geocoder's towns ranked by edit distance
 │   ├── WhatsNew.qml              the update's own changelog, read: entries
 │   │                            newer than the marker in the user's config
 │   │                            are what the What's new card shows. The log
@@ -1774,12 +1780,13 @@ banditshell/
 │   ├── boot-check-inner.sh      the other half: runs inside the private headless
 │   │                            session beside the shell, makes the calls, writes
 │   │                            PASS/FAIL rows to calls.tsv
-│   ├── promote-stable.sh        checks that main may become the stable channel (node
-│   │                            tests, check-modules, lint-rules, compile check, the
-│   │                            boot check when gamescope is there, a
-│   │                            what's-new id) on a clean export of it, then PRINTS
-│   │                            the git push and git tag commands; pushes only with
-│   │                            --push (`banditshell dev promote`)
+│   ├── release.sh               cuts a release from a clean checkout of origin/main:
+│   │                            node tests, check-modules, lint-rules, compile check
+│   │                            and the boot check (refused without gamescope unless
+│   │                            --skip-boot-check), gh logged in, then the
+│   │                            next vX.Y.Z, the tag and stable in one atomic push,
+│   │                            and the GitHub release; --dry-run pushes nothing
+│   │                            (`banditshell dev release`)
 │   ├── redact-config.js         config.json with every key named like a token, key,
 │   │                            secret, password or cookie left out (node, no
 │   │                            dependencies; `banditshell doctor --report`)
@@ -2205,7 +2212,8 @@ checkout's own CLI, and then fails on any TypeError, ReferenceError, "is not def
 The lines a headless box always prints (no Hyprland signature, pipewire, ext-idle-notify, a
 wallpaper file missing under the fake home) are ignored; the classifier is `scripts/boot-check.js`
 and has node tests. `--shots` also photographs the shell at rest and with the launcher open.
-`banditshell dev promote` runs it as a last check when gamescope is installed.
+`banditshell dev release` runs it as its last check and refuses when it cannot run, unless
+given `--skip-boot-check`.
 
 **REVISED 2026-10-14: the thing first, in groups.** The verb-first grammar of 2026-10-01
 fixed the noun-first one's inconsistency, and it paid for that by sorting every feature by
@@ -3894,6 +3902,19 @@ disk and tells you nothing is the thing this is not. Deletion goes to the trash
 through `gio`; permanent deletion is a separate verb that asks you to type the
 word, because it is the one action here that reading the history cannot reverse.
 
+**Search reaches home, and the open folder answers first.** The field's switch
+picks This folder or Home, and Tab flips it. This folder filters the listing
+already in hand. Home also runs `bs-ls --find`, which walks home breadth first,
+so shallow matches arrive before deep ones, and walks the open folder before the
+rest. Its matches stream in as JSON lines in the listing's own shape plus the
+folder they live in, so a result is a tile like any other. The walk never follows
+a symlink and stays on one filesystem. It skips caches, `.git`, `node_modules`,
+the Trash and key stores unless the window's setting says otherwise. A keystroke
+kills the running walk before the next one starts, Esc stops it and keeps what
+it found, and it stops by itself at a thousand matches. A result is held by its
+full path rather than its name, because home has a hundred `README.md`s. Enter
+on a found file opens its folder with the file selected.
+
 **The path bar takes a path.** The crumbs stay - they go back several steps in one
 press, and they are drop targets - but the strip is a field as well, on Ctrl+L or
 a press on the empty part of it. Both, because they answer different questions
@@ -4529,6 +4550,9 @@ wttr.in's own three days when Open-Meteo cannot be reached. A town the
 weather service does not know says Place not found, and its Change place
 opens the Place row in Settings (Focus, Clock, Weather), where the place,
 the units, the refresh and the weather itself are set.
+When the name is a typo away from a town Open-Meteo knows, the view and the
+Place row both ask "Did you mean Lyngby, Denmark?" with a button that writes
+it. The guess is looked up once per misspelt name, never on a refresh.
 
 ### Music I am already looking at
 

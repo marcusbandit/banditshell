@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, following, reportWords, reportScript };")();
+const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, reportWords, reportScript };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -201,12 +201,12 @@ test("the summary names what the person must know, in order", () => {
     assert.strictEqual(Update.button(c), "Update and restart");
 });
 
-test("a reload says so, and a quiet change says nothing runs differently", () => {
+test("a reload or a change to docs only both say no restart is needed", () => {
     const reload = Update.classify({ nameStatus: status("M\tmodules/Bar.qml"), commits: 1 });
     assert.strictEqual(Update.summary(reload), "1 change, no restart needed");
     assert.strictEqual(Update.button(reload), "Update");
     const quiet = Update.classify({ nameStatus: status("M\tdocs/a.md"), commits: 2 });
-    assert.strictEqual(Update.summary(quiet), "2 changes, nothing the shell runs changed");
+    assert.strictEqual(Update.summary(quiet), "2 changes, no restart needed");
     assert.strictEqual(Update.summary(Update.classify({ nameStatus: "" })), "no changes");
 });
 
@@ -222,7 +222,7 @@ test("the summary lists deps, removed commands, binds and edits in the way", () 
         entries,
         commits: 3
     });
-    assert.strictEqual(Update.summary(c), "3 changes, no restart needed, commands changed, 1 command removed, 2 binds affected, helpers rebuild, needs fd, ripgrep and jq2, settings defaults changed, 2 of your edits are in the way");
+    assert.strictEqual(Update.summary(c), "1 change, no restart needed, commands changed, 1 command removed, 2 binds affected, helpers rebuild, needs fd, ripgrep and jq2, settings defaults changed, 2 of your edits are in the way");
 });
 
 test("incoming entries are the ones the local log lacks, examples and empty ones left out", () => {
@@ -253,10 +253,11 @@ test("a report from facts joins meta, classification, summary and entries", () =
     assert.strictEqual(report.state, "available");
     assert.strictEqual(report.behind, 2);
     assert.strictEqual(report.skipped, false);
-    assert.strictEqual(report.summary, "2 changes, restart needed");
+    assert.strictEqual(report.summary, "1 change, restart needed");
     assert.strictEqual(report.button, "Update and restart");
     assert.deepStrictEqual(report.entries.map(e => e.id), ["n"]);
-    assert.match(Update.waitingText(report), /^update waiting: 2 changes, restart needed\n  n\n    - Looks different\.\nrun: banditshell update apply$/);
+    assert.match(Update.waitingText(report), /^update waiting: 1 change, restart needed\n  n\n    - Looks different\.\nrun: banditshell update apply$/);
+    assert.match(Update.waitingText(Object.assign({}, report, { targetVersion: "v0.2.0" })), /^v0\.2\.0 is waiting: 1 change, restart needed\n/);
     const lines = Update.linesOf(report).split("\n");
     assert.ok(lines.includes("kind=restart"));
     assert.ok(lines.includes("restart=1"));
@@ -321,11 +322,11 @@ test("the report command hands the words to triage as one argument, whatever the
     }
 });
 
-test("a channel is stable or main, and anything else reads as main", () => {
+test("a channel is stable or main, and anything else reads as stable, the default", () => {
     assert.strictEqual(Update.channelOf("stable"), "stable");
     assert.strictEqual(Update.channelOf(" main "), "main");
-    assert.strictEqual(Update.channelOf("beta"), "main");
-    assert.strictEqual(Update.channelOf(undefined), "main");
+    assert.strictEqual(Update.channelOf("beta"), "stable");
+    assert.strictEqual(Update.channelOf(undefined), "stable");
 });
 
 test("the channel picks the branch, and a branch other than main overrides it", () => {
@@ -334,7 +335,7 @@ test("the channel picks the branch, and a branch other than main overrides it", 
     assert.strictEqual(Update.branchFor("stable", ""), "stable");
     assert.strictEqual(Update.branchFor("stable", "dev"), "dev");
     assert.strictEqual(Update.branchFor("main", "dev"), "dev");
-    assert.strictEqual(Update.branchFor(undefined, undefined), "main");
+    assert.strictEqual(Update.branchFor(undefined, undefined), "stable");
 });
 
 test("the menu names the channel, or the branch followed in its place", () => {
@@ -351,8 +352,28 @@ test("a copy on main follows stable, any other branch only follows itself", () =
     assert.strictEqual(Update.following("dev", "dev"), true);
 });
 
-test("a missing stable branch says there is no stable version yet", () => {
+test("a missing stable branch says there is no release yet, without sending anyone to main", () => {
     const text = "fatal: couldn't find remote ref stable";
-    assert.match(Update.explain(text.split("\n"), "stable"), /no stable version yet.*updates\.channel to main/);
+    assert.match(Update.explain(text.split("\n"), "stable"), /no release on GitHub yet/);
+    assert.doesNotMatch(Update.explain(text.split("\n"), "stable"), /main/);
     assert.strictEqual(Update.explain(text.split("\n"), "dev"), 'GitHub has no branch called "dev".');
+});
+
+test("a waiting release on stable is named by its number, anything else by its commits", () => {
+    assert.strictEqual(Update.waitingHeadline("stable", 4, "v0.2.0"), "v0.2.0 is ready");
+    assert.strictEqual(Update.waitingHeadline("stable", 1, ""), "1 new commit on stable");
+    assert.strictEqual(Update.waitingHeadline("main", 3, "v0.1.0+3"), "3 new commits on main");
+});
+
+test("the count is the changes listed, and commits only when nothing is listed", () => {
+    const entries = [{ id: "a", changes: [{ text: "x" }, { text: "y" }, { text: "z" }] }];
+    assert.strictEqual(Update.summary(Update.classify({ nameStatus: "M\tmodules/Foo.qml", entries, commits: 1 })), "3 changes, no restart needed");
+    assert.strictEqual(Update.summary(Update.classify({ nameStatus: "M\tmodules/Foo.qml", entries: [], commits: 4 })), "4 changes, no restart needed");
+});
+
+test("the menu says which version you have and what you follow, never Version v", () => {
+    assert.strictEqual(Update.haveText("v0.1.0", "stable", "main"), "You have v0.1.0, on the stable channel");
+    assert.strictEqual(Update.haveText("v0.2.0+2", "main", "main"), "You have v0.2.0+2, on the main channel");
+    assert.strictEqual(Update.haveText("v0.1.0", "stable", "dev"), "You have v0.1.0, following dev");
+    assert.strictEqual(Update.haveText("", "stable", "main"), "On the stable channel");
 });
