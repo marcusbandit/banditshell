@@ -313,7 +313,8 @@ Item {
 
             function locate(): void {
                 const target = SettingsView.current;
-                let y = 0;
+                const home = Catalogue.PAGE_BY_ID[target]?.cat ?? "";
+                let fallback = -1;
                 for (let i = 0; i < children.length; i++) {
                     const c = children[i];
                     if (!c.modelData)
@@ -322,6 +323,8 @@ Item {
                         tree.markY = c.y;
                         return;
                     }
+                    if (c.modelData.id === home)
+                        fallback = c.y;
                     const pages = c.modelData.pages.filter(p => Catalogue.present(p, SettingsState));
                     const at = pages.findIndex(p => p.id === target);
                     if (at >= 0) {
@@ -329,6 +332,8 @@ Item {
                         return;
                     }
                 }
+                if (fallback >= 0)
+                    tree.markY = fallback;
             }
 
             onImplicitHeightChanged: locate()
@@ -382,8 +387,12 @@ Item {
 
                     width: found.width
                     icon: root.listingRecent ? "history" : hit.modelData.page.icon
-                    label: root.listingRecent ? hit.modelData.label : hit.modelData.label
-                    detail: root.listingRecent ? `${hit.modelData.from} → ${hit.modelData.to}` : `${Catalogue.CAT_BY_ID[hit.modelData.page.cat].name.toLowerCase()} · ${Catalogue.nameOf(hit.modelData.page, SettingsState).toLowerCase()}`
+                    readonly property string place: root.listingRecent ? "" : Catalogue.nameOf(hit.modelData.page, SettingsState).toLowerCase()
+                    readonly property string why: root.listingRecent ? "" : Catalogue.hitWhy(hit.modelData, SettingsView.query, `${hit.label} ${hit.place}`)
+
+                    label: root.listingRecent ? hit.modelData.label : Catalogue.hitTitle(hit.modelData, SettingsState)
+                    detail: root.listingRecent ? `${hit.modelData.from} → ${hit.modelData.to}` : hit.why ? `${hit.place} · ${hit.why}` : hit.place
+                    query: root.listingRecent ? "" : SettingsView.query
                     active: hit.index === root.hitIndex
                     onPicked: root.pick(hit.index)
                 }
@@ -474,6 +483,7 @@ Item {
         property string icon: ""
         property string label: ""
         property string detail: ""
+        property string query: ""
         property bool active: false
 
         signal picked
@@ -505,13 +515,17 @@ Item {
 
             StyledText {
                 width: parent.width
-                text: hr.label
+                textFormat: Text.StyledText
+                text: Catalogue.marked(hr.label, hr.query, Appearance.colour.accent)
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
                 elide: Text.ElideRight
             }
 
             StyledText {
                 width: parent.width
-                text: hr.detail
+                textFormat: Text.StyledText
+                text: Catalogue.marked(hr.detail, hr.query, Appearance.colour.accent)
                 elide: Text.ElideRight
                 color: Appearance.colour.textFaint
             }

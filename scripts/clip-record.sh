@@ -17,8 +17,7 @@ readTimeout="${BANDITSHELL_CLIP_TIMEOUT:-5}"
 clip() { timeout -k 1 "$readTimeout" wl-paste "$@"; }
 
 emit() {
-    jq -c -n --arg state "$1" --argjson types "$2" --argjson body "$3" \
-        '{state: $state, types: $types} + $body'
+    printf '%s' "$3" | jq -c --arg state "$1" --argjson types "$2" '{state: $state, types: $types} + .'
 }
 
 state="${CLIPBOARD_STATE:-data}"
@@ -82,8 +81,8 @@ if has "text/uri-list"; then
 
     pathsJson=$(jq -nc '$ARGS.positional' --args ${paths[@]+"${paths[@]}"})
     mimesJson=$(jq -nc '$ARGS.positional' --args ${mimes[@]+"${mimes[@]}"})
-    body=$(jq -c -n --argjson b "$body" --argjson paths "$pathsJson" --argjson mimes "$mimesJson" \
-        '$b + {paths: $paths, mimes: $mimes}')
+    body=$(printf '%s' "$body" | jq -c --slurpfile paths <(printf '%s' "$pathsJson") --slurpfile mimes <(printf '%s' "$mimesJson") \
+        '. + {paths: $paths[0], mimes: $mimes[0]}')
     emit "$state" "$types" "$body"
     exit 0
 fi
@@ -153,16 +152,16 @@ sys.stdout.write(re.sub(r"\n{3,}", "\n\n", text).strip())
 
 if txt=$(firstLike "text/plain") || txt=$(firstLike "text/") || has "UTF8_STRING" || has "STRING" || has "TEXT"; then
     text=$(clip -n ${txt:+-t "$txt"} 2>/dev/null)
-    case $(printf '%s' "$text" | head -c 64 | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]') in
-    '<metahttp-equiv'* | '<!doctype'* | '<html'*)
-        text=$(printf '%s' "$text" | dehtml)
-        ;;
-    esac
     size=${#text}
     if [ "$size" -gt "$maxText" ]; then
         emit "$state" "$types" "$(jq -c -n --argjson bytes "$size" '{bytes: $bytes, dropped: true}')"
         exit 0
     fi
+    case $(printf '%s' "$text" | head -c 64 | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]') in
+    '<metahttp-equiv'* | '<!doctype'* | '<html'*)
+        text=$(printf '%s' "$text" | dehtml)
+        ;;
+    esac
     emit "$state" "$types" "$(printf '%s' "$text" | jq -Rsc '{text: .}')"
     exit 0
 fi

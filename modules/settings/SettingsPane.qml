@@ -251,7 +251,7 @@ Item {
                             return `${c.pages.length} pages ${root.tone(Appearance.colour.textDim, `${Catalogue.rowCount(c)} rows`)}`;
                         }
                         const cover = Catalogue.pagesCovered(SettingsView.page);
-                        return `covers ${root.tone(Appearance.colour.textDim, `${cover.settings} settings`)}`;
+                        return `covers ${root.tone(Appearance.colour.textDim, `${cover.settings} ${cover.settings === 1 ? "setting" : "settings"}`)}`;
                     }
                 }
 
