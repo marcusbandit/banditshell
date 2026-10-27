@@ -141,6 +141,9 @@ test("when too many things are unusual, privacy and attention stay and the order
     assert.deepStrictEqual(keys({ vpn: true, awake: true, layout: "US", layoutAway: true }, 2), ["layout"]);
     const home = Anomalies.list(Object.assign({}, calm, { layout: "DK" }))[0];
     assert.ok(everyMark().filter(e => e.key !== "layout").every(e => e.rank < home.rank));
+    const tight = Anomalies.split(Object.assign({}, calm, { micStreams: true, recording: true, vpn: true, layout: "DK" }), 3);
+    assert.deepStrictEqual([tight.kept.map(e => e.key), tight.dropped], [["mic", "recording", "vpn"], []]);
+    assert.deepStrictEqual(keys({ micStreams: true, recording: true, vpn: true, layout: "DK" }, 4), ["mic", "recording", "vpn", "layout"]);
     assert.deepStrictEqual(keys(all, 2), ["mic"]);
     assert.deepStrictEqual(keys(all, 1), []);
 });

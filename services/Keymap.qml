@@ -17,8 +17,14 @@ Singleton {
     readonly property string layout: (root.layouts[root.index] ?? "").toUpperCase()
     readonly property bool several: root.layouts.length > 1
 
+    property bool stale: false
+
     function refresh(): void {
-        if (Compositor.isHyprland)
+        if (!Compositor.isHyprland)
+            return;
+        if (reader.running)
+            root.stale = true;
+        else
             reader.running = true;
     }
 
@@ -49,7 +55,7 @@ Singleton {
         target: Hyprland
 
         function onRawEvent(event): void {
-            if (event.name === "activelayout")
+            if (event.name === "activelayout" || event.name === "configreloaded")
                 root.refresh();
         }
     }
@@ -61,6 +67,13 @@ Singleton {
 
         stdout: StdioCollector {
             onStreamFinished: root.read(text)
+        }
+
+        onExited: {
+            if (!root.stale)
+                return;
+            root.stale = false;
+            reader.running = true;
         }
     }
 

@@ -73,15 +73,16 @@ Singleton {
     onPanelChanged: if (root.panel.value >= 0)
         root.witness("brightness", `panel:${root.panel.name}`, root.panel, 1)
 
-    readonly property string layout: Keymap.several ? `${Keymap.index}:${Keymap.layout}` : ""
+    readonly property string layout: Keymap.several && Keymap.layout ? `${Keymap.index}:${Keymap.layout}` : ""
 
     onLayoutChanged: {
         const before = root.heardLayout;
         root.heardLayout = root.layout;
         if (!root.armed || !before || !root.layout || before === root.layout)
             return;
-        if (Logic.levelWanted(root.enabled, root.covers, "layout"))
-            Notices.pass(Logic.layoutMoment(Keymap.layout, Keymap.name));
+        const moment = Logic.layoutMoment(Keymap.layout, Keymap.name);
+        if (moment && Logic.levelWanted(root.enabled, root.covers, "layout"))
+            Notices.pass(moment);
     }
 
     Timer {

@@ -186,8 +186,12 @@ Item {
                     anchors.top: parent.top
                     anchors.topMargin: Math.round(Appearance.sizes.statusGap / 2)
                     height: Appearance.sizes.statusSlot
+                    width: Math.min(implicitWidth, parent.width - Appearance.padding.small)
                     visible: !!mark.text
                     verticalAlignment: Text.AlignVCenter
+                    horizontalAlignment: Text.AlignHCenter
+                    fontSizeMode: Text.HorizontalFit
+                    minimumPixelSize: Math.round(Appearance.font.size.small / 2)
                     text: mark.text
                     color: root.toneColour(mark.entry?.tone ?? mark.modelData.tone)
                     font.pixelSize: Appearance.font.size.small
