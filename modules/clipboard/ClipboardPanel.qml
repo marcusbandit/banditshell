@@ -94,6 +94,8 @@ Item {
         return Clipboard.shelfKept > 0 ? `${gone}, ${Clipboard.shelfKept} pinned kept` : gone;
     }
 
+    Component.onDestruction: Clipboard.releaseShelf(root)
+
     function show(): void {
         if (root.shown)
             return;
@@ -365,8 +367,7 @@ Item {
                 return;
             }
 
-            if (event.key === Qt.Key_Z && (event.modifiers & Qt.ControlModifier) && !root.speech) {
-                Clipboard.undo();
+            if (event.key === Qt.Key_Z && (event.modifiers & Qt.ControlModifier) && !root.speech && Clipboard.undo()) {
                 event.accepted = true;
                 return;
             }
@@ -592,8 +593,6 @@ Item {
                         }
 
                         Row {
-                            id: undoRow
-
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: Appearance.padding.small
@@ -608,13 +607,6 @@ Item {
                                 speed: Appearance.animation.revealSpeed
                                 epsilon: Appearance.animation.fadeEpsilon
                                 startsAtTarget: true
-                            }
-
-                            HoverHandler {
-                                onHoveredChanged: if (hovered && root.shown)
-                                    Clipboard.holdShelf(root);
-                                else
-                                    Clipboard.releaseShelf(root)
                             }
 
                             Icon {
@@ -647,6 +639,10 @@ Item {
                                 icon: "undo"
                                 text: "Undo"
                                 onClicked: Clipboard.undo()
+                                onHoveredChanged: if (hovered && root.shown)
+                                    Clipboard.holdShelf(root);
+                                else
+                                    Clipboard.releaseShelf(root)
                             }
                         }
 

@@ -436,7 +436,10 @@ Singleton {
         if (!root.entries.some(e => !e.pinned))
             return;
         root.letGo();
-        root.shelf = Shelf.shelve(root.entries);
+        const unseen = !root.keep && !root.unreadable ? root.readable(Shelf.salvage(store.text())).filter(e => !e.pinned && !root.entries.some(m => root.identity(m) === root.identity(e))).length : 0;
+        root.shelf = Object.assign(Shelf.shelve(root.entries), {
+            unseen: unseen
+        });
         root.shelfElapsed = 0;
         root.entries = Shelf.kept(root.entries);
         root.current = "";
@@ -460,8 +463,8 @@ Singleton {
         root.shelfHolders = root.shelfHolders.filter(w => w && w !== who);
     }
 
-    readonly property int shelved: root.shelf ? root.shelf.entries.length : 0
-    readonly property int shelfKept: root.shelf ? root.shelf.before.length - root.shelved : 0
+    readonly property int shelved: root.shelf ? root.shelf.entries.length + (root.shelf.unseen ?? 0) : 0
+    readonly property int shelfKept: root.shelf ? root.shelf.before.length - root.shelf.entries.length : 0
     readonly property bool clearLasts: root.keep || !root.unreadable
 
     function undo(): bool {
@@ -485,7 +488,7 @@ Singleton {
     }
 
     function repair(): void {
-        root.entries = Shelf.survivors(root.entries, Shelf.salvage(store.text()));
+        root.entries = Shelf.survivors(root.entries, root.readable(Shelf.salvage(store.text())));
         root.keep = true;
         console.log(`Clipboard: cleared while ${root.path} could not be read; it now holds the ${root.entries.length} entries that were kept.`);
         root.write();
@@ -681,10 +684,7 @@ Singleton {
                 root.keep = false;
             }
 
-            disk = disk.filter(e => e && !Secret.marked(e.types) && (e.text || e.file || (e.paths ?? []).length));
-
-            for (const e of disk)
-                e.kind = root.classify(e);
+            disk = root.readable(disk);
 
             if (root.loaded) {
                 root.entries = root.reconcile(disk);
@@ -696,6 +696,8 @@ Singleton {
 
             if (Config.values.clipboard.importClipse)
                 clipse.reload();
+            else if (root.keep)
+                root.sweep();
         }
 
         onLoadFailed: err => {
@@ -715,6 +717,13 @@ Singleton {
             root.unreadable = true;
             root.loaded = true;
         }
+    }
+
+    function readable(disk: var): var {
+        const kept = disk.filter(e => e && !Secret.marked(e.types) && (e.text || e.file || (e.paths ?? []).length));
+        for (const e of kept)
+            e.kind = root.classify(e);
+        return kept;
     }
 
     function reconcile(disk: var): var {
