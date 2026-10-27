@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/hyprland-lua.js"), "utf8");
 const HyprlandLua = new Function(src
-    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, describeExpr, bindAction, actionTable, entryReplacement, entriesForHost, relocateEntry, verifyReport, baselineRefusal, parseBandSpec, spliceLines, appendSplice, configFromCommandLine, confSources };")();
+    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, describeExpr, bindAction, actionTable, entryReplacement, entriesForHost, relocateEntry, verifyReport, baselineRefusal, parseBandSpec, spliceLines, appendSplice, configFromCommandLine, confSources, shortName, pathOf };")();
 
 test("chords parse into modifiers and a key", () => {
     assert.deepStrictEqual(HyprlandLua.parseChord("SUPER + SHIFT + Slash"), {
@@ -697,6 +697,36 @@ test(".conf source lines are followed, globs and comments left alone", () => {
         "bind = SUPER, Q, exec, foot"
     ].join("\n"), "/home/u/.config/hypr", "/home/u");
     assert.deepStrictEqual(found, ["/home/u/.config/hypr/binds.conf", "/home/u/.config/hypr/extra.conf", "/home/u/x.conf"]);
+});
+
+test("every file a source line reaches turns back into its own path", () => {
+    const os = require("node:os");
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "banditshell-hypr-home-"));
+    try {
+        const dir = path.join(home, ".config/hypr");
+        const outside = path.join(home, ".local/share/omarchy/default/hypr");
+        fs.mkdirSync(path.join(dir, "lua"), { recursive: true });
+        fs.mkdirSync(outside, { recursive: true });
+        fs.writeFileSync(path.join(dir, "binds.conf"), "bind = SUPER, Q, exec, foot\n");
+        fs.writeFileSync(path.join(dir, "lua/rules.conf"), "windowrule = float, class:x\n");
+        fs.writeFileSync(path.join(outside, "bindings.conf"), "bind = SUPER, W, killactive\n");
+        const main = [
+            "source = ~/.config/hypr/binds.conf",
+            "source = lua/rules.conf",
+            "source = ~/.local/share/omarchy/default/hypr/bindings.conf"
+        ].join("\n");
+        const found = HyprlandLua.confSources(main, dir, home);
+        assert.strictEqual(found.length, 3);
+        const names = found.map(p => HyprlandLua.shortName(p, dir));
+        assert.deepStrictEqual(names.slice(0, 2), ["binds.conf", "lua/rules.conf"]);
+        assert.ok(names[2].startsWith("/"), "a file outside the Hyprland folder keeps its absolute name");
+        for (const [i, name] of names.entries()) {
+            assert.strictEqual(HyprlandLua.pathOf(name, dir), found[i], name);
+            assert.ok(fs.existsSync(HyprlandLua.pathOf(name, dir)), name);
+        }
+    } finally {
+        fs.rmSync(home, { recursive: true, force: true });
+    }
 });
 
 test("appending lands after the last line, by line count, keeping the file's final newline", () => {
