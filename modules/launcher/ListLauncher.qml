@@ -1265,6 +1265,21 @@ LauncherConcept {
                                         }
                                     }
 
+                                    Loader {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: active
+                                        active: !!line.modelData.reserve && !line.shownButtons.length
+
+                                        sourceComponent: Button {
+                                            opacity: 0
+                                            enabled: false
+                                            icon: line.modelData.reserve.icon
+                                            text: line.modelData.reserve.text
+                                            style: "ring"
+                                            size: 0
+                                        }
+                                    }
+
                                     Repeater {
                                         model: line.shownButtons
 
