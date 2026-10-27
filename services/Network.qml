@@ -371,6 +371,10 @@ Singleton {
         return WifiList.knownServer(name);
     }
 
+    function serverName(text: string): string {
+        return WifiList.serverDomain(text);
+    }
+
     function signInFiles(form: var): var {
         const home = Quickshell.env("HOME") ?? "";
         const files = Object.assign({}, form);
@@ -455,7 +459,7 @@ Singleton {
         root.enrollReading = false;
         const name = root.enrollingName;
         const made = !profile.exists || root.enrollChecking;
-        const trouble = WifiList.serverTrouble(log);
+        const trouble = WifiList.serverTrouble(log, root.deviceName);
 
         if (root.enrollChecking) {
             root.failEnroll("", "");

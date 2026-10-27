@@ -143,7 +143,7 @@ function signInReady(kind, form) {
     const method = form?.method;
     if (!KEY_MANAGEMENT[kind] || !signInMethods(kind).includes(method) || !form.identity)
         return false;
-    if (!serverDomain(form.domain) && !form.authority)
+    if (!serverDomain(form.domain))
         return false;
     return method !== "tls" || (!!form.certificate && !!form.key);
 }
@@ -217,14 +217,17 @@ function troubleKind(reason, err) {
     return "refused";
 }
 
-function serverTrouble(log) {
+function serverTrouble(log, device) {
     let chain = [];
     let names = [];
     let trouble = null;
     for (const line of String(log ?? "").split("\n")) {
+        if (device && !line.startsWith(`${device}: `))
+            continue;
         if (line.includes("CTRL-EVENT-EAP-STARTED")) {
             chain = [];
             names = [];
+            trouble = null;
             continue;
         }
         const cert = line.match(/CTRL-EVENT-EAP-PEER-CERT depth=(\d+) subject='([^']*)'/);
@@ -245,7 +248,7 @@ function serverTrouble(log) {
         const top = chain.filter(n => n).slice(-1)[0] || "";
         trouble = {
             kind: troubleKind(Number(failed[1]), failed[4]),
-            server: names[0] || chain[0] || "",
+            server: serverDomain(names[0] || chain[0]),
             authority: depth > 0 || chain.length > 1 ? top : ""
         };
     }
@@ -271,7 +274,7 @@ function serverMessage(trouble, domain) {
     case "name":
         return `The server answered as ${trouble.server || "something else"}${domain ? `, not ${domain}` : ""}${by}. Your password was not sent.`;
     case "untrusted":
-        return `This computer does not trust ${trouble.authority || "the authority"}, which vouches for the server. Pick its certificate under trusted by; your school's Wi-Fi guide has it. Your password was not sent.`;
+        return `This computer does not trust the chain the server sent${trouble.authority ? `, which ends at ${trouble.authority}` : ""}. Pick your school's root certificate under trusted by; its Wi-Fi guide has it. Your password was not sent.`;
     case "expired":
         return "The server's certificate has run out of date. Your password was not sent.";
     }
@@ -283,6 +286,8 @@ function serverSeenMessage(trouble) {
         return "Could not see the server's name. Your school's Wi-Fi guide lists it.";
     if (trouble.kind === "name" && trouble.server)
         return `It answered as ${trouble.server}${trouble.authority ? `, vouched for by ${trouble.authority}` : ""}. Use that name if it is your school's.`;
+    if (trouble.kind === "name")
+        return "It answered under no name this form can use. Your school's Wi-Fi guide lists the server name.";
     return serverMessage(trouble, "");
 }
 

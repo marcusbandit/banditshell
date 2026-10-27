@@ -18,6 +18,7 @@ Item {
     property bool noteIsTrouble: false
     property string suggestion: ""
     property bool busy: false
+    property var readServer: text => text.trim()
 
     signal accepted(var form, string password)
     signal check(var form)
@@ -29,10 +30,19 @@ Item {
     readonly property string methodName: root.methods[Math.min(root.method, root.methods.length - 1)] ?? ""
     readonly property bool tls: root.methodName === "tls"
     readonly property bool canCheck: root.methods.includes("peap")
-    readonly property bool needsServer: !server.text.trim() && root.trust === 0
+    readonly property bool needsServer: !server.text.trim()
 
     property var found: []
-    property Item target: authority
+    property Item target: null
+    property string local: ""
+
+    function pickFile(path: string): void {
+        let entry = root.target;
+        if (!entry || !entry.visible)
+            entry = root.tls && !certificate.text.trim() ? certificate : root.trust === 1 ? authority : root.tls ? key : null;
+        if (entry)
+            entry.text = path;
+    }
 
     implicitHeight: visible ? stack.implicitHeight : 0
 
@@ -51,16 +61,21 @@ Item {
     function submit(): void {
         if (root.refusal || root.busy)
             return;
+        root.local = "";
+        if (root.trust === 1 && !authority.text.trim())
+            return authority.input.forceActiveFocus();
         if (root.needsServer && root.canCheck && !root.tls)
             return root.check(root.form());
+        if (!root.needsServer && !root.readServer(server.text)) {
+            root.local = "That server name needs a dot, such as school.edu.";
+            return server.input.forceActiveFocus();
+        }
         if (!identity.text)
             identity.input.forceActiveFocus();
         else if (!root.tls && !password.text)
             password.input.forceActiveFocus();
         else if (root.tls && !certificate.text.trim())
             certificate.input.forceActiveFocus();
-        else if (root.trust === 1 && !authority.text.trim())
-            authority.input.forceActiveFocus();
         else if (root.needsServer)
             server.input.forceActiveFocus();
         else {
@@ -79,6 +94,7 @@ Item {
         identity.text = "";
         password.text = "";
         server.text = root.domain;
+        root.local = "";
         if (root.visible && !root.refusal) {
             Prompts.request(root);
             identity.input.forceActiveFocus();
@@ -244,7 +260,7 @@ Item {
                     width: parent.width
                     hint: root.tls ? "key password, if it has one" : "password"
                     secret: true
-                    next: server.input
+                    next: root.tls ? certificate.input : server.input
                 }
 
                 Entry {
@@ -272,11 +288,11 @@ Item {
 
                     width: parent.width
                     hint: "server name, such as school.edu"
-                    next: identity.input
+                    next: root.trust === 1 ? authority.input : identity.input
                 }
 
                 Line {
-                    text: root.needsServer && root.canCheck && !root.tls ? "Not sure of the server name? Look it up first. Nothing secret is sent." : root.tls ? "Your certificate only goes to a server with this name." : "Your password only goes to a server with this name."
+                    text: root.needsServer && root.canCheck && !root.tls ? "Not sure of the server name? Look it up first. Nothing secret is sent, but your Wi-Fi drops for a moment." : root.tls ? "Your certificate only goes to a server with this name." : "Your password only goes to a server with this name."
                 }
 
                 Choice {
@@ -298,8 +314,9 @@ Item {
 
                     width: parent.width
                     visible: root.trust === 1
-                    hint: "the server's certificate file"
+                    hint: "your school's root certificate file"
                     file: true
+                    next: identity.input
                 }
 
                 Flow {
@@ -319,7 +336,7 @@ Item {
                             style: "bare"
                             icon: "description"
                             text: modelData.slice(modelData.lastIndexOf("/") + 1)
-                            onClicked: root.target.text = modelData
+                            onClicked: root.pickFile(modelData)
                         }
                     }
                 }
@@ -331,6 +348,12 @@ Item {
                     options: root.methods
                     current: root.method
                     onPicked: i => root.method = i
+                }
+
+                Line {
+                    visible: !!root.local
+                    text: root.local
+                    color: Appearance.colour.warning
                 }
 
                 Line {

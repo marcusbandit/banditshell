@@ -347,7 +347,7 @@ test.describe("signInArgs", () => {
     test.it("never builds a profile that would take any server", () => {
         assert.strictEqual(WifiList.signInArgs("wpa", Object.assign({}, PASSWORD_FORM, { domain: "" })), null);
         assert.strictEqual(WifiList.signInArgs("wpa", Object.assign({}, PASSWORD_FORM, { domain: "not a name" })), null);
-        assert.ok(WifiList.signInArgs("wpa", Object.assign({}, PASSWORD_FORM, { domain: "", authority: "/home/me/ca.pem" })));
+        assert.strictEqual(WifiList.signInArgs("wpa", Object.assign({}, PASSWORD_FORM, { domain: "", authority: "/usr/share/ca/public-root.pem" })), null);
         assert.strictEqual(WifiList.signInArgs("wpa", Object.assign({}, TLS_FORM, { certificate: "" })), null);
     });
 
@@ -427,7 +427,7 @@ test.describe("serverTrouble", () => {
         const trouble = WifiList.serverTrouble(attempts[1]);
         assert.deepStrictEqual(trouble, { kind: "untrusted", server: "", authority: "Afdelingen for IT Service Issuing CA 03" });
         assert.strictEqual(WifiList.serverLabel(trouble), "server not trusted");
-        assert.match(WifiList.serverMessage(trouble, "dtu.dk"), /does not trust Afdelingen for IT Service Issuing CA 03, which vouches for the server.*not sent/);
+        assert.match(WifiList.serverMessage(trouble, "dtu.dk"), /does not trust the chain the server sent, which ends at Afdelingen for IT Service Issuing CA 03\. Pick your school's root certificate.*not sent/);
     });
 
     test.it("reads the name a server answered as, from the last attempt only", () => {
@@ -448,6 +448,21 @@ test.describe("serverTrouble", () => {
         assert.strictEqual(WifiList.serverTrouble(""), null);
         assert.strictEqual(WifiList.serverLabel(null), "");
         assert.match(WifiList.serverSeenMessage(null), /Could not see/);
+    });
+
+    test.it("forgets a certificate error once a later attempt starts", () => {
+        assert.strictEqual(WifiList.serverTrouble(attempts[1] + "wlp7s0: CTRL-EVENT-EAP-STARTED EAP authentication started\nwlp7s0: CTRL-EVENT-EAP-FAILURE EAP authentication failed\n"), null);
+    });
+
+    test.it("reads only the adapter that was signing in", () => {
+        assert.strictEqual(WifiList.serverTrouble(attempts[1].replace(/wlp7s0:/g, "wlan1:"), "wlp7s0"), null);
+        assert.strictEqual(WifiList.serverTrouble(log, "wlp7s0").kind, "name");
+    });
+
+    test.it("offers no name when the certificate's name is not a host name", () => {
+        const trouble = WifiList.serverTrouble("x: CTRL-EVENT-EAP-TLS-CERT-ERROR reason=9 depth=0 subject='/CN=RADIUS Server' err='Domain suffix mismatch'");
+        assert.strictEqual(trouble.server, "");
+        assert.match(WifiList.serverSeenMessage(trouble), /no name this form can use/);
     });
 
     test.it("tells an expired certificate apart", () => {

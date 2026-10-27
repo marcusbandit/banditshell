@@ -531,6 +531,7 @@ Column {
                             note: Network.enrollFailedName === entry.name ? Network.enrollDetail : Network.checkedName === entry.name ? Network.checkedNote : ""
                             noteIsTrouble: Network.enrollFailedName === entry.name
                             suggestion: Network.checkedName === entry.name ? Network.checkedServer : ""
+                            readServer: text => Network.serverName(text)
 
                             onAccepted: (form, password) => {
                                 if (Network.find(entry.name))
