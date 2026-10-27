@@ -1,10 +1,11 @@
 .pragma library
 
 var READ = 'ls=$1 home=$2; shift 2; uid=$(id -u); '
-    + 'one() { [ -d "$1/info" ] || return 0; '
-    + 'if [ "$ls" != - ]; then printf "L\\037%s\\037" "$1"; "$ls" "$1/files"; printf "\\036"; fi; '
-    + 'for f in "$1"/info/*.trashinfo; do [ -f "$f" ] || continue; n=${f##*/}; '
-    + 'printf "I\\037%s\\037%s\\037" "$1" "${n%.trashinfo}"; cat -- "$f"; printf "\\036"; done; }; '
+    + 'one() { [ -d "$1/info" ] || return 0; d=$1; '
+    + 'if [ "$ls" != - ]; then printf "L\\037%s\\037" "$d"; "$ls" "$d/files"; printf "\\036"; fi; '
+    + "d=$d awk 'BEGIN { for (i = 1; i < ARGC; i++) if ((getline line < ARGV[i]) < 0) delete ARGV[i]; else close(ARGV[i]) } "
+    + "FNR == 1 { if (NR > 1) printf \"\\036\"; n = FILENAME; sub(/.*\\//, \"\", n); sub(/\\.trashinfo$/, \"\", n); "
+    + "printf \"I\\037%s\\037%s\\037\", ENVIRON[\"d\"], n } { print } END { if (NR > 0) printf \"\\036\" }' \"$d\"/info/*.trashinfo \"$d\"/info/.*.trashinfo < /dev/null; }; "
     + 'one "$home"; '
     + 'for t; do t=${t%/}; '
     + 'if [ -d "$t/.Trash" ] && [ -k "$t/.Trash" ] && [ ! -L "$t/.Trash" ]; then one "$t/.Trash/$uid"; fi; '
@@ -30,6 +31,10 @@ function parentOf(path) {
 
 function within(path, files) {
     return path === files || path.indexOf(files + "/") === 0;
+}
+
+function trashed(path, files) {
+    return within(path, files) || /\/\.Trash(-\d+|\/\d+)\/files\//.test(path);
 }
 
 function topdirs(paths) {
@@ -119,6 +124,9 @@ function parse(text) {
 
 function entries(parsed) {
     var out = [];
+    var known = {};
+    for (var n = 0; n < parsed.items.length; n++)
+        known[parsed.items[n].dir + "\x1f" + parsed.items[n].name] = parsed.items[n];
     for (var i = 0; i < parsed.listings.length; i++) {
         var listing = parsed.listings[i];
         if (!listing.answer || !listing.answer.ok)
@@ -126,11 +134,7 @@ function entries(parsed) {
         var found = listing.answer.entries || [];
         for (var j = 0; j < found.length; j++) {
             var entry = found[j];
-            var item = null;
-            for (var k = 0; k < parsed.items.length && !item; k++) {
-                if (parsed.items[k].dir === listing.dir && parsed.items[k].name === entry.name)
-                    item = parsed.items[k];
-            }
+            var item = known[listing.dir + "\x1f" + entry.name] || null;
             var path = item ? item.path : "";
             var name = path ? baseName(path) : entry.name;
             out.push(Object.assign({}, entry, {

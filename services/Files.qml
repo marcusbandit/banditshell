@@ -234,7 +234,7 @@ Singleton {
         if (root.latestListing)
             root.latestListing.running = false;
         root.latestListing = lister.createObject(root, {
-            command: root.listingTrash ? Trash.readCommand(root.helper("bs-ls"), root.trashHome, root.drives.map(d => d.path)) : [root.helper("bs-ls"), root.cwd],
+            command: root.listingTrash ? Trash.readCommand(root.helper("bs-ls"), root.trashHome, root.mounts) : [root.helper("bs-ls"), root.cwd],
             generation: root.generation,
             running: true
         });
@@ -449,8 +449,9 @@ Singleton {
     ]
 
     property var drives: []
+    property var mounts: []
 
-    onDrivesChanged: if (root.trashTop)
+    onMountsChanged: if (root.trashTop)
         root.refresh()
 
     function refreshPlaces(): void {
@@ -482,6 +483,7 @@ Singleton {
                 try {
                     const tree = JSON.parse(text).blockdevices ?? [];
                     const out = [];
+                    const mounted = [];
 
                     const walk = (node, removable) => {
                         const rm = removable || node.rm === true || node.rm === "1";
@@ -489,6 +491,8 @@ Singleton {
                         for (const where of node.mountpoints ?? []) {
                             if (!where)
                                 continue;
+                            if (where.startsWith("/") && !mounted.includes(where))
+                                mounted.push(where);
                             const volume = where.startsWith("/mnt/") || where.startsWith("/media/") || where.startsWith("/run/media/");
                             if (!rm && !volume)
                                 continue;
@@ -511,6 +515,8 @@ Singleton {
                         walk(device, false);
 
                     root.drives = out;
+                    if (mounted.join("\n") !== root.mounts.join("\n"))
+                        root.mounts = mounted;
 
                     if (out.length > 0) {
                         usage.running = false;
@@ -927,12 +933,12 @@ Singleton {
     }
 
     function makeFolder(name: string): void {
-        if (name)
+        if (name && !root.inTrash)
             root.run(["mkdir", "-p", "--"], [root.join(root.cwd, name)]);
     }
 
     function makeFile(name: string): void {
-        if (name)
+        if (name && !root.inTrash)
             root.run(["touch", "--"], [root.join(root.cwd, name)]);
     }
 
@@ -944,12 +950,12 @@ Singleton {
         if (!path || !name)
             return;
         const to = root.join(root.parentOf(path), name);
-        if (to !== path)
+        if (to !== path && !Trash.trashed(path, root.trashFiles))
             FilesUndo.renaming(path, to, () => root.run(["mv", "-i", "--"], [path, to]));
     }
 
     function trash(given: var): void {
-        const paths = given.filter(path => !Trash.within(path, root.trashFiles));
+        const paths = given.filter(path => !Trash.trashed(path, root.trashFiles));
         if (paths.length === 0)
             return;
         root.run(["gio", "trash", "--"], paths);
@@ -976,6 +982,10 @@ Singleton {
     function moveInto(paths: var, dir: string): void {
         if (Trash.within(dir, root.trashFiles))
             return root.trash(paths);
+        if (paths.some(path => Trash.trashed(path, root.trashFiles))) {
+            root.failure = "Restore takes things out of the trash";
+            return;
+        }
         FilesPaste.start(paths, dir, true);
         FilesFind.forget(paths);
     }
@@ -984,6 +994,8 @@ Singleton {
     property bool clipboardCut: false
 
     function clip(paths: var, cut: bool): void {
+        if (cut && paths.some(path => Trash.trashed(path, root.trashFiles)))
+            return;
         root.clipboard = paths;
         root.clipboardCut = cut;
     }

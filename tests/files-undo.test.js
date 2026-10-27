@@ -34,7 +34,7 @@ function sandbox() {
     const bin = path.join(dir, "bin");
     const trash = path.join(dir, "data", "Trash");
     fs.mkdirSync(bin);
-    for (const tool of ["mv", "mkdir", "rm", "cp", "cat", "id"])
+    for (const tool of ["mv", "mkdir", "rm", "cp", "cat", "id", "awk"])
         fs.symlinkSync(spawnSync("sh", ["-c", `command -v ${tool}`], { encoding: "utf8" }).stdout.trim(), path.join(bin, tool));
     GioTrash.install(bin, trash);
     const home = path.join(dir, "home");

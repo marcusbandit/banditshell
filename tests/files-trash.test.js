@@ -14,7 +14,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Trash = lib("services/files-trash.js", ["within", "topdirs", "readCommand", "parse", "entries", "infoPath", "restoreCommand"]);
+const Trash = lib("services/files-trash.js", ["within", "trashed", "topdirs", "readCommand", "parse", "entries", "infoPath", "restoreCommand"]);
 
 const UID = process.getuid();
 
@@ -22,7 +22,7 @@ function sandbox() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "files-trash-"));
     const bin = path.join(dir, "bin");
     fs.mkdirSync(bin);
-    for (const tool of ["mv", "mkdir", "rm", "cat", "id"])
+    for (const tool of ["mv", "mkdir", "rm", "cat", "id", "awk"])
         fs.symlinkSync(spawnSync("sh", ["-c", `command -v ${tool}`], { encoding: "utf8" }).stdout.trim(), path.join(bin, tool));
     const lister = path.join(bin, "bs-ls");
     fs.writeFileSync(lister, `#!/bin/sh
@@ -54,6 +54,9 @@ test.describe("files trash", () => {
         assert.ok(Trash.within("/h/.local/share/Trash/files", "/h/.local/share/Trash/files"));
         assert.ok(Trash.within("/h/.local/share/Trash/files/old folder", "/h/.local/share/Trash/files"));
         assert.ok(!Trash.within("/h/.local/share/Trash/filesystem", "/h/.local/share/Trash/files"));
+        assert.ok(Trash.trashed("/mnt/disk/.Trash-1000/files/clip.mkv", "/h/.local/share/Trash/files"));
+        assert.ok(Trash.trashed("/mnt/disk/.Trash/1000/files/clip.mkv", "/h/.local/share/Trash/files"));
+        assert.ok(!Trash.trashed("/mnt/disk/media/clip.mkv", "/h/.local/share/Trash/files"));
         assert.deepStrictEqual(Trash.topdirs(["/mnt/disk/a/x.mkv", "/mnt/disk/b"]), ["/mnt/disk/a", "/mnt/disk", "/mnt", "/"]);
     });
 
@@ -63,6 +66,8 @@ test.describe("files trash", () => {
             box.put(box.home, "notes.txt", info("/h/Documents/My%20Notes%20%C3%A9.txt"));
             box.put(box.home, "new\nline", info("/h/new%0Aline", "2026-10-26T08:00:00"));
             box.put(box.home, "junk", "Path=/h/junk\n");
+            box.put(box.home, ".env", info("/h/project/.env"));
+            box.put(box.home, "empty", "");
             box.put(box.home, "bad", info("/h/bad%ZZ"));
             box.put(box.at("drive", `.Trash-${UID}`), "clip.mkv", info("media/clip.mkv"));
             fs.mkdirSync(box.at("drive", ".Trash"), { mode: 0o1777 });
@@ -74,7 +79,8 @@ test.describe("files trash", () => {
             const { items, listings } = Trash.parse(box.run(Trash.readCommand("-", box.home, [box.at("drive"), box.at("loose"), box.at("nothing")])));
             assert.deepStrictEqual(listings, []);
             const byName = Object.fromEntries(items.map(item => [item.name, item]));
-            assert.deepStrictEqual(Object.keys(byName).sort(), ["bad", "clip.mkv", "junk", "new\nline", "notes.txt", "shared"]);
+            assert.deepStrictEqual(Object.keys(byName).sort(), [".env", "bad", "clip.mkv", "junk", "new\nline", "notes.txt", "shared"]);
+            assert.strictEqual(byName[".env"].path, "/h/project/.env");
             assert.deepStrictEqual(byName["notes.txt"], { dir: box.home, name: "notes.txt", path: "/h/Documents/My Notes é.txt", deleted: Date.UTC(2026, 9, 25, 22, 34, 34) / 1000 });
             assert.strictEqual(byName["new\nline"].path, "/h/new\nline");
             assert.strictEqual(byName.junk.path, "");
