@@ -23,7 +23,8 @@ function wrapped(units, fits) {
     let line = "";
     let used = 0;
     const close = () => {
-        lines.push({text: trimmed(line), end: used});
+        if (trimmed(line) !== "")
+            lines.push({text: trimmed(line), end: used});
         line = "";
     };
     for (const unit of units) {
@@ -52,6 +53,8 @@ function squeezed(rest, extension, fits, headed) {
         const head = headed ? Math.ceil(shown / 2) : 0;
         return rest.slice(0, head).replace(/^\s+/, "") + ELLIPSIS + rest.slice(rest.length - extension - (shown - head));
     };
+    if (!fits(line(0)))
+        return cropped(rest.replace(/^\s+/, ""), fits);
     let lo = 0;
     let hi = stem;
     while (lo < hi) {
@@ -62,6 +65,19 @@ function squeezed(rest, extension, fits, headed) {
             hi = mid - 1;
     }
     return line(lo);
+}
+
+function cropped(text, fits) {
+    let lo = 0;
+    let hi = text.length;
+    while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        if (fits(text.slice(0, mid) + ELLIPSIS))
+            lo = mid;
+        else
+            hi = mid - 1;
+    }
+    return text.slice(0, lo) + ELLIPSIS;
 }
 
 function lines(name, most, fits) {

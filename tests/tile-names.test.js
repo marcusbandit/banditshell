@@ -41,4 +41,12 @@ test.describe("tile names: wrapping a name under an icon", () => {
     test.it("does not take a spaced tail for an extension", () => {
         assert.deepStrictEqual(Names.lines("v1.2 release notes", 2, room(10)), ["v1.2", "\u2026ase notes"]);
     });
+
+    test.it("crops from the right when even the extension is wider than a line", () => {
+        assert.deepStrictEqual(Names.lines("photo.markdown", 2, room(5)), ["photo", ".mar\u2026"]);
+    });
+
+    test.it("never leaves a blank line for leading spaces", () => {
+        assert.deepStrictEqual(Names.lines("  leading.txt", 2, room(8)), ["leading", ".txt"]);
+    });
 });
