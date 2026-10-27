@@ -222,17 +222,27 @@ Item {
 
                 Setting {
                     width: body.width
-                    label: "Size"
-                    detail: `${Math.round(Files.magnification * 100)}% · text ${Files.zoomed(Appearance.font.size.small)}px`
+                    label: "Icon and text size"
+                    detail: `${Math.round(Files.magnification * 100)}%`
 
-                    ButtonPair {
-                        actions: [
-                            {text: "Smaller"},
-                            {text: "Reset"},
-                            {text: "Bigger"}
-                        ]
-                        primary: -1
-                        onTriggered: index => Files.zoom([-0.1, 0, 0.1][index])
+                    Row {
+                        spacing: Appearance.padding.small
+
+                        Button {
+                            text: "Reset"
+                            style: "bare"
+                            interactive: Files.magnification !== 1
+                            onClicked: Files.zoom(0)
+                        }
+
+                        ButtonPair {
+                            actions: [
+                                {text: "Smaller"},
+                                {text: "Bigger"}
+                            ]
+                            primary: -1
+                            onTriggered: index => Files.zoom(index === 0 ? -0.1 : 0.1)
+                        }
                     }
                 }
 
