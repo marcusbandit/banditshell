@@ -69,7 +69,7 @@ Singleton {
     function wake(text: string, evaluate: var): void {
         const ask = Money.parse(text, root.known, root.home, evaluate);
         const now = Date.now();
-        if (Money.coinsIn(ask) && now - root.coinsFetched > root.coinsStaleAfter && now - root.coinsTried > 30000 && !coinFetcher.running) {
+        if (Money.coinsIn(ask) && Money.stale(root.coinsFetched, now, root.coinsStaleAfter) && now - root.coinsTried > 30000 && !coinFetcher.running) {
             root.coinsTried = now;
             coinFetcher.running = true;
         }
