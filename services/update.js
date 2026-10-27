@@ -2,7 +2,7 @@ const CHANNELS = ["stable", "main"];
 
 function channelOf(raw) {
     const name = String(raw ?? "").trim();
-    return CHANNELS.indexOf(name) >= 0 ? name : "main";
+    return CHANNELS.indexOf(name) >= 0 ? name : "stable";
 }
 
 function branchFor(channel, branch) {
@@ -16,11 +16,23 @@ function following(head, branch) {
     return head === branch || (branch === "stable" && head === "main");
 }
 
+function haveText(version, channel, branch) {
+    const followed = branchFor(channel, branch);
+    const where = followed === "stable" || followed === "main" ? `on the ${followed} channel` : `following ${followed}`;
+    return version ? `You have ${version}, ${where}` : `${where[0].toUpperCase()}${where.slice(1)}`;
+}
+
 function channelText(channel, branch) {
     const followed = branchFor(channel, branch);
     if (followed !== "stable" && followed !== "main")
         return `following ${followed}`;
     return `${followed} channel`;
+}
+
+function waitingHeadline(branch, behind, targetVersion) {
+    if (branch === "stable" && targetVersion)
+        return `${targetVersion} is ready`;
+    return `${behind} new commit${behind === 1 ? "" : "s"} on ${branch}`;
 }
 
 function report(text) {
@@ -77,7 +89,7 @@ function explain(output, branch) {
     if (/Could not resolve host|Failed to connect|Connection timed out|Connection refused|Network is unreachable|Could not connect/.test(text))
         return "Could not reach GitHub. Check the internet connection, then refresh.";
     if (/couldn't find remote ref/.test(text) && branch === "stable")
-        return "GitHub has no stable version yet, so the stable channel has nothing to follow. Switch updates.channel to main in config.json, or wait for the first stable release.";
+        return "There is no release on GitHub yet, so nothing is waiting. This copy stays as it is until the first one.";
     if (/couldn't find remote ref/.test(text))
         return `GitHub has no branch called "${branch}".`;
     if (/Repository not found|does not appear to be a git repository|Could not read from remote repository|Permission denied|Authentication failed|terminal prompts disabled|Host key verification failed/.test(text))
@@ -247,6 +259,7 @@ function classify(input) {
     return {
         files: files.length,
         commits: Number(given.commits) || 0,
+        notes: (Array.isArray(given.entries) ? given.entries : []).reduce((n, e) => n + (Array.isArray(e?.changes) ? e.changes.length : 0), 0),
         kind: restart ? "restart" : runs ? "reload" : "none",
         restart: restart,
         restartReasons: reasons,
@@ -274,16 +287,14 @@ function listed(items) {
 }
 
 function summary(c) {
-    const count = c.commits > 0 ? c.commits : c.files;
+    const count = c.notes > 0 ? c.notes : c.commits > 0 ? c.commits : c.files;
     if (count === 0)
         return "no changes";
     const parts = [plural(count, "change", "changes")];
     if (c.kind === "restart")
         parts.push("restart needed");
-    else if (c.kind === "reload")
-        parts.push("no restart needed");
     else
-        parts.push("nothing the shell runs changed");
+        parts.push("no restart needed");
     if (c.cli)
         parts.push("commands changed");
     if (c.apiRemoved.length > 0)
@@ -398,7 +409,7 @@ function assess(facts) {
 }
 
 function waitingText(report) {
-    const out = [`update waiting: ${report.summary}`];
+    const out = [`${report.targetVersion ? `${report.targetVersion} is` : "update"} waiting: ${report.summary}`];
     for (const entry of report.entries) {
         out.push(`  ${entry.id}`);
         for (const change of entry.changes.slice(0, 6))

@@ -19,14 +19,14 @@
       "tests/fixtures/system-upgrade",
       "tests/fixtures/update",
       "tests/pacman.test.js",
-      "tests/promote-stable.test.js",
+      "tests/release.test.js",
       "tests/system-upgrade.test.js",
       "tests/update-cli.test.js",
       "tests/update.test.js",
       "tests/whatsnew.test.js"
     ],
     "scripts": [
-      "scripts/promote-stable.sh",
+      "scripts/release.sh",
       "scripts/system-upgrade.sh"
     ]
   },
