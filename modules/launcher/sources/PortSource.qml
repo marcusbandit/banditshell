@@ -12,7 +12,8 @@ QtObject {
 
     readonly property var kinds: ["port"]
 
-    readonly property var asked: ListeningPorts.enabled && ListeningPorts.found ? Logic.ask(root.search.text) ?? root.phrased(Search.portAsk(root.search.text)) : null
+    readonly property bool usable: ListeningPorts.enabled && ListeningPorts.found
+    readonly property var asked: root.usable ? Logic.ask(root.search.text) ?? root.phrased(Search.portAsk(root.search.text)) : null
 
     function phrased(said: var): var {
         return said ? {
@@ -127,7 +128,7 @@ QtObject {
         return [];
     }
 
-    readonly property var prefixes: !(ListeningPorts.enabled && ListeningPorts.found) ? [] : [
+    readonly property var prefixes: !root.usable ? [] : [
             {
                 section: "System",
                 word: "ports",

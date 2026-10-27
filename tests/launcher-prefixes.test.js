@@ -12,6 +12,31 @@ function lib(file, names) {
 
 const Prefixes = lib("modules/launcher/prefixes.js", ["SECTIONS", "OWN", "asked", "guess", "completion", "detail", "sections"]);
 const Ranking = lib("services/ranking.js", ["closest"]);
+const { scanSource } = require("../scripts/lint-rules.js");
+
+function declaredIn(file) {
+    const text = fs.readFileSync(file, "utf8");
+    const { code } = scanSource(text);
+    const opening = /property var (?:prefixes|parsedHere): (?:![\w.]+ \? \[\] : )?\[\n/g;
+    const rows = [];
+    let found;
+    while ((found = opening.exec(code))) {
+        const start = opening.lastIndex - 2;
+        let depth = 0;
+        let end = start;
+        for (; end < code.length; end++) {
+            if (code[end] === "[")
+                depth++;
+            else if (code[end] === "]" && --depth === 0)
+                break;
+        }
+        rows.push(...new Function(`return ${text.slice(start, end + 1)};`)().map(p => Object.assign({ file: path.basename(file) }, p)));
+    }
+    return rows;
+}
+
+const SOURCES = path.join(ROOT, "modules/launcher/sources");
+const DECLARED = Prefixes.OWN.concat(declaredIn(path.join(ROOT, "modules/launcher/LauncherSearch.qml")), ...fs.readdirSync(SOURCES).filter(f => f.endsWith(".qml")).sort().map(f => declaredIn(path.join(SOURCES, f))));
 
 const row = (section, word, also) => ({ section: section, word: word, about: word, icon: "x", also: also || [] });
 
@@ -57,6 +82,39 @@ test.describe("the ? page", () => {
     test.it("says what a prefix does, with its example when it has one", () => {
         assert.strictEqual(Prefixes.detail({ about: "Connect to a host", example: "ssh nemurenai" }), "Connect to a host, as in ssh nemurenai");
         assert.strictEqual(Prefixes.detail({ about: "Test your internet speed" }), "Test your internet speed");
+    });
+});
+
+test.describe("the rows each source declares", () => {
+    test.it("are found in the sources", () => {
+        assert.ok(DECLARED.length > 40, `${DECLARED.length} rows`);
+        assert.ok(DECLARED.some(p => p.file === "LauncherSearch.qml"));
+    });
+
+    test.it("name a section the page shows, say what they do and have an icon", () => {
+        for (const p of DECLARED)
+            assert.ok(Prefixes.SECTIONS.includes(p.section) && p.about && p.icon && Array.isArray(p.also), `${p.file}: ${p.word} in ${p.section}`);
+    });
+
+    test.it("give an example only when it adds something after the prefix", () => {
+        for (const p of DECLARED.filter(p => p.example !== undefined)) {
+            const typed = Prefixes.completion(p);
+            assert.ok(p.example.startsWith(typed) && p.example.trim().length > typed.trim().length, `${p.file}: ${p.example}`);
+        }
+    });
+
+    test.it("declare each word and alias once", () => {
+        const heads = DECLARED.flatMap(p => [p.word].concat(p.also));
+        assert.deepStrictEqual(heads.filter((h, i) => heads.indexOf(h) !== i), []);
+    });
+
+    test.it("are never turned into the name a letter away", () => {
+        const nearly = word => word.slice(0, -1) + (word.endsWith("x") ? "y" : "x");
+        for (const head of DECLARED.flatMap(p => [p.word].concat(p.also)).filter(h => h.length >= 5)) {
+            const labels = [nearly(head)];
+            assert.strictEqual(Ranking.closest(head, labels), 0, head);
+            assert.strictEqual(Prefixes.guess(head, labels, Ranking.closest, DECLARED), -1, head);
+        }
     });
 });
 
