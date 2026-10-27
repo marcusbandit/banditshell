@@ -69,6 +69,14 @@ Singleton {
             root.notify("critical", `Battery nearly empty, ${root.percent}%`, LowBattery.countdownMessage(root.nearlyEmpty, LowBattery.graceSeconds));
     }
 
+    function nearlyEmptyChoice(action: string): string {
+        return LowBattery.nearlyEmptyChoice(action, root.nearlyEmptyPercent);
+    }
+
+    function nearlyEmptyAction(choice: string): string {
+        return LowBattery.nearlyEmptyAction(choice);
+    }
+
     function actNearlyEmpty(): void {
         if (root.stage !== "counting")
             return;

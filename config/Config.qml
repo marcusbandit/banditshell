@@ -764,6 +764,10 @@ Singleton {
 
                 reversed: false,
 
+                search: "folder",
+
+                searchEverywhere: false,
+
                 terminal: {
 
                     font: "CaskaydiaCove Nerd Font Mono",
