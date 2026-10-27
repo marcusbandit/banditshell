@@ -278,6 +278,7 @@ Singleton {
         const rest = root.entries.filter(e => root.identity(e) !== key);
         root.entries = [entry, ...rest];
         root.current = entry.id;
+        root.wasCleared = false;
         root.prune();
         root.save();
     }
@@ -443,6 +444,7 @@ Singleton {
         root.shelfElapsed = 0;
         root.entries = Shelf.kept(root.entries);
         root.current = "";
+        root.wasCleared = true;
         root.save();
     }
 
@@ -465,13 +467,16 @@ Singleton {
 
     readonly property int shelved: root.shelf ? root.shelf.entries.length + (root.shelf.unseen ?? 0) : 0
     readonly property int shelfKept: root.shelf ? root.shelf.before.length - root.shelf.entries.length : 0
-    readonly property bool clearLasts: root.keep || !root.unreadable
+    readonly property bool clearSaves: root.keep || !root.unreadable
+
+    property bool wasCleared: false
 
     function undo(): bool {
         const shelf = root.shelf;
         if (!shelf)
             return false;
         root.shelf = null;
+        root.wasCleared = false;
         root.entries = Shelf.restored(root.entries, shelf);
         root.prune();
         root.save();

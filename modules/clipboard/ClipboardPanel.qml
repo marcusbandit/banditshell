@@ -89,8 +89,8 @@ Item {
 
     readonly property string cleared: {
         const gone = `${Clipboard.shelved} cleared`;
-        if (!Clipboard.clearLasts)
-            return `${gone} until restart`;
+        if (!Clipboard.clearSaves)
+            return `${gone}, unreadable file left as is`;
         return Clipboard.shelfKept > 0 ? `${gone}, ${Clipboard.shelfKept} pinned kept` : gone;
     }
 
@@ -611,9 +611,9 @@ Item {
 
                             Icon {
                                 anchors.verticalCenter: parent.verticalCenter
-                                name: "check"
+                                name: "content_paste"
                                 size: Appearance.font.iconSize
-                                color: Appearance.colour.text
+                                color: Appearance.colour.textDim
                             }
 
                             StyledText {
@@ -629,8 +629,8 @@ Item {
                                 }
 
                                 HoverTip {
-                                    text: "The history file could not be read, so this clear is not saved"
-                                    asked: !Clipboard.clearLasts && clearedTextHover.hovered
+                                    text: "The history file could not be read, so it was not changed"
+                                    asked: !Clipboard.clearSaves && clearedTextHover.hovered
                                 }
                             }
 
@@ -794,7 +794,7 @@ Item {
                                 if (query.text)
                                     return "Nothing matches.";
                                 if (!root.speech)
-                                    return "Nothing has been copied yet.";
+                                    return Clipboard.wasCleared ? "History cleared." : "Nothing has been copied yet.";
                                 if (!Dictation.present)
                                     return "The dictation daemon is not running.\n`voice up` starts it.";
                                 return "Nothing has been dictated yet.\nSUPER + R starts.";
