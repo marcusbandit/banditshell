@@ -16,7 +16,8 @@ Item {
     readonly property string path: Files.join(Files.cwd, root.entry.name)
 
     property bool picked: false
-    property bool cursored: false
+    property bool focused: false
+    property bool keyed: false
 
     property bool row: false
 
@@ -34,12 +35,22 @@ Item {
 
     SquircleRect {
         anchors.fill: parent
+        anchors.leftMargin: mark.reach
+        anchors.rightMargin: mark.reach
+        anchors.topMargin: root.row ? 0 : mark.reach
+        anchors.bottomMargin: root.row ? 0 : mark.reach
 
         radius: Appearance.rounding.normal
-        color: root.receiving ? Appearance.colour.accentFill : root.picked ? Appearance.colour.fillStrong : hover.hovered ? Appearance.colour.fill : "transparent"
+        color: root.receiving || root.picked ? Appearance.colour.accentFill : hover.hovered && !root.keyed ? Appearance.colour.fill : "transparent"
 
-        stroke: root.receiving ? Appearance.colour.accent : root.cursored ? Appearance.colour.textFaint : "transparent"
-        strokeWidth: root.receiving || root.cursored ? Appearance.stroke.ring : 0
+        stroke: root.receiving ? Appearance.colour.accent : "transparent"
+        strokeWidth: root.receiving ? Appearance.stroke.ring : 0
+
+        FocusMark {
+            id: mark
+
+            shown: root.focused
+        }
     }
 
     HoverHandler {
@@ -48,7 +59,7 @@ Item {
 
     Column {
         anchors.centerIn: parent
-        width: parent.width - Appearance.padding.small
+        width: parent.width - mark.reach * 2 - Appearance.padding.small
         spacing: Appearance.padding.hair
         visible: !root.row
 
@@ -97,6 +108,7 @@ Item {
             verticalAlignment: Text.AlignTop
 
             text: root.entry.name
+            color: root.picked ? Appearance.colour.accent : Appearance.colour.text
 
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
 
@@ -146,7 +158,7 @@ Item {
             text: root.entry.name
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             elide: Text.ElideMiddle
-            color: root.picked || root.cursored ? Appearance.colour.text : Appearance.colour.textDim
+            color: root.picked ? Appearance.colour.accent : root.focused ? Appearance.colour.text : Appearance.colour.textDim
         }
 
         StyledText {

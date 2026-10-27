@@ -31,6 +31,13 @@ Singleton {
             status: "draft"
         },
         {
+            key: "focus-mark",
+            title: "Focus mark",
+            icon: "center_focus_strong",
+            section: "Selection",
+            status: "draft"
+        },
+        {
             key: "sliders",
             title: "Sliders",
             icon: "tune",

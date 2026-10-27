@@ -3,6 +3,8 @@ import Quickshell.Io
 import qs.services
 
 Scope {
+    readonly property var colourScheme: DarkMode
+
     IpcHandler {
         target: "screen"
 

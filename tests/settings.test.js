@@ -262,9 +262,11 @@ test("enter on a search hit that is already open steps to the next match, shift 
     assert.strictEqual(Catalogue.hitIndexOf(hits, "gone"), 0);
 });
 
-test("dark, dark mode, light, night and theme all find the dark apps row", () => {
-    for (const q of ["dark", "dark mode", "light", "night", "theme"])
-        assert.ok(Catalogue.search(q).some(h => h.row.k === "darkMode" && h.page.id === "colour"), q);
+test("dark, dark apps, dark mode, light, night and theme all find the light or dark row", () => {
+    for (const q of ["dark", "dark apps", "dark mode", "light mode", "appearance"])
+        assert.strictEqual(Catalogue.search(q)[0]?.row.k, "scheme", q);
+    for (const q of ["light", "night", "theme", "auto"])
+        assert.ok(Catalogue.search(q).some(h => h.row.k === "scheme" && h.page.id === "colour"), q);
 });
 
 test("panel shade and highlight colour are found under their old names too", () => {
@@ -280,6 +282,7 @@ test("highlight colour keeps dim, mid and bright, and every panel shade has a wo
     assert.strictEqual(Catalogue.show(row, "mid", {}), "normal");
     const shade = Catalogue.ROW_BY_KEY.surface;
     assert.deepStrictEqual([3, 8, -1, NaN].map(v => Catalogue.show(shade, v, {})), ["medium", "palest", "black", "black"]);
+    assert.deepStrictEqual([0, 3, 8].map(v => Catalogue.show(shade, v, { lightShell: true })), ["white", "light", "grey"]);
 });
 
 test("resolve takes categories, pages, old names, row keys and config keys", () => {

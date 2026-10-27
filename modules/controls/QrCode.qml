@@ -23,11 +23,13 @@ Item {
 
     signal flipped
 
-    readonly property color leaf: Appearance.colour.spectrum[Appearance.colour.spectrum.length - 1]
-    readonly property color pine: Appearance.blend(Appearance.colour.spectrum[0], Appearance.colour.ink, 0.7)
+    readonly property var printed: Appearance.chosenTheme
+    readonly property color ink: root.printed.ramp[0]
+    readonly property color leaf: root.printed.bright
+    readonly property color pine: Appearance.blend(root.printed.dim, root.ink, 0.7)
 
-    readonly property color plate: root.colourful ? root.leaf : Appearance.colour.paper
-    readonly property color pen: root.colourful ? root.pine : Appearance.colour.ink
+    readonly property color plate: root.colourful ? root.leaf : root.printed.ramp[root.printed.ramp.length - 1]
+    readonly property color pen: root.colourful ? root.pine : root.ink
 
     readonly property int quiet: 4
 
@@ -182,7 +184,7 @@ Item {
     function hue(i: int): color {
         const n = root.figures.length;
         const at = n > 1 ? i / (n - 1) : 0;
-        return Appearance.blend(Appearance.colour.ink, Appearance.blend(root.pine, Appearance.colour.spectrum[0], at / 3), root.phase(i, tide.value));
+        return Appearance.blend(root.ink, Appearance.blend(root.pine, root.printed.dim, at / 3), root.phase(i, tide.value));
     }
 
     Item {

@@ -39,6 +39,10 @@ Item {
             if (!Files.searching)
                 root.forceActiveFocus();
         }
+
+        function onWindowOpenChanged(): void {
+            keys.clear();
+        }
     }
 
     Keys.onPressed: event => {
@@ -249,6 +253,7 @@ Item {
         else
             Files.setCursor(to);
         grid.reveal(to);
+        keys.keyed();
     }
 
     function move(delta: int, extend: bool): void {
@@ -549,6 +554,7 @@ Item {
 
             entries: Files.visible
             dragging: root.dragging
+            keyed: keys.active && Files.focus === "grid"
             dragPoint: root.dragging ? grid.mapFromItem(root, root.dragAt.x, root.dragAt.y) : Qt.point(-1, -1)
 
             onPicked: (index, modifiers) => {
@@ -801,5 +807,9 @@ Item {
         id: hints
 
         anchors.fill: parent
+    }
+
+    FocusVisible {
+        id: keys
     }
 }

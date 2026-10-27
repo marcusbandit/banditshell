@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/nightlight.js"), "utf8");
-const Night = new Function(src + "\nreturn { sunEvents, sunWindow, minutesOf, clockOf, timesWindow, windowFor, fractionAt, nextEdge, warmKelvin };")();
+const Night = new Function(src + "\nreturn { sunEvents, sunWindow, minutesOf, clockOf, timesWindow, windowFor, fractionAt, nextEdge, warmKelvin, nightAt };")();
 
 const MINUTE = 60000;
 const COPENHAGEN = { lat: 55.676, lon: 12.568 };
@@ -150,4 +150,36 @@ test("the eased warmth runs from neutral down to the wanted kelvin", () => {
 test("the schedule is off for any mode it does not know", () => {
     assert.strictEqual(Night.windowFor("off", Date.now(), {}), null);
     assert.strictEqual(Night.windowFor("whenever", Date.now(), {}), null);
+});
+
+test.describe("auto light and dark follow the schedule", () => {
+    test.it("turns dark at the start of set times and light again at their end", () => {
+        const times = { from: "21:00", to: "07:00" };
+        const before = Night.nightAt("times", local(2026, 10, 14, 20, 59), times);
+        assert.deepStrictEqual([before.known, before.night, clock(before.next)], [true, false, 1260]);
+        const after = Night.nightAt("times", local(2026, 10, 14, 21, 0), times);
+        assert.deepStrictEqual([after.night, clock(after.next)], [true, 420]);
+        assert.strictEqual(Night.nightAt("times", local(2026, 10, 15, 6, 59), times).night, true);
+        const morning = Night.nightAt("times", local(2026, 10, 15, 7, 0), times);
+        assert.deepStrictEqual([morning.night, clock(morning.next)], [false, 1260]);
+    });
+
+    test.it("flips at sunset and sunrise where the screens warm", () => {
+        inZone("Europe/Copenhagen", () => {
+            const w = Night.sunWindow(local(2026, 10, 14, 12, 0), COPENHAGEN);
+            const settings = { place: COPENHAGEN };
+            assert.strictEqual(Night.nightAt("sunset", w.start - MINUTE, settings).night, false);
+            assert.strictEqual(Night.nightAt("sunset", w.start - MINUTE, settings).next, w.start);
+            assert.strictEqual(Night.nightAt("sunset", w.start, settings).night, true);
+            assert.strictEqual(Night.nightAt("sunset", w.end - MINUTE, settings).night, true);
+            assert.strictEqual(Night.nightAt("sunset", w.end, settings).night, false);
+        });
+    });
+
+    test.it("stays dark with no schedule to follow, and light through a polar day", () => {
+        for (const [mode, settings] of [["off", {}], ["sunset", { place: null }], ["times", { from: "21:00", to: "21:00" }], ["times", { from: "late", to: "07:00" }]])
+            assert.deepStrictEqual(Night.nightAt(mode, local(2026, 10, 14, 12, 0), settings), { known: false, night: true, next: 0 }, mode);
+        const polar = Night.nightAt("sunset", local(2026, 6, 21, 12, 0), { place: TROMSO });
+        assert.deepStrictEqual([polar.known, polar.night], [true, false]);
+    });
 });

@@ -484,7 +484,7 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   | pressed | `fillStrong` | `fillStronger` |
   | selected | `fillStrong`, label in `text` | `accentFill`, glyph in `accent` |
   | disabled | `Appearance.opacity.disabled` | `Appearance.opacity.disabled` |
-  | focus | `Appearance.stroke.ring` in `accent` | `Appearance.stroke.ring` in `accent` |
+  | focus | `FocusMark`: `Appearance.stroke.ring` in `accent`, a hair outside | the same |
 
   Applied in `MenuRow`, `Button` (a transparent plate takes the row column, an opaque one blends
   toward its label colour by the same fill step) and the settings tiles. A switched-on toggle,
@@ -492,6 +492,24 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   share the solid `accent` plate with `accentText` on it. An off toggle is a `textFaint` ring
   around `fill` with a `textDim` knob. Decided 2026-10-25 in #172 and #175. `textGhost` is for
   decorative rules only; readable text, placeholders and disabled glyphs use `textFaint`.
+- **Focus is a mark around a thing, and only the keyboard draws it.** Decided 2026-10-26 in #179,
+  after two selected files with one outline on them left a reviewer asking what the outline meant.
+  Selection fills the inside of a thing. Keyboard focus is `components/FocusMark.qml`: an `accent`
+  ring one stem wide, drawn a hair outside the thing with a gap between, so a selected and focused
+  item wears both and neither hides the other. It shows once a key has moved focus and goes the
+  moment the pointer moves or presses; hover never draws it. While it shows, hover is held: a
+  pointer resting where the keys left it lights no plate and opens no tooltip until it moves, and
+  a `Button` given `keyed: keys.active` does the same. `components/FocusVisible.qml` tracks
+  that for a panel, the way a browser's `:focus-visible` does. A panel whose hover moves its one
+  selection, as the power menu's does, needs no mark: the highlight already is what Enter presses.
+  A panel where the two can sit on different items adopts it like this:
+
+      FocusVisible { id: keys }                                once, in the panel; its keys call keys.keyed()
+      FocusMark { shown: keys.active && <this one has focus> }   inside each item that can take focus
+
+  The mark takes the item's own `pill` role (`object` on a button, `place` on a switch or a
+  segments row, which take focus as one control) or its corner as `around`. Items that touch their
+  neighbours leave `FocusMark.reach` of room, or lift the focused one with `z`, as the file grid does.
 - **Small constants have names.** `Appearance.padding.hair` (4), `Appearance.stroke.line` (1) and
   `ring` (the font stem), `Appearance.opacity.disabled` / `trail` / `glow`, the icon ladder
   `Appearance.icon.small` to `hero`, `Appearance.press.lift` and `grab`, and
@@ -641,6 +659,9 @@ banditshell/
 │   ├── BatteryMeter.qml         a drawn battery: every level, and charging as motion
 │   ├── Slider.qml               a bead on a rail; read-only loses the bead
 │   ├── Toggle.qml               a switch
+│   ├── FocusMark.qml            the ring a hair outside whatever the keyboard is on
+│   ├── FocusVisible.qml         whether a panel's keys or its pointer spoke last;
+│   │                            the mark shows only while it is the keys
 │   ├── reveal.frag             the blob a new wallpaper opens through
 │   ├── RevealMask.qml          its QML side; a layer.effect, so it masks anything
 │   ├── WallpaperSource.qml      one wallpaper, whatever kind of file it turns out
@@ -1544,7 +1565,7 @@ banditshell/
 │   │   │                        so the pick is seen as it will look;
 │   │   │                        everything but the picker is dimmed by a
 │   │   │                        third, and the cards and capsules cast
-│   │   │                        shadows. A focus ring only after an arrow key
+│   │   │                        shadows. The focus mark only after an arrow key
 │   │   ├── WallpaperCover.qml   the wallpaper over the windows while the picker
 │   │   │                        is up, under the chassis: it blooms in from the
 │   │   │                        bottom edge through the reveal blob once the
@@ -3840,8 +3861,11 @@ the one decision behind each:
 **Selection is a set.** Ctrl-click adds, Shift-click takes a range, a rubber band
 from empty space takes what it crosses, and every action - drag, copy, trash -
 acts on the whole of it. Two states are drawn rather than one: `picked` is what
-an action would act on and `cursored` is where the keyboard is, which stop being
-the same fact the moment there is more than one of them. The set is held as
+an action would act on and the cursor is where the keyboard is, which stop being
+the same fact the moment there is more than one of them. Picked is the accent-tinted
+`accentFill` with its name in `accent`, apart from hover's grey `fill`; the
+cursor is the focus mark (section 6), shown once a key has moved it and gone when
+the pointer moves. The set is held as
 NAMES, not indices, because the listing is retaken after anything that might
 have changed it and an index into the previous listing is a different file in the
 next one.
