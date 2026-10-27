@@ -27,12 +27,16 @@ Singleton {
     property bool outlookImperial: false
     property string failure: ""
     property string failedFor: ""
+    property var suggestion: null
+    property string suggestedFor: ""
 
     readonly property bool failed: root.wanted && root.failure !== ""
     readonly property bool ready: root.wanted && !!root.current && (root.failure === "" || root.failure !== "place" && root.failedFor === root.fetchedFor)
     readonly property bool stale: root.ready && root.failed
     readonly property bool loading: reader.running
     readonly property var failureLook: Forecast.failureLook(root.failure)
+    readonly property bool suggesting: suggester.running
+    readonly property var placeSuggestion: root.failed && root.failure === "place" && root.failedFor === root.location && root.suggestedFor === root.location ? root.suggestion : null
     readonly property string temperature: root.current ? `${root.imperial ? root.current.temp_F : root.current.temp_C}°${root.imperial ? "F" : "C"}` : ""
     readonly property string summary: root.current?.weatherDesc?.[0]?.value ?? ""
     readonly property var forecast: root.outlook.length > 0 && root.outlookImperial === root.imperial ? root.outlook : Forecast.wttrDays(root.wttrData, root.imperial)
@@ -79,6 +83,7 @@ Singleton {
         if (answer.failure) {
             root.failure = answer.failure;
             root.failedFor = place;
+            root.suggest();
             return;
         }
         root.failure = "";
@@ -90,6 +95,43 @@ Singleton {
         root.fetchedAt = Date.now();
         root.fetchedFor = place;
         root.loadOutlook();
+    }
+
+    function suggest(): void {
+        const place = root.failedFor;
+        if (root.failure !== "place" || place === root.suggestedFor || suggester.running)
+            return;
+        root.suggestedFor = place;
+        root.suggestion = null;
+        const command = Forecast.suggestionCommand(place);
+        if (!command.length)
+            return;
+        suggester.place = place;
+        suggester.command = command;
+        suggester.running = true;
+    }
+
+    function useConnection(): void {
+        Config.set("weather.location", "");
+    }
+
+    function useSuggestion(): void {
+        if (root.placeSuggestion)
+            Config.set("weather.location", root.placeSuggestion.text);
+    }
+
+    Process {
+        id: suggester
+
+        property string place: ""
+
+        stdout: StdioCollector {
+            onStreamFinished: if (suggester.place === root.suggestedFor)
+                root.suggestion = Forecast.suggestPlace(suggester.place, Forecast.geocodeResults(text))
+        }
+
+        onRunningChanged: if (!suggester.running)
+            Qt.callLater(root.suggest)
     }
 
     Process {

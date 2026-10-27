@@ -6,6 +6,7 @@ import qs.components
 import qs.services
 import "urls.js" as Urls
 import "tile-names.js" as TileNames
+import "../../services/files-find.js" as Find
 
 Item {
     id: root
@@ -14,7 +15,20 @@ Item {
     required property int index
 
     readonly property var entry: root.modelData
-    readonly property string path: Files.join(Files.cwd, root.entry.name)
+    readonly property string path: Files.pathOf(root.entry)
+    readonly property string place: root.entry.dir ? Find.place(root.entry.dir, Files.home) : FilesFind.active ? Find.place(Files.cwd, Files.home) : ""
+
+    function fitted(width: real): string {
+        return Find.fitPlace(root.place, Math.max(1, Math.floor(width / Math.max(1, digit.advanceWidth))));
+    }
+
+    TextMetrics {
+        id: digit
+
+        font.family: Appearance.font.family
+        font.pixelSize: Files.zoomed(Appearance.font.size.small)
+        text: "0"
+    }
 
     property bool picked: false
     property bool focused: false
@@ -118,13 +132,25 @@ Item {
 
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
 
-            maximumLineCount: 2
+            maximumLineCount: root.place ? 1 : 2
 
-            height: label.lineHeight * 2
+            height: label.lineHeight * (root.place ? 1 : 2)
 
             FontMetrics {
                 id: ink
             }
+        }
+
+        StyledText {
+            id: tilePlace
+
+            width: parent.width
+            visible: root.place !== ""
+            horizontalAlignment: Text.AlignHCenter
+
+            text: root.fitted(tilePlace.width)
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
+            color: Appearance.colour.textDim
         }
     }
 
@@ -157,16 +183,33 @@ Item {
         }
 
         StyledText {
+            id: rowName
+
             anchors.left: rowMark.right
             anchors.leftMargin: Appearance.padding.small
-            anchors.right: rowSize.left
-            anchors.rightMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
+            readonly property real room: rowSize.x - rowName.x - Appearance.padding.normal * 2
+            width: Math.min(rowName.implicitWidth, root.place ? Math.max(rowName.room - root.place.length * digit.advanceWidth, rowName.room * 0.7) : rowName.room)
 
             text: root.entry.name
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             elide: Text.ElideMiddle
             color: root.picked ? Appearance.colour.accent : root.focused ? Appearance.colour.text : Appearance.colour.textDim
+        }
+
+        StyledText {
+            id: rowPlace
+
+            anchors.left: rowName.right
+            anchors.leftMargin: Appearance.padding.normal
+            anchors.right: rowSize.left
+            anchors.rightMargin: Appearance.padding.normal
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.place !== ""
+
+            text: root.fitted(rowPlace.width)
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
+            color: Appearance.colour.textDim
         }
 
         StyledText {

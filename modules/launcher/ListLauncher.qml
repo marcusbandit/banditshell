@@ -1217,7 +1217,7 @@ LauncherConcept {
                                 glyph: line.modelData.glyph ?? ""
                                 icon: line.modelData.icon ?? "apps"
                                 mark: line.modelData.swatch ? swatch : null
-                                label: line.modelData.label ?? ""
+                                label: row.hovered && line.modelData.revealLabel ? line.modelData.revealLabel : line.modelData.label ?? ""
                                 detail: line.modelData.detail ?? ""
                                 columns: line.modelData.columns ?? []
                                 trailingRoom: line.modelData.columns ? root.switchWidth + Appearance.padding.normal * 2 : 0

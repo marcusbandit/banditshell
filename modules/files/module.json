@@ -4,10 +4,11 @@
   "layer": 2,
   "owns": {
     "qml": ["modules/files", "previews/FilesPreview.qml", "previews/TerminalDebug.qml"],
-    "services": ["Downloads", "Files", "FilesPaste", "FilesUndo"],
-    "js": ["services/files-conflicts.js", "services/files-order.js", "services/files-undo.js"],
+    "services": ["Downloads", "Files", "FilesFind", "FilesPaste", "FilesUndo"],
+    "js": ["services/files-conflicts.js", "services/files-find.js", "services/files-order.js", "services/files-undo.js"],
     "tests": [
       "tests/files-conflicts.test.js",
+      "tests/files-find.test.js",
       "tests/files-order.test.js",
       "tests/files-undo.test.js",
       "tests/files-watch.test.js",
@@ -26,7 +27,7 @@
     "optional": []
   },
   "provides": {
-    "singletons": ["Downloads", "Files", "FilesPaste", "FilesUndo"],
+    "singletons": ["Downloads", "Files", "FilesFind", "FilesPaste", "FilesUndo"],
     "ipc": ["files"]
   },
   "config": {

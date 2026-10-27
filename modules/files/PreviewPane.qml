@@ -8,6 +8,7 @@ import qs.services
 import "urls.js" as Urls
 import "markdown.js" as Markdown
 import "../../services/files-order.js" as FilesOrder
+import "../../services/files-find.js" as Find
 
 Item {
     id: root
@@ -207,6 +208,55 @@ Item {
             color: Appearance.colour.textFaint
 
             elide: Text.ElideRight
+        }
+
+        Item {
+            id: where
+
+            readonly property string place: !root.entry ? "" : root.entry.dir ? Find.place(root.entry.dir, Files.home) : Find.place(Files.cwd, Files.home)
+
+            width: parent.width
+            visible: FilesFind.active && !!root.entry
+            implicitHeight: whereText.implicitHeight
+
+            Icon {
+                id: whereGlyph
+
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+
+                name: "folder"
+                color: Appearance.colour.textDim
+            }
+
+            StyledText {
+                id: whereText
+
+                anchors.left: whereGlyph.right
+                anchors.leftMargin: Appearance.padding.small
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+
+                text: Find.fitPlace(where.place, Math.max(1, Math.floor(whereText.width / Math.max(1, whereDigit.advanceWidth))))
+                font.pixelSize: Files.zoomed(Appearance.font.size.small)
+
+                TextMetrics {
+                    id: whereDigit
+
+                    font: whereText.font
+                    text: "0"
+                }
+            }
+        }
+
+        Button {
+            visible: FilesFind.active && !!(root.entry && root.entry.key)
+
+            text: "Show in folder"
+            icon: "folder_open"
+            style: "plate"
+
+            onClicked: Files.goTo(root.path)
         }
 
         Separator {

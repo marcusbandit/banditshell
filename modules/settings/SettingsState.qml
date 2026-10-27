@@ -79,9 +79,13 @@ Singleton {
                 read: v => Durations.choiceFromMinutes(v),
                 write: v => Durations.minutesFromChoice(v)
             },
+            surfaceAlpha: {
+                read: v => Catalogue.seeThrough(v),
+                write: v => Catalogue.seeThrough(v)
+            },
             lowAction: {
-                read: v => v === "nothing" ? v : `${v} at ${Battery.nearlyEmptyPercent}%`,
-                write: v => String(v).split(" ")[0]
+                read: v => Battery.nearlyEmptyChoice(v),
+                write: v => Battery.nearlyEmptyAction(v)
             },
             dndUntil: {
                 read: v => Notifications.endsLabel(v),
@@ -1276,8 +1280,9 @@ Singleton {
     readonly property string alertsDetail: AlertSounds.available ? "" : "pw-play is not installed, so alerts stay silent"
     readonly property bool hotspotBlocked: Hotspot.blocker !== "" && !Hotspot.on
     readonly property string hotspotPasswordTrouble: Hotspot.passwordTrouble
-    readonly property string weatherPlaceState: root.weatherPlaceTrouble || (Weather.location ? "" : Weather.ready && Weather.fetchedFor === "" && Weather.place ? `from your connection: ${Weather.place}` : "from your connection")
-    readonly property string weatherPlaceTrouble: Weather.failed && Weather.failure === "place" && Weather.failedFor === Weather.location ? Weather.location ? `no town called "${Weather.location}"` : "could not place you" : ""
+    readonly property string weatherPlaceState: root.weatherPlaceTrouble ? "" : (Weather.location ? "" : Weather.ready && Weather.fetchedFor === "" && Weather.place ? `from your connection: ${Weather.place}` : "from your connection")
+    readonly property string weatherPlaceTrouble: Weather.failed && Weather.failure === "place" && Weather.failedFor === Weather.location ? Weather.location ? `no place called "${Weather.location}"` : "could not place you" : ""
+    readonly property var weatherSuggestion: root.weatherPlaceTrouble !== "" ? Weather.placeSuggestion : null
     readonly property string wifiState: Hotspot.active ? "running your hotspot" : root.wifiNet || "not connected"
 
     readonly property var outputs: Audio.sinks.map(n => [n.name, Audio.deviceLabel(n)])
@@ -2037,8 +2042,9 @@ Singleton {
         const r = root.rowOf(change?.k);
         if (!cfg || !r)
             return change;
-        const old = Config.upgradeValue(cfg, change.old);
-        const value = Config.upgradeValue(cfg, change.v);
+        const lift = change.k === "surfaceAlpha" ? Catalogue.loggedSeeThrough : v => v;
+        const old = lift(Config.upgradeValue(cfg, change.old));
+        const value = lift(Config.upgradeValue(cfg, change.v));
         if (old === change.old && value === change.v)
             return change;
         return Object.assign({}, change, {
