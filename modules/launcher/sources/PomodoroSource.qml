@@ -66,6 +66,17 @@ QtObject {
         return !Pomodoro.active || ask.minutes ? running.concat([root.startRow(ask)]) : running;
     }
 
+    readonly property var prefixes: [
+        {
+            section: "Desktop",
+            word: "pomo",
+            example: "pomo 25 5",
+            about: "Start a pomodoro",
+            icon: "timer_play",
+            also: ["pomodoro"]
+        }
+    ]
+
     readonly property var groups: [
         {
             key: "pomodoro",

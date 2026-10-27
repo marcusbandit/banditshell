@@ -73,6 +73,17 @@ QtObject {
         return out;
     }
 
+    readonly property var prefixes: !root.usable ? [] : [
+            {
+                section: "System",
+                word: "ssh",
+                example: "ssh nemurenai",
+                about: "Connect to a host",
+                icon: "dns",
+                also: []
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "ssh",

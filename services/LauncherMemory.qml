@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "launcher-memory.js" as Memory
 
 Singleton {
     id: root
@@ -13,9 +14,10 @@ Singleton {
 
     property var usage: ({})
 
+    readonly property var decay: (from, to) => Apps.decay(from, to)
+
     function scoreOf(key: string, now: real): real {
-        const rec = root.usage[key];
-        return rec ? rec.score * Apps.decay(rec.last, now) : 0;
+        return Memory.scoreOf(root.usage, key, now, root.decay);
     }
 
     function bonusOf(key: string, now: real): real {
@@ -23,7 +25,7 @@ Singleton {
         return used > 0 ? Math.min(1, Math.log(1 + used) / 2) : 0;
     }
 
-    readonly property var passing: /^(?:app|cli|suggest|output|scriptline|process|window|link|translation|video|newnote|latest|clipboard|notification|thread|definition|stream|answer|fallback|content|file|reminder|timer|zone|convert|developer|scriptitem|scriptproblem|place|github|port):/
+    readonly property var passing: /^(?:app|cli|suggest|output|printed|scriptline|process|window|link|translation|video|newnote|latest|clipboard|notification|thread|definition|stream|answer|fallback|content|file|reminder|timer|zone|convert|developer|scriptitem|scriptproblem|place|github|port):/
 
     function remembers(key: string): bool {
         return !!key && key.length <= 80 && !root.passing.test(key);
@@ -41,19 +43,7 @@ Singleton {
     function record(key: string): void {
         if (!root.remembers(key))
             return;
-        const now = Date.now();
-        const next = Object.assign({}, root.usage, {
-            [key]: {
-                score: root.scoreOf(key, now) + 1,
-                last: now
-            }
-        });
-        const keys = Object.keys(next);
-        if (keys.length > root.keep) {
-            keys.sort((a, b) => root.scoreOf(b, now) - root.scoreOf(a, now) || next[b].last - next[a].last);
-            for (const gone of keys.slice(root.keep))
-                delete next[gone];
-        }
+        const next = Memory.record(root.usage, key, Date.now(), root.keep, root.decay);
         root.usage = next;
         store.setText(JSON.stringify(next));
     }

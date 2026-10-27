@@ -208,6 +208,51 @@ QtObject {
     readonly property var convert: Search.zoneConvertAsk(root.text)
     readonly property var killing: Search.killAsk(root.text)
 
+    readonly property var parsedHere: [
+        {
+            section: "Desktop",
+            word: "ws",
+            example: "ws 3",
+            about: "Go to a workspace",
+            icon: "space_dashboard",
+            also: ["workspace"]
+        },
+        {
+            section: "Desktop",
+            word: "timer",
+            example: "timer 10 minutes",
+            about: "Start a timer",
+            icon: "timer",
+            also: ["timers", "countdown"]
+        },
+        {
+            section: "Desktop",
+            word: "awake",
+            example: "awake 1h",
+            about: "Keep the screen awake",
+            icon: "coffee",
+            also: ["coffee", "caffeinate"]
+        },
+        {
+            section: "Desktop",
+            word: "bandit",
+            example: "bandit restart",
+            about: "Run a banditshell command",
+            icon: "terminal",
+            also: ["banditshell"]
+        },
+        {
+            section: "System",
+            word: "kill",
+            example: "kill firefox",
+            about: "Quit a process",
+            icon: "dangerous",
+            also: []
+        }
+    ]
+
+    readonly property var prefixes: Prefixes.OWN.concat(root.parsedHere, root.sources.reduce((out, s) => out.concat(s.prefixes ?? []), []))
+
     readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || root.windowList || root.commandRows.some(r => r.score === Infinity)
 
     property bool started: false
@@ -843,7 +888,7 @@ QtObject {
         const apps = Apps.visible;
         const commands = root.commands.filter(c => !c.hidden);
         const settings = Catalogue.everyHit();
-        const found = Prefixes.guess(root.text, apps.map(e => e.name ?? "").concat(commands.map(c => c.label), settings.map(hit => hit.label)), Ranking.closest);
+        const found = Prefixes.guess(root.text, apps.map(e => e.name ?? "").concat(commands.map(c => c.label), settings.map(hit => hit.label)), Ranking.closest, root.prefixes);
         if (found < 0)
             return null;
         const target = found < apps.length ? root.appRow(apps[found]) : found < apps.length + commands.length ? root.commandRow(commands[found - apps.length]) : root.settingRow(settings[found - apps.length - commands.length]);
@@ -1066,8 +1111,8 @@ QtObject {
     }
 
     readonly property var outputRows: !root.cliOutput || root.cliOutput.line !== (root.cliLine ?? "").trim() ? [] : root.cliOutput.lines.map((text, i) => ({
-                key: `output:${i}:${text}`,
-                kind: "output",
+                key: `printed:${i}:${text}`,
+                kind: "printed",
                 label: text,
                 detail: "",
                 icon: "subdirectory_arrow_right",
@@ -1600,7 +1645,7 @@ QtObject {
         case "cli":
             root.runCli(row.line);
             return;
-        case "output":
+        case "printed":
             root.leave(() => System.copyText(row.label));
             return;
         }
@@ -1812,6 +1857,14 @@ QtObject {
                 {
                     icon: row.icon,
                     label: row.toggle ? "Disconnect" : "Connect",
+                    run: () => root.activate(row)
+                }
+            ];
+        case "printed":
+            return [
+                {
+                    icon: "content_copy",
+                    label: "Copy",
                     run: () => root.activate(row)
                 }
             ];

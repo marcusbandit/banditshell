@@ -41,6 +41,17 @@ QtObject {
         };
     }
 
+    readonly property var prefixes: !BrowserPlaces.enabled ? [] : [
+            {
+                section: "Ask and look up",
+                word: "bm",
+                example: "bm github",
+                about: "Bookmarks and history",
+                icon: "bookmark",
+                also: ["bookmarks", "history"]
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "bookmarks",

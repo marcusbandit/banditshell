@@ -42,6 +42,17 @@ QtObject {
         return hits.map(h => root.projectRow(h.project, h.last, root.ask ? Infinity : Logic.ambientScore(h.score))).filter(r => r.score > 0);
     }
 
+    readonly property var prefixes: [
+        {
+            section: "Files and clipboard",
+            word: "projects",
+            example: "projects banditshell",
+            about: "Your projects",
+            icon: "folder_code",
+            also: ["project", "repos", "repo"]
+        }
+    ]
+
     readonly property var groups: [
         {
             key: "projects",

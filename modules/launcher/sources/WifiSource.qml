@@ -11,7 +11,8 @@ QtObject {
 
     readonly property var settings: Config.values.launcher.systemControls ?? {}
     readonly property var names: Network.networks.map(n => n.name)
-    readonly property var asked: root.settings.wifi !== false && Network.available ? Asks.wifiAsk(root.search.text, root.names) : null
+    readonly property bool usable: root.settings.wifi !== false && Network.available
+    readonly property var asked: root.usable ? Asks.wifiAsk(root.search.text, root.names) : null
 
     readonly property bool listsWifi: root.asked !== null
     readonly property bool intent: root.asked !== null
@@ -103,6 +104,17 @@ QtObject {
             });
         return out;
     }
+
+    readonly property var prefixes: !root.usable ? [] : [
+            {
+                section: "System",
+                word: "wifi",
+                example: "wifi home",
+                about: "Wi-Fi networks",
+                icon: "wifi",
+                also: ["wlan", "wireless"]
+            }
+        ]
 
     readonly property var groups: [
         {

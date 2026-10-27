@@ -41,6 +41,7 @@
       "tests/lua",
       "tests/lua-api.test.js",
       "tests/perf.test.js",
+      "tests/switch-cases.test.js",
       "tests/triage-cli.test.js"
     ]
   },

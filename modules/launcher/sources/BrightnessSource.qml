@@ -184,6 +184,17 @@ QtObject {
         return out;
     }
 
+    readonly property var prefixes: !root.enabled ? [] : [
+            {
+                section: "System",
+                word: "brightness",
+                example: "brightness 60",
+                about: "Screen brightness",
+                icon: "brightness_medium",
+                also: ["backlight"]
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "brightness",
