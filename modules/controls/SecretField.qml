@@ -95,6 +95,8 @@ Item {
     TextInput {
         id: field
 
+        readonly property bool typable: true
+
         anchors.fill: parent
         anchors.leftMargin: root.inset
         anchors.rightMargin: root.inset

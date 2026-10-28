@@ -9,7 +9,6 @@ Item {
 
     default property alias content: stack.data
 
-    clip: true
     visible: unroll.value > 0.001
     implicitHeight: stack.implicitHeight * unroll.value
 
@@ -29,11 +28,22 @@ Item {
         color: Appearance.colour.separator
     }
 
-    Column {
-        id: stack
+    Item {
+        id: fold
 
-        x: root.indent
-        width: root.width - root.indent
-        spacing: 0
+        readonly property real reach: Appearance.padding.hair
+
+        x: -fold.reach
+        width: root.width + fold.reach * 2
+        height: root.height + fold.reach * unroll.value
+        clip: true
+
+        Column {
+            id: stack
+
+            x: root.indent + fold.reach
+            width: root.width - root.indent
+            spacing: 0
+        }
     }
 }

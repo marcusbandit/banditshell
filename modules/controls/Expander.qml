@@ -11,7 +11,13 @@ Item {
 
     signal toggled
 
-    readonly property bool hovered: pointer.containsMouse
+    readonly property bool keyable: true
+
+    function press(): void {
+        root.toggled();
+    }
+
+    readonly property bool hovered: pointer.containsMouse && root.Window.activeFocusItem?.keyable !== true
 
     implicitWidth: Math.max(Appearance.sizes.minTarget, Appearance.font.iconSize + Appearance.padding.small * 2)
     implicitHeight: implicitWidth
@@ -31,6 +37,11 @@ Item {
             epsilon: Appearance.animation.fadeEpsilon
             startsAtTarget: true
         }
+    }
+
+    FocusMark {
+        shown: root.activeFocus
+        pill: "object"
     }
 
     Icon {
@@ -60,6 +71,6 @@ Item {
 
     HoverTip {
         text: root.tip
-        asked: pointer.containsMouse
+        asked: root.hovered
     }
 }

@@ -20,7 +20,16 @@ Item {
 
     property bool interactive: true
 
-    property bool keyed: false
+    property bool keyed: root.Window.activeFocusItem?.keyable === true
+
+    readonly property bool keyable: root.interactive
+
+    function press(): void {
+        if (root.checkable)
+            root.toggled();
+        else
+            root.clicked();
+    }
 
     property bool alarm: false
 
@@ -117,6 +126,17 @@ Item {
         color: tone.value
         stroke: root.ring
         strokeWidth: root.ringW
+    }
+
+    FocusMark {
+        id: focusRing
+
+        shown: root.activeFocus
+        pill: "object"
+        topLeftRadius: plate.topLeftRadius + focusRing.reach
+        bottomLeftRadius: plate.bottomLeftRadius + focusRing.reach
+        topRightRadius: plate.topRightRadius + focusRing.reach
+        bottomRightRadius: plate.bottomRightRadius + focusRing.reach
     }
 
     scale: pressGlide.value

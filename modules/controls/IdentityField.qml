@@ -280,6 +280,8 @@ Item {
             TextInput {
                 id: box
 
+                readonly property bool typable: true
+
                 anchors.fill: parent
                 anchors.leftMargin: Appearance.padding.normal
                 anchors.rightMargin: entry.secret ? eye.width + Appearance.padding.normal * 2 : Appearance.padding.normal

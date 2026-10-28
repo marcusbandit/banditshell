@@ -36,7 +36,15 @@ Item {
     signal activated
     signal asked(real x, real y)
 
-    readonly property bool hovered: interactive && pointer.containsMouse
+    readonly property bool keyable: root.interactive
+
+    function press(): void {
+        root.activated();
+    }
+
+    readonly property bool held: root.Window.activeFocusItem?.keyable === true
+
+    readonly property bool hovered: interactive && pointer.containsMouse && !root.held
 
     implicitWidth: parent ? parent.width : 0
 
@@ -46,6 +54,10 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.normal
         color: plate.value
+    }
+
+    FocusMark {
+        shown: root.activeFocus
     }
 
     FollowColour {
@@ -68,7 +80,7 @@ Item {
 
     HoverTip {
         host: root
-        asked: pointer.containsMouse
+        asked: pointer.containsMouse && !root.held
         text: pointer.containsMouse ? root.tip || (title.truncated || detail.truncated ? (root.detail ? `${root.label} · ${root.detail}` : root.label) : "") : ""
     }
 

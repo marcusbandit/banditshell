@@ -510,6 +510,18 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   The mark takes the item's own `pill` role (`object` on a button, `place` on a switch or a
   segments row, which take focus as one control) or its corner as `around`. Items that touch their
   neighbours leave `FocusMark.reach` of room, or lift the focused one with `z`, as the file grid does.
+
+  A panel full of mixed controls uses `components/FocusChain.qml` instead, as the menus do since
+  #154 (2026-10-28). It finds every control under its scope that says `keyable: true`, or
+  `typable: true` for a text input, and arrows move real keyboard focus to the nearest one in
+  that direction; Home and End jump to the ends, Tab to the next `focusGroup`, and the panel's
+  scroll glides to keep the focused one in view through the same `WheelStep` target as the wheel.
+  The control draws `FocusMark { shown: root.activeFocus }` and tells the chain the rest: Enter
+  and Space call its `press()`, the arrows on its own axis call `adjust(steps)` when it
+  `adjusts` (a slider, a segments row, a clock digit once Enter has grabbed it, so Up and Down
+  still leave it otherwise), Delete calls `remove()`. The pointer
+  moving hands focus back to the panel, and while a keyable control holds focus, hover lights
+  nothing.
 - **Small constants have names.** `Appearance.padding.hair` (4), `Appearance.stroke.line` (1) and
   `ring` (the font stem), `Appearance.opacity.disabled` / `trail` / `glow`, the icon ladder
   `Appearance.icon.small` to `hero`, `Appearance.press.lift` and `grab`, and
@@ -662,6 +674,9 @@ banditshell/
 │   ├── FocusMark.qml            the ring a hair outside whatever the keyboard is on
 │   ├── FocusVisible.qml         whether a panel's keys or its pointer spoke last;
 │   │                            the mark shows only while it is the keys
+│   ├── FocusChain.qml           arrows, Home, End, Tab and Enter across every
+│   │                            keyable control in a panel, by position
+│   ├── focus-chain.js           where each key goes next, and how far to scroll
 │   ├── reveal.frag             the blob a new wallpaper opens through
 │   ├── RevealMask.qml          its QML side; a layer.effect, so it masks anything
 │   ├── WallpaperSource.qml      one wallpaper, whatever kind of file it turns out

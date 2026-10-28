@@ -17,6 +17,18 @@ Item {
     property var litOverride: null
 
     signal moved(real value)
+    signal activated
+
+    readonly property bool keyable: root.enabled
+    readonly property string adjusts: "horizontal"
+
+    function adjust(steps: int): void {
+        root.ask(root.value + steps * root.step);
+    }
+
+    function press(): void {
+        root.activated();
+    }
 
     readonly property real fraction: Math.max(0, Math.min(1, (value - from) / Math.max(0.0001, to - from)))
     readonly property bool active: pointer.pressed || pointer.containsMouse
@@ -98,6 +110,11 @@ Item {
         color: root.lit
 
         scale: swell.value
+
+        FocusMark {
+            shown: root.activeFocus
+            pill: "object"
+        }
 
         Follow {
             id: swell
