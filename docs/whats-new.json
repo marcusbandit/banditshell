@@ -1,6 +1,47 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-25",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The update menu says when this copy has changes GitHub lacks"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Update menu actions look pressable, and Go back stands out"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A paused timer in the clock menu shows a pause mark"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Pair new device's arrow lines up with the other Bluetooth arrows"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Battery, Nearly empty offers do nothing"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A dimmed theme card says which switch makes it usable"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings text fields fit their value, so Place reads in full"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-24",
       "date": "2026-10-28",
       "changes": [
