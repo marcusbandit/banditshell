@@ -1,6 +1,37 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-12",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files preview shows a file's new content when it changes"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A folder updating in Files keeps its tiles instead of redrawing all"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A folder in the Files preview follows the Hidden files switch"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files preview shows owner and permissions in full"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files grid marks the item the preview is showing"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-11",
       "date": "2026-10-28",
       "changes": [

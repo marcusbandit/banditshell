@@ -600,6 +600,7 @@ Item {
             dragging: root.dragging
             keyed: keys.active && Files.focus === "grid"
             marked: Files.search.trim() !== ""
+            previewing: preview.visible
             dragPoint: root.dragging ? grid.mapFromItem(root, root.dragAt.x, root.dragAt.y) : Qt.point(-1, -1)
 
             onPicked: (index, modifiers) => {

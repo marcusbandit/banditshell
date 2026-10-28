@@ -19,6 +19,9 @@ Item {
 
     property int tabWidth: 4
 
+    property string document: ""
+    property string shownDocument: ""
+
     readonly property var lines: root.text.split("\n")
     readonly property int lineCount: root.lines.length
     readonly property string resolvedLanguage: root.language !== "" ? root.language : Highlight.detect(root.text)
@@ -164,12 +167,20 @@ Item {
         }
     }
 
-    onTextChanged: {
-        root.panTarget = 0;
-        pan.value = 0;
-        if (view)
+    onRowsChanged: {
+        const y = view.contentY;
+        view.model = root.rows;
+        if (root.document !== "" && root.document === root.shownDocument) {
+            view.contentY = y;
+        } else {
+            root.panTarget = 0;
+            pan.value = 0;
             view.reset();
+        }
+        root.shownDocument = root.document;
     }
+
+    Component.onCompleted: view.model = root.rows
 
     SquircleRect {
         id: notice
@@ -204,7 +215,6 @@ Item {
         anchors.bottom: parent.bottom
 
         clip: true
-        model: root.rows
 
         WheelHandler {
             enabled: root.maxPan > 0

@@ -9,6 +9,7 @@ import "urls.js" as Urls
 import "markdown.js" as Markdown
 import "../../services/files-order.js" as FilesOrder
 import "../../services/files-find.js" as Find
+import "../../services/files-listing.js" as Listing
 
 Item {
     id: root
@@ -51,8 +52,13 @@ Item {
         return "";
     }
 
-    property var contents: []
+    property var listed: []
+    readonly property var contents: root.listed.filter(e => Files.showHidden || !e.hidden)
     property string contentsError: ""
+
+    property var seen: null
+    property real readAt: 0
+    property int edition: 0
 
     readonly property var player: playback.item
 
@@ -60,16 +66,53 @@ Item {
 
     onPathChanged: {
         root.stat = null;
-        root.contents = [];
+        root.listed = [];
         root.contentsError = "";
         root.player?.stop();
         body.content = "";
-        if (!root.path)
+        later.stop();
+        root.edition = 0;
+        if (root.path)
+            root.read();
+    }
+
+    onEntryChanged: {
+        if (!root.entry || Files.pathOf(root.entry) !== root.path)
             return;
+        if (!root.seen) {
+            root.seen = root.entry;
+            return;
+        }
+        if (!Listing.stale(root.seen, root.entry))
+            return;
+        const wait = Listing.rereadIn(Date.now(), root.readAt);
+        if (wait === 0)
+            root.reread();
+        else if (!later.running) {
+            later.interval = wait;
+            later.start();
+        }
+    }
 
+    function reread(): void {
+        root.edition += 1;
+        root.read();
+    }
+
+    function read(): void {
+        root.seen = root.entry && Files.pathOf(root.entry) === root.path ? root.entry : null;
+        root.readAt = Date.now();
         statter.exec([Files.helper("bs-ls"), "--stat", root.path]);
-
         peek.exec([Files.helper("bs-ls"), root.path]);
+        if (body.path !== "")
+            body.reload();
+    }
+
+    Timer {
+        id: later
+
+        onTriggered: if (Listing.stale(root.seen, root.entry))
+            root.reread()
     }
 
     onVisibleChanged: if (!root.visible)
@@ -95,9 +138,9 @@ Item {
                         return;
                     root.contentsError = answer.ok ? "" : answer.error;
 
-                    root.contents = answer.ok ? answer.entries.filter(e => Files.showHidden || !e.hidden) : [];
+                    root.listed = answer.ok ? answer.entries : [];
                 } catch (e) {
-                    root.contents = [];
+                    root.listed = [];
                 }
             }
         }
@@ -199,15 +242,23 @@ Item {
                 const size = root.isFolder ? `${root.contents.length} item${root.contents.length === 1 ? "" : "s"}` : Files.humanSize(root.entry.size);
                 if (root.entry.trash)
                     return [size, `Trashed ${TimeFormat.dateText(new Date(root.entry.trashed * 1000), "year")} ${TimeFormat.time(new Date(root.entry.trashed * 1000), false)}`].join("  ·  ");
-                const parts = [size, Files.humanTime(root.entry.mtime)];
-                if (root.stat && root.stat.owner)
-                    parts.push(`${root.stat.owner} ${Files.humanMode(root.stat.mode)}`);
-                return parts.join("  ·  ");
+                return [size, Files.humanTime(root.entry.mtime)].join("  ·  ");
             }
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
 
             elide: Text.ElideRight
+        }
+
+        StyledText {
+            width: parent.width
+            visible: !!root.entry && !root.entry.trash && !!root.stat && !!root.stat.owner
+
+            text: root.stat && root.stat.owner ? `${root.stat.owner}  ·  ${Files.humanMode(root.stat.mode)}` : ""
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
+            color: Appearance.colour.textFaint
+
+            wrapMode: Text.Wrap
         }
 
         Item {
@@ -288,7 +339,7 @@ Item {
             anchors.fill: parent
             visible: root.isImage
 
-            source: root.isImage ? Urls.fileUrl(root.path) : ""
+            source: !root.isImage ? "" : root.edition > 0 ? `${Urls.fileUrl(root.path)}?edition=${root.edition}` : Urls.fileUrl(root.path)
             fillMode: Image.PreserveAspectFit
             radius: Appearance.rounding.small
         }
@@ -455,6 +506,7 @@ Item {
             visible: root.isText && !root.rendered
 
             text: body.content
+            document: root.path
 
             language: root.language
             wrap: true

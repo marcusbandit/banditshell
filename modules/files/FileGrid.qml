@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import "../../services/files-listing.js" as Listing
 
 Item {
     id: root
@@ -14,6 +15,7 @@ Item {
     property bool dragging: false
     property bool keyed: false
     property bool marked: false
+    property bool previewing: false
 
     signal picked(int index, int modifiers)
     signal activated(int index)
@@ -48,19 +50,65 @@ Item {
     }
 
     property string shown: ""
+    readonly property var held: ({
+            entries: [],
+            keys: []
+        })
+    property int revision: 0
+
+    function entryAt(index: int, revision: int): var {
+        return root.held.entries[index];
+    }
 
     function show(): void {
         const view = [Files.cwd, Files.search, Config.values.files.sort, Config.values.files.reversed, Config.values.files.hidden].join("\n");
-        const y = grid.contentY;
-        grid.model = root.entries;
+        const before = root.held.entries;
+        const beforeKeys = root.held.keys;
+        const after = root.entries;
+        const afterKeys = after.map(e => Files.keyOf(e));
+        const steps = view === root.shown && tiles.count === before.length ? Listing.steps(beforeKeys, afterKeys) : null;
+        root.held.entries = after;
+        root.held.keys = afterKeys;
+        if (steps === null)
+            root.rebuild(view === root.shown);
+        else
+            root.patch(steps, Listing.changed(before, after, beforeKeys, afterKeys));
         grid.currentIndex = Qt.binding(() => Files.cursor);
-        if (view === root.shown)
-            grid.contentY = Math.max(grid.originY, Math.min(y, grid.originY + grid.contentHeight - grid.height));
         root.shown = view;
+    }
+
+    function rebuild(keepPlace: bool): void {
+        const y = grid.contentY;
+        tiles.clear();
+        tiles.append(root.held.entries.map(() => ({
+                    revision: root.revision
+                })));
+        if (keepPlace)
+            grid.contentY = Math.max(grid.originY, Math.min(y, grid.originY + grid.contentHeight - grid.height));
+    }
+
+    function patch(steps: var, changed: var): void {
+        for (const step of steps) {
+            if ("remove" in step)
+                tiles.remove(step.remove, step.count);
+            else if ("move" in step)
+                tiles.move(step.move, step.to, 1);
+            else
+                for (let i = 0; i < step.count; i++)
+                    tiles.insert(step.insert + i, {
+                        revision: root.revision
+                    });
+        }
+        for (const i of changed)
+            tiles.setProperty(i, "revision", ++root.revision);
     }
 
     onEntriesChanged: root.show()
     Component.onCompleted: root.show()
+
+    ListModel {
+        id: tiles
+    }
 
     GridView {
         id: grid
@@ -72,10 +120,11 @@ Item {
 
         cellHeight: root.cellHeight
 
-
         boundsBehavior: Flickable.StopAtBounds
         topMargin: Appearance.padding.hair
         bottomMargin: Appearance.padding.hair
+
+        model: tiles
 
         WheelStep {
             flick: grid
@@ -84,21 +133,27 @@ Item {
         delegate: FileTile {
             id: tile
 
+            required property int revision
+            property var last: null
+
+            entry: tile.index < 0 ? tile.last : root.entryAt(tile.index, tile.revision)
+            onEntryChanged: tile.last = tile.entry
             width: grid.cellWidth
             height: grid.cellHeight
 
             z: tile.focused ? 1 : 0
             row: root.list
-            picked: Files.isPicked(Files.keyOf(modelData))
-            focused: (root.keyed || root.marked) && index === Files.cursor
+            picked: Files.isPicked(Files.keyOf(tile.entry))
+            focused: (root.keyed || root.marked) && tile.index === Files.cursor
+            previewed: root.previewing && tile.index === Files.cursor
             keyed: root.keyed
-            receiving: root.dragging && root.target === index && droppable && !Files.isPicked(Files.keyOf(modelData))
+            receiving: root.dragging && root.target === tile.index && tile.droppable && !Files.isPicked(Files.keyOf(tile.entry))
 
-            onClicked: modifiers => root.picked(index, modifiers)
-            onActivated: root.activated(index)
-            onMenuRequested: position => root.menuFor(index, root.mapFromItem(tile, position.x, position.y))
+            onClicked: modifiers => root.picked(tile.index, modifiers)
+            onActivated: root.activated(tile.index)
+            onMenuRequested: position => root.menuFor(tile.index, root.mapFromItem(tile, position.x, position.y))
 
-            onLifted: root.lifted(index)
+            onLifted: root.lifted(tile.index)
             onDragged: position => root.dragged(root.mapFromItem(tile, position.x, position.y))
             onDropped: position => root.dropped(root.mapFromItem(tile, position.x, position.y))
         }

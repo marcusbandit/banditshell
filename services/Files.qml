@@ -10,6 +10,7 @@ import "quoting.js" as Quoting
 import "files-order.js" as FilesOrder
 import "files-conflicts.js" as Conflicts
 import "files-find.js" as Find
+import "files-listing.js" as Listing
 import "files-trash.js" as Trash
 
 Singleton {
@@ -269,7 +270,7 @@ Singleton {
             if (answer.path !== root.cwd)
                 return;
             root.error = answer.ok ? "" : answer.error;
-            root.entries = answer.ok ? answer.entries : [];
+            root.entries = answer.ok ? Listing.reuse(root.entries, answer.entries, root.keyOf) : [];
         } catch (e) {
             root.error = "unreadable listing";
             root.entries = [];

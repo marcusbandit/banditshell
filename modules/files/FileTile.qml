@@ -11,10 +11,9 @@ import "../../services/files-find.js" as Find
 Item {
     id: root
 
-    required property var modelData
+    required property var entry
     required property int index
 
-    readonly property var entry: root.modelData
     readonly property string path: Files.pathOf(root.entry)
     readonly property string place: root.entry.trash ? Files.originPlace(root.entry) : root.entry.dir ? Find.place(root.entry.dir, Files.home) : FilesFind.active ? Find.place(Files.cwd, Files.home) : ""
 
@@ -32,6 +31,7 @@ Item {
 
     property bool picked: false
     property bool focused: false
+    property bool previewed: false
     property bool keyed: false
 
     property bool row: false
@@ -65,6 +65,18 @@ Item {
             id: mark
 
             shown: root.focused
+        }
+
+        SquircleRect {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.previewed && root.row
+
+            width: Appearance.stroke.ring
+            height: parent.height * 0.5
+
+            pill: "object"
+            color: Appearance.colour.accent
         }
     }
 
@@ -112,6 +124,19 @@ Item {
                 rooted: root.entry.root
                 worldWritable: root.entry.world
                 size: Math.min(parent.height, root.width * 0.46)
+            }
+
+            SquircleRect {
+                anchors.top: parent.bottom
+                anchors.topMargin: (Appearance.padding.hair - Appearance.stroke.ring) / 2
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: root.previewed
+
+                width: parent.width * 0.3
+                height: Appearance.stroke.ring
+
+                pill: "object"
+                color: Appearance.colour.accent
             }
         }
 
