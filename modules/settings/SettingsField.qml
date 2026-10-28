@@ -19,6 +19,7 @@ Item {
 
     readonly property alias editing: input.activeFocus
     readonly property string draft: input.text
+    readonly property real need: Math.ceil(Math.max(valueWidth.advanceWidth, placeholderWidth.advanceWidth)) + Appearance.padding.normal * 2 + 2
 
     function clear(): void {
         input.text = "";
@@ -104,6 +105,20 @@ Item {
             elide: Text.ElideRight
             width: parent.width
         }
+    }
+
+    TextMetrics {
+        id: valueWidth
+
+        font: input.font
+        text: root.masked ? "" : root.text
+    }
+
+    TextMetrics {
+        id: placeholderWidth
+
+        font: input.font
+        text: root.placeholder
     }
 
     Component.onDestruction: Prompts.release(root)

@@ -471,6 +471,7 @@ Column {
         id: textControl
 
         SettingsField {
+            implicitWidth: Math.max(120, Math.min(200, need))
             text: String(root.value ?? "")
             placeholder: root.row.placeholder ?? ""
             mono: !!root.row.mono
