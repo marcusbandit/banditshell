@@ -53,6 +53,9 @@ Item {
     readonly property bool certificateMissing: root.tls && !root.pathOf(certificate)
     readonly property bool passwordMissing: !root.tls && !password.text && !root.looksUp
     readonly property bool keyPasswordMissing: root.keyLocked && !keyPassword.text
+    readonly property string keyPath: !root.tls ? "" : root.keyCarried ? root.pathOf(certificate) : root.pathOf(key)
+    readonly property bool keyKnown: root.found.some(f => f.path === root.keyPath)
+    readonly property bool asksKeyPassword: !!root.keyPath && (root.keyLocked || !root.keyKnown)
     readonly property bool serverMissing: root.needsServer && !root.looksUp
     readonly property bool outerSpaced: !root.tls && /\s/.test(outer.text.trim())
     readonly property real now: Date.now()
@@ -65,13 +68,13 @@ Item {
         if (!root.blocked)
             return "";
         if (chooser.running)
-            return "a file chooser is open.";
+            return "the file picker is open.";
         if (root.authorityMissing)
-            return "pick your school's root certificate.";
+            return "pick your school's root certificate, or set Trust back to system.";
         if (root.fileProblem)
             return root.fileProblem;
         if (root.looksUp)
-            return root.outerSpaced ? "the anonymous identity has a space in it." : "";
+            return root.outerSpaced ? root.outerFix : "";
         if (!identity.text)
             return root.tls ? "fill in the name on your certificate." : "fill in your username.";
         if (root.certificateMissing)
@@ -82,8 +85,9 @@ Item {
             return "fill in your password.";
         if (root.serverMissing)
             return "enter the server name.";
-        return root.outerSpaced ? "the anonymous identity has a space in it." : "";
+        return root.outerSpaced ? root.outerFix : "";
     }
+    readonly property string outerFix: `take out the space in the anonymous identity, as in ${root.outerDefault.includes("@") ? root.outerDefault : "anonymous@school.edu"}.`
     readonly property bool moreNeeded: root.started && (root.authorityMissing || root.outerSpaced)
     property bool serverUp: false
 
@@ -216,7 +220,7 @@ Item {
             authority: root.trustKey === "file" ? root.pathOf(authority) : "",
             certificate: root.tls ? root.pathOf(certificate) : "",
             key: !root.tls ? "" : root.keyCarried ? root.pathOf(certificate) : (root.pathOf(key) || root.pathOf(certificate)),
-            locked: root.tls && !!keyPassword.text,
+            locked: root.asksKeyPassword && !!keyPassword.text,
             inner: root.innerName,
             outer: root.tls ? "" : outer.text.trim()
         };
@@ -250,7 +254,7 @@ Item {
         }
         if (root.needsServer)
             return root.fault(server, "server", "Fill in the server name your school's Wi-Fi guide gives.");
-        root.accepted(root.form(), root.tls ? keyPassword.text : password.text);
+        root.accepted(root.form(), root.tls ? (root.asksKeyPassword ? keyPassword.text : "") : password.text);
     }
 
     onFillChanged: if (root.fill)
@@ -483,12 +487,6 @@ Item {
                     onTextChanged: root.realmServer()
                 }
 
-                FormLine {
-                    visible: root.started && !identity.text
-                    text: root.tls ? "Fill in the name on your certificate." : "Fill in your username."
-                    color: Appearance.colour.textDim
-                }
-
                 Entry {
                     id: certificate
 
@@ -509,17 +507,6 @@ Item {
                 FormLine {
                     visible: !chooser.available && certificate.visible
                     text: "Type the path, or install a file chooser such as zenity to browse."
-                }
-
-                FormWarning {
-                    visible: !!root.certificateProblem
-                    text: root.certificateProblem
-                }
-
-                FormLine {
-                    visible: root.started && root.certificateMissing
-                    text: "Pick your certificate file."
-                    color: Appearance.colour.textDim
                 }
 
                 FileChips {
@@ -551,22 +538,15 @@ Item {
                     path: true
                     field: "key"
                     next: keyPassword.input
+                    onTextChanged: {
+                        root.keyPasswordWarned = false;
+                        root.keyPasswordVisited = false;
+                    }
                 }
 
                 FormLine {
                     visible: !chooser.available && key.visible
                     text: "Type the path, or install a file chooser such as zenity to browse."
-                }
-
-                FormWarning {
-                    visible: !!root.keyProblem
-                    text: root.keyProblem
-                }
-
-                FormLine {
-                    visible: root.keyMissing
-                    text: "This certificate holds no key. Pick its key file."
-                    color: Appearance.colour.textDim
                 }
 
                 FormLine {
@@ -598,8 +578,9 @@ Item {
                     id: keyPassword
 
                     width: parent.width
-                    visible: root.tls && !!root.pathOf(certificate)
-                    label: root.keyLocked ? "Key password" : "Key password, if it has one"
+                    visible: root.asksKeyPassword
+                    label: `Password for ${root.keyPath.slice(root.keyPath.lastIndexOf("/") + 1)}`
+                    hint: root.keyLocked ? "" : "if it has one"
                     secret: true
                     next: identity.input
                 }
@@ -623,12 +604,6 @@ Item {
                     label: "Password"
                     secret: true
                     next: identity.input
-                }
-
-                FormLine {
-                    visible: root.started && root.passwordMissing
-                    text: "Fill in your password."
-                    color: Appearance.colour.textDim
                 }
 
                 Item {
@@ -728,7 +703,7 @@ Item {
 
                             FormWarning {
                                 visible: root.needsServer && root.localField !== "server"
-                                text: root.looksUp ? "Enter the server name to connect, or look it up. It stops a look-alike network posing as this one." : "Enter the server name to connect. It stops a look-alike network posing as this one; your school's Wi-Fi guide gives it."
+                                text: root.looksUp ? "Enter the server name to connect, or look it up. It stops a look-alike network posing as this one." : "A server name stops a look-alike network posing as this one. Your school's Wi-Fi guide gives it."
                             }
 
                             FormLine {
@@ -776,17 +751,6 @@ Item {
                     FormLine {
                         visible: !chooser.available && authority.visible
                         text: "Type the path, or install a file chooser such as zenity to browse."
-                    }
-
-                    FormWarning {
-                        visible: !!root.authorityProblem
-                        text: root.authorityProblem
-                    }
-
-                    FormLine {
-                        visible: root.authorityMissing && root.localField !== "authority"
-                        text: "Pick your school's root certificate below, or set trust back to system."
-                        color: Appearance.colour.textDim
                     }
 
                     FileChips {
@@ -837,12 +801,6 @@ Item {
                         hint: root.outerDefault || "same as your username"
                         field: "outer"
                         next: identity.input
-                    }
-
-                    FormLine {
-                        visible: root.outerSpaced
-                        text: `Take out the space in the middle, as in ${root.outerDefault.includes("@") ? root.outerDefault : "anonymous@school.edu"}.`
-                        color: Appearance.colour.warning
                     }
 
                     FormLine {

@@ -27,12 +27,12 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A certificate's key password shows next to it, not under More"
+          "text": "A locked key asks for its password by name, next to the key"
         },
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Choosing a file can be cancelled from the sign-in form"
+          "text": "Close file picker, beside the field, ends an open file picker"
         },
         {
           "type": "issues",
