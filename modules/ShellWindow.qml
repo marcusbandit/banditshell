@@ -211,6 +211,8 @@ PanelWindow {
             Idle.awake = false;
         else if (opens?.stops === "recording")
             ScreenRecorder.stop();
+        else if (opens?.cycles === "layout")
+            Keymap.next();
     }
 
     function act(notice: var): void {
@@ -856,7 +858,7 @@ PanelWindow {
 
             onDragged: (fraction, aside) => {
                 launchEdge.aim();
-                launchEdge.target?.dragTo(fraction, aside);
+                launchEdge.target?.dragTo(fraction, aside, launchEdge.grabOffset);
 
                 launchEdge.leaving?.dragTo(1 - fraction, 0);
             }

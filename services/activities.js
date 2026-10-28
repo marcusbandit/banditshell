@@ -358,6 +358,13 @@ function levelMoment(kind, value, muted, max) {
     });
 }
 
+function layoutMoment(code, name) {
+    if (!code)
+        return null;
+    const language = String(name || "").replace(/\s*\([^)]*\)\s*$/, "");
+    return { key: "level:layout", kind: "level", level: "layout", muted: false, ms: LEVEL_MS, icon: "keyboard", text: language || code, meter: -1, readout: code };
+}
+
 function levelDiffers(kind, before, after) {
     if (!before || !after)
         return false;
