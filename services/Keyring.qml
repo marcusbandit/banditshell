@@ -125,6 +125,10 @@ Singleton {
         }
 
         if (event.event === "owner") {
+            if (event.name === "org.gnome.keyring.SystemPrompter") {
+                root.holding = false;
+                root.blocked = true;
+            }
             root.owner = event.program ?? "";
             return;
         }
@@ -191,11 +195,8 @@ Singleton {
         onExited: code => {
             root.clear();
             root.holding = false;
-            root.blocked = code === 3;
-            if (root.blocked)
-                retry.restart();
-            else
-                root.owner = "";
+            root.blocked = false;
+            root.owner = "";
         }
     }
 
@@ -206,12 +207,5 @@ Singleton {
             if (root.active)
                 root.screenName = root.screenFor(root.screenName);
         }
-    }
-
-    Timer {
-        id: retry
-
-        interval: 5000
-        onTriggered: helper.running = true
     }
 }

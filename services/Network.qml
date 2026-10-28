@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
 import qs.config
+import qs.components
 import "wifilist.js" as WifiList
 
 Singleton {
@@ -119,7 +120,10 @@ Singleton {
             root.checkNow()
     }
 
-    onCarrierChanged: settle.restart()
+    onCarrierChanged: {
+        settle.restart();
+        recheck.reset();
+    }
     onWiredLabelChanged: settle.restart()
 
     onActiveNameChanged: {
@@ -131,11 +135,13 @@ Singleton {
             root.dropCard();
     }
 
-    Timer {
+    Backoff {
+        id: recheck
+
         running: root.linked && root.checking && !root.online
-        interval: 8000
-        repeat: true
-        onTriggered: root.checkNow()
+        base: 8000
+        cap: 120000
+        onDue: root.checkNow()
     }
 
     readonly property string portalUri: Config.values.network.portalUri || root.checkUri || "http://nmcheck.gnome.org/"
@@ -144,6 +150,7 @@ Singleton {
 
     function openPortal(): void {
         Quickshell.execDetached(["xdg-open", root.portalUri]);
+        recheck.reset();
     }
 
     Process {

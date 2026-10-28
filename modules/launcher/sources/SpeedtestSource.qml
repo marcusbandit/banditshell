@@ -25,6 +25,16 @@ QtObject {
             done: "Finishing"
         })
 
+    readonly property var prefixes: !SpeedTest.enabled ? [] : [
+            {
+                section: "System",
+                word: "speedtest",
+                about: "Test your internet speed",
+                icon: "speed",
+                also: []
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "speedtest",

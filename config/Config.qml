@@ -1028,8 +1028,10 @@ Singleton {
 
                 skip: "",
 
-                availableColour: "alarm",
-                failedColour: "bright",
+                coloursUpgraded: true,
+
+                availableColour: "text",
+                failedColour: "warning",
                 readyColour: "accent"
             }
         })
@@ -1126,39 +1128,36 @@ Singleton {
             if (root.writable && raw === root.lastWritten)
                 return;
 
-            let parsed = null;
-            let problem = "not an object";
-            try {
-                parsed = JSON.parse(raw);
-            } catch (e) {
-                problem = e.message;
-            }
+            const kept = root.loaded ? "the values it had" : "the defaults";
+            const got = Configuration.readText(raw, root, root.defaults, root.keepsChannel(), root.opaque, root.literals);
+            root.unreadable = got.unreadable;
+            if (got.values !== root.values)
+                root.values = got.values;
+            root.loaded = got.loaded;
 
-            if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-                root.unreadable = true;
-                return console.warn(`Config: ${root.path} is not valid (${problem}), so it is left untouched and the shell keeps ${root.loaded ? "the values it had" : "the defaults"} until it is fixed.`);
-            }
+            if (got.unreadable)
+                return console.warn(`Config: ${root.path} is not valid (${got.problem}), so it is left untouched and the shell runs on ${kept} until it is fixed.`);
 
-            root.unreadable = false;
-            root.values = Configuration.merge(root.defaults, Configuration.upgrade(parsed, root.keepsChannel()), "", root.opaque, root.literals);
-            root.loaded = true;
-
-            if (JSON.stringify(root.values) !== JSON.stringify(parsed)) {
+            if (got.save) {
                 console.log("Config: schema changed, updating config.json (your values are kept).");
                 Qt.callLater(root.save);
             }
         }
 
         onLoadFailed: err => {
-            if (err !== FileViewError.FileNotFound) {
-                root.unreadable = true;
-                return console.warn(`Config: could not read ${root.path} (${FileViewError.toString(err)}), so it is left untouched and the shell keeps ${root.loaded ? "the values it had" : "the defaults"}.`);
+            const kept = root.loaded ? "the values it had" : "the defaults";
+            const got = Configuration.readFailed(err === FileViewError.FileNotFound);
+            root.unreadable = got.unreadable;
+            root.fresh = got.fresh;
+            root.loaded = got.loaded;
+
+            if (got.unreadable)
+                console.warn(`Config: could not read ${root.path} (${FileViewError.toString(err)}), so it is left untouched and the shell runs on ${kept}.`);
+
+            if (got.save) {
+                root.rewatch = true;
+                Qt.callLater(root.save);
             }
-            root.unreadable = false;
-            root.fresh = true;
-            root.loaded = true;
-            root.rewatch = true;
-            Qt.callLater(root.save);
         }
 
         onSaved: {

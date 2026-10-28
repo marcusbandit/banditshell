@@ -22,6 +22,152 @@
       ]
     },
     {
+      "id": "2026-10-27-10",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files has a Trash in its sidebar, and Restore puts things back"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Undo brings back a file trashed again under the same name"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-9",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The launcher's ? page shows only prefixes that work, quicklinks too"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Enter on a line a banditshell command printed copies that line"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The launcher keeps learning new favourites after its first 400"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-8",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rows under an island card line up with the card's icon and title"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Island rows with nothing on the right keep room before the round end"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A live microphone is orange in the island too, as on the rail"
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "A waiting update is no longer orange, and a failed one is yellow"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Notifications header says quiet on in full"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-7",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The shell checks on missing things less and less often while idle"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Opening the wallpaper picker no longer rescans every picture"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A fullscreen window's border colour is sampled once a second"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The media card and island glow hold still while nothing plays"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-6",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "File names under icons keep their extension whole"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A previewed folder lists in the same order as the files"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files settings: Smaller, Reset and Bigger no longer look picked"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-27-5",
+      "date": "2026-10-27",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A typo in config.json no longer turns off the wallpaper and services"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Exchange rates refresh every 12 hours, not only at startup"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Notifications that ask to stay now stay until you dismiss them"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rounding and gaps follow Hyprland even when it lacks an option"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Binds and monitors in files outside ~/.config/hypr can be edited"
+        }
+      ]
+    },
+    {
       "id": "2026-10-27-4",
       "date": "2026-10-27",
       "changes": [

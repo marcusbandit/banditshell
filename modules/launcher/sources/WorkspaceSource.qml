@@ -22,6 +22,17 @@ QtObject {
             special: 12
         })
 
+    readonly property var prefixes: !root.enabled ? [] : [
+            {
+                section: "Desktop",
+                word: "scratch",
+                example: "scratch term",
+                about: "Scratchpads",
+                icon: "layers",
+                also: ["scratchpad", "special"]
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "special",

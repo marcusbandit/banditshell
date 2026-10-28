@@ -6,6 +6,8 @@ import qs.components
 import qs.services
 import "urls.js" as Urls
 import "keys.js" as Chords
+import "deletion.js" as Deletion
+import "../../services/files-find.js" as Find
 
 Item {
     id: root
@@ -46,7 +48,7 @@ Item {
     }
 
     Keys.onPressed: event => {
-        if (settings.up || prompt.up || conflict.up)
+        if (settings.up || prompt.up || confirm.up || conflict.up)
             return;
 
         if (sheet.open) {
@@ -211,7 +213,10 @@ Item {
             root.renameCurrent();
             return true;
         case "trash":
-            Files.trash(Files.pickedPaths);
+            if (Files.inTrash)
+                root.confirmDelete();
+            else
+                Files.trash(Files.pickedPaths);
             return true;
         case "destroy":
             root.confirmDelete();
@@ -262,9 +267,6 @@ Item {
         root.select(Math.max(0, Files.cursor) + delta, extend ?? false);
     }
 
-    readonly property int count: Files.picks.length
-    readonly property string counted: root.count === 1 ? Files.picks[0].name : `${root.count} items`
-
     function fileActions(): var {
         const picks = Files.picks;
         if (picks.length === 0)
@@ -273,8 +275,16 @@ Item {
         const paths = Files.pickedPaths;
         const one = picks.length === 1 ? picks[0] : null;
         const acts = [];
+        const restorable = picks.filter(e => e.trash?.path);
 
-        if (one && one.key && one.kind !== "dir")
+        if (restorable.length > 0)
+            acts.push({
+                icon: "undo",
+                label: picks.length === 1 ? `Restore to ${Find.fitPlace(Files.originPlace(picks[0]), 24)}` : restorable.length === picks.length ? `Restore ${picks.length} items` : `Restore ${restorable.length} of ${picks.length}`,
+                run: () => Files.restore(restorable)
+            });
+
+        if (one && one.key && !one.trash && one.kind !== "dir")
             acts.push({
                 icon: "folder_open",
                 label: "Show in its folder",
@@ -295,13 +305,16 @@ Item {
             icon: "content_copy",
             label: "Copy",
             run: () => Files.clip(paths, false)
-        }, {
-            icon: "content_cut",
-            label: "Cut",
-            run: () => Files.clip(paths, true)
         });
 
-        if (one && !one.key)
+        if (!Files.inTrash)
+            acts.push({
+                icon: "content_cut",
+                label: "Cut",
+                run: () => Files.clip(paths, true)
+            });
+
+        if (one && !one.key && !Files.inTrash)
             acts.push({
                 icon: "edit",
                 label: "Rename…",
@@ -312,15 +325,14 @@ Item {
             icon: "link",
             label: paths.length === 1 ? "Copy path" : "Copy paths",
             run: () => Files.copyText(paths.join("\n"))
-        }, {
-            icon: "delete",
-            label: "Move to trash",
-            run: () => Files.trash(paths)
-        }, {
-            icon: "delete_forever",
-            label: "Delete permanently…",
-            run: () => root.confirmDelete()
         });
+
+        if (!Files.inTrash)
+            acts.push({
+                icon: "delete",
+                label: "Move to trash",
+                run: () => Files.trash(paths)
+            });
 
         if (one)
             acts.push({
@@ -329,11 +341,18 @@ Item {
                 run: () => properties.show(Files.pathOf(one))
             });
 
+        acts.push({
+            icon: "delete_forever",
+            label: "Delete permanently…",
+            apart: true,
+            run: () => root.confirmDelete()
+        });
+
         return acts;
     }
 
     function folderActions(): var {
-        const acts = [
+        const acts = Files.inTrash ? [] : [
             {
                 icon: "create_new_folder",
                 label: "New folder…",
@@ -346,7 +365,7 @@ Item {
             }
         ];
 
-        if (Files.clipboard.length > 0)
+        if (Files.clipboard.length > 0 && !Files.inTrash)
             acts.push({
                 icon: "content_paste",
                 label: `${Files.clipboardCut ? "Move" : "Paste"} ${Files.clipboard.length} here`,
@@ -387,6 +406,8 @@ Item {
     }
 
     function newThing(file: bool): void {
+        if (Files.inTrash)
+            return;
         prompt.ask(file ? "New file" : "New folder", file ? "untitled" : "untitled folder", 0, name => {
             if (file)
                 Files.makeFile(name);
@@ -410,10 +431,11 @@ Item {
         if (paths.length === 0)
             return;
 
-        prompt.ask(`Delete ${root.counted} permanently? Type "delete" to confirm`, "", 0, answer => {
-            if (answer.toLowerCase() === "delete")
-                Files.deleteForever(paths);
-        }, null, "delete");
+        const items = Files.picks.map(e => ({
+                    name: e.name,
+                    origin: Files.originPlace(e)
+                }));
+        confirm.ask(Deletion.what(items), Deletion.REST, "Delete", "delete_forever", answer => Files.deleteForever(Deletion.approved(answer, paths)));
     }
 
     Connections {
@@ -452,6 +474,16 @@ Item {
 
     NamePrompt {
         id: prompt
+
+        anchors.fill: parent
+
+        z: 200
+
+        onDismissed: Qt.callLater(root.forceActiveFocus)
+    }
+
+    ConfirmPrompt {
+        id: confirm
 
         anchors.fill: parent
 
@@ -587,13 +619,13 @@ Item {
                 if (!Files.isPicked(Files.keyOf(Files.visible[index])))
                     Files.setCursor(index);
                 const at = grid.mapToItem(root, position.x, position.y);
-                sheet.popup(at.x, at.y, root.fileActions());
+                sheet.popup(at.x, at.y, root.fileActions(), -1);
             }
             onMenuForEmpty: position => {
                 Files.focus = "grid";
                 Files.clearPicked();
                 const at = grid.mapToItem(root, position.x, position.y);
-                sheet.popup(at.x, at.y, root.folderActions());
+                sheet.popup(at.x, at.y, root.folderActions(), -1);
             }
             onLifted: index => {
                 if (!Files.isPicked(Files.keyOf(Files.visible[index])))
@@ -664,7 +696,7 @@ Item {
         }
     }
 
-    StyledText {
+    Item {
         id: failure
 
         anchors.left: parent.left
@@ -672,17 +704,25 @@ Item {
         anchors.bottom: terminal.top
 
         visible: Files.failure !== "" || FilesUndo.notice !== ""
-        height: failure.visible ? failure.implicitHeight : 0
+        height: failure.visible ? failureText.implicitHeight : 0
 
-        leftPadding: Appearance.padding.normal
-        rightPadding: Appearance.padding.normal
-        topPadding: Appearance.padding.small
-        bottomPadding: Appearance.padding.small
+        StyledText {
+            id: failureText
 
-        text: Files.failure || FilesUndo.notice
-        font.pixelSize: Files.zoomed(Appearance.font.size.small)
-        color: Files.failure ? Appearance.colour.alarm : Appearance.colour.text
-        elide: Text.ElideRight
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+
+            leftPadding: Appearance.padding.normal
+            rightPadding: Appearance.padding.normal
+            topPadding: Appearance.padding.small
+            bottomPadding: Appearance.padding.small
+
+            text: Files.failure || FilesUndo.notice
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
+            color: Files.failure ? Appearance.colour.alarm : Appearance.colour.text
+            elide: Text.ElideRight
+        }
 
         TapHandler {
             onTapped: {

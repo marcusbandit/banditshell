@@ -573,3 +573,50 @@ test("update status --json and version --json are objects", () => {
     assert.strictEqual(version.code, 0, version.err);
     assert.ok(JSON.parse(version.out).version);
 });
+
+function watchdogRun(ticks, good) {
+    const stub = stubs();
+    const home = directory("home");
+    const sig = "watchdogtest";
+    fs.mkdirSync(path.join(home, "run", "hypr", sig), { recursive: true });
+    fs.writeFileSync(path.join(stub.dir, "qs"), `#!/bin/sh
+echo "qs $1" >>"$STUB_LOG"
+case "$1" in
+list) printf 'Instance abc:\\n  Process ID: %s\\n  Config path: %s/shell.qml\\n' "$SHELL_PID" "$SHELL_ROOT" ;;
+ipc) [ "$(grep -c '^qs ipc' "$STUB_LOG")" -le "$QS_GOOD" ] ;;
+esac
+`, { mode: 0o755 });
+    fs.writeFileSync(path.join(stub.dir, "sleep"), `#!/bin/sh
+echo "sleep $*" >>"$STUB_LOG"
+[ "$(grep -c '^sleep' "$STUB_LOG")" -le "$TICKS" ]
+`, { mode: 0o755 });
+    fs.writeFileSync(path.join(stub.dir, "git"), '#!/bin/sh\necho "git $*" >>"$STUB_LOG"\n', { mode: 0o755 });
+    const run = cli(["watchdog"], {
+        stub,
+        home,
+        env: { HYPRLAND_INSTANCE_SIGNATURE: sig, WAYLAND_DISPLAY: "wayland-1", SHELL_PID: String(process.pid), SHELL_ROOT: ROOT, TICKS: String(ticks), QS_GOOD: String(good) }
+    });
+    const rounds = [];
+    for (const call of run.calls) {
+        if (call.startsWith("sleep"))
+            rounds.push([]);
+        else if (rounds.length)
+            rounds[rounds.length - 1].push(call.split(" ").slice(0, 2).join(" "));
+    }
+    return rounds.slice(0, ticks);
+}
+
+test("the watchdog asks only the shell that answered last time", () => {
+    const rounds = watchdogRun(6, 999);
+    assert.strictEqual(rounds.length, 6);
+    assert.ok(rounds[0].includes("qs list"), rounds[0].join(", "));
+    for (const round of rounds.slice(1))
+        assert.deepStrictEqual(round, ["qs ipc"]);
+});
+
+test("the watchdog looks for every shell again once the known one stops answering", () => {
+    const rounds = watchdogRun(3, 3);
+    assert.deepStrictEqual(rounds[1], ["qs ipc"]);
+    assert.ok(rounds[2].includes("qs list"), rounds[2].join(", "));
+    assert.ok(rounds[2].filter(c => c === "qs ipc").length >= 2, rounds[2].join(", "));
+});

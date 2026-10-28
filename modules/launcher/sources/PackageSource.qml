@@ -26,6 +26,17 @@ QtObject {
     readonly property var found: root.term ? PackageSearch.results(root.term).slice(0, 30) : []
     readonly property bool searching: !!root.term && PackageSearch.searching(root.term)
 
+    readonly property var prefixes: !PackageSearch.enabled ? [] : [
+            {
+                section: "System",
+                word: "pkg",
+                example: "pkg ripgrep",
+                about: "Find a package to install",
+                icon: "package_2",
+                also: ["install", "package"]
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "packages",

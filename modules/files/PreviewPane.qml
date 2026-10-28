@@ -7,6 +7,7 @@ import qs.components
 import qs.services
 import "urls.js" as Urls
 import "markdown.js" as Markdown
+import "../../services/files-order.js" as FilesOrder
 import "../../services/files-find.js" as Find
 
 Item {
@@ -94,11 +95,7 @@ Item {
                         return;
                     root.contentsError = answer.ok ? "" : answer.error;
 
-                    root.contents = answer.ok ? answer.entries.filter(e => Files.showHidden || !e.hidden).sort((a, b) => {
-                        if ((a.kind === "dir") !== (b.kind === "dir"))
-                            return a.kind === "dir" ? -1 : 1;
-                        return a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: "base"});
-                    }) : [];
+                    root.contents = answer.ok ? answer.entries.filter(e => Files.showHidden || !e.hidden) : [];
                 } catch (e) {
                     root.contents = [];
                 }
@@ -202,6 +199,8 @@ Item {
                     return "";
 
                 const size = root.isFolder ? `${root.contents.length} item${root.contents.length === 1 ? "" : "s"}` : Files.humanSize(root.entry.size);
+                if (root.entry.trash)
+                    return [size, `Trashed ${TimeFormat.dateText(new Date(root.entry.trashed * 1000), "year")} ${TimeFormat.time(new Date(root.entry.trashed * 1000), false)}`].join("  ·  ");
                 const parts = [size, Files.humanTime(root.entry.mtime)];
                 if (root.stat && root.stat.owner)
                     parts.push(`${root.stat.owner} ${Files.humanMode(root.stat.mode)}`);
@@ -216,15 +215,18 @@ Item {
         Item {
             id: where
 
-            readonly property string place: !root.entry ? "" : root.entry.dir ? Find.place(root.entry.dir, Files.home) : Find.place(Files.cwd, Files.home)
+            readonly property bool origin: !!root.entry && !!root.entry.trash
+            readonly property string place: !root.entry ? "" : where.origin ? Files.originPlace(root.entry) : root.entry.dir ? Find.place(root.entry.dir, Files.home) : Find.place(Files.cwd, Files.home)
+            readonly property string lead: where.origin ? "From " : ""
 
             width: parent.width
-            visible: FilesFind.active && !!root.entry
+            visible: (FilesFind.active || where.origin) && where.place !== ""
             implicitHeight: whereText.implicitHeight
 
             Icon {
                 id: whereGlyph
 
+                visible: !where.origin
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
 
@@ -235,12 +237,12 @@ Item {
             StyledText {
                 id: whereText
 
-                anchors.left: whereGlyph.right
-                anchors.leftMargin: Appearance.padding.small
+                anchors.left: where.origin ? parent.left : whereGlyph.right
+                anchors.leftMargin: where.origin ? 0 : Appearance.padding.small
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
 
-                text: Find.fitPlace(where.place, Math.max(1, Math.floor(whereText.width / Math.max(1, whereDigit.advanceWidth))))
+                text: where.lead + Find.fitPlace(where.place, Math.max(1, Math.floor(whereText.width / Math.max(1, whereDigit.advanceWidth)) - where.lead.length))
                 font.pixelSize: Files.zoomed(Appearance.font.size.small)
 
                 TextMetrics {
@@ -260,6 +262,16 @@ Item {
             style: "plate"
 
             onClicked: Files.goTo(root.path)
+        }
+
+        Button {
+            visible: where.origin && !!root.entry.trash.path
+
+            text: `Restore to ${Find.fitPlace(where.place, 24)}`
+            icon: "undo"
+            style: "plate"
+
+            onClicked: Files.restore([root.entry])
         }
 
         Separator {
@@ -380,7 +392,7 @@ Item {
             visible: root.isFolder && root.contents.length > 0
             clip: true
 
-            model: root.contents
+            model: FilesOrder.ordered(root.contents, Files.sort, Files.reversed)
 
             delegate: Row {
                 id: line
