@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "../config/files-zoom.js" as FilesZoom
 import "../components/vt.js" as TerminalEmulator
 import "../components/base64.js" as Base64
 import "quoting.js" as Quoting
@@ -429,9 +430,9 @@ Singleton {
             Config.set("files.preview", root.previewWidth);
     }
 
-    readonly property real magnification: Config.values.files.zoom
-    readonly property real smallest: 0.7
-    readonly property real largest: 2.5
+    readonly property real magnification: FilesZoom.clamp(Config.values.files.zoom)
+    readonly property real smallest: FilesZoom.SMALLEST
+    readonly property real largest: FilesZoom.LARGEST
 
     function zoomed(size: real): int {
         return Math.round(size * root.magnification);

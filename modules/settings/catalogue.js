@@ -776,7 +776,7 @@ const PAGES_SOURCE = {
                 { n: 92, icon: "swap_vert", label: "Order", k: "filesReversed", kind: "seg", o: s => filesOrders(s.v("filesSort")), cfg: "files.reversed", kw: "files sort order direction reverse oldest smallest z to a" },
                 { n: 92, icon: "visibility_off", label: "Hidden files", k: "filesHidden", kind: "toggle", cfg: "files.hidden", keys: "files:hidden", kw: "files hidden" },
                 { n: 92, icon: "markdown", label: "Markdown", k: "filesMarkdown", kind: "seg", o: [["rendered", "rendered"], ["raw", "source"]], cfg: "files.markdown", kw: "files previews" },
-                { n: 92, icon: "zoom_in", label: "Zoom", k: "filesZoom", kind: "slider", min: 0.6, max: 2, step: 0.1, fmt: v => `${v.toFixed(1)}×`, cfg: "files.zoom", kw: "files previews" }
+                { n: 92, icon: "zoom_in", label: "Zoom", k: "filesZoom", kind: "slider", min: s => s.filesZoomRange[0], max: s => s.filesZoomRange[1], step: 0.1, fmt: v => `${v.toFixed(1)}×`, cfg: "files.zoom", kw: "files previews" }
             ] }
         ]
     },

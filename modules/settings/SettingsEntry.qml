@@ -414,8 +414,8 @@ Column {
             Component.onCompleted: root.noteTail(slider.tail)
             Component.onDestruction: root.noteTail(-1)
             value: Number(root.value ?? 0)
-            from: root.row.min
-            to: root.row.max
+            from: Catalogue.val(root.row.min, SettingsState)
+            to: Catalogue.val(root.row.max, SettingsState)
             step: root.row.step ?? 1
             ends: root.row.ends ?? []
             text: Catalogue.format(root.row, Number(root.value ?? 0), SettingsState)
@@ -429,8 +429,8 @@ Column {
 
         SettingsStepper {
             value: Number(root.value ?? 0)
-            from: root.row.min
-            to: root.row.max
+            from: Catalogue.val(root.row.min, SettingsState)
+            to: Catalogue.val(root.row.max, SettingsState)
             step: root.row.step ?? 1
             text: Catalogue.format(root.row, Number(root.value ?? 0), SettingsState)
             enabled: !root.off

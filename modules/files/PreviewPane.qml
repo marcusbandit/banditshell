@@ -541,14 +541,14 @@ Item {
 
         Column {
             anchors.centerIn: parent
-            spacing: Appearance.padding.normal
+            spacing: Files.zoomed(Appearance.padding.normal)
             visible: !root.isImage && !root.isAudio && !root.isText && !(root.isFolder && root.contents.length > 0)
 
             Icon {
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 name: root.stat && !root.stat.readable || root.contentsError ? "lock" : root.isFolder ? "folder_open" : "visibility_off"
-                size: Appearance.icon.huge
+                size: Files.zoomed(Appearance.icon.huge)
                 color: Appearance.colour.textFaint
             }
 
@@ -566,6 +566,7 @@ Item {
                         return "too large to preview";
                     return "no preview";
                 }
+                font.pixelSize: Files.zoomed(Appearance.font.size.small)
                 color: Appearance.colour.textFaint
             }
         }

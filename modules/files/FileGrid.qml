@@ -251,14 +251,14 @@ Item {
 
     Column {
         anchors.centerIn: parent
-        spacing: Appearance.padding.normal
+        spacing: Files.zoomed(Appearance.padding.normal)
         visible: root.entries.length === 0
 
         Icon {
             anchors.horizontalCenter: parent.horizontalCenter
 
             name: Files.error ? "lock" : FilesFind.active ? "search" : "folder_open"
-            size: Appearance.icon.huge
+            size: Files.zoomed(Appearance.icon.huge)
             color: Files.error ? Appearance.colour.alarm : Appearance.colour.textFaint
         }
 
@@ -266,6 +266,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
 
             text: Files.error ? Files.error : FilesFind.active && FilesFind.running ? "searching home…" : FilesFind.active ? `nothing matching "${Files.search}" in home` : Files.search ? `nothing matching "${Files.search}"` : "empty"
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
         }
 
@@ -274,7 +275,7 @@ Item {
             visible: FilesFind.active && !FilesFind.running && !Files.error
 
             text: FilesFind.everywhere || FilesFind.stopped || FilesFind.failed ? FilesFind.summary : `${FilesFind.summary}, caches and the Trash skipped`
-            font.pixelSize: Appearance.font.size.small
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
         }
     }

@@ -118,7 +118,7 @@ Item {
                 height: parent.height - Appearance.padding.hair * 2
                 visible: root.isImage && status !== Image.Error
 
-                source: root.isImage ? Urls.fileUrl(root.path) : ""
+                source: root.isImage ? Urls.freshUrl(root.path, root.entry.mtime, root.entry.size) : ""
                 radius: Appearance.rounding.small
                 decodeWidth: Appearance.sizes.filesThumbnail
                 decodeHeight: Appearance.sizes.filesThumbnail
@@ -219,7 +219,7 @@ Item {
             anchors.leftMargin: Appearance.padding.small
             anchors.verticalCenter: parent.stacked ? undefined : parent.verticalCenter
             anchors.bottom: parent.stacked ? parent.verticalCenter : undefined
-            readonly property real room: (parent.stacked ? rowDate.x : rowSize.x) - rowName.x - Appearance.padding.normal * (parent.stacked ? 1 : 2)
+            readonly property real room: (parent.stacked ? rowDate.x : rowSize.x + rowSize.width - rowSize.contentWidth) - rowName.x - Appearance.padding.normal
             width: Math.min(rowName.implicitWidth, rowName.room)
 
             text: root.entry.name

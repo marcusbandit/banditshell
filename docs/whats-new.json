@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-24",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A Files thumbnail updates when its picture changes on disk"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Names in the Files list run up to the size column before they shorten"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files zoom goes from 70% to 250% in Settings as well as with keys"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files settings grow with the zoom and fade where more rows follow"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Empty folders and empty previews in Files grow with the zoom"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Delete button in Files confirm prompts sits on an alarm tint"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-23",
       "date": "2026-10-28",
       "changes": [

@@ -8,6 +8,7 @@ import qs.services
 import "catalogue.js" as Catalogue
 import "durations.js" as Durations
 import "screens.js" as Screens
+import "../../config/files-zoom.js" as FilesZoom
 
 Singleton {
     id: root
@@ -18,6 +19,8 @@ Singleton {
             wallTarget: "everywhere",
             railFolded: false
         })
+
+    readonly property var filesZoomRange: [FilesZoom.SMALLEST, FilesZoom.LARGEST]
 
     readonly property bool railFolded: root.ui.railFolded ?? root.uiDefaults.railFolded
 
@@ -58,6 +61,10 @@ Singleton {
             termColours: {
                 read: v => v === "theme" ? "theme" : JSON.stringify(v) === JSON.stringify(Config.defaults.files.terminal.palette) ? "one dark" : "custom",
                 write: v => v === "theme" ? "theme" : Config.defaults.files.terminal.palette
+            },
+            filesZoom: {
+                read: v => FilesZoom.clamp(v),
+                write: v => FilesZoom.clamp(v)
             },
             iconMode: {
                 read: v => v === "colour" ? "colour" : "mono",
