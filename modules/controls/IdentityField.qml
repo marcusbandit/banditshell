@@ -20,6 +20,7 @@ Item {
     property string suggestion: ""
     property string fill: ""
     property bool busy: false
+    property bool checking: false
     property var readServer: text => text.trim()
     property var schoolOf: (domain, identity) => null
 
@@ -35,6 +36,8 @@ Item {
     readonly property bool tls: root.methodName === "tls"
     readonly property bool canCheck: root.methods.includes("peap")
     readonly property bool needsServer: !server.text.trim()
+    readonly property bool looksUp: root.needsServer && root.canCheck && !root.tls
+    readonly property bool filled: !!identity.text && (root.tls ? !!certificate.text.trim() : !!password.text)
 
     readonly property var school: server.text.trim() ? root.schoolOf(server.text, "") : root.schoolOf("", identity.text)
     readonly property var trustKeys: root.school ? ["school", "system", "file"] : ["system", "file"]
@@ -44,6 +47,8 @@ Item {
     property var found: []
     property Item target: null
     property string local: ""
+    property string localField: ""
+    property string autoServer: ""
 
     function pickFile(path: string): void {
         let entry = root.target;
@@ -51,6 +56,28 @@ Item {
             entry = root.tls && !certificate.text.trim() ? certificate : root.trustKey === "file" ? authority : root.tls ? key : null;
         if (entry)
             entry.text = path;
+    }
+
+    function realmServer(): void {
+        const found = root.schoolOf("", identity.text);
+        const want = found ? found.suffix : "";
+        const now = server.text.trim();
+        if (now && now !== root.autoServer)
+            return;
+        server.text = want;
+        root.autoServer = want;
+    }
+
+    function summary(room: real): string {
+        if (root.needsServer)
+            return "no server name";
+        const parts = [root.methodName.toUpperCase(), root.trustNames[root.trustKeys.indexOf(root.trustKey)], server.text.trim()];
+        for (let i = 0; i < parts.length; i++) {
+            const text = parts.slice(i).join(" · ");
+            if (i === parts.length - 1 || summaryInk.advanceWidth(text) <= room)
+                return text;
+        }
+        return "";
     }
 
     implicitHeight: visible ? stack.implicitHeight : 0
@@ -64,11 +91,13 @@ Item {
             authority: root.trustKey === "file" ? authority.text.trim() : "",
             certificate: root.tls ? certificate.text.trim() : "",
             key: root.tls ? (key.text.trim() || certificate.text.trim()) : "",
-            locked: root.tls && !!password.text
+            locked: root.tls && !!keyPassword.text
         };
     }
 
-    function inMore(entry: Item): void {
+    function fault(entry: Item, field: string, text: string): void {
+        root.local = text;
+        root.localField = field;
         root.more = true;
         entry.input.forceActiveFocus();
     }
@@ -77,28 +106,18 @@ Item {
         if (root.refusal || root.busy)
             return;
         root.local = "";
+        root.localField = "";
         if (root.trustKey === "file" && !authority.text.trim())
-            return root.inMore(authority);
-        if (root.needsServer && root.canCheck && !root.tls)
+            return root.fault(authority, "authority", "Pick your school's root certificate file, or set trust back.");
+        if (root.looksUp)
             return root.check(root.form());
-        if (!root.needsServer && !root.readServer(server.text)) {
-            root.local = "That server name needs a dot, such as school.edu.";
-            return root.inMore(server);
-        }
-        if (!identity.text)
-            identity.input.forceActiveFocus();
-        else if (!root.tls && !password.text)
-            password.input.forceActiveFocus();
-        else if (root.tls && !certificate.text.trim())
-            certificate.input.forceActiveFocus();
-        else if (root.needsServer)
-            root.inMore(server);
-        else {
-            const filled = root.form();
-            const secret = password.text;
-            password.text = "";
-            root.accepted(filled, secret);
-        }
+        if (!root.needsServer && !root.readServer(server.text))
+            return root.fault(server, "server", "That server name needs a dot, such as school.edu.");
+        if (!root.filled)
+            return;
+        if (root.needsServer)
+            return root.fault(server, "server", "Fill in the server name your school's Wi-Fi guide gives.");
+        root.accepted(root.form(), root.tls ? keyPassword.text : password.text);
     }
 
     onFillChanged: if (root.fill)
@@ -111,9 +130,12 @@ Item {
     function claim(): void {
         identity.text = "";
         password.text = "";
+        keyPassword.text = "";
         password.shown = false;
         server.text = root.fill || root.domain;
+        root.autoServer = "";
         root.local = "";
+        root.localField = "";
         if (root.visible && !root.refusal) {
             Prompts.request(root);
             identity.input.forceActiveFocus();
@@ -336,9 +358,9 @@ Item {
                 }
 
                 Line {
-                    visible: !!root.note && root.noteIsTrouble
+                    visible: !!root.note
                     text: root.note
-                    color: Appearance.colour.warning
+                    color: root.noteIsTrouble || root.noteWarns ? Appearance.colour.warning : Appearance.colour.textDim
                 }
 
                 Entry {
@@ -348,6 +370,7 @@ Item {
                     label: root.tls ? "Name on your certificate" : root.school ? `${root.school.school} username or email` : "Username or email"
                     hint: root.tls ? "" : root.school ? `username@${root.school.suffix}` : "name@school.edu"
                     next: root.tls ? certificate.input : password.input
+                    onTextChanged: root.realmServer()
                 }
 
                 Entry {
@@ -368,7 +391,7 @@ Item {
                     visible: root.tls
                     label: "Key file, if separate"
                     file: true
-                    next: password.input
+                    next: identity.input
                 }
 
                 FileChips {
@@ -379,41 +402,10 @@ Item {
                     id: password
 
                     width: parent.width
-                    label: root.tls ? "Key password, if it has one" : "Password"
+                    visible: !root.tls
+                    label: "Password"
                     secret: true
                     next: identity.input
-                }
-
-                Line {
-                    visible: !!root.local
-                    text: root.local
-                    color: Appearance.colour.warning
-                }
-
-                Line {
-                    visible: !!root.note && !root.noteIsTrouble
-                    text: root.note
-                    color: root.noteWarns ? Appearance.colour.warning : Appearance.colour.textDim
-                }
-
-                Item {
-                    width: parent.width
-                    visible: !!root.suggestion && server.text.trim() !== root.suggestion
-                    implicitHeight: visible ? use.implicitHeight + Appearance.padding.small * 2 : 0
-
-                    Button {
-                        id: use
-
-                        anchors.left: parent.left
-                        anchors.leftMargin: Appearance.padding.normal
-                        anchors.right: parent.right
-                        anchors.rightMargin: Appearance.padding.normal
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        size: 0
-                        text: `Use ${root.suggestion}`
-                        onClicked: server.text = root.suggestion
-                    }
                 }
 
                 Item {
@@ -430,33 +422,70 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
 
                         style: "accent"
-                        interactive: !root.busy
-                        text: root.busy ? "Looking…" : root.needsServer && root.canCheck && !root.tls ? "Look up the server" : "Connect"
+                        interactive: !root.busy && (root.looksUp || root.filled)
+                        text: root.busy ? (root.checking ? "Looking…" : "Connecting…") : root.looksUp ? (root.suggestion ? "Look up again" : "Look up the server") : "Connect"
                         onClicked: root.submit()
                     }
                 }
 
                 Line {
-                    visible: root.needsServer && root.canCheck && !root.tls && !root.busy
+                    visible: root.looksUp && !root.busy
                     text: "Looking up sends nothing secret, but your Wi-Fi drops for a moment."
+                }
+
+                Item {
+                    width: parent.width
+                    visible: !!root.suggestion && server.text.trim() !== root.suggestion
+                    implicitHeight: visible ? use.implicitHeight + Appearance.padding.small * 2 : 0
+
+                    Button {
+                        id: use
+
+                        anchors.left: parent.left
+                        anchors.leftMargin: Appearance.padding.normal
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        size: 0
+                        style: "bare"
+                        text: `Use ${root.suggestion} anyway`
+                        onClicked: server.text = root.suggestion
+                    }
                 }
 
                 Item {
                     width: parent.width
                     implicitHeight: Math.max(moreLabel.implicitHeight, opener.implicitHeight) + Appearance.padding.small * 2
 
+                    FontMetrics {
+                        id: summaryInk
+
+                        font: moreLabel.font
+                    }
+
                     StyledText {
-                        id: moreLabel
+                        id: moreHead
 
                         anchors.left: parent.left
                         anchors.leftMargin: Appearance.padding.normal
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        text: "More"
+                        color: Appearance.colour.textDim
+                        font.pixelSize: Appearance.font.size.small
+                    }
+
+                    StyledText {
+                        id: moreLabel
+
+                        anchors.left: moreHead.right
+                        anchors.leftMargin: Appearance.padding.large
                         anchors.right: opener.left
                         anchors.rightMargin: Appearance.padding.normal
                         anchors.verticalCenter: parent.verticalCenter
 
-                        elide: Text.ElideRight
-                        text: root.more ? "More" : `More   ${root.methodName.toUpperCase()} · ${root.trustNames[root.trustKeys.indexOf(root.trustKey)]} · ${server.text.trim() || "no server yet"}`
-                        color: Appearance.colour.textDim
+                        visible: !root.more
+                        text: root.summary(moreLabel.width)
+                        color: root.needsServer ? Appearance.colour.warning : Appearance.colour.textDim
                         font.pixelSize: Appearance.font.size.small
                     }
 
@@ -497,6 +526,12 @@ Item {
                     }
 
                     Line {
+                        visible: root.localField === "server"
+                        text: root.local
+                        color: Appearance.colour.warning
+                    }
+
+                    Line {
                         text: root.tls ? "Your certificate only goes to a server with this name." : "Your password only goes to a server with this name."
                     }
 
@@ -525,8 +560,24 @@ Item {
                         next: identity.input
                     }
 
+                    Line {
+                        visible: root.localField === "authority"
+                        text: root.local
+                        color: Appearance.colour.warning
+                    }
+
                     FileChips {
                         visible: root.trustKey === "file" && root.found.length > 0
+                    }
+
+                    Entry {
+                        id: keyPassword
+
+                        width: parent.width
+                        visible: root.tls
+                        label: "Key password, if it has one"
+                        secret: true
+                        next: identity.input
                     }
 
                     Choice {

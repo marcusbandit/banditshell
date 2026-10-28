@@ -288,6 +288,7 @@ Singleton {
     property string enrollFailedName: ""
     property string enrollTrouble: ""
     property string enrollDetail: ""
+    property string enrollServer: ""
 
     property string checkedName: ""
     property string checkedNote: ""
@@ -319,6 +320,7 @@ Singleton {
             root.enrollFailedName = "";
             root.enrollTrouble = "";
             root.enrollDetail = "";
+            root.enrollServer = "";
         }
         if (root.checkedName === name) {
             root.checkedName = "";
@@ -516,6 +518,7 @@ Singleton {
             root.checkedNote = WifiList.serverSeenMessage(trouble, root.enrollIdentity);
         } else if (trouble) {
             root.failEnroll(WifiList.serverLabel(trouble), WifiList.serverMessage(trouble, root.enrollDomain));
+            root.enrollServer = trouble.kind === "name" ? trouble.server : "";
         } else {
             root.failEnroll(root.enrollWhy, "");
         }
