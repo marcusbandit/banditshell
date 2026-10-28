@@ -61,7 +61,7 @@ Column {
 
     readonly property bool wentBack: Update.wentBackByHand && Update.resultPending
 
-    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, markRead.visible ? titleRow.implicitWidth + Appearance.padding.normal + markRead.implicitWidth : 0, goBackOffer.implicitWidth, goBackRow.implicitWidth, Update.diverged ? pullRow.fullWidth : 0, reinstallRow.implicitWidth, reportRow.implicitWidth)
+    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, root.listed.length > 0 && root.unreadCount > 0 ? titleRow.implicitWidth + Appearance.padding.normal + markRead.implicitWidth : 0, goBackOffer.implicitWidth, goBackRow.implicitWidth, Update.diverged ? pullRow.fullWidth : 0, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
     onShowingChanged: if (root.showing) {
         root.settled = true;
@@ -696,7 +696,7 @@ Column {
 
     StyledText {
         width: parent.width
-        visible: Update.ahead > 0 && !Update.diverged
+        visible: !root.asking && Update.ahead > 0 && !Update.diverged
         text: Update.aheadText
         color: Appearance.colour.textFaint
         wrapMode: Text.WordWrap
