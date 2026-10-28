@@ -3882,7 +3882,11 @@ an action would act on and the cursor is where the keyboard is, which stop being
 the same fact the moment there is more than one of them. Picked is the accent-tinted
 `accentFill` with its name in `accent`, apart from hover's grey `fill`; the
 cursor is the focus mark (section 6), shown once a key has moved it and gone when
-the pointer moves. The set is held as
+the pointer moves. The item the preview shows wears a third mark, a solid `accent` strip
+the full width of its tile's foot or down the left of its row, never a short bar, which is
+what the drive meters look like, because the preview follows the cursor
+whether or not a key moved it, and a reviewer who cannot see which tile it belongs to reads
+it as showing something they never picked. The set is held as
 NAMES, not indices, because the listing is retaken after anything that might
 have changed it and an index into the previous listing is a different file in the
 next one.
@@ -3891,7 +3895,10 @@ next one.
 --watch` holds one inotify watch on the folder and sleeps in the kernel until
 something changes; it never polls. A burst, an unzip or a download landing, is
 one line after it goes quiet, or one a second while it does not. A listing that
-comes back identical is dropped before it reaches the grid, and a folder of
+comes back identical is dropped before it reaches the grid, one that differs moves,
+adds and removes only the tiles that changed, so the rest keep their delegates and
+thumbnails, and the preview reads its file again, at most once a second, when the size or
+date it showed has moved. A folder of
 more than 5,000 entries waits, while the storm lasts, three times what its last
 listing cost before the next, so a storm cannot take more than a quarter of the frame time. Smaller
 folders are never held back, however busy the machine is. Sorting
