@@ -522,7 +522,7 @@ function aggregate(runs) {
             }
             put(entry, "total", index, span.steps.length ? span.steps[span.steps.length - 1][1] : 0);
             put(entry, "frames", index, span.frames);
-            put(entry, "worst frame gap", index, span.worstGap);
+            put(entry, "worst stall", index, span.worstStall);
             put(entry, "still animating at the cap", index, span.capped ? 1 : 0);
             if (span.detail)
                 entry.detail[index] = span.detail;

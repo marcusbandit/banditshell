@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-17",
+      "id": "2026-10-28-19",
       "date": "2026-10-28",
       "changes": [
         {
@@ -33,6 +33,53 @@
           "type": "issues",
           "severity": "minor",
           "text": "The rail clock and marks stay clear of the workspaces at any height"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-18",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A broken config.json shows in the island, with the line to fix"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "While config.json is broken, the bind question is not asked again"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Escape in the installer password window cancels the install"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "banditshell stop finds the shell even when git cannot run"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Reopening the pen area editor no longer resumes an old drag"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-17",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The update menu opens faster when it lists many changes"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Closed Settings no longer redoes its screen time chart every minute"
         }
       ]
     },

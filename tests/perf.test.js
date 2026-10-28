@@ -35,7 +35,7 @@ test.describe("intervals", () => {
 });
 
 test.describe("aggregate", () => {
-    const span = (name, steps, detail = "") => ({ name, detail, steps, frames: 2, worstGap: 4 });
+    const span = (name, steps, detail = "") => ({ name, detail, steps, frames: 2, worstStall: 4 });
     const runs = [1, 2, 3].map(run => ({
         scenario: "clipboard",
         run,
@@ -73,7 +73,7 @@ test.describe("aggregate", () => {
     });
 
     test.it("puts the process start in front of a boot", () => {
-        const ops = Perf.aggregateBoots([{ run: 1, offset: 2e6, answered: 9e6, spans: [{ name: "boot", steps: [["shell built", 1e6]], frames: 0, worstGap: 0 }] }]);
+        const ops = Perf.aggregateBoots([{ run: 1, offset: 2e6, answered: 9e6, spans: [{ name: "boot", steps: [["shell built", 1e6]], frames: 0, worstStall: 0 }] }]);
         const boot = ops.find(o => o.name === "boot");
         assert.strictEqual(boot.from, "process started");
         assert.deepStrictEqual(boot.rows.map(r => [r.row, r.values[0]]).slice(0, 3), [
@@ -132,7 +132,7 @@ test.describe("profile", () => {
 
 test.describe("live report", () => {
     test.it("groups what was recorded by name, every span a run, in the order they happened", () => {
-        const span = (name, at) => ({ name, steps: [["shown", at]], frames: 1, worstGap: 0 });
+        const span = (name, at) => ({ name, steps: [["shown", at]], frames: 1, worstStall: 0 });
         const ops = Perf.aggregateLive([span("launcher open", 50e6), span("menu clock open", 9e6), span("launcher open", 5e6)]);
         assert.deepStrictEqual(ops.map(o => [o.name, o.runs]), [["launcher open", [1, 2]], ["menu clock open", [1]]]);
         assert.deepStrictEqual(ops[0].rows.find(r => r.row === "total").values, [50e6, 5e6]);
