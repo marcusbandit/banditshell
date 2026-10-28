@@ -30,7 +30,6 @@ Singleton {
     property string headBranch: ""
     readonly property bool paused: root.headBranch !== "" && !Words.following(root.headBranch, root.branch)
     readonly property bool diverged: root.behind > 0 && root.ahead > 0
-    readonly property string aheadText: Words.aheadText(root.ahead)
 
     property string error: ""
     property string phaseText: ""
@@ -66,7 +65,7 @@ Singleton {
     readonly property string haveLabel: Words.haveText(root.diverged && root.baseVersion !== "" ? Words.withOwn(root.baseVersion, root.ahead) : root.version, Config.values.updates.channel, Config.values.updates.branch)
     property string baseVersion: ""
     property var own: []
-    readonly property string ownTitle: Words.ownTitle(root.ahead)
+    readonly property string ownTitle: root.diverged ? Words.ownTitle(root.ahead) : Words.unpushedTitle(root.ahead)
     property string release: ""
     readonly property string version: root.release || WhatsNew.version
     property string targetVersion: ""

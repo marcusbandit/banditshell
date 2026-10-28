@@ -51,16 +51,16 @@ function aheadKept(state, branch, ahead) {
     return kept ? Math.max(0, Math.floor(Number(ahead) || 0)) : 0;
 }
 
-function aheadText(ahead) {
-    return `${ownChanges(ahead)} ${ownCount(ahead) === 1 ? "is" : "are"} not on GitHub yet`;
-}
-
 function withOwn(version, ahead) {
     return version ? `${version} plus ${ownChanges(ahead)}` : ownChanges(ahead);
 }
 
 function ownTitle(count) {
     return ownCount(count) === 1 ? "Your change" : `Your ${ownCount(count)} changes`;
+}
+
+function unpushedTitle(count) {
+    return `${ownTitle(count)}, not on GitHub yet`;
 }
 
 function wentBackHeadline(version, channel, branch) {
