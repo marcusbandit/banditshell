@@ -91,8 +91,7 @@ QtObject {
             return {
                 icon: "error",
                 tone: Appearance.colour.alarm,
-                text: "config.json has an error",
-                detail: "Changes are not saved until it is fixed"
+                text: "config.json error: not saving"
             };
         case "upgrade": {
             const state = SystemUpgrade.state;
