@@ -4,6 +4,8 @@ const BUNDLE_MARK = "@@@";
 const ESCAPES = { n: "\n", t: "\t", r: "\r", s: " ", "\\": "\\" };
 
 function unescapeValue(value, keepUnknown) {
+    if (value.indexOf("\\") < 0)
+        return value;
     let out = "";
     for (let i = 0; i < value.length; i++) {
         if (value[i] !== "\\" || i === value.length - 1) {
@@ -20,21 +22,34 @@ function unescapeValue(value, keepUnknown) {
 }
 
 function splitList(value) {
-    const out = [];
-    let current = "";
-    for (let i = 0; i < value.length; i++) {
-        if (value[i] === "\\" && value[i + 1] === ";") {
-            current += ";";
-            i++;
-        } else if (value[i] === ";") {
-            out.push(current);
-            current = "";
-        } else {
-            current += value[i];
+    if (!value)
+        return [];
+    let parts;
+    if (value.indexOf("\\;") < 0) {
+        parts = value.split(";");
+    } else {
+        parts = [];
+        let current = "";
+        for (let i = 0; i < value.length; i++) {
+            if (value[i] === "\\" && value[i + 1] === ";") {
+                current += ";";
+                i++;
+            } else if (value[i] === ";") {
+                parts.push(current);
+                current = "";
+            } else {
+                current += value[i];
+            }
         }
+        parts.push(current);
     }
-    out.push(current);
-    return out.map(s => s.trim()).filter(Boolean);
+    const out = [];
+    for (const part of parts) {
+        const word = part.trim();
+        if (word)
+            out.push(word);
+    }
+    return out;
 }
 
 function truthy(value) {
@@ -46,7 +61,7 @@ function parseEntry(text) {
     let inside = false;
     let seen = false;
     for (const raw of String(text ?? "").split("\n")) {
-        const line = raw.replace(/\r$/, "").trim();
+        const line = raw.trim();
         if (line.startsWith("[")) {
             if (seen)
                 break;
@@ -85,20 +100,34 @@ function parseEntry(text) {
 }
 
 function parseBundle(text) {
+    const all = String(text ?? "");
     const files = [];
-    let current = null;
-    for (const line of String(text ?? "").split("\n")) {
-        if (line.startsWith(BUNDLE_MARK)) {
-            current = { path: line.slice(BUNDLE_MARK.length).trim(), lines: [] };
-            files.push(current);
-        } else if (current) {
-            current.lines.push(line);
-        }
+    const mark = "\n" + BUNDLE_MARK;
+    let at = all.startsWith(BUNDLE_MARK) ? 0 : all.indexOf(mark) + 1 || -1;
+    while (at >= 0) {
+        const lineEnd = all.indexOf("\n", at);
+        const next = all.indexOf(mark, at);
+        const path = all.slice(at + BUNDLE_MARK.length, lineEnd < 0 ? all.length : lineEnd).trim();
+        const body = lineEnd < 0 ? "" : all.slice(lineEnd + 1, next < 0 ? all.length : next);
+        files.push({ path: path, text: body, entry: parseEntry(body) });
+        at = next < 0 ? -1 : next + 1;
     }
-    return files.map(f => {
-        const body = f.lines.join("\n");
-        return { path: f.path, text: body, entry: parseEntry(body) };
-    });
+    return files;
+}
+
+function splitBundle(text, perPiece) {
+    const all = String(text ?? "");
+    const mark = "\n" + BUNDLE_MARK;
+    const pieces = [];
+    let from = all.startsWith(BUNDLE_MARK) ? 0 : all.indexOf(mark) + 1 || -1;
+    while (from >= 0) {
+        let at = from;
+        for (let n = 0; n < perPiece && at >= 0; n++)
+            at = all.indexOf(mark, at + 1);
+        pieces.push(all.slice(from, at < 0 ? all.length : at));
+        from = at < 0 ? -1 : at + 1;
+    }
+    return pieces;
 }
 
 function idOf(path) {
@@ -106,13 +135,13 @@ function idOf(path) {
 }
 
 function indexEntries(bundle) {
-    const seen = new Set();
+    const seen = Object.create(null);
     const out = [];
     for (const file of bundle) {
         const id = idOf(file.path);
-        if (!file.entry || seen.has(id))
+        if (!file.entry || seen[id])
             continue;
-        seen.add(id);
+        seen[id] = true;
         if (file.entry.hidden)
             continue;
         out.push(Object.assign({ id }, file.entry));
@@ -258,6 +287,18 @@ function sameEntries(a, b) {
         return false;
     for (const entry of b)
         if (a.indexOf(entry) < 0)
+            return false;
+    return true;
+}
+
+function sameIds(a, b) {
+    if (a.length !== b.length)
+        return false;
+    const ids = Object.create(null);
+    for (const entry of a)
+        ids[entry.id] = true;
+    for (const entry of b)
+        if (!ids[entry.id])
             return false;
     return true;
 }
