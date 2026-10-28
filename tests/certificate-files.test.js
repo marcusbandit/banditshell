@@ -7,7 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/controls/certificate-files.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Files = new Function(src + "\nreturn { read, fitting, needsKey, roots, carriesKey, shortPath, fullPath, problem };")();
+const Files = new Function(src + "\nreturn { read, needsKey, roots, clients, keys, locked, carriesKey, shortPath, fullPath, problem };")();
 const SCAN = path.join(ROOT, "scripts/certificate-files.sh");
 const FIXTURE = fs.readFileSync(path.join(ROOT, "tests/fixtures/certificate-files.txt"), "utf8");
 
@@ -26,17 +26,20 @@ test.describe("certificate files", () => {
             "laptop-17.p12": "client",
             "laptop-17.key": "key",
             "laptop-17.crt": "client",
-            "laptop-17-with-key.pem": "client"
+            "laptop-17-with-key.pem": "client",
+            "laptop-17-locked.key": "key",
+            "laptop-17-open.p12": "client"
         });
     });
 
     test.it("offers a root certificate only as a root, and a client bundle only as a client", () => {
         const files = Files.read(FIXTURE);
-        const roots = Files.fitting(files, "authority", 10).map(p => path.basename(p));
-        const clients = Files.fitting(files, "client", 10).map(p => path.basename(p));
+        const now = Date.UTC(2026, 9, 28);
+        const roots = Files.roots(files, "", now, 10).map(r => path.basename(r.path));
+        const clients = Files.clients(files, now, 10).map(r => path.basename(r.path));
         assert.ok(!roots.some(name => /laptop|\.p12$/.test(name)), roots.join());
         assert.ok(!clients.some(name => /root/.test(name)), clients.join());
-        assert.deepStrictEqual(Files.fitting(files, "key", 10).map(p => path.basename(p)), ["laptop-17.key"]);
+        assert.deepStrictEqual(Files.keys(files, 10).map(r => path.basename(r.path)), ["laptop-17.key", "laptop-17-locked.key"]);
     });
 
     test.it("asks for a key file only for a client certificate without its own key", () => {
@@ -48,27 +51,57 @@ test.describe("certificate files", () => {
     });
 
     test.it("keeps the newest first and stops at the limit", () => {
-        assert.deepStrictEqual(Files.fitting(Files.read(FIXTURE), "authority", 2), ["/home/me/Documents/dtu-root-ca-01.pem", "/home/me/Downloads/uni-root.der"]);
+        const now = Date.UTC(2026, 9, 28);
+        assert.deepStrictEqual(Files.clients(Files.read(FIXTURE), now, 2).map(r => path.basename(r.path)), ["laptop-17.p12", "laptop-17.crt"]);
     });
 
-    test.it("shows each root's issuer and expiry, puts the ones naming the server first and expired ones last", () => {
+    test.it("shows each root's issuer and expiry, puts the ones named like the server first and doubtful ones last", () => {
         const now = Date.UTC(2026, 9, 28);
         const list = Files.roots(Files.read(FIXTURE), "uni.edu", now, 10);
         assert.deepStrictEqual(list.map(r => [path.basename(r.path), r.detail, r.warn]), [
-            ["uni-root.der", "Uni · until Oct 2036 · matches uni.edu", false],
-            ["uni-root-ca.pem", "Uni · until Oct 2036 · matches uni.edu", false],
+            ["uni-root.der", "Uni · until Oct 2036 · named like uni.edu · same as uni-root-ca.pem", false],
+            ["uni-root-ca.pem", "Uni · until Oct 2036 · named like uni.edu · same as uni-root.der", false],
             ["dtu-root-ca-01.pem", "Danmarks Tekniske Universitet · until Dec 2040", false],
-            ["old-root.crt", "laptop-17 · until Nov 2026", false],
-            ["uni-root-2014.pem", "Uni · expired Jan 2024 · matches uni.edu", true]
+            ["uni-root-2014.pem", "Uni · expired Jan 2024 · named like uni.edu", true],
+            ["old-root.crt", "laptop-17 · until Nov 2026 · not marked as a root", true]
         ]);
+    });
+
+    test.it("says what each client certificate holds and which file carries its key", () => {
+        const now = Date.UTC(2026, 9, 28);
+        assert.deepStrictEqual(Files.clients(Files.read(FIXTURE), now, 10).map(r => [path.basename(r.path), r.detail, r.warn]), [
+            ["laptop-17.p12", "holds its key · locked with a password", false],
+            ["laptop-17.crt", "laptop-17 · until Oct 2027 · key in laptop-17.key", false],
+            ["laptop-17-with-key.pem", "laptop-17 · until Oct 2027 · holds its key", false],
+            ["laptop-17-open.p12", "laptop-17 · until Oct 2027 · holds its key", false]
+        ]);
+        assert.match(Files.clients(Files.read(FIXTURE), Date.UTC(2028, 0, 1), 10)[1].detail, /expired Oct 2027/);
+    });
+
+    test.it("names the certificate a key belongs to, or says it is locked", () => {
+        const files = Files.read(FIXTURE);
+        assert.deepStrictEqual(Files.keys(files, 10).map(r => r.detail), ["key for laptop-17.crt", "locked with a password"]);
+        const alone = Files.read("\x1e/home/me/Downloads/spare.key\nprivate key\nkey 0123\n");
+        assert.deepStrictEqual(Files.keys(alone, 10).map(r => r.detail), ["no certificate here fits it"]);
+        const bare = Files.read("\x1e/home/me/Downloads/laptop.crt\nsubject=CN=laptop\nissuer=CN=Uni CA\n    CA:FALSE\npublic 0123\n");
+        assert.match(Files.clients(bare, 0, 10)[0].detail, /needs its key file$/);
+    });
+
+    test.it("knows a locked bundle or key from one that opens without a password", () => {
+        const files = Files.read(FIXTURE);
+        assert.strictEqual(Files.locked(files, "/home/me/Downloads/laptop-17.p12"), true);
+        assert.strictEqual(Files.locked(files, "/home/me/Downloads/laptop-17-locked.key"), true);
+        assert.strictEqual(Files.locked(files, "/home/me/Downloads/laptop-17-open.p12"), false);
+        assert.strictEqual(Files.locked(files, "/home/me/Downloads/laptop-17.key"), false);
+        assert.strictEqual(Files.locked(files, "/elsewhere/typed.p12"), false);
     });
 
     test.it("matches a root to a server under the school's name, past a shared second level", () => {
         const now = Date.UTC(2026, 9, 28);
         const files = Files.read(FIXTURE);
         assert.strictEqual(path.basename(Files.roots(files, "radius.dtu.dk", now, 1)[0].path), "dtu-root-ca-01.pem");
-        assert.match(Files.roots(files, "wifi.uni.ac.uk", now, 1)[0].detail, /matches wifi\.uni\.ac\.uk$/);
-        assert.ok(!Files.roots(files, "", now, 10).some(r => r.detail.includes("matches")));
+        assert.match(Files.roots(files, "wifi.uni.ac.uk", now, 1)[0].detail, /named like wifi\.uni\.ac\.uk/);
+        assert.ok(!Files.roots(files, "", now, 10).some(r => r.detail.includes("named like")));
     });
 
     test.it("keeps a comma inside an issuer name, and matches a hyphenated school but not a two-letter one", () => {
@@ -86,8 +119,8 @@ test.describe("certificate files", () => {
             ""
         ].join("\n");
         const files = Files.read(text);
-        assert.strictEqual(Files.roots(files, "radius.tu-berlin.de", now, 1)[0].detail, "TU-Berlin, Inc. · until Jan 2035 · matches radius.tu-berlin.de");
-        assert.ok(!Files.roots(files, "wifi.it.dk", now, 10).some(r => r.detail.includes("matches")));
+        assert.strictEqual(Files.roots(files, "radius.tu-berlin.de", now, 1)[0].detail, "TU-Berlin, Inc. · until Jan 2035 · named like radius.tu-berlin.de");
+        assert.ok(!Files.roots(files, "wifi.it.dk", now, 10).some(r => r.detail.includes("named like")));
     });
 
     test.it("shows a picked file under home with a tilde and expands it back", () => {

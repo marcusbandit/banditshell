@@ -14,6 +14,7 @@ Column {
 
     signal pick(string path)
     signal browse
+    signal cancel
 
     width: parent.width
     leftPadding: Appearance.padding.normal
@@ -49,13 +50,34 @@ Column {
         }
     }
 
-    Button {
+    Row {
         visible: root.canBrowse
-        size: 0
-        style: "plate"
-        icon: "folder_open"
-        interactive: !root.choosing
-        text: root.browsing ? "Choosing…" : "Browse…"
-        onClicked: root.browse()
+        spacing: Appearance.padding.small
+
+        Button {
+            size: 0
+            style: "plate"
+            icon: "folder_open"
+            interactive: !root.choosing
+            text: root.browsing ? "Choosing…" : "Browse…"
+            onClicked: root.browse()
+        }
+
+        Button {
+            visible: root.browsing
+            size: 0
+            style: "bare"
+            text: "Cancel"
+            onClicked: root.cancel()
+        }
+    }
+
+    StyledText {
+        width: root.width - root.leftPadding - root.rightPadding
+        visible: root.canBrowse && root.browsing
+        text: "Pick the file in the chooser window. It may be behind this menu."
+        wrapMode: Text.Wrap
+        color: Appearance.colour.textFaint
+        font.pixelSize: Appearance.font.size.small
     }
 }

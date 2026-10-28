@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-26",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "School Wi-Fi certificate and key lists say what each file holds"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Roots that are copies of each other or not real roots are flagged"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Connect sits last in the Wi-Fi sign-in, below every field it needs"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A certificate's key password shows next to it, not under More"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Choosing a file can be cancelled from the sign-in form"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Closing the sign-in form or Settings closes its file chooser too"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-25",
       "date": "2026-10-28",
       "changes": [
