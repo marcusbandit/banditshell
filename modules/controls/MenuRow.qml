@@ -22,6 +22,7 @@ Item {
 
     property string label: ""
     property string detail: ""
+    property int detailShared: 0
     property var columns: []
     property real trailingRoom: 0
     property bool selected: false
@@ -69,7 +70,7 @@ Item {
     HoverTip {
         host: root
         asked: pointer.containsMouse
-        text: pointer.containsMouse ? root.tip || (title.truncated || detail.truncated ? (root.detail ? `${root.label} · ${root.detail}` : root.label) : "") : ""
+        text: pointer.containsMouse ? root.tip || (title.truncated || detail.truncated || detail.trimmed ? (root.detail ? `${root.label} · ${root.detail}` : root.label) : "") : ""
     }
 
     Loader {
@@ -152,15 +153,25 @@ Item {
             anchors.top: root.inlineDetail ? undefined : title.bottom
             anchors.verticalCenter: root.inlineDetail ? parent.verticalCenter : undefined
 
-            width: root.inlineDetail ? Math.min(implicitWidth, Math.max(parent.width * 0.3, parent.width - title.implicitWidth - Appearance.padding.large)) : parent.width
+            readonly property real room: root.inlineDetail ? Math.max(parent.width * 0.3, parent.width - title.implicitWidth - Appearance.padding.large) : parent.width
+            readonly property bool trimmed: root.detailShared > 0 && !root.columns.length && whole.advanceWidth > detail.room
+
+            width: root.inlineDetail ? Math.min(implicitWidth, detail.room) : parent.width
             horizontalAlignment: root.inlineDetail ? Text.AlignRight : Text.AlignLeft
 
             visible: !!root.detail && !root.columns.length
-            text: root.detail
+            text: detail.trimmed ? `…${root.detail.slice(root.detailShared)}` : root.detail
             font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textFaint
             elide: Text.ElideRight
         }
+    }
+
+    TextMetrics {
+        id: whole
+
+        text: root.detailShared > 0 ? root.detail : ""
+        font: detail.font
     }
 
     FontMetrics {

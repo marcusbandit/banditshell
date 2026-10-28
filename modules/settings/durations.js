@@ -14,3 +14,10 @@ function choiceFromMinutes(minutes) {
         return "never";
     return m % 60 === 0 ? `${m / 60} h` : `${m} min`;
 }
+
+function choiceFromSeconds(seconds) {
+    const s = Number(seconds);
+    if (!(s > 0))
+        return "never";
+    return s < 60 ? `${Math.round(s)} s` : choiceFromMinutes(Math.round(s / 60));
+}
