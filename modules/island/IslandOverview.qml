@@ -314,6 +314,7 @@ Item {
             groups: root.notifications
             fanned: 1
             footed: false
+            contentLead: root.pad
             liftsAway: false
             warm: root.watched
             maxHeight: Math.max(Appearance.font.line.small * 8, root.room - root.topInset - root.bottomInset - notices.y - (root.hasSummary ? summaryRow.height + column.spacing : 0))
