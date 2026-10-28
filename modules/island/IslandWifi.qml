@@ -45,7 +45,7 @@ Item {
         TaskHeader {
             width: parent.width
             icon: "signal_wifi_bad"
-            tone: Appearance.colour.warning
+            tone: Appearance.colour.failed
             title: root.name || "Wi-Fi"
             subtitle: "Couldn't join"
             onClosed: root.leave()

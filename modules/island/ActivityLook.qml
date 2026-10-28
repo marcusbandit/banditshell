@@ -21,7 +21,7 @@ QtObject {
                 dim: a.state === "lost",
                 trailing: a.state === "waiting" ? "ring" : "icon",
                 trailingIcon: a.state === "lost" ? "error" : "check_circle",
-                trailingTone: a.state === "lost" ? Appearance.colour.warning : Appearance.colour.accent
+                trailingTone: a.state === "lost" ? Appearance.colour.failed : Appearance.colour.accent
             };
         case "music":
             return {
@@ -113,12 +113,12 @@ QtObject {
             return {
                 glyph: SystemUpgrade.kernelTo ? "\u{f31a}" : "",
                 icon: SystemUpgrade.kernelTo ? "" : "system_update_alt",
-                tone: failed ? Appearance.colour.warning : Appearance.colour.accent,
+                tone: failed ? Appearance.colour.failed : Appearance.colour.accent,
                 text: SystemUpgrade.running ? (asking ? "The update has a question" : SystemUpgrade.brief) : SystemUpgrade.headline,
                 trailing: SystemUpgrade.running && !asking ? "ring" : "icon",
                 progress: SystemUpgrade.progress,
                 trailingIcon: asking ? "help" : SystemUpgrade.good ? "check_circle" : failed ? "error" : "cancel",
-                trailingTone: failed ? Appearance.colour.warning : state === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent
+                trailingTone: failed ? Appearance.colour.failed : state === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent
             };
         }
         case "restart":
@@ -152,7 +152,7 @@ QtObject {
             if (a.style === "wifi")
                 return {
                     icon: a.icon,
-                    tone: Appearance.colour.warning,
+                    tone: Appearance.colour.failed,
                     text: a.text,
                     trailing: ended ? "" : "actions",
                     actions: a.actions ?? [],
@@ -181,7 +181,7 @@ QtObject {
                     trailingTone: Appearance.colour.textDim
                 };
             }
-            const tone = !ended ? Appearance.colour.accent : a.outcome === "failed" ? Appearance.colour.warning : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent;
+            const tone = !ended ? Appearance.colour.accent : a.outcome === "failed" ? Appearance.colour.failed : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent;
             const failed = ended && a.outcome === "failed";
             return {
                 app: failed ? "" : a.mark,
