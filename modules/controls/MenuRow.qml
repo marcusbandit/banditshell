@@ -43,9 +43,7 @@ Item {
         root.activated();
     }
 
-    readonly property bool held: root.Window.activeFocusItem?.keyable === true
-
-    readonly property bool hovered: interactive && pointer.containsMouse && !root.held
+    readonly property bool hovered: interactive && pointer.containsMouse
 
     implicitWidth: parent ? parent.width : 0
 
@@ -81,7 +79,7 @@ Item {
 
     HoverTip {
         host: root
-        asked: pointer.containsMouse && !root.held
+        asked: pointer.containsMouse
         text: pointer.containsMouse ? root.tip || (title.truncated || detail.truncated || detail.trimmed ? (root.detail ? `${root.label} · ${root.detail}` : root.label) : "") : ""
     }
 

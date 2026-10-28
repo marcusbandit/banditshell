@@ -28,8 +28,6 @@ Item {
         root.dismissed();
     }
 
-    readonly property bool held: root.Window.activeFocusItem?.keyable === true
-
     property real dragX: 0
     property real pulled: 0
 
@@ -200,7 +198,7 @@ Item {
             Follow {
                 id: hoverFade
 
-                target: pointer.containsMouse && !root.held || pointer.pressed ? 1 : 0
+                target: pointer.containsMouse || pointer.pressed ? 1 : 0
                 speed: Appearance.animation.revealSpeed
                 epsilon: Appearance.animation.fadeEpsilon
                 startsAtTarget: true
@@ -233,7 +231,7 @@ Item {
             Follow {
                 id: discFade
 
-                target: root.activeFocus || (pointer.containsMouse || discPress.containsMouse) && !root.held ? 1 : 0
+                target: root.activeFocus || pointer.containsMouse || discPress.containsMouse ? 1 : 0
                 speed: Appearance.animation.revealSpeed
                 epsilon: Appearance.animation.fadeEpsilon
                 startsAtTarget: true

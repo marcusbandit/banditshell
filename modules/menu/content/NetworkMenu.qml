@@ -168,7 +168,7 @@ Column {
             tool.activated();
         }
 
-        readonly property bool hovered: toolPointer.containsMouse && tool.Window.activeFocusItem?.keyable !== true
+        readonly property bool hovered: toolPointer.containsMouse
 
         implicitWidth: Math.max(Appearance.sizes.minTarget, Appearance.font.iconSize + Appearance.padding.small * 2)
         implicitHeight: implicitWidth

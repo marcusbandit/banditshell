@@ -17,7 +17,7 @@ Item {
         root.toggled();
     }
 
-    readonly property bool hovered: pointer.containsMouse && root.Window.activeFocusItem?.keyable !== true
+    readonly property bool hovered: pointer.containsMouse
 
     implicitWidth: Math.max(Appearance.sizes.minTarget, Appearance.font.iconSize + Appearance.padding.small * 2)
     implicitHeight: implicitWidth

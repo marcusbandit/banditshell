@@ -141,7 +141,7 @@ Column {
             Follow {
                 id: homeFade
 
-                target: homeTap.pressed || (homeTap.containsMouse && !todayPill.hovered && heading.Window.activeFocusItem?.keyable !== true) ? 1 : 0
+                target: homeTap.pressed || (homeTap.containsMouse && !todayPill.hovered) ? 1 : 0
                 speed: Appearance.animation.revealSpeed
                 epsilon: Appearance.animation.fadeEpsilon
                 startsAtTarget: true

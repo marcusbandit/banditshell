@@ -42,6 +42,17 @@ Column {
             name: level.glyph
             color: !level.muted ? Appearance.colour.text : level.urgent ? Appearance.colour.accent : Appearance.colour.textFaint
 
+            readonly property bool keyable: true
+
+            function press(): void {
+                level.toggled();
+            }
+
+            FocusMark {
+                shown: mark.activeFocus
+                pill: "object"
+            }
+
             MouseArea {
                 anchors.fill: parent
                 anchors.margins: -Appearance.padding.small
@@ -64,7 +75,6 @@ Column {
             warnAbove: 1
             dimmed: level.muted
             onMoved: v => level.requested(v)
-            onActivated: level.toggled()
         }
 
         StyledText {
@@ -110,7 +120,17 @@ Column {
 
             width: Appearance.font.iconSize
             height: name.implicitHeight
-            opacity: channel.muted ? Appearance.opacity.disabled : 1
+
+            readonly property bool keyable: true
+
+            function press(): void {
+                Audio.toggleStreamMute(channel.node);
+            }
+
+            FocusMark {
+                shown: art.activeFocus
+                pill: "object"
+            }
 
             Image {
                 id: shot
@@ -123,6 +143,7 @@ Column {
                 sourceSize.height: height * Screen.devicePixelRatio
 
                 visible: status === Image.Ready
+                opacity: channel.muted ? Appearance.opacity.disabled : 1
                 source: Apps.iconSourceFor([Audio.streamBinary(channel.node), channel.title])
                 fillMode: Image.PreserveAspectFit
                 asynchronous: true
@@ -132,6 +153,7 @@ Column {
             Icon {
                 anchors.centerIn: parent
                 visible: !shot.visible
+                opacity: channel.muted ? Appearance.opacity.disabled : 1
                 name: Apps.iconFor(Audio.streamBinary(channel.node) || channel.title)
                 color: Appearance.colour.textDim
             }
@@ -183,7 +205,6 @@ Column {
             warnAbove: 1
             dimmed: channel.muted
             onMoved: v => Audio.setStreamVolume(channel.node, v)
-            onActivated: Audio.toggleStreamMute(channel.node)
         }
 
         TextMetrics {

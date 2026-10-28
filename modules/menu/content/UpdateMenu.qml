@@ -349,146 +349,136 @@ Column {
         }
     }
 
-    Item {
-        id: changeList
-
-        readonly property bool keyable: true
-        readonly property bool scrolls: true
-
+    Column {
         width: parent.width
-        height: changes.implicitHeight
         visible: root.listed.length > 0 && (root.leaving || !root.asking || root.reinstallAsking)
+        spacing: Appearance.padding.small
 
-        FocusMark {
-            shown: changeList.activeFocus
-            around: Appearance.rounding.small
+        StyledText {
+            width: parent.width
+            text: root.listTitle
+            color: Appearance.colour.textDim
         }
 
-        Column {
-            id: changes
+        TextMetrics {
+            id: tagWidth
 
-            width: parent.width
-            spacing: Appearance.padding.small
+            font.family: Appearance.font.family
+            font.pixelSize: Appearance.font.size.small
+            text: root.shortList.reduce((longest, line) => line.tag.length > longest.length ? line.tag : longest, "")
+        }
 
-            StyledText {
-                width: parent.width
-                text: root.listTitle
-                color: Appearance.colour.textDim
-            }
+        Repeater {
+            model: root.shortList
 
-            TextMetrics {
-                id: tagWidth
+            delegate: Item {
+                id: tagged
 
-                font.family: Appearance.font.family
-                font.pixelSize: Appearance.font.size.small
-                text: root.shortList.reduce((longest, line) => line.tag.length > longest.length ? line.tag : longest, "")
-            }
+                required property var modelData
 
-            Repeater {
-                model: root.shortList
+                readonly property color hue: root.hue(tagged.modelData.key)
 
-                delegate: Item {
-                    id: tagged
+                readonly property bool keyable: true
 
-                    required property var modelData
+                width: root.width
+                height: Math.max(tagChip.height, taggedText.height)
 
-                    readonly property color hue: root.hue(tagged.modelData.key)
+                FocusMark {
+                    shown: tagged.activeFocus
+                    around: Appearance.rounding.small
+                }
 
-                    width: root.width
-                    height: Math.max(tagChip.height, taggedText.height)
+                SquircleRect {
+                    id: tagChip
 
-                    SquircleRect {
-                        id: tagChip
-
-                        width: Math.ceil(tagWidth.advanceWidth) + Appearance.padding.small * 2
-                        height: Appearance.font.line.small
-                        pill: "object"
-                        color: Appearance.withAlpha(tagged.hue, 0.14)
-
-                        StyledText {
-                            anchors.centerIn: parent
-                            text: tagged.modelData.tag
-                            color: Appearance.blend(Appearance.colour.text, tagged.hue, 0.55)
-                        }
-                    }
+                    width: Math.ceil(tagWidth.advanceWidth) + Appearance.padding.small * 2
+                    height: Appearance.font.line.small
+                    pill: "object"
+                    color: Appearance.withAlpha(tagged.hue, 0.14)
 
                     StyledText {
-                        id: taggedText
-
-                        x: tagChip.width + Appearance.padding.small
-                        width: tagged.width - x
-                        text: tagged.modelData.text
-                        color: Appearance.colour.text
-                        wrapMode: Text.WordWrap
+                        anchors.centerIn: parent
+                        text: tagged.modelData.tag
+                        color: Appearance.blend(Appearance.colour.text, tagged.hue, 0.55)
                     }
                 }
+
+                StyledText {
+                    id: taggedText
+
+                    x: tagChip.width + Appearance.padding.small
+                    width: tagged.width - x
+                    text: tagged.modelData.text
+                    color: Appearance.colour.text
+                    wrapMode: Text.WordWrap
+                }
             }
+        }
 
-            Repeater {
-                model: root.sections
+        Repeater {
+            model: root.sections
 
-                delegate: SquircleRect {
-                    id: section
+            delegate: SquircleRect {
+                id: section
 
-                    required property var modelData
-                    required property int index
+                required property var modelData
+                required property int index
 
-                    readonly property int eager: Math.max(0, root.eagerLines - root.linesBefore[section.index])
+                readonly property int eager: Math.max(0, root.eagerLines - root.linesBefore[section.index])
 
-                    readonly property color hue: root.hue(section.modelData.key)
-                    readonly property bool major: section.modelData.key === "major"
+                readonly property color hue: root.hue(section.modelData.key)
+                readonly property bool major: section.modelData.key === "major"
 
-                    width: root.width
-                    height: sectionBody.implicitHeight + Appearance.padding.normal * 2
-                    radius: Appearance.rounding.small
-                    color: Appearance.withAlpha(section.hue, 0.07)
+                width: root.width
+                height: sectionBody.implicitHeight + Appearance.padding.normal * 2
+                radius: Appearance.rounding.small
+                color: Appearance.withAlpha(section.hue, 0.07)
 
-                    Column {
-                        id: sectionBody
+                Column {
+                    id: sectionBody
 
-                        x: Appearance.padding.normal
-                        y: Appearance.padding.normal
-                        width: parent.width - Appearance.padding.normal * 2
-                        spacing: Appearance.padding.hair
+                    x: Appearance.padding.normal
+                    y: Appearance.padding.normal
+                    width: parent.width - Appearance.padding.normal * 2
+                    spacing: Appearance.padding.hair
 
-                        Row {
-                            spacing: Appearance.padding.small
+                    Row {
+                        spacing: Appearance.padding.small
 
-                            Icon {
-                                y: Math.round((Appearance.font.line.small - size) / 2)
-                                size: Appearance.font.iconSize
-                                name: section.modelData.glyph
-                                color: Appearance.blend(Appearance.colour.textDim, section.hue, 0.7)
-                            }
-
-                            StyledText {
-                                text: section.modelData.title
-                                color: Appearance.blend(Appearance.colour.text, section.hue, 0.55)
-                            }
-
-                            StyledText {
-                                text: section.modelData.changes.length
-                                color: Appearance.colour.textFaint
-                            }
+                        Icon {
+                            y: Math.round((Appearance.font.line.small - size) / 2)
+                            size: Appearance.font.iconSize
+                            name: section.modelData.glyph
+                            color: Appearance.blend(Appearance.colour.textDim, section.hue, 0.7)
                         }
 
-                        UpdateChangeLines {
-                            width: sectionBody.width
-                            lines: section.modelData.changes.slice(0, section.eager)
+                        StyledText {
+                            text: section.modelData.title
+                            color: Appearance.blend(Appearance.colour.text, section.hue, 0.55)
+                        }
+
+                        StyledText {
+                            text: section.modelData.changes.length
+                            color: Appearance.colour.textFaint
+                        }
+                    }
+
+                    UpdateChangeLines {
+                        width: sectionBody.width
+                        lines: section.modelData.changes.slice(0, section.eager)
+                        hue: section.hue
+                        major: section.major
+                    }
+
+                    Loader {
+                        width: sectionBody.width
+                        active: root.settled && section.modelData.changes.length > section.eager
+                        asynchronous: true
+
+                        sourceComponent: UpdateChangeLines {
+                            lines: section.modelData.changes.slice(section.eager)
                             hue: section.hue
                             major: section.major
-                        }
-
-                        Loader {
-                            width: sectionBody.width
-                            active: root.settled && section.modelData.changes.length > section.eager
-                            asynchronous: true
-
-                            sourceComponent: UpdateChangeLines {
-                                lines: section.modelData.changes.slice(section.eager)
-                                hue: section.hue
-                                major: section.major
-                            }
                         }
                     }
                 }

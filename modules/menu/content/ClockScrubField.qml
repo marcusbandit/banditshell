@@ -134,7 +134,7 @@ Item {
         Follow {
             id: hoverFade
 
-            target: root.grabbed || pointer.containsMouse && root.Window.activeFocusItem?.keyable !== true || pointer.pressed || scroll.active ? 1 : 0
+            target: root.grabbed || pointer.containsMouse || pointer.pressed || scroll.active ? 1 : 0
             speed: Appearance.animation.revealSpeed
             epsilon: Appearance.animation.fadeEpsilon
             startsAtTarget: true

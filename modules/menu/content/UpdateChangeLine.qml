@@ -9,7 +9,14 @@ Item {
     property color hue: Appearance.colour.textDim
     property bool major: false
 
+    readonly property bool keyable: true
+
     height: changeText.height
+
+    FocusMark {
+        shown: root.activeFocus
+        around: Appearance.rounding.small
+    }
 
     SquircleRect {
         x: Math.round((Appearance.font.iconSize - width) / 2)
