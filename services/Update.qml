@@ -221,7 +221,7 @@ Singleton {
     function report(words: string): void {
         if (!root.wentBackByHand)
             return;
-        Quickshell.execDetached([Quickshell.shellPath("scripts/in-terminal.sh"), Words.reportScript(Quoting.posix, root.cli, words, root.result, root.version)]);
+        Quickshell.execDetached([Quickshell.shellPath("scripts/in-terminal.sh"), Words.reportScript(Quoting.posix, root.cli, words, root.reportContext)]);
     }
 
     function restart(): void {
