@@ -171,7 +171,8 @@ Item {
         const y = view.contentY;
         view.model = root.rows;
         if (root.document !== "" && root.document === root.shownDocument) {
-            view.contentY = y;
+            view.forceLayout();
+            view.contentY = Math.max(0, Math.min(y, view.maxScroll));
         } else {
             root.panTarget = 0;
             pan.value = 0;

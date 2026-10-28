@@ -5,10 +5,11 @@ const REREAD_GAP = 1000;
 
 function table(keys) {
     const out = Object.create(null);
+    out.repeats = 0;
     for (let i = 0; i < keys.length; i++) {
         const key = ":" + keys[i];
         if (out[key] !== undefined)
-            return null;
+            out.repeats++;
         out[key] = i;
     }
     return out;
@@ -31,8 +32,8 @@ function same(a, b) {
 }
 
 function reuse(old, fresh, keyOf) {
-    const before = old.length === 0 ? null : table(old.map(keyOf));
-    if (!before)
+    const before = table(old.map(keyOf));
+    if (old.length === 0 || before.repeats)
         return fresh;
     return fresh.map(e => {
         const at = before[":" + keyOf(e)];
@@ -41,23 +42,50 @@ function reuse(old, fresh, keyOf) {
     });
 }
 
-function changed(before, after, beforeKeys, afterKeys) {
-    const was = table(beforeKeys);
+function changed(before, after, had, afterKeys) {
     const out = [];
-    if (!was)
-        return out;
     for (let i = 0; i < after.length; i++) {
-        const at = was[":" + afterKeys[i]];
+        const at = had[":" + afterKeys[i]];
         if (at !== undefined && before[at] !== after[i])
             out.push(i);
     }
     return out;
 }
 
-function steps(before, after) {
-    const had = table(before);
-    const wanted = table(after);
-    if (!had || !wanted)
+function settled(keys, wanted) {
+    let ordered = true;
+    for (let i = 1; i < keys.length && ordered; i++)
+        ordered = wanted[":" + keys[i - 1]] < wanted[":" + keys[i]];
+    if (ordered)
+        return null;
+    const tails = [];
+    const tailAt = [];
+    const previous = new Array(keys.length);
+    for (let i = 0; i < keys.length; i++) {
+        const place = wanted[":" + keys[i]];
+        let lo = 0;
+        let hi = tails.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (tails[mid] < place)
+                lo = mid + 1;
+            else
+                hi = mid;
+        }
+        tails[lo] = place;
+        tailAt[lo] = i;
+        previous[i] = lo > 0 ? tailAt[lo - 1] : -1;
+    }
+    const out = Object.create(null);
+    for (let i = tails.length > 0 ? tailAt[tails.length - 1] : -1; i >= 0; i = previous[i])
+        out[":" + keys[i]] = true;
+    return out;
+}
+
+function steps(before, after, had, wanted) {
+    had = had ?? table(before);
+    wanted = wanted ?? table(after);
+    if (had.repeats || wanted.repeats)
         return null;
     if (before.length === after.length && before.every((key, i) => key === after[i]))
         return [];
@@ -77,7 +105,16 @@ function steps(before, after) {
         keys.splice(lo, i - lo + 1);
         i = lo - 1;
     }
+    const stays = settled(keys, wanted);
+    const parked = Object.create(null);
     for (let i = 0; i < after.length; i++) {
+        while (stays && i < keys.length && keys[i] !== after[i] && !stays[":" + keys[i]] && !parked[":" + keys[i]]) {
+            parked[":" + keys[i]] = true;
+            out.push({move: i, to: keys.length - 1});
+            keys.push(keys.splice(i, 1)[0]);
+            if (out.length > MOST_STEPS)
+                return null;
+        }
         if (keys[i] === after[i])
             continue;
         if (had[":" + after[i]] !== undefined) {

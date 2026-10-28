@@ -52,27 +52,31 @@ Item {
     property string shown: ""
     readonly property var held: ({
             entries: [],
-            keys: []
+            keys: [],
+            index: Listing.table([])
         })
     property int revision: 0
 
-    function entryAt(index: int, revision: int): var {
-        return root.held.entries[index];
+    function entryOf(key: string, revision: int): var {
+        return root.held.entries[root.held.index[":" + key]];
     }
 
     function show(): void {
         const view = [Files.cwd, Files.search, Config.values.files.sort, Config.values.files.reversed, Config.values.files.hidden].join("\n");
         const before = root.held.entries;
         const beforeKeys = root.held.keys;
+        const had = root.held.index;
         const after = root.entries;
         const afterKeys = after.map(e => Files.keyOf(e));
-        const steps = view === root.shown && tiles.count === before.length ? Listing.steps(beforeKeys, afterKeys) : null;
+        const wanted = Listing.table(afterKeys);
+        const steps = view === root.shown && tiles.count === before.length ? Listing.steps(beforeKeys, afterKeys, had, wanted) : null;
         root.held.entries = after;
         root.held.keys = afterKeys;
+        root.held.index = wanted;
         if (steps === null)
             root.rebuild(view === root.shown);
         else
-            root.patch(steps, Listing.changed(before, after, beforeKeys, afterKeys));
+            root.patch(steps, Listing.changed(before, after, had, afterKeys));
         grid.currentIndex = Qt.binding(() => Files.cursor);
         root.shown = view;
     }
@@ -80,7 +84,8 @@ Item {
     function rebuild(keepPlace: bool): void {
         const y = grid.contentY;
         tiles.clear();
-        tiles.append(root.held.entries.map(() => ({
+        tiles.append(root.held.keys.map(key => ({
+                    key: key,
                     revision: root.revision
                 })));
         if (keepPlace)
@@ -96,6 +101,7 @@ Item {
             else
                 for (let i = 0; i < step.count; i++)
                     tiles.insert(step.insert + i, {
+                        key: root.held.keys[step.insert + i],
                         revision: root.revision
                     });
         }
@@ -133,10 +139,11 @@ Item {
         delegate: FileTile {
             id: tile
 
+            required property string key
             required property int revision
             property var last: null
 
-            entry: tile.index < 0 ? tile.last : root.entryAt(tile.index, tile.revision)
+            entry: root.entryOf(tile.key, tile.revision) ?? tile.last
             onEntryChanged: tile.last = tile.entry
             width: grid.cellWidth
             height: grid.cellHeight

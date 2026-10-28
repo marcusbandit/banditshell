@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/files-listing.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Listing = new Function(`${src}\nreturn { same, reuse, changed, steps, stale, rereadIn, MOST_STEPS, REREAD_GAP };`)();
+const Listing = new Function(`${src}\nreturn { table, same, reuse, changed, steps, stale, rereadIn, MOST_STEPS, REREAD_GAP };`)();
 
 function play(before, steps, after) {
     const keys = before.slice();
@@ -52,6 +52,28 @@ test.describe("files listing", () => {
         assert.deepStrictEqual(check(["a", "b", "c", "d"], ["c", "a", "b", "d"]), [{move: 2, to: 0}]);
     });
 
+    test.it("a file that moves to the end is one move", () => {
+        assert.deepStrictEqual(check(["a", "b", "c", "d", "e"], ["b", "c", "d", "e", "a"]), [{move: 0, to: 4}]);
+        const many = Array.from({length: 200}, (_, i) => `f${i}`);
+        assert.strictEqual(check(many, many.slice(1).concat(["f0"])).length, 1);
+    });
+
+    test.it("a file that moves down to the middle takes at most two moves", () => {
+        assert.ok(check(["a", "b", "c", "d", "e"], ["b", "c", "a", "d", "e"]).length <= 2);
+    });
+
+    test.it("shuffled lists still land on the new order", () => {
+        let seed = 7;
+        const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+        for (let round = 0; round < 200; round++) {
+            const before = Array.from({length: 12}, (_, i) => `k${i}`).filter(() => random() > 0.2);
+            const after = Array.from({length: 14}, (_, i) => `k${i}`).filter(() => random() > 0.2).sort(() => random() - 0.5);
+            const steps = Listing.steps(before, after);
+            if (steps)
+                assert.deepStrictEqual(play(before, steps, after), after);
+        }
+    });
+
     test.it("mixed changes land on the new order", () => {
         check(["a", "b", "c", "d", "e", "f"], ["new", "f", "b", "d", "x", "y", "a"]);
         check([], ["a", "b"]);
@@ -80,7 +102,7 @@ test.describe("files listing", () => {
     test.it("only entries that changed in place need a redraw", () => {
         const a = {name: "a"}, b = {name: "b"}, c = {name: "c"};
         const after = [{name: "new"}, a, {name: "b"}, c];
-        assert.deepStrictEqual(Listing.changed([a, b, c], after, ["a", "b", "c"], after.map(e => e.name)), [2]);
+        assert.deepStrictEqual(Listing.changed([a, b, c], after, Listing.table(["a", "b", "c"]), after.map(e => e.name)), [2]);
     });
 
     test.it("a name like a built-in property is still a key", () => {

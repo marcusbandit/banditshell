@@ -58,7 +58,22 @@ Item {
 
     property var seen: null
     property real readAt: 0
-    property int edition: 0
+    readonly property string version: root.seen && Files.pathOf(root.seen) === root.path ? `?v=${root.seen.mtime}-${root.seen.size}` : ""
+
+    readonly property var folderRows: FilesOrder.ordered(root.contents, Files.sort, Files.reversed)
+    property string folderShown: ""
+
+    onFolderRowsChanged: {
+        const y = folderList.contentY;
+        folderList.model = root.folderRows;
+        if (root.folderShown === root.path) {
+            folderList.forceLayout();
+            folderList.contentY = Math.max(0, Math.min(y, folderList.maxScroll));
+        } else {
+            folderList.reset();
+        }
+        root.folderShown = root.path;
+    }
 
     readonly property var player: playback.item
 
@@ -71,13 +86,14 @@ Item {
         root.player?.stop();
         body.content = "";
         later.stop();
-        root.edition = 0;
         if (root.path)
             root.read();
     }
 
-    onEntryChanged: {
-        if (!root.entry || Files.pathOf(root.entry) !== root.path)
+    onEntryChanged: root.follow()
+
+    function follow(): void {
+        if (!root.visible || !root.entry || Files.pathOf(root.entry) !== root.path)
             return;
         if (!root.seen) {
             root.seen = root.entry;
@@ -94,17 +110,20 @@ Item {
         }
     }
 
-    function reread(): void {
-        root.edition += 1;
-        root.read();
-    }
-
     function read(): void {
         root.seen = root.entry && Files.pathOf(root.entry) === root.path ? root.entry : null;
         root.readAt = Date.now();
         statter.exec([Files.helper("bs-ls"), "--stat", root.path]);
         peek.exec([Files.helper("bs-ls"), root.path]);
-        if (body.path !== "")
+    }
+
+    function reread(): void {
+        root.seen = root.entry;
+        root.readAt = Date.now();
+        statter.exec([Files.helper("bs-ls"), "--stat", root.path]);
+        if (root.isFolder)
+            peek.exec([Files.helper("bs-ls"), root.path]);
+        if (body.path !== "" && root.entry.size <= Config.values.files.textMax)
             body.reload();
     }
 
@@ -115,8 +134,12 @@ Item {
             root.reread()
     }
 
-    onVisibleChanged: if (!root.visible)
-        root.player?.stop()
+    onVisibleChanged: {
+        if (!root.visible)
+            root.player?.stop();
+        else
+            root.follow();
+    }
 
     Connections {
         target: Files
@@ -339,7 +362,7 @@ Item {
             anchors.fill: parent
             visible: root.isImage
 
-            source: !root.isImage ? "" : root.edition > 0 ? `${Urls.fileUrl(root.path)}?edition=${root.edition}` : Urls.fileUrl(root.path)
+            source: root.isImage ? Urls.fileUrl(root.path) + root.version : ""
             fillMode: Image.PreserveAspectFit
             radius: Appearance.rounding.small
         }
@@ -435,11 +458,11 @@ Item {
         }
 
         GlideList {
+            id: folderList
+
             anchors.fill: parent
             visible: root.isFolder && root.contents.length > 0
             clip: true
-
-            model: FilesOrder.ordered(root.contents, Files.sort, Files.reversed)
 
             delegate: Row {
                 id: line
