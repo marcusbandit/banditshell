@@ -1,20 +1,21 @@
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
 
 Item {
     id: root
 
     Column {
         anchors.centerIn: parent
-        spacing: Appearance.padding.large
-        width: Math.min(parent.width * 0.7, 520)
+        spacing: Files.zoomed(Appearance.padding.large)
+        width: Math.min(parent.width * 0.7, Files.zoomed(520))
 
         Icon {
             anchors.horizontalCenter: parent.horizontalCenter
 
             name: "build"
-            size: Appearance.icon.hero
+            size: Files.zoomed(Appearance.icon.hero)
             color: Appearance.colour.textFaint
         }
 
@@ -23,15 +24,15 @@ Item {
             horizontalAlignment: Text.AlignHCenter
 
             text: "The browser's helpers have not been built."
-            font.pixelSize: Appearance.font.size.normal
+            font.pixelSize: Files.zoomed(Appearance.font.size.normal)
             wrapMode: Text.Wrap
         }
 
         SquircleRect {
             anchors.horizontalCenter: parent.horizontalCenter
 
-            implicitWidth: command.implicitWidth + Appearance.padding.large * 2
-            implicitHeight: command.implicitHeight + Appearance.padding.normal * 2
+            implicitWidth: command.implicitWidth + Files.zoomed(Appearance.padding.large) * 2
+            implicitHeight: command.implicitHeight + Files.zoomed(Appearance.padding.normal) * 2
 
             radius: Appearance.rounding.small
             color: Appearance.colour.fill
@@ -42,6 +43,7 @@ Item {
                 anchors.centerIn: parent
 
                 text: "banditshell dev build"
+                font.pixelSize: Files.zoomed(Appearance.font.size.small)
                 color: Appearance.colour.accent
             }
         }

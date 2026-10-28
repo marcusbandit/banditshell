@@ -8,6 +8,11 @@ function fileUrl(path) {
     }
 }
 
+function freshUrl(path, mtime, size) {
+    var url = fileUrl(path);
+    return url === "" ? "" : url + "?v=" + mtime + "-" + size;
+}
+
 function uriList(paths) {
     var urls = paths.map(fileUrl).filter(function (url) {
         return url !== "";
