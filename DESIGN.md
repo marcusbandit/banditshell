@@ -3877,8 +3877,9 @@ an action would act on and the cursor is where the keyboard is, which stop being
 the same fact the moment there is more than one of them. Picked is the accent-tinted
 `accentFill` with its name in `accent`, apart from hover's grey `fill`; the
 cursor is the focus mark (section 6), shown once a key has moved it and gone when
-the pointer moves. The item the preview shows wears a third mark, a short `accent` bar
-under its picture or at the left of its row, because the preview follows the cursor
+the pointer moves. The item the preview shows wears a third mark, a solid `accent` strip
+the full width of its tile's foot or down the left of its row, never a short bar, which is
+what the drive meters look like, because the preview follows the cursor
 whether or not a key moved it, and a reviewer who cannot see which tile it belongs to reads
 it as showing something they never picked. The set is held as
 NAMES, not indices, because the listing is retaken after anything that might

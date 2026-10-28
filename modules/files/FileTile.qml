@@ -74,7 +74,19 @@ Item {
             visible: root.previewed && root.row
 
             width: Appearance.padding.hair
-            height: parent.height * 0.6
+            height: parent.height - Appearance.padding.hair * 2
+
+            pill: "object"
+            color: Appearance.colour.accent
+        }
+
+        SquircleRect {
+            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            visible: root.previewed && !root.row
+
+            width: parent.width - Appearance.rounding.normal * 2
+            height: Appearance.padding.hair
 
             pill: "object"
             color: Appearance.colour.accent
@@ -87,6 +99,7 @@ Item {
 
     Column {
         anchors.centerIn: parent
+        anchors.verticalCenterOffset: -Appearance.padding.hair
         width: parent.width - mark.reach * 2 - Appearance.padding.small
         spacing: Appearance.padding.hair
         visible: !root.row
@@ -126,18 +139,6 @@ Item {
                 rooted: root.entry.root
                 worldWritable: root.entry.world
                 size: Math.min(thumb.height, root.width * 0.46)
-            }
-
-            SquircleRect {
-                anchors.bottom: parent.bottom
-                anchors.horizontalCenter: parent.horizontalCenter
-                visible: root.previewed
-
-                width: parent.width * 0.4
-                height: Appearance.padding.hair
-
-                pill: "object"
-                color: Appearance.colour.accent
             }
         }
 
