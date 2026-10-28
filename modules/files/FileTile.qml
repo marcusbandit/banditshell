@@ -188,7 +188,7 @@ Item {
         id: rowLayout
 
         anchors.fill: parent
-        anchors.leftMargin: Appearance.padding.small + Appearance.padding.hair * 2
+        anchors.leftMargin: RowColumns.inset(Appearance.padding.small, Appearance.padding.hair)
         anchors.rightMargin: Appearance.padding.small
         visible: root.row
         opacity: root.ink

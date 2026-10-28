@@ -1,5 +1,9 @@
 .pragma library
 
+function inset(small, hair) {
+    return small + hair * 2;
+}
+
 function fit(width, digit, font, mark, small, gap, least, stacked) {
     const dateWidth = stacked ? digit * 13 : font * 7;
     const sizeWidth = font * 5;
