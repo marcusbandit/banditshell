@@ -65,6 +65,7 @@ Column {
                 }
 
                 Toggle {
+                    keyable: false
                     visible: entry.button === QsMenuButtonType.CheckBox
                     checked: entry.ticked
                     onToggled: entry.modelData?.triggered()

@@ -26,6 +26,8 @@ Column {
 
         property bool urgent: false
 
+        property string focusGroup: ""
+
         signal requested(real v)
         signal toggled
 
@@ -62,6 +64,7 @@ Column {
             warnAbove: 1
             dimmed: level.muted
             onMoved: v => level.requested(v)
+            onActivated: level.toggled()
         }
 
         StyledText {
@@ -90,6 +93,8 @@ Column {
         id: channel
 
         required property var node
+
+        property string focusGroup: ""
 
         readonly property string title: Audio.streamLabel(node)
         readonly property bool muted: Audio.streamMuted(node)
@@ -178,6 +183,7 @@ Column {
             warnAbove: 1
             dimmed: channel.muted
             onMoved: v => Audio.setStreamVolume(channel.node, v)
+            onActivated: Audio.toggleStreamMute(channel.node)
         }
 
         TextMetrics {
@@ -197,6 +203,7 @@ Column {
 
     Level {
         width: parent.width
+        focusGroup: "output"
 
         glyph: Audio.muted ? "no_sound" : Audio.deviceIcon(Audio.sink)
         value: Audio.volume
@@ -222,6 +229,7 @@ Column {
 
             width: root.width
             node: modelData
+            focusGroup: "output"
         }
     }
 
@@ -237,6 +245,7 @@ Column {
 
     Level {
         width: parent.width
+        focusGroup: "input"
 
         glyph: Audio.sourceMuted || Audio.sourceVolume <= 0 ? "mic_off" : Audio.deviceIcon(Audio.source)
         value: Audio.sourceVolume
@@ -261,6 +270,7 @@ Column {
 
             width: root.width
             node: modelData
+            focusGroup: "input"
         }
     }
 
@@ -281,6 +291,8 @@ Column {
             id: sinkRow
 
             required property var modelData
+
+            readonly property string focusGroup: "outputs"
 
             width: root.width
             icon: Audio.deviceIcon(modelData)
@@ -309,6 +321,8 @@ Column {
             id: sourceRow
 
             required property var modelData
+
+            readonly property string focusGroup: "inputs"
 
             width: root.width
             icon: Audio.deviceIcon(modelData)

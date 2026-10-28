@@ -63,6 +63,8 @@ Item {
     TextInput {
         id: input
 
+        readonly property bool typable: true
+
         anchors.fill: parent
         anchors.leftMargin: Appearance.padding.normal
         anchors.rightMargin: Appearance.padding.normal

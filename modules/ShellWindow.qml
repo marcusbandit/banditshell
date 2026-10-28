@@ -656,6 +656,11 @@ PanelWindow {
             warmSource: sidebar.status.items
 
             keyboardHeld: win.panelOpen
+
+            onPinnedChanged: if (menuLayer.pinned && !body.Window.active) {
+                win.claiming = true;
+                claim.restart();
+            }
         }
 
         Launcher {

@@ -100,6 +100,18 @@ Column {
     Item {
         id: heading
 
+        readonly property bool keyable: true
+        readonly property string adjusts: "horizontal"
+
+        function adjust(steps: int): void {
+            root.page(steps);
+            root.glide();
+        }
+
+        function press(): void {
+            root.home();
+        }
+
         width: parent.width
         height: Math.max(Appearance.sizes.minTarget, monthName.implicitHeight)
 
@@ -113,11 +125,15 @@ Column {
             Follow {
                 id: homeFade
 
-                target: homeTap.pressed || (homeTap.containsMouse && !todayPill.hovered) ? 1 : 0
+                target: homeTap.pressed || (homeTap.containsMouse && !todayPill.hovered && heading.Window.activeFocusItem?.keyable !== true) ? 1 : 0
                 speed: Appearance.animation.revealSpeed
                 epsilon: Appearance.animation.fadeEpsilon
                 startsAtTarget: true
             }
+        }
+
+        FocusMark {
+            shown: heading.activeFocus
         }
 
         MouseArea {

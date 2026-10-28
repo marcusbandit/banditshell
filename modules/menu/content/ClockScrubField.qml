@@ -22,6 +22,26 @@ Item {
     signal moved(int value)
     signal committed(int value)
 
+    readonly property bool keyable: true
+    readonly property string adjusts: root.grabbed ? "vertical" : ""
+
+    property bool grabbed: false
+
+    function press(): void {
+        root.grabbed = !root.grabbed;
+        if (!root.grabbed)
+            root.release();
+    }
+
+    onActiveFocusChanged: if (!root.activeFocus && root.grabbed) {
+        root.grabbed = false;
+        root.release();
+    }
+
+    function adjust(steps: int): void {
+        root.nudge(steps);
+    }
+
     readonly property real pitch: Appearance.sizes.minTarget / Math.max(1, root.detent)
     readonly property int span: root.to - root.from + 1
 
@@ -97,11 +117,15 @@ Item {
         Follow {
             id: hoverFade
 
-            target: pointer.containsMouse || pointer.pressed || scroll.active ? 1 : 0
+            target: root.grabbed || pointer.containsMouse && root.Window.activeFocusItem?.keyable !== true || pointer.pressed || scroll.active ? 1 : 0
             speed: Appearance.animation.revealSpeed
             epsilon: Appearance.animation.fadeEpsilon
             startsAtTarget: true
         }
+    }
+
+    FocusMark {
+        shown: root.activeFocus
     }
 
     StyledText {
@@ -111,7 +135,7 @@ Item {
 
         text: Clock.twoDigits(root.shown)
         font.pixelSize: Appearance.font.size.large
-        color: root.zeroIsEmpty && root.shown === 0 ? Appearance.colour.textFaint : Appearance.colour.text
+        color: root.grabbed ? Appearance.colour.accent : root.zeroIsEmpty && root.shown === 0 ? Appearance.colour.textFaint : Appearance.colour.text
     }
 
     MouseArea {

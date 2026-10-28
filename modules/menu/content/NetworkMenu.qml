@@ -139,6 +139,7 @@ Column {
         onActivated: choice.flipped()
 
         Toggle {
+            keyable: false
             checked: choice.on
             onToggled: choice.flipped()
         }
@@ -155,7 +156,13 @@ Column {
 
         signal activated
 
-        readonly property bool hovered: press.containsMouse
+        readonly property bool keyable: true
+
+        function press(): void {
+            tool.activated();
+        }
+
+        readonly property bool hovered: toolPointer.containsMouse && tool.Window.activeFocusItem?.keyable !== true
 
         implicitWidth: Math.max(Appearance.sizes.minTarget, Appearance.font.iconSize + Appearance.padding.small * 2)
         implicitHeight: implicitWidth
@@ -176,6 +183,11 @@ Column {
             }
         }
 
+        FocusMark {
+            shown: tool.activeFocus
+            pill: "object"
+        }
+
         Icon {
             anchors.centerIn: parent
 
@@ -194,7 +206,7 @@ Column {
         }
 
         MouseArea {
-            id: press
+            id: toolPointer
 
             anchors.fill: parent
             hoverEnabled: true
@@ -258,6 +270,8 @@ Column {
     }
 
     Item {
+        readonly property string focusGroup: "tools"
+
         width: root.width
         implicitHeight: tools.implicitHeight
 
@@ -288,6 +302,8 @@ Column {
     }
 
     MenuRow {
+        readonly property string focusGroup: "adapter"
+
         width: root.width
         visible: Network.wiredShowing
         icon: "lan"
@@ -304,6 +320,8 @@ Column {
     }
 
     MenuLayer {
+        readonly property string focusGroup: "adapter"
+
         width: root.width
         visible: Network.wiredShowing
         open: root.opened === "wire"
@@ -330,6 +348,8 @@ Column {
     }
 
     MenuRow {
+        readonly property string focusGroup: "adapter"
+
         width: root.width
         icon: Network.wifiIcon()
         label: "Wi-Fi"
@@ -344,6 +364,7 @@ Column {
 
             Toggle {
                 anchors.verticalCenter: parent.verticalCenter
+                keyable: false
                 visible: Network.managerRunning
                 checked: Network.enabled
                 onToggled: Network.setEnabled(!Network.enabled)
@@ -361,6 +382,8 @@ Column {
     }
 
     MenuLayer {
+        readonly property string focusGroup: "adapter"
+
         width: root.width
         open: root.opened === "adapter"
 
@@ -444,6 +467,8 @@ Column {
 
         Column {
             id: list
+
+            readonly property string focusGroup: "networks"
 
             width: parent.width
 

@@ -180,6 +180,8 @@ Column {
             TextEdit {
                 id: reportBody
 
+                readonly property bool typable: true
+
                 anchors.fill: parent
                 anchors.margins: Appearance.padding.normal
                 wrapMode: TextEdit.Wrap
