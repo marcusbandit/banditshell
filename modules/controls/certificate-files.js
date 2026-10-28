@@ -15,7 +15,7 @@ function kindOf(path, lines) {
     var key = false;
     var subject = null;
     var issuer = null;
-    var authority = null;
+    var authority = markedOf(lines);
     for (var i = 0; i < lines.length; i++) {
         var line = lines[i].trim();
         if (line === "private key")
@@ -24,10 +24,6 @@ function kindOf(path, lines) {
             subject = line.slice(8).trim();
         else if (line.indexOf("issuer=") === 0)
             issuer = line.slice(7).trim();
-        else if (/^CA:TRUE\b/.test(line))
-            authority = true;
-        else if (/^CA:FALSE\b/.test(line))
-            authority = false;
     }
     if (BUNDLES.test(path))
         return "client";
@@ -56,7 +52,7 @@ function endOf(text) {
     return Date.UTC(Number(m[6]), MONTHS.indexOf(m[1]), Number(m[2]), Number(m[3]), Number(m[4]), Number(m[5]));
 }
 
-function nameOf(dn) {
+function partsOf(dn) {
     var text = String(dn || "");
     var keys = [];
     var key = /(?:^|,\s*)([A-Za-z][A-Za-z0-9.]*)\s*=\s*/g;
@@ -68,7 +64,37 @@ function nameOf(dn) {
         var value = text.slice(keys[i].from, i + 1 < keys.length ? keys[i + 1].at : text.length).trim();
         found[keys[i].name] = value.replace(/^"(.*)"$/, "$1");
     }
+    return found;
+}
+
+function nameOf(dn) {
+    var found = partsOf(dn);
     return found.O || found.CN || "";
+}
+
+function holderOf(dn) {
+    var found = partsOf(dn);
+    return found.CN || found.O || "";
+}
+
+function after(lines, lead) {
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (line.slice(0, lead.length).toLowerCase() === lead.toLowerCase())
+            return line.slice(lead.length).trim();
+    }
+    return "";
+}
+
+function markedOf(lines) {
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (/^CA:TRUE\b/.test(line))
+            return true;
+        if (/^CA:FALSE\b/.test(line))
+            return false;
+    }
+    return null;
 }
 
 function read(text) {
@@ -82,7 +108,21 @@ function read(text) {
         var rest = lines.slice(1);
         var kind = kindOf(path, rest);
         if (kind)
-            out.push({ path: path, kind: kind, key: holdsKey(path, lines), subject: field(rest, "subject"), issuer: field(rest, "issuer"), until: endOf(field(rest, "notAfter")) });
+            out.push({
+                path: path,
+                kind: kind,
+                key: holdsKey(path, lines),
+                locked: rest.some(function (line) {
+                    return line.trim() === "locked";
+                }),
+                subject: field(rest, "subject"),
+                issuer: field(rest, "issuer"),
+                until: endOf(field(rest, "notAfter")),
+                marked: markedOf(rest),
+                fingerprint: after(rest, "sha256 Fingerprint="),
+                ownKey: after(rest, "key "),
+                publicKey: after(rest, "public ")
+            });
     }
     return out;
 }
@@ -114,6 +154,30 @@ function monthOf(ms) {
     return MONTHS[d.getUTCMonth()] + " " + d.getUTCFullYear();
 }
 
+function baseName(path) {
+    return path.slice(path.lastIndexOf("/") + 1);
+}
+
+function untilOf(file, now) {
+    if (!(file.until > 0))
+        return "";
+    return (file.until <= now ? "expired " : "until ") + monthOf(file.until);
+}
+
+function joined(parts) {
+    return parts.filter(function (p) {
+        return p;
+    }).join(" · ");
+}
+
+function find(files, test) {
+    for (var i = 0; i < files.length; i++) {
+        if (test(files[i]))
+            return files[i];
+    }
+    return null;
+}
+
 function roots(files, server, now, most) {
     var host = String(server || "").trim().toLowerCase();
     var out = [];
@@ -122,47 +186,95 @@ function roots(files, server, now, most) {
         if (f.kind !== "authority")
             continue;
         var expired = f.until > 0 && f.until <= now;
+        var unmarked = f.marked !== true;
         var match = fits(f, host);
-        var parts = [nameOf(f.issuer) || nameOf(f.subject)];
-        if (f.until > 0)
-            parts.push((expired ? "expired " : "until ") + monthOf(f.until));
-        if (match)
-            parts.push("matches " + host);
-        out.push({ path: f.path, detail: parts.filter(function (p) {
-            return p;
-        }).join(" · "), warn: expired, rank: (match ? 0 : 1) + (expired ? 2 : 0), order: out.length });
+        out.push({
+            file: f,
+            parts: [nameOf(f.issuer) || nameOf(f.subject), untilOf(f, now), match ? "named like " + host : "", unmarked ? "not marked as a root" : ""],
+            warn: expired || unmarked,
+            rank: (match ? 0 : 1) + (expired || unmarked ? 2 : 0),
+            order: out.length
+        });
     }
     out.sort(function (a, b) {
         return a.rank - b.rank || a.order - b.order;
     });
-    return out.slice(0, most).map(function (r) {
-        return { path: r.path, detail: r.detail, warn: r.warn };
+    var shown = out.slice(0, most);
+    return shown.map(function (r) {
+        var twin = r.file.fingerprint ? find(shown, function (o) {
+            return o !== r && o.file.fingerprint === r.file.fingerprint;
+        }) : null;
+        return { path: r.file.path, detail: joined(r.parts.concat([twin ? "same as " + baseName(twin.file.path) : ""])), warn: r.warn };
+    });
+}
+
+function clients(files, now, most) {
+    var out = [];
+    for (var i = 0; i < files.length && out.length < most; i++) {
+        var f = files[i];
+        if (f.kind !== "client")
+            continue;
+        var keyFile = f.key || !f.publicKey ? null : find(files, function (g) {
+            return g.kind === "key" && g.ownKey === f.publicKey;
+        });
+        out.push({
+            path: f.path,
+            detail: joined([holderOf(f.subject), untilOf(f, now), f.key ? "holds its key" : keyFile ? "key in " + baseName(keyFile.path) : "needs its key file", f.locked ? "locked with a password" : ""]),
+            warn: f.until > 0 && f.until <= now
+        });
+    }
+    return out;
+}
+
+function keys(files, most) {
+    var out = [];
+    for (var i = 0; i < files.length && out.length < most; i++) {
+        var f = files[i];
+        if (f.kind !== "key")
+            continue;
+        var owner = !f.ownKey ? null : find(files, function (g) {
+            return g.kind === "client" && !g.key && g.publicKey === f.ownKey;
+        }) || find(files, function (g) {
+            return g.kind === "client" && g.publicKey === f.ownKey;
+        });
+        out.push({
+            path: f.path,
+            detail: f.locked ? "locked with a password" : owner ? "key for " + baseName(owner.path) : "no certificate here fits it",
+            warn: false
+        });
+    }
+    return out;
+}
+
+function keyFor(files, path) {
+    var cert = fileAt(files, path);
+    if (!cert || cert.kind !== "client" || cert.key || !cert.publicKey)
+        return "";
+    var file = find(files, function (f) {
+        return f.kind === "key" && f.ownKey === cert.publicKey;
+    });
+    return file ? file.path : "";
+}
+
+function locked(files, path) {
+    var file = fileAt(files, path);
+    return !!file && file.locked;
+}
+
+function fileAt(files, path) {
+    return find(files, function (f) {
+        return f.path === path;
     });
 }
 
 function carriesKey(files, path) {
-    for (var i = 0; i < files.length; i++) {
-        if (files[i].path === path)
-            return files[i].key;
-    }
-    return BUNDLES.test(path);
+    var file = fileAt(files, path);
+    return file ? file.key : BUNDLES.test(path);
 }
 
 function needsKey(files, path) {
-    for (var i = 0; i < files.length; i++) {
-        if (files[i].path === path)
-            return files[i].kind === "client" && !files[i].key;
-    }
-    return false;
-}
-
-function fitting(files, kind, most) {
-    var out = [];
-    for (var i = 0; i < files.length && out.length < most; i++) {
-        if (files[i].kind === kind)
-            out.push(files[i].path);
-    }
-    return out;
+    var file = fileAt(files, path);
+    return !!file && file.kind === "client" && !file.key;
 }
 
 function shortPath(path, home) {
@@ -178,14 +290,10 @@ function fullPath(text, home) {
 }
 
 function problem(files, path, want, now) {
-    var file = null;
-    for (var i = 0; i < files.length && !file; i++) {
-        if (files[i].path === path)
-            file = files[i];
-    }
+    var file = fileAt(files, path);
     if (!file)
         return "";
-    var name = path.slice(path.lastIndexOf("/") + 1);
+    var name = baseName(path);
     var expired = file.until > 0 && file.until <= now ? name + " expired in " + monthOf(file.until) + "." : "";
     if (want === "authority")
         return file.kind !== "authority" ? name + " is not a root certificate." : expired;

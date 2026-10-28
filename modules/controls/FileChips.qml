@@ -14,6 +14,7 @@ Column {
 
     signal pick(string path)
     signal browse
+    signal cancel
 
     width: parent.width
     leftPadding: Appearance.padding.normal
@@ -21,6 +22,23 @@ Column {
     topPadding: Appearance.padding.small
     bottomPadding: Appearance.padding.small
     spacing: Appearance.padding.small
+
+    Button {
+        visible: root.canBrowse && root.browsing
+        style: "plate"
+        icon: "close"
+        text: "Close file picker"
+        onClicked: root.cancel()
+    }
+
+    StyledText {
+        width: root.width - root.leftPadding - root.rightPadding
+        visible: root.canBrowse && root.browsing
+        text: "Pick the file in the file picker window. It may be behind this menu."
+        wrapMode: Text.Wrap
+        color: Appearance.colour.textDim
+        font.pixelSize: Appearance.font.size.small
+    }
 
     StyledText {
         visible: !!root.lead && root.files.length > 0
@@ -50,12 +68,12 @@ Column {
     }
 
     Button {
-        visible: root.canBrowse
+        visible: root.canBrowse && !root.browsing
         size: 0
         style: "plate"
         icon: "folder_open"
         interactive: !root.choosing
-        text: root.browsing ? "Choosing…" : "Browse…"
+        text: "Browse…"
         onClicked: root.browse()
     }
 }
