@@ -14,7 +14,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Trash = lib("services/files-trash.js", ["within", "trashed", "topdirs", "readCommand", "parse", "entries", "infoPath", "restoreCommand", "emptyCommands", "sizeCommand", "sizeInput", "sizeTotal"]);
+const Trash = lib("services/files-trash.js", ["within", "trashed", "topdirs", "readCommand", "parse", "entries", "infoPath", "restoreCommand", "emptyCommands", "sizeCommand", "sizeInput", "sizes"]);
 
 const UID = process.getuid();
 
@@ -220,11 +220,14 @@ test.describe("files trash", () => {
             const items = ["a.txt", "two words", "old project"].map(name => ({ dir: box.home, name }));
             const command = Trash.sizeCommand();
             const run = spawnSync("/bin/sh", command.slice(1), { env: { PATH: path.join(box.dir, "bin") }, input: Trash.sizeInput(items), encoding: "utf8" });
-            const total = Trash.sizeTotal(run.stdout);
-            assert.ok(total >= 1015 && total < 1015 + 3 * 4096 + 1, String(total));
+            const found = Trash.sizes(run.stdout);
+            assert.strictEqual(found[path.join(box.home, "files", "a.txt")], 5);
+            assert.strictEqual(found[path.join(box.home, "files", "two words")], 10);
+            const folder = found[path.join(box.home, "files", "old project")];
+            assert.ok(folder >= 1000 && folder < 1000 + 2 * 4096 + 1, String(folder));
             assert.strictEqual(Trash.sizeInput([{ dir: "/t", name: "a\nb" }, { dir: "/t", name: "c" }]), "/t/files/c\n");
-            assert.ok(Number.isNaN(Trash.sizeTotal("")));
-            assert.ok(Number.isNaN(Trash.sizeTotal("garbage")));
+            assert.deepStrictEqual(Trash.sizes(""), {});
+            assert.deepStrictEqual(Trash.sizes("garbage\n12\t/t/files/x\nnope\t/t/y"), { "/t/files/x": 12 });
         } finally {
             box.done();
         }

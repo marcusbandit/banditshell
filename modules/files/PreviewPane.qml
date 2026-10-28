@@ -267,7 +267,7 @@ Item {
                 const size = root.isFolder ? `${root.contents.length} item${root.contents.length === 1 ? "" : "s"}` : Files.humanSize(root.entry.size);
                 if (root.entry.trash)
                     return [size, `Trashed ${TimeFormat.dateText(new Date(root.entry.trashed * 1000), "year")} ${TimeFormat.time(new Date(root.entry.trashed * 1000), false)}`].join("  ·  ");
-                return [size, Files.humanTime(root.entry.mtime)].join("  ·  ");
+                return [size, FilesFind.active ? Files.changedTime(root.entry.mtime) : Files.humanTime(root.entry.mtime)].join("  ·  ");
             }
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint

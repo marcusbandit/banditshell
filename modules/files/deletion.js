@@ -24,27 +24,6 @@ function approved(answer, paths) {
     return typeof answer === "string" && answer.trim().toLowerCase() === WORD ? paths.slice() : [];
 }
 
-function emptyLine(item) {
-    var line = item.name;
-    if (item.origin)
-        line += " from " + item.origin;
-    if (item.drive)
-        line += " on " + item.drive;
-    if (item.hidden)
-        line += ", hidden";
-    return line;
-}
-
-function emptyList(items, most) {
-    var shown = items.length > most + 1 ? most : items.length;
-    var lines = [];
-    for (var i = 0; i < shown; i++)
-        lines.push(emptyLine(items[i]));
-    if (shown < items.length)
-        lines.push("and " + (items.length - shown).toLocaleString() + " more");
-    return lines;
-}
-
 function emptying(count, size) {
     var items = count === 1 ? "1 item" : count.toLocaleString() + " items";
     return size ? items + ", " + size + " in all, " + REST : items + " " + REST;

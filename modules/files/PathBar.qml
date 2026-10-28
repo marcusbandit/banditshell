@@ -132,7 +132,7 @@ Item {
             let sum = 0;
             for (let i = count - 1; i >= 0; --i) {
                 const more = sum + items[i];
-                if (i < count - 1 && more > crumbs.width - crumbs.mark - crumbs.fold)
+                if (i < count - 1 && more > crumbs.width - crumbs.fold)
                     return {kept: i + 1, used: sum};
                 sum = more;
             }
@@ -171,11 +171,11 @@ Item {
 
                 readonly property bool last: crumb.index === Files.crumbs.length - 1
                 readonly property bool folded: crumb.index === crumbs.kept - 1
-                readonly property real lead: crumb.index > 0 ? crumbs.mark : 0
-                readonly property real natural: crumb.lead + whole.implicitWidth + crumbs.gap
+                readonly property real lead: crumb.index > 0 && !crumb.folded ? crumbs.mark : 0
+                readonly property real natural: (crumb.index > 0 ? crumbs.mark : 0) + whole.implicitWidth + crumbs.gap
 
                 visible: crumb.index >= crumbs.kept - 1
-                implicitWidth: crumb.folded ? Math.max(crumb.lead + crumbs.fold, Math.min(crumb.natural + foldText.implicitWidth, crumbs.width - crumbs.fit.used)) : Math.min(crumb.natural, crumbs.width - (crumb.last && crumbs.kept > 0 ? crumbs.mark + crumbs.fold : 0))
+                implicitWidth: crumb.folded ? crumbs.fold : Math.min(crumb.natural, crumbs.width - (crumb.last && crumbs.kept > 0 ? crumbs.fold : 0))
                 implicitHeight: label.implicitHeight + Appearance.padding.small * 2
 
                 StyledText {
@@ -189,7 +189,7 @@ Item {
                 StyledText {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: crumb.index > 0
+                    visible: crumb.lead > 0
 
                     text: "›"
                     leftPadding: Appearance.padding.hair
@@ -215,8 +215,8 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: crumb.implicitWidth - crumb.lead - crumbs.gap
 
-                    elide: crumb.folded ? Text.ElideLeft : Text.ElideMiddle
-                    text: crumb.folded ? `…${crumb.modelData.name}` : crumb.modelData.name
+                    elide: Text.ElideMiddle
+                    text: crumb.folded ? "…" : crumb.modelData.name
                     font.pixelSize: Files.zoomed(Appearance.font.size.small)
 
                     color: crumb.last ? Appearance.colour.text : Appearance.colour.textDim

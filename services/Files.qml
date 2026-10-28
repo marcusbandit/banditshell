@@ -1034,7 +1034,7 @@ Singleton {
             stdinEnabled: true
 
             stdout: StdioCollector {
-                onStreamFinished: measuring.done?.(Trash.sizeTotal(text))
+                onStreamFinished: measuring.done?.(Trash.sizes(text))
             }
 
             onStarted: {

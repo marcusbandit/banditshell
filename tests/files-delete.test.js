@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Deletion = lib("modules/files/deletion.js", ["question", "what", "approved", "emptyList", "emptying", "emptied"]);
+const Deletion = lib("modules/files/deletion.js", ["question", "what", "approved", "emptying", "emptied"]);
 
 function qmlFiles(dir) {
     const found = [];
@@ -55,18 +55,6 @@ test.describe("files permanent delete", () => {
             assert.deepStrictEqual(kept, items);
             assert.notStrictEqual(kept, items);
         }
-    });
-
-    test.it("names every item an empty trash takes, its folder, its drive and whether it is hidden", () => {
-        const items = [
-            { name: "a.txt", origin: "~/Music" },
-            { name: ".env", origin: "~/project", hidden: true },
-            { name: "clip.mkv", origin: "/media", drive: "bandit-data" },
-            { name: "stray", origin: "" }
-        ];
-        assert.deepStrictEqual(Deletion.emptyList(items, 6), ["a.txt from ~/Music", ".env from ~/project, hidden", "clip.mkv from /media on bandit-data", "stray"]);
-        assert.deepStrictEqual(Deletion.emptyList(items, 3), ["a.txt from ~/Music", ".env from ~/project, hidden", "clip.mkv from /media on bandit-data", "stray"]);
-        assert.deepStrictEqual(Deletion.emptyList(items, 2), ["a.txt from ~/Music", ".env from ~/project, hidden", "and 2 more"]);
     });
 
     test.it("says how many items an empty trash takes and their size in all", () => {

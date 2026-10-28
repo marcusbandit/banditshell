@@ -32,7 +32,7 @@ var EMPTY = 'home=$1; shift; uid=$(id -u); rc=0; seen=; '
 
 var CHUNK = 500;
 
-var SIZE = 'xargs -d "\\n" -r du -s -b -c -- 2>/dev/null | awk -F "\\t" \'$2 == "total" { s += $1 } END { print s + 0 }\'';
+var SIZE = 'xargs -d "\\n" -r du -s -b -- 2>/dev/null';
 
 function baseName(path) {
     return path.slice(path.lastIndexOf("/") + 1);
@@ -214,7 +214,16 @@ function sizeInput(items) {
     return out;
 }
 
-function sizeTotal(text) {
-    var total = Number(String(text).trim());
-    return String(text).trim() !== "" && isFinite(total) ? total : NaN;
+function sizes(text) {
+    var out = {};
+    var lines = String(text).split("\n");
+    for (var i = 0; i < lines.length; i++) {
+        var cut = lines[i].indexOf("\t");
+        if (cut <= 0)
+            continue;
+        var bytes = Number(lines[i].slice(0, cut));
+        if (isFinite(bytes))
+            out[lines[i].slice(cut + 1)] = bytes;
+    }
+    return out;
 }

@@ -409,7 +409,7 @@ Item {
         if (Files.trashItems.length > 0)
             acts.push({
                 icon: "delete_forever",
-                label: "Empty the Trash…",
+                label: "Empty Trash…",
                 apart: true,
                 run: () => root.confirmEmpty()
             });
@@ -461,14 +461,22 @@ Item {
             seen[Files.keyOf(e)] = true;
         const listed = all.filter(e => !seen[Files.keyOf(e)]).concat(shown);
         const items = listed.map(e => e.trash);
-        const lines = Deletion.emptyList(listed.map(e => Object.assign({name: e.name, hidden: e.hidden}, Files.trashFrom(e))), 6).join("\n");
-        const ask = size => `${lines}\n\n${Deletion.emptying(items.length, size)}`;
+        const rows = sizes => listed.map(e => Object.assign({
+                    name: e.name,
+                    hidden: !!e.hidden,
+                    size: sizes && e.key in sizes ? Files.humanSize(sizes[e.key]) : ""
+                }, Files.trashFrom(e)));
 
-        confirm.ask("Empty the Trash", ask(""), "Empty", "delete_forever", answer => Files.emptyTrash(Deletion.emptied(answer, items)));
+        confirm.ask("Empty Trash", Deletion.emptying(items.length, ""), "Empty", "delete_forever", answer => Files.emptyTrash(Deletion.emptied(answer, items)), rows(null));
         const asked = confirm.accepted;
-        Files.measureTrash(items, total => {
-            if (confirm.up && confirm.accepted === asked && isFinite(total))
-                confirm.sentence = ask(Files.humanSize(total));
+        Files.measureTrash(items, sizes => {
+            if (!confirm.up || confirm.accepted !== asked)
+                return;
+            let total = 0;
+            for (const key in sizes)
+                total += sizes[key];
+            confirm.rows = rows(sizes);
+            confirm.sentence = Deletion.emptying(items.length, Files.humanSize(total));
         });
     }
 
