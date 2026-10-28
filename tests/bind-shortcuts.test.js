@@ -122,6 +122,24 @@ test("a row hint the table no longer has falls back to the lookup", async () => 
     }
 });
 
+test("a hint whose id another row of the table now also matches falls back to the lookup", async () => {
+    const table = path.join(directory("table"), "actions.tsv");
+    const rows = fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8").split("\n");
+    rows.splice(2, 0, "panel.files.*\tstable\t1\tpanel files $1 --newer\tA closer row");
+    fs.writeFileSync(table, rows.join("\n"));
+    const box = sandbox();
+    const ran = await run("bash", [CLI, "action", "panel.files.toggle"], { ...box.env, BANDITSHELL_API_TABLE: table, BANDITSHELL_ROW: "panel.*.toggle\tstable\t1\tpanel $1 toggle" });
+    const plain = await run("bash", [CLI, "action", "panel.files.toggle"], { ...sandbox().env, BANDITSHELL_API_TABLE: table });
+    assert.strictEqual(ran.out, plain.out);
+    assert.ok(fs.readFileSync(box.log, "utf8").includes("table lookup"));
+});
+
+test("every panel the CLI knows is served by a shortcut, except settings", () => {
+    const surfaces = /^SURFACES=\(([^)]*)\)/m.exec(fs.readFileSync(CLI, "utf8"))[1].split(/\s+/).filter(Boolean);
+    assert.ok(surfaces.length > 10);
+    assert.deepStrictEqual(surfaces.filter(name => !Shortcuts.shortcutFor(`panel.${name}.toggle`)), ["settings"]);
+});
+
 test("Lua takes the global shortcut for exactly the ids the shell registers, and only bare", { skip }, () => {
     const ids = everyId();
     const presses = luaPresses(ids, true);

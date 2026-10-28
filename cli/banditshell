@@ -1928,25 +1928,41 @@ resolve_action() {
     ' "$(api_table)" 2>/dev/null
 }
 
+count_matching_rows() {
+    local table="$1" combo part i mask
+    matching=0
+    local -a segments
+    IFS=. read -ra segments <<<"$2"
+    for ((mask = 0; mask < (1 << ${#segments[@]}); mask++)); do
+        combo=""
+        for ((i = 0; i < ${#segments[@]}; i++)); do
+            part="${segments[i]}"
+            if ((mask & (1 << i))); then part="*"; fi
+            combo="${combo:+$combo.}$part"
+        done
+        if [[ $table == *$'\n'"$combo"$'\t'* ]]; then matching=$((matching + 1)); fi
+    done
+}
+
 hinted_action() {
-    local id="$1" table="" pattern status since argv i capture=""
+    local id="$1" table="" pattern status since argv i capture="" matching=0
     local -a want have
     IFS=$'\t' read -r pattern status since argv <<<"$BANDITSHELL_ROW" || return 1
     case "$status" in deprecated=* | removed* | "") return 1 ;; esac
-    valid_id "$id" && [ -n "$argv" ] || return 1
+    valid_id "$id" && [ -n "$argv" ] && [ "${pattern//[^.]/}" = "${id//[^.]/}" ] || return 1
+    # shellcheck disable=SC2053
+    [[ $id == $pattern ]] || return 1
     IFS= read -r -d '' table <"${BANDITSHELL_API_TABLE:-$SHELL_DIR/api/actions.tsv}" || true
     table=$'\n'$table
     [[ $table == *$'\n'"$BANDITSHELL_ROW"$'\t'* || $table == *$'\n'"$BANDITSHELL_ROW"$'\n'* ]] || return 1
+    count_matching_rows "$table" "$id"
+    [ "$matching" = 1 ] || return 1
     if [ "$pattern" != "$id" ]; then
-        [[ $table != *$'\n'"$id"$'\t'* ]] || return 1
         IFS=. read -ra want <<<"$id"
         IFS=. read -ra have <<<"$pattern"
-        [ "${#want[@]}" = "${#have[@]}" ] || return 1
         for ((i = 0; i < ${#want[@]}; i++)); do
             if [ "${have[i]}" = "*" ] && [ -z "$capture" ]; then
                 capture="${want[i]}"
-            elif [ "${have[i]}" != "${want[i]}" ]; then
-                return 1
             fi
         done
         argv="${argv//\$1/$capture}"
