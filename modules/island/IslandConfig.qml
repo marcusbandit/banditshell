@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -15,7 +16,11 @@ Item {
     signal open(string key)
 
     readonly property real pad: Appearance.padding.card
+    readonly property string home: Quickshell.env("HOME") ?? ""
+    readonly property string shownPath: root.home && Config.path.startsWith(root.home + "/") ? "~" + Config.path.slice(root.home.length) : Config.path
     readonly property string where: Config.problemLine > 0 ? `Line ${Config.problemLine}, column ${Config.problemColumn}` : Config.problem || "It can't be read"
+    readonly property int snippetChars: Math.max(8, Math.floor((column.width - Appearance.padding.normal * 2) / Math.max(1, metrics.advanceWidth("M"))))
+    readonly property string snippet: Config.unreadable ? Config.problemSnippet(root.snippetChars) : ""
 
     implicitHeight: Appearance.padding.large + column.implicitHeight + root.pad
 
@@ -40,28 +45,101 @@ Item {
         }
     }
 
+    FontMetrics {
+        id: metrics
+
+        font: code.font
+    }
+
     Column {
         id: column
 
         x: root.pad
         y: Appearance.padding.large
         width: root.width - root.pad * 2
-        spacing: Appearance.padding.card
+        spacing: Appearance.padding.normal
 
-        TaskHeader {
+        Item {
             width: parent.width
-            icon: "warning"
-            tone: Appearance.colour.warning
-            title: "Config broken"
-            subtitle: root.where
-            onClosed: root.leave()
+            height: Math.max(badge.height, shut.implicitHeight)
+
+            Icon {
+                id: badge
+
+                anchors.verticalCenter: parent.verticalCenter
+                name: "warning"
+                size: Appearance.font.line.small
+                fill: 1
+                color: Appearance.colour.warning
+            }
+
+            StyledText {
+                anchors.left: badge.right
+                anchors.leftMargin: Appearance.padding.small
+                anchors.right: shut.left
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Config broken"
+                font.pixelSize: Appearance.font.size.small
+                color: Appearance.colour.textDim
+                elide: Text.ElideRight
+            }
+
+            Button {
+                id: shut
+
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                icon: "close"
+                style: "bare"
+                onClicked: root.leave()
+            }
         }
 
         StyledText {
             width: parent.width
-            text: Config.path
+            text: root.where
+            font.pixelSize: Appearance.font.size.large
+            wrapMode: Text.Wrap
+        }
+
+        StyledText {
+            width: parent.width
+            visible: Config.problemReason !== ""
+            text: Config.problemReason
+            color: Appearance.colour.warning
+            wrapMode: Text.Wrap
+        }
+
+        Item {
+            width: parent.width
+            height: code.implicitHeight + Appearance.padding.normal * 2
+            visible: root.snippet !== ""
+
+            SquircleRect {
+                anchors.fill: parent
+                color: Appearance.colour.fill
+            }
+
+            StyledText {
+                id: code
+
+                x: Appearance.padding.normal
+                y: Appearance.padding.normal
+                width: parent.width - Appearance.padding.normal * 2
+                text: root.snippet
+                textFormat: Text.PlainText
+                font.family: Appearance.font.family
+                wrapMode: Text.NoWrap
+                clip: true
+            }
+        }
+
+        StyledText {
+            width: parent.width
+            text: root.shownPath
+            font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textDim
-            wrapMode: Text.WrapAnywhere
+            elide: Text.ElideLeft
         }
 
         StyledText {

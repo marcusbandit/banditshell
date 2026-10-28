@@ -1056,11 +1056,19 @@ Singleton {
 
     property int problemColumn: 0
 
+    property string problemReason: ""
+
+    property string brokenText: ""
+
     property bool everRead: false
 
     property bool fresh: false
 
     readonly property bool writable: root.loaded && !root.unreadable
+
+    function problemSnippet(width: int): string {
+        return root.problemLine > 0 ? Configuration.errorSnippet(root.brokenText, root.problemLine, root.problemColumn, width) : "";
+    }
 
     property string lastWritten: ""
 
@@ -1195,6 +1203,8 @@ Singleton {
             root.problem = got.problem;
             root.problemLine = got.at?.line ?? 0;
             root.problemColumn = got.at?.column ?? 0;
+            root.problemReason = got.at?.reason ?? "";
+            root.brokenText = got.at ? raw : "";
             if (!got.unreadable)
                 root.everRead = true;
             root.unreadable = got.unreadable;
@@ -1218,6 +1228,8 @@ Singleton {
             root.problem = got.unreadable ? FileViewError.toString(err) : "";
             root.problemLine = 0;
             root.problemColumn = 0;
+            root.problemReason = "";
+            root.brokenText = "";
             if (!got.unreadable)
                 root.everRead = true;
             root.unreadable = got.unreadable;
