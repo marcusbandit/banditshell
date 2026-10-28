@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-5",
+      "id": "2026-10-28-10",
       "date": "2026-10-28",
       "changes": [
         {
@@ -13,6 +13,111 @@
           "type": "issues",
           "severity": "minor",
           "text": "A keyring prompt from gcr moves to your workspace and takes focus"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-9",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "An update that fails to reload restarts the shell before going back"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The update with the new Wi-Fi sign-in installs without going back"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-8",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Typing in the launcher costs about half as much per key"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The installer and QR codes redraw less as they change size"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-7",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Reports from the update menu keep the versions out of the title"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell triage --context adds lines that stay out of the title"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-6",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "major",
+          "text": "School Wi-Fi sign-in checks the server before sending a password"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "DTUsecure and DTU's eduroam sign in with a username and password"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The sign-in asks for the server name and can look it up for you"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Certificate, dynamic WEP and Suite-B Wi-Fi sign-ins now work"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "LEAP networks say plainly that they cannot be joined"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-5",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings, Launcher, Position moves it up or down; it moves up to fit"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The dictionary page's footer no longer runs under its keys"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Dragging the launcher down keeps it in the frame and folds its preview"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The launcher tab stays under your pointer while you pull it up"
         }
       ]
     },

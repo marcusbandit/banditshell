@@ -80,8 +80,276 @@ function secretLine(property, secret) {
     return `${property}:${escapeSecret(String(secret ?? ""))}\n`;
 }
 
-function signInSecrets(identity, password) {
-    return secretLine("802-1x.identity", identity) + secretLine("802-1x.password", password);
+const SIGN_IN_METHODS = {
+    wpa: ["peap", "ttls", "tls"],
+    wep: ["peap", "ttls", "tls"],
+    suiteb: ["tls"]
+};
+
+const KEY_MANAGEMENT = {
+    wpa: "wpa-eap",
+    wep: "ieee8021x",
+    suiteb: "wpa-eap-suite-b-192"
+};
+
+const INNER_METHODS = {
+    peap: "mschapv2",
+    ttls: "pap"
+};
+
+const KNOWN_SERVERS = {
+    DTUsecure: "dtu.dk"
+};
+
+const SCHOOL_CERTIFICATES = [
+    {
+        school: "DTU",
+        suffix: "dtu.dk",
+        file: "dtu-root-ca-01.pem",
+        sha256: "ad61accf9a75deca01522ec5f6f95500c73f65c116149c09a6ac5aef410a0fe2"
+    }
+];
+
+const UNMATCHABLE_SERVER = "server-check.invalid";
+
+function signInMethods(kind) {
+    return SIGN_IN_METHODS[kind] || [];
+}
+
+function signInRefusal(kind) {
+    if (kind === "leap")
+        return "LEAP lets anyone nearby work out the password, so this network cannot be joined from here";
+    if (!KEY_MANAGEMENT[kind])
+        return "this kind of sign-in cannot be joined from here yet";
+    return "";
+}
+
+function knownServer(name) {
+    return Object.prototype.hasOwnProperty.call(KNOWN_SERVERS, name) ? KNOWN_SERVERS[name] : "";
+}
+
+function serverDomain(text) {
+    const name = String(text ?? "").trim().toLowerCase().replace(/^[a-z]+:\/\//, "").replace(/[\/:].*$/, "").replace(/^[*.]+/, "").replace(/\.+$/, "");
+    return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(name) ? name : "";
+}
+
+function underDomain(name, suffix) {
+    return !!name && (name === suffix || name.endsWith(`.${suffix}`));
+}
+
+function schoolCertificate(domain) {
+    const name = serverDomain(domain);
+    return SCHOOL_CERTIFICATES.find(entry => underDomain(name, entry.suffix)) || null;
+}
+
+function realmOf(identity) {
+    const text = String(identity ?? "");
+    return text.includes("@") ? serverDomain(text.slice(text.lastIndexOf("@") + 1)) : "";
+}
+
+function schoolFor(domain, identity) {
+    return serverDomain(domain) ? schoolCertificate(domain) : schoolCertificate(realmOf(identity));
+}
+
+function trustedAuthority(form, home, certificates) {
+    if (form?.trust === "school") {
+        const entry = schoolCertificate(form.domain);
+        return entry && certificates ? `${certificates}/${entry.file}` : null;
+    }
+    if (form?.trust === "file")
+        return filePath(form.authority, home) || null;
+    return "";
+}
+
+function checkAuthority(form, home, certificates) {
+    if (form?.trust === "school") {
+        const entry = schoolFor(form.domain, form.identity);
+        return entry && certificates ? `${certificates}/${entry.file}` : null;
+    }
+    return trustedAuthority(form, home, certificates);
+}
+
+function serverMatch(server, identity) {
+    const realm = realmOf(identity);
+    if (!server)
+        return { state: "none", realm: realm, fill: "" };
+    if (!realm)
+        return { state: "unknown", realm: "", fill: "" };
+    return underDomain(server, realm) ? { state: "match", realm: realm, fill: realm } : { state: "mismatch", realm: realm, fill: "" };
+}
+
+function filePath(text, home) {
+    const path = String(text ?? "").trim();
+    if (path === "~" || path.startsWith("~/"))
+        return home ? home + path.slice(1) : "";
+    return path.startsWith("/") ? path : "";
+}
+
+function outerIdentity(method, identity) {
+    if (method !== "peap" && method !== "ttls")
+        return "";
+    const text = String(identity ?? "");
+    const realm = text.slice(text.lastIndexOf("@") + 1);
+    return text.includes("@") && /^[^\s@]+$/.test(realm) ? `anonymous@${realm}` : "";
+}
+
+function signInReady(kind, form) {
+    const method = form?.method;
+    if (!KEY_MANAGEMENT[kind] || !signInMethods(kind).includes(method) || !form.identity)
+        return false;
+    if (!serverDomain(form.domain))
+        return false;
+    return method !== "tls" || (!!form.certificate && !!form.key);
+}
+
+function signInArgs(kind, form) {
+    if (!signInReady(kind, form))
+        return null;
+    const method = form.method;
+    const tls = method === "tls";
+    return ["connection.auth-retries", "1",
+        "wifi-sec.key-mgmt", KEY_MANAGEMENT[kind],
+        "wifi-sec.auth-alg", kind === "wep" ? "open" : "",
+        "wifi-sec.pmf", kind === "suiteb" ? "required" : "default",
+        "802-1x.eap", method,
+        "802-1x.identity", form.identity,
+        "802-1x.anonymous-identity", outerIdentity(method, form.identity),
+        "802-1x.phase2-auth", INNER_METHODS[method] || "",
+        "802-1x.system-ca-certs", form.authority ? "no" : "yes",
+        "802-1x.ca-cert", form.authority || "",
+        "802-1x.domain-suffix-match", serverDomain(form.domain),
+        "802-1x.client-cert", tls ? form.certificate : "",
+        "802-1x.private-key", tls ? form.key : "",
+        "802-1x.password", "",
+        "802-1x.private-key-password", "",
+        "802-1x.private-key-password-flags", tls && !form.locked ? "not-required" : "none"];
+}
+
+function serverCheckArgs(kind, form) {
+    if (kind !== "wpa" && kind !== "wep")
+        return null;
+    const outer = outerIdentity("peap", form?.identity) || "anonymous";
+    return ["connection.autoconnect", "no",
+        "connection.auth-retries", "1",
+        "wifi-sec.key-mgmt", KEY_MANAGEMENT[kind],
+        "wifi-sec.auth-alg", kind === "wep" ? "open" : "",
+        "802-1x.eap", "peap,ttls",
+        "802-1x.identity", outer,
+        "802-1x.anonymous-identity", outer,
+        "802-1x.phase2-auth", "mschapv2",
+        "802-1x.system-ca-certs", form?.authority ? "no" : "yes",
+        "802-1x.ca-cert", form?.authority || "",
+        "802-1x.domain-suffix-match", UNMATCHABLE_SERVER,
+        "802-1x.password", ""];
+}
+
+function serverCheckSecrets(form) {
+    const outer = outerIdentity("peap", form?.identity) || "anonymous";
+    return secretLine("802-1x.identity", outer) + secretLine("802-1x.password", "never-sent");
+}
+
+function signInSecrets(method, identity, password) {
+    const secret = method === "tls" ? "802-1x.private-key-password" : "802-1x.password";
+    return secretLine("802-1x.identity", identity) + secretLine(secret, password);
+}
+
+function commonName(subject) {
+    const pattern = /(?:^|[\/,]\s*)CN=([^\/,]*)/g;
+    let name = "";
+    for (let found = pattern.exec(String(subject ?? "")); found; found = pattern.exec(String(subject ?? "")))
+        name = found[1].trim();
+    return name;
+}
+
+function troubleKind(reason, err) {
+    if (reason === 9 || reason === 10 || reason === 5 || reason === 6 || /mismatch/i.test(err))
+        return "name";
+    if (reason === 3 || reason === 4 || /expired|not yet valid/i.test(err))
+        return "expired";
+    if (reason === 1 || /issuer|self.signed|untrusted|unable to get/i.test(err))
+        return "untrusted";
+    return "refused";
+}
+
+function serverTrouble(log, device) {
+    let chain = [];
+    let names = [];
+    let trouble = null;
+    for (const line of String(log ?? "").split("\n")) {
+        if (device && !line.startsWith(`${device}: `))
+            continue;
+        if (line.includes("CTRL-EVENT-EAP-STARTED")) {
+            chain = [];
+            names = [];
+            trouble = null;
+            continue;
+        }
+        const cert = line.match(/CTRL-EVENT-EAP-PEER-CERT depth=(\d+) subject='([^']*)'/);
+        if (cert) {
+            chain[Number(cert[1])] = commonName(cert[2]);
+            continue;
+        }
+        const alt = line.match(/CTRL-EVENT-EAP-PEER-ALT depth=0 DNS:(\S+)/);
+        if (alt) {
+            names.push(alt[1].toLowerCase());
+            continue;
+        }
+        const failed = line.match(/CTRL-EVENT-EAP-TLS-CERT-ERROR reason=(\d+) depth=(\d+) subject='([^']*)' err='([^']*)'/);
+        if (!failed)
+            continue;
+        const depth = Number(failed[2]);
+        chain[depth] = commonName(failed[3]);
+        const top = chain.filter(n => n).slice(-1)[0] || "";
+        trouble = {
+            kind: troubleKind(Number(failed[1]), failed[4]),
+            server: serverDomain(names[0] || chain[0]),
+            authority: depth > 0 || chain.length > 1 ? top : ""
+        };
+    }
+    return trouble;
+}
+
+const SERVER_LABELS = {
+    name: "server did not match",
+    untrusted: "server not trusted",
+    expired: "server out of date",
+    refused: "server refused"
+};
+
+function serverLabel(trouble) {
+    return trouble ? SERVER_LABELS[trouble.kind] || SERVER_LABELS.refused : "";
+}
+
+function serverMessage(trouble, domain) {
+    if (!trouble)
+        return "";
+    const by = trouble.authority ? `, vouched for by ${trouble.authority}` : "";
+    switch (trouble.kind) {
+    case "name":
+        return `The server answered as ${trouble.server || "something else"}${domain ? `, not ${domain}` : ""}${by}. Your password was not sent.`;
+    case "untrusted":
+        return `This computer does not trust the chain the server sent${trouble.authority ? `, which ends at ${trouble.authority}` : ""}. Under More, set trust to a file and pick your school's root certificate; its Wi-Fi guide has it. Your password was not sent.`;
+    case "expired":
+        return "The server's certificate has run out of date. Your password was not sent.";
+    }
+    return "The server's certificate was refused. Your password was not sent.";
+}
+
+function serverSeenMessage(trouble, identity) {
+    if (!trouble)
+        return "Could not see the server's name. Your school's Wi-Fi guide lists it.";
+    if (trouble.kind === "name" && trouble.server) {
+        const match = serverMatch(trouble.server, identity);
+        const by = trouble.authority ? `, vouched for by ${trouble.authority}` : "";
+        if (match.state === "match")
+            return `It answered as ${trouble.server}${by}. That matches ${match.realm}, the school in your username, so the server name is filled in.`;
+        if (match.state === "mismatch")
+            return `It answered as ${trouble.server}, which is not part of ${match.realm}, the school in your username. A look-alike network would do this. Only use it if your school's Wi-Fi guide names this server.`;
+        return `It answered as ${trouble.server}${by}. Your username has no @school part to check it against, so check the name with your school's Wi-Fi guide.`;
+    }
+    if (trouble.kind === "name")
+        return "It answered under no name this form can use. Your school's Wi-Fi guide lists the server name.";
+    return serverMessage(trouble, "");
 }
 
 const JOIN_FAILURES = {

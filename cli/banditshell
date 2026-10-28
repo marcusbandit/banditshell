@@ -227,15 +227,19 @@
 #                                while the session is locked
 #
 # triage                         tell the maintainer something is wrong
-#   banditshell triage [--yes]   a report with no words of yours
-#   banditshell triage [<words>] [--yes]
+#   banditshell triage [--context <text>] [--yes]
+#                                a report with no words of yours
+#   banditshell triage [<words>] [--context <text>] [--yes]
 #                                say what went wrong in your own words; the
 #                                report adds the version, your config with
 #                                secrets left out, the log and the checks, shows
 #                                you all of it, and files it as a github issue
 #                                once you answer y; --yes skips the question,
 #                                and without a terminal nothing is sent, the
-#                                report is saved with the command that sends it
+#                                report is saved with the command that sends it.
+#                                --context adds lines under your words that stay
+#                                out of the title; after -- every argument is a
+#                                word
 #
 # action                         run a stable action by its id
 #   banditshell action <id> [args...]
@@ -2443,13 +2447,16 @@ triage_title() {
 }
 
 triage_body() {
-    local words="$1" owner="$2" text
+    local words="$1" owner="$2" context="$3" text
     text=$({
         echo "## what happened"
         if [ -n "$words" ]; then
             printf '%s\n' "$words"
         else
             echo "(no words were given)"
+        fi
+        if [ -n "$context" ]; then
+            printf '\n%s\n' "$context"
         fi
         echo
         report_sections
@@ -2509,19 +2516,29 @@ triage_send() {
 }
 
 triage() {
-    local assume_yes=0 arg answer words given="${BANDITSHELL_TRIAGE_REPO:-}"
+    local assume_yes=0 answer words context="" given="${BANDITSHELL_TRIAGE_REPO:-}"
     local -a given_words=()
-    for arg in "$@"; do
-        if [ "$arg" = --yes ]; then
-            assume_yes=1
-        else
-            given_words+=("$arg")
-        fi
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --yes) assume_yes=1 ;;
+        --context)
+            [ $# -ge 2 ] || { echo "banditshell: --context needs a value" >&2; exit 2; }
+            context="${context:+$context$'\n'}$2"
+            shift
+            ;;
+        --)
+            shift
+            given_words+=("$@")
+            break
+            ;;
+        *) given_words+=("$1") ;;
+        esac
+        shift
     done
     words="${given_words[*]:-}"
     TRIAGE_REPO=$(triage_repo)
     TRIAGE_TITLE=$(triage_title "$words")
-    TRIAGE_BODY=$(triage_body "$words" "${TRIAGE_REPO%%/*}")
+    TRIAGE_BODY=$(triage_body "$words" "${TRIAGE_REPO%%/*}" "$context")
 
     if [ -z "$TRIAGE_REPO" ] && [ -n "$given" ]; then
         triage_keep "BANDITSHELL_TRIAGE_REPO is not in owner/repo form: $(printf '%s' "$given" | mask_log)"
@@ -3604,6 +3621,7 @@ update_plan() {
         say_dry "restart the shell, then wait for shell status and scan the log"
     else
         say_dry "leave the running shell to reload, then wait for shell status and scan the log"
+        say_dry "if the reload fails that check, restart the shell on the new version and check again"
     fi
     say_dry "on a failed health check: git reset --keep ${U_HEAD:0:7}, relaunch, write result.json, skip ${U_TARGET:0:7}"
 }
@@ -3781,24 +3799,30 @@ update_finish_work() {
         return 0
     fi
     if [ "$restart" = 1 ]; then
-        update_phase restart "Restarting..."
-        stop_shell || true
-        ensure_built || true
-        if ! launch "$SHELL_DIR"; then
-            update_roll_back "the new version did not start: ${HEALTH_WHY:-it failed to load}" 1
-            return 1
-        fi
-        refresh_backup || true
-        remember_checkout
+        update_restart "Restarting..." || return 1
     else
         update_phase health "Checking it started..."
-        if pid=$(instance_of "$SHELL_DIR") && ! health_check "$pid" "$mark"; then
-            update_roll_back "the new version did not start: $HEALTH_WHY" 1
-            return 1
+        if pid=$(instance_of "$SHELL_DIR"); then
+            if health_check "$pid" "$mark"; then
+                refresh_backup || true
+            else
+                update_restart "The reload did not take, restarting..." "the reload failed, $HEALTH_WHY. A restart failed as well: " || return 1
+            fi
         fi
-        [ -z "$pid" ] || refresh_backup || true
     fi
     update_conclude "Updated to $(update_label "$(cat "$UPDATE_STATE/target")")"
+}
+
+update_restart() {
+    update_phase restart "$1"
+    stop_shell || true
+    ensure_built || true
+    if ! launch "$SHELL_DIR"; then
+        update_roll_back "${2:-}the new version did not start: $HEALTH_WHY" 1
+        return 1
+    fi
+    refresh_backup || true
+    remember_checkout
 }
 
 update_conclude() {

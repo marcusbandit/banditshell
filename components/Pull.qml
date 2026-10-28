@@ -32,6 +32,7 @@ MouseArea {
     readonly property real dirLen: Math.max(0.0001, Math.hypot(root.dirX, root.dirY))
     readonly property real ux: root.dirX / root.dirLen
     readonly property real uy: root.dirY / root.dirLen
+    readonly property real asideSign: root.uy > 0 || root.uy === 0 && root.ux < 0 ? 1 : -1
 
     property real fromX: 0
     property real fromY: 0
@@ -83,7 +84,7 @@ MouseArea {
         root.velocity += (step / dt - root.velocity) * 0.4;
 
         root.progress = Math.max(0, Math.min(proj / root.travelFull, 1));
-        root.pulled(root.progress, dx * root.uy - dy * root.ux);
+        root.pulled(root.progress, (dx * root.uy - dy * root.ux) * root.asideSign);
     }
 
     function settle(): void {

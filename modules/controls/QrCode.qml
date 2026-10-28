@@ -112,12 +112,15 @@ Item {
         }
     }
 
+    readonly property real grain: 10
+    readonly property real drawn: root.grain * (root.span + root.quiet * 2)
+
     readonly property var figures: root.carve()
 
     function carve(): var {
         const n = root.span;
-        const m = root.module;
-        if (!n || m <= 0)
+        const m = root.grain;
+        if (!n)
             return [];
 
         const r = m / 2;
@@ -125,7 +128,7 @@ Item {
         const grid = root.matrix;
         const edge = root.quiet * m;
 
-        const bleed = Math.max(0.5, m * 0.05);
+        const bleed = m * 0.12;
 
         const dark = (row, col) => row >= 0 && row < n && col >= 0 && col < n && grid[row][col];
 
@@ -228,8 +231,13 @@ Item {
                 required property int index
                 required property string modelData
 
-                anchors.fill: parent
+                width: root.drawn
+                height: root.drawn
                 preferredRendererType: Shape.CurveRenderer
+                transform: Scale {
+                    xScale: root.module / root.grain
+                    yScale: root.module / root.grain
+                }
                 asynchronous: true
 
                 opacity: root.phase(band.index, wave.value)

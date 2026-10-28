@@ -44,7 +44,10 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    took before the merge. `BANDITSHELL_HEALTH_WAIT` and `BANDITSHELL_HEALTH_SCAN` set the
    seconds, and the tests set them small. When it passes, `~/.cache/banditshell/lastgood` is
    refreshed with rsync, or `cp -a` if rsync is missing, and `update/result.json` records `ok`.
-6. **Roll back on failure.** If the health check fails, `git reset --keep <previous>` puts the
+   A hot reload can fail where a cold start of the same tree works. An inline component added to
+   a file the running shell already loaded is one way. So when a reload fails its check, the
+   shell is restarted once on the new version and that start is checked the same way.
+6. **Roll back on failure.** If the health check of a start fails, `git reset --keep <previous>` puts the
    checkout back, the commit that failed goes into `update/skip` (it is not offered again until a
    newer one arrives) and the shell is relaunched. If even that launch fails, the last known
    good copy is started. `result.json` records `ok: false` with the reason, and the menu shows it
@@ -60,8 +63,9 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    "Reinstall the version you just left", asked once, which runs `update apply --detach --to <sha>` on the commit it left. Once an
    applied commit starts, it leaves `update/skip`, and the shell clears `updates.skip` when
    `result.json` names it (#178). It leads with
-   "Report what broke": a few lines of words, with the skipped and current versions added
-   after them, handed to `banditshell triage` in a terminal (`scripts/in-terminal.sh`),
+   "Report what broke": a few lines of words, handed to `banditshell triage` in a terminal
+   (`scripts/in-terminal.sh`) with the skipped and current versions as `--context`, so they
+   land under the words in the report and stay out of the issue title (#228),
    where triage shows the whole report and sends nothing until the person answers y (#180).
    `banditshell update status [--json]` says where the copy stands, the last outcome and the
    version before the last update. What's new shows nothing pending when the seen mark is a

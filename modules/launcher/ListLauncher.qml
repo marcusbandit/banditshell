@@ -8,6 +8,7 @@ import qs.components
 import qs.services
 import qs.modules.controls
 import "search.js" as Search
+import "placement.js" as Placement
 import "../../services/chords.js" as Chords
 import "../../services/colours.js" as Colours
 
@@ -19,8 +20,9 @@ LauncherConcept {
     view: list
     rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
     travel: panel.restLift
-    reach: panel.restLift
     tabWidth: panel.barHeight * 2
+
+    readonly property real placedAt: (panel.restY + panel.barOffset) / Math.max(1, root.height)
 
     readonly property int resultCount: results.length
     readonly property string scrollInfo: `row ${root.selected} of ${root.results.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}`
@@ -657,8 +659,13 @@ LauncherConcept {
 
     property bool unsized: false
 
-    onShownChanged: panel.judgeArrival()
-    onDraggingChanged: panel.judgeArrival()
+    onShownChanged: panel.unjudge()
+    onDraggingChanged: {
+        panel.unjudge();
+        panel.follow();
+    }
+    onDragAsideChanged: panel.follow()
+    onDragFromChanged: panel.follow()
 
     Spring {
         id: stretch
@@ -673,20 +680,20 @@ LauncherConcept {
 
         target: panel.arrived ? 1 : 0
         stiffness: Appearance.spring.stiffness * 1.9
-        damping: 1.6 * Math.sqrt(wide.stiffness * wide.mass)
+        damping: (root.dragging ? 1.6 : 2) * Math.sqrt(wide.stiffness * wide.mass)
         epsilon: 0.002
     }
 
     Spring {
-        id: sway
+        id: drift
 
-        target: root.dragging ? panel.swayFor(root.dragAside) : 0
+        damping: 2 * Math.sqrt(drift.stiffness * drift.mass)
     }
 
     FrameAnimation {
         id: motion
 
-        running: panel.visible && (root.dragging || panel.lift !== panel.lastLift || Math.abs(panel.speed) > 1)
+        running: panel.unjudged || panel.visible && Math.abs(panel.speed) > 1
 
         onTriggered: panel.track(motion.frameTime)
     }
@@ -728,7 +735,10 @@ LauncherConcept {
         readonly property real barOffset: Appearance.padding.large + field.height / 2
         readonly property real barHeight: barOffset * 2
 
-        readonly property real restY: root.height * Config.values.launcher.list.searchAt - barOffset
+        readonly property real margin: root.inset + Appearance.sizes.melt
+        readonly property real tallest: Math.min(root.height - margin * 2, barHeight + Appearance.padding.normal * 2 + separator.height + root.rowPitch * 10 + root.headerPitch * 2)
+
+        readonly property real restY: Placement.restTop(root.height, Config.values.launcher.list.searchAt, barOffset, margin, tallest)
 
         readonly property real bandY: root.height - root.inset
 
@@ -750,12 +760,14 @@ LauncherConcept {
 
         property bool stuck: true
         property bool arrived: false
+        property bool unjudged: false
+        property real judgedLift: 0
 
-        readonly property real swayRoom: barHeight * 0.5
-
-        function swayFor(aside: real): real {
-            const given = swayRoom * (1 - 1 / (1 + Math.abs(aside) * 0.35 / swayRoom));
-            return aside < 0 ? -given : given;
+        function follow(): void {
+            if (root.dragging)
+                drift.hold(root.dragFrom + root.dragAside);
+            else
+                drift.release();
         }
 
         readonly property real tabStretch: Math.max(-0.25, Math.min(0.6, stretch.value))
@@ -780,7 +792,35 @@ LauncherConcept {
                 wide.snap();
         }
 
+        function unjudge(): void {
+            unjudged = true;
+            if (Appearance.still)
+                track(0);
+        }
+
+        function judge(): void {
+            unjudged = false;
+            const wasStuck = stuck;
+            if (stuck && lift > barHeight + stretchRoom) {
+                stuck = false;
+                stretch.release();
+                stretch.velocity *= 0.3;
+                if (Appearance.still) {
+                    stretch.target = 0;
+                    stretch.snap();
+                }
+            } else if (!stuck && lift <= tabShapeHeight) {
+                stuck = true;
+            }
+            if (stuck && (lift !== judgedLift || !wasStuck))
+                stretch.hold(Math.max(0, lift / barHeight - 1));
+            judgedLift = lift;
+            judgeArrival();
+        }
+
         function track(dt: real): void {
+            if (unjudged)
+                judge();
             if (Appearance.still) {
                 speed = 0;
                 lastLift = lift;
@@ -795,37 +835,22 @@ LauncherConcept {
             stretch.target = !root.dragging ? 0 : Math.min(0.5, Math.abs(speed) / 6000) + (arrived && root.shown ? 0.12 * reluctance : 0);
         }
 
-        onLiftChanged: {
-            if (stuck && lift > barHeight + stretchRoom) {
-                stuck = false;
-                stretch.release();
-                stretch.velocity *= 0.3;
-                if (Appearance.still) {
-                    stretch.target = 0;
-                    stretch.snap();
-                }
-            } else if (!stuck && lift <= tabShapeHeight) {
-                stuck = true;
-            }
-            if (stuck)
-                stretch.hold(Math.max(0, lift / barHeight - 1));
-            panel.judgeArrival();
-        }
+        onLiftChanged: unjudge()
 
         onVisibleChanged: if (!visible) {
             speed = 0;
             lastLift = lift;
         }
 
-        x: (root.width - width) / 2 + sway.value
+        x: Math.max(0, Math.min(root.width - width, (root.width - width) / 2 + drift.value))
 
         y: bandY - lift
 
         width: tabShapeWidth + (root.panelWidth / (1 + bodyStretch) - tabShapeWidth) * wide.value
 
-        implicitHeight: Math.min(root.shownView ? Math.round(root.height * 0.75) : root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
+        implicitHeight: Math.min(root.shownView ? Math.round(root.height * 0.75) : tallest, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
 
-        height: tabShapeHeight + (fullHeight * (1 + bodyStretch) - tabShapeHeight) * wide.value
+        height: Math.min(lift, tabShapeHeight + (fullHeight * (1 + bodyStretch) - tabShapeHeight) * wide.value)
 
         visible: height > 0
 
@@ -1164,7 +1189,7 @@ LauncherConcept {
 
                         model: ScriptModel {
                             values: root.results
-                            objectProp: "key"
+                            objectProp: "slot"
                         }
 
                         cacheBuffer: root.rowPitch * 4
@@ -1312,7 +1337,7 @@ LauncherConcept {
 
                                     Loader {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        active: !!line.modelData.slider && !line.modelData.slider.bare
+                                        active: !!line.modelData.slider && !line.modelData.slider.bare && !line.rekeying
                                         visible: active
 
                                         sourceComponent: Slider {
@@ -1327,7 +1352,7 @@ LauncherConcept {
 
                                     Loader {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        active: line.modelData.toggle !== undefined
+                                        active: line.modelData.toggle !== undefined && !line.rekeying
                                         visible: active
 
                                         sourceComponent: Toggle {
@@ -1355,6 +1380,14 @@ LauncherConcept {
 
                             HoverHandler {
                                 id: lineHover
+                            }
+
+                            readonly property string rowKey: line.modelData.key ?? ""
+                            property bool rekeying: false
+
+                            onRowKeyChanged: {
+                                line.rekeying = true;
+                                line.rekeying = false;
                             }
 
                             readonly property bool opened: !line.modelData.header && !root.asking && !root.capture && (line.index === root.selected && !root.answerHolds && !assistantCard.holds && root.settled || lineHover.hovered)
@@ -1428,7 +1461,7 @@ LauncherConcept {
             row: root.results[root.selected] ?? null
             colour: root.answerColour || (root.answerHolds || !peek.row?.peekColour ? "" : search.colourEdit?.key === peek.row.key ? search.colourEdit.hex : peek.row.peekColour)
             growsLeft: !peek.roomRight
-            wanted: root.open && !root.quick && root.settled && !root.capture && !root.shownView && !root.asking && (!root.answerHolds || !!root.answerColour) && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
+            wanted: root.open && panel.arrived && !root.quick && root.settled && !root.capture && !root.shownView && !root.asking && (!root.answerHolds || !!root.answerColour) && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
             longestFrame: root.longestFrame
 
             onColourPicked: (hex, done) => root.takeColour(hex, done)

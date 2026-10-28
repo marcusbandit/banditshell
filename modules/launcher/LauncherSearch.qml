@@ -1422,13 +1422,16 @@ QtObject {
     readonly property var rows: root.keyed(root.arranged)
 
     function keyed(rows: var): var {
-        return rows.map(r => {
+        return rows.map((r, slot) => {
             if (r.header)
-                return r;
+                return Object.assign({}, r, {
+                    slot: slot
+                });
             const alias = root.runnable(r) ? root.aliasOf[r.key] ?? "" : "";
             const hotkey = root.keyable(r) ? LauncherHotkeys.chordOf(r.key) : "";
             return Object.assign({}, r, {
                 id: r.key,
+                slot: slot,
                 alias: alias,
                 hotkey: hotkey
             });
