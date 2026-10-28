@@ -21,7 +21,11 @@ Item {
     default property alias content: inner.data
 
     readonly property real inset: root.strokeWidth / 2
-    readonly property bool onShader: root.topLeftRadius >= 0 && root.topRightRadius >= 0 && root.bottomRightRadius >= 0 && root.bottomLeftRadius >= 0
+    readonly property bool onShader: root.GraphicsInfo.api !== GraphicsInfo.Software && root.convex(root.topLeftRadius) && root.convex(root.topRightRadius) && root.convex(root.bottomRightRadius) && root.convex(root.bottomLeftRadius)
+
+    function convex(r: real): bool {
+        return r > 0 || Object.is(r, 0);
+    }
 
     function offset(r: real): real {
         return r < 0 ? r : Math.max(0, r - root.inset);

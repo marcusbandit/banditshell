@@ -128,7 +128,7 @@ Item {
         const grid = root.matrix;
         const edge = root.quiet * m;
 
-        const bleed = m * 0.08;
+        const bleed = m * 0.12;
 
         const dark = (row, col) => row >= 0 && row < n && col >= 0 && col < n && grid[row][col];
 
