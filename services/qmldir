@@ -30,6 +30,7 @@ singleton Display 1.0 Display.qml
 singleton Downloads 1.0 Downloads.qml
 singleton Emoji 1.0 Emoji.qml
 singleton Events 1.0 Events.qml
+singleton FileDialogs 1.0 FileDialogs.qml
 singleton FileSearch 1.0 FileSearch.qml
 singleton Files 1.0 Files.qml
 singleton FilesFind 1.0 FilesFind.qml

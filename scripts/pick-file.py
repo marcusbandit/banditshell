@@ -68,7 +68,27 @@ def through_zenity(title, pattern, folder):
     return (PICKED, done.stdout.strip()) if done.returncode == 0 and done.stdout.strip() else (CANCELLED, "")
 
 
+def portal_answers():
+    if Gio is None:
+        return False
+    try:
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        bus.call_sync("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+                      "org.freedesktop.DBus.Properties", "Get",
+                      GLib.Variant("(ss)", ("org.freedesktop.portal.FileChooser", "version")),
+                      GLib.VariantType("(v)"), Gio.DBusCallFlags.NONE, 5000, None)
+        return True
+    except GLib.Error:
+        return False
+
+
+def check():
+    return PICKED if portal_answers() or shutil.which("zenity") else NO_CHOOSER
+
+
 def main():
+    if sys.argv[1:2] == ["--check"]:
+        sys.exit(check())
     title = sys.argv[1] if len(sys.argv) > 1 else "Open"
     pattern = sys.argv[2] if len(sys.argv) > 2 else "*"
     folder = os.path.expanduser(sys.argv[3] if len(sys.argv) > 3 else "~")

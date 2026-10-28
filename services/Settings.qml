@@ -10,7 +10,6 @@ Singleton {
     property string screenName: ""
     property string page: "connections"
     property string reveal: ""
-    property bool away: false
 
     function show(screen: string, which: string): void {
         const span = root.open ? null : Trace.begin("settings open");
