@@ -12,7 +12,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A Settings row too narrow for its buttons becomes a list to pick from"
+          "text": "Settings buttons that cannot fit narrow down, then become a list"
         },
         {
           "type": "issues",
@@ -27,7 +27,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Settings, Sidebar: Clock and battery sit names each place in words"
+          "text": "Settings, Sidebar: Clock and battery names each place plainly"
         },
         {
           "type": "issues",
@@ -38,6 +38,11 @@
           "type": "issues",
           "severity": "minor",
           "text": "Menus opened with no current choice no longer mark their first row"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings controls end at one edge, with reset arrows in their own slot"
         },
         {
           "type": "issues",

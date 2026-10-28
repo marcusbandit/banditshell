@@ -49,9 +49,6 @@ Singleton {
 
     property var openRows: ({})
 
-    property var trails: ({})
-    property real resetColumn: 0
-
     property var tails: ({})
     property var tailColumns: ({})
 
@@ -191,23 +188,6 @@ Singleton {
 
     property var toast: null
     property int toastSerial: 0
-
-    function noteTrail(uid: string, width: real): void {
-        if (!uid)
-            return;
-        const had = root.trails[uid];
-        if (width < 0 ? had === undefined : had === width)
-            return;
-        if (width < 0)
-            delete root.trails[uid];
-        else
-            root.trails[uid] = width;
-        Qt.callLater(root.measureTrails);
-    }
-
-    function measureTrails(): void {
-        root.resetColumn = Object.values(root.trails).reduce((a, b) => Math.max(a, b), 0);
-    }
 
     function noteTail(uid: string, group: string, width: real): void {
         if (!uid)
