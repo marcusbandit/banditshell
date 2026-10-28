@@ -36,6 +36,7 @@ Singleton {
     property var warnings: []
 
     property var entries: []
+    property var notes: []
     property string summaryText: ""
     property string buttonText: "Update"
     property bool restartNeeded: false
@@ -285,6 +286,7 @@ Singleton {
             Qt.callLater(root.inspect, false);
         } else if (last.phase === "rolledback") {
             root.previous = "";
+            root.notes = [];
             root.state = root.rolledback;
             resultFile.reload();
         } else if (last.phase === "failed") {
@@ -460,6 +462,7 @@ Singleton {
                 root.behind = counts ? Number(got.behind) || 0 : 0;
                 root.ahead = counts ? Number(got.ahead) || 0 : 0;
                 root.entries = got.entries ?? [];
+                root.notes = Array.isArray(got.notes) ? got.notes : [];
                 root.summaryText = got.summary ?? "";
                 root.buttonText = got.button ?? "Update";
                 root.restartNeeded = got.class?.restart === true;

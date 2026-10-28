@@ -1667,10 +1667,12 @@ banditshell/
 │   │                            needed, commands changed"), the What's new
 │   │                            entries of the change BEFORE it is taken,
 │   │                            one button that says Update or Update and
-│   │                            restart, Go back to <id> once one is
-│   │                            recorded, asked once in its place, and the
-│   │                            outcome of the last update, a rollback
-│   │                            included. After a go-back the outcome
+│   │                            restart, and the outcome of the last
+│   │                            update, a rollback included. Up to date,
+│   │                            the card lists what the running version
+│   │                            brought, In this version. Below the card
+│   │                            sits a quiet Go back to <id> once one is
+│   │                            recorded, asked once in its place. After a go-back the outcome
 │   │                            leads with Report what broke, a few lines
 │   │                            that banditshell triage shows in a
 │   │                            terminal before anything is sent, and

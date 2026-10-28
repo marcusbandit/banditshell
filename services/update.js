@@ -476,12 +476,24 @@ function main(argv) {
             process.stdout.write(JSON.stringify(report) + "\n");
         return 0;
     }
+    if (mode === "notes") {
+        const fs = require("node:fs");
+        const read = file => {
+            try {
+                return fs.readFileSync(file, "utf8");
+            } catch (e) {
+                return "";
+            }
+        };
+        process.stdout.write(JSON.stringify(incomingEntries(read(argv[1]), read(argv[2]))) + "\n");
+        return 0;
+    }
     if (mode === "explain") {
         const input = require("node:fs").readFileSync(0, "utf8");
         process.stdout.write(explain(input.split("\n"), argv[1] ?? "main") + "\n");
         return 0;
     }
-    process.stderr.write("usage: node update.js report <facts-dir> [--json|--lines|--text] | explain <branch>\n");
+    process.stderr.write("usage: node update.js report <facts-dir> [--json|--lines|--text] | notes <before> <after> | explain <branch>\n");
     return 2;
 }
 

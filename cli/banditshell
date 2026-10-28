@@ -3530,8 +3530,28 @@ update_state_text() {
         fi ;;
     paused) echo "this copy is on ${U_BRANCH_NOW/#HEAD/no branch}, so it does not follow $U_BRANCH" ;;
     diverged) echo "$U_BEHIND new on $U_BRANCH, but this copy has $U_AHEAD commit(s) of its own, so it cannot just move forward" ;;
-    skipped) echo "$(update_label "$U_TARGET") did not start last time and is skipped until a newer version arrives" ;;
+    skipped)
+        if update_left_by_hand "$U_TARGET"; then
+            echo "you went back from $(update_label "$U_TARGET"); it is skipped until a newer version arrives"
+        else
+            echo "$(update_label "$U_TARGET") did not start last time and is skipped until a newer version arrives"
+        fi ;;
     esac
+}
+
+update_left_by_hand() {
+    local result
+    result=$(cat "$UPDATE_STATE/result.json" 2>/dev/null) || return 1
+    [[ $result == *'"ok":false'* && $result == *'"hand":true'* && $result == *"\"to\":\"$1\""* ]]
+}
+
+update_notes() {
+    if [ -z "$U_PREVIOUS" ] || ! update_has_node; then
+        printf '[]'
+        return 0
+    fi
+    node "$U_DIR/services/update.js" notes <(ugit show "$U_PREVIOUS:docs/whats-new.json" 2>/dev/null) \
+        <(ugit show "HEAD:docs/whats-new.json" 2>/dev/null) || printf '[]'
 }
 
 update_check() {
@@ -3566,7 +3586,7 @@ update_check() {
         exit 10
     fi
     if [ "$UPDATE_JSON" = 1 ]; then
-        printf '%s}\n' "$(update_meta_json)"
+        printf '%s,"notes":%s}\n' "$(update_meta_json)" "$(update_notes)"
     else
         update_state_text
     fi
@@ -3954,13 +3974,16 @@ update_status() {
 }
 
 update_last_result() {
-    local ok why to
+    local ok hand why to
     [ -n "$1" ] || return 0
     ok=$(sed -n 's/.*"ok":\(true\|false\).*/\1/p' <<<"$1")
+    hand=$(sed -n 's/.*"hand":\(true\|false\).*/\1/p' <<<"$1")
     to=$(sed -n 's/.*"toLabel":"\([^"]*\)".*/\1/p' <<<"$1")
     why=$(sed -n 's/.*"why":"\([^"]*\)".*/\1/p' <<<"$1")
     if [ "$ok" = true ]; then
         echo "last update: reached $to"
+    elif [ "$hand" = true ]; then
+        echo "last update: you went back from $to; it is skipped until a newer version arrives"
     else
         echo "last update: $to did not start${why:+ ($why)}; it is skipped until a newer version arrives"
     fi

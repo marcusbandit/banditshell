@@ -56,7 +56,7 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    `update/previous` and skips what it left. It refuses on a paused copy, on a copy with commits
    of its own, and when the recorded commit is not behind HEAD; a reset git refuses changes and
    skips nothing. The check reports that commit as `previous`, with its id as `previousVersion`,
-   under the same rules, and the menu then offers "Go back to <id>" ahead of Hide message, asks once
+   under the same rules, and the menu then offers a quiet "Go back to <id>" below the what's-new card, asks once
    in its place, and runs `rollback --detach`, whose first progress line is `goback`. Only the
    checkout moves: `config.json`, files the newer version wrote elsewhere and stashed edits stay
    as they are, and the confirm says so (#171). After a go-back the outcome offers a quiet
@@ -175,9 +175,12 @@ definition. Where it shows:
 - `banditshell version` prints `version`, and `--json` has the same key.
 - `banditshell update` and `update check` name the version this copy is on and the one waiting.
 - `banditshell update check --json` carries `version` (this copy), `targetVersion` (what is
-  waiting) and `previousVersion` (where rollback goes).
+  waiting) and `previousVersion` (where rollback goes). When nothing is waiting it also carries
+  `notes`: the what's-new entries this copy has and `previous` did not, so what going back would
+  undo.
 - The update menu says `You have <release>, on the stable channel`; on stable a waiting update is headed
-  `<release> is ready`, with that release's what's-new entries under "In this update".
+  `<release> is ready`, with that release's what's-new entries under "In this update". Up to date,
+  the same card lists `notes` under "In this version".
 - Settings > About shows the same version.
 
 `update rollback` on `stable` goes to the release before the one this copy is on, found from the

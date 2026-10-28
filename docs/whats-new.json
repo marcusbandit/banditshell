@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-12",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Up to date, the update menu lists what your version brought"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Going back a version is a quiet button under those notes"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A version you went back from no longer reads as one that failed"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-11",
       "date": "2026-10-28",
       "changes": [
