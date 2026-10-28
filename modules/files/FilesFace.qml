@@ -251,6 +251,10 @@ Item {
         return Files.act(action);
     }
 
+    function warm(): void {
+        grid.warm();
+    }
+
     function select(index: int, extend: bool): void {
         if (Files.visible.length === 0)
             return;
@@ -373,8 +377,8 @@ Item {
             });
 
         acts.push({
-            icon: Files.view === "list" ? "grid_view" : "view_list",
-            label: Files.view === "list" ? "Icon view" : "List view",
+            icon: Files.listed ? "grid_view" : "view_list",
+            label: Files.listed ? "Icon view" : "List view",
             run: () => Files.toggleView()
         }, {
             icon: "select_all",
@@ -401,6 +405,14 @@ Item {
             label: "Settings…",
             run: () => settings.show()
         });
+
+        if (Files.trashItems.length > 0)
+            acts.push({
+                icon: "delete_forever",
+                label: "Empty the Trash…",
+                apart: true,
+                run: () => root.confirmEmpty()
+            });
 
         return acts;
     }
@@ -436,6 +448,15 @@ Item {
                     origin: Files.originPlace(e)
                 }));
         confirm.ask(Deletion.what(items), Deletion.REST, "Delete", "delete_forever", answer => Files.deleteForever(Deletion.approved(answer, paths)));
+    }
+
+    function confirmEmpty(): void {
+        const items = Files.trashItems;
+        if (items.length === 0)
+            return;
+
+        const elsewhere = items.filter(item => item.dir !== Files.trashHome).length;
+        confirm.ask("Empty the Trash", Deletion.emptying(items.length, elsewhere), "Empty", "delete_forever", answer => Files.emptyTrash(Deletion.emptied(answer, items)));
     }
 
     Connections {
@@ -529,6 +550,7 @@ Item {
         receiving: root.dragging ? path.crumbAt(root.dragAt) : -1
 
         onDismissed: Qt.callLater(root.forceActiveFocus)
+        onEmptyAsked: root.confirmEmpty()
     }
 
     Separator {
@@ -546,7 +568,7 @@ Item {
         anchors.top: rule.bottom
         anchors.bottom: failure.top
 
-        width: Files.sidebarOpen ? Files.sidebarWidth : 0
+        width: Files.sidebarOpen ? Math.max(Files.zoomed(Files.sidebarWidth), Math.min(sidebar.natural, root.width * 0.4)) : 0
         visible: width > 0
         clip: true
 
@@ -562,7 +584,7 @@ Item {
 
         visible: Files.sidebarOpen
 
-        onMoved: delta => Files.sidebarWidth = Math.max(120, Math.min(root.width * 0.4, sidebarEdge.from + delta))
+        onMoved: delta => Files.sidebarWidth = Math.round(Math.max(120, Math.min(root.width * 0.4, sidebarEdge.from + delta)) / Files.magnification)
         onCommitted: Files.commitWidths()
 
         property int from: 0
@@ -572,7 +594,7 @@ Item {
 
             function onActiveChanged(): void {
                 if (sidebarEdge.active)
-                    sidebarEdge.from = Files.sidebarWidth;
+                    sidebarEdge.from = sidebar.width;
             }
         }
     }

@@ -14,8 +14,9 @@ Item {
     property bool editing: false
 
     signal dismissed
+    signal emptyAsked
 
-    implicitHeight: Math.max(buttons.implicitHeight, crumbs.implicitHeight, field.implicitHeight + Appearance.padding.small * 2)
+    implicitHeight: Math.max(buttons.implicitHeight, crumbs.implicitHeight, field.implicitHeight + Appearance.padding.small * 2, emptying.visible ? emptying.implicitHeight : 0)
 
     function edit(): void {
         root.editing = true;
@@ -104,24 +105,34 @@ Item {
         anchors.left: buttons.right
         anchors.leftMargin: Appearance.padding.small
         anchors.verticalCenter: parent.verticalCenter
-        anchors.right: search.left
+        anchors.right: emptying.visible ? emptying.left : search.left
         anchors.rightMargin: Appearance.padding.normal
 
         visible: !Files.searching && !root.editing
         spacing: 0
 
-        readonly property bool crowded: {
+        readonly property real gap: Appearance.padding.normal * 2
+
+        readonly property int kept: {
+            if (measure.font.pixelSize <= 0)
+                return 0;
+            const names = Files.crumbs.map(c => c.name);
             let sum = 0;
-            for (let i = 0; i < list.count; ++i)
-                sum += list.itemAt(i)?.naturalWidth ?? 0;
-            return sum > width;
+            for (let i = names.length - 1; i >= 0; --i) {
+                const more = sum + measure.advanceWidth(names[i]) + crumbs.gap;
+                const room = i > 0 ? crumbs.width - measure.advanceWidth("…") - crumbs.gap : crumbs.width;
+                if (i < names.length - 1 && more > room)
+                    return i + 1;
+                sum = more;
+            }
+            return 0;
         }
 
-        readonly property real usedBeforeLast: {
-            let sum = 0;
-            for (let i = 0; i < list.count - 1; ++i)
-                sum += list.itemAt(i)?.width ?? 0;
-            return sum;
+        FontMetrics {
+            id: measure
+
+            font.family: Appearance.font.family
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
         }
 
         Repeater {
@@ -136,9 +147,10 @@ Item {
                 required property var modelData
 
                 readonly property bool last: crumb.index === Files.crumbs.length - 1
-                readonly property real naturalWidth: label.implicitWidth + Appearance.padding.normal * 2
+                readonly property bool folded: crumb.index === crumbs.kept - 1
 
-                implicitWidth: Math.min(naturalWidth, crumbs.crowded ? (crumb.last ? crumbs.width - crumbs.usedBeforeLast : crumbs.width / Files.crumbs.length) : naturalWidth)
+                visible: crumb.index >= crumbs.kept - 1
+                implicitWidth: Math.min(label.implicitWidth + crumbs.gap, crumbs.width)
                 implicitHeight: label.implicitHeight + Appearance.padding.small * 2
 
                 SquircleRect {
@@ -154,10 +166,10 @@ Item {
                     id: label
 
                     anchors.centerIn: parent
-                    width: crumb.implicitWidth - Appearance.padding.normal * 2
+                    width: Math.min(label.implicitWidth, crumbs.width - crumbs.gap)
 
                     elide: Text.ElideMiddle
-                    text: crumb.modelData.name
+                    text: crumb.folded ? "…" : crumb.modelData.name
                     font.pixelSize: Files.zoomed(Appearance.font.size.small)
 
                     color: crumb.last ? Appearance.colour.text : Appearance.colour.textFaint
@@ -166,7 +178,7 @@ Item {
                 HoverTip {
                     host: crumb
                     asked: hover.hovered
-                    text: hover.hovered && label.truncated ? crumb.modelData.path : ""
+                    text: hover.hovered && (label.truncated || crumb.folded) ? crumb.modelData.path : ""
                 }
 
                 HoverHandler {
@@ -199,7 +211,7 @@ Item {
     SquircleRect {
         anchors.left: buttons.right
         anchors.leftMargin: Appearance.padding.small
-        anchors.right: search.left
+        anchors.right: emptying.visible ? emptying.left : search.left
         anchors.rightMargin: Appearance.padding.normal
         anchors.verticalCenter: parent.verticalCenter
 
@@ -247,6 +259,22 @@ Item {
 
             Keys.onEscapePressed: root.stopEditing()
         }
+    }
+
+    Button {
+        id: emptying
+
+        anchors.right: search.left
+        anchors.rightMargin: Appearance.padding.small
+        anchors.verticalCenter: parent.verticalCenter
+        visible: Files.trashTop && !Files.searching && !root.editing
+
+        style: "ring"
+        icon: "delete_forever"
+        text: "Empty Trash"
+        interactive: Files.trashItems.length > 0
+
+        onClicked: root.emptyAsked()
     }
 
     Item {

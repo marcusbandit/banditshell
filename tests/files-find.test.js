@@ -133,6 +133,14 @@ test.describe("ordering results", () => {
         assert.deepStrictEqual(big.slice(3).map(x => x.key), [`${HOME}/b report.txt`, `${HOME}/Other/a report.txt`]);
     });
 
+    test.it("sorted by date, lists every result newest first wherever it lives", () => {
+        const dated = [e(HOME, "b report.txt", {mtime: 50}), e(`${cwd}/deep`, "c report.txt", {mtime: 2}), e(`${HOME}/Other`, "a report.txt", {mtime: 30})];
+        const newest = Find.grouped(local, dated, cwd, list => Order.ordered(list, "mtime", false), true);
+        assert.deepStrictEqual(newest.map(x => x.key ?? x.name), [`${HOME}/b report.txt`, `${HOME}/Other/a report.txt`, "zz report.txt", `${cwd}/deep/c report.txt`, "a report.txt"]);
+        const oldest = Find.grouped(local, dated, cwd, list => Order.ordered(list, "mtime", true), true);
+        assert.deepStrictEqual(oldest.map(x => x.key ?? x.name), newest.map(x => x.key ?? x.name).reverse());
+    });
+
     test.it("narrows a finished walk instead of walking again", () => {
         assert.ok(Find.narrows("rep", "report"));
         assert.ok(!Find.narrows("report", "rep"));

@@ -768,6 +768,8 @@ Singleton {
 
                 searchEverywhere: false,
 
+                searchView: "list",
+
                 terminal: {
 
                     font: "CaskaydiaCove Nerd Font Mono",

@@ -233,10 +233,12 @@ Item {
                     color: root.rendered ? Appearance.colour.fillStrong : togglepress.containsMouse ? Appearance.colour.fill : "transparent"
                 }
 
-                Icon {
+                InkIcon {
                     id: toggleGlyph
 
                     anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: toggleGlyph.inkOffsetX
+                    anchors.verticalCenterOffset: toggleGlyph.inkOffsetY
 
                     name: root.rendered ? "article" : "code"
                     size: Files.zoomed(Appearance.font.iconSize)
@@ -409,10 +411,12 @@ Item {
                     strokeWidth: Appearance.stroke.ring
                 }
 
-                Icon {
+                InkIcon {
                     id: playGlyph
 
                     anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: playGlyph.inkOffsetX
+                    anchors.verticalCenterOffset: playGlyph.inkOffsetY
 
                     name: root.player?.playing ? "pause" : "play_arrow"
                 }

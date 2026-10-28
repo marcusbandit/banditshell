@@ -114,7 +114,7 @@ function merged(fresh, provisional) {
     return fresh.concat(provisional.filter(e => !seen.has(e.key)));
 }
 
-function grouped(local, found, cwd, order) {
+function grouped(local, found, cwd, order, mixed) {
     const below = [];
     const elsewhere = [];
     for (const entry of found) {
@@ -122,5 +122,7 @@ function grouped(local, found, cwd, order) {
             continue;
         (within(entry.dir, cwd) ? below : elsewhere).push(entry);
     }
+    if (mixed)
+        return order(local.concat(below, elsewhere));
     return order(local).concat(order(below), order(elsewhere));
 }

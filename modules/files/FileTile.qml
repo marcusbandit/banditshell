@@ -187,6 +187,7 @@ Item {
         anchors.rightMargin: Appearance.padding.small
         visible: root.row
 
+        readonly property bool stacked: FilesFind.active && !root.entry.trash
         readonly property real dateWidth: Files.zoomed(Appearance.font.size.small) * 7
         readonly property real sizeWidth: Files.zoomed(Appearance.font.size.small) * 5
 
@@ -214,8 +215,9 @@ Item {
 
             anchors.left: rowMark.right
             anchors.leftMargin: Appearance.padding.small
-            anchors.verticalCenter: parent.verticalCenter
-            readonly property real room: rowSize.x - rowName.x - Appearance.padding.normal * 2
+            anchors.verticalCenter: parent.stacked ? undefined : parent.verticalCenter
+            anchors.bottom: parent.stacked ? parent.verticalCenter : undefined
+            readonly property real room: (parent.stacked ? rowDate.x : rowSize.x) - rowName.x - Appearance.padding.normal * (parent.stacked ? 1 : 2)
             width: Math.min(rowName.implicitWidth, rowName.room)
 
             text: root.entry.name
@@ -227,11 +229,12 @@ Item {
         StyledText {
             id: rowPlace
 
-            anchors.left: rowName.right
-            anchors.leftMargin: Appearance.padding.normal
-            anchors.right: rowSize.left
+            anchors.left: parent.stacked ? rowName.left : rowName.right
+            anchors.leftMargin: parent.stacked ? 0 : Appearance.padding.normal
+            anchors.right: parent.stacked ? rowDate.left : rowSize.left
             anchors.rightMargin: Appearance.padding.normal
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenter: parent.stacked ? undefined : parent.verticalCenter
+            anchors.top: parent.stacked ? parent.verticalCenter : undefined
             visible: root.place !== "" && rowPlace.width >= digit.advanceWidth * 4
 
             text: root.fitted(rowPlace.width)
@@ -242,9 +245,10 @@ Item {
         StyledText {
             id: rowSize
 
-            anchors.right: rowDate.left
-            anchors.rightMargin: Appearance.padding.normal
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: parent.stacked ? parent.right : rowDate.left
+            anchors.rightMargin: parent.stacked ? 0 : Appearance.padding.normal
+            anchors.verticalCenter: parent.stacked ? undefined : parent.verticalCenter
+            anchors.top: parent.stacked ? parent.verticalCenter : undefined
             width: parent.sizeWidth
 
             horizontalAlignment: Text.AlignRight
@@ -258,7 +262,8 @@ Item {
             id: rowDate
 
             anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenter: parent.stacked ? undefined : parent.verticalCenter
+            anchors.bottom: parent.stacked ? parent.verticalCenter : undefined
             width: parent.dateWidth
 
             horizontalAlignment: Text.AlignRight

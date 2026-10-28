@@ -78,7 +78,9 @@ FloatingWindow {
         asynchronous: !win.visible
         sourceComponent: FilesFace {}
 
-        onLoaded: if (!win.visible)
-            Trace.note("built")
+        onLoaded: if (!win.visible) {
+            Trace.note("built");
+            Qt.callLater(() => face.item?.warm());
+        }
     }
 }

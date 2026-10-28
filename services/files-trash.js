@@ -20,6 +20,15 @@ var RESTORE = 'while [ $# -gt 2 ]; do d=$1 n=$2 o=$3; shift 3; '
     + 'rm -f -- "$d/info/$n.trashinfo"; echo ok; '
     + 'else echo failed; fi; done';
 
+var EMPTY = 'home=$1; shift; uid=$(id -u); rc=0; '
+    + 'for p; do d=${p%/files/*}; n=${p##*/}; t=${d##*/}; u=${d%/*}; ok=; '
+    + '[ "$d" = "$home" ] && ok=1; [ "$t" = ".Trash-$uid" ] && ok=1; [ "$t" = "$uid" ] && [ "${u##*/}" = .Trash ] && ok=1; '
+    + 'case $n in ""|.|..) ok=;; esac; [ "$p" = "$d/files/$n" ] || ok=; '
+    + 'if [ -z "$ok" ]; then echo "not a trash item: $p" >&2; rc=1; continue; fi; '
+    + 'rm -rf -- "$p" && rm -f -- "$d/info/$n.trashinfo" || { echo "could not delete $n" >&2; rc=1; }; done; exit $rc';
+
+var CHUNK = 500;
+
 function baseName(path) {
     return path.slice(path.lastIndexOf("/") + 1);
 }
@@ -166,4 +175,24 @@ function restoreCommand(items) {
         args.push(item ? item.dir : "", item ? item.name : "", item ? item.path : "");
     }
     return ["sh", "-c", RESTORE, "sh"].concat(args);
+}
+
+function trashDir(dir, home) {
+    return dir === home || /^\/.*\/\.Trash-\d+$/.test(dir) || /^\/.*\/\.Trash\/\d+$/.test(dir);
+}
+
+function emptyable(item, home) {
+    return !!item && typeof item.dir === "string" && typeof item.name === "string" && trashDir(item.dir, home) && item.name !== "" && item.name !== "." && item.name !== ".." && item.name.indexOf("/") < 0;
+}
+
+function emptyCommands(items, home, chunk) {
+    var size = chunk || CHUNK;
+    var paths = [];
+    for (var i = 0; i < items.length; i++)
+        if (emptyable(items[i], home))
+            paths.push(items[i].dir + "/files/" + items[i].name);
+    var out = [];
+    for (var at = 0; at < paths.length; at += size)
+        out.push(["sh", "-c", EMPTY, "sh", home].concat(paths.slice(at, at + size)));
+    return out;
 }
