@@ -308,17 +308,29 @@ test("the report command hands the context and the words to triage, the words af
     try {
         const cli = path.join(dir, "it's a cli");
         const out = path.join(dir, "args");
-        fs.writeFileSync(cli, `printf '%s\\0' "$@" >'${out}'\n`);
-        for (const words of ["it's $(touch pwned) `touch pwned` \"q\" \\ ;|&", "--yes", "--context", ""]) {
-            const ran = spawnSync("sh", ["-c", Update.reportScript(posix, cli, words, wentBack, "2026-10-24")], { cwd: dir, input: "\n", encoding: "utf8" });
-            assert.strictEqual(ran.status, 0, ran.stderr);
-            const args = fs.readFileSync(out, "utf8").split("\0").slice(0, -1);
-            assert.deepStrictEqual(args, ["triage", "--context", Update.reportContext(wentBack, "2026-10-24"), "--", Update.reportWords(words)]);
-            assert.ok(!fs.existsSync(path.join(dir, "pwned")));
+        const context = Update.reportContext(wentBack, "2026-10-24");
+        const record = `printf '%s\\0' "$@" >'${out}'\n`;
+        for (const knows of [true, false]) {
+            fs.writeFileSync(cli, (knows ? "# banditshell triage [<words>] [--context <text>] [--yes]\n" : "# banditshell triage [<words>] [--yes]\n") + record);
+            for (const words of ["it's $(touch pwned) `touch pwned` \"q\" \\ ;|&", "--yes", "--context", ""]) {
+                const ran = spawnSync("sh", ["-c", Update.reportScript(posix, cli, words, context)], { cwd: dir, input: "\n", encoding: "utf8" });
+                assert.strictEqual(ran.status, 0, ran.stderr);
+                const args = fs.readFileSync(out, "utf8").split("\0").slice(0, -1);
+                const said = Update.reportWords(words);
+                if (knows)
+                    assert.deepStrictEqual(args, ["triage", "--context", context, "--", said]);
+                else
+                    assert.deepStrictEqual(args, ["triage", `${said || "(no words were given)"}\n\n${context}`]);
+                assert.ok(!fs.existsSync(path.join(dir, "pwned")));
+            }
         }
     } finally {
         fs.rmSync(dir, { recursive: true, force: true });
     }
+});
+
+test("the CLI's own header is what the report command looks for before using --context", () => {
+    assert.ok(fs.readFileSync(path.join(ROOT, "cli/banditshell"), "utf8").includes("[--context <text>]"));
 });
 
 test("a channel is stable or main, and anything else reads as stable, the default", () => {
