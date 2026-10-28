@@ -1,5 +1,6 @@
 module qs.modules.files
 ChordHints 1.0 ChordHints.qml
+ConfirmPrompt 1.0 ConfirmPrompt.qml
 ConflictSide 1.0 ConflictSide.qml
 FileGrid 1.0 FileGrid.qml
 FileMark 1.0 FileMark.qml

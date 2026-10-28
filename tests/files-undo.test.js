@@ -16,10 +16,10 @@ function lib(file, names) {
 
 const Undo = lib("services/files-undo.js", [
     "LIMIT", "into", "moved", "renamed", "copied", "fresh", "trashed", "remember",
-    "existsCommand", "existing", "parseTrash", "pick", "command", "outcome", "summary"
+    "existsCommand", "existing", "pick", "command", "outcome", "summary"
 ]);
-
-const LISTING = fs.readFileSync(path.join(ROOT, "tests/fixtures/gio-trash-list.txt"), "utf8");
+const Trash = lib("services/files-trash.js", ["readCommand", "parse", "restoreCommand"]);
+const GioTrash = require("./fixtures/gio-trash.js");
 
 function local(y, mo, d, h, mi, s) {
     return new Date(y, mo - 1, d, h, mi, s).getTime() / 1000;
@@ -32,30 +32,14 @@ function wall(y, mo, d, h, mi, s) {
 function sandbox() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "files-undo-"));
     const bin = path.join(dir, "bin");
-    const trash = path.join(dir, "trash");
+    const trash = path.join(dir, "data", "Trash");
     fs.mkdirSync(bin);
-    fs.mkdirSync(trash);
-    for (const tool of ["mv", "mkdir", "rm", "cp", "cat"])
+    for (const tool of ["mv", "mkdir", "rm", "cp", "cat", "id", "awk"])
         fs.symlinkSync(spawnSync("sh", ["-c", `command -v ${tool}`], { encoding: "utf8" }).stdout.trim(), path.join(bin, tool));
-    fs.writeFileSync(path.join(bin, "gio"), `#!/bin/sh
-echo "$*" >> "${dir}/gio.log"
-if [ "$1 $2" = "trash --restore" ]; then
-    shift 3
-    [ -e "${trash}/$1" ] || exit 1
-    [ -e "$(cat "${trash}/$1.origin")" ] && exit 1
-    mv -- "${trash}/$1" "$(cat "${trash}/$1.origin")" && rm -- "${trash}/$1.origin"
-    exit
-fi
-[ "$1 $2" = "trash --" ] || exit 2
-shift 2
-for p; do n=$(printf %s "$p" | cksum | cut -d" " -f1); mv -- "$p" "${trash}/$n" && printf %s "$p" > "${trash}/$n.origin"; done
-`);
-    fs.chmodSync(path.join(bin, "gio"), 0o755);
-    fs.symlinkSync(spawnSync("sh", ["-c", "command -v cksum"], { encoding: "utf8" }).stdout.trim(), path.join(bin, "cksum"));
-    fs.symlinkSync(spawnSync("sh", ["-c", "command -v cut"], { encoding: "utf8" }).stdout.trim(), path.join(bin, "cut"));
+    GioTrash.install(bin, trash);
     const home = path.join(dir, "home");
     fs.mkdirSync(home);
-    return {
+    const box = {
         home,
         trash,
         at: (...parts) => path.join(home, ...parts),
@@ -63,9 +47,10 @@ for p; do n=$(printf %s "$p" | cksum | cut -d" " -f1); mv -- "$p" "${trash}/$n" 
             const out = spawnSync("/bin/sh", argv.slice(1), { env: { PATH: bin }, encoding: "utf8" });
             return out.stdout;
         },
-        gio: () => fs.existsSync(path.join(dir, "gio.log")) ? fs.readFileSync(path.join(dir, "gio.log"), "utf8") : "",
+        undo: entry => box.run(Trash.restoreCommand(Undo.pick(Trash.parse(box.run(Trash.readCommand("-", trash, []))).items, entry))),
         done: () => fs.rmSync(dir, { recursive: true, force: true })
     };
+    return box;
 }
 
 const ODD = ["plain.txt", "two words", "it's \"quoted\"", "-leading-dash", "new\nline", "tab\there", "$(touch pwned)"];
@@ -210,58 +195,69 @@ test.describe("files undo", () => {
             assert.deepStrictEqual(fs.readdirSync(box.at("to")), ["old"]);
             assert.strictEqual(fs.readFileSync(box.at("to", "old"), "utf8"), "was here first");
             assert.deepStrictEqual(fs.readdirSync(box.at("from")).sort(), ["old", "one", "two words"]);
-            assert.strictEqual(fs.readdirSync(box.trash).length, 4);
+            assert.strictEqual(GioTrash.trashed(box.trash).length, 2);
             assert.strictEqual(Undo.summary(entry, counts, box.at("to"), "/nowhere"), "Copies of one and two words moved to the trash");
         } finally {
             box.done();
         }
     });
 
-    test.it("reads the trash listing gio prints, unescaping the bytes in its paths", () => {
-        const items = Undo.parseTrash(LISTING);
-        assert.strictEqual(items.length, 6);
-        assert.deepStrictEqual(items[0], { uri: "trash:///notes.txt", path: "/home/user/Documents/notes.txt", deleted: wall(2026, 10, 25, 22, 34, 34) });
-        assert.strictEqual(items[2].path, "/home/user/a b\tt é \"q\".txt");
-        assert.strictEqual(items[3].path, "/home/user/back\\slash");
-        assert.strictEqual(items[4].path, "/home/user/Documents/My Old Notes");
-        assert.strictEqual(items[5].path, "/mnt/disk/media/clip.mkv");
-        assert.deepStrictEqual(Undo.parseTrash("gio: trash:///: Operation not supported\n"), []);
-    });
-
     test.it("picks the trash item deleted by this very delete, not an older or later one", () => {
-        const items = Undo.parseTrash(LISTING);
-        const first = Undo.trashed(["/home/user/Documents/notes.txt"], local(2026, 10, 25, 22, 34, 33) + 0.4);
-        const second = Undo.trashed(["/home/user/Documents/notes.txt"], local(2026, 10, 25, 22, 40, 1) + 0.8);
-        assert.deepStrictEqual(Undo.pick(items, first), ["trash:///notes.txt"]);
-        assert.deepStrictEqual(Undo.pick(items, second), ["trash:///notes.txt.2"]);
-        const fallBack = [{ uri: "trash:///late", path: "/h/late", deleted: wall(2026, 10, 25, 2, 30, 5) }];
+        const notes = "/home/user/Documents/notes.txt";
+        const items = [
+            { dir: "/t", name: "notes.txt", path: notes, deleted: wall(2026, 10, 25, 22, 34, 34) },
+            { dir: "/t", name: "notes.2.txt", path: notes, deleted: wall(2026, 10, 25, 22, 40, 2) },
+            { dir: "/t", name: "Old", path: "/home/user/Documents/My Old Notes", deleted: wall(2026, 10, 20, 9, 0, 0) }
+        ];
+        const first = Undo.trashed([notes], local(2026, 10, 25, 22, 34, 33) + 0.4);
+        const second = Undo.trashed([notes], local(2026, 10, 25, 22, 40, 1) + 0.8);
+        assert.deepStrictEqual(Undo.pick(items, first), [items[0]]);
+        assert.deepStrictEqual(Undo.pick(items, second), [items[1]]);
+        assert.deepStrictEqual(Undo.pick(items, Undo.trashed([notes, notes], local(2026, 10, 25, 22, 34, 34))), [items[0], items[1]]);
+        const fallBack = [{ dir: "/t", name: "late", path: "/h/late", deleted: wall(2026, 10, 25, 2, 30, 5) }];
         const repeated = local(2026, 10, 25, 2, 30, 4) + 3600;
         assert.strictEqual(new Date(repeated * 1000).getHours(), 2);
-        assert.deepStrictEqual(Undo.pick(fallBack, Undo.trashed(["/h/late"], repeated)), ["trash:///late"]);
+        assert.deepStrictEqual(Undo.pick(fallBack, Undo.trashed(["/h/late"], repeated)), [fallBack[0]]);
         const later = Undo.trashed(["/home/user/Documents/My Old Notes", "/home/user/missing"], local(2026, 10, 25, 22, 0, 0));
-        assert.deepStrictEqual(Undo.pick(items, later), ["-", "-"]);
+        assert.deepStrictEqual(Undo.pick(items, later), [null, null]);
     });
 
-    test.it("restores trashed files through gio and counts what came back", () => {
+    test.it("restores trashed files from the trash folder and counts what came back", () => {
         const box = sandbox();
         try {
             for (const name of ODD)
                 fs.writeFileSync(box.at(name), name);
             const paths = ODD.map(name => box.at(name));
+            const entry = Undo.trashed(paths, Date.now() / 1000);
             box.run(["sh", "-c", 'gio trash -- "$@"', "sh", ...paths]);
             assert.deepStrictEqual(fs.readdirSync(box.home), []);
-            const uris = fs.readdirSync(box.trash).filter(name => !name.endsWith(".origin"));
-            const byPath = Object.fromEntries(uris.map(uri => [fs.readFileSync(path.join(box.trash, `${uri}.origin`), "utf8"), uri]));
-            const entry = Undo.trashed(paths, 0);
             fs.writeFileSync(box.at(ODD[0]), "made again");
+            fs.rmSync(path.join(box.trash, "files", ODD[ODD.length - 1]));
 
-            const counts = Undo.outcome(entry, box.run(Undo.command(entry, [...paths.slice(0, -1).map(p => byPath[p]), "-"])));
+            const counts = Undo.outcome(entry, box.undo(entry));
             assert.deepStrictEqual(counts, { ok: ODD.length - 2, gone: 1, taken: 1, failed: 0, done: paths.slice(1, -1) });
             assert.strictEqual(fs.readFileSync(box.at(ODD[0]), "utf8"), "made again");
             for (const name of ODD.slice(1, -1))
                 assert.strictEqual(fs.readFileSync(box.at(name), "utf8"), name);
+            assert.deepStrictEqual(GioTrash.trashed(box.trash).map(item => item.path).sort(), [ODD[0], ODD[ODD.length - 1]].map(name => box.at(name)).sort());
             assert.strictEqual(Undo.summary(entry, counts, box.home, "/nowhere"), `${ODD.length - 2} files restored, 2 could not be`);
-            assert.ok(box.gio().includes("trash --restore --"));
+        } finally {
+            box.done();
+        }
+    });
+
+    test.it("restores a file trashed again under the trash name a restore just freed", () => {
+        const box = sandbox();
+        try {
+            for (const body of ["one", "two", "three"]) {
+                fs.writeFileSync(box.at("a.txt"), body);
+                const entry = Undo.trashed([box.at("a.txt")], Date.now() / 1000);
+                box.run(["sh", "-c", 'gio trash -- "$@"', "sh", box.at("a.txt")]);
+                assert.deepStrictEqual(GioTrash.trashed(box.trash).map(item => item.name), ["a.txt"]);
+                assert.strictEqual(Undo.outcome(entry, box.undo(entry)).ok, 1);
+                assert.strictEqual(fs.readFileSync(box.at("a.txt"), "utf8"), body);
+                assert.deepStrictEqual(GioTrash.trashed(box.trash), []);
+            }
         } finally {
             box.done();
         }
@@ -287,6 +283,7 @@ test.describe("files undo", () => {
         assert.strictEqual(Undo.summary(one, back(one.paths), "/h/Pictures", "/h"), "notes.txt restored to Documents");
         const home = Undo.trashed(["/h/notes.txt"], 0);
         assert.strictEqual(Undo.summary(home, back(home.paths), "/h/Pictures", "/h"), "notes.txt restored to Home");
+        assert.strictEqual(Undo.summary(one, back(one.paths), "/h/Pictures", "/h", dir => dir.replace("/h", "~")), "notes.txt restored to ~/Documents");
         const spread = Undo.trashed(["/h/a/x", "/h/b/y"], 0);
         assert.strictEqual(Undo.summary(spread, back(spread.paths), "/h", "/h"), "x and y restored to 2 folders");
         const renamed = Undo.renamed("/h/Documents/draft.md", "/h/Documents/final.md");
