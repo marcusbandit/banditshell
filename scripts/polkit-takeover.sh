@@ -13,6 +13,8 @@ fi
 for name in hyprpolkitagent polkit-gnome-authentication-agent-1 polkit-kde-authentication-agent-1 polkit-mate-authentication-agent-1 polkit-efl-authentication-agent-1 lxqt-policykit-agent lxpolkit xfce-polkit soteria; do
     for pid in $(pgrep -u "$uid" -x "${name:0:15}" 2>/dev/null); do
         exe="$(readlink "/proc/$pid/exe" 2>/dev/null)"
+        exe="${exe% (deleted)}"
+        [ -n "$exe" ] && [ ! -x "$exe" ] && exe="$(command -v "$name" 2>/dev/null)"
         kill "$pid" 2>/dev/null && printf 'exe\t%s\n' "${exe:-$name}"
     done
 done
