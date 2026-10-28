@@ -34,6 +34,15 @@ Item {
     onCurrentChanged: if (!root.current && root.spotted)
         rebuilt.restart()
 
+    Connections {
+        target: root.current
+
+        function onVisibleChanged(): void {
+            if (!root.current.visible)
+                rebuilt.restart();
+        }
+    }
+
     Timer {
         id: rebuilt
 
@@ -42,6 +51,9 @@ Item {
     }
 
     function anchor(chain: var): int {
+        const typing = chain.items.indexOf(root.Window.activeFocusItem);
+        if (typing >= 0)
+            return typing;
         const at = chain.items.indexOf(root.current);
         if (at >= 0 || !root.spotted)
             return at;
@@ -62,7 +74,7 @@ Item {
         const chain = root.members();
         const near = root.anchor(chain);
         if (near >= 0)
-            root.land(chain.items[near]);
+            root.land(chain.items[near], near);
     }
 
     function reset(): void {
@@ -93,7 +105,7 @@ Item {
                     found.push(child);
                     rects.push(box);
                 }
-                const inner = child.clip ? Chain.cut(clip, box) : clip;
+                const inner = child.clip ? seen : clip;
                 if (!inner || inner.w > 0 && inner.h > 0)
                     walk(child, inner);
             }
@@ -114,13 +126,13 @@ Item {
         return "";
     }
 
-    function land(item: Item): void {
+    function land(item: Item, index: int): void {
         if (!item)
             return;
         const at = item.mapToItem(root.scope, 0, 0);
         root.spot = Qt.rect(at.x, at.y, item.width, item.height);
         root.spotted = true;
-        root.spotIndex = root.members().items.indexOf(item);
+        root.spotIndex = index;
         root.spotKind = root.kindOf(item);
         root.current = item;
         shown.keyed();
@@ -150,9 +162,21 @@ Item {
         const here = at >= 0 ? chain.items[at] : null;
         const across = key === Qt.Key_Left || key === Qt.Key_Right;
         const along = key === Qt.Key_Up || key === Qt.Key_Down;
+        const typing = here?.typable === true && here.activeFocus;
+
+        if (key === Qt.Key_Escape)
+            return !!here && shown.active && typeof here.letGo === "function" && here.letGo();
+
+        if (typing && !along && key !== Qt.Key_Tab && key !== Qt.Key_Backtab && key !== Qt.Key_PageUp && key !== Qt.Key_PageDown)
+            return false;
+
+        if (here && !shown.active && !typing) {
+            root.land(here, at);
+            return true;
+        }
 
         if (here && (here.adjusts === "horizontal" && across || here.adjusts === "vertical" && along)) {
-            root.land(here);
+            root.land(here, at);
             here.adjust(key === Qt.Key_Right || key === Qt.Key_Up ? 1 : -1);
             rebuilt.restart();
             return true;
@@ -187,21 +211,24 @@ Item {
         case Qt.Key_Return:
         case Qt.Key_Enter:
         case Qt.Key_Space:
-            if (!here || typeof here.press !== "function")
+            if (!here?.activeFocus || typeof here.press !== "function")
                 return false;
-            root.land(here);
+            root.land(here, at);
             here.press();
             rebuilt.restart();
             return true;
         case Qt.Key_Delete:
-            if (!here || typeof here.remove !== "function")
+            if (!here?.activeFocus || typeof here.remove !== "function")
                 return false;
             here.remove();
             return true;
         default:
             return false;
         }
-        root.land(to >= 0 ? chain.items[to] : here);
+        if (to >= 0)
+            root.land(chain.items[to], to);
+        else
+            root.land(here, at);
         return true;
     }
 

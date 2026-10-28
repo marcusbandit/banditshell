@@ -33,15 +33,19 @@ Item {
 
         readonly property real reach: Appearance.padding.hair
 
+        readonly property real room: unroll.settled && root.open ? fold.reach : 0
+
         x: -fold.reach
+        y: -fold.room
         width: root.width + fold.reach * 2
-        height: root.height + fold.reach * unroll.value
+        height: root.height + fold.room * 2
         clip: true
 
         Column {
             id: stack
 
             x: root.indent + fold.reach
+            y: fold.room
             width: root.width - root.indent
             spacing: 0
         }

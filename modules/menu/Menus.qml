@@ -278,17 +278,17 @@ Item {
         id: chain
 
         scope: panel.shownPage?.content ?? null
-        area: panel
+        area: root
         holder: keys
         scroller: panel.shownPage?.scroller ?? null
     }
 
     Keys.onPressed: event => {
-        if (event.key === Qt.Key_Escape && root.open) {
+        if (root.pinned && chain.handle(event)) {
+            event.accepted = true;
+        } else if (event.key === Qt.Key_Escape && root.open) {
             Appearance.instantly();
             root.hide();
-            event.accepted = true;
-        } else if (root.pinned && chain.handle(event)) {
             event.accepted = true;
         }
     }

@@ -188,6 +188,13 @@ PanelWindow {
         islandLayer.task = "";
     }
 
+    function takeKeyboard(): void {
+        if (body.Window.active)
+            return;
+        win.claiming = true;
+        claim.restart();
+    }
+
     function openMenu(key: string, pin = true): bool {
         if (win.underFullscreen)
             return false;
@@ -656,11 +663,6 @@ PanelWindow {
             warmSource: sidebar.status.items
 
             keyboardHeld: win.panelOpen
-
-            onPinnedChanged: if (menuLayer.pinned && !body.Window.active) {
-                win.claiming = true;
-                claim.restart();
-            }
         }
 
         Launcher {

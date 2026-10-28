@@ -16,7 +16,10 @@ IpcHandler {
         const win = Shell.forScreen(screen);
         if (!win)
             return PanelWindows.missing(screen);
-        return win.openMenu(key) ? `open ${key}` : `no such menu: ${key}`;
+        if (!win.openMenu(key))
+            return `no such menu: ${key}`;
+        win.takeKeyboard();
+        return `open ${key}`;
     }
 
     function close(): string {

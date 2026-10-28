@@ -27,10 +27,27 @@ Item {
 
     property bool grabbed: false
 
+    property int grabbedFrom: 0
+
     function press(): void {
-        root.grabbed = !root.grabbed;
+        if (!root.grabbed) {
+            root.grabbedFrom = root.value;
+            root.grabbed = true;
+            return;
+        }
+        root.grabbed = false;
+        root.release();
+    }
+
+    function letGo(): bool {
         if (!root.grabbed)
-            root.release();
+            return false;
+        root.grabbed = false;
+        quiet.stop();
+        root.holding = false;
+        if (root.value !== root.grabbedFrom)
+            root.moved(root.grabbedFrom);
+        return true;
     }
 
     onActiveFocusChanged: if (!root.activeFocus && root.grabbed) {
