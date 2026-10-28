@@ -61,7 +61,7 @@ Column {
 
     readonly property bool wentBack: Update.wentBackByHand && Update.resultPending
 
-    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, goBackOffer.implicitWidth, goBackRow.implicitWidth, reinstallRow.implicitWidth, reportRow.implicitWidth)
+    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, goBackOffer.implicitWidth, goBackRow.implicitWidth, Update.diverged ? pullRow.fullWidth : 0, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
     onShowingChanged: if (root.showing) {
         root.settled = true;
@@ -409,7 +409,7 @@ Column {
                 anchors.rightMargin: -markRead.padX
                 anchors.verticalCenter: parent.verticalCenter
                 visible: !root.asking && root.unreadCount > 0
-                text: "Mark as read"
+                text: "Mark all read"
                 icon: "done_all"
                 style: "bare"
 
@@ -577,9 +577,9 @@ Column {
 
         StyledText {
             anchors.verticalCenter: parent.verticalCenter
-            visible: !Update.busy && Update.state !== Update.failed && !Update.restartNeeded
-            text: "No restart needed"
-            color: Appearance.colour.textDim
+            visible: !Update.busy && Update.state !== Update.failed && Update.buttonNote !== ""
+            text: Update.buttonNote
+            color: Update.deps.length > 0 ? Appearance.colour.text : Appearance.colour.textDim
         }
     }
 
@@ -625,9 +625,64 @@ Column {
     StyledText {
         width: parent.width
         visible: Update.diverged
-        text: `This copy cannot just move forward. To keep ${Update.ahead === 1 ? "your change" : "your changes"}, run in a terminal: git -C ${Update.dir} pull --rebase`
+        text: `This copy cannot just move forward. To keep ${Update.ahead === 1 ? "your change" : "your changes"}, run in a terminal:`
         color: Appearance.colour.updateFailed
         wrapMode: Text.WordWrap
+    }
+
+    Item {
+        id: pullRow
+
+        readonly property real copyWidth: copyPull.implicitWidth + Appearance.padding.small
+        readonly property real fullWidth: pullText.implicitWidth + Appearance.padding.normal * 2 + pullRow.copyWidth
+
+        width: parent.width
+        height: Math.max(pullBox.height, copyPull.implicitHeight)
+        visible: Update.diverged
+
+        SquircleRect {
+            id: pullBox
+
+            width: Math.min(pullText.implicitWidth + Appearance.padding.normal * 2, pullRow.width - pullRow.copyWidth)
+            height: Appearance.font.line.small + Appearance.padding.small * 2
+            anchors.verticalCenter: parent.verticalCenter
+            radius: Appearance.rounding.small
+            color: Appearance.colour.fillStrong
+
+            StyledText {
+                id: pullText
+
+                x: Appearance.padding.normal
+                width: parent.width - Appearance.padding.normal * 2
+                anchors.verticalCenter: parent.verticalCenter
+                text: Update.pullCommand
+                color: Appearance.colour.text
+                wrapMode: Text.NoWrap
+                elide: Text.ElideMiddle
+            }
+        }
+
+        Button {
+            id: copyPull
+
+            anchors.left: pullBox.right
+            anchors.leftMargin: Appearance.padding.small
+            anchors.verticalCenter: parent.verticalCenter
+            text: copiedPull.running ? "Copied" : "Copy"
+            icon: copiedPull.running ? "check" : "content_copy"
+            style: "bare"
+
+            onClicked: {
+                Quickshell.execDetached(["wl-copy", "-n", "--", Update.pullCommand]);
+                copiedPull.restart();
+            }
+        }
+
+        Timer {
+            id: copiedPull
+
+            interval: 2000
+        }
     }
 
     StyledText {

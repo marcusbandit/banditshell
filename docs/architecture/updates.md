@@ -196,8 +196,9 @@ definition. Where it shows:
   Lines from entries not read yet carry an accent bar and full-strength text, the list title
   says `2 unread`, and Mark as read beside it clears them (#337). After going back by hand the
   headline names the channel, `You are on v0.1.0, stable`. A new install step this machine lacks
-  reads `After updating, run install.sh for: <steps>`, after, because only the new version's
-  `install.sh` knows the step.
+  is said beside the Update button, `No restart. Then run install.sh for <steps>`, after the
+  update because only the new version's `install.sh` knows the step. A diverged copy shows its
+  `git -C <checkout> pull --rebase` on a line of its own with a Copy button.
 - Settings > About shows the same version.
 
 `update rollback` on `stable` goes to the release before the one this copy is on, found from the

@@ -368,10 +368,26 @@ function details(c) {
     if (c.notes === 0 && count > 0)
         parts.unshift(plural(count, "change", "changes"));
     const text = parts.join(", ");
-    const said = text ? `${text[0].toUpperCase()}${text.slice(1)}` : "";
-    if (c.deps.length === 0)
-        return said;
-    return `${said ? `${said}. ` : ""}After updating, run install.sh for: ${listed(c.deps)}`;
+    return text ? `${text[0].toUpperCase()}${text.slice(1)}` : "";
+}
+
+function buttonNote(restart, deps) {
+    const steps = strings(deps);
+    if (steps.length === 0)
+        return restart ? "" : "No restart needed";
+    return `${restart ? "" : "No restart. "}Then run install.sh for ${listed(steps)}`;
+}
+
+function pullCommand(dir, home) {
+    const where = String(dir ?? "");
+    const base = String(home ?? "").replace(/\/+$/, "");
+    const plain = /^[A-Za-z0-9._\/+-]+$/;
+    let shown = `'${where.replace(/'/g, "'\\''")}'`;
+    if (base && where.startsWith(`${base}/`) && plain.test(where.slice(base.length + 1)))
+        shown = `~/${where.slice(base.length + 1)}`;
+    else if (plain.test(where))
+        shown = where;
+    return `git -C ${shown} pull --rebase`;
 }
 
 function extras(c, deps = true) {
@@ -427,7 +443,7 @@ function outcomeText(result, running) {
     if (result.ok)
         return `Updated to ${to}.`;
     if (byHand(result)) {
-        const skipped = `Because you went back, ${to} is not offered again. The next version will be.`;
+        const skipped = `Because you went back, ${to} is not offered again. The next version after ${to} is offered as usual.`;
         if (!running || running === from)
             return skipped;
         return `Went back to ${from}, but the shell still runs ${running}. Run banditshell restart to start ${from}. ${skipped}`;

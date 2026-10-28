@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, details, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, divergedHeadline, aheadText, withOwn, ownTitle, wentBackHeadline, plainProbe, presentSteps, reportWords, reportContext, reportScript };")();
+const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, details, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, divergedHeadline, aheadText, withOwn, ownTitle, wentBackHeadline, buttonNote, pullCommand, plainProbe, presentSteps, reportWords, reportContext, reportScript };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -186,11 +186,20 @@ test("new install steps this machine already passes are left out of the deps", (
     assert.deepStrictEqual(c.deps, ["home-bin", "gone"]);
     const none = Update.classify({ nameStatus: status("M\tinstall.sh"), installBefore: before, installAfter: after, present: ["fd", "pair", "home-bin", "gone"] });
     assert.deepStrictEqual(none.deps, []);
-    assert.strictEqual(Update.details(c), "1 change. After updating, run install.sh for: home-bin and gone");
-    assert.strictEqual(Update.details(none), "1 change");
-    const both = Update.classify({ nameStatus: status("M\tinstall.sh", "M\tcli/banditshell"), installBefore: before, installAfter: after, present: ["fd", "pair", "gone"], entries: [{ changes: [{ text: "a" }] }] });
-    assert.strictEqual(Update.details(both), "Commands changed. After updating, run install.sh for: home-bin");
+    assert.strictEqual(Update.details(c), "1 change");
+    assert.strictEqual(Update.buttonNote(false, c.deps), "No restart. Then run install.sh for home-bin and gone");
+    assert.strictEqual(Update.buttonNote(true, ["cliphist"]), "Then run install.sh for cliphist");
+    assert.strictEqual(Update.buttonNote(false, none.deps), "No restart needed");
+    assert.strictEqual(Update.buttonNote(true, []), "");
     assert.doesNotMatch(Update.summary(none), /needs/);
+});
+
+test("the pull command names the checkout from home when it can, and quotes it when it must", () => {
+    assert.strictEqual(Update.pullCommand("/home/me/Projects/banditshell", "/home/me"), "git -C ~/Projects/banditshell pull --rebase");
+    assert.strictEqual(Update.pullCommand("/home/me/Projects/banditshell", "/home/me/"), "git -C ~/Projects/banditshell pull --rebase");
+    assert.strictEqual(Update.pullCommand("/opt/banditshell", "/home/me"), "git -C /opt/banditshell pull --rebase");
+    assert.strictEqual(Update.pullCommand("/home/me/my shell", "/home/me"), "git -C '/home/me/my shell' pull --rebase");
+    assert.strictEqual(Update.pullCommand("/home/me/it's", "/home/me"), "git -C '/home/me/it'\\''s' pull --rebase");
 });
 
 test("going back says where you are and on which channel", () => {
@@ -344,7 +353,7 @@ test("the outcome tells where the person stands in plain words", () => {
 test("a rollback by hand says where it went back to, not that something failed", () => {
     const back = { ok: false, hand: true, fromLabel: "2026-10-24", toLabel: "2026-10-25", why: "rolled back by hand" };
     assert.strictEqual(Update.outcomeText(back, "2026-10-24"),
-        "Because you went back, 2026-10-25 is not offered again. The next version will be.");
+        "Because you went back, 2026-10-25 is not offered again. The next version after 2026-10-25 is offered as usual.");
     assert.match(Update.outcomeText(back, "2026-10-25"), /still runs 2026-10-25\. Run banditshell restart to start 2026-10-24\./);
     assert.strictEqual(Update.byHand({ ok: false, why: "rolled back by hand" }), false);
 });

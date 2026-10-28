@@ -42,6 +42,9 @@ Singleton {
     property string detailsText: ""
     property string buttonText: "Update"
     property bool restartNeeded: false
+    property var deps: []
+    readonly property string buttonNote: Words.buttonNote(root.restartNeeded, root.deps)
+    readonly property string pullCommand: Words.pullCommand(root.dir, Quickshell.env("HOME"))
 
     property var result: null
     readonly property bool resultPending: root.result !== null && root.result.shown !== true
@@ -474,6 +477,7 @@ Singleton {
                 root.detailsText = got.details ?? got.summary ?? "";
                 root.buttonText = got.button ?? "Update";
                 root.restartNeeded = got.class?.restart === true;
+                root.deps = Array.isArray(got.class?.deps) ? got.class.deps : [];
 
                 if (root.busy || root.state === root.updated || root.state === root.rolledback)
                     return;
