@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Deletion = lib("modules/files/deletion.js", ["question", "what", "approved"]);
+const Deletion = lib("modules/files/deletion.js", ["question", "what", "approved", "emptying", "emptied"]);
 
 function qmlFiles(dir) {
     const found = [];
@@ -46,18 +46,35 @@ test.describe("files permanent delete", () => {
         assert.strictEqual(Deletion.what([{ name: "a", origin: "" }, { name: "b", origin: "" }, { name: "c", origin: "" }, { name: "d", origin: "" }]), "a, b and 2 more");
     });
 
-    test.it("every permanent delete in the shell goes through that answer", () => {
-        const calls = [];
-        for (const file of qmlFiles(ROOT)) {
-            const text = fs.readFileSync(file, "utf8");
-            for (const match of text.matchAll(/deleteForever\(/g)) {
-                if (text.slice(Math.max(0, match.index - 9), match.index) === "function ")
-                    continue;
-                calls.push([path.relative(ROOT, file), text.slice(match.index, match.index + 40)]);
-            }
+    test.it("empties the trash only on the word empty", () => {
+        const items = [{ dir: "/h/.local/share/Trash", name: "a.txt" }];
+        for (const answer of ["", "e", "yes", "delete", "emptied", "empty it", undefined, null, true])
+            assert.deepStrictEqual(Deletion.emptied(answer, items), [], JSON.stringify(answer));
+        for (const answer of ["empty", "EMPTY", " Empty "]) {
+            const kept = Deletion.emptied(answer, items);
+            assert.deepStrictEqual(kept, items);
+            assert.notStrictEqual(kept, items);
         }
-        assert.ok(calls.length > 0);
-        for (const [file, call] of calls)
-            assert.ok(call.startsWith("deleteForever(Deletion.approved("), `${file}: ${call}`);
     });
+
+    test.it("says how many items an empty trash takes and their size in all", () => {
+        assert.strictEqual(Deletion.emptying(1, ""), "1 item will be deleted and cannot be brought back.");
+        assert.strictEqual(Deletion.emptying(8, "1.2 MB"), "8 items, 1.2 MB in all, will be deleted and cannot be brought back.");
+    });
+
+    for (const [verb, gate] of [["deleteForever", "Deletion.approved("], ["emptyTrash", "Deletion.emptied("]])
+        test.it(`every ${verb} call in the shell goes through its answer`, () => {
+            const calls = [];
+            for (const file of qmlFiles(ROOT)) {
+                const text = fs.readFileSync(file, "utf8");
+                for (const match of text.matchAll(new RegExp(`${verb}\\(`, "g"))) {
+                    if (text.slice(Math.max(0, match.index - 9), match.index) === "function ")
+                        continue;
+                    calls.push([path.relative(ROOT, file), text.slice(match.index, match.index + 40)]);
+                }
+            }
+            assert.ok(calls.length > 0);
+            for (const [file, call] of calls)
+                assert.ok(call.startsWith(`${verb}(${gate}`), `${file}: ${call}`);
+        });
 });

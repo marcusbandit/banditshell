@@ -125,7 +125,7 @@ PanelWindow {
     Connections {
         target: PenMap
 
-        function onActiveChanged(): void {
+        function onEditingChanged(): void {
             if (!PenMap.editing)
                 win.release();
         }

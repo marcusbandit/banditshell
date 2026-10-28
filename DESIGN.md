@@ -1141,7 +1141,8 @@ banditshell/
 │   ├── Notices.qml              what the shell itself has to say, as opposed
 │   │                            to an application's notification: an update on
 │   │                            GitHub, a new kernel, a restart it wants, a
-│   │                            finished download. Each glances in the island
+│   │                            config.json it cannot read, a finished
+│   │                            download. Each glances in the island
 │   │                            for a few seconds, held while you look; the
 │   │                            standing ones then wait under the clock until
 │   │                            they are dealt with. A new track only glances
@@ -1883,10 +1884,12 @@ banditshell/
 │   │                            gnome-keyring takes it for a blank one and
 │   │                            offers to store everything unencrypted. It
 │   │                            quits when the shell's end of its pipe is
-│   │                            gone, and never queues for the name, so a
-│   │                            helper outliving its shell cannot answer for it.
-│   │                            It does not let anyone replace it either, so a
-│   │                            late gcr-prompter cannot take a card away
+│   │                            gone, so a helper outliving its shell cannot
+│   │                            answer for it. While another program holds the
+│   │                            name it waits in the name's queue and answers
+│   │                            once that program lets go. It does not let
+│   │                            anyone replace it either, so a late
+│   │                            gcr-prompter cannot take a card away
 │   │                            On start it writes a user D-Bus service file
 │   │                            for both prompter names that runs the waiter,
 │   │                            unless someone else's file is already there

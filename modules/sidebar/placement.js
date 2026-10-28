@@ -15,3 +15,11 @@ function rail(height, span, top, foot, reserve, gap) {
         room: foot - y - height - gap
     };
 }
+
+function railFloor(top, height, reserve, gap, margin) {
+    return top + height + gap + reserve + margin;
+}
+
+function clockY(aligned, foot, floor) {
+    return Math.round(Math.min(foot, Math.max(aligned, floor)));
+}

@@ -21,6 +21,7 @@ SettingsPane 1.0 SettingsPane.qml
 SettingsPanel 1.0 SettingsPanel.qml
 SettingsPath 1.0 SettingsPath.qml
 SettingsPathEdit 1.0 SettingsPathEdit.qml
+SettingsPlaces 1.0 SettingsPlaces.qml
 SettingsRail 1.0 SettingsRail.qml
 singleton SettingsRestore 1.0 SettingsRestore.qml
 SettingsRowFrame 1.0 SettingsRowFrame.qml

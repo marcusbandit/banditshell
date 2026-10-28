@@ -11,8 +11,11 @@ Item {
     property bool mono: false
     property bool masked: false
     property bool alarm: false
+    property bool steps: false
+    property string pick: ""
 
     signal committed(string text)
+    signal stepped(int by)
 
     readonly property alias editing: input.activeFocus
     readonly property string draft: input.text
@@ -24,6 +27,13 @@ Item {
 
     implicitWidth: 200
     implicitHeight: 32
+
+    function choose(chosen: string): void {
+        input.text = chosen;
+        root.committed(chosen);
+        input.text = Qt.binding(() => root.text);
+        input.focus = false;
+    }
 
     function take(): void {
         input.forceActiveFocus();
@@ -66,9 +76,18 @@ Item {
             }
         }
 
-        onAccepted: {
-            root.committed(input.text);
-            input.focus = false;
+        onAccepted: root.choose(root.pick || input.text)
+
+        Keys.onUpPressed: event => {
+            event.accepted = root.steps;
+            if (root.steps)
+                root.stepped(-1);
+        }
+
+        Keys.onDownPressed: event => {
+            event.accepted = root.steps;
+            if (root.steps)
+                root.stepped(1);
         }
 
         Keys.onEscapePressed: event => {

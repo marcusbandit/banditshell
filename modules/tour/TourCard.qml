@@ -173,7 +173,6 @@ Item {
                     SquircleRect {
                         required property int index
 
-                        anchors.verticalCenter: parent.verticalCenter
                         pill: "object"
                         width: index + 1 === root.number ? Appearance.padding.large : Appearance.padding.small
                         height: Appearance.padding.small

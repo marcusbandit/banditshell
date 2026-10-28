@@ -444,7 +444,7 @@ instance_of() {
 }
 
 worktree_list() {
-    git -C "$SHELL_DIR" worktree list --porcelain 2>/dev/null | awk '
+    { git -C "$SHELL_DIR" worktree list --porcelain 2>/dev/null || true; } | awk '
         /^worktree / { path = substr($0, 10); branch = "(detached)" }
         /^branch / { branch = substr($0, 8); sub(/^refs\/heads\//, "", branch) }
         /^$/ && path != "" { print path "\t" branch; path = "" }

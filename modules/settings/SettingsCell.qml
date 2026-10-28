@@ -9,6 +9,7 @@ Loader {
     property var row: ({})
 
     width: parent ? parent.width : 0
+    z: !!root.row.uid && root.row.uid === SettingsView.lifted ? 1 : 0
 
     sourceComponent: root.row.kind === "fact" ? fact : root.row.kind === "w" ? widget : entry
 
@@ -43,7 +44,8 @@ Loader {
         id: fact
 
         Item {
-            implicitHeight: words.implicitHeight + Appearance.padding.small + Appearance.padding.normal
+            visible: words.text !== ""
+            implicitHeight: words.text !== "" ? words.implicitHeight + Appearance.padding.small + Appearance.padding.normal : 0
 
             HoverHandler {
                 onHoveredChanged: if (hovered && Catalogue.labelOf(root.row))

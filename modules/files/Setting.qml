@@ -28,14 +28,15 @@ Item {
         StyledText {
             width: parent.width
             text: root.label
-            elide: Text.ElideRight
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
+            wrapMode: Text.Wrap
         }
 
         StyledText {
             width: parent.width
             visible: root.detail !== ""
             text: root.detail
-            font.pixelSize: Files.zoomed(Appearance.font.size.small)
+            font.pixelSize: Math.min(Appearance.font.size.small, Files.zoomed(Appearance.font.size.small))
             color: Appearance.colour.textFaint
             wrapMode: Text.Wrap
         }
