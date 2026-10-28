@@ -441,12 +441,12 @@ Singleton {
 
     readonly property var placeSpec: [
         {name: "Home", icon: "home", path: root.home},
-        {name: "Desktop", icon: "desktop_windows", path: `${root.home}/Desktop`},
-        {name: "Documents", icon: "description", path: `${root.home}/Documents`},
-        {name: "Downloads", icon: "download", path: `${root.home}/Downloads`},
-        {name: "Pictures", icon: "image", path: `${root.home}/Pictures`},
-        {name: "Music", icon: "music_note", path: `${root.home}/Music`},
-        {name: "Videos", icon: "movie", path: `${root.home}/Videos`},
+        {name: "Desktop", icon: "desktop_windows", path: UserFolders.folders.Desktop},
+        {name: "Documents", icon: "description", path: UserFolders.documents},
+        {name: "Downloads", icon: "download", path: UserFolders.downloads},
+        {name: "Pictures", icon: "image", path: UserFolders.pictures},
+        {name: "Music", icon: "music_note", path: UserFolders.folders.Music},
+        {name: "Videos", icon: "movie", path: UserFolders.folders.Videos},
         {name: "Root", icon: "hard_drive_2", path: "/"}
     ]
 

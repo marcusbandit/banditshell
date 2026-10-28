@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/clipboard-secret.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Secret = new Function(src + "\nreturn { HINT, marked, looksSecret, sensitive };")();
+const Secret = new Function(src + "\nreturn { HINT, MASK, marked, looksSecret, sensitive, copyCommand };")();
 
 test.describe("clipboard secrets", () => {
     test.it("treats anything the source marked as a password as secret", () => {
@@ -32,5 +32,12 @@ test.describe("clipboard secrets", () => {
     test.it("never masks pictures or files", () => {
         assert.strictEqual(Secret.sensitive({ file: "/s/Xk9#mP2qLwZ7.png", text: "" }), false);
         assert.strictEqual(Secret.sensitive({ paths: ["/a"], text: "Xk9#mP2qLwZ7" }), false);
+    });
+
+    test.it("copies a secret entry back as sensitive when wl-copy can", () => {
+        const secret = { text: "Xk9#mP2qLwZ7", types: ["text/plain"] };
+        assert.deepStrictEqual(Secret.copyCommand(secret, true), ["wl-copy", "--sensitive", "-n"]);
+        assert.deepStrictEqual(Secret.copyCommand(secret, false), ["wl-copy", "-n"]);
+        assert.deepStrictEqual(Secret.copyCommand({ text: "plain words", types: [] }, true), ["wl-copy", "-n"]);
     });
 });

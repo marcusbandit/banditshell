@@ -5,16 +5,21 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import qs.config
+import "keymap.js" as Logic
 
 Singleton {
     id: root
 
     property var layouts: []
+    property var variants: []
     property int index: 0
     property string name: ""
     property bool capsLock: false
 
-    readonly property string layout: (root.layouts[root.index] ?? "").toUpperCase()
+    readonly property var codes: Logic.codes(root.layouts, root.variants)
+    readonly property string layout: root.codes[root.index] ?? ""
+    readonly property string tag: Logic.codes(root.layouts, root.variants, "")[root.index] ?? ""
+    readonly property bool shared: Logic.shared(root.layouts, root.index)
     readonly property bool several: root.layouts.length > 1
 
     property bool stale: false
@@ -34,19 +39,14 @@ Singleton {
     }
 
     function read(text: string): void {
-        let keyboards = [];
-        try {
-            keyboards = JSON.parse(text)?.keyboards ?? [];
-        } catch (e) {
-            return;
-        }
-        const main = keyboards.find(k => k.main) ?? keyboards[0];
+        const main = Logic.keyboard(text);
         if (!main)
             return;
-        root.name = String(main.active_keymap ?? "");
-        root.layouts = String(main.layout ?? "").split(",").map(l => l.trim()).filter(l => l);
-        root.index = main.active_layout_index ?? 0;
-        root.capsLock = !!main.capsLock;
+        root.name = main.name;
+        root.layouts = main.layouts;
+        root.variants = main.variants;
+        root.index = main.index;
+        root.capsLock = main.capsLock;
     }
 
     Component.onCompleted: root.refresh()

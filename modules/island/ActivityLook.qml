@@ -33,8 +33,12 @@ QtObject {
             };
         case "dictation":
             if (Dictation.cancelled)
-                return {
-                    icon: "mic_off",
+                return Dictation.cancelledTyped === true ? {
+                    icon: "short_text",
+                    tone: Appearance.colour.textDim,
+                    text: Dictation.outcome
+                } : {
+                    icon: "subtitles_off",
                     tone: Appearance.colour.textFaint,
                     text: Dictation.outcome,
                     dim: true
@@ -162,15 +166,16 @@ QtObject {
                 };
             }
             const tone = !ended ? Appearance.colour.accent : a.outcome === "failed" ? Appearance.colour.alarm : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent;
+            const failed = ended && a.outcome === "failed";
             return {
-                app: a.mark,
-                icon: a.icon || "bolt",
+                app: failed ? "" : a.mark,
+                icon: failed ? "error" : a.icon || "bolt",
                 tone: tone,
                 text: a.text,
                 detail: a.detail,
                 dim: ended && a.outcome === "cancelled",
-                trailing: ended ? "icon" : a.progress < 0 ? "spin" : "ring",
-                trailingIcon: a.outcome === "failed" ? "error" : a.outcome === "cancelled" ? "cancel" : "check_circle",
+                trailing: failed ? "" : ended ? "icon" : a.progress < 0 ? "spin" : "ring",
+                trailingIcon: a.outcome === "cancelled" ? "cancel" : "check_circle",
                 trailingTone: tone,
                 ringValue: Math.max(0, a.progress)
             };

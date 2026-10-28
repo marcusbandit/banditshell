@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import qs.config
 import qs.services
 import "../search.js" as Search
 import "../../files/marks.js" as Marks
@@ -35,7 +36,7 @@ QtObject {
             label: file.name,
             detail: Ages.ago(file.modified, Date.now()),
             iconSource: picture ? Search.fileUrl(file.path) : "",
-            icon: Marks.iconFor(file.path, file.name, file.dir, System.home) || (file.dir ? "folder" : shelf.icon),
+            icon: Marks.iconFor(file.path, file.name, file.dir, System.home, UserFolders.byPath) || (file.dir ? "folder" : shelf.icon),
             peekPath: file.path,
             peekDir: file.dir,
             score: first ? Infinity : 100

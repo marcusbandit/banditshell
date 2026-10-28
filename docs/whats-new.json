@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-12",
+      "id": "2026-10-28-14",
       "date": "2026-10-28",
       "changes": [
         {
@@ -28,6 +28,93 @@
           "type": "issues",
           "severity": "minor",
           "text": "The Files grid marks the item the preview is showing"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-13",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "major",
+          "text": "Copying a hidden clipboard entry keeps it hidden in the island"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A damaged clipboard history says what it kept and where the copy is"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clear history also removes the copy of a damaged history"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A clipboard picture that cannot load lines up with the other rows"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A discarded dictation says Dictation discarded or Partly kept"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A finished island task names what finished and how it ended"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell island end --text sets the task's final words"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Two layouts with one code show apart, such as US and USI"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-12",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Home folders follow your language, such as ~/Bilder for pictures"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Without NetworkManager, Wi-Fi, hotspot and tunnels say they need it"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Without logind, Lock and Log out still work and the rest says why"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The installer uses doas on systems that have no sudo"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "install.sh also links ~/bin/banditshell for exec-once lines"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "doctor and the installer warn when quickshell is older than 0.3.2"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "On NixOS, install.sh --charge-limit says why it cannot install"
         }
       ]
     },

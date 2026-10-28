@@ -21,7 +21,7 @@ usage: install.sh [--dry-run] [--no-ui] [--list] [--charge-limit] [--beside-omar
 
 A fresh clone on main first moves to the newest release, the version the
 update loop follows by default. Then it installs what banditshell needs: the
-CLI into bin/ and, when nothing else
+CLI into bin/ and ~/bin/banditshell and, when nothing else
 provides one, ~/.local/bin/banditshell, quickshell, the fonts, every package
 the shell calls, the C helpers (banditshell dev build), tab completion for zsh
 and bash, and the Lua module your Hyprland binds load (a shim beside
@@ -33,7 +33,7 @@ puts Spicetify and Spicy Lyrics into it, for word-timed lyrics in the media
 card; that restarts Spotify if it is running. Steps already satisfied are
 skipped, so a re-run retries only what failed (and re-patches Spotify after a
 Spotify update). Run it as yourself; it asks for sudo when a package needs
-installing.
+installing, or for doas on a machine without sudo.
 
   --dry-run   walk every step without installing anything
   --no-ui     stay in the terminal; no progress window
@@ -48,7 +48,8 @@ installing.
                    small helper into /usr/local/libexec and a polkit action that
                    lets you, signed in on this machine, run only that helper. The
                    helper takes one number from 50 to 100 and writes it to the
-                   battery's threshold; it does nothing else. Needs sudo and polkit.
+                   battery's threshold; it does nothing else. Needs polkit, and
+                   sudo or doas.
 EOF
 }
 
@@ -66,7 +67,7 @@ done
 
 if [ "$(id -u)" -eq 0 ]; then
     echo "install.sh: run it as yourself, not as root; it writes into your own runtime" >&2
-    echo "and config directories and asks for sudo only for packages" >&2
+    echo "and config directories and asks for sudo or doas only for packages" >&2
     exit 1
 fi
 
@@ -97,7 +98,7 @@ font_present() {
 
 build_table() {
     add_step cli                           "cli_installed"                           @cli                          1 "the CLI wrapper itself, cli/banditshell into bin/"
-    add_step quickshell                    "command -v qs"                           quickshell                    1 "the toolkit the shell is written against"
+    add_step quickshell                    "quickshell_present"                      quickshell                    1 "the toolkit the shell is written against"
     add_step curl                          "command -v curl"                         curl                          1 "fetching the font"
     add_step unzip                         "command -v unzip"                        unzip                         1 "unpacking the font"
     add_step fontconfig                    "command -v fc-list"                      fontconfig                    1 "finding the fonts once they are in place"
@@ -148,6 +149,7 @@ build_table() {
     add_step helpers                       "helpers_built"                           @helpers                      2 "the pty, the directory lister and the gamma client"
     add_step completion                    "completion_present"                      @completion                   2 "tab completion for the CLI, in zsh and bash"
     add_step path                          "path_present"                            @path                         2 "banditshell on your PATH: ~/.local/bin/banditshell, when nothing else provides one"
+    add_step home-bin                      "home_bin_present"                        @home-bin                     2 "the command an exec-once line starts the shell with: ~/bin/banditshell"
     add_step lua-api                       "lua_api_present"                         @lua-api                      2 "the Lua module for binds: the shim beside hyprland.lua and the checkout pointer"
     add_step spicy-lyrics                  "spicy_lyrics_present"                    @spicy                        2 "word-timed lyrics: Spicetify and Spicy Lyrics, in Spotify"
 
@@ -162,8 +164,18 @@ build_table() {
     fi
 }
 
+quickshell_present() {
+    local version
+    command -v qs >/dev/null 2>&1 || return 1
+    if ! version=$("$REPO/scripts/quickshell-version.sh"); then
+        PROBE_NOTE="$version"
+    fi
+    return 0
+}
+
 CHARGE_HELPER="/usr/local/libexec/banditshell-charge-limit"
 CHARGE_POLICY="/usr/share/polkit-1/actions/org.banditshell.charge-limit.policy"
+NIXOS_MARK=/etc/NIXOS
 
 charge_limit_present() {
     if ! ls /sys/class/power_supply/BAT*/charge_control_end_threshold >/dev/null 2>&1; then
@@ -175,12 +187,16 @@ charge_limit_present() {
 }
 
 install_charge_limit() {
-    if ! need_root; then
-        STEP_OUTPUT="no sudo, so the charge limit helper was not installed"
+    if [ -e "$NIXOS_MARK" ]; then
+        STEP_OUTPUT="NixOS reads neither /usr/local/libexec nor /usr/share/polkit-1/actions, so the charge limit cannot be installed from here"
         return 1
     fi
-    STEP_OUTPUT="$(sudo -n install -Dm755 -o root -g root "$REPO/scripts/charge-limit.sh" "$CHARGE_HELPER" 2>&1 \
-        && sudo -n install -Dm644 -o root -g root "$REPO/assets/polkit/org.banditshell.charge-limit.policy" "$CHARGE_POLICY" 2>&1)"
+    if ! need_root; then
+        STEP_OUTPUT="no $ROOT_TOOL, so the charge limit helper was not installed"
+        return 1
+    fi
+    STEP_OUTPUT="$(as_root install -Dm755 -o root -g root "$REPO/scripts/charge-limit.sh" "$CHARGE_HELPER" 2>&1 \
+        && as_root install -Dm644 -o root -g root "$REPO/assets/polkit/org.banditshell.charge-limit.policy" "$CHARGE_POLICY" 2>&1)"
 }
 
 cli_installed() {
@@ -219,6 +235,23 @@ path_present() {
 
 install_path() {
     mkdir -p "$LOCAL_BIN" && ln -sfn "$REPO/cli/banditshell" "$LOCAL_BIN/banditshell"
+}
+
+HOME_BIN="$HOME/bin"
+
+home_bin_present() {
+    if [ -e "$HOME_BIN/banditshell" ] && [ ! -L "$HOME_BIN/banditshell" ]; then
+        PROBE_NOTE="kept your own ~/bin/banditshell"
+        return 0
+    fi
+    local have want
+    have=$(readlink -f "$HOME_BIN/banditshell" 2>/dev/null) || return 1
+    want=$(readlink -f "$REPO/bin/banditshell" 2>/dev/null) || return 1
+    [ -n "$want" ] && [ "$have" = "$want" ]
+}
+
+install_home_bin() {
+    mkdir -p "$HOME_BIN" && ln -sfn "$REPO/bin/banditshell" "$HOME_BIN/banditshell"
 }
 
 lua_api_present() {
@@ -337,8 +370,22 @@ graphical_possible() {
     return 0
 }
 
+ROOT_TOOL=sudo
+if ! command -v sudo >/dev/null 2>&1 && command -v doas >/dev/null 2>&1; then
+    ROOT_TOOL=doas
+fi
+
+as_root() {
+    if [ "$ROOT_TOOL" = doas ]; then
+        doas "$@"
+    else
+        sudo -n "$@"
+    fi
+}
+
 need_root() {
     [ "$SUDO_READY" -eq 1 ] && return 0
+    [ "$ROOT_TOOL" = doas ] && { need_doas; return; }
 
     if sudo -n true 2>/dev/null; then
         SUDO_READY=1
@@ -368,6 +415,23 @@ need_root() {
         if sudo -v; then
             SUDO_READY=1
             start_keepalive
+            return 0
+        fi
+        say "  authentication failed ($try of 3)"
+    done
+    return 1
+}
+
+need_doas() {
+    local try
+    if doas -n true 2>/dev/null; then
+        SUDO_READY=1
+        return 0
+    fi
+    for try in 1 2 3; do
+        if doas true; then
+            SUDO_READY=1
+            doas -n true 2>/dev/null || say "  doas will ask again for each step; 'permit persist' in doas.conf asks once"
             return 0
         fi
         say "  authentication failed ($try of 3)"
@@ -522,17 +586,17 @@ install_pkg() {
     @material-symbols) install_font "$MATERIAL_SYMBOLS_URL" "$MATERIAL_SYMBOLS_SHA" material-symbols; return ;;
     esac
     if ! need_root; then
-        STEP_OUTPUT="no sudo, so $names was not installed"
+        STEP_OUTPUT="no $ROOT_TOOL, so $names was not installed"
         return 1
     fi
     read -ra list <<<"$names"
     case "$PKG_MANAGER" in
-    pacman) STEP_OUTPUT="$(sudo -n pacman -S --needed --noconfirm "${list[@]}" 2>&1)" ;;
+    pacman) STEP_OUTPUT="$(as_root pacman -S --needed --noconfirm "${list[@]}" 2>&1)" ;;
     apt-get)
         if [ "$APT_REFRESHED" -eq 0 ]; then
-            sudo -n apt-get update >/dev/null 2>&1 && APT_REFRESHED=1
+            as_root apt-get update >/dev/null 2>&1 && APT_REFRESHED=1
         fi
-        STEP_OUTPUT="$(sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y "${list[@]}" 2>&1)" && return 0
+        STEP_OUTPUT="$(as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y "${list[@]}" 2>&1)" && return 0
         case "$STEP_OUTPUT" in
         *"Unable to locate package"* | *"has no installation candidate"*) ;;
         *) return 1 ;;
@@ -544,18 +608,18 @@ install_pkg() {
             STEP_OUTPUT="$first"$'\n'"not in the main archive; $backports may carry it: add it to your apt sources and run this again"
             return 1
         fi
-        STEP_OUTPUT="$(sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y -t "$backports" "${list[@]}" 2>&1)" && return 0
+        STEP_OUTPUT="$(as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y -t "$backports" "${list[@]}" 2>&1)" && return 0
         STEP_OUTPUT="$first"$'\n'"$STEP_OUTPUT"
         return 1
         ;;
-    dnf) STEP_OUTPUT="$(sudo -n dnf install -y "${list[@]}" 2>&1)" ;;
-    zypper) STEP_OUTPUT="$(sudo -n zypper --non-interactive install "${list[@]}" 2>&1)" ;;
+    dnf) STEP_OUTPUT="$(as_root dnf install -y "${list[@]}" 2>&1)" ;;
+    zypper) STEP_OUTPUT="$(as_root zypper --non-interactive install "${list[@]}" 2>&1)" ;;
     xbps-install)
         local sync=-S
         [ "$XBPS_SYNCED" -eq 0 ] || sync=""
-        STEP_OUTPUT="$(sudo -n xbps-install -y $sync "${list[@]}" 2>&1)" && XBPS_SYNCED=1
+        STEP_OUTPUT="$(as_root xbps-install -y $sync "${list[@]}" 2>&1)" && XBPS_SYNCED=1
         ;;
-    apk) STEP_OUTPUT="$(sudo -n apk add "${list[@]}" 2>&1)" ;;
+    apk) STEP_OUTPUT="$(as_root apk add "${list[@]}" 2>&1)" ;;
     esac
 }
 
@@ -723,10 +787,10 @@ install_spicy_lyrics() {
 
     if [ ! -w "$dir" ] || [ ! -w "$dir/Apps" ]; then
         if ! need_root; then
-            STEP_OUTPUT="no sudo, so Spicetify cannot patch $dir"
+            STEP_OUTPUT="no $ROOT_TOOL, so Spicetify cannot patch $dir"
             return 1
         fi
-        if ! sudo -n chmod a+wr "$dir" || ! sudo -n chmod -R a+wr "$dir/Apps"; then
+        if ! as_root chmod a+wr "$dir" || ! as_root chmod -R a+wr "$dir/Apps"; then
             STEP_OUTPUT="could not make $dir writable for Spicetify"
             return 1
         fi
@@ -818,6 +882,7 @@ run_step() {
         @completion) install_completion && ok=0 ;;
         @cli) install_cli && ok=0 ;;
         @path) install_path && ok=0 ;;
+        @home-bin) install_home_bin && ok=0 ;;
         @lua-api) install_lua_api && ok=0 ;;
         @helpers) install_helpers && ok=0 ;;
         @spicy) install_spicy_lyrics && ok=0 ;;

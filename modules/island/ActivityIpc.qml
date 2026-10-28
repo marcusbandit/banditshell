@@ -42,7 +42,11 @@ IpcHandler {
     }
 
     function end(id: string, outcome: string): string {
-        return root.reply(Activities.end(id, outcome), `ended ${id}`);
+        return root.reply(Activities.end(id, outcome, null, ""), `ended ${id}`);
+    }
+
+    function endSaying(id: string, outcome: string, text: string): string {
+        return root.reply(Activities.end(id, outcome, null, text), `ended ${id}`);
     }
 
     function list(): string {
