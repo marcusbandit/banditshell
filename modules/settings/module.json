@@ -5,7 +5,7 @@
   "owns": {
     "qml": ["modules/settings", "previews/SettingsPreview.qml"],
     "services": ["Modes", "Settings", "ThemeSwitcher"],
-    "scripts": ["scripts/pick-file.py", "scripts/pointing-devices.py"],
+    "scripts": ["scripts/pointing-devices.py"],
     "tests": ["tests/pointing-devices.test.js", "tests/restore.test.js", "tests/settings.test.js"]
   },
   "requires": {

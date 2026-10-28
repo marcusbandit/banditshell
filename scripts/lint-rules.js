@@ -557,6 +557,18 @@ function ruleL16(ctx) {
     return found;
 }
 
+function ruleL17(ctx) {
+    const { code, at } = ctx.scanned;
+    if (!/^\s*import\s+Quickshell\.Networking\b/m.test(code))
+        return [];
+    const found = [];
+    const use = /(?<![\w$.])Network\s*\./g;
+    let m;
+    while ((m = use.exec(code)) !== null)
+        found.push({ line: at(m.index), detail: "Network. beside import Quickshell.Networking" });
+    return found;
+}
+
 function ruleL7(ctx) {
     const { code, at } = ctx.scanned;
     const found = [];
@@ -628,7 +640,8 @@ const RULES = [
     { id: "L13", reason: "A Button's emphasis is accent, plate, ring or bare; filled, elevated, tonal, outlined and text were Material 3's and are retired (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL13 },
     { id: "L14", reason: "A variable font axis is a literal or a components/font-axes.js value; every other value it takes builds a new font engine that maps the font file again, and the font cache's trim of thousands of them freezes the shell (#86).", appliesTo: f => f.endsWith(".qml"), check: ruleL14 },
     { id: "L15", reason: "QtWebSockets and QtMultimedia are optional, so only a file loaded with Loader.source or Qt.createComponent imports them: never a singleton, never a type another file names. A machine without one then loses that one feature instead of the whole shell (#96).", appliesTo: () => false, check: null, whole: true },
-    { id: "L16", reason: "Clocks are WallClock from qs.components, never Quickshell's SystemClock: it reschedules in local time and fires every millisecond through the hour the clocks go back (#136).", appliesTo: f => f.endsWith(".qml"), check: ruleL16 }
+    { id: "L16", reason: "Clocks are WallClock from qs.components, never Quickshell's SystemClock: it reschedules in local time and fires every millisecond through the hour the clocks go back (#136).", appliesTo: f => f.endsWith(".qml"), check: ruleL16 },
+    { id: "L17", reason: "A file that imports Quickshell.Networking cannot name the shell's Network singleton: the module's own Network type takes the name, and every call on it throws (#280).", appliesTo: f => f.endsWith(".qml"), check: ruleL17 }
 ];
 
 function ruleById(id) {
@@ -1114,7 +1127,7 @@ function usage() {
         "usage: lint-rules.js [--root <dir>] [--rule <id>] [--all | --write-baseline | --list]",
         "",
         "  (none)             check the house rules against rules.baseline.json",
-        "  --rule <id>        only this rule, L1 to L16",
+        "  --rule <id>        only this rule, L1 to L17",
         "  --all              print every violation with file and line, known or not",
         "  --write-baseline   record today's counts as the new baseline",
         "  --list             rule ids with their reasons"

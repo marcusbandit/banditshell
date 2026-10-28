@@ -2,7 +2,6 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
-import Quickshell.Networking
 import "wifilist.js" as WifiList
 
 Singleton {
@@ -10,6 +9,9 @@ Singleton {
 
     property string pending: ""
     property string screenName: ""
+    property string signIn: ""
+
+    onSignInChanged: Network.setViewing(root, !!root.signIn)
 
     readonly property string wrongPassword: "That password did not work"
 
@@ -23,6 +25,10 @@ Singleton {
         Network.clearEnroll(name);
         root.screenName = screenName;
         if (Network.enterprise(n) && !n.known) {
+            root.signIn = name;
+            if (Panels.openMenu("network", screenName))
+                return;
+            root.signIn = "";
             Panels.open("settings", {
                 screen: screenName,
                 page: "wifi"

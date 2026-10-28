@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/wifilist.js"), "utf8");
-const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, pick, secretLine, signInSecrets, signInMethods, signInRefusal, knownServer, serverDomain, filePath, outerIdentity, signInArgs, serverCheckArgs, serverCheckSecrets, serverTrouble, serverLabel, serverMessage, serverSeenMessage, schoolCertificate, schoolFor, realmOf, trustedAuthority, checkAuthority, serverMatch, SCHOOL_CERTIFICATES, failureLabel, failureMessage, failureReason };")();
+const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, pick, secretLine, signInSecrets, signInMethods, signInRefusal, knownServer, serverDomain, filePath, outerIdentity, outerIdentityFor, innerMethods, innerMethod, innerName, signInArgs, serverCheckArgs, serverCheckSecrets, serverTrouble, serverLabel, serverMessage, serverSeenMessage, schoolCertificate, schoolFor, realmOf, trustedAuthority, checkAuthority, serverMatch, SCHOOL_CERTIFICATES, failureLabel, failureMessage, failureReason };")();
 
 const STEPS = 4;
 
@@ -344,6 +344,40 @@ test.describe("signInArgs", () => {
         assert.strictEqual(WifiList.signInRefusal("wpa"), "");
     });
 
+    test.it("ends a refusal as a sentence, and tells a LEAP user who to ask", () => {
+        for (const kind of ["leap", "", "owe"])
+            assert.match(WifiList.signInRefusal(kind), /^[A-Z].*\.$/, kind);
+        assert.match(WifiList.signInRefusal("leap"), /Ask whoever runs it .*WPA2 or WPA3 Enterprise\.$/);
+    });
+
+    test.it("keeps PEAP on MSCHAPv2 and TTLS on PAP unless another inner method is picked", () => {
+        assert.deepStrictEqual(WifiList.innerMethods("peap"), ["mschapv2", "gtc"]);
+        assert.deepStrictEqual(WifiList.innerMethods("ttls"), ["pap", "mschapv2"]);
+        assert.deepStrictEqual(WifiList.innerMethods("tls"), []);
+        assert.strictEqual(settings(WifiList.signInArgs("wpa", Object.assign({}, PASSWORD_FORM, { inner: "" })))["802-1x.phase2-auth"], "mschapv2");
+        const ttls = settings(WifiList.signInArgs("wpa", Object.assign({}, PASSWORD_FORM, { method: "ttls", inner: "mschapv2" })));
+        assert.strictEqual(ttls["802-1x.eap"], "ttls");
+        assert.strictEqual(ttls["802-1x.phase2-auth"], "mschapv2");
+        assert.strictEqual(settings(WifiList.signInArgs("wep", Object.assign({}, PASSWORD_FORM, { inner: "gtc" })))["802-1x.phase2-auth"], "gtc");
+        assert.strictEqual(WifiList.innerName("mschapv2"), "MSCHAPv2");
+    });
+
+    test.it("never sends an inner method that does not belong to the outer one", () => {
+        assert.strictEqual(WifiList.innerMethod("peap", "pap"), "mschapv2");
+        assert.strictEqual(WifiList.innerMethod("ttls", "gtc"), "pap");
+        assert.strictEqual(WifiList.innerMethod("ttls", "pap;reboot"), "pap");
+        assert.strictEqual(settings(WifiList.signInArgs("wpa", Object.assign({}, TLS_FORM, { inner: "mschapv2" })))["802-1x.phase2-auth"], "");
+    });
+
+    test.it("sends an outer identity the person typed, and anonymous@realm when they typed none", () => {
+        const typed = settings(WifiList.signInArgs("wpa", Object.assign({}, PASSWORD_FORM, { outer: " guest@dtu.dk " })));
+        assert.strictEqual(typed["802-1x.anonymous-identity"], "guest@dtu.dk");
+        assert.strictEqual(typed["802-1x.identity"], "s123456@dtu.dk");
+        assert.strictEqual(settings(WifiList.signInArgs("wpa", Object.assign({}, PASSWORD_FORM, { outer: "  " })))["802-1x.anonymous-identity"], "anonymous@dtu.dk");
+        assert.strictEqual(settings(WifiList.signInArgs("wpa", Object.assign({}, TLS_FORM, { outer: "guest@dtu.dk" })))["802-1x.anonymous-identity"], "");
+        assert.strictEqual(WifiList.signInArgs("wpa", Object.assign({}, PASSWORD_FORM, { outer: "two words" })), null);
+    });
+
     test.it("never builds a profile that would take any server", () => {
         assert.strictEqual(WifiList.signInArgs("wpa", Object.assign({}, PASSWORD_FORM, { domain: "" })), null);
         assert.strictEqual(WifiList.signInArgs("wpa", Object.assign({}, PASSWORD_FORM, { domain: "not a name" })), null);
@@ -491,6 +525,13 @@ test.describe("server check", () => {
         assert.strictEqual(got["802-1x.system-ca-certs"], "yes");
         assert.ok(!Object.values(got).some(v => v.includes("s123456")));
         assert.deepStrictEqual(nmcliPasswords(WifiList.serverCheckSecrets({ identity: "s123456" })), { "802-1x.identity": "anonymous", "802-1x.password": "never-sent" });
+    });
+
+    test.it("looks up with the outer identity the person typed", () => {
+        const form = { method: "ttls", identity: "s123456@dtu.dk", domain: "", outer: "eduroam@dtu.dk" };
+        assert.strictEqual(settings(WifiList.serverCheckArgs("wpa", form))["802-1x.anonymous-identity"], "eduroam@dtu.dk");
+        assert.deepStrictEqual(nmcliPasswords(WifiList.serverCheckSecrets(form)), { "802-1x.identity": "eduroam@dtu.dk", "802-1x.password": "never-sent" });
+        assert.strictEqual(WifiList.serverCheckArgs("wpa", Object.assign({}, form, { outer: "a b" })), null);
     });
 
     test.it("has no check for Suite-B or LEAP", () => {

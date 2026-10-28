@@ -43,6 +43,10 @@ Singleton {
         }
     }
 
+    function openMenu(key: string, screen: string): bool {
+        return root.forScreen(screen)?.openMenu(key, true) ?? false;
+    }
+
     function togglePanel(name: string, args: var): void {
         const screen = args.screen ?? "";
         const win = screen ? root.forScreen(screen) : root.showing(w => w.named[name]?.open);

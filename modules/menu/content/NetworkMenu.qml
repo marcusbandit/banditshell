@@ -89,9 +89,33 @@ Column {
             root.asking = "";
             root.opened = "";
         }
+        Qt.callLater(root.takeSignIn);
     }
 
-    Component.onCompleted: Network.setViewing(root, root.showing)
+    function takeSignIn(): void {
+        const name = WifiJoin.signIn;
+        if (!root.showing || !name)
+            return;
+        WifiJoin.signIn = "";
+        if (!Network.find(name))
+            return;
+        root.opened = "";
+        root.asking = name;
+        root.frozen = [name].concat(root.frozen.filter(other => other !== name));
+    }
+
+    Connections {
+        target: WifiJoin
+
+        function onSignInChanged(): void {
+            root.takeSignIn();
+        }
+    }
+
+    Component.onCompleted: {
+        Network.setViewing(root, root.showing);
+        Qt.callLater(root.takeSignIn);
+    }
     Component.onDestruction: Network.setViewing(root, false)
 
     component Choice: MenuRow {
@@ -547,6 +571,9 @@ Column {
                             suggestion: Network.checkedName === entry.name ? Network.checkedServer : Network.enrollFailedName === entry.name ? Network.enrollServer : ""
                             readServer: text => Network.serverName(text)
                             schoolOf: (domain, identity) => Network.school(domain, identity)
+                            innerOf: method => Network.innerMethods(method)
+                            innerLabel: inner => Network.innerName(inner)
+                            outerOf: (method, identity) => Network.outerIdentity(method, identity)
                             fill: Network.checkedName === entry.name ? Network.checkedFill : ""
                             noteWarns: Network.checkedName === entry.name && Network.checkedState === "mismatch"
 

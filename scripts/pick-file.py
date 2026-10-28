@@ -39,7 +39,7 @@ def through_portal(title, pattern, folder):
     listen(handle)
     options = {
         "handle_token": GLib.Variant("s", token),
-        "filters": GLib.Variant("a(sa(us))", [(pattern, [(0, pattern)])]),
+        "filters": GLib.Variant("a(sa(us))", [(pattern, [(0, glob) for glob in pattern.split()])]),
     }
     if os.path.isdir(folder):
         options["current_folder"] = GLib.Variant("ay", folder.encode() + b"\0")

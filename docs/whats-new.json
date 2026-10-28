@@ -1,6 +1,37 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-12",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Sign in on a school network from the launcher opens its sign-in form"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Certificate lists show only files that fit, with a Browse button"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "School Wi-Fi sign-in can change phase 2 and the anonymous identity"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A LEAP network says who to ask and offers Close"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Wi-Fi networks leaving the scan no longer write warnings to the log"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-11",
       "date": "2026-10-28",
       "changes": [

@@ -60,7 +60,15 @@ Singleton {
     readonly property bool wiredConnecting: root.wiredDevice?.state === ConnectionState.Connecting
 
     readonly property string wiredDeviceName: root.wiredDevice?.name ?? ""
-    readonly property string wiredName: root.wiredDevice?.networks?.values?.find(n => n.connected)?.name ?? ""
+    readonly property string wiredName: root.connectedName(root.wiredDevice)
+    function connectedName(device: var): string {
+        for (const n of device?.networks?.values ?? []) {
+            if (n?.connected)
+                return typeof n.name === "string" ? n.name : "";
+        }
+        return "";
+    }
+
     readonly property string wiredLabel: root.wiredName || root.wiredDeviceName
 
     readonly property string wiredAddress: root.wiredDevice?.address ?? ""
@@ -395,6 +403,18 @@ Singleton {
 
     function knownServer(name: string): string {
         return WifiList.knownServer(name);
+    }
+
+    function innerMethods(method: string): var {
+        return WifiList.innerMethods(method);
+    }
+
+    function innerName(inner: string): string {
+        return WifiList.innerName(inner);
+    }
+
+    function outerIdentity(method: string, identity: string): string {
+        return WifiList.outerIdentity(method, identity);
     }
 
     function serverName(text: string): string {
@@ -908,14 +928,16 @@ Singleton {
             required property var modelData
 
             readonly property Connections link: Connections {
-                target: watcher.modelData
+                target: watcher.modelData ?? null
+                ignoreUnknownSignals: true
 
                 function onConnectionFailed(reason: int): void {
-                    root.noteFailure(watcher.modelData.name, reason);
+                    if (watcher.modelData)
+                        root.noteFailure(watcher.modelData.name, reason);
                 }
 
                 function onConnectedChanged(): void {
-                    if (watcher.modelData.connected) {
+                    if (watcher.modelData?.connected) {
                         if (root.trying === watcher.modelData.name)
                             root.trying = "";
                         root.clearFailure(watcher.modelData.name);

@@ -35,6 +35,10 @@ Singleton {
             root.host?.togglePanel(name, args ?? {});
     }
 
+    function openMenu(key: string, screen: string): bool {
+        return root.host?.openMenu(key, screen) ?? false;
+    }
+
     function isOpen(name: string): bool {
         const handler = root.own[name];
         if (handler)
