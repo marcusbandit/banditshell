@@ -902,7 +902,7 @@ const CATS = [
             { k: "wifi", icon: "wifi", label: "Wi-Fi", det: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "" },
             { k: "bt", icon: "bluetooth", label: "Bluetooth", det: s => s.v("bt") ? "on" : "off" },
             { k: "hotspot", icon: "wifi_tethering", label: "Hotspot", det: s => s.hotspotStatus || "off", dis: s => s.hotspotBlocked },
-            { k: "vpnFirst", icon: "vpn_lock", label: "VPN", det: s => s.vpnOn || (s.tunnelCount ? "off" : "no tunnels"), dis: s => !s.tunnelCount }
+            { k: "vpnFirst", icon: "vpn_lock", label: "VPN", det: s => s.vpnOn || (s.networkMissing ? "needs NetworkManager" : s.tunnelCount ? "off" : "no tunnels"), dis: s => !s.tunnelCount }
         ],
         suggest: s => s.v("bt") && s.btNear > 0 ? { icon: "bluetooth_searching", label: `${s.btNear} devices nearby`, detail: "ready to pair", go: "bluetooth" } : null,
         subs: ["wifi", "bluetooth", "wired", "vpn"] },
