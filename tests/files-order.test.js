@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Order = lib("services/files-order.js", ["SORTS", "SORT_WORDS", "orderWords", "foldersNote", "ordered", "merged", "trashOrder"]);
+const Order = lib("services/files-order.js", ["SORTS", "SORT_WORDS", "orderWords", "foldersNote", "ordered", "merged", "trashOrder", "headers", "chosen"]);
 const Catalogue = lib("modules/settings/catalogue.js", ["ROW_BY_KEY", "PAGE_BY_ID", "options", "filesSortOrder", "filesFoldersNote"]);
 const Configuration = lib("config/configuration.js", ["merge", "upgrade"]);
 
@@ -117,6 +117,43 @@ test.describe("files order", () => {
         assert.strictEqual(status("mtime", true), "list · oldest first");
         const said = Catalogue.options(Catalogue.ROW_BY_KEY.filesSort, {}).map(([v]) => [Catalogue.filesSortOrder(v, false), Catalogue.filesSortOrder(v, true)]);
         assert.deepStrictEqual(said, [["a to z", "z to a"], ["newest first", "oldest first"], ["biggest first", "smallest first"], ["types a to z", "types z to a"]]);
+    });
+
+    test.it("the list header marks the sort in use and says which way it runs", () => {
+        const active = (key, reversed, trash) => Order.headers(key, reversed, trash).filter(h => h.active).map(h => `${h.label} ${h.words}`);
+        assert.deepStrictEqual(Order.headers("name", false, false).map(h => h.label), ["Name", "Type", "Size", "Modified"]);
+        assert.deepStrictEqual(active("name", false, false), ["Name a to z"]);
+        assert.deepStrictEqual(active("mtime", true, false), ["Modified oldest"]);
+        assert.deepStrictEqual(active("size", false, false), ["Size biggest"]);
+        assert.deepStrictEqual(active("bogus", false, false), ["Name a to z"]);
+    });
+
+    test.it("the Trash header names the trashed date and marks the order the Trash really uses", () => {
+        assert.deepStrictEqual(Order.headers("name", false, true).map(h => h.label), ["Name", "Type", "Size", "Trashed"]);
+        for (const [key, reversed, said] of [["name", true, "Trashed newest"], ["mtime", false, "Trashed newest"], ["mtime", true, "Trashed oldest"], ["kind", true, "Type z to a"]]) {
+            const how = Order.trashOrder(key, reversed);
+            const lit = Order.headers(key, reversed, true).filter(h => h.active);
+            assert.deepStrictEqual(lit.map(h => `${h.label} ${h.words}`), [said]);
+            assert.strictEqual(lit[0].id, how.key === "trashed" ? "trashed" : how.key);
+        }
+        assert.strictEqual(Order.headers("name", false, true)[0].sortable, false);
+    });
+
+    test.it("a header click sorts by it, and a second click turns it round", () => {
+        assert.deepStrictEqual(Order.chosen("size", "name", true, false), {sort: "size", reversed: false});
+        assert.deepStrictEqual(Order.chosen("name", "name", false, false), {sort: "name", reversed: true});
+        assert.deepStrictEqual(Order.chosen("mtime", "mtime", true, false), {sort: "mtime", reversed: false});
+        assert.deepStrictEqual(Order.chosen("trashed", "name", false, true), {sort: "mtime", reversed: true});
+        assert.deepStrictEqual(Order.chosen("trashed", "mtime", true, true), {sort: "mtime", reversed: false});
+        assert.deepStrictEqual(Order.chosen("name", "size", true, true), {sort: "size", reversed: true});
+        for (const [key, reversed, trash] of [["name", false, false], ["kind", true, false], ["name", true, true], ["size", false, true]])
+            for (const h of Order.headers(key, reversed, trash).filter(h => h.sortable)) {
+                const next = Order.chosen(h.id, key, reversed, trash);
+                const after = Order.headers(next.sort, next.reversed, trash).find(x => x.id === h.id);
+                assert.ok(after.active, `${h.id} lights after a click`);
+                if (h.active)
+                    assert.notStrictEqual(after.words, h.words, `${h.id} turns round`);
+            }
     });
 
     test.it("Markdown source in Settings writes raw, the value the file manager shows as source", () => {
