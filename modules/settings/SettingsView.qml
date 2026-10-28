@@ -49,8 +49,8 @@ Singleton {
 
     property var openRows: ({})
 
-    property var trails: ({})
-    property real resetColumn: 0
+    property var tails: ({})
+    property var tailColumns: ({})
 
     property real scroll: 0
     property real resumeScroll: 0
@@ -189,21 +189,25 @@ Singleton {
     property var toast: null
     property int toastSerial: 0
 
-    function noteTrail(uid: string, width: real): void {
+    function noteTail(uid: string, group: string, width: real): void {
         if (!uid)
             return;
-        const had = root.trails[uid];
-        if (width < 0 ? had === undefined : had === width)
+        const had = root.tails[uid];
+        if (width < 0 ? had === undefined : had && had.group === group && had.width === width)
             return;
         if (width < 0)
-            delete root.trails[uid];
+            delete root.tails[uid];
         else
-            root.trails[uid] = width;
-        Qt.callLater(root.measureTrails);
+            root.tails[uid] = { group, width };
+        Qt.callLater(root.measureTails);
     }
 
-    function measureTrails(): void {
-        root.resetColumn = Object.values(root.trails).reduce((a, b) => Math.max(a, b), 0);
+    function measureTails(): void {
+        const out = {};
+        for (const t of Object.values(root.tails))
+            out[t.group] = Math.max(out[t.group] ?? 0, t.width);
+        if (JSON.stringify(out) !== JSON.stringify(root.tailColumns))
+            root.tailColumns = out;
     }
 
     function drop(text: string, icon: string, action: var): void {
