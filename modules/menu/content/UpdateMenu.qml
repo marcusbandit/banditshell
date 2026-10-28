@@ -282,6 +282,7 @@ Column {
         ButtonPair {
             id: reportRow
 
+            rest: "ring"
             actions: [{ text: "Review in a terminal", icon: "terminal" }, { text: "Don't send" }]
 
             onTriggered: index => {
@@ -308,6 +309,7 @@ Column {
         ButtonPair {
             id: reinstallRow
 
+            rest: "ring"
             actions: [{ text: `Update to ${Update.skippedVersion} again`, icon: "download" }, { text: `Stay on ${Update.version}` }]
 
             onTriggered: index => {
@@ -328,6 +330,7 @@ Column {
             visible: Update.canReinstall
             text: `Update to ${Update.skippedVersion} again`
             icon: "download"
+            style: "accent"
 
             onClicked: root.reinstallConfirm = true
         }
@@ -335,6 +338,7 @@ Column {
         Button {
             visible: Update.resultPending
             text: "Hide message"
+            style: "ring"
             onClicked: Update.dismissResult()
         }
     }
@@ -602,7 +606,7 @@ Column {
 
     Column {
         width: parent.width
-        visible: Update.diverged && Update.own.length > 0
+        visible: Update.ahead > 0 && Update.own.length > 0 && (Update.diverged || !root.asking)
         spacing: Appearance.padding.hair
 
         StyledText {
@@ -694,20 +698,13 @@ Column {
         }
     }
 
-    StyledText {
-        width: parent.width
-        visible: !root.asking && Update.ahead > 0 && !Update.diverged
-        text: Update.aheadText
-        color: Appearance.colour.textFaint
-        wrapMode: Text.WordWrap
-    }
-
     Button {
         id: goBackOffer
 
         visible: !root.asking && Update.canGoBack
         text: `Go back to ${Update.previousVersion}`
         icon: "history"
+        style: "ring"
 
         onClicked: root.goBackConfirm = true
     }
@@ -715,6 +712,7 @@ Column {
     ButtonPair {
         id: goBackRow
 
+        rest: "ring"
         visible: root.leaving
         actions: [{ text: `Go back to ${Update.previousVersion}`, icon: "history" }, { text: `Stay on ${Update.version}` }]
 
@@ -769,6 +767,7 @@ Column {
         ButtonPair {
             id: offerRow
 
+            rest: "ring"
             visible: !root.declineConfirm
             actions: [{ text: "Migrate" }, { text: "Manual fix" }]
 
@@ -792,6 +791,7 @@ Column {
         ButtonPair {
             id: confirmRow
 
+            rest: "ring"
             visible: root.declineConfirm
             actions: [{ text: "Migrate" }, { text: "Leave it" }]
 
