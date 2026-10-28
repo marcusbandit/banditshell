@@ -369,6 +369,14 @@ test("the sidebar style row offers full and rail and defaults to rail", () => {
     assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.sbBright), "status");
 });
 
+test("the launcher position says when the screen moved it to fit", () => {
+    const row = Catalogue.ROWS.find(r => r.k === "searchAt");
+    assert.strictEqual(Catalogue.format(row, 0.4, { launcherPlaced: 0.4 }), "40% from top");
+    assert.strictEqual(Catalogue.format(row, 0.4, { launcherPlaced: -1 }), "40% from top");
+    assert.strictEqual(Catalogue.format(row, 0.6, { launcherPlaced: 0.31 }), "60% from top, moved up to fit");
+    assert.strictEqual(Catalogue.format(row, 0, { launcherPlaced: 0.06 }), "0% from top, moved down to fit");
+});
+
 test("notifications in search is a row and stays off by default", () => {
     assert.strictEqual(Catalogue.ROW_BY_KEY.notificationsInSearch.cfg, "launcher.typing.notifications");
     assert.strictEqual(lookup(DEFAULTS, "launcher.typing.notifications"), false);

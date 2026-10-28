@@ -1,6 +1,11 @@
 .pragma library
 
 const pct = v => `${Math.round(v * 100)}%`;
+const placedText = (v, at) => {
+    const want = Math.round(v * 100);
+    const got = Math.round(at * 100);
+    return at < 0 || got === want ? `${want}% from top` : `${want}% from top, moved ${got < want ? "up" : "down"} to fit`;
+};
 const PEN_BUTTONS_WHY = "Right click and middle click are what the stylus buttons send as they come. Erase turns the pen to its eraser for as long as the button is held. Changing them makes the shell sit between the pen and Hyprland, so a pen on its defaults is left untouched.";
 const signed = v => Math.abs(v) < 0.01 ? "as is" : (v > 0 ? "+" : "") + v.toFixed(2);
 const kelvin = (s, v) => {
@@ -401,8 +406,8 @@ const PAGES_SOURCE = {
             { t: "Layout", rows: [
                 { n: 69, icon: "view_agenda", label: "Concept", k: "concept", kind: "seg", o: ["list", "alphabet"], cfg: "launcher.concept", kw: "launcher layout",
                     why: "List is a plain search list. Alphabet is a thumb-sized rail of letters with favourites on a bow." },
-                { n: [], icon: "vertical_align_center", label: "Position", k: "searchAt", kind: "slider", min: 0.1, max: 0.6, step: 0.01, ends: ["higher", "lower"], fmt: v => `${Math.round(v * 100)}% from top`, cfg: "launcher.list.searchAt", dis: s => s.v("concept") !== "list", kw: "launcher position height vertical move up down raise lower top centre center search bar",
-                    why: "How far down the screen the search bar sits, as a share of the screen's height. Results grow down from it." },
+                { n: [], icon: "vertical_align_center", label: "Position", k: "searchAt", kind: "slider", min: 0, max: 1, step: 0.01, ends: ["top", "bottom"], fmtS: (s, v) => placedText(v, s.launcherPlaced ?? -1), cfg: "launcher.list.searchAt", dis: s => s.v("concept") !== "list", kw: "launcher position height vertical move up down raise lower top centre center search bar",
+                    why: "How far down the screen the middle of the search bar sits, as a share of the screen's height. When the full list would not fit below, the launcher moves up until it does." },
                 { n: [], icon: "push_pin", label: "Show pinned", k: "listPinned", kind: "toggle", cfg: "launcher.list.pinned", dis: s => s.v("concept") !== "list", kw: "pinned favourites quick launch grid icons",
                     why: "Pick an app in the list and press Pin to put it here." },
                 { n: [], icon: "schedule", label: "Show recents", k: "listRecents", kind: "toggle", cfg: "launcher.list.recents", dis: s => s.v("concept") !== "list", kw: "recent apps launcher icons" },

@@ -1264,6 +1264,8 @@ Singleton {
     }
 
     readonly property string wifiNet: Network.enabled && Network.connected ? Network.activeName : ""
+    readonly property real launcherPlaced: Panels.host?.forScreen(Settings.screenName)?.launcher?.placedAt ?? -1
+
     readonly property string reach: Network.online ? "online" : Network.reachLabel() || (Network.linked ? "checking" : "offline")
 
     readonly property string btName: Bluetooth.adapterName || "this machine"
