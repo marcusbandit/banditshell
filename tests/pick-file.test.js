@@ -98,66 +98,77 @@ function read(file) {
     }
 }
 
-async function zenityAfter(ending) {
+async function withRig(work) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pick-file-"));
-    const log = path.join(dir, "log");
-    fs.writeFileSync(path.join(dir, "zenity"), `#!/bin/sh\ntrap 'echo stopped >>"${log}"; kill $!; exit 143' TERM\necho open >>"${log}"\nsleep 30 &\nwait $!\n`, { mode: 0o755 });
-    const child = spawn("python3", ["-I", SCRIPT, "Pick", "*.pem", dir], { env: { PATH: `${dir}:/usr/bin:/bin`, DBUS_SESSION_BUS_ADDRESS: `unix:path=${dir}/no-bus`, HOME: dir } });
-    const done = exited(child);
-    await until(() => read(log).includes("open"));
-    child.kill(ending);
-    const code = await done;
-    await until(() => read(log).includes("stopped")).catch(() => {});
-    const said = read(log);
-    fs.rmSync(dir, { recursive: true, force: true });
-    return { code, said };
+    const started = [];
+    const run = (file, args, env) => {
+        const child = spawn(file, args, { env, stdio: ["ignore", "pipe", "ignore"] });
+        started.push(child);
+        return child;
+    };
+    try {
+        return await work(dir, path.join(dir, "log"), run);
+    } finally {
+        for (const child of started)
+            if (child.exitCode === null && child.signalCode === null)
+                child.kill("SIGKILL");
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
 }
 
-test("ending the chooser ends its zenity dialog too", async () => {
+function zenityAfter(ending) {
+    return withRig(async (dir, log, run) => {
+        fs.writeFileSync(path.join(dir, "zenity"), `#!/bin/sh\ntrap 'echo stopped >>"${log}"; kill $!; exit 143' TERM\necho open >>"${log}"\nsleep 30 &\nwait $!\n`, { mode: 0o755 });
+        const child = run("python3", ["-I", SCRIPT, "Pick", "*.pem", dir], { PATH: `${dir}:/usr/bin:/bin`, DBUS_SESSION_BUS_ADDRESS: `unix:path=${dir}/no-bus`, HOME: dir });
+        const done = exited(child);
+        await until(() => read(log).includes("open"));
+        child.kill(ending);
+        const code = await done;
+        await until(() => read(log).includes("stopped")).catch(() => {});
+        return { code, said: read(log) };
+    });
+}
+
+test("ending the chooser ends its zenity dialog too", { timeout: 20000 }, async () => {
     const { code, said } = await zenityAfter("SIGTERM");
     assert.strictEqual(code, 1);
     assert.match(said, /stopped/);
 });
 
-test("zenity goes even when the chooser is killed outright", async () => {
+test("zenity goes even when the chooser is killed outright", { timeout: 20000 }, async () => {
     const { said } = await zenityAfter("SIGKILL");
     assert.match(said, /stopped/);
 });
 
 const portalSkip = spawnSync("python3", ["-I", "-c", "import gi; gi.require_version('Gio', '2.0'); from gi.repository import Gio"]).status !== 0 || spawnSync("sh", ["-c", "command -v dbus-daemon"]).status !== 0 ? "needs python-gobject and dbus-daemon" : false;
 
-async function portalRun(mode, ready) {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pick-file-"));
-    const log = path.join(dir, "log");
-    fs.writeFileSync(path.join(dir, "zenity"), `#!/bin/sh\necho zenity >>"${log}"\n`, { mode: 0o755 });
-    const daemon = spawn("dbus-daemon", ["--session", "--nofork", "--print-address=1", `--address=unix:path=${dir}/bus`]);
-    let address = "";
-    daemon.stdout.on("data", chunk => address += chunk);
-    await until(() => address.includes("\n"));
-    const env = { PATH: `${dir}:/usr/bin:/bin`, DBUS_SESSION_BUS_ADDRESS: address.trim(), HOME: dir };
-    const portal = spawn("python3", ["-I", "-c", FAKE_PORTAL, log, ...mode], { env });
-    let up = "";
-    portal.stdout.on("data", chunk => up += chunk);
-    await until(() => up.includes("ready"));
-    const child = spawn("python3", ["-I", SCRIPT, "Pick", "*.pem", dir], { env });
-    const done = exited(child);
-    await until(() => read(log).includes(ready));
-    child.kill("SIGTERM");
-    const code = await done;
-    const said = read(log);
-    portal.kill();
-    daemon.kill();
-    fs.rmSync(dir, { recursive: true, force: true });
-    return { code, said, pid: child.pid };
+function portalRun(mode, ready) {
+    return withRig(async (dir, log, run) => {
+        fs.writeFileSync(path.join(dir, "zenity"), `#!/bin/sh\necho zenity >>"${log}"\n`, { mode: 0o755 });
+        const daemon = run("dbus-daemon", ["--session", "--nofork", "--print-address=1", `--address=unix:path=${dir}/bus`], process.env);
+        let address = "";
+        daemon.stdout.on("data", chunk => address += chunk);
+        await until(() => address.includes("\n"));
+        const env = { PATH: `${dir}:/usr/bin:/bin`, DBUS_SESSION_BUS_ADDRESS: address.trim(), HOME: dir };
+        const portal = run("python3", ["-I", "-c", FAKE_PORTAL, log, ...mode], env);
+        let up = "";
+        portal.stdout.on("data", chunk => up += chunk);
+        await until(() => up.includes("ready"));
+        const child = run("python3", ["-I", SCRIPT, "Pick", "*.pem", dir], env);
+        const done = exited(child);
+        await until(() => read(log).includes(ready));
+        child.kill("SIGTERM");
+        return { code: await done, said: read(log), pid: child.pid };
+    });
 }
 
-test("ending the chooser closes the portal's dialog", { skip: portalSkip }, async () => {
+test("ending the chooser closes the portal's dialog", { skip: portalSkip, timeout: 20000 }, async () => {
     const { code, said, pid } = await portalRun([], "opened");
     assert.strictEqual(code, 1);
     assert.match(said, new RegExp(`closed banditshell${pid}`));
 });
 
-test("ending the chooser while the portal fails does not open zenity instead", { skip: portalSkip }, async () => {
+test("ending the chooser while the portal fails does not open zenity instead", { skip: portalSkip, timeout: 20000 }, async () => {
     const { code, said } = await portalRun(["fail"], "asked");
     assert.strictEqual(code, 1);
     assert.doesNotMatch(said, /zenity/);

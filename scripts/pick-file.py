@@ -20,7 +20,7 @@ try:
     from gi.repository import GLibUnix
 
     on_signal = GLibUnix.signal_add
-except (ImportError, ValueError, NameError):
+except (ImportError, ValueError, NameError, AttributeError):
     on_signal = GLib.unix_signal_add if GLib else None
 
 PICKED, CANCELLED, NO_CHOOSER = 0, 1, 2
