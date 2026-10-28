@@ -61,10 +61,10 @@ Item {
             concept.scrubTo(fraction);
     }
 
-    function dragTo(fraction: real, aside: real): void {
+    function dragTo(fraction: real, aside: real, from: real): void {
         const concept = root.build();
         if (concept.dragTo)
-            concept.dragTo(fraction, aside);
+            concept.dragTo(fraction, aside, from);
     }
 
     function dragEnd(open: bool): void {

@@ -71,6 +71,7 @@ Item {
     property bool dragging: false
     property real dragProgress: 0
     property real dragAside: 0
+    property real dragFrom: 0
 
     readonly property real revealed: root.dragging ? root.dragProgress : rise.value
 
@@ -115,8 +116,9 @@ Item {
             root.show();
     }
 
-    function dragTo(fraction: real, aside: real): void {
+    function dragTo(fraction: real, aside: real, from: real): void {
         root.dragProgress = Math.max(0, Math.min(fraction, 1));
+        root.dragFrom = from || 0;
         root.dragging = true;
         root.dragAside = aside || 0;
     }

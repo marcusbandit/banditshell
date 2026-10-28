@@ -17,6 +17,16 @@ Item {
 
     property real bulge: root.span
 
+    readonly property real roam: Math.max(0, (root.span - root.bulge) / 2)
+
+    property real grabOffset: 0
+
+    property real bulgeAt: 0
+
+    function offsetAt(x: real): real {
+        return Math.max(-root.roam, Math.min(root.roam, x - root.span / 2));
+    }
+
     readonly property real travelFull: Math.max(1, root.reach > 0 ? root.reach : root.height - root.border * 2)
 
     readonly property real slack: Config.values.control.pullSlack
@@ -37,7 +47,7 @@ Item {
 
     readonly property var blobs: swell.value <= 0.01 ? [] : [
         {
-            x: (root.width - root.bulge) / 2,
+            x: (root.width - root.bulge) / 2 + Math.max(-root.roam, Math.min(root.roam, root.bulgeAt)),
             y: root.height - (root.border + swell.value),
             w: root.bulge,
             h: root.border + swell.value,
@@ -88,6 +98,8 @@ Item {
         property real progress: 0
 
         function begin(): void {
+            root.grabOffset = zone.containsMouse || zone.pressed ? root.offsetAt(zone.mouseX) : 0;
+            root.bulgeAt = root.grabOffset;
             zone.pulling = false;
             zone.velocity = 0;
             zone.lastUp = 0;
@@ -136,6 +148,8 @@ Item {
         onPositionChanged: mouse => {
             if (zone.pressed)
                 zone.advance(zone.from - mouse.y, mouse.x - zone.fromX);
+            else if (!zone.pulling)
+                root.bulgeAt = root.offsetAt(mouse.x);
         }
 
         onReleased: {

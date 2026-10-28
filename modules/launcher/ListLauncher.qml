@@ -728,7 +728,7 @@ LauncherConcept {
         readonly property real barOffset: Appearance.padding.large + field.height / 2
         readonly property real barHeight: barOffset * 2
 
-        readonly property real restY: Placement.restTop(root.height, Config.values.launcher.list.searchAt, barOffset, root.inset, barHeight + root.rowPitch * 3)
+        readonly property real restY: Placement.restTop(root.height, Config.values.launcher.list.searchAt, barOffset, root.inset, barHeight + root.rowPitch * 3, Appearance.sizes.melt)
 
         readonly property real bandY: root.height - root.inset
 
@@ -805,6 +805,8 @@ LauncherConcept {
             if (stuck && (lift !== judgedLift || !wasStuck))
                 stretch.hold(Math.max(0, lift / barHeight - 1));
             judgedLift = lift;
+            if (!root.dragging && root.shown && lift >= opensAt)
+                root.dragFrom = 0;
             judgeArrival();
         }
 
@@ -832,13 +834,15 @@ LauncherConcept {
             lastLift = lift;
         }
 
-        x: (root.width - width) / 2 + sway.value
+        readonly property real opensAt: restLift - eagerness
+
+        x: (root.width - width) / 2 + sway.value + Placement.bornAt(root.dragFrom, lift, opensAt)
 
         y: bandY - lift
 
         width: tabShapeWidth + (root.panelWidth / (1 + bodyStretch) - tabShapeWidth) * wide.value
 
-        implicitHeight: Math.min(root.shownView ? Math.round(root.height * 0.75) : root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
+        implicitHeight: Math.min(root.shownView ? Math.round(root.height * 0.75) : Placement.roomBelow(root.height, restY, root.inset, Appearance.sizes.melt), Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
 
         height: Math.min(lift, tabShapeHeight + (fullHeight * (1 + bodyStretch) - tabShapeHeight) * wide.value)
 
