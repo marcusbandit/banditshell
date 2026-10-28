@@ -717,3 +717,16 @@ test("a place the weather does not know gets one message under the row, with a w
     assert.deepStrictEqual(row.offer(state("", "x", null)).buttons, []);
     assert.strictEqual(row.cfg, "weather.location");
 });
+
+test("idle rows another daemon times show its value, or say they cannot, and take no input", () => {
+    const row = k => Catalogue.ROW_BY_KEY[k];
+    const s = { idleHandled: true, idleHandler: "hypridle", idleRead: true, idleTimes: { lock: 600, screensOff: 0, sleep: 0 }, idleTime: r => ({ lock: "10 min", screensOff: "never", sleep: "never" })[r] };
+    assert.deepStrictEqual(["idleLock", "idleOff", "idleSuspend"].map(k => row(k).held(s)), ["10 min", "never", "never"]);
+    const unread = Object.assign({}, s, { idleTimes: null, idleTime: () => "" });
+    assert.strictEqual(row("idleSuspend").held(unread), "not shown");
+    assert.match(row("idleLock").group.rows[0].text(unread), /cannot read them/);
+    assert.strictEqual(row("idleSuspend").held({ idleHandled: false }), null);
+    const reading = Object.assign({}, unread, { idleRead: false });
+    assert.deepStrictEqual([row("idleLock").held(reading), row("idleLock").group.rows[0].text(reading)], ["", "hypridle sets these times."]);
+    assert.strictEqual(row("idleLock").group.rows[0].text({ idleHandled: false }), "");
+});

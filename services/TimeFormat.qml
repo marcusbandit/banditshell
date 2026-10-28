@@ -45,6 +45,10 @@ Singleton {
         return Formatting.recentText(moment, new Date(), root.dateStyle, root.clock24);
     }
 
+    function changed(moment: date): string {
+        return Formatting.changedText(moment, new Date(), root.dateStyle);
+    }
+
     function example(style: string, moment: date): string {
         return Formatting.exampleText(style, moment);
     }

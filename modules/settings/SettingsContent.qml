@@ -236,6 +236,7 @@ Item {
                             readonly property int before: shelf.page.groups.slice(0, shelf.page.groups.indexOf(group.modelData)).reduce((n, g) => n + g.rows.length, 0)
 
                             width: shelf.width
+                            z: SettingsView.lifted !== "" && group.modelData.rows.some(r => r.uid === SettingsView.lifted) ? 1 : 0
                             topPadding: Appearance.padding.card
 
                             StyledText {

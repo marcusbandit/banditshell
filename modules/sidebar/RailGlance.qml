@@ -3,6 +3,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import "placement.js" as Placement
 
 Item {
     id: root
@@ -11,6 +12,7 @@ Item {
     property real bottomInset: 0
     property real tabsReach: 0
     property real timeCentre: -1
+    property real floor: 0
 
     readonly property string place: Config.values.sidebar.glance
     readonly property bool inRail: root.place === "rail" || root.place === "rail top"
@@ -28,7 +30,7 @@ Item {
 
     function footY(column: Item, timeHeight: real): real {
         const foot = root.height - root.bottomInset - column.height;
-        return root.aligned ? Math.min(root.timeCentre - timeHeight / 2, foot) : foot;
+        return root.aligned ? Placement.clockY(root.timeCentre - timeHeight / 2, foot, root.floor) : foot;
     }
 
     WallClock {

@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import "../../services/files-find.js" as Find
 
 Item {
     id: root
@@ -12,13 +13,15 @@ Item {
     property string verb: ""
     property string icon: ""
     property var accepted: null
+    property var rows: []
 
     property bool up: false
     property bool confirming: false
 
     signal dismissed
 
-    function ask(name: string, sentence: string, verb: string, icon: string, onAnswer: var): void {
+    function ask(name: string, sentence: string, verb: string, icon: string, onAnswer: var, rows: var): void {
+        root.rows = rows ?? [];
         root.name = name;
         root.sentence = sentence;
         root.verb = verb;
@@ -74,7 +77,7 @@ Item {
     SquircleRect {
         anchors.centerIn: parent
 
-        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, 420)
+        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, root.rows.length > 0 ? 760 : 420)
         implicitHeight: body.implicitHeight + Appearance.padding.large * 2
 
         radius: Appearance.rounding.large
@@ -102,6 +105,118 @@ Item {
                     text: root.name
                     font.pixelSize: Appearance.font.size.normal
                     elide: Text.ElideMiddle
+                }
+
+                Item {
+                    id: listing
+
+                    width: parent.width
+                    height: table.height + Appearance.padding.normal * 2
+                    visible: root.rows.length > 0
+
+                    readonly property real sizeWidth: digit.advanceWidth * 9
+                    readonly property real nameWidth: (width - sizeWidth) * 0.42
+
+                    TextMetrics {
+                        id: digit
+
+                        font.family: Appearance.font.family
+                        font.pixelSize: Appearance.font.size.small
+                        text: "0"
+                    }
+
+                    ListView {
+                        id: table
+
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width
+                        height: Math.min(table.contentHeight, root.height * 0.45)
+
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        model: root.rows
+
+                        WheelStep {
+                            flick: table
+                        }
+
+                        delegate: Item {
+                            id: line
+
+                            required property var modelData
+
+                            width: table.width
+                            height: Appearance.font.line.small + Appearance.padding.small * 2
+
+                            Row {
+                                id: named
+
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: listing.nameWidth
+                                spacing: Appearance.padding.small
+
+                                StyledText {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: Math.min(implicitWidth, named.width - (hiddenMark.visible ? hiddenMark.width + named.spacing : 0))
+                                    text: line.modelData.name
+                                    elide: Text.ElideMiddle
+                                }
+
+                                TrashMark {
+                                    id: hiddenMark
+
+                                    anchors.verticalCenter: parent.verticalCenter
+
+                                    visible: line.modelData.hidden
+                                    icon: "visibility_off"
+                                    text: "hidden"
+                                }
+                            }
+
+                            Row {
+                                id: whence
+
+                                anchors.left: named.right
+                                anchors.leftMargin: Appearance.padding.normal
+                                anchors.right: amount.left
+                                anchors.rightMargin: Appearance.padding.normal
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: Appearance.padding.small
+
+                                TrashMark {
+                                    id: driveMark
+
+                                    anchors.verticalCenter: parent.verticalCenter
+
+                                    visible: line.modelData.drive !== ""
+                                    icon: "hard_drive"
+                                    text: line.modelData.drive
+                                }
+
+                                StyledText {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    readonly property real room: whence.width - (driveMark.visible ? driveMark.width + whence.spacing : 0)
+
+                                    width: room
+                                    text: Find.fitTail(line.modelData.origin, Math.max(1, Math.floor(room / Math.max(1, digit.advanceWidth))))
+                                    color: Appearance.colour.textDim
+                                }
+                            }
+
+                            StyledText {
+                                id: amount
+
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: listing.sizeWidth
+
+                                horizontalAlignment: Text.AlignRight
+                                text: line.modelData.size
+                                color: Appearance.colour.textDim
+                            }
+                        }
+                    }
                 }
 
                 StyledText {

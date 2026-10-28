@@ -14,6 +14,12 @@ Singleton {
 
     readonly property bool handledElsewhere: root.handler !== ""
 
+    property string handlerConfig: ""
+
+    property var handlerTimes: null
+
+    property bool handlerRead: false
+
     property bool idle: false
 
     property bool awake: false
@@ -75,6 +81,8 @@ Singleton {
     function recheck(): void {
         if (!handler.running)
             handler.running = true;
+        if (root.handler === "hypridle" && !configFinder.running)
+            configFinder.running = true;
     }
 
     Timer {
@@ -148,6 +156,48 @@ Singleton {
         }
 
         onExited: root.handler = Plan.handlerOf(handlerOutput.text)
+    }
+
+    onHandlerChanged: {
+        root.handlerTimes = null;
+        root.handlerConfig = "";
+        root.handlerRead = root.handler !== "hypridle";
+        if (root.handler === "hypridle")
+            configFinder.running = true;
+    }
+
+    Process {
+        id: configFinder
+
+        command: ["pgrep", "-a", "-x", "hypridle"]
+
+        stdout: StdioCollector {
+            id: configFinderOutput
+        }
+
+        onExited: {
+            root.handlerConfig = root.handler === "hypridle" ? Plan.hypridleConfigPath(configFinderOutput.text, Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`) : "";
+            if (root.handlerConfig === "")
+                root.handlerRead = true;
+        }
+    }
+
+    FileView {
+        id: handlerFile
+
+        path: root.handlerConfig
+        printErrors: false
+        watchChanges: true
+
+        onFileChanged: handlerFile.reload()
+        onLoaded: {
+            root.handlerTimes = Plan.hypridleTimes(handlerFile.text());
+            root.handlerRead = true;
+        }
+        onLoadFailed: {
+            root.handlerTimes = null;
+            root.handlerRead = true;
+        }
     }
 
     Timer {

@@ -665,8 +665,21 @@ test("L17 flags the Network singleton in a file that imports Quickshell.Networki
     assert.deepStrictEqual(lines("services/b.qml", shadowed.replace("import Quickshell.Networking", "import qs.services"), "L17"), []);
 });
 
+test("L18 flags DesktopEntries.applications outside services/Apps.qml", () => {
+    const text = [
+        "Item {",
+        "    readonly property int count: DesktopEntries.applications.values.length",
+        "    readonly property var found: DesktopEntries.heuristicLookup(\"zen\")",
+        "    readonly property var mine: root.DesktopEntries.applications",
+        "    readonly property var maybe: DesktopEntries?.applications.values",
+        "}"
+    ].join("\n");
+    assert.deepStrictEqual(lines("services/Tour.qml", text, "L18"), [2, 5]);
+    assert.deepStrictEqual(lines("services/Apps.qml", text, "L18"), []);
+});
+
 test("every rule has an id in order and a reason", () => {
-    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 17 }, (_, i) => `L${i + 1}`));
+    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 18 }, (_, i) => `L${i + 1}`));
     for (const rule of lintRules.RULES)
         assert.ok(rule.reason.length > 20, rule.id);
 });

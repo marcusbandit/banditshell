@@ -104,6 +104,12 @@ function recentText(date, now, style, clock24) {
     return dateText(date, style, "month");
 }
 
+function changedText(date, now, style) {
+    if (date.toDateString() === now.toDateString())
+        return "Today";
+    return dateText(date, style, date.getFullYear() === now.getFullYear() ? "day" : "year");
+}
+
 function exampleText(style, date) {
     return dateText(date, style, "year").toLowerCase();
 }

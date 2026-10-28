@@ -42,6 +42,7 @@ LauncherConcept {
     readonly property var results: root.capture ? search.keyed([Object.assign({}, root.capture.row, {
                     detail: root.capture.said || root.capture.row.detail
                 })]) : search.rows
+    readonly property var detailStarts: Search.sharedStarts(root.results.map(r => r.header ? "" : String(r.detail ?? "")))
     property int selected: 0
 
     readonly property real headerPitch: Appearance.font.line.small + Appearance.padding.normal + Appearance.padding.small
@@ -1245,6 +1246,7 @@ LauncherConcept {
                                 mark: line.modelData.swatch ? swatch : null
                                 label: row.hovered && line.modelData.revealLabel ? line.modelData.revealLabel : line.modelData.label ?? ""
                                 detail: line.modelData.detail ?? ""
+                                detailShared: root.detailStarts[line.index] ?? 0
                                 columns: line.modelData.columns ?? []
                                 trailingRoom: line.modelData.columns ? root.switchWidth + Appearance.padding.normal * 2 : 0
 

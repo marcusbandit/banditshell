@@ -96,7 +96,7 @@ launcher's groups in the config.
 | launcher-tools | 4 | colour, dev, notes, snippets, emoji, typing, latest files and file search sources | core, compositor, launcher, clipboard, files | none | launcher.powerTools, launcher.typing, launcher.utilities |
 | power | 4 | Battery, ChargeLimit, Power, PowerProfile, Lid, Suspension, Idle | core, compositor | none | battery, power, idle |
 | updates | 4 | Update, Pacman, WhatsNew | core, compositor | none | updates, packages |
-| tour | 4 | Tour, modules/tour (the first-run tour's card, one window per screen) | core, compositor, settings | none | none |
+| tour | 4 | Tour, modules/tour (the first-run tour's card, one window per screen) | core, compositor, apps, settings | none | none |
 | island | 5 | modules/island, Notices, Activities, Levels | core, compositor, notifications, media, apps, clock, audio, display (optional: clipboard, capture, updates, files) | island, inspect, activity | island |
 | launcher-online | 5 | browser, define, github, packages, speedtest, translate and video sources | core, compositor, launcher, files, apps | none | launcher.online |
 | lock | 5 | Lock, modules/lock | core, compositor, media, wallpaper, clock, power, notifications | none | lock |
