@@ -7,7 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/controls/certificate-files.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Files = new Function(src + "\nreturn { read, fitting };")();
+const Files = new Function(src + "\nreturn { read, fitting, needsKey };")();
 const SCAN = path.join(ROOT, "scripts/certificate-files.sh");
 const FIXTURE = fs.readFileSync(path.join(ROOT, "tests/fixtures/certificate-files.txt"), "utf8");
 
@@ -36,6 +36,14 @@ test.describe("certificate files", () => {
         assert.ok(!roots.some(name => /laptop|\.p12$/.test(name)), roots.join());
         assert.ok(!clients.some(name => /root/.test(name)), clients.join());
         assert.deepStrictEqual(Files.fitting(files, "key", 10).map(p => path.basename(p)), ["laptop-17.key"]);
+    });
+
+    test.it("asks for a key file only for a client certificate without its own key", () => {
+        const files = Files.read(FIXTURE);
+        assert.strictEqual(Files.needsKey(files, "/home/me/Downloads/laptop-17.crt"), true);
+        assert.strictEqual(Files.needsKey(files, "/home/me/Downloads/laptop-17.p12"), false);
+        assert.strictEqual(Files.needsKey(files, "/home/me/Documents/wifi/laptop-17-with-key.pem"), false);
+        assert.strictEqual(Files.needsKey(files, "/home/me/elsewhere.pem"), false);
     });
 
     test.it("keeps the newest first and stops at the limit", () => {

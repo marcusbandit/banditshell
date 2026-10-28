@@ -47,6 +47,29 @@ Item {
     readonly property string innerName: root.innerChoices.includes(root.inner[root.methodName]) ? root.inner[root.methodName] : root.innerChoices[0] ?? ""
     readonly property string outerDefault: root.outerOf(root.methodName, identity.text)
     readonly property bool filled: !!identity.text && (root.tls ? !!certificate.text.trim() : !!password.text)
+    readonly property bool authorityMissing: root.trustKey === "file" && !authority.text.trim()
+    readonly property bool keyMissing: root.tls && !key.text.trim() && CertificateFiles.needsKey(root.found, certificate.text.trim())
+    readonly property string missing: {
+        if (root.authorityMissing)
+            return "Pick your school's root certificate under More, or set trust back to system.";
+        if (root.looksUp)
+            return "";
+        if (!identity.text)
+            return root.tls ? "Fill in the name on your certificate." : "Fill in your username.";
+        if (root.tls && !certificate.text.trim())
+            return "Pick your certificate file.";
+        if (root.keyMissing)
+            return "Pick the key file that goes with this certificate.";
+        if (!root.tls && !password.text)
+            return "Fill in your password.";
+        if (root.needsServer)
+            return "Fill in the server name under More.";
+        if (!root.tls && /\s/.test(outer.text.trim()))
+            return `Take out the space in the anonymous identity, as in ${root.outerDefault.includes("@") ? root.outerDefault : "anonymous@school.edu"}.`;
+        return "";
+    }
+    readonly property bool serverChecked: !!root.readServer(server.text) && !root.authorityMissing
+    readonly property bool plainInside: root.methodName === "ttls" && root.innerName === "pap"
 
     readonly property var school: server.text.trim() ? root.schoolOf(server.text, "") : root.schoolOf("", identity.text)
     readonly property var trustKeys: root.school ? ["school", "system", "file"] : ["system", "file"]
@@ -138,13 +161,11 @@ Item {
         root.localField = "";
         if (root.trustKey === "file" && !authority.text.trim())
             return root.fault(authority, "authority", "Pick your school's root certificate file, or set trust back.");
-        if (!root.tls && /\s/.test(outer.text.trim()))
-            return root.fault(outer, "outer", "An anonymous identity has no spaces, such as anonymous@school.edu.");
         if (root.looksUp)
             return root.check(root.form());
         if (!root.needsServer && !root.readServer(server.text))
             return root.fault(server, "server", "That server name needs a dot, such as school.edu.");
-        if (!root.filled)
+        if (!root.filled || root.missing)
             return;
         if (root.needsServer)
             return root.fault(server, "server", "Fill in the server name your school's Wi-Fi guide gives.");
@@ -462,14 +483,19 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
 
                         style: "accent"
-                        interactive: !root.busy && (root.looksUp || root.filled)
+                        interactive: !root.busy && !root.missing && (root.looksUp || root.filled)
                         text: root.busy ? (root.checking ? "Looking…" : "Connecting…") : root.looksUp ? (root.suggestion ? "Look up again" : "Look up the server") : "Connect"
                         onClicked: root.submit()
                     }
                 }
 
                 FormLine {
-                    visible: root.looksUp && !root.busy
+                    visible: !root.busy && !!root.missing
+                    text: root.missing
+                }
+
+                FormLine {
+                    visible: root.looksUp && !root.busy && !root.missing
                     text: "Looking up sends nothing secret, but your Wi-Fi drops for a moment."
                 }
 
@@ -572,7 +598,13 @@ Item {
                     }
 
                     FormLine {
+                        visible: root.serverChecked
                         text: root.tls ? "Your certificate only goes to a server with this name." : "Your password only goes to a server with this name."
+                    }
+
+                    FormLine {
+                        visible: root.plainInside
+                        text: "With TTLS and PAP, your password is sent as typed inside the tunnel."
                     }
 
                     FormChoice {
@@ -658,12 +690,6 @@ Item {
                     FormLine {
                         visible: !root.tls
                         text: "Sent before the tunnel opens, so anyone nearby can read it."
-                    }
-
-                    FormLine {
-                        visible: root.localField === "outer"
-                        text: root.local
-                        color: Appearance.colour.warning
                     }
                 }
             }

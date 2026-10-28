@@ -17,6 +17,11 @@
         {
           "type": "issues",
           "severity": "minor",
+          "text": "School Wi-Fi Connect stays off until the form can work, and says why"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
           "text": "School Wi-Fi sign-in can change phase 2 and the anonymous identity"
         },
         {

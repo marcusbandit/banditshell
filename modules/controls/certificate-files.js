@@ -3,6 +3,12 @@
 var BUNDLES = /\.(p12|pfx)$/i;
 var KEYS = /\.key$/i;
 
+function holdsKey(path, lines) {
+    return BUNDLES.test(path) || lines.some(function (line) {
+        return line.trim() === "private key";
+    });
+}
+
 function kindOf(path, lines) {
     var key = false;
     var subject = null;
@@ -42,9 +48,17 @@ function read(text) {
             continue;
         var kind = kindOf(path, lines.slice(1));
         if (kind)
-            out.push({ path: path, kind: kind });
+            out.push({ path: path, kind: kind, key: holdsKey(path, lines) });
     }
     return out;
+}
+
+function needsKey(files, path) {
+    for (var i = 0; i < files.length; i++) {
+        if (files[i].path === path)
+            return files[i].kind === "client" && !files[i].key;
+    }
+    return false;
 }
 
 function fitting(files, kind, most) {

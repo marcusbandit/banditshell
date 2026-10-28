@@ -209,7 +209,7 @@ function outerIdentity(method, identity) {
         return "";
     const text = String(identity ?? "");
     const realm = text.slice(text.lastIndexOf("@") + 1);
-    return text.includes("@") && /^[^\s@]+$/.test(realm) ? `anonymous@${realm}` : "";
+    return text.includes("@") && /^[^\s@]+$/.test(realm) ? `anonymous@${realm}` : "anonymous";
 }
 
 function outerIdentityFor(method, identity, typed) {
@@ -254,8 +254,7 @@ function signInArgs(kind, form) {
 }
 
 function checkIdentity(form) {
-    const outer = outerIdentityFor("peap", form?.identity, form?.outer);
-    return outer === null ? null : outer || "anonymous";
+    return outerIdentityFor("peap", form?.identity, form?.outer);
 }
 
 function serverCheckArgs(kind, form) {
@@ -277,7 +276,7 @@ function serverCheckArgs(kind, form) {
 }
 
 function serverCheckSecrets(form) {
-    const outer = checkIdentity(form) || "anonymous";
+    const outer = checkIdentity(form) ?? "anonymous";
     return secretLine("802-1x.identity", outer) + secretLine("802-1x.password", "never-sent");
 }
 

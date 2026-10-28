@@ -419,11 +419,14 @@ test.describe("server names", () => {
         assert.strictEqual(WifiList.knownServer("constructor"), "");
     });
 
-    test.it("hides the username behind anonymous@ its realm, and leaves a bare name alone", () => {
+    test.it("hides the username behind anonymous@ its realm, and behind plain anonymous when it has none", () => {
         assert.strictEqual(WifiList.outerIdentity("peap", "s123456@dtu.dk"), "anonymous@dtu.dk");
         assert.strictEqual(WifiList.outerIdentity("ttls", "a@b@uni.edu"), "anonymous@uni.edu");
-        assert.strictEqual(WifiList.outerIdentity("peap", "s123456"), "");
-        assert.strictEqual(WifiList.outerIdentity("peap", "s123456@"), "");
+        assert.strictEqual(WifiList.outerIdentity("peap", "s123456"), "anonymous");
+        assert.strictEqual(WifiList.outerIdentity("peap", "s123456@"), "anonymous");
+        const bare = settings(WifiList.signInArgs("wpa", Object.assign({}, PASSWORD_FORM, { identity: "s123456" })));
+        assert.strictEqual(bare["802-1x.anonymous-identity"], "anonymous");
+        assert.strictEqual(bare["802-1x.identity"], "s123456");
         assert.strictEqual(WifiList.outerIdentity("tls", "s123456@dtu.dk"), "");
     });
 
