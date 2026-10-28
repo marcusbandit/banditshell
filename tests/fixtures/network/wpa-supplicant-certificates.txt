@@ -1,0 +1,14 @@
+wlp7s0: SME: Trying to authenticate with 9c:1c:12:aa:bb:01 (SSID='DTUsecure' freq=5180 MHz)
+wlp7s0: CTRL-EVENT-EAP-STARTED EAP authentication started
+wlp7s0: CTRL-EVENT-EAP-PROPOSED-METHOD vendor=0 method=25
+wlp7s0: CTRL-EVENT-EAP-METHOD EAP vendor 0 method 25 (PEAP) selected
+wlp7s0: CTRL-EVENT-EAP-TLS-CERT-ERROR reason=1 depth=1 subject='/DC=dk/DC=dtu/DC=win/CN=Afdelingen for IT Service Issuing CA 03' err='unable to get local issuer certificate'
+wlp7s0: CTRL-EVENT-EAP-FAILURE EAP authentication failed
+wlp7s0: CTRL-EVENT-DISCONNECTED bssid=9c:1c:12:aa:bb:01 reason=23
+wlp7s0: CTRL-EVENT-EAP-STARTED EAP authentication started
+wlp7s0: CTRL-EVENT-EAP-PROPOSED-METHOD vendor=0 method=25
+wlp7s0: CTRL-EVENT-EAP-METHOD EAP vendor 0 method 25 (PEAP) selected
+wlp7s0: CTRL-EVENT-EAP-PEER-CERT depth=2 subject='/CN=DTU ROOT CA 01' hash=5d3c1f0e8c3a9a2f8b6e1d4c7a0b9e8f7d6c5b4a39281706f5e4d3c2b1a09f8e
+wlp7s0: CTRL-EVENT-EAP-PEER-CERT depth=1 subject='/DC=dk/DC=dtu/DC=win/CN=Afdelingen for IT Service Issuing CA 03' hash=0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c4b5a69788796a5b4c3d2e1f0
+wlp7s0: CTRL-EVENT-EAP-TLS-CERT-ERROR reason=9 depth=0 subject='/C=DK/L=Kgs. Lyngby/O=Danmarks Tekniske Universitet/CN=ait-pisepsn01.win.dtu.dk' err='Domain suffix mismatch'
+wlp7s0: CTRL-EVENT-EAP-FAILURE EAP authentication failed

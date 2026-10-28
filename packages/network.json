@@ -11,6 +11,7 @@
       "services/tunnels.js",
       "services/wifilist.js"
     ],
+    "assets": ["assets/certificates"],
     "tests": ["tests/fixtures/network", "tests/network.test.js", "tests/wifilist.test.js"]
   },
   "requires": {

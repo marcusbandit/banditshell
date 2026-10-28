@@ -261,7 +261,7 @@ Singleton {
         if (root.failedName === n.name)
             return root.failureLabel();
         if (root.enrollingName === n.name)
-            return "signing in";
+            return root.enrollChecking ? "checking the server" : "signing in";
         if (root.enrollFailedName === n.name)
             return root.enrollTrouble;
         return "";
@@ -278,53 +278,182 @@ Singleton {
     }
 
     property string enrollingName: ""
+    property bool enrollChecking: false
+    property string enrollProfile: ""
+    property string enrollDomain: ""
+    property int enrollSince: 0
+    property bool enrollReading: false
+    property string enrollWhy: ""
 
     property string enrollFailedName: ""
     property string enrollTrouble: ""
+    property string enrollDetail: ""
+    property string enrollServer: ""
+
+    property string checkedName: ""
+    property string checkedNote: ""
+    property string checkedServer: ""
+    property string checkedFill: ""
+    property string checkedState: ""
+    property string enrollIdentity: ""
 
     property var enrollArgs: []
     property string enrollSecrets: ""
+
+    function signInKind(n: var): string {
+        switch (n?.security) {
+        case WifiSecurityType.Wpa2Eap:
+        case WifiSecurityType.WpaEap:
+            return "wpa";
+        case WifiSecurityType.DynamicWep:
+            return "wep";
+        case WifiSecurityType.Wpa3SuiteB192:
+            return "suiteb";
+        case WifiSecurityType.Leap:
+            return "leap";
+        }
+        return "";
+    }
 
     function clearEnroll(name: string): void {
         if (root.enrollFailedName === name) {
             root.enrollFailedName = "";
             root.enrollTrouble = "";
+            root.enrollDetail = "";
+            root.enrollServer = "";
+        }
+        if (root.checkedName === name) {
+            root.checkedName = "";
+            root.checkedNote = "";
+            root.checkedServer = "";
+            root.checkedFill = "";
+            root.checkedState = "";
         }
     }
 
-    function failEnroll(why: string): void {
+    function failEnroll(why: string, detail: string): void {
         root.enrollArgs = [];
         root.enrollSecrets = "";
         root.enrollFailedName = root.enrollingName;
         root.enrollTrouble = why;
+        root.enrollDetail = detail;
         root.enrollingName = "";
+        root.enrollChecking = false;
     }
 
-    function joinEnterprise(name: string, identity: string, password: string, eap: string, phase2: string): void {
-        if (!name || root.enrollingName)
-            return;
+    function startEnroll(name: string, checking: bool, profileName: string, domain: string, args: var, secrets: string, copy: var): void {
         if (!root.deviceName) {
             root.enrollFailedName = name;
             root.enrollTrouble = "there is no wireless adapter to put it on";
+            root.enrollDetail = "";
             return;
         }
 
         root.clearFailure(name);
-        root.enrollFailedName = "";
-        root.enrollTrouble = "";
+        root.clearEnroll(name);
         root.enrollingName = name;
-
-        const method = eap || "peap";
-        const args = ["connection.auth-retries", "1", "wifi-sec.key-mgmt", "wpa-eap", "802-1x.eap", method, "802-1x.identity", identity, "802-1x.password", ""];
-        if (method !== "tls")
-            args.push("802-1x.phase2-auth", phase2 || "mschapv2");
+        root.enrollChecking = checking;
+        root.enrollProfile = profileName;
+        root.enrollDomain = domain;
+        root.enrollSince = Math.floor(Date.now() / 1000) - 1;
+        root.enrollReading = false;
         root.enrollArgs = args;
-        root.enrollSecrets = WifiList.signInSecrets(identity, password);
+        root.enrollSecrets = secrets;
 
-        profile.want = name;
+        profile.want = profileName;
         profile.exists = false;
         up.refused = false;
-        profile.running = true;
+        if (copy.length) {
+            stash.command = copy;
+            stash.running = true;
+        } else {
+            profile.running = true;
+        }
+    }
+
+    Process {
+        id: stash
+
+        onExited: code => {
+            if (!root.enrollingName)
+                return;
+            if (code !== 0) {
+                root.failEnroll("could not put the school's certificate in place", "");
+                return;
+            }
+            profile.running = true;
+        }
+    }
+
+    function signInMethods(kind: string): var {
+        return WifiList.signInMethods(kind);
+    }
+
+    function signInRefusal(kind: string): string {
+        return WifiList.signInRefusal(kind);
+    }
+
+    function knownServer(name: string): string {
+        return WifiList.knownServer(name);
+    }
+
+    function serverName(text: string): string {
+        return WifiList.serverDomain(text);
+    }
+
+    readonly property string certificateDir: `${Config.stateDir}/certificates`
+
+    function school(domain: string, identity: string): var {
+        const entry = WifiList.schoolFor(domain, identity);
+        return entry ? {
+            school: entry.school,
+            suffix: entry.suffix
+        } : null;
+    }
+
+    function signInFiles(form: var, checking: bool): var {
+        const home = Quickshell.env("HOME") ?? "";
+        const files = Object.assign({}, form);
+        for (const field of ["certificate", "key"]) {
+            if (!form[field])
+                continue;
+            files[field] = WifiList.filePath(form[field], home);
+            if (!files[field])
+                return null;
+        }
+        files.authority = checking ? WifiList.checkAuthority(form, home, root.certificateDir) : WifiList.trustedAuthority(form, home, root.certificateDir);
+        return files.authority === null ? null : files;
+    }
+
+    function schoolCopy(files: var): var {
+        if (files.trust !== "school" || !files.authority)
+            return [];
+        const file = files.authority.slice(files.authority.lastIndexOf("/") + 1);
+        return ["install", "-D", "-m", "0644", Quickshell.shellPath(`assets/certificates/${file}`), files.authority];
+    }
+
+    function joinEnterprise(name: string, kind: string, form: var, password: string): void {
+        if (!name || root.enrollingName)
+            return;
+        const files = root.signInFiles(form, false);
+        const args = files ? WifiList.signInArgs(kind, files) : null;
+        if (!args) {
+            root.enrollFailedName = name;
+            root.enrollTrouble = files ? "the sign-in is missing a field" : form.trust === "school" ? "that school's certificate does not cover this server" : "a certificate file needs its full path";
+            root.enrollDetail = "";
+            return;
+        }
+        root.enrollIdentity = files.identity;
+        root.startEnroll(name, false, name, WifiList.serverDomain(files.domain), args, WifiList.signInSecrets(files.method, files.identity, password), root.schoolCopy(files));
+    }
+
+    function checkServer(name: string, kind: string, form: var): void {
+        const files = root.signInFiles(form, true);
+        const args = files ? WifiList.serverCheckArgs(kind, files) : null;
+        if (!name || root.enrollingName || !args)
+            return;
+        root.enrollIdentity = files.identity ?? "";
+        root.startEnroll(name, true, `${name} server check`, "", args, WifiList.serverCheckSecrets(files), root.schoolCopy(files));
     }
 
     Process {
@@ -337,7 +466,7 @@ Singleton {
 
         stdout: StdioCollector {
             onStreamFinished: {
-                if (profile.want !== root.enrollingName)
+                if (profile.want !== root.enrollProfile || !root.enrollingName)
                     return;
                 profile.exists = text.split("\n").some(line => {
                     const cut = line.indexOf(":");
@@ -347,13 +476,14 @@ Singleton {
         }
 
         onExited: code => {
-            if (profile.want !== root.enrollingName)
+            if (profile.want !== root.enrollProfile || !root.enrollingName)
                 return;
             if (code !== 0) {
-                root.failEnroll("could not ask NetworkManager what it has saved");
+                root.failEnroll("could not ask NetworkManager what it has saved", "");
                 return;
             }
-            const head = profile.exists ? ["nmcli", "connection", "modify", "id", profile.want] : ["nmcli", "connection", "add", "type", "wifi", "con-name", profile.want, "ifname", root.deviceName, "ssid", profile.want];
+            const head = profile.exists ? ["nmcli", "connection", "modify", "id", profile.want] : ["nmcli", "connection", "add", "type", "wifi", "con-name", profile.want, "ifname", root.deviceName, "ssid", root.enrollingName];
+            enrol.said = "";
             enrol.command = head.concat(root.enrollArgs);
             root.enrollArgs = [];
             enrol.running = true;
@@ -361,26 +491,75 @@ Singleton {
     }
 
     function failSignIn(why: string): void {
+        if (root.enrollReading || !root.enrollingName)
+            return;
+        root.enrollReading = true;
+        root.enrollWhy = why;
+        serverLog.command = ["journalctl", "-u", "wpa_supplicant", "-o", "cat", "-q", "--no-pager", "--since", `@${root.enrollSince}`];
+        serverLog.running = true;
+    }
+
+    function finishSignIn(log: string): void {
+        if (!root.enrollReading)
+            return;
+        root.enrollReading = false;
         const name = root.enrollingName;
-        root.failEnroll(why);
-        if (name && !profile.exists) {
-            discard.command = ["nmcli", "connection", "delete", "id", name];
+        const made = !profile.exists || root.enrollChecking;
+        const trouble = WifiList.serverTrouble(log, root.deviceName);
+
+        if (root.enrollChecking) {
+            root.failEnroll("", "");
+            root.enrollFailedName = "";
+            root.checkedName = name;
+            const match = WifiList.serverMatch(trouble?.kind === "name" ? trouble.server : "", root.enrollIdentity);
+            root.checkedState = match.state;
+            root.checkedFill = match.fill;
+            root.checkedServer = match.state === "match" ? "" : trouble?.kind === "name" ? trouble.server : "";
+            root.checkedNote = WifiList.serverSeenMessage(trouble, root.enrollIdentity);
+        } else if (trouble) {
+            root.failEnroll(WifiList.serverLabel(trouble), WifiList.serverMessage(trouble, root.enrollDomain));
+            root.enrollServer = trouble.kind === "name" ? trouble.server : "";
+        } else {
+            root.failEnroll(root.enrollWhy, "");
+        }
+
+        if (name && made) {
+            discard.command = ["nmcli", "connection", "delete", "id", root.enrollProfile];
             discard.running = true;
+        }
+    }
+
+    Process {
+        id: serverLog
+
+        stdout: StdioCollector {
+            onStreamFinished: root.finishSignIn(text)
+        }
+
+        onExited: code => {
+            if (code !== 0)
+                root.finishSignIn("");
         }
     }
 
     Process {
         id: enrol
 
+        property string said: ""
+
+        stderr: SplitParser {
+            onRead: line => enrol.said += line + "\n"
+        }
+
         onExited: code => {
             enrol.command = [];
             if (!root.enrollingName)
                 return;
             if (code !== 0) {
-                root.failEnroll("NetworkManager would not take the profile");
+                root.failEnroll(/802-1x\.ca-cert/.test(enrol.said) ? "could not read the server certificate file" : /802-1x\.(client-cert|private-key)/.test(enrol.said) ? "could not read your certificate or key" : "NetworkManager would not take the profile", "");
                 return;
             }
-            up.command = ["nmcli", "--wait", "60", "connection", "up", "id", root.enrollingName, "passwd-file", "/dev/stdin"];
+            up.command = ["nmcli", "--wait", root.enrollChecking ? "30" : "60", "connection", "up", "id", root.enrollProfile, "passwd-file", "/dev/stdin"];
             up.stdinEnabled = true;
             up.running = true;
         }
@@ -421,10 +600,11 @@ Singleton {
         onExited: code => {
             if (up.refused || !root.enrollingName)
                 return;
-            switch (code) {
-            case 0:
+            if (code === 0 && !root.enrollChecking) {
                 root.enrollingName = "";
                 return;
+            }
+            switch (code) {
             case 3:
                 return root.failSignIn("no answer, so nothing was checked");
             case 4:

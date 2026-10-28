@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-6",
+      "id": "2026-10-28-7",
       "date": "2026-10-28",
       "changes": [
         {
@@ -13,6 +13,37 @@
           "type": "issues",
           "severity": "minor",
           "text": "The installer and QR codes redraw less as they change size"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-6",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "major",
+          "text": "School Wi-Fi sign-in checks the server before sending a password"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "DTUsecure and DTU's eduroam sign in with a username and password"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The sign-in asks for the server name and can look it up for you"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Certificate, dynamic WEP and Suite-B Wi-Fi sign-ins now work"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "LEAP networks say plainly that they cannot be joined"
         }
       ]
     },
