@@ -83,7 +83,7 @@ test("wttr icon keeps the old mapping", () => {
 test("open-meteo days", () => {
     const days = Forecast.outlookDays(METEO);
     assert.strictEqual(days.length, 3);
-    assert.deepStrictEqual(days[0], { date: "2026-10-18", high: 12, low: 7, icon: "partly_cloudy_day", summary: "Partly cloudy", rain: 0 });
+    assert.deepStrictEqual(days[0], { date: "2026-10-18", high: 12, low: 7, icon: "partly_cloudy_day", summary: "Partly cloudy", rain: 0, offset: null });
     assert.strictEqual(days[1].icon, "cloud");
     assert.strictEqual(days[1].rain, 29);
     assert.strictEqual(days[2].icon, "rainy_heavy");
@@ -274,10 +274,21 @@ test("a forecast fetched before midnight calls no past day upcoming or Today", (
     const days = ["2026-10-27", "2026-10-28", "2026-10-29"].map(date => ({ date, high: 10, low: 2 }));
     const afterMidnight = new Date(2026, 9, 28, 0, 30).getTime();
     assert.deepStrictEqual(Forecast.upcoming(days, afterMidnight).map(d => d.date), ["2026-10-28", "2026-10-29"]);
-    assert.ok(Forecast.isToday("2026-10-28", afterMidnight));
-    assert.ok(!Forecast.isToday("2026-10-27", afterMidnight));
+    assert.ok(Forecast.isToday({ date: "2026-10-28" }, afterMidnight));
+    assert.ok(!Forecast.isToday({ date: "2026-10-27" }, afterMidnight));
     assert.deepStrictEqual(Forecast.upcoming(days, new Date(2026, 10, 2, 9).getTime()), []);
-    assert.ok(Forecast.isToday("2026-01-05", new Date(2026, 0, 5, 23, 59).getTime()));
+    assert.ok(Forecast.isToday({ date: "2026-01-05" }, new Date(2026, 0, 5, 23, 59).getTime()));
+});
+
+test("a forecast for a place in another time zone counts today by that place's date", () => {
+    const at = Date.UTC(2026, 9, 28, 1, 0);
+    const newYork = ["2026-10-27", "2026-10-28"].map(date => ({ date, offset: -4 * 3600 }));
+    assert.deepStrictEqual(Forecast.upcoming(newYork, at).map(d => d.date), ["2026-10-27", "2026-10-28"]);
+    assert.ok(Forecast.isToday(newYork[0], at));
+    const tokyo = { date: "2026-10-29", offset: 9 * 3600 };
+    assert.ok(Forecast.isToday(tokyo, Date.UTC(2026, 9, 28, 16, 0)));
+    const read = Forecast.outlookDays({ utc_offset_seconds: 3600, daily: { time: ["2026-10-28"], temperature_2m_max: [9], temperature_2m_min: [2], weather_code: [3] } });
+    assert.strictEqual(read[0].offset, 3600);
 });
 
 test("typing a place asks the geocoder once for the name, never for under three letters", () => {

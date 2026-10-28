@@ -129,7 +129,8 @@ function outlookDays(data) {
             low: Math.round(low),
             icon: info.icon,
             summary: info.summary,
-            rain: rain === null || rain === undefined || isNaN(number(rain)) ? -1 : Math.round(number(rain))
+            rain: rain === null || rain === undefined || isNaN(number(rain)) ? -1 : Math.round(number(rain)),
+            offset: typeof data.utc_offset_seconds === "number" ? data.utc_offset_seconds : null
         });
     }
     return days;
@@ -140,19 +141,22 @@ function dateOf(text) {
     return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
 }
 
-function dayKey(time) {
-    const d = new Date(time);
+function placeDay(now, offset) {
     const two = n => (n < 10 ? "0" : "") + n;
+    if (typeof offset === "number") {
+        const there = new Date(now + offset * 1000);
+        return there.getUTCFullYear() + "-" + two(there.getUTCMonth() + 1) + "-" + two(there.getUTCDate());
+    }
+    const d = new Date(now);
     return d.getFullYear() + "-" + two(d.getMonth() + 1) + "-" + two(d.getDate());
 }
 
 function upcoming(days, now) {
-    const today = dayKey(now);
-    return days.filter(d => String(d.date) >= today);
+    return days.filter(d => String(d.date) >= placeDay(now, d.offset));
 }
 
-function isToday(date, now) {
-    return String(date) === dayKey(now);
+function isToday(day, now) {
+    return String(day.date) === placeDay(now, day.offset);
 }
 
 function weekRange(days) {

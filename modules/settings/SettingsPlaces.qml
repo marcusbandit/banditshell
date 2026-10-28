@@ -19,8 +19,9 @@ Column {
 
     readonly property bool asking: root.active && root.query !== root.saved && Forecast.placeName(root.query).length >= 3
     readonly property var shown: root.asking ? Weather.places : []
-    readonly property bool answered: root.asking && Weather.placesFor === root.query && !Weather.findingPlaces
-    readonly property string chosen: root.current >= 0 && root.current < root.shown.length ? root.shown[root.current].text : ""
+    readonly property bool fresh: Weather.placesFor === root.query && !Weather.findingPlaces
+    readonly property bool answered: root.asking && root.fresh
+    readonly property string chosen: root.fresh && root.current >= 0 && root.current < root.shown.length ? root.shown[root.current].text : ""
     readonly property string note: !root.answered || root.shown.length ? "" : Weather.placesFailed ? "Place suggestions need a connection" : "No town by that name"
 
     readonly property bool wanted: root.shown.length > 0 || root.note !== ""
@@ -69,7 +70,9 @@ Column {
             label: place.modelData.name
             detail: [place.modelData.region, place.modelData.country].filter(Boolean).join(", ")
             selected: place.index === root.current
-            onActivated: root.picked(place.modelData.text)
+            off: !root.fresh
+            onActivated: if (root.fresh)
+                root.picked(place.modelData.text)
         }
     }
 }

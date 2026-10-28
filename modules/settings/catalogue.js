@@ -1006,6 +1006,8 @@ const ROW_BY_KEY = {};
 function idleNote(s) {
     if (!s.idleHandled)
         return "";
+    if (!s.idleRead)
+        return `${s.idleHandler} sets these times.`;
     const read = s.idleTimes && Object.keys(s.idleTimes).some(k => s.idleTimes[k] !== null);
     return read ? `${s.idleHandler} sets these times. Change them in its config.` : `${s.idleHandler} sets these times. The shell cannot read them, so they are not shown.`;
 }
@@ -1013,7 +1015,7 @@ function idleNote(s) {
 function idleHeld(s, role) {
     if (!s.idleHandled)
         return null;
-    return s.idleTime(role) || "not shown";
+    return s.idleTime(role) || (s.idleRead ? "not shown" : "");
 }
 
 function placeOffer(s) {

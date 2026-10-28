@@ -18,6 +18,8 @@ Singleton {
 
     property var handlerTimes: null
 
+    property bool handlerRead: false
+
     property bool idle: false
 
     property bool awake: false
@@ -79,6 +81,8 @@ Singleton {
     function recheck(): void {
         if (!handler.running)
             handler.running = true;
+        if (root.handler === "hypridle" && !configFinder.running)
+            configFinder.running = true;
     }
 
     Timer {
@@ -157,6 +161,7 @@ Singleton {
     onHandlerChanged: {
         root.handlerTimes = null;
         root.handlerConfig = "";
+        root.handlerRead = root.handler !== "hypridle";
         if (root.handler === "hypridle")
             configFinder.running = true;
     }
@@ -170,7 +175,11 @@ Singleton {
             id: configFinderOutput
         }
 
-        onExited: root.handlerConfig = root.handler === "hypridle" ? Plan.hypridleConfigPath(configFinderOutput.text, Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`) : ""
+        onExited: {
+            root.handlerConfig = root.handler === "hypridle" ? Plan.hypridleConfigPath(configFinderOutput.text, Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`) : "";
+            if (root.handlerConfig === "")
+                root.handlerRead = true;
+        }
     }
 
     FileView {
@@ -181,8 +190,14 @@ Singleton {
         watchChanges: true
 
         onFileChanged: handlerFile.reload()
-        onLoaded: root.handlerTimes = Plan.hypridleTimes(handlerFile.text())
-        onLoadFailed: root.handlerTimes = null
+        onLoaded: {
+            root.handlerTimes = Plan.hypridleTimes(handlerFile.text());
+            root.handlerRead = true;
+        }
+        onLoadFailed: {
+            root.handlerTimes = null;
+            root.handlerRead = true;
+        }
     }
 
     Timer {

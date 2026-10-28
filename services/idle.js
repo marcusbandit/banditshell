@@ -35,10 +35,9 @@ function hypridleConfigPath(pgrepOutput, configHome) {
         if (!/(^|\/)hypridle$/.test(words[0] ?? ""))
             continue;
         for (let i = 1; i < words.length; i++) {
-            if ((words[i] === "-c" || words[i] === "--config") && words[i + 1])
-                return words[i + 1];
-            if (words[i].startsWith("--config="))
-                return words[i].slice("--config=".length);
+            const given = (words[i] === "-c" || words[i] === "--config") ? words[i + 1] ?? "" : words[i].startsWith("--config=") ? words[i].slice("--config=".length) : null;
+            if (given !== null)
+                return given.startsWith("/") ? given : "";
         }
     }
     return `${configHome}/hypr/hypridle.conf`;

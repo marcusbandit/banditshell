@@ -1406,6 +1406,7 @@ Singleton {
     readonly property bool idleHandled: Idle.handledElsewhere
     readonly property string idleHandler: Idle.handler
     readonly property var idleTimes: Idle.handlerTimes
+    readonly property bool idleRead: Idle.handlerRead
 
     function idleTime(role: string): string {
         const seconds = root.idleTimes?.[role];

@@ -206,7 +206,7 @@ Singleton {
         }
 
         onRunningChanged: if (!placeFinder.running && root.placeQuery !== "" && placeFinder.query !== root.placeQuery)
-            Qt.callLater(root.findPlaces)
+            placeDelay.restart()
     }
 
     Process {

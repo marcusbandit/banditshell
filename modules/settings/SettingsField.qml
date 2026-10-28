@@ -31,6 +31,7 @@ Item {
     function choose(chosen: string): void {
         input.text = chosen;
         root.committed(chosen);
+        input.text = Qt.binding(() => root.text);
         input.focus = false;
     }
 

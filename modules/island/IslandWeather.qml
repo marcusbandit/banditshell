@@ -192,7 +192,7 @@ Item {
                         required property var modelData
                         required property int index
 
-                        readonly property bool today: Forecast.isToday(cell.modelData.date, clock.date.getTime())
+                        readonly property bool today: Forecast.isToday(cell.modelData, clock.date.getTime())
                         readonly property var bar: Forecast.barOf(cell.modelData, root.range)
                         readonly property real fillHeight: Math.max(root.barWidth, (cell.bar.to - cell.bar.from) * root.barHeight)
 

@@ -154,7 +154,7 @@ Item {
             anchors.verticalCenter: root.inlineDetail ? parent.verticalCenter : undefined
 
             readonly property real room: root.inlineDetail ? Math.max(parent.width * 0.3, parent.width - title.implicitWidth - Appearance.padding.large) : parent.width
-            readonly property bool trimmed: root.detailShared > 0 && whole.advanceWidth > detail.room
+            readonly property bool trimmed: root.detailShared > 0 && !root.columns.length && whole.advanceWidth > detail.room
 
             width: root.inlineDetail ? Math.min(implicitWidth, detail.room) : parent.width
             horizontalAlignment: root.inlineDetail ? Text.AlignRight : Text.AlignLeft

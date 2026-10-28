@@ -84,6 +84,7 @@ test("hypridle's config comes from its -c flag, else the XDG config folder", () 
     assert.strictEqual(Idle.hypridleConfigPath("812 hypridle --config=/x.conf", "/home/a/.config"), "/x.conf");
     assert.strictEqual(Idle.hypridleConfigPath("812 hypridle\n", "/home/a/.config"), "/home/a/.config/hypr/hypridle.conf");
     assert.strictEqual(Idle.hypridleConfigPath("", "/c"), "/c/hypr/hypridle.conf");
+    assert.strictEqual(Idle.hypridleConfigPath("812 hypridle -c idle.conf", "/c"), "");
 });
 
 test("another daemon's seconds read as the shell's own choices", () => {
