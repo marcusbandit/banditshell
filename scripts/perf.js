@@ -63,6 +63,12 @@ function scenarios(menuKeys) {
             cli: true,
             steps: [["action", "panel.clipboard.toggle"], ["action", "panel.clipboard.toggle"]]
         },
+        {
+            id: "hotkey path, as a Lua bind sends it",
+            cli: true,
+            env: { BANDITSHELL_ROW: "panel.*.toggle\tstable\t1\tpanel $1 toggle" },
+            steps: [["action", "panel.clipboard.toggle"], ["action", "panel.clipboard.toggle"]]
+        },
         idle("idle after everything opened once")
     ];
 }
@@ -106,9 +112,9 @@ class Shell {
         return { ns: Number(now() - start), out: (run.stdout || "").trim(), ok: run.status === 0 };
     }
 
-    command(...args) {
+    command(env, ...args) {
         const start = now();
-        const run = spawnSync("bash", [this.cli, ...args], { encoding: "utf8", cwd: process.env.HOME || "/" });
+        const run = spawnSync("bash", [this.cli, ...args], { encoding: "utf8", cwd: process.env.HOME || "/", env: Object.assign({}, process.env, env) });
         return { ns: Number(now() - start), out: (run.stdout || "").trim(), ok: run.status === 0 };
     }
 
@@ -163,7 +169,7 @@ function drive(shell, options) {
             const calls = [];
             for (const step of scenario.build ? scenario.build(shell) : scenario.steps) {
                 const before = cpu(shell.pid);
-                const reply = scenario.cli ? shell.command(...step) : shell.call(...step);
+                const reply = scenario.cli ? shell.command(scenario.env ?? {}, ...step) : shell.call(...step);
                 if (!shell.settle(scenario.wait ?? 8000))
                     process.stderr.write("(did not settle) ");
                 const after = cpu(shell.pid);

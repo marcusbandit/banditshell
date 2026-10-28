@@ -21,6 +21,9 @@
     "services": [
       "Shell"
     ],
+    "js": [
+      "modules/ipc/bind-shortcuts.js"
+    ],
     "scripts": [
       "scripts/bash-completion.sh",
       "scripts/boot-check-inner.sh",
@@ -32,6 +35,7 @@
     ],
     "tests": [
       "tests/actions.test.js",
+      "tests/bind-shortcuts.test.js",
       "tests/boot-check.test.js",
       "tests/cli-plumbing.test.js",
       "tests/completion.test.js",

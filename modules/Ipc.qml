@@ -1,4 +1,6 @@
+import QtQml
 import Quickshell
+import Quickshell.Hyprland
 import qs.modules.calculator
 import qs.modules.cheatsheet
 import qs.modules.clipboard
@@ -18,6 +20,7 @@ import qs.modules.settings
 import qs.modules.sidebar
 import qs.modules.stream
 import qs.modules.wallpaper
+import "ipc/bind-shortcuts.js" as BindShortcuts
 
 Scope {
     id: root
@@ -27,37 +30,102 @@ Scope {
 
     ActivityIpc {}
     AudioIpc {}
-    CalculatorIpc {}
-    ClipboardIpc {}
+    CalculatorIpc {
+        id: calculatorIpc
+    }
+    ClipboardIpc {
+        id: clipboardIpc
+    }
     ClockIpc {}
     CompositorIpc {}
     CoreIpc {}
     DisplayIpc {}
-    FilesIpc {}
+    FilesIpc {
+        id: filesIpc
+    }
     HostIpc {
+        id: hostIpc
+
         picker: root.picker
     }
-    HotkeysIpc {}
+    HotkeysIpc {
+        id: hotkeysIpc
+    }
     InspectIpc {
         inspector: root.inspector
     }
-    IslandIpc {}
-    KeyboardIpc {}
-    LauncherIpc {}
-    MediaIpc {}
-    MenuIpc {}
+    IslandIpc {
+        id: islandIpc
+    }
+    KeyboardIpc {
+        id: keyboardIpc
+    }
+    LauncherIpc {
+        id: launcherIpc
+    }
+    MediaIpc {
+        id: mediaIpc
+    }
+    MenuIpc {
+        id: menuIpc
+    }
     ModeIpc {}
-    NotificationsIpc {}
+    NotificationsIpc {
+        id: notificationsIpc
+    }
     PasswordIpc {}
-    PenIpc {}
+    PenIpc {
+        id: penIpc
+    }
     PickerIpc {
         picker: root.picker
     }
-    QuickControlsIpc {}
-    SessionIpc {}
+    QuickControlsIpc {
+        id: quickControlsIpc
+    }
+    SessionIpc {
+        id: sessionIpc
+    }
     SettingsIpc {}
     SidebarIpc {}
     StreamIpc {}
     TraceIpc {}
-    WallpaperIpc {}
+    WallpaperIpc {
+        id: wallpaperIpc
+    }
+
+    function runShortcut(name: string): void {
+        const handlers = {
+            launcher: launcherIpc.handler,
+            panels: hostIpc.panels,
+            files: filesIpc,
+            penmap: penIpc.handler,
+            session: sessionIpc,
+            clipboard: clipboardIpc,
+            media: mediaIpc,
+            calculator: calculatorIpc,
+            quickcontrols: quickControlsIpc,
+            keyboard: keyboardIpc,
+            notifications: notificationsIpc.handler,
+            island: islandIpc,
+            hotkeys: hotkeysIpc,
+            wallpapers: wallpaperIpc.handler,
+            menu: menuIpc
+        };
+        for (const call of BindShortcuts.callsFor(name))
+            handlers[call[0]][call[1]](...call.slice(2));
+    }
+
+    Instantiator {
+        model: BindShortcuts.names().filter(name => name !== "launcher")
+
+        delegate: GlobalShortcut {
+            required property string modelData
+
+            appid: "banditshell"
+            name: modelData
+
+            onPressed: root.runShortcut(modelData)
+        }
+    }
 }

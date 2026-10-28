@@ -10,6 +10,8 @@ import qs.modules.panel
 Scope {
     id: root
 
+    property alias handler: served
+
     Component {
         id: rowRunner
 
@@ -31,6 +33,8 @@ Scope {
     }
 
     IpcHandler {
+        id: served
+
         target: "launcher"
 
         function toggle(): string {

@@ -405,6 +405,7 @@ HEALTH_WAIT="${BANDITSHELL_HEALTH_WAIT:-8}"
 HEALTH_SCAN="${BANDITSHELL_HEALTH_SCAN:-3}"
 SURFACES=(launcher session clipboard media calculator quickcontrols keyboard settings notifications island hotkeys files wallpaper)
 HELPERS=(bs-pty bs-ls bs-gamma)
+IPC_LIMIT="${BANDITSHELL_IPC_LIMIT:-10}"
 HANG_DIR="$STATE_DIR/hangs"
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != dumb ]; then
@@ -792,15 +793,20 @@ reply_of() {
 }
 
 ipc() {
-    local out
+    local out status=0
     if [ -n "${BANDITSHELL_DRY:-}" ]; then
         echo "ipc $*"
         return 0
     fi
     resolve_target
-    if out=$(cd "$HOME" && qs ipc "${qs_target[@]}" call "$@" 2>/dev/null); then
+    out=$(cd "$HOME" && timeout "$IPC_LIMIT" qs ipc "${qs_target[@]}" call "$@" 2>/dev/null) || status=$?
+    if [ "$status" = 0 ]; then
         reply_of "$out"
         return $?
+    fi
+    if [ "$status" = 124 ]; then
+        complain "the shell did not answer \`$*\` within ${IPC_LIMIT}s (try: banditshell restart)"
+        return 4
     fi
     if [ "${qs_target[0]}" = --pid ] && kill -0 "${qs_target[1]}" 2>/dev/null; then
         complain "the shell is running but did not take \`$*\` (a build older than this CLI? try: banditshell restart)"
@@ -817,7 +823,7 @@ ipc_quiet() {
         return 0
     fi
     resolve_target
-    if out=$(cd "$HOME" && qs ipc "${qs_target[@]}" call "$@" 2>/dev/null); then
+    if out=$(cd "$HOME" && timeout "$IPC_LIMIT" qs ipc "${qs_target[@]}" call "$@" 2>/dev/null); then
         [ -n "$out" ] && printf '%s\n' "$out"
         return 0
     fi
@@ -1906,6 +1912,32 @@ resolve_action() {
         }
         END { if (found) print best }
     ' "$(api_table)" 2>/dev/null
+}
+
+hinted_action() {
+    local id="$1" table="" pattern status since argv i capture=""
+    local -a want have
+    IFS=$'\t' read -r pattern status since argv <<<"$BANDITSHELL_ROW" || return 1
+    case "$status" in deprecated=* | removed* | "") return 1 ;; esac
+    valid_id "$id" && [ -n "$argv" ] || return 1
+    IFS= read -r -d '' table <"${BANDITSHELL_API_TABLE:-$SHELL_DIR/api/actions.tsv}" || true
+    table=$'\n'$table
+    [[ $table == *$'\n'"$BANDITSHELL_ROW"$'\t'* || $table == *$'\n'"$BANDITSHELL_ROW"$'\n'* ]] || return 1
+    if [ "$pattern" != "$id" ]; then
+        [[ $table != *$'\n'"$id"$'\t'* ]] || return 1
+        IFS=. read -ra want <<<"$id"
+        IFS=. read -ra have <<<"$pattern"
+        [ "${#want[@]}" = "${#have[@]}" ] || return 1
+        for ((i = 0; i < ${#want[@]}; i++)); do
+            if [ "${have[i]}" = "*" ] && [ -z "$capture" ]; then
+                capture="${want[i]}"
+            elif [ "${have[i]}" != "${want[i]}" ]; then
+                return 1
+            fi
+        done
+        argv="${argv//\$1/$capture}"
+    fi
+    read -ra hinted <<<"$argv"
 }
 
 tell_once() {
@@ -3967,6 +3999,14 @@ migrate_or_fail() {
 if [ $# -gt 0 ] && [ "$1" != update ] && [ "$1" != events ] && [ "${!#}" = --json ] && [ -z "${BANDITSHELL_JSON:-}" ]; then
     as_json "${@:1:$#-1}"
 fi
+
+if [ "${1:-}" = action ] && [ -n "${BANDITSHELL_ROW:-}" ]; then
+    hinted=()
+    if hinted_action "${2:-}"; then
+        set -- "${hinted[@]}" "${@:3}"
+    fi
+fi
+unset BANDITSHELL_ROW
 
 cmd="${1:-help}"
 shift || true
