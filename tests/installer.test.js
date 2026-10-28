@@ -207,3 +207,13 @@ test.describe("doas", () => {
         assert.strictEqual(out.stdout, "sudo\n-n true\n-n dnf install -y jq\n");
     });
 });
+
+test.describe("the charge limit", () => {
+    test.it("on NixOS it says why and asks for no password", () => {
+        const dir = world({ sudo: 'echo "$*" >>"$HOME/sudo.log"' });
+        fs.writeFileSync(path.join(dir, "NIXOS"), "");
+        const out = installer(dir, `NIXOS_MARK="${dir}/NIXOS"; install_charge_limit; echo "$? $STEP_OUTPUT"`);
+        assert.match(out.stdout, /^1 NixOS reads neither \/usr\/local\/libexec nor \/usr\/share\/polkit-1\/actions/);
+        assert.ok(!fs.existsSync(path.join(dir, "home/sudo.log")));
+    });
+});

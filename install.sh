@@ -174,6 +174,7 @@ quickshell_present() {
 
 CHARGE_HELPER="/usr/local/libexec/banditshell-charge-limit"
 CHARGE_POLICY="/usr/share/polkit-1/actions/org.banditshell.charge-limit.policy"
+NIXOS_MARK=/etc/NIXOS
 
 charge_limit_present() {
     if ! ls /sys/class/power_supply/BAT*/charge_control_end_threshold >/dev/null 2>&1; then
@@ -185,6 +186,10 @@ charge_limit_present() {
 }
 
 install_charge_limit() {
+    if [ -e "$NIXOS_MARK" ]; then
+        STEP_OUTPUT="NixOS reads neither /usr/local/libexec nor /usr/share/polkit-1/actions, so the charge limit cannot be installed from here"
+        return 1
+    fi
     if ! need_root; then
         STEP_OUTPUT="no $ROOT_TOOL, so the charge limit helper was not installed"
         return 1
