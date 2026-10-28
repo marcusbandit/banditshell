@@ -150,7 +150,7 @@ Item {
                 readonly property bool folded: crumb.index === crumbs.kept - 1
 
                 visible: crumb.index >= crumbs.kept - 1
-                implicitWidth: Math.min(label.implicitWidth + crumbs.gap, crumbs.width)
+                implicitWidth: Math.min(label.implicitWidth + crumbs.gap, crumbs.width - (crumb.last && crumbs.kept > 0 ? measure.advanceWidth("…") + crumbs.gap : 0))
                 implicitHeight: label.implicitHeight + Appearance.padding.small * 2
 
                 SquircleRect {
@@ -166,7 +166,7 @@ Item {
                     id: label
 
                     anchors.centerIn: parent
-                    width: Math.min(label.implicitWidth, crumbs.width - crumbs.gap)
+                    width: crumb.implicitWidth - crumbs.gap
 
                     elide: Text.ElideMiddle
                     text: crumb.folded ? "…" : crumb.modelData.name

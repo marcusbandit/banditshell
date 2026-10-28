@@ -163,6 +163,9 @@ test.describe("files trash", () => {
             fs.chmodSync(box.at("stick", ".Trash"), 0o1777);
             box.put(box.at("notrash"), "keep.txt", "keep", "keep");
             fs.writeFileSync(box.at("outside.txt"), "keep");
+            fs.writeFileSync(path.join(box.home, "info", "long gone.trashinfo"), info("/h/long gone"));
+            fs.utimesSync(path.join(box.home, "info", "long gone.trashinfo"), new Date(2026, 0, 1), new Date(2026, 0, 1));
+            fs.writeFileSync(path.join(box.home, "info", "arriving.trashinfo"), info("/h/arriving"));
 
             const listed = Trash.entries(Trash.parse(box.run(Trash.readCommand(box.lister, box.home, [box.at("drive"), box.at("stick")]))));
             assert.strictEqual(listed.length, odd.length + 4);
@@ -178,7 +181,8 @@ test.describe("files trash", () => {
 
             for (const trash of [box.home, box.at("drive", `.Trash-${UID}`), box.at("stick", ".Trash", String(UID))])
                 for (const part of ["files", "info"])
-                    assert.deepStrictEqual(fs.readdirSync(path.join(trash, part)), [], `${trash}/${part}`);
+                    assert.deepStrictEqual(fs.readdirSync(path.join(trash, part)).filter(name => name !== "arriving.trashinfo"), [], `${trash}/${part}`);
+            assert.ok(fs.existsSync(path.join(box.home, "info", "arriving.trashinfo")));
             assert.ok(!fs.existsSync(box.at("pwned")));
             assert.strictEqual(fs.readFileSync(box.at("notrash", "files", "keep.txt"), "utf8"), "keep");
             assert.strictEqual(fs.readFileSync(box.at("notrash", "info", "keep.txt.trashinfo"), "utf8"), "keep");
@@ -200,6 +204,7 @@ test.describe("files trash", () => {
             assert.strictEqual(fs.readFileSync(box.at("notrash", "files", "keep.txt"), "utf8"), "keep");
             assert.strictEqual(fs.readFileSync(box.at("other", ".Trash-1", "files", "theirs.txt"), "utf8"), "keep");
             assert.deepStrictEqual(Trash.emptyCommands([{ dir: box.at("notrash"), name: "keep.txt" }, { dir: "relative/.Trash-1000", name: "a" }, null], box.home), []);
+            assert.strictEqual(Trash.emptyCommands([{ dir: "/.Trash-1000", name: "a" }, { dir: "/.Trash/1000", name: "b" }], box.home)[0].slice(5).join(" "), "/.Trash-1000/files/a /.Trash/1000/files/b");
         } finally {
             box.done();
         }

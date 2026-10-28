@@ -24,14 +24,16 @@ function approved(answer, paths) {
     return typeof answer === "string" && answer.trim().toLowerCase() === WORD ? paths.slice() : [];
 }
 
-function emptying(count, elsewhere) {
+function emptying(count, elsewhere, hidden) {
     var items = count === 1 ? "1 item" : count.toLocaleString() + " items";
-    if (elsewhere === 0)
+    var also = [];
+    if (hidden > 0)
+        also.push(count === 1 ? "hidden" : hidden === count ? "all hidden" : hidden.toLocaleString() + " hidden");
+    if (elsewhere > 0)
+        also.push(count === 1 ? "from another drive" : elsewhere === count ? "all from other drives" : elsewhere === 1 ? "1 from another drive" : elsewhere.toLocaleString() + " from other drives");
+    if (also.length === 0)
         return items + " " + REST;
-    if (count === 1)
-        return items + " from another drive " + REST;
-    var from = elsewhere === count ? "all from other drives" : elsewhere === 1 ? "1 from another drive" : elsewhere.toLocaleString() + " from other drives";
-    return items + ", " + from + ", " + REST;
+    return items + ", " + also.join(" and ") + ", " + REST;
 }
 
 function emptied(answer, items) {

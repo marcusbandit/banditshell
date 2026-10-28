@@ -456,7 +456,8 @@ Item {
             return;
 
         const elsewhere = items.filter(item => item.dir !== Files.trashHome).length;
-        confirm.ask("Empty the Trash", Deletion.emptying(items.length, elsewhere), "Empty", "delete_forever", answer => Files.emptyTrash(Deletion.emptied(answer, items)));
+        const hidden = Files.showHidden ? 0 : Files.entries.filter(e => e.trash && e.hidden).length;
+        confirm.ask("Empty the Trash", Deletion.emptying(items.length, elsewhere, hidden), "Empty", "delete_forever", answer => Files.emptyTrash(Deletion.emptied(answer, items)));
     }
 
     Connections {
@@ -568,7 +569,7 @@ Item {
         anchors.top: rule.bottom
         anchors.bottom: failure.top
 
-        width: Files.sidebarOpen ? Math.max(Files.zoomed(Files.sidebarWidth), Math.min(sidebar.natural, root.width * 0.4)) : 0
+        width: Files.sidebarOpen ? Math.min(Math.max(Files.zoomed(Files.sidebarWidth), sidebar.natural), root.width * 0.4) : 0
         visible: width > 0
         clip: true
 

@@ -20,12 +20,15 @@ var RESTORE = 'while [ $# -gt 2 ]; do d=$1 n=$2 o=$3; shift 3; '
     + 'rm -f -- "$d/info/$n.trashinfo"; echo ok; '
     + 'else echo failed; fi; done';
 
-var EMPTY = 'home=$1; shift; uid=$(id -u); rc=0; '
+var EMPTY = 'home=$1; shift; uid=$(id -u); rc=0; seen=; '
     + 'for p; do d=${p%/files/*}; n=${p##*/}; t=${d##*/}; u=${d%/*}; ok=; '
     + '[ "$d" = "$home" ] && ok=1; [ "$t" = ".Trash-$uid" ] && ok=1; [ "$t" = "$uid" ] && [ "${u##*/}" = .Trash ] && ok=1; '
     + 'case $n in ""|.|..) ok=;; esac; [ "$p" = "$d/files/$n" ] || ok=; '
     + 'if [ -z "$ok" ]; then echo "not a trash item: $p" >&2; rc=1; continue; fi; '
-    + 'rm -rf -- "$p" && rm -f -- "$d/info/$n.trashinfo" || { echo "could not delete $n" >&2; rc=1; }; done; exit $rc';
+    + 'rm -rf -- "$p" && rm -f -- "$d/info/$n.trashinfo" || { echo "could not delete $n" >&2; rc=1; }; '
+    + 'case "$seen" in *"/$d/"*) continue;; esac; seen="$seen/$d/"; '
+    + 'for i in "$d"/info/*.trashinfo "$d"/info/.*.trashinfo; do [ -f "$i" ] || continue; o=${i##*/}; o=${o%.trashinfo}; '
+    + '[ -e "$d/files/$o" ] || [ -L "$d/files/$o" ] || [ -n "$(find "$i" -mmin -1)" ] || rm -f -- "$i"; done; done; exit $rc';
 
 var CHUNK = 500;
 
@@ -178,7 +181,7 @@ function restoreCommand(items) {
 }
 
 function trashDir(dir, home) {
-    return dir === home || /^\/.*\/\.Trash-\d+$/.test(dir) || /^\/.*\/\.Trash\/\d+$/.test(dir);
+    return dir === home || /^(\/.*)?\/\.Trash-\d+$/.test(dir) || /^(\/.*)?\/\.Trash\/\d+$/.test(dir);
 }
 
 function emptyable(item, home) {
