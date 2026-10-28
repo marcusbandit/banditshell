@@ -70,6 +70,7 @@
       "tests/engine-compat.test.js",
       "tests/fixtures/certificate-files.txt",
       "tests/focus-chain.test.js",
+      "tests/fixtures/menu-chains.json",
       "tests/font-axes.test.js",
       "tests/lint-rules.test.js",
       "tests/markup.test.js",

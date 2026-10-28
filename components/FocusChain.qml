@@ -17,7 +17,59 @@ Item {
 
     readonly property bool active: shown.active
 
-    onScopeChanged: root.reset()
+    onScopeChanged: {
+        const starting = root.starting;
+        root.reset();
+        root.starting = starting;
+        if (starting)
+            Qt.callLater(root.begin);
+    }
+
+    property bool starting: false
+
+    function start(): void {
+        root.starting = true;
+        Qt.callLater(root.begin);
+    }
+
+    function begin(): void {
+        if (!root.starting)
+            return;
+        const chain = root.members();
+        if (!chain.items.length) {
+            waiting.restart();
+            return;
+        }
+        root.starting = false;
+        const at = Chain.first(chain.rects, root.scope.width);
+        root.land(chain.items[at], at);
+        root.fresh = true;
+        settling.restart();
+    }
+
+    property bool fresh: false
+
+    Timer {
+        id: settling
+
+        interval: Appearance.animation.settle
+        onTriggered: {
+            if (!root.fresh || !shown.active)
+                return;
+            root.fresh = false;
+            const chain = root.members();
+            const at = Chain.first(chain.rects, root.scope.width);
+            if (at >= 0 && chain.items[at] !== root.current)
+                root.land(chain.items[at], at);
+        }
+    }
+
+    Timer {
+        id: waiting
+
+        interval: 16
+        onTriggered: root.begin()
+    }
 
     property rect spot: Qt.rect(0, 0, 0, 0)
 
@@ -79,6 +131,8 @@ Item {
 
     function reset(): void {
         const was = root.current;
+        root.starting = false;
+        root.fresh = false;
         root.spotted = false;
         root.current = null;
         shown.clear();
@@ -86,7 +140,7 @@ Item {
             root.holder.forceActiveFocus();
     }
 
-    function members(): var {
+    function found(): var {
         const found = [];
         const rects = [];
         const walk = (item, clip) => {
@@ -112,10 +166,19 @@ Item {
         };
         if (root.scope)
             walk(root.scope, null);
-        const order = Chain.readingOrder(rects);
         return {
-            items: order.map(i => found[i]),
-            rects: order.map(i => rects[i])
+            items: found,
+            rects: rects
+        };
+    }
+
+    function members(): var {
+        const loose = root.found();
+        const arranged = Chain.arrange(loose.rects, Appearance.sizes.rowHeight);
+        return {
+            items: arranged.order.map(i => loose.items[i]),
+            rects: arranged.order.map(i => loose.rects[i]),
+            lines: arranged.lines
         };
     }
 
@@ -151,7 +214,21 @@ Item {
             root.scroller.scrollTo(to);
     }
 
+    function read(item: Item, key: int): bool {
+        const flick = root.scroller?.flick;
+        if (!flick || !flick.interactive || key !== Qt.Key_Up && key !== Qt.Key_Down)
+            return false;
+        const top = item.mapToItem(flick.contentItem, 0, 0).y;
+        const goal = root.scroller.goal;
+        const to = Chain.read(goal, flick.height, top, top + item.height, Appearance.padding.normal, root.scroller.notch, key === Qt.Key_Down);
+        if (Math.abs(to - goal) <= 0.5)
+            return false;
+        root.scroller.scrollTo(to);
+        return true;
+    }
+
     function handle(event: var): bool {
+        root.fresh = false;
         const shift = (event.modifiers & Qt.ShiftModifier) !== 0;
         const key = event.key === Qt.Key_Tab && shift ? Qt.Key_Backtab : event.key;
         const chain = root.members();
@@ -175,6 +252,16 @@ Item {
             return true;
         }
 
+        if (here?.activeFocus && here.scrolls === true && root.read(here, key)) {
+            root.land(here, at);
+            return true;
+        }
+
+        if (here?.activeFocus && typeof here.steer === "function" && here.steer(key)) {
+            root.land(here, at);
+            return true;
+        }
+
         if (here && (here.adjusts === "horizontal" && across || here.adjusts === "vertical" && along)) {
             root.land(here, at);
             here.adjust(key === Qt.Key_Right || key === Qt.Key_Up ? 1 : -1);
@@ -182,7 +269,6 @@ Item {
             return true;
         }
 
-        const line = Appearance.sizes.rowHeight;
         let to = -1;
         switch (key) {
         case Qt.Key_Up:
@@ -192,13 +278,13 @@ Item {
             if (at < 0)
                 to = key === Qt.Key_Up ? count - 1 : 0;
             else
-                to = Chain.step(chain.rects, at, key === Qt.Key_Up ? "up" : key === Qt.Key_Down ? "down" : key === Qt.Key_Left ? "left" : "right", line);
+                to = Chain.move(chain.lines, at, key === Qt.Key_Up ? "up" : key === Qt.Key_Down ? "down" : key === Qt.Key_Left ? "left" : "right");
             break;
         case Qt.Key_Home:
             to = 0;
             break;
         case Qt.Key_End:
-            to = Chain.last(chain.rects);
+            to = Chain.last(chain.lines);
             break;
         case Qt.Key_PageUp:
         case Qt.Key_PageDown:

@@ -513,15 +513,20 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
 
   A panel full of mixed controls uses `components/FocusChain.qml` instead, as the menus do since
   #154 (2026-10-28). It finds every control under its scope that says `keyable: true`, or
-  `typable: true` for a text input, and arrows move real keyboard focus to the nearest one in
-  that direction; Home and End jump to the ends, Tab to the next `focusGroup`, and the panel's
-  scroll glides to keep the focused one in view through the same `WheelStep` target as the wheel.
-  The control draws `FocusMark { shown: root.activeFocus }` and tells the chain the rest: Enter
-  and Space call its `press()`, the arrows on its own axis call `adjust(steps)` when it
-  `adjusts` (a slider, a segments row, a clock digit once Enter has grabbed it, so Up and Down
-  still leave it otherwise), Delete calls `remove()`. The pointer
-  moving hands focus back to the panel, and while a keyable control holds focus, hover lights
-  nothing.
+  `typable: true` for a text input, and reads them as lines, top to bottom: a row, then the switch
+  and chevron on its own line, then the next row. Up and Down step through every control in that
+  order, so nothing is skipped and the way back is the way down reversed; Left and Right move
+  within a line; Home and End jump to the ends, Tab to the next `focusGroup`. The panel's scroll
+  glides to keep the focused one in view through the same `WheelStep` target as the wheel. The
+  control draws `FocusMark { shown: root.activeFocus }` and tells the chain the rest: Enter and
+  Space call its `press()`, the arrows on its own axis call `adjust(steps)` when it `adjusts` (a
+  slider, a segments row, a clock digit once Enter has grabbed it), `steer(key)` takes any arrow
+  it can use first (the calendar's day cursor, until it reaches the month's edge), `scrolls: true`
+  makes a long block a reading stop that Up and Down scroll a notch at a time before moving on,
+  and Delete calls `remove()`. A menu opened from the keyboard starts on its first full width
+  control with the mark already on; opened with the pointer, nothing shows until a key. The
+  pointer moving hands focus back to the panel, and while a keyable control holds focus, hover
+  lights nothing.
 - **Small constants have names.** `Appearance.padding.hair` (4), `Appearance.stroke.line` (1) and
   `ring` (the font stem), `Appearance.opacity.disabled` / `trail` / `glow`, the icon ladder
   `Appearance.icon.small` to `hero`, `Appearance.press.lift` and `grab`, and

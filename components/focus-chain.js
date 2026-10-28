@@ -1,83 +1,72 @@
 .pragma library
 
-function overlap(a0, a1, b0, b1) {
-    return Math.min(a1, b1) - Math.max(a0, b0);
-}
-
-function contains(outer, inner) {
-    const slack = 0.5;
-    return inner.x >= outer.x - slack && inner.y >= outer.y - slack && inner.x + inner.w <= outer.x + outer.w + slack && inner.y + inner.h <= outer.y + outer.h + slack;
-}
-
-function readingOrder(rects) {
-    const order = [];
+function arrange(rects, line) {
+    const sorted = [];
     for (let i = 0; i < rects.length; i++)
-        order.push(i);
-    order.sort((a, b) => {
+        sorted.push(i);
+    sorted.sort((a, b) => {
         const p = rects[a];
         const q = rects[b];
-        if (Math.abs(p.y - q.y) > 0.5)
-            return p.y - q.y;
-        if (Math.abs(p.x - q.x) > 0.5)
-            return p.x - q.x;
-        return q.w * q.h - p.w * p.h || a - b;
+        return p.y - q.y || p.x - q.x || q.w * q.h - p.w * p.h || a - b;
     });
-    return order;
-}
-
-function step(rects, from, direction, line) {
-    const c = rects[from];
-    if (!c)
-        return -1;
-    const vertical = direction === "up" || direction === "down";
-    const forward = direction === "down" || direction === "right";
-    const found = [];
-    for (let i = 0; i < rects.length; i++) {
-        if (i === from)
-            continue;
+    const bands = [];
+    for (const i of sorted) {
         const r = rects[i];
-        const nested = contains(c, r) || contains(r, c);
-        const rise = forward ? r.y - c.y : c.y - r.y;
-        const ahead = forward ? r.x + r.w / 2 - (c.x + c.w / 2) : c.x + c.w / 2 - (r.x + r.w / 2);
-        if (vertical) {
-            if (nested ? rise < line : rise <= 0.5 || overlap(c.y, c.y + c.h, r.y, r.y + r.h) > Math.min(c.h, r.h) / 2)
-                continue;
-            found.push({
-                at: i,
-                score: rise + Math.max(0, -overlap(c.x, c.x + c.w, r.x, r.x + r.w)) * 2,
-                off: Math.abs(r.x - c.x)
-            });
-        } else {
-            if (ahead <= 0.5 || overlap(c.y, c.y + c.h, r.y, r.y + r.h) <= 0 || nested && Math.abs(r.y - c.y) >= line)
-                continue;
-            found.push({
-                at: i,
-                score: ahead + Math.abs(r.y - c.y) * 2,
-                off: 0
-            });
+        const middle = r.y + r.h / 2;
+        let band = null;
+        for (let k = bands.length - 1; k >= 0 && !band; k--)
+            if (middle >= bands[k].top && middle <= bands[k].bottom)
+                band = bands[k];
+        if (!band) {
+            band = {
+                top: r.y,
+                bottom: r.y + Math.min(r.h, line),
+                members: []
+            };
+            bands.push(band);
         }
+        band.members.push(i);
     }
-    let best = null;
-    for (const f of found) {
-        const r = rects[f.at];
-        if (vertical && found.some(o => o !== f && contains(rects[o.at], r) && r.y - rects[o.at].y < line))
-            continue;
-        if (!best || f.score < best.score - 0.01 || Math.abs(f.score - best.score) <= 0.01 && f.off < best.off - 0.5)
-            best = f;
-    }
-    return best ? best.at : -1;
+    const order = [];
+    const lines = [];
+    bands.forEach((band, n) => {
+        band.members.sort((a, b) => rects[a].x - rects[b].x || rects[b].w * rects[b].h - rects[a].w * rects[a].h || a - b);
+        for (const i of band.members) {
+            order.push(i);
+            lines.push(n);
+        }
+    });
+    return {
+        order: order,
+        lines: lines
+    };
 }
 
-function last(rects) {
-    let at = rects.length - 1;
-    while (at > 0) {
-        const p = rects[at - 1];
-        const q = rects[at];
-        if (!contains(p, q) && overlap(p.y, p.y + p.h, q.y, q.y + q.h) <= Math.min(p.h, q.h) / 2)
-            break;
+function move(lines, at, direction) {
+    const count = lines.length;
+    if (at < 0 || at >= count)
+        return -1;
+    const forward = direction === "down" || direction === "right";
+    const to = at + (forward ? 1 : -1);
+    if (to < 0 || to >= count)
+        return -1;
+    if ((direction === "left" || direction === "right") && lines[to] !== lines[at])
+        return -1;
+    return to;
+}
+
+function last(lines) {
+    let at = lines.length - 1;
+    while (at > 0 && lines[at - 1] === lines[at])
         at--;
-    }
     return at;
+}
+
+function first(rects, width) {
+    for (let i = 0; i < rects.length; i++)
+        if (rects[i].w >= width / 2)
+            return i;
+    return rects.length ? 0 : -1;
 }
 
 function page(rects, from, forward, span) {
@@ -126,11 +115,24 @@ function group(groups, from, forward) {
 }
 
 function reveal(goal, view, top, bottom, margin) {
-    if (top - margin < goal || bottom - top + margin * 2 > view)
+    if (bottom - top + margin * 2 > view) {
+        if (bottom < goal)
+            return bottom + margin - view;
+        if (top > goal + view)
+            return top - margin;
+        return goal;
+    }
+    if (top - margin < goal)
         return top - margin;
     if (bottom + margin > goal + view)
         return bottom + margin - view;
     return goal;
+}
+
+function read(goal, view, top, bottom, margin, notch, forward) {
+    if (forward)
+        return bottom + margin > goal + view ? Math.min(goal + notch, bottom + margin - view) : goal;
+    return top - margin < goal ? Math.max(goal - notch, top - margin) : goal;
 }
 
 function cut(outer, inner) {
