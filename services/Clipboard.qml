@@ -864,7 +864,9 @@ Singleton {
 
     property var clipseHistory: []
 
-    readonly property bool clipseOwed: Config.ready && Config.values.clipboard.importClipse
+    property bool clipseAsked: false
+
+    readonly property bool clipseOwed: (Config.ready || root.clipseAsked) && Config.values.clipboard.importClipse
 
     Connections {
         target: Config
@@ -878,6 +880,7 @@ Singleton {
     readonly property int clipseWaiting: root.fresh(root.clipseHistory).length
 
     function importFromClipse(): void {
+        root.clipseAsked = true;
         Config.set("clipboard.importClipse", true);
         clipse.reload();
     }

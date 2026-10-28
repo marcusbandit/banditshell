@@ -62,7 +62,7 @@ Singleton {
 
     function parseNext(): void {
         if (root.nextPiece < root.pieces.length)
-            root.parsed = root.parsed.concat(Entries.parseBundle(root.pieces[root.nextPiece++]));
+            root.parsed.push(...Entries.parseBundle(root.pieces[root.nextPiece++]));
         if (root.nextPiece < root.pieces.length)
             return;
         parser.stop();

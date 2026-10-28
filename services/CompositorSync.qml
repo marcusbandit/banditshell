@@ -78,7 +78,7 @@ Singleton {
         }
     }
 
-    readonly property bool pushBorders: Config.values.compositor.pushBorders ?? true
+    readonly property bool pushBorders: Config.ready && (Config.values.compositor.pushBorders ?? true)
 
     readonly property color activeBorder: Appearance.colour.accent
 
