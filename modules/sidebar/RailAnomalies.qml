@@ -202,6 +202,8 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         fontSizeMode: Text.HorizontalFit
                         minimumPixelSize: Math.round(Appearance.font.size.small / 2)
+                        lineHeightMode: Text.ProportionalHeight
+                        lineHeight: Appearance.font.leading
                         text: mark.text
                         color: root.toneColour(mark.entry?.tone ?? mark.modelData.tone)
                         font.pixelSize: Appearance.font.size.small

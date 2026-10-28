@@ -218,7 +218,8 @@ Scope {
                 text: "Build",
                 detail: "412 files",
                 icon: "hardware",
-                outcome: "done"
+                outcome: "done",
+                endText: "Built"
             },
             broke: {
                 id: "mock-broke",
@@ -939,7 +940,7 @@ Scope {
                 act: (entry, action) => root.clicked = action ? `${look.text}: ${action}` : `${look.text}: its own command ran`
             }));
             if (look.outcome)
-                Activities.end(look.id, look.outcome, 600000);
+                Activities.end(look.id, look.outcome, 600000, look.endText ?? "");
         }
         root.taskKinds = kinds;
     }

@@ -6,6 +6,7 @@ const DETAIL_MAX = 200;
 const ENDING_MS = 10000;
 const LEVEL_MS = 1000;
 const OUTCOMES = ["done", "failed", "cancelled"];
+const OUTCOME_WORDS = { done: "Done", failed: "Failed", cancelled: "Cancelled" };
 const KINDS = ["external", "privacy"];
 const STYLES = ["", "screenshot", "copied", "bluetooth", "wifi", "undo", "privacy"];
 const ACTIONS_MAX = 4;
@@ -204,15 +205,19 @@ function update(list, id, patch, now) {
     return { list: list.map(e => e === before ? next : e), entry: next };
 }
 
-function end(list, id, outcome, now, lingerMs) {
+function end(list, id, outcome, now, lingerMs, text) {
     const before = list.find(e => e.id === id);
     if (!before)
         return { list: list, error: `no activity ${id}` };
     const named = outcome === undefined || outcome === null || outcome === "" ? "done" : String(outcome);
     if (!OUTCOMES.includes(named))
         return { list: list, error: `outcome is one of ${OUTCOMES.join(", ")}: ${outcome}` };
-    const stay = lingerMs === undefined ? LINGER_MS : lingerMs;
+    const said = readText(text, TEXT_MAX, "text");
+    if (said.error)
+        return { list: list, error: said.error };
+    const stay = lingerMs === undefined || lingerMs === null ? LINGER_MS : lingerMs;
     const next = Object.assign({}, before, {
+        text: said.value || OUTCOME_WORDS[named],
         state: "ended",
         outcome: named,
         progress: named === "done" ? 1 : before.progress,
@@ -358,10 +363,10 @@ function levelMoment(kind, value, muted, max) {
     });
 }
 
-function layoutMoment(code, name) {
+function layoutMoment(code, name, shared) {
     if (!code)
         return null;
-    const language = String(name || "").replace(/\s*\([^)]*\)\s*$/, "");
+    const language = shared ? String(name || "").trim() : String(name || "").replace(/\s*\([^)]*\)\s*$/, "");
     return { key: "level:layout", kind: "level", level: "layout", muted: false, ms: LEVEL_MS, icon: "keyboard", text: language || code, meter: -1, readout: code };
 }
 

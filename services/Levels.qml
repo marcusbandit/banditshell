@@ -80,7 +80,7 @@ Singleton {
         root.heardLayout = root.layout;
         if (!root.armed || !before || !root.layout || before === root.layout)
             return;
-        const moment = Logic.layoutMoment(Keymap.layout, Keymap.name);
+        const moment = Logic.layoutMoment(Keymap.layout, Keymap.name, Keymap.shared);
         if (moment && Logic.levelWanted(root.enabled, root.covers, "layout"))
             Notices.pass(moment);
     }

@@ -34,7 +34,7 @@ QtObject {
         case "dictation":
             if (Dictation.cancelled)
                 return {
-                    icon: "mic_off",
+                    icon: "delete",
                     tone: Appearance.colour.textFaint,
                     text: Dictation.outcome,
                     dim: true

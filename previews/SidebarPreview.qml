@@ -50,7 +50,17 @@ ShellRoot {
                 return;
             }
             if (preview.step === 2) {
-                preview.shoot(preview.rail ? "rest-layout-other" : "full-layout-other", () => preview.forced = preview.rail);
+                preview.shoot(preview.rail ? "rest-layout-other" : "full-layout-other", () => {
+                    Keymap.name = "English (US, intl., with dead keys)";
+                    Keymap.layouts = ["us", "us"];
+                    Keymap.variants = ["", "intl"];
+                    Keymap.index = 1;
+                });
+                preview.step = 5;
+                return;
+            }
+            if (preview.step === 5) {
+                preview.shoot(preview.rail ? "rest-layout-variant" : "full-layout-variant", () => preview.forced = preview.rail);
                 preview.step = preview.rail ? 3 : 4;
                 return;
             }

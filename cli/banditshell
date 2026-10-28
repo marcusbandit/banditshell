@@ -141,8 +141,9 @@
 #                                replaces the first
 #   banditshell island update <id> [--text <text>] [--detail <text>] [--progress <fraction>] [--icon <name>] [--until <span>]
 #                                change what it shows; a detail of - clears it
-#   banditshell island end <id> [done|failed|cancelled]
-#                                finish it: its mark stays for a moment, then it goes
+#   banditshell island end <id> [done|failed|cancelled] [--text <text>]
+#                                finish it: its mark stays for a moment, then it goes;
+#                                the row says --text, or Done, Failed or Cancelled
 #   banditshell island list      every activity and where it stands
 #
 # tablet                         tablet mode, the lid and the pen's area
@@ -1466,6 +1467,30 @@ island_post() {
     fi
 }
 
+island_end() {
+    local id="$1" outcome=done text=""
+    shift
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --text)
+            [ $# -ge 2 ] || say_usage "island end: --text needs a value"
+            text="$2"
+            shift 2
+            ;;
+        --*) nope island "end $1" ;;
+        *)
+            outcome="$1"
+            shift
+            ;;
+        esac
+    done
+    if [ -n "$text" ]; then
+        activity_call endSaying "$id" "$outcome" "$text"
+    else
+        activity_call end "$id" "$outcome"
+    fi
+}
+
 route_notifications() {
     local verb="${1:-}" filter="" app="" word
     if [ $# -gt 0 ]; then shift; fi
@@ -1502,8 +1527,8 @@ route_island() {
     "") ipc island status "" ;;
     push | update) island_post "$verb" "$@" ;;
     end)
-        [ $# -ge 1 ] || say_usage "island end <id> [done|failed|cancelled]"
-        activity_call end "$1" "${2:-done}"
+        [ $# -ge 1 ] || say_usage "island end <id> [done|failed|cancelled] [--text <text>]"
+        island_end "$@"
         ;;
     list) activity_call list ;;
     *) nope island "$verb" ;;
