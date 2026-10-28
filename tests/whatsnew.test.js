@@ -276,8 +276,8 @@ test("changes from entries not read yet are marked unread, in both lists, and co
     const pending = [log[0]];
     assert.deepStrictEqual(WhatsNew.shortList(log, pending).map(l => [l.text, l.unread]), [["Newest", true], ["Older", false], ["Older too", false]]);
     assert.deepStrictEqual(WhatsNew.sections(log, ["2026-11-03"]).map(s => s.changes.map(c => c.unread)), [[false], [true, true]]);
-    assert.strictEqual(WhatsNew.unreadCount(log, pending), 1);
-    assert.strictEqual(WhatsNew.unreadCount(log, log), 3);
-    assert.strictEqual(WhatsNew.unreadCount(log, []), 0);
-    assert.strictEqual(WhatsNew.unreadCount(log), 0);
+    assert.strictEqual(WhatsNew.unreadCount(WhatsNew.shortList(log, pending), []), 1);
+    assert.strictEqual(WhatsNew.unreadCount([], WhatsNew.sections(log, log)), 3);
+    assert.strictEqual(WhatsNew.unreadCount(WhatsNew.shortList(log, []), []), 0);
+    assert.strictEqual(WhatsNew.unreadCount(), 0);
 });

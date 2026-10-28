@@ -229,8 +229,9 @@ function shortList(entries, unread) {
     return out.length <= SHORT_LIST ? out : [];
 }
 
-function unreadCount(entries, unread) {
-    return sections(entries, unread).reduce((n, s) => n + s.changes.filter(c => c.unread).length, 0);
+function unreadCount(lines, groups) {
+    const flat = (Array.isArray(lines) ? lines : []).filter(l => l?.unread === true).length;
+    return (Array.isArray(groups) ? groups : []).reduce((n, s) => n + (Array.isArray(s?.changes) ? s.changes.filter(c => c?.unread === true).length : 0), flat);
 }
 
 function main(argv) {

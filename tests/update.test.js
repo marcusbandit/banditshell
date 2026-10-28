@@ -195,6 +195,8 @@ test("a copy with changes of its own still names the waiting version", () => {
     assert.strictEqual(Update.divergedHeadline("", 2), "A new version is ready, but this copy has 2 changes of your own");
     assert.strictEqual(Update.aheadText(1), "1 change of your own is not on GitHub yet");
     assert.strictEqual(Update.aheadText(4), "4 changes of your own are not on GitHub yet");
+    assert.strictEqual(Update.aheadText(0), "1 change of your own is not on GitHub yet");
+    assert.strictEqual(Update.aheadText("x"), "1 change of your own is not on GitHub yet");
 });
 
 test("edits here that the update also touches are listed, others are not", () => {

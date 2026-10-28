@@ -3754,14 +3754,15 @@ update_after_merge() {
 
 update_steps_held() {
     local scratch
-    [ -f "$U_DIR/install.sh" ] || return 0
+    [ -f "$STAGED/install.sh" ] || return 0
     scratch=$(mktemp -d) || return 0
-    (cd "$HOME" && BANDITSHELL_INSTALL="$U_DIR/install.sh" XDG_RUNTIME_DIR="$scratch" timeout -k 5 30 bash -c '
+    (cd "$HOME" && BANDITSHELL_INSTALL="$STAGED/install.sh" BANDITSHELL_REPO="$U_DIR" XDG_RUNTIME_DIR="$scratch" timeout -k 5 30 bash -c '
         names=("$@")
         set --
         source "$BANDITSHELL_INSTALL" >/dev/null 2>&1 </dev/null || exit 0
         trap - EXIT INT TERM
         set +u
+        REPO="$BANDITSHELL_REPO"
         detect_manager >/dev/null 2>&1 </dev/null || true
         build_table >/dev/null 2>&1 </dev/null || exit 0
         for name in "${names[@]}"; do
@@ -3773,15 +3774,16 @@ update_steps_held() {
                 fi
             done
         done
-    ' bash "$@" 2>/dev/null) || true
+    ' bash "$@" 8>&- 2>/dev/null) || true
     rm -rf "$scratch"
 }
 
 update_still_needed() {
-    local name held kept=()
-    [ -n "$A_DEPS" ] || return 0
-    held=$(update_steps_held $A_DEPS)
-    for name in $A_DEPS; do
+    local name held deps=() kept=()
+    read -ra deps <<<"$A_DEPS"
+    [ "${#deps[@]}" -gt 0 ] || return 0
+    held=$(update_steps_held "${deps[@]}")
+    for name in "${deps[@]}"; do
         grep -qxF -- "$name" <<<"$held" || kept+=("$name")
     done
     A_DEPS="${kept[*]}"
@@ -3864,6 +3866,7 @@ update_apply() {
     update_stage
     update_phase verify "Checking it loads..."
     update_verify
+    update_still_needed
     update_phase apply "Applying..."
     mkdir -p "$UPDATE_STATE"
     printf '%s\n' "$U_HEAD" >"$UPDATE_STATE/previous"
@@ -3874,7 +3877,6 @@ update_apply() {
     update_merge
     update_after_merge
     rm -rf "$STAGED"
-    update_still_needed
     [ -z "$A_DEPS" ] || U_WARNINGS+=("this version needs $A_DEPS; run bash $U_DIR/install.sh")
     for line in "${U_WARNINGS[@]}"; do
         update_phase warning "$line"

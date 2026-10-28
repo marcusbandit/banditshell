@@ -33,8 +33,12 @@ function waitingHeadline(targetVersion) {
     return targetVersion ? `${targetVersion} is ready` : "A new version is ready";
 }
 
+function ownCount(count) {
+    return Math.max(1, Math.floor(Number(count) || 0));
+}
+
 function ownChanges(count) {
-    const n = Math.max(1, Number(count) || 0);
+    const n = ownCount(count);
     return n === 1 ? "1 change of your own" : `${n} changes of your own`;
 }
 
@@ -43,7 +47,7 @@ function divergedHeadline(targetVersion, ahead) {
 }
 
 function aheadText(ahead) {
-    return `${ownChanges(ahead)} ${Number(ahead) === 1 ? "is" : "are"} not on GitHub yet`;
+    return `${ownChanges(ahead)} ${ownCount(ahead) === 1 ? "is" : "are"} not on GitHub yet`;
 }
 
 function report(text) {

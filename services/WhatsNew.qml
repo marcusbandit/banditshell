@@ -61,8 +61,8 @@ Singleton {
         return WhatsNewLog.shortList(entries, unread);
     }
 
-    function unreadCount(entries: var, unread: var): int {
-        return WhatsNewLog.unreadCount(entries, unread);
+    function unreadCount(lines: var, groups: var): int {
+        return WhatsNewLog.unreadCount(lines, groups);
     }
 
     FileView {

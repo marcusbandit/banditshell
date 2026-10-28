@@ -33,14 +33,14 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
 3. **Verify.** `scripts/qml-compile-check.sh` runs on the staged tree in a fresh offscreen
    engine. A tree that does not load stops here and nothing has changed. `scripts/qmldirs.sh` runs
    on it too, and a qmldir that drifts is a warning. When helpers changed they are built in the
-   staged tree, and a failed build stops the update.
+   staged tree, and a failed build stops the update. The new install steps are run through the
+   staged `install.sh`'s own checks, pointed at the checkout, and only the ones that fail here
+   are named after the merge in "this version needs ...; run install.sh" (#339).
 4. **Apply.** The old head goes into `update/previous` and the target into `update/target`. Edits
    here that the update also touches are set aside with `git stash` under a fixed identity and the
    names go into `update/aside`; edits the update does not touch ride along. Then
    `git merge --ff-only`. Helpers are copied from the staged tree, `bin/` is ensured and
-   completions are refreshed. The new install steps are then run through the merged
-   `install.sh`'s own checks, and only the ones that fail here are named in
-   "this version needs ...; run install.sh" (#339).
+   completions are refreshed.
 5. **Health.** If the class says restart, the shell is stopped and launched again. Otherwise the
    running shell is left to reload by itself, because Quickshell watches its files. In both cases
    the CLI waits for `shell status` to answer over IPC and then scans the log for

@@ -31,7 +31,6 @@ Column {
 
     readonly property var listed: root.leaving ? Update.notes : root.card
     readonly property var unread: root.leaving || root.cardKind === "incoming" ? [] : WhatsNew.pending
-    readonly property int unreadCount: WhatsNew.unreadCount(root.listed, root.unread)
     readonly property var shortList: WhatsNew.shortList(root.listed, root.unread)
     readonly property string listTitle: {
         if (root.leaving)
@@ -42,6 +41,8 @@ Column {
     }
 
     readonly property var sections: root.shortList.length > 0 ? [] : WhatsNew.sections(root.listed, root.unread)
+    readonly property int unreadCount: WhatsNew.unreadCount(root.shortList, root.sections)
+    readonly property real unreadDot: Math.max(6, Math.round(Appearance.font.size.small / 2.5))
     readonly property var linesBefore: {
         const out = [];
         let seen = 0;
@@ -383,7 +384,7 @@ Column {
 
                         x: Appearance.padding.small
                         anchors.verticalCenter: parent.verticalCenter
-                        width: Math.max(6, Math.round(Appearance.font.size.small / 2.5))
+                        width: root.unreadDot
                         height: width
                         pill: "object"
                         color: Appearance.colour.accent
@@ -439,7 +440,7 @@ Column {
                 SquircleRect {
                     visible: tagged.modelData.unread === true
                     y: Math.round((Appearance.font.line.small - height) / 2)
-                    width: Math.max(6, Math.round(Appearance.font.size.small / 2.5))
+                    width: root.unreadDot
                     height: width
                     pill: "object"
                     color: Appearance.colour.accent
@@ -448,7 +449,7 @@ Column {
                 SquircleRect {
                     id: tagChip
 
-                    x: root.unreadCount > 0 ? Math.max(6, Math.round(Appearance.font.size.small / 2.5)) + Appearance.padding.small : 0
+                    x: root.unreadCount > 0 ? root.unreadDot + Appearance.padding.small : 0
                     width: Math.ceil(tagWidth.advanceWidth) + Appearance.padding.small * 2
                     height: Appearance.font.line.small
                     pill: "object"
@@ -523,6 +524,7 @@ Column {
 
                     UpdateChangeLines {
                         width: sectionBody.width
+                        unreadDot: root.unreadDot
                         lines: section.modelData.changes.slice(0, section.eager)
                         hue: section.hue
                         major: section.major
@@ -534,6 +536,7 @@ Column {
                         asynchronous: true
 
                         sourceComponent: UpdateChangeLines {
+                            unreadDot: root.unreadDot
                             lines: section.modelData.changes.slice(section.eager)
                             hue: section.hue
                             major: section.major
