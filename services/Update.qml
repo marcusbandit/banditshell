@@ -30,7 +30,6 @@ Singleton {
     property string headBranch: ""
     readonly property bool paused: root.headBranch !== "" && !Words.following(root.headBranch, root.branch)
     readonly property bool diverged: root.behind > 0 && root.ahead > 0
-    readonly property string aheadText: Words.aheadText(root.ahead)
 
     property string error: ""
     property string phaseText: ""
@@ -66,7 +65,7 @@ Singleton {
     readonly property string haveLabel: Words.haveText(root.diverged && root.baseVersion !== "" ? Words.withOwn(root.baseVersion, root.ahead) : root.version, Config.values.updates.channel, Config.values.updates.branch)
     property string baseVersion: ""
     property var own: []
-    readonly property string ownTitle: Words.ownTitle(root.ahead)
+    readonly property string ownTitle: root.diverged ? Words.ownTitle(root.ahead) : Words.unpushedTitle(root.ahead)
     property string release: ""
     readonly property string version: root.release || WhatsNew.version
     property string targetVersion: ""
@@ -113,7 +112,7 @@ Singleton {
             return Words.divergedHeadline(root.targetVersion, root.ahead);
         if (root.behind > 0)
             return Words.waitingHeadline(root.targetVersion);
-        return "You are up to date";
+        return Words.currentHeadline(root.ahead);
     }
 
     function commit(sha: string): bool {
@@ -468,7 +467,7 @@ Singleton {
                 root.previous = root.commit(got.previous ?? "") ? got.previous : "";
                 root.previousVersion = got.previousVersion ?? "";
                 root.behind = counts ? Number(got.behind) || 0 : 0;
-                root.ahead = counts ? Number(got.ahead) || 0 : 0;
+                root.ahead = Words.aheadKept(got.state, got.ahead, got.unpushed);
                 root.entries = got.entries ?? [];
                 root.notes = Array.isArray(got.notes) ? got.notes : [];
                 root.baseVersion = got.baseVersion ?? "";

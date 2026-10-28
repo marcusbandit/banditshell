@@ -622,7 +622,9 @@ test("hibernate is greyed where the machine cannot do it", () => {
         assert.strictEqual(off.length, 1, k);
         assert.ok(Catalogue.options(row, cannot).some(o => o[0] === off[0] && /^hibernate/.test(o[0])), k);
     }
-    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[1]), ["sleep at 5%", "hibernate at 5%", "nothing"]);
+    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[1]), ["sleep at 5%", "hibernate at 5%", "do nothing"]);
+    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[0]), ["sleep at 5%", "hibernate at 5%", "nothing"]);
+    assert.strictEqual(Catalogue.show(Catalogue.ROW_BY_KEY.lowAction, "nothing", can), "do nothing");
 });
 
 test("the power mode row offers what the daemon offers and greys without one", () => {

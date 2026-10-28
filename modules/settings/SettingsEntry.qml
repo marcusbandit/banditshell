@@ -224,9 +224,9 @@ Column {
 
     Item {
         parent: frame
-        x: (controls.parent?.x ?? 0) + controls.x
+        x: (controls.parent?.x ?? 0) + controls.x + controls.width - width
         y: frame.height - Appearance.padding.small
-        width: controls.width
+        width: Math.min(Math.max(controls.width, 200), frame.inner - frame.leadWidth)
         height: 0
         visible: places.active
         z: 1
@@ -471,6 +471,11 @@ Column {
         id: textControl
 
         SettingsField {
+            id: textField
+
+            implicitWidth: Math.max(120, Math.min(frame.inner - frame.leadWidth, Math.ceil(Math.max(valueWidth.advanceWidth, placeholderWidth.advanceWidth)) + Appearance.padding.normal * 2 + 2))
+            framed: true
+            placeholderColour: Appearance.colour.text
             text: String(root.value ?? "")
             placeholder: root.row.placeholder ?? ""
             mono: !!root.row.mono
@@ -480,6 +485,22 @@ Column {
             pick: places.item?.chosen ?? ""
             onStepped: by => places.item.step(by)
             onCommitted: t => root.set(t)
+
+            TextMetrics {
+                id: valueWidth
+
+                font.family: textField.mono ? Appearance.sizes.filesTerminalFont : Appearance.font.family
+                font.pixelSize: Appearance.font.size.small
+                text: textField.draft
+            }
+
+            TextMetrics {
+                id: placeholderWidth
+
+                font.family: Appearance.font.family
+                font.pixelSize: Appearance.font.size.small
+                text: textField.placeholder
+            }
         }
     }
 

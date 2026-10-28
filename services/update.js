@@ -46,8 +46,13 @@ function divergedHeadline(targetVersion, ahead) {
     return `${waitingHeadline(targetVersion)}, but this copy has ${ownChanges(ahead)}`;
 }
 
-function aheadText(ahead) {
-    return `${ownChanges(ahead)} ${ownCount(ahead) === 1 ? "is" : "are"} not on GitHub yet`;
+function aheadKept(state, ahead, unpushed) {
+    const count = state === "available" || state === "diverged" ? ahead : state === "current" ? unpushed : 0;
+    return Math.max(0, Math.floor(Number(count) || 0));
+}
+
+function currentHeadline(ahead) {
+    return Number(ahead) > 0 ? `Up to date, plus ${ownChanges(ahead)}` : "You are up to date";
 }
 
 function withOwn(version, ahead) {
@@ -56,6 +61,10 @@ function withOwn(version, ahead) {
 
 function ownTitle(count) {
     return ownCount(count) === 1 ? "Your change" : `Your ${ownCount(count)} changes`;
+}
+
+function unpushedTitle(count) {
+    return `${ownTitle(count)}, not on GitHub yet`;
 }
 
 function wentBackHeadline(version, channel, branch) {

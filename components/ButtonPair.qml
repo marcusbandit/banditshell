@@ -10,6 +10,8 @@ Row {
 
     property int primary: 0
 
+    property string rest: "plate"
+
     signal triggered(int index)
 
     spacing: Appearance.button.seam
@@ -25,7 +27,7 @@ Row {
 
             text: member.modelData.text ?? ""
             icon: member.modelData.icon ?? ""
-            style: member.index === root.primary ? "accent" : "plate"
+            style: member.index === root.primary ? "accent" : root.rest
             interactive: member.modelData.enabled ?? true
             radiusLeft: member.index > 0 ? Appearance.button.seamRadius : -1
             radiusRight: member.index < root.actions.length - 1 ? Appearance.button.seamRadius : -1
