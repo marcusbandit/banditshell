@@ -129,12 +129,6 @@ function reveal(goal, view, top, bottom, margin) {
     return goal;
 }
 
-function read(goal, view, top, bottom, margin, notch, forward) {
-    if (forward)
-        return bottom + margin > goal + view ? Math.min(goal + notch, bottom + margin - view) : goal;
-    return top - margin < goal ? Math.max(goal - notch, top - margin) : goal;
-}
-
 function cut(outer, inner) {
     if (!outer)
         return inner;

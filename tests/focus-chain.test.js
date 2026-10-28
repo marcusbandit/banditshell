@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "components/focus-chain.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Chain = new Function(src + "\nreturn { arrange, move, last, first, page, group, reveal, read, cut, nearest };")();
+const Chain = new Function(src + "\nreturn { arrange, move, last, first, page, group, reveal, cut, nearest };")();
 
 const box = (x, y, w, h) => ({ x, y, w, h });
 
@@ -75,6 +75,36 @@ test.describe("every menu's chain", () => {
             assert.strictEqual(new Set(down).size, controls.length);
         });
     }
+
+    const named = menu => {
+        const { order } = arranged(chains[menu].controls);
+        return order.map(i => chains[menu].controls[i].name);
+    };
+    const following = (list, name, count) => list.slice(list.indexOf(name) + 1, list.indexOf(name) + 1 + count);
+
+    test.it("clock: Down from Add a place reaches both timers, then hours, minutes and seconds", () => {
+        const clock = named("clock");
+        assert.deepStrictEqual(following(clock, "Button:Add a place", 5), ["ClockCard:of 25:00", "ClockCard:of 1:30", "ClockScrubField:0", "ClockScrubField:0", "ClockScrubField:0"]);
+        assert.strictEqual(clock.filter(n => n.startsWith("Button:") && /^Button:\d+m$/.test(n)).length, 4);
+    });
+
+    test.it("clock: an open alarm walks its switch, then hours and minutes, then every day and the action", () => {
+        const clock = named("clock");
+        assert.deepStrictEqual(following(clock, "ClockCard:07:30", 11), ["Toggle:", "ClockScrubField:7", "ClockScrubField:30", "Button:1", "Button:2", "Button:3", "Button:4", "Button:5", "Button:6", "Button:7", "Segments:"]);
+    });
+
+    test.it("sound: every mute button, slider and device is a stop", () => {
+        const sound = named("audio");
+        assert.strictEqual(sound.filter(n => n.startsWith("Slider:")).length, 3);
+        assert.ok(sound.indexOf("Icon:mic") < sound.indexOf("Slider:0"));
+        assert.deepStrictEqual(sound.slice(-3), ["MenuRow:Rig speakers", "MenuRow:Rig headphones", "MenuRow:Rig microphone"]);
+    });
+
+    test.it("tray: a check entry's row comes before its switch, and a branch before its chevron", () => {
+        const tray = named("tray");
+        assert.deepStrictEqual(following(tray, "MenuRow:Start at login", 1), ["Toggle:"]);
+        assert.deepStrictEqual(following(tray, "MenuRow:More options", 1), ["Expander:"]);
+    });
 
     test.it("a menu opened from the keyboard starts on its first full width control, never a stray icon", () => {
         const start = menu => {
@@ -201,16 +231,3 @@ test.describe("nearest", () => {
     });
 });
 
-test.describe("read", () => {
-    test.it("scrolls a long list a notch at a time, then stops at its end", () => {
-        assert.strictEqual(Chain.read(0, 300, 0, 1000, 8, 100, true), 100);
-        assert.strictEqual(Chain.read(650, 300, 0, 1000, 8, 100, true), 708);
-        assert.strictEqual(Chain.read(708, 300, 0, 1000, 8, 100, true), 708);
-    });
-
-    test.it("scrolls back up to the list's top and no further", () => {
-        assert.strictEqual(Chain.read(300, 300, 0, 1000, 8, 100, false), 200);
-        assert.strictEqual(Chain.read(50, 300, 0, 1000, 8, 100, false), -8);
-        assert.strictEqual(Chain.read(-8, 300, 0, 1000, 8, 100, false), -8);
-    });
-});

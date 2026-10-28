@@ -20,7 +20,7 @@ Item {
 
     property bool interactive: true
 
-    property bool keyed: root.Window.activeFocusItem?.keyable === true
+    property bool keyed: false
 
     readonly property bool keyable: root.interactive
 

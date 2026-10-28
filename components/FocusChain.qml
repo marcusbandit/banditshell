@@ -214,19 +214,6 @@ Item {
             root.scroller.scrollTo(to);
     }
 
-    function read(item: Item, key: int): bool {
-        const flick = root.scroller?.flick;
-        if (!flick || !flick.interactive || key !== Qt.Key_Up && key !== Qt.Key_Down)
-            return false;
-        const top = item.mapToItem(flick.contentItem, 0, 0).y;
-        const goal = root.scroller.goal;
-        const to = Chain.read(goal, flick.height, top, top + item.height, Appearance.padding.normal, root.scroller.notch, key === Qt.Key_Down);
-        if (Math.abs(to - goal) <= 0.5)
-            return false;
-        root.scroller.scrollTo(to);
-        return true;
-    }
-
     function handle(event: var): bool {
         root.fresh = false;
         const shift = (event.modifiers & Qt.ShiftModifier) !== 0;
@@ -248,11 +235,6 @@ Item {
             return false;
 
         if (here && !shown.active && !typing) {
-            root.land(here, at);
-            return true;
-        }
-
-        if (here?.activeFocus && here.scrolls === true && root.read(here, key)) {
             root.land(here, at);
             return true;
         }
@@ -322,6 +304,10 @@ Item {
         id: shown
 
         parent: root.area
+        anchors.fill: parent
+        z: 1000
+        watched: shown
+        followsPointer: false
 
         onActiveChanged: if (!shown.active && root.current?.activeFocus && root.current.keyable === true && root.holder)
             root.holder.forceActiveFocus()

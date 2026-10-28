@@ -2,23 +2,79 @@
   "audio": {
     "controls": [
       {
-        "name": "Slider:",
+        "name": "Icon:mic",
+        "x": 0,
+        "y": 37,
+        "w": 20,
+        "h": 24
+      },
+      {
+        "name": "Slider:0",
         "x": 32,
         "y": 40,
         "w": 254,
         "h": 18
       },
       {
-        "name": "Slider:",
+        "name": "QQuickItem:",
+        "x": 0,
+        "y": 110,
+        "w": 20,
+        "h": 25
+      },
+      {
+        "name": "Slider:0",
         "x": 32,
-        "y": 126,
+        "y": 143,
+        "w": 320,
+        "h": 18
+      },
+      {
+        "name": "Icon:mic_off",
+        "x": 0,
+        "y": 223,
+        "w": 20,
+        "h": 24
+      },
+      {
+        "name": "Slider:0",
+        "x": 32,
+        "y": 226,
         "w": 254,
         "h": 18
+      },
+      {
+        "name": "MenuRow:Rig speakers",
+        "x": 0,
+        "y": 309,
+        "w": 352,
+        "h": 44
+      },
+      {
+        "name": "MenuRow:Rig headphones",
+        "x": 0,
+        "y": 365,
+        "w": 352,
+        "h": 44
+      },
+      {
+        "name": "MenuRow:Rig microphone",
+        "x": 0,
+        "y": 458,
+        "w": 352,
+        "h": 44
       }
     ],
     "walk": [
       0,
-      1
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
     ]
   },
   "bluetooth": {
@@ -94,14 +150,14 @@
   "clock": {
     "controls": [
       {
-        "name": "ClockCard:",
+        "name": "ClockCard:New York",
         "x": 0,
         "y": 113,
         "w": 352,
         "h": 80
       },
       {
-        "name": "ClockCard:",
+        "name": "ClockCard:Tokyo",
         "x": 0,
         "y": 193,
         "w": 352,
@@ -115,35 +171,35 @@
         "h": 40
       },
       {
-        "name": "ClockCard:",
+        "name": "ClockCard:of 25:00",
         "x": 0,
         "y": 387,
         "w": 352,
         "h": 80
       },
       {
-        "name": "ClockCard:",
+        "name": "ClockCard:of 1:30",
         "x": 0,
         "y": 479,
         "w": 352,
         "h": 80
       },
       {
-        "name": "ClockScrubField:",
+        "name": "ClockScrubField:0",
         "x": 0,
         "y": 571,
         "w": 59,
         "h": 48
       },
       {
-        "name": "ClockScrubField:",
+        "name": "ClockScrubField:0",
         "x": 97,
         "y": 571,
         "w": 59,
         "h": 48
       },
       {
-        "name": "ClockScrubField:",
+        "name": "ClockScrubField:0",
         "x": 194,
         "y": 571,
         "w": 59,
@@ -178,7 +234,7 @@
         "h": 40
       },
       {
-        "name": "ClockCard:",
+        "name": "ClockCard:07:30",
         "x": 0,
         "y": 735,
         "w": 352,
@@ -192,14 +248,14 @@
         "h": 18
       },
       {
-        "name": "ClockScrubField:",
+        "name": "ClockScrubField:7",
         "x": 12,
         "y": 825,
         "w": 59,
         "h": 48
       },
       {
-        "name": "ClockScrubField:",
+        "name": "ClockScrubField:30",
         "x": 109,
         "y": 825,
         "w": 59,
@@ -262,7 +318,7 @@
         "h": 40
       },
       {
-        "name": "ClockCard:",
+        "name": "ClockCard:22:00",
         "x": 0,
         "y": 983,
         "w": 352,
@@ -311,6 +367,76 @@
       24,
       25,
       26
+    ]
+  },
+  "tray": {
+    "controls": [
+      {
+        "name": "MenuRow:Show it",
+        "x": 0,
+        "y": 0,
+        "w": 352,
+        "h": 44
+      },
+      {
+        "name": "MenuRow:Open the window",
+        "x": 0,
+        "y": 61,
+        "w": 352,
+        "h": 52
+      },
+      {
+        "name": "MenuRow:Pause syncing",
+        "x": 0,
+        "y": 113,
+        "w": 352,
+        "h": 52
+      },
+      {
+        "name": "MenuRow:Start at login",
+        "x": 0,
+        "y": 165,
+        "w": 352,
+        "h": 52
+      },
+      {
+        "name": "Toggle:",
+        "x": 304,
+        "y": 173,
+        "w": 34,
+        "h": 18
+      },
+      {
+        "name": "MenuRow:More options",
+        "x": 0,
+        "y": 218,
+        "w": 352,
+        "h": 52
+      },
+      {
+        "name": "Expander:",
+        "x": 304,
+        "y": 226,
+        "w": 36,
+        "h": 36
+      },
+      {
+        "name": "MenuRow:Quit",
+        "x": 0,
+        "y": 271,
+        "w": 352,
+        "h": 52
+      }
+    ],
+    "walk": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
     ]
   },
   "network": {
@@ -565,122 +691,6 @@
       28,
       29,
       30
-    ]
-  },
-  "tray": {
-    "controls": [
-      {
-        "name": "MenuRow:Show it",
-        "x": 0,
-        "y": 0,
-        "w": 352,
-        "h": 44
-      },
-      {
-        "name": "MenuRow:Open the window",
-        "x": 0,
-        "y": 61,
-        "w": 352,
-        "h": 52
-      },
-      {
-        "name": "MenuRow:Pause syncing",
-        "x": 0,
-        "y": 113,
-        "w": 352,
-        "h": 52
-      },
-      {
-        "name": "MenuRow:Start at login",
-        "x": 0,
-        "y": 165,
-        "w": 352,
-        "h": 52
-      },
-      {
-        "name": "Toggle:",
-        "x": 304,
-        "y": 173,
-        "w": 34,
-        "h": 18
-      },
-      {
-        "name": "MenuRow:More options",
-        "x": 0,
-        "y": 218,
-        "w": 352,
-        "h": 52
-      },
-      {
-        "name": "Expander:",
-        "x": 304,
-        "y": 226,
-        "w": 36,
-        "h": 36
-      },
-      {
-        "name": "MenuRow:Export settings",
-        "x": 24,
-        "y": 270,
-        "w": 328,
-        "h": 52
-      },
-      {
-        "name": "MenuRow:Import settings",
-        "x": 24,
-        "y": 322,
-        "w": 328,
-        "h": 52
-      },
-      {
-        "name": "MenuRow:Quit",
-        "x": 0,
-        "y": 375,
-        "w": 352,
-        "h": 52
-      }
-    ],
-    "walk": [
-      0,
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9
-    ]
-  },
-  "update": {
-    "controls": [
-      {
-        "name": "QQuickItem:",
-        "x": 0,
-        "y": 90,
-        "w": 453,
-        "h": 15786
-      },
-      {
-        "name": "Button:Mark as read",
-        "x": 0,
-        "y": 15884,
-        "w": 162,
-        "h": 40
-      },
-      {
-        "name": "Button:Refresh",
-        "x": 246,
-        "y": 15932,
-        "w": 108,
-        "h": 40
-      }
-    ],
-    "walk": [
-      0,
-      1,
-      2
     ]
   }
 }
