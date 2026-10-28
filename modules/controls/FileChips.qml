@@ -7,10 +7,12 @@ Column {
 
     property var files: []
     property string lead: ""
+    property string picked: ""
+    property bool canBrowse: true
     property bool browsing: false
     property bool choosing: false
 
-    signal picked(string path)
+    signal pick(string path)
     signal browse
 
     width: parent.width
@@ -27,27 +29,28 @@ Column {
         font.pixelSize: Appearance.font.size.small
     }
 
-    Flow {
+    Column {
         width: root.width - root.leftPadding - root.rightPadding
         visible: root.files.length > 0
-        spacing: Appearance.padding.small
 
         Repeater {
             model: root.files
 
-            Button {
-                required property string modelData
+            FileChoiceRow {
+                required property var modelData
 
-                size: 0
-                style: "bare"
-                icon: "description"
-                text: modelData.slice(modelData.lastIndexOf("/") + 1)
-                onClicked: root.picked(modelData)
+                width: parent.width
+                path: modelData.path
+                detail: modelData.detail ?? ""
+                warn: !!modelData.warn
+                picked: modelData.path === root.picked
+                onChosen: root.pick(modelData.path)
             }
         }
     }
 
     Button {
+        visible: root.canBrowse
         size: 0
         style: "plate"
         icon: "folder_open"

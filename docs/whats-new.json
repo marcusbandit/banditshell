@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-25",
+      "id": "2026-10-28-26",
       "date": "2026-10-28",
       "changes": [
         {
@@ -38,6 +38,42 @@
           "type": "issues",
           "severity": "minor",
           "text": "Settings text fields fit their value, so Place reads in full"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-25",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "School Wi-Fi root certificates show issuer, expiry and server match"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The picked certificate is marked; a bundled key hides the key field"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Browse shows only when a file chooser exists; else type the path"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A missing server name shows its field and a warning outside More"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The closed More line keeps the sign-in method and the server name"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Without NetworkManager, Settings offers Start or the install command"
         }
       ]
     },
