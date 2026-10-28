@@ -52,6 +52,7 @@ Item {
     readonly property bool started: !!identity.text || !!password.text || !!root.pathOf(certificate)
     readonly property bool certificateMissing: root.tls && !root.pathOf(certificate)
     readonly property bool passwordMissing: !root.tls && !password.text && !root.looksUp
+    readonly property bool keyPasswordMissing: root.keyLocked && !keyPassword.text
     readonly property bool serverMissing: root.needsServer && !root.looksUp
     readonly property bool outerSpaced: !root.tls && /\s/.test(outer.text.trim())
     readonly property real now: Date.now()
@@ -59,7 +60,7 @@ Item {
     readonly property string certificateProblem: root.tls ? CertificateFiles.problem(root.found, root.pathOf(certificate), "client", root.now) : ""
     readonly property string keyProblem: root.tls && !root.keyCarried && !!root.pathOf(key) ? CertificateFiles.problem(root.found, root.pathOf(key), "key", root.now) : ""
     readonly property string fileProblem: root.authorityProblem || root.certificateProblem || root.keyProblem
-    readonly property bool blocked: root.authorityMissing || root.outerSpaced || !!root.fileProblem || (!root.looksUp && (!identity.text || root.certificateMissing || root.keyMissing || root.passwordMissing || root.serverMissing))
+    readonly property bool blocked: root.authorityMissing || root.outerSpaced || !!root.fileProblem || (!root.looksUp && (!identity.text || root.certificateMissing || root.keyMissing || root.keyPasswordMissing || root.passwordMissing || root.serverMissing))
     readonly property string blockReason: {
         if (!root.blocked)
             return "";
@@ -75,6 +76,8 @@ Item {
             return "pick your certificate file.";
         if (root.keyMissing)
             return "pick the certificate's key file.";
+        if (root.keyPasswordMissing)
+            return "fill in the key password.";
         if (root.passwordMissing)
             return "fill in your password.";
         if (root.serverMissing)
@@ -544,6 +547,12 @@ Item {
                     label: root.keyLocked ? "Key password" : "Key password, if it has one"
                     secret: true
                     next: identity.input
+                }
+
+                FormLine {
+                    visible: root.keyPasswordMissing
+                    text: "This file is locked. Fill in its password."
+                    color: Appearance.colour.textDim
                 }
 
                 Entry {

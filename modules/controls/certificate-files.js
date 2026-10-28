@@ -15,7 +15,7 @@ function kindOf(path, lines) {
     var key = false;
     var subject = null;
     var issuer = null;
-    var authority = null;
+    var authority = markedOf(lines);
     for (var i = 0; i < lines.length; i++) {
         var line = lines[i].trim();
         if (line === "private key")
@@ -24,10 +24,6 @@ function kindOf(path, lines) {
             subject = line.slice(8).trim();
         else if (line.indexOf("issuer=") === 0)
             issuer = line.slice(7).trim();
-        else if (/^CA:TRUE\b/.test(line))
-            authority = true;
-        else if (/^CA:FALSE\b/.test(line))
-            authority = false;
     }
     if (BUNDLES.test(path))
         return "client";
@@ -84,7 +80,7 @@ function holderOf(dn) {
 function after(lines, lead) {
     for (var i = 0; i < lines.length; i++) {
         var line = lines[i].trim();
-        if (line.indexOf(lead) === 0)
+        if (line.slice(0, lead.length).toLowerCase() === lead.toLowerCase())
             return line.slice(lead.length).trim();
     }
     return "";
@@ -192,12 +188,9 @@ function roots(files, server, now, most) {
         var expired = f.until > 0 && f.until <= now;
         var unmarked = f.marked !== true;
         var match = fits(f, host);
-        var twin = f.fingerprint ? find(files, function (g) {
-            return g !== f && g.kind === "authority" && g.fingerprint === f.fingerprint;
-        }) : null;
         out.push({
-            path: f.path,
-            detail: joined([nameOf(f.issuer) || nameOf(f.subject), untilOf(f, now), match ? "named like " + host : "", unmarked ? "not marked as a root" : "", twin ? "same as " + baseName(twin.path) : ""]),
+            file: f,
+            parts: [nameOf(f.issuer) || nameOf(f.subject), untilOf(f, now), match ? "named like " + host : "", unmarked ? "not marked as a root" : ""],
             warn: expired || unmarked,
             rank: (match ? 0 : 1) + (expired || unmarked ? 2 : 0),
             order: out.length
@@ -206,8 +199,12 @@ function roots(files, server, now, most) {
     out.sort(function (a, b) {
         return a.rank - b.rank || a.order - b.order;
     });
-    return out.slice(0, most).map(function (r) {
-        return { path: r.path, detail: r.detail, warn: r.warn };
+    var shown = out.slice(0, most);
+    return shown.map(function (r) {
+        var twin = r.file.fingerprint ? find(shown, function (o) {
+            return o !== r && o.file.fingerprint === r.file.fingerprint;
+        }) : null;
+        return { path: r.file.path, detail: joined(r.parts.concat([twin ? "same as " + baseName(twin.file.path) : ""])), warn: r.warn };
     });
 }
 
@@ -250,26 +247,24 @@ function keys(files, most) {
 }
 
 function locked(files, path) {
-    var file = find(files, function (f) {
-        return f.path === path;
-    });
+    var file = fileAt(files, path);
     return !!file && file.locked;
 }
 
+function fileAt(files, path) {
+    return find(files, function (f) {
+        return f.path === path;
+    });
+}
+
 function carriesKey(files, path) {
-    for (var i = 0; i < files.length; i++) {
-        if (files[i].path === path)
-            return files[i].key;
-    }
-    return BUNDLES.test(path);
+    var file = fileAt(files, path);
+    return file ? file.key : BUNDLES.test(path);
 }
 
 function needsKey(files, path) {
-    for (var i = 0; i < files.length; i++) {
-        if (files[i].path === path)
-            return files[i].kind === "client" && !files[i].key;
-    }
-    return false;
+    var file = fileAt(files, path);
+    return !!file && file.kind === "client" && !file.key;
 }
 
 function shortPath(path, home) {
@@ -285,14 +280,10 @@ function fullPath(text, home) {
 }
 
 function problem(files, path, want, now) {
-    var file = null;
-    for (var i = 0; i < files.length && !file; i++) {
-        if (files[i].path === path)
-            file = files[i];
-    }
+    var file = fileAt(files, path);
     if (!file)
         return "";
-    var name = path.slice(path.lastIndexOf("/") + 1);
+    var name = baseName(path);
     var expired = file.until > 0 && file.until <= now ? name + " expired in " + monthOf(file.until) + "." : "";
     if (want === "authority")
         return file.kind !== "authority" ? name + " is not a root certificate." : expired;

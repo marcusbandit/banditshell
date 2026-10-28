@@ -28,7 +28,8 @@ test.describe("certificate files", () => {
             "laptop-17.crt": "client",
             "laptop-17-with-key.pem": "client",
             "laptop-17-locked.key": "key",
-            "laptop-17-open.p12": "client"
+            "laptop-17-open.p12": "client",
+            "laptop-17-old-export.p12": "client"
         });
     });
 
@@ -73,7 +74,8 @@ test.describe("certificate files", () => {
             ["laptop-17.p12", "holds its key · locked with a password", false],
             ["laptop-17.crt", "laptop-17 · until Oct 2027 · key in laptop-17.key", false],
             ["laptop-17-with-key.pem", "laptop-17 · until Oct 2027 · holds its key", false],
-            ["laptop-17-open.p12", "laptop-17 · until Oct 2027 · holds its key", false]
+            ["laptop-17-open.p12", "laptop-17 · until Oct 2027 · holds its key", false],
+            ["laptop-17-old-export.p12", "laptop-17 · until Oct 2027 · holds its key", false]
         ]);
         assert.match(Files.clients(Files.read(FIXTURE), Date.UTC(2028, 0, 1), 10)[1].detail, /expired Oct 2027/);
     });
@@ -92,8 +94,19 @@ test.describe("certificate files", () => {
         assert.strictEqual(Files.locked(files, "/home/me/Downloads/laptop-17.p12"), true);
         assert.strictEqual(Files.locked(files, "/home/me/Downloads/laptop-17-locked.key"), true);
         assert.strictEqual(Files.locked(files, "/home/me/Downloads/laptop-17-open.p12"), false);
+        assert.strictEqual(Files.locked(files, "/home/me/Downloads/laptop-17-old-export.p12"), false);
         assert.strictEqual(Files.locked(files, "/home/me/Downloads/laptop-17.key"), false);
         assert.strictEqual(Files.locked(files, "/elsewhere/typed.p12"), false);
+    });
+
+    test.it("names a copy only when the copy is in the list too, in either case of openssl's fingerprint label", () => {
+        const now = Date.UTC(2026, 9, 28);
+        const files = Files.read(FIXTURE);
+        const shown = Files.roots(files, "dtu.dk", now, 2);
+        assert.deepStrictEqual(shown.map(r => path.basename(r.path)), ["dtu-root-ca-01.pem", "uni-root.der"]);
+        assert.ok(!shown[1].detail.includes("same as"), shown[1].detail);
+        const older = Files.read(FIXTURE.replace(/^sha256 Fingerprint=/gm, "SHA256 Fingerprint="));
+        assert.match(Files.roots(older, "uni.edu", now, 2)[0].detail, /same as uni-root-ca\.pem$/);
     });
 
     test.it("matches a root to a server under the school's name, past a shared second level", () => {

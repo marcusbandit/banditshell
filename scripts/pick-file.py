@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import ctypes
 import os
 import shutil
 import signal
@@ -26,7 +25,6 @@ except (ImportError, ValueError, NameError):
 
 PICKED, CANCELLED, NO_CHOOSER = 0, 1, 2
 ENDINGS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
-PR_SET_PDEATHSIG = 1
 
 
 def either_case(glob):
@@ -52,9 +50,10 @@ def through_portal(title, pattern, folder):
         bus.signal_subscribe("org.freedesktop.portal.Desktop", "org.freedesktop.portal.Request", "Response",
                              path, None, Gio.DBusSignalFlags.NONE, on_response)
 
-    asked = {"path": handle}
+    asked = {"path": handle, "ended": False}
 
     def give_up(*_):
+        asked["ended"] = True
         try:
             bus.call_sync("org.freedesktop.portal.Desktop", asked["path"], "org.freedesktop.portal.Request", "Close",
                           None, None, Gio.DBusCallFlags.NONE, 2000, None)
@@ -72,10 +71,17 @@ def through_portal(title, pattern, folder):
     }
     if os.path.isdir(folder):
         options["current_folder"] = GLib.Variant("ay", folder.encode() + b"\0")
-    given = bus.call_sync("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
-                          "org.freedesktop.portal.FileChooser", "OpenFile",
-                          GLib.Variant("(ssa{sv})", ("", title, options)), GLib.VariantType("(o)"),
-                          Gio.DBusCallFlags.NONE, -1, None).unpack()[0]
+    try:
+        given = bus.call_sync("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+                              "org.freedesktop.portal.FileChooser", "OpenFile",
+                              GLib.Variant("(ssa{sv})", ("", title, options)), GLib.VariantType("(o)"),
+                              Gio.DBusCallFlags.NONE, -1, None).unpack()[0]
+    except GLib.Error:
+        while GLib.MainContext.default().iteration(False):
+            pass
+        if asked["ended"]:
+            return CANCELLED, ""
+        raise
     if given != handle:
         listen(given)
         asked["path"] = given
@@ -89,10 +95,9 @@ def through_portal(title, pattern, folder):
 def through_zenity(title, pattern, folder):
     if not shutil.which("zenity"):
         return NO_CHOOSER, ""
-    libc = ctypes.CDLL(None, use_errno=True)
-    zenity = subprocess.Popen(["zenity", "--file-selection", f"--title={title}", f"--file-filter={pattern} | {' '.join(either_case(glob) for glob in pattern.split())}",
-                               f"--filename={folder.rstrip('/')}/"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
-                              preexec_fn=lambda: libc.prctl(PR_SET_PDEATHSIG, signal.SIGTERM))
+    guard = ["setpriv", "--pdeathsig", "TERM"] if shutil.which("setpriv") else []
+    zenity = subprocess.Popen(guard + ["zenity", "--file-selection", f"--title={title}", f"--file-filter={pattern} | {' '.join(either_case(glob) for glob in pattern.split())}",
+                                       f"--filename={folder.rstrip('/')}/"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
 
     def stop(_number, _frame):
         zenity.terminate()

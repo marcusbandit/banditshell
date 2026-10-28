@@ -58,7 +58,10 @@ XML = """<node>
 </node>"""
 node = Gio.DBusNodeInfo.new_for_xml(XML)
 def call(conn, sender, path, iface, method, params, invocation):
-    if method == "OpenFile":
+    if method == "OpenFile" and sys.argv[2:] == ["fail"]:
+        log.write("asked\\n")
+        GLib.timeout_add(500, lambda: invocation.return_dbus_error("org.freedesktop.portal.Error.Failed", "no backend"))
+    elif method == "OpenFile":
         token = params.unpack()[2]["handle_token"]
         handle = "/org/freedesktop/portal/desktop/request/" + sender[1:].replace(".", "_") + "/" + token
         conn.register_object(handle, node.interfaces[1], call, None, None)
@@ -123,27 +126,39 @@ test("zenity goes even when the chooser is killed outright", async () => {
 
 const portalSkip = spawnSync("python3", ["-I", "-c", "import gi; gi.require_version('Gio', '2.0'); from gi.repository import Gio"]).status !== 0 || spawnSync("sh", ["-c", "command -v dbus-daemon"]).status !== 0 ? "needs python-gobject and dbus-daemon" : false;
 
-test("ending the chooser closes the portal's dialog", { skip: portalSkip }, async () => {
+async function portalRun(mode, ready) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pick-file-"));
     const log = path.join(dir, "log");
+    fs.writeFileSync(path.join(dir, "zenity"), `#!/bin/sh\necho zenity >>"${log}"\n`, { mode: 0o755 });
     const daemon = spawn("dbus-daemon", ["--session", "--nofork", "--print-address=1", `--address=unix:path=${dir}/bus`]);
     let address = "";
     daemon.stdout.on("data", chunk => address += chunk);
     await until(() => address.includes("\n"));
-    const env = { PATH: "/usr/bin:/bin", DBUS_SESSION_BUS_ADDRESS: address.trim(), HOME: dir };
-    const portal = spawn("python3", ["-I", "-c", FAKE_PORTAL, log], { env });
-    let ready = "";
-    portal.stdout.on("data", chunk => ready += chunk);
-    await until(() => ready.includes("ready"));
+    const env = { PATH: `${dir}:/usr/bin:/bin`, DBUS_SESSION_BUS_ADDRESS: address.trim(), HOME: dir };
+    const portal = spawn("python3", ["-I", "-c", FAKE_PORTAL, log, ...mode], { env });
+    let up = "";
+    portal.stdout.on("data", chunk => up += chunk);
+    await until(() => up.includes("ready"));
     const child = spawn("python3", ["-I", SCRIPT, "Pick", "*.pem", dir], { env });
     const done = exited(child);
-    await until(() => read(log).includes("opened"));
+    await until(() => read(log).includes(ready));
     child.kill("SIGTERM");
     const code = await done;
     const said = read(log);
     portal.kill();
     daemon.kill();
     fs.rmSync(dir, { recursive: true, force: true });
+    return { code, said, pid: child.pid };
+}
+
+test("ending the chooser closes the portal's dialog", { skip: portalSkip }, async () => {
+    const { code, said, pid } = await portalRun([], "opened");
     assert.strictEqual(code, 1);
-    assert.match(said, new RegExp(`closed banditshell${child.pid}`));
+    assert.match(said, new RegExp(`closed banditshell${pid}`));
+});
+
+test("ending the chooser while the portal fails does not open zenity instead", { skip: portalSkip }, async () => {
+    const { code, said } = await portalRun(["fail"], "asked");
+    assert.strictEqual(code, 1);
+    assert.doesNotMatch(said, /zenity/);
 });
