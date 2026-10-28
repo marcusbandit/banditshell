@@ -43,6 +43,9 @@ Item {
     readonly property real need: Math.ceil(Math.max(labelInk.advanceWidth, Math.min(root.labelMin, detailInk.advanceWidth)))
     readonly property bool wrapped: root.trailWidth > 0 && root.leadWidth + root.need + root.gapX + root.trailWidth > root.inner
 
+    readonly property bool textWraps: labelText.lineCount > 1 || detailText.visible && detailText.lineCount > 1
+    readonly property real firstLine: labelText.lineCount > 0 ? labelText.implicitHeight / labelText.lineCount : 0
+
     readonly property real lineHeight: Math.max(words.implicitHeight, leadSlot.visible ? leadSlot.height : 0, root.wrapped ? 0 : trail.implicitHeight)
 
     implicitHeight: root.wrapped ? root.padY * 2 + root.lineHeight + root.gapY + trail.implicitHeight : Math.max(root.minHeight, root.padY * 2 + root.lineHeight)
@@ -134,7 +137,7 @@ Item {
         id: leadSlot
 
         x: root.padX
-        y: root.padY + (root.lineHeight - height) / 2
+        y: root.textWraps ? words.y + (root.firstLine - height) / 2 : root.padY + (root.lineHeight - height) / 2
         width: leadLoader.active ? leadLoader.width : Appearance.font.iconSize
         height: leadLoader.active ? leadLoader.height : Appearance.font.iconSize
         visible: leadLoader.active || root.icon !== ""
@@ -219,7 +222,7 @@ Item {
         id: trail
 
         x: root.width - root.padX - width
-        y: root.wrapped ? root.padY + root.lineHeight + root.gapY : root.padY + (root.lineHeight - height) / 2
+        y: root.wrapped ? root.padY + root.lineHeight + root.gapY : root.textWraps ? words.y + Math.max(0, (root.firstLine - height) / 2) : root.padY + (root.lineHeight - height) / 2
         spacing: Appearance.padding.normal
         opacity: root.off ? Appearance.opacity.disabled : 1
         enabled: !root.off

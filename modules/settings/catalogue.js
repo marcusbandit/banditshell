@@ -1036,6 +1036,7 @@ function walk(rows, page, group, parent, out) {
         r.group = group;
         r.parent = parent;
         r.uid = `${page.id}.${out.length}`;
+        r.groupKey = group.rows[0].uid;
         out.push(r);
         if (r.k && !ROW_BY_KEY[r.k])
             ROW_BY_KEY[r.k] = r;
@@ -1226,12 +1227,21 @@ function inSentence(label) {
     return /^[A-Z][a-z’'-]*$/.test(first) && PROPER_WORDS.indexOf(first) < 0 ? label.charAt(0).toLowerCase() + label.slice(1) : label;
 }
 
-function hitTitle(hit, s) {
+function hitContext(hit, s) {
     const g = hit.group;
     const context = (hit.row.parent && labelOf(hit.row.parent)) || (typeof g.t === "string" && g.t) || g.topic || nameOf(hit.page, s);
-    if (!context || ` ${hit.label.toLowerCase()} `.indexOf(` ${context.toLowerCase()} `) >= 0)
-        return hit.label;
-    return `${context}: ${inSentence(hit.label)}`;
+    return !context || ` ${hit.label.toLowerCase()} `.indexOf(` ${context.toLowerCase()} `) >= 0 ? "" : context;
+}
+
+function hitTitle(hit, s) {
+    const context = hitContext(hit, s);
+    return context ? `${context}: ${inSentence(hit.label)}` : hit.label;
+}
+
+function hitPath(hit, s) {
+    const title = hit.label.toLowerCase();
+    const parts = [CAT_BY_ID[hit.page.cat]?.name, nameOf(hit.page, s), hitContext(hit, s)].map(p => String(p || "").toLowerCase());
+    return parts.filter((p, i) => p && p !== title && parts.indexOf(p) === i).join(" › ");
 }
 
 function queryWords(query) {

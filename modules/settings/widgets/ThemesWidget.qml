@@ -14,8 +14,14 @@ Item {
     readonly property bool fromWall: SettingsState.v("fromWall")
     readonly property real gap: Appearance.padding.small
     readonly property real cardNeed: Math.max(names.implicitWidth, 18 * 4 + 4 * 3) + Appearance.padding.normal * 2
-    readonly property int columns: SettingsView.tiny || root.cellAt(3) < root.cardNeed ? 2 : 3
-    readonly property real cell: root.cellAt(root.columns)
+    readonly property bool squeezed: SettingsView.tiny || root.cellAt(3) < root.cardNeed
+    readonly property int columns: root.squeezed ? 2 : 3
+    readonly property real cell: root.squeezed ? Math.min(root.cellAt(2), root.cardNeed) : root.cellAt(3)
+    readonly property var shown: root.squeezed && root.cards.length % 2 === 1 ? root.cards.filter(c => root.dimmed(c)).concat(root.cards.filter(c => !root.dimmed(c))) : root.cards
+
+    function dimmed(card: var): bool {
+        return card.wall ? !root.fromWall : root.fromWall;
+    }
 
     function cellAt(columns: int): real {
         return (root.width - Appearance.padding.normal * 2 - (columns - 1) * root.gap) / columns;
@@ -42,7 +48,7 @@ Item {
                 }])
 
     width: parent ? parent.width : 0
-    implicitHeight: grid.height + Appearance.padding.small + Appearance.padding.normal
+    implicitHeight: grid.childrenRect.height + Appearance.padding.small + Appearance.padding.normal
 
     HoverHandler {
         onHoveredChanged: if (hovered)
@@ -65,21 +71,26 @@ Item {
         }
     }
 
-    Grid {
+    Item {
         id: grid
 
-        x: Appearance.padding.normal
         y: Appearance.padding.small
-        columns: root.columns
-        spacing: root.gap
+        width: root.width
 
         Repeater {
-            model: root.cards
+            model: root.shown
 
             delegate: Item {
                 id: card
 
                 required property var modelData
+                required property int index
+
+                readonly property int line: Math.floor(card.index / root.columns)
+                readonly property int across: Math.min(root.columns, root.shown.length - card.line * root.columns)
+
+                x: (root.width - card.across * root.cell - (card.across - 1) * root.gap) / 2 + (card.index % root.columns) * (root.cell + root.gap)
+                y: card.line * (card.height + root.gap)
 
                 readonly property bool on: card.modelData.wall ? root.fromWall : !root.fromWall && Config.values.theme === card.modelData.name
                 readonly property bool usable: !card.modelData.wall && !root.fromWall

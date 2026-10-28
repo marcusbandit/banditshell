@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "hitIndexOf", "hitIsOpen", "hitToOpen", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf", "resettable", "changed", "seeThrough", "loggedSeeThrough", "hitTitle", "hitWhy", "marked"]);
+const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "hitIndexOf", "hitIsOpen", "hitToOpen", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf", "resettable", "changed", "seeThrough", "loggedSeeThrough", "hitTitle", "hitWhy", "hitPath", "marked"]);
 const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "anchor", "nudge", "resize", "fit"]);
 const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "extent", "rects", "board", "lit", "struck", "fromSheet"]);
 const Frames = lib(path.join(SETTINGS, "scenes/keyframes.js"), ["bezier", "STANDARD", "ARRIVE", "BACK", "at", "pulse", "steps"]);
@@ -264,6 +264,23 @@ test("lid rows say sleep and do nothing and still store suspend and nothing", ()
     assert.strictEqual(Catalogue.PAGE_BY_ID.powermode.status(s), "balanced · lid sleep");
     const idle = { hasLid: true, v: k => ({ profile: "balanced", lidBattery: "nothing" })[k] };
     assert.strictEqual(Catalogue.PAGE_BY_ID.powermode.status(idle), "balanced · lid does nothing");
+});
+
+test("every row names its group by a key that stays apart from other pages' groups", () => {
+    for (const r of Catalogue.ROWS)
+        assert.strictEqual(r.groupKey, r.group.rows[0].uid, r.uid);
+    assert.notStrictEqual(Catalogue.ROW_BY_KEY.surface.groupKey, Catalogue.ROW_BY_KEY.searchAt.groupKey);
+});
+
+test("a search hit keeps its row as the title and leads to it through a path, nearest last", () => {
+    const s = fakeState();
+    const step = Catalogue.search("keys").find(h => h.row.k === "volStep");
+    assert.strictEqual(step.label, "Keys step by");
+    assert.strictEqual(Catalogue.hitPath(step, s), "sound › output › volume");
+    const mixer = Catalogue.search("volume by app")[0];
+    assert.strictEqual(Catalogue.hitPath(mixer, s), "sound");
+    for (const h of Catalogue.search("on"))
+        assert.ok(!Catalogue.hitPath(h, s).split(" › ").includes(h.label.toLowerCase()), h.label);
 });
 
 test("a search hit names its row with the heading it sits under and marks what matched", () => {

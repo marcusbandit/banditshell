@@ -396,11 +396,12 @@ Item {
 
                     width: found.width
                     icon: root.listingRecent ? "history" : hit.modelData.page.icon
-                    readonly property string place: root.listingRecent ? "" : Catalogue.nameOf(hit.modelData.page, SettingsState).toLowerCase()
+                    readonly property string place: root.listingRecent ? "" : Catalogue.hitPath(hit.modelData, SettingsState)
                     readonly property string why: root.listingRecent ? "" : Catalogue.hitWhy(hit.modelData, SettingsView.query, `${hit.label} ${hit.place}`)
 
-                    label: root.listingRecent ? hit.modelData.label : Catalogue.hitTitle(hit.modelData, SettingsState)
+                    label: hit.modelData.label
                     detail: root.listingRecent ? `${hit.modelData.from} → ${hit.modelData.to}` : hit.why ? `${hit.place} · ${hit.why}` : hit.place
+                    path: !root.listingRecent
                     query: root.listingRecent ? "" : SettingsView.query
                     active: hit.index === root.hitIndex
                     onPicked: root.pick(hit.index)
@@ -494,6 +495,7 @@ Item {
         property string detail: ""
         property string query: ""
         property bool active: false
+        property bool path: false
 
         signal picked
 
@@ -522,21 +524,10 @@ Item {
             width: parent.width - x - Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
 
-            BalancedText {
-                id: shape
-
-                width: parent.width
-                visible: false
-                text: hr.label
-                maxLines: 2
-            }
-
             StyledText {
-                width: shape.balanced
+                width: parent.width
                 textFormat: Text.StyledText
                 text: Catalogue.marked(hr.label, hr.query, Appearance.colour.accent)
-                wrapMode: Text.WordWrap
-                maximumLineCount: 2
                 elide: Text.ElideRight
             }
 
@@ -544,7 +535,7 @@ Item {
                 width: parent.width
                 textFormat: Text.StyledText
                 text: Catalogue.marked(hr.detail, hr.query, Appearance.colour.accent)
-                elide: Text.ElideRight
+                elide: hr.path ? Text.ElideLeft : Text.ElideRight
                 color: Appearance.colour.textFaint
             }
         }
