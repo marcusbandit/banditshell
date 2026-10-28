@@ -75,12 +75,14 @@ Singleton {
 
     readonly property string layout: Keymap.several && Keymap.layout ? `${Keymap.index}:${Keymap.layout}` : ""
 
-    onLayoutChanged: {
+    onLayoutChanged: Qt.callLater(root.layoutSettled)
+
+    function layoutSettled(): void {
         const before = root.heardLayout;
         root.heardLayout = root.layout;
         if (!root.armed || !before || !root.layout || before === root.layout)
             return;
-        const moment = Logic.layoutMoment(Keymap.layout, Keymap.name);
+        const moment = Logic.layoutMoment(Keymap.layout, Keymap.name, Keymap.shared);
         if (moment && Logic.levelWanted(root.enabled, root.covers, "layout"))
             Notices.pass(moment);
     }

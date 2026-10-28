@@ -39,6 +39,8 @@ Item {
 
     readonly property bool needsKeyboard: root.open && Prompts.activeIn(root.shellWindow)
 
+    readonly property bool waiting: root.open && Prompts.awayIn(root.shellWindow)
+
     readonly property var shellWindow: QsWindow.window
 
     readonly property bool wantsEscape: root.pinnedKey !== ""
@@ -187,7 +189,7 @@ Item {
         interval: Appearance.animation.grace
 
         onTriggered: {
-            if (root.pinned || root.hovered || root.shellHovered || root.needsKeyboard)
+            if (root.pinned || root.hovered || root.shellHovered || root.needsKeyboard || root.waiting)
                 return;
 
             if (!root.sawPointer) {

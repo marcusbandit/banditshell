@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-13",
+      "id": "2026-10-28-16",
       "date": "2026-10-28",
       "changes": [
         {
@@ -28,6 +28,119 @@
           "type": "issues",
           "severity": "minor",
           "text": "Reopening the pen area editor no longer resumes an old drag"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-15",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Sign in on a school network from the launcher opens its sign-in form"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Certificate lists show only files that fit, with a Browse button"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "School Wi-Fi Connect stays off until the form can work, and says why"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "School Wi-Fi sign-in can change phase 2 and the anonymous identity"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A LEAP network says who to ask and offers Close"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Wi-Fi networks leaving the scan no longer write warnings to the log"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-14",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files preview shows a file's new content when it changes"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A folder updating in Files keeps its tiles instead of redrawing all"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A folder in the Files preview follows the Hidden files switch"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files preview shows owner and permissions in full"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files grid marks the item the preview is showing"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-13",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "major",
+          "text": "Copying a hidden clipboard entry keeps it hidden in the island"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A damaged clipboard history says what it kept and where the copy is"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clear history also removes the copy of a damaged history"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A clipboard picture that cannot load lines up with the other rows"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A discarded dictation says Dictation discarded or Partly kept"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A finished island task names what finished and how it ended"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell island end --text sets the task's final words"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Two layouts with one code show apart, such as US and USI"
         }
       ]
     },

@@ -80,9 +80,14 @@ test.describe("copied", () => {
     test.it("masks text copied as sensitive", () => {
         const label = M.copiedLabel(["wl-copy", "--sensitive", "-n"], "hunter2-correct-horse");
         assert.ok(!label.includes("hunter"));
-        assert.strictEqual(label, "Copied: ••••••••");
+        assert.strictEqual(label, "Copied secret");
         assert.strictEqual(M.copiedSpec(["wl-copy", "--sensitive", "-n"], "x").data.secret, true);
         assert.strictEqual(M.copiedSpec(["wl-copy", "-n"], "x").data.secret, false);
+    });
+
+    test.it("masks a secret even when wl-copy had no --sensitive to send it with", () => {
+        assert.strictEqual(M.copiedLabel(["wl-copy", "-n"], "hunter2-correct-horse", true), "Copied secret");
+        assert.strictEqual(M.copiedSpec(["wl-copy", "-n"], "hunter2-correct-horse", true).data.secret, true);
     });
 
     test.it("names images and files instead of showing their bytes", () => {

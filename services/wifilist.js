@@ -93,8 +93,14 @@ const KEY_MANAGEMENT = {
 };
 
 const INNER_METHODS = {
-    peap: "mschapv2",
-    ttls: "pap"
+    peap: ["mschapv2", "gtc"],
+    ttls: ["pap", "mschapv2"]
+};
+
+const INNER_NAMES = {
+    mschapv2: "MSCHAPv2",
+    pap: "PAP",
+    gtc: "GTC"
 };
 
 const KNOWN_SERVERS = {
@@ -118,10 +124,23 @@ function signInMethods(kind) {
 
 function signInRefusal(kind) {
     if (kind === "leap")
-        return "LEAP lets anyone nearby work out the password, so this network cannot be joined from here";
+        return "LEAP lets anyone nearby work out the password, so this network cannot be joined from here. Ask whoever runs it to switch to WPA2 or WPA3 Enterprise.";
     if (!KEY_MANAGEMENT[kind])
-        return "this kind of sign-in cannot be joined from here yet";
+        return "This kind of sign-in cannot be joined from here yet.";
     return "";
+}
+
+function innerMethods(method) {
+    return INNER_METHODS[method] || [];
+}
+
+function innerName(inner) {
+    return INNER_NAMES[inner] || String(inner ?? "").toUpperCase();
+}
+
+function innerMethod(method, inner) {
+    const allowed = innerMethods(method);
+    return allowed.includes(inner) ? inner : allowed[0] || "";
 }
 
 function knownServer(name) {
@@ -190,14 +209,23 @@ function outerIdentity(method, identity) {
         return "";
     const text = String(identity ?? "");
     const realm = text.slice(text.lastIndexOf("@") + 1);
-    return text.includes("@") && /^[^\s@]+$/.test(realm) ? `anonymous@${realm}` : "";
+    return text.includes("@") && /^[^\s@]+$/.test(realm) ? `anonymous@${realm}` : "anonymous";
+}
+
+function outerIdentityFor(method, identity, typed) {
+    if (method !== "peap" && method !== "ttls")
+        return "";
+    const text = String(typed ?? "").trim();
+    if (!text)
+        return outerIdentity(method, identity);
+    return /^\S+$/.test(text) ? text : null;
 }
 
 function signInReady(kind, form) {
     const method = form?.method;
     if (!KEY_MANAGEMENT[kind] || !signInMethods(kind).includes(method) || !form.identity)
         return false;
-    if (!serverDomain(form.domain))
+    if (!serverDomain(form.domain) || outerIdentityFor(method, form.identity, form.outer) === null)
         return false;
     return method !== "tls" || (!!form.certificate && !!form.key);
 }
@@ -213,8 +241,8 @@ function signInArgs(kind, form) {
         "wifi-sec.pmf", kind === "suiteb" ? "required" : "default",
         "802-1x.eap", method,
         "802-1x.identity", form.identity,
-        "802-1x.anonymous-identity", outerIdentity(method, form.identity),
-        "802-1x.phase2-auth", INNER_METHODS[method] || "",
+        "802-1x.anonymous-identity", outerIdentityFor(method, form.identity, form.outer),
+        "802-1x.phase2-auth", innerMethod(method, form.inner),
         "802-1x.system-ca-certs", form.authority ? "no" : "yes",
         "802-1x.ca-cert", form.authority || "",
         "802-1x.domain-suffix-match", serverDomain(form.domain),
@@ -225,10 +253,14 @@ function signInArgs(kind, form) {
         "802-1x.private-key-password-flags", tls && !form.locked ? "not-required" : "none"];
 }
 
+function checkIdentity(form) {
+    return outerIdentityFor("peap", form?.identity, form?.outer);
+}
+
 function serverCheckArgs(kind, form) {
-    if (kind !== "wpa" && kind !== "wep")
+    const outer = checkIdentity(form);
+    if ((kind !== "wpa" && kind !== "wep") || outer === null)
         return null;
-    const outer = outerIdentity("peap", form?.identity) || "anonymous";
     return ["connection.autoconnect", "no",
         "connection.auth-retries", "1",
         "wifi-sec.key-mgmt", KEY_MANAGEMENT[kind],
@@ -244,7 +276,7 @@ function serverCheckArgs(kind, form) {
 }
 
 function serverCheckSecrets(form) {
-    const outer = outerIdentity("peap", form?.identity) || "anonymous";
+    const outer = checkIdentity(form) ?? "anonymous";
     return secretLine("802-1x.identity", outer) + secretLine("802-1x.password", "never-sent");
 }
 

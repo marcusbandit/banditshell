@@ -128,7 +128,7 @@ Item {
                         bits.push(n === 1 ? "1 line" : `${n} lines`);
                     }
                     bits.push(Clipboard.age(root.entry.recorded));
-                    return bits.join("  ·  ");
+                    return bits.filter(b => b).join("  ·  ");
                 }
             }
         }

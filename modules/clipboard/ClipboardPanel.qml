@@ -87,6 +87,8 @@ Item {
 
     readonly property bool undoing: !root.speech && !root.searching && Clipboard.shelved > 0
 
+    readonly property bool telling: !root.speech && !root.searching && !!Clipboard.recovery
+
     readonly property string cleared: {
         const gone = `${Clipboard.shelved} cleared`;
         if (!Clipboard.clearSaves)
@@ -116,6 +118,8 @@ Item {
         if (!root.shown)
             return;
         root.shown = false;
+        if (root.telling)
+            Clipboard.recoverySeen();
         root.reading = null;
         root.clearing = false;
         Clipboard.releaseShelf(root);
@@ -629,7 +633,7 @@ Item {
                                 }
 
                                 HoverTip {
-                                    text: "The history file on disk could not be read, so it was left unchanged. These copies were never saved to it."
+                                    text: "The history file on disk could not be read or copied, so it was left unchanged. These copies were never saved to it."
                                     asked: !Clipboard.clearSaves && clearedTextHover.hovered
                                 }
                             }
@@ -733,12 +737,85 @@ Item {
                         width: parent.width - Appearance.padding.large * 2
                     }
 
+                    Item {
+                        id: recovered
+
+                        readonly property var told: Clipboard.recovery ?? ({})
+                        readonly property color tone: Appearance.colour.warning
+
+                        anchors.top: rule.bottom
+                        anchors.topMargin: root.telling ? Appearance.padding.normal : 0
+                        x: Appearance.padding.large
+                        width: parent.width - Appearance.padding.large * 2
+                        height: root.telling ? note.implicitHeight + Appearance.padding.normal * 2 : 0
+                        visible: root.telling
+
+                        SquircleRect {
+                            anchors.fill: parent
+                            radius: Appearance.rounding.normal
+                            color: Appearance.colour.warningFill
+                        }
+
+                        Column {
+                            id: note
+
+                            x: Appearance.padding.normal
+                            y: Appearance.padding.normal
+                            width: parent.width - Appearance.padding.normal * 2
+                            spacing: Appearance.padding.small
+
+                            Row {
+                                width: parent.width
+                                spacing: Appearance.padding.normal
+
+                                Icon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "warning"
+                                    size: Appearance.font.iconSize
+                                    color: recovered.tone
+                                }
+
+                                StyledText {
+                                    width: parent.width - Appearance.font.iconSize - parent.spacing
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: recovered.told.of > recovered.told.kept ? `The history file was damaged. Kept ${recovered.told.kept} of ${recovered.told.of} entries.` : `The history file was damaged. Kept ${recovered.told.kept === 1 ? "1 entry" : `${recovered.told.kept ?? 0} entries`}.`
+                                    color: recovered.tone
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+
+                            Row {
+                                width: parent.width
+                                spacing: Appearance.padding.normal
+                                visible: !!recovered.told.copy
+
+                                StyledText {
+                                    width: parent.width - copyPath.width - parent.spacing
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: `Damaged copy: ${recovered.told.copy ?? ""}`
+                                    color: Appearance.colour.textDim
+                                    elide: Text.ElideMiddle
+                                }
+
+                                Button {
+                                    id: copyPath
+
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    style: "bare"
+                                    icon: "content_copy"
+                                    text: "Copy path"
+                                    onClicked: Clipboard.offer(["wl-copy", "-n"], recovered.told.copy, false)
+                                }
+                            }
+                        }
+                    }
+
                     GlideList {
                         id: list
 
                         readonly property real pitch: Appearance.sizes.rowHeight + Appearance.padding.small
 
-                        anchors.top: rule.bottom
+                        anchors.top: recovered.bottom
                         anchors.topMargin: Appearance.padding.normal
                         x: Appearance.padding.large
                         width: parent.width - Appearance.padding.large * 2

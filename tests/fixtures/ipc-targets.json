@@ -1,6 +1,7 @@
 {
   "activity": [
     "end(id: string, outcome: string): string",
+    "endSaying(id: string, outcome: string, text: string): string",
     "list(): string",
     "push(id: string, text: string, detail: string, progress: string, icon: string, until: string, priority: string, run: string): string",
     "reply(error: string, done: string): string",
