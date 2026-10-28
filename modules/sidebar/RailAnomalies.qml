@@ -96,8 +96,18 @@ Item {
         return root.held.find(e => e.key === key) ?? null;
     }
 
+    property var settledKeys: []
+
     function drop(key: string): void {
-        const next = Anomalies.without(root.held, key);
+        root.settledKeys.push(key);
+        Qt.callLater(root.prune);
+    }
+
+    function prune(): void {
+        let next = root.held;
+        for (const key of root.settledKeys)
+            next = Anomalies.without(next, key);
+        root.settledKeys = [];
         if (next.length !== root.held.length)
             root.held = next;
     }
@@ -232,8 +242,7 @@ Item {
                     function onSettledChanged(): void {
                         if (!grow.settled || mark.present)
                             return;
-                        const key = mark.modelData.key;
-                        Qt.callLater(() => root.drop(key));
+                        root.drop(mark.modelData.key);
                     }
                 }
             }
