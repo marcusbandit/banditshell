@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "desktop-entries.js" as Entries
 import "ranking.js" as Ranking
 
 Singleton {
@@ -25,7 +26,9 @@ Singleton {
         target: DesktopEntries
 
         function onApplicationsChanged(): void {
-            root.all = root.listed();
+            const next = root.listed();
+            if (!Entries.sameEntries(root.all, next))
+                root.all = next;
         }
     }
 

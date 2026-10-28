@@ -671,9 +671,10 @@ test("L18 flags DesktopEntries.applications outside services/Apps.qml", () => {
         "    readonly property int count: DesktopEntries.applications.values.length",
         "    readonly property var found: DesktopEntries.heuristicLookup(\"zen\")",
         "    readonly property var mine: root.DesktopEntries.applications",
+        "    readonly property var maybe: DesktopEntries?.applications.values",
         "}"
     ].join("\n");
-    assert.deepStrictEqual(lines("services/Tour.qml", text, "L18"), [2]);
+    assert.deepStrictEqual(lines("services/Tour.qml", text, "L18"), [2, 5]);
     assert.deepStrictEqual(lines("services/Apps.qml", text, "L18"), []);
 });
 

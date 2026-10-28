@@ -574,7 +574,7 @@ function ruleL18(ctx) {
         return [];
     const { code, at } = ctx.scanned;
     const found = [];
-    const use = /(?<![\w$.])DesktopEntries\s*\.\s*applications(?![\w$])/g;
+    const use = /(?<![\w$.])DesktopEntries\s*\??\.\s*applications(?![\w$])/g;
     let m;
     while ((m = use.exec(code)) !== null)
         found.push({ line: at(m.index), detail: "DesktopEntries.applications; read Apps.all" });
