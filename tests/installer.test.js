@@ -98,10 +98,10 @@ test.describe("Omarchy", () => {
         omarchy(dir);
         const out = installer(dir, `REPO="${dir}/home/banditshell"; main </dev/null`);
         assert.strictEqual(out.status, 1);
-        assert.match(out.stdout, /both try to show your\nnotifications/);
-        assert.match(out.stdout, /omarchy plugin remove banditshell\.island/);
+        assert.match(out.stdout, /Only one program can show notifications/);
+        assert.doesNotMatch(out.stdout, /cancel|Choice/);
         assert.match(out.stdout, /To add the island:\n {4}omarchy plugin add https:\/\/github\.com\/marcusbandit\/banditshell-island\.git --enable\n/);
-        assert.match(out.stdout, /Or the full shell anyway:\n {4}~\/banditshell\/install\.sh --beside-omarchy\n$/);
+        assert.match(out.stdout, /Or the full shell:\n {4}~\/banditshell\/install\.sh --beside-omarchy\n$/);
     });
 
     test.it("finds the packaged install and the one OMARCHY_PATH names", () => {
@@ -114,10 +114,13 @@ test.describe("Omarchy", () => {
         assert.match(installer(dir, "omarchy_present; echo $?", { OMARCHY_PATH: `${dir}/elsewhere` }).stdout, /^0$/m);
     });
 
-    test.it("adds the island on Enter, and says how to hand it notifications and remove it", () => {
+    test.it("Enter alone fetches nothing; 1 adds the island and says how to hand it notifications", () => {
         const dir = world({ omarchy: 'echo "$*" >>"$HOME/omarchy.log"' });
         omarchy(dir);
-        const out = installer(dir, `can_ask() { true; }; omarchy_check <<<""; echo "go $?"`);
+        assert.match(installer(dir, `can_ask() { true; }; omarchy_check <<<""; echo "go $?"`).stdout, /Nothing was installed[^]*go 1\n$/);
+        assert.ok(!fs.existsSync(path.join(dir, "home/omarchy.log")));
+        const out = installer(dir, `can_ask() { true; }; omarchy_check <<<$'\\nx\\n1'; echo "go $?"`);
+        assert.strictEqual(out.stdout.match(/Choice \(1, 2 or 3\): /g).length, 3);
         assert.strictEqual(fs.readFileSync(path.join(dir, "home/omarchy.log"), "utf8"), "plugin add https://github.com/marcusbandit/banditshell-island.git --enable\n");
         assert.match(out.stdout, /omarchy plugin disable omarchy\.notifications && omarchy restart shell\nTo remove it again:\n {4}omarchy plugin remove banditshell\.island\ngo 2\n$/);
         assert.strictEqual(installer(dir, `can_ask() { true; }; main <<<1 >/dev/null`).status, 0);
@@ -162,9 +165,15 @@ test.describe("Omarchy", () => {
     test.it("keeps the choice across the move to the release, which may not know the flag", () => {
         const dir = world();
         omarchy(dir);
-        fs.writeFileSync(path.join(dir, "install.sh"), 'echo "args [$*] beside $BANDITSHELL_BESIDE_OMARCHY release $BANDITSHELL_ON_RELEASE"\n');
-        const out = installer(dir, `REPO="${dir}"; INSTALL_ARGS=(--dry-run --beside-omarchy); BESIDE_OMARCHY=1; checkout_release() { return 0; }; main`);
-        assert.strictEqual(out.stdout, "args [--dry-run] beside 1 release 1\n");
+        fs.writeFileSync(path.join(dir, "install.sh"), 'echo "args [$*] beside $BANDITSHELL_BESIDE_OMARCHY release $BANDITSHELL_ON_RELEASE ending $BANDITSHELL_OMARCHY_ENDING"; exit "${CHILD_EXIT:-0}"\n');
+        const main = `REPO="${dir}"; INSTALL_ARGS=(--dry-run --beside-omarchy); BESIDE_OMARCHY=1; checkout_release() { return 0; }; main`;
+        const out = installer(dir, main);
+        assert.strictEqual(out.status, 0);
+        assert.match(out.stdout, /^args \[--dry-run\] beside 1 release 1 ending parent\n\n {2}On Omarchy, Omarchy still shows your notifications/);
+        assert.match(out.stdout, /banditshell stop[^]*omarchy plugin enable omarchy\.notifications && omarchy restart shell\n[^]*no uninstaller/);
+        const failed = installer(dir, main, { CHILD_EXIT: "1" });
+        assert.strictEqual(failed.status, 1);
+        assert.doesNotMatch(failed.stdout, /On Omarchy/);
     });
 
     test.it("says nothing where there is no Omarchy", () => {

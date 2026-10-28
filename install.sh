@@ -868,11 +868,41 @@ shown_path() {
     esac
 }
 
+NOTIFY_TAKE="omarchy plugin disable omarchy.notifications && omarchy restart shell"
+NOTIFY_GIVE="omarchy plugin enable omarchy.notifications && omarchy restart shell"
+OMARCHY_FULL=0
+
+omarchy_choices() {
+    local island="$1" full="$2"
+    say "Omarchy found. There are two ways to add banditshell to it:"
+    say ""
+    say "  ${island}island      a plugin inside Omarchy's own bar: now playing, word-timed"
+    say "  ${island//?/ }            lyrics, timers and notifications. The rest of Omarchy stays."
+    say "  ${full}full shell  banditshell's own frame, launcher, sidebar and Settings, as a"
+    say "  ${full//?/ }            second shell running next to Omarchy's, island included."
+    [ -z "$island" ] || say "  3  cancel"
+    say ""
+    say "Only one program can show notifications, and Omarchy does now. With either"
+    say "choice, banditshell shows them once you hand them over:"
+    say "    $NOTIFY_TAKE"
+    say ""
+}
+
 omarchy_later() {
     say "Nothing was installed. To add the island:"
     say "    $ISLAND_ADD"
-    say "Or the full shell anyway:"
+    say "Or the full shell:"
     say "    $(shown_path "$REPO/install.sh") --beside-omarchy"
+}
+
+omarchy_ending() {
+    say "  On Omarchy, Omarchy still shows your notifications. To hand them to banditshell:"
+    say "    $NOTIFY_TAKE"
+    say "  To stop banditshell, run banditshell stop and remove its exec-once line if you"
+    say "  added one. To give notifications back to Omarchy:"
+    say "    $NOTIFY_GIVE"
+    say "  There is no uninstaller: the packages stay, and deleting $(shown_path "$REPO")"
+    say "  and ~/.local/bin/banditshell removes the shell itself."
 }
 
 add_island() {
@@ -889,43 +919,45 @@ add_island() {
     fi
     say ""
     say "banditshell island is in Omarchy's bar. To let it show your notifications:"
-    say "    omarchy plugin disable omarchy.notifications && omarchy restart shell"
+    say "    $NOTIFY_TAKE"
     say "To remove it again:"
     say "    $ISLAND_REMOVE"
     return 2
 }
 
 omarchy_check() {
-    [ "$BESIDE_OMARCHY" != 1 ] && ! cli_installed && omarchy_present || return 0
-    say "This is Omarchy. Omarchy and the full banditshell both try to show your"
-    say "notifications, and only one of them can."
-    say ""
-    say "banditshell island is made to sit beside Omarchy: notifications, now playing"
-    say "with word-timed lyrics, and timers, in Omarchy's own bar. It leaves out the"
-    say "launcher, the sidebar, Settings and the rest of the full shell. To remove it"
-    say "later: $ISLAND_REMOVE"
-    say ""
+    ! cli_installed && omarchy_present || return 0
+    if [ "$BESIDE_OMARCHY" = 1 ]; then
+        OMARCHY_FULL=1
+        return 0
+    fi
     if [ "$DRY_RUN" -eq 1 ]; then
+        omarchy_choices "" ""
         say "Dry run, so this walks the full shell's steps and adds nothing."
         say ""
         return 0
     fi
     if ! can_ask; then
+        omarchy_choices "" ""
         omarchy_later
         return 1
     fi
-    local answer=""
-    say "  1  add banditshell island (recommended)"
-    say "  2  install the full shell anyway"
-    say "  3  cancel"
-    printf 'Choice [1]: '
-    read -r answer || true
+    omarchy_choices "1  " "2  "
+    local answer
+    while :; do
+        printf 'Choice (1, 2 or 3): '
+        read -r answer || { say ""; answer=3; }
+        case "$answer" in
+        1 | 2 | 3) break ;;
+        esac
+    done
     say ""
     case "$answer" in
-    "" | 1) add_island; return ;;
+    1) add_island; return ;;
     2)
         BESIDE_OMARCHY=1
-        say "Installing the full shell beside Omarchy. Next time, skip this question with:"
+        OMARCHY_FULL=1
+        say "Installing the full shell. Next time, skip this question with:"
         say "    $(shown_path "$REPO/install.sh") --beside-omarchy"
         say ""
         ;;
@@ -986,6 +1018,12 @@ main() {
             for arg in "${INSTALL_ARGS[@]}"; do
                 [ "$arg" = --beside-omarchy ] || args+=("$arg")
             done
+            if [ "$OMARCHY_FULL" -eq 1 ]; then
+                BANDITSHELL_ON_RELEASE=1 BANDITSHELL_BESIDE_OMARCHY=1 BANDITSHELL_OMARCHY_ENDING=parent bash "$REPO/install.sh" "${args[@]}"
+                local status=$?
+                [ "$status" -ne 0 ] || { say ""; omarchy_ending; }
+                exit "$status"
+            fi
             BANDITSHELL_ON_RELEASE=1 BANDITSHELL_BESIDE_OMARCHY="$BESIDE_OMARCHY" exec bash "$REPO/install.sh" "${args[@]}"
         fi
     fi
@@ -1088,6 +1126,10 @@ main() {
     say "    run it now:     $REPO/bin/banditshell start"
     say "    see it live:    $REPO/bin/banditshell dev run"
     say "    what it does:   $REPO/bin/banditshell help"
+    if [ "$OMARCHY_FULL" -eq 1 ] && [ -z "${BANDITSHELL_OMARCHY_ENDING:-}" ]; then
+        say ""
+        omarchy_ending
+    fi
     return 0
 }
 
