@@ -85,7 +85,7 @@ Singleton {
     }
 
     Component.onCompleted: {
-        if (Config.loaded)
+        if (Config.writable)
             root.adoptConfig();
         root.detect();
         root.ensureGamma();
@@ -95,8 +95,8 @@ Singleton {
     Connections {
         target: Config
 
-        function onLoadedChanged(): void {
-            if (Config.loaded)
+        function onWritableChanged(): void {
+            if (Config.writable)
                 root.adoptConfig();
         }
     }

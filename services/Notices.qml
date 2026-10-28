@@ -17,6 +17,11 @@ Singleton {
         const out = [];
         if (!root.live)
             return out;
+        if (Config.unreadable)
+            out.push({
+                key: "config",
+                kind: "config"
+            });
         if (root.updateShown)
             out.push({
                 key: `update:${Update.target}`,

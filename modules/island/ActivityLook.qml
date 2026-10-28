@@ -87,6 +87,13 @@ QtObject {
                 trailingIcon: a.upgrading ? "hourglass_top" : "download",
                 trailingTone: Appearance.colour.accent
             };
+        case "config":
+            return {
+                icon: "error",
+                tone: Appearance.colour.alarm,
+                text: "config.json has an error",
+                detail: "Changes are not saved until it is fixed"
+            };
         case "upgrade": {
             const state = SystemUpgrade.state;
             const failed = state === "failed";
