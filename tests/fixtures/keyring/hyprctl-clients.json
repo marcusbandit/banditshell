@@ -1,0 +1,22 @@
+[{
+    "address": "0x5556acc69c00",
+    "mapped": true,
+    "workspace": {"id": -97, "name": "special:torrents"},
+    "class": "org.qbittorrent.qBittorrent",
+    "title": "qBittorrent v5.2.4",
+    "pid": 5177
+},{
+    "address": "0x5556ad0e4a10",
+    "mapped": true,
+    "workspace": {"id": 7, "name": "7"},
+    "class": "gcr-prompter",
+    "title": "Unlock Login Keyring",
+    "pid": 81234
+},{
+    "address": "0x5556ad1f2b20",
+    "mapped": true,
+    "workspace": {"id": 2, "name": "2"},
+    "class": "kitty",
+    "title": "~",
+    "pid": 4410
+}]

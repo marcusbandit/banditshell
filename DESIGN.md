@@ -1018,7 +1018,9 @@ banditshell/
 │   │                            face-unlocked login) no longer gets gcr's box:
 │   │                            the helper points the name's D-Bus activation at
 │   │                            scripts/keyring-waiter.sh, so the question waits
-│   │                            on the bus for the shell
+│   │                            on the bus for the shell. When gcr's box got the
+│   │                            name first anyway, each of its windows is moved
+│   │                            to the focused workspace and focused, once
 │   ├── DarkMode.qml             whether apps are asked for dark: the freedesktop
 │   │                            colour-scheme key, read and watched with
 │   │                            gsettings, which portal-aware apps follow

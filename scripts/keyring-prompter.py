@@ -232,7 +232,7 @@ class Prompter:
         self._serial = 0
         self._pipe = Pipe(self._answered)
 
-    def program_of(self, name: str) -> str:
+    def pid_of(self, name: str) -> int:
         try:
             reply = self._bus.call_sync(
                 "org.freedesktop.DBus",
@@ -246,10 +246,14 @@ class Prompter:
                 None,
             )
         except GLib.Error:
+            return 0
+        return reply.unpack()[0]
+
+    def program_at(self, pid: int) -> str:
+        if not pid:
             return ""
-        pid = reply.unpack()[0]
         try:
-            return os.path.basename(os.readlink(f"/proc/{pid}/exe"))
+            return os.path.basename(os.readlink(f"/proc/{pid}/exe").removesuffix(" (deleted)"))
         except OSError:
             pass
         try:
@@ -258,7 +262,10 @@ class Prompter:
         except OSError:
             return ""
 
-    def owner_of(self, name: str) -> str:
+    def program_of(self, name: str) -> str:
+        return self.program_at(self.pid_of(name))
+
+    def owner_of(self, name: str) -> int:
         try:
             reply = self._bus.call_sync(
                 "org.freedesktop.DBus",
@@ -272,14 +279,15 @@ class Prompter:
                 None,
             )
         except GLib.Error:
-            return ""
-        return self.program_of(reply.unpack()[0])
+            return 0
+        return self.pid_of(reply.unpack()[0])
 
     def acquired(self, name: str) -> None:
         self._pipe.send(event="acquired", name=name)
 
     def lost(self, name: str) -> None:
-        self._pipe.send(event="owner", name=name, program=self.owner_of(name))
+        pid = self.owner_of(name)
+        self._pipe.send(event="owner", name=name, program=self.program_at(pid), pid=pid)
 
     def _later(self, action) -> None:
         GLib.idle_add(lambda: (action(), GLib.SOURCE_REMOVE)[1])

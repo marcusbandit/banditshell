@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-10",
+      "id": "2026-10-28-11",
       "date": "2026-10-28",
       "changes": [
         {
@@ -38,6 +38,22 @@
           "type": "issues",
           "severity": "minor",
           "text": "On NixOS, install.sh --charge-limit says why it cannot install"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-10",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Your old password agent comes back even if an update replaced it"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A keyring prompt from gcr moves to your workspace and takes focus"
         }
       ]
     },
