@@ -1468,7 +1468,7 @@ island_post() {
 }
 
 island_end() {
-    local id="$1" outcome=done text=""
+    local id="$1" outcome="done" text=""
     case "$id" in -*) say_usage "island end <id> [done|failed|cancelled] [--text <text>]" ;; esac
     shift
     while [ $# -gt 0 ]; do
