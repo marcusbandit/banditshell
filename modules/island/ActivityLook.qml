@@ -91,6 +91,21 @@ QtObject {
                 trailingIcon: a.upgrading ? "hourglass_top" : "download",
                 trailingTone: Appearance.colour.accent
             };
+        case "config":
+            return {
+                icon: "warning",
+                tone: Appearance.colour.warning,
+                text: "Config broken",
+                trailing: "icon",
+                trailingIcon: "chevron_right",
+                trailingTone: Appearance.colour.warning
+            };
+        case "configRead":
+            return {
+                icon: "check_circle",
+                tone: Appearance.colour.accent,
+                text: "Config read again"
+            };
         case "upgrade": {
             const state = SystemUpgrade.state;
             const failed = state === "failed";

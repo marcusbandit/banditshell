@@ -869,13 +869,12 @@ QtObject {
 
     function settingRow(hit: var): var {
         const live = root.liveToggle(hit.row);
-        const group = typeof hit.group.t === "string" ? hit.group.t : "";
         return {
             key: `setting:${hit.page.id}:${hit.row.k ?? hit.label}`,
             kind: "setting",
             hit: hit,
-            label: hit.label,
-            detail: group ? `${hit.page.name} › ${group}` : hit.page.name,
+            label: Catalogue.hitTitle(hit, SettingsState),
+            detail: Catalogue.nameOf(hit.page, SettingsState),
             icon: hit.row.icon || hit.page.icon || "tune",
             toggle: live ? !!SettingsState.v(hit.row.k) : undefined,
             score: Math.max(Ranking.ANYWHERE, Ranking.place(hit.label, root.text)) - Ranking.EXACT * 2

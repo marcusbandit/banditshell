@@ -272,6 +272,7 @@ Item {
                 bottomInset: root.endMargin(root.status) + Appearance.padding.large
                 tabsReach: root.glanceReach
                 timeCentre: root.timeCentre
+                floor: Placement.railFloor(glance.headEdge + Appearance.padding.large, pips.implicitHeight, (Appearance.sizes.statusSlot + Appearance.sizes.statusGap) * rest.slotsReserved, Appearance.padding.huge, Appearance.padding.large)
             }
 
             RailAnomalies {

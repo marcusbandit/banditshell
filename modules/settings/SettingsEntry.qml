@@ -18,6 +18,9 @@ Column {
     readonly property string stateText: String(Catalogue.val(root.row.state, SettingsState) ?? "")
     readonly property string pendingText: String(Catalogue.val(root.row.pending, SettingsState) ?? "")
     readonly property var offer: Catalogue.val(root.row.offer, SettingsState) ?? null
+    readonly property var heldText: Catalogue.val(root.row.held, SettingsState) ?? null
+    readonly property bool held: root.heldText !== null
+    readonly property bool typing: root.kind === "text" && (controls.item?.editing ?? false)
     readonly property var combos: root.row.keys ? SettingsKeys.combosFor(root.row.keys) : []
     readonly property bool hasLayer: !!root.row.layer
     readonly property bool unrolled: SettingsView.isOpen(root.row.uid ?? "")
@@ -31,7 +34,7 @@ Column {
     }
     readonly property bool resettable: !!root.key && SettingsState.resettable(root.key)
     readonly property var fallback: root.resettable ? SettingsState.defaultOf(root.key) : undefined
-    readonly property bool changed: !root.off && Catalogue.changed(root.value, root.fallback)
+    readonly property bool changed: !root.off && !root.held && Catalogue.changed(root.value, root.fallback)
     readonly property string fallbackText: root.resettable ? String(Catalogue.show(root.row, root.fallback, SettingsState)) : ""
     readonly property real besideControls: {
         const parts = [root.combos.length > 0 ? shortcut.width : -1, root.row.extra ? extra.width : -1, root.hasLayer ? more.width : -1].filter(w => w >= 0);
@@ -47,7 +50,7 @@ Column {
     readonly property real inlineRoom: root.lineRoom - frame.leadWidth - frame.need - frame.gapX
     readonly property bool segFit: root.segNatural > root.inlineRoom && (root.segCompact <= root.inlineRoom || root.segNatural > root.lineRoom)
     readonly property bool cramped: root.kind === "seg" && root.segCompact > root.lineRoom
-    readonly property string shape: root.cramped ? "choice" : root.kind
+    readonly property string shape: root.held ? "held" : root.cramped ? "choice" : root.kind
     readonly property bool flashing: !!SettingsView.flash && !!root.row.uid && SettingsView.flash.uid === root.row.uid
 
     width: parent ? parent.width : 0
@@ -68,7 +71,7 @@ Column {
     }
 
     function activate(): void {
-        if (root.off)
+        if (root.off || root.held)
             return;
         if (root.kind === "toggle")
             root.set(!root.value);
@@ -90,7 +93,7 @@ Column {
         pending: root.pendingText
         off: root.off
         flashStamp: root.flashing ? SettingsView.flash.at : 0
-        interactive: root.kind === "toggle" || root.shape === "choice" || root.hasLayer
+        interactive: !root.held && (root.kind === "toggle" || root.shape === "choice" || root.hasLayer)
         onActivated: root.activate()
         onPointed: SettingsView.hovered = root.row
 
@@ -148,7 +151,7 @@ Column {
             id: controls
 
             anchors.verticalCenter: parent.verticalCenter
-            sourceComponent: ({
+            sourceComponent: root.held ? heldControl : ({
                     toggle: toggleControl,
                     seg: segControl,
                     slider: sliderControl,
@@ -194,7 +197,7 @@ Column {
                 id: reset
 
                 anchors.centerIn: parent
-                visible: root.resettable && (root.changed || shown.value > 0)
+                visible: root.resettable && !root.held && (root.changed || shown.value > 0)
                 enabled: root.changed
                 opacity: shown.value
                 icon: "restart_alt"
@@ -216,9 +219,37 @@ Column {
         }
     }
 
+    Item {
+        parent: frame
+        x: (controls.parent?.x ?? 0) + controls.x
+        y: frame.height - Appearance.padding.small
+        width: controls.width
+        height: 0
+        visible: places.active
+        z: 1
+
+        Loader {
+            id: places
+
+            readonly property int count: places.item?.shown.length ?? 0
+
+            width: parent.width
+            active: !!root.row.places
+
+            sourceComponent: SettingsPlaces {
+                width: places.width
+                active: root.typing
+                query: root.typing ? controls.item.draft : ""
+                saved: String(root.value ?? "")
+                uid: root.row.uid ?? ""
+                onPicked: text => controls.item.choose(text)
+            }
+        }
+    }
+
     Flow {
         width: root.width
-        visible: !!root.offer && !root.off
+        visible: !!root.offer && !root.off && !(places.item?.wanted ?? false)
         leftPadding: frame.padX + frame.leadWidth
         rightPadding: frame.padX
         bottomPadding: Appearance.padding.small
@@ -314,6 +345,15 @@ Column {
                     root.set(option.modelData[0]);
                 }
             }
+        }
+    }
+
+    Component {
+        id: heldControl
+
+        StyledText {
+            text: String(root.heldText)
+            color: Appearance.colour.textDim
         }
     }
 
@@ -432,6 +472,9 @@ Column {
             mono: !!root.row.mono
             alarm: root.bad
             enabled: !root.off
+            steps: places.count > 0
+            pick: places.item?.chosen ?? ""
+            onStepped: by => places.item.step(by)
             onCommitted: t => root.set(t)
         }
     }

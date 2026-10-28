@@ -167,6 +167,32 @@ function matchesNothing(rows) {
     return !rows.some(r => !r.header && r.kind !== "fallback");
 }
 
+var SHARED_START = 12;
+
+function sharedStarts(details) {
+    const order = details.map((d, i) => i).filter(i => details[i]).sort((a, b) => details[a] < details[b] ? -1 : details[a] > details[b] ? 1 : 0);
+    const starts = details.map(() => 0);
+    const common = (a, b) => {
+        let n = 0;
+        while (n < a.length && n < b.length && a[n] === b[n])
+            n++;
+        return n;
+    };
+    order.forEach((i, at) => {
+        const mine = details[i];
+        let before = at - 1;
+        while (before >= 0 && details[order[before]] === mine)
+            before--;
+        let after = at + 1;
+        while (after < order.length && details[order[after]] === mine)
+            after++;
+        const n = Math.max(before >= 0 ? common(mine, details[order[before]]) : 0, after < order.length ? common(mine, details[order[after]]) : 0);
+        const cut = n > 0 ? mine.lastIndexOf(" ", n - 1) + 1 : 0;
+        starts[i] = cut >= SHARED_START && cut < mine.length ? cut : 0;
+    });
+    return starts;
+}
+
 function arrange(groups, caps) {
     const best = g => g.items.reduce((m, it) => Math.max(m, it.score ?? 0), -Infinity);
     const live = (groups || []).map((g, i) => ({

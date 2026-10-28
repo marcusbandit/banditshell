@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/sidebar/placement.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const { between, rail } = new Function(src + "\nreturn { between, rail };")();
+const { between, rail, railFloor, clockY } = new Function(src + "\nreturn { between, rail, railFloor, clockY };")();
 
 test.describe("between", () => {
     test.it("centres the workspaces when nothing is in the way", () => {
@@ -41,5 +41,29 @@ test.describe("rail", () => {
     test.it("never gives the marks less than the reserve while it fits", () => {
         for (let foot = 324; foot <= 900; foot += 7)
             assert.ok(rail(120, 1000, 40, foot, 132, 32).room >= 132, String(foot));
+    });
+});
+
+test.describe("the resting clock", () => {
+    const top = 16, pips = 110, pitch = 33, reserve = pitch * 4, gap = 32, margin = 16, clock = 44;
+
+    test.it("follows the open sidebar's clock while that leaves the pips and four marks their room", () => {
+        assert.strictEqual(clockY(700, 1300, railFloor(top, pips, reserve, gap, margin)), 700);
+    });
+
+    test.it("never rises above the pips, the gap and four marks, at any height or clock target", () => {
+        const floor = railFloor(top, pips, reserve, gap, margin);
+        for (let height = 280; height <= 1440; height += 20)
+            for (const target of [-200, 0, 60, 150, height / 3, height / 2, height]) {
+                const foot = height - 24 - clock;
+                const y = clockY(target, foot, floor);
+                const place = rail(pips, height, top, y - margin, reserve, gap);
+                const marks = Math.max(0, Math.floor(place.room / pitch)) * pitch;
+                assert.ok(y <= foot, `${height} ${target}`);
+                if (floor <= foot) {
+                    assert.ok(place.room >= reserve, `${height} ${target}`);
+                    assert.ok(place.y + pips + gap <= y - margin - marks, `${height} ${target}`);
+                }
+            }
     });
 });

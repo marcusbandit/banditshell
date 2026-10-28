@@ -403,6 +403,11 @@ need_root() {
             askpass_stop
             return 0
         fi
+        if [ -f "$ASKPASS_RUN/cancelled" ]; then
+            askpass_stop
+            say "  install cancelled"
+            exit 130
+        fi
         local why
         why="$(head -n 1 "$ASKPASS_RUN/why" 2>/dev/null)"
         askpass_stop

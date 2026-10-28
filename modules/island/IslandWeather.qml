@@ -17,12 +17,13 @@ Item {
 
     readonly property real pad: Appearance.padding.card
     readonly property real natural: Appearance.padding.large + column.implicitHeight + root.pad
-    readonly property var days: Weather.forecast
+    readonly property var days: Forecast.upcoming(Weather.forecast, clock.date.getTime())
     readonly property var range: Forecast.weekRange(root.days)
     readonly property real barWidth: Appearance.padding.small
     readonly property real barHeight: Appearance.font.line.normal * 3
     readonly property bool blank: Weather.failed && !Weather.ready
     readonly property var look: Weather.failureLook
+    readonly property bool outdated: Weather.forecastReady && root.days.length === 0
 
     implicitHeight: root.maxHeight > 0 ? Math.min(root.natural, root.maxHeight) : root.natural
 
@@ -57,10 +58,10 @@ Item {
                 id: header
 
                 width: parent.width
-                icon: root.blank ? root.look.icon : Weather.icon
-                tone: !root.blank ? Appearance.colour.accent : Weather.failure === "place" ? Appearance.colour.alarm : Appearance.colour.textDim
-                title: Weather.ready ? `${Weather.temperature} ${Weather.summary.trim()}` : root.blank ? root.look.title : "Weather"
-                subtitle: !root.blank ? Weather.place : Weather.failure !== "place" ? root.look.detail : Weather.failedFor ? `No place called "${Weather.failedFor}"` : "The weather service does not know this place"
+                icon: root.blank || root.outdated ? root.look.icon : Weather.icon
+                tone: root.outdated ? Appearance.colour.textDim : !root.blank ? Appearance.colour.accent : Weather.failure === "place" ? Appearance.colour.alarm : Appearance.colour.textDim
+                title: root.outdated ? (Weather.failed ? root.look.title : "Old reading") : Weather.ready ? `${Weather.temperature} ${Weather.summary.trim()}` : root.blank ? root.look.title : "Weather"
+                subtitle: root.outdated ? `${Weather.place}, last reading ${Forecast.ago(Weather.fetchedAt, age.date.getTime())}` : !root.blank ? Weather.place : Weather.failure !== "place" ? root.look.detail : Weather.failedFor ? `No place called "${Weather.failedFor}"` : "The weather service does not know this place"
                 onClosed: root.hide()
             }
 
@@ -98,7 +99,7 @@ Item {
                 readonly property Item beside: fix.visible ? fix : again.visible && !root.blank ? again : null
 
                 height: Math.max(notes.implicitHeight, again.visible ? again.implicitHeight : 0, fix.visible ? fix.implicitHeight : 0)
-                visible: Weather.stale || Weather.failure === "place" || root.blank && root.look.retry
+                visible: Weather.stale && (!root.outdated || root.look.retry) || Weather.failure === "place" || root.blank && root.look.retry
 
                 Column {
                     id: notes
@@ -111,7 +112,7 @@ Item {
 
                     StyledText {
                         width: parent.width
-                        visible: Weather.stale
+                        visible: Weather.stale && !root.outdated
                         text: `${Forecast.ago(Weather.fetchedAt, age.date.getTime())}, ${root.look.note}`
                         color: Appearance.colour.textDim
                         wrapMode: Text.Wrap
@@ -169,6 +170,14 @@ Item {
                 color: Appearance.colour.textDim
             }
 
+            StyledText {
+                width: parent.width
+                leftPadding: header.inset
+                visible: Weather.forecastReady && root.days.length === 0
+                text: "The last forecast has no days left"
+                color: Appearance.colour.textDim
+            }
+
             Row {
                 id: strip
 
@@ -184,6 +193,7 @@ Item {
                         required property var modelData
                         required property int index
 
+                        readonly property bool today: Forecast.isToday(cell.modelData, clock.date.getTime())
                         readonly property var bar: Forecast.barOf(cell.modelData, root.range)
                         readonly property real fillHeight: Math.max(root.barWidth, (cell.bar.to - cell.bar.from) * root.barHeight)
 
@@ -199,8 +209,8 @@ Item {
                             StyledText {
                                 width: parent.width
                                 horizontalAlignment: Text.AlignHCenter
-                                text: cell.index === 0 ? "Today" : Qt.locale().dayName(Forecast.dateOf(cell.modelData.date).getDay(), Locale.ShortFormat)
-                                color: cell.index === 0 ? Appearance.colour.text : Appearance.colour.textDim
+                                text: cell.today ? "Today" : Qt.locale().dayName(Forecast.dateOf(cell.modelData.date).getDay(), Locale.ShortFormat)
+                                color: cell.today ? Appearance.colour.text : Appearance.colour.textDim
                                 elide: Text.ElideRight
                             }
 
@@ -266,16 +276,16 @@ Item {
                                     Icon {
                                         anchors.verticalCenter: rain.verticalCenter
                                         name: "water_drop"
-                                        size: Appearance.font.size.small
+                                        size: Appearance.font.size.normal
                                         fill: 1
-                                        color: Appearance.colour.textFaint
+                                        color: Appearance.colour.accent
                                     }
 
                                     StyledText {
                                         id: rain
 
                                         text: Forecast.rainText(cell.modelData)
-                                        color: Appearance.colour.textFaint
+                                        color: Appearance.colour.textDim
                                     }
                                 }
                             }
@@ -287,9 +297,16 @@ Item {
     }
 
     WallClock {
+        id: clock
+
+        precision: WallClock.Hours
+        enabled: root.watched
+    }
+
+    WallClock {
         id: age
 
         precision: WallClock.Minutes
-        enabled: root.watched && Weather.stale
+        enabled: root.watched && (Weather.stale || root.outdated)
     }
 }

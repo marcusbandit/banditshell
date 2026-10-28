@@ -239,18 +239,188 @@ function saveDelay(unsavedSince, now, quiet, longest) {
     return Math.max(0, Math.min(quiet, unsavedSince + longest - now));
 }
 
+function jsonErrorAt(text) {
+    const raw = String(text);
+    let at = 0;
+    const fail = reason => {
+        throw { at: at, reason: reason || "" };
+    };
+    const ended = () => at >= raw.length;
+    const space = () => {
+        while (at < raw.length && " \t\n\r".includes(raw[at]))
+            at++;
+    };
+    const word = w => {
+        if (raw.startsWith(w, at))
+            at += w.length;
+        else
+            fail();
+    };
+    const string = () => {
+        at++;
+        while (at < raw.length && raw[at] !== '"') {
+            if (raw[at] === "\n")
+                fail("Unclosed string");
+            if (raw.charCodeAt(at) < 0x20)
+                fail();
+            if (raw[at] === "\\") {
+                at++;
+                if (raw[at] === "u") {
+                    if (!/^[0-9a-fA-F]{4}$/.test(raw.slice(at + 1, at + 5)))
+                        fail("Bad escape in a string");
+                    at += 4;
+                } else if (!'"\\/bfnrt'.includes(raw[at] ?? "x")) {
+                    fail("Bad escape in a string");
+                }
+            }
+            at++;
+        }
+        if (ended())
+            fail("Unclosed string");
+        at++;
+    };
+    const number = () => {
+        const match = /^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/.exec(raw.slice(at));
+        if (!match)
+            fail();
+        at += match[0].length;
+    };
+    const after = close => {
+        space();
+        if (ended())
+            fail("The file ends too early");
+        if (raw[at] === ",") {
+            at++;
+            return true;
+        }
+        if (raw[at] === close) {
+            at++;
+            return false;
+        }
+        if (raw[at] === '"' || raw[at] === "{" || raw[at] === "[" || (close === "]" && /[-0-9tfn]/.test(raw[at])))
+            fail("Missing comma");
+        if (raw[at] === "}" || raw[at] === "]")
+            fail(`Unexpected ${raw[at]}`);
+        fail();
+    };
+    const value = () => {
+        space();
+        if (ended())
+            fail("The file ends too early");
+        const c = raw[at];
+        if (c === "{") {
+            at++;
+            space();
+            if (raw[at] === "}") {
+                at++;
+                return;
+            }
+            let comma = false;
+            for (;;) {
+                space();
+                if (ended())
+                    fail("The file ends too early");
+                if (raw[at] === "}" && comma)
+                    fail("Extra comma before }");
+                if (raw[at] !== '"')
+                    fail();
+                string();
+                space();
+                if (ended())
+                    fail("The file ends too early");
+                if (raw[at] !== ":")
+                    fail("Missing : after the key");
+                at++;
+                value();
+                comma = after("}");
+                if (!comma)
+                    return;
+            }
+        }
+        if (c === "[") {
+            at++;
+            space();
+            if (raw[at] === "]") {
+                at++;
+                return;
+            }
+            for (;;) {
+                space();
+                if (raw[at] === "]")
+                    fail("Extra comma before ]");
+                value();
+                if (!after("]"))
+                    return;
+            }
+        }
+        if (c === "}" || c === "]" || c === ",")
+            fail(`Unexpected ${c}`);
+        if (c === '"')
+            return string();
+        if (c === "t")
+            return word("true");
+        if (c === "f")
+            return word("false");
+        if (c === "n")
+            return word("null");
+        number();
+    };
+    try {
+        value();
+        space();
+        if (!ended())
+            fail();
+        return null;
+    } catch (stop) {
+        if (typeof stop?.at !== "number")
+            throw stop;
+        const before = raw.slice(0, Math.min(stop.at, raw.length));
+        const lines = before.split("\n");
+        return { line: lines.length, column: lines[lines.length - 1].length + 1, reason: stop.reason };
+    }
+}
+
+function errorSnippet(text, line, column, width) {
+    const rows = String(text).split("\n").map(r => r.replace(/\r$/, ""));
+    if (line < 1 || line > rows.length + 1)
+        return "";
+    const expand = r => r.replace(/\t/g, "    ");
+    const own = rows[line - 1] ?? "";
+    const caret = expand(own.slice(0, Math.max(0, column - 1))).length;
+    const numbers = line > 1 ? [line - 1, line] : [line];
+    const gutter = String(line).length + 2;
+    const room = Math.max(8, width - gutter);
+    const start = caret < room - 2 ? 0 : caret - room + 8;
+    const cut = r => {
+        const shown = expand(r);
+        if (start > 0 && shown.length <= start)
+            return "";
+        let piece = shown.slice(start, start + room);
+        if (start > 0)
+            piece = "\u2026" + piece.slice(1);
+        if (shown.length > start + room)
+            piece = piece.slice(0, -1) + "\u2026";
+        return piece.replace(/\s+$/, "");
+    };
+    const out = numbers.map(n => String(n).padStart(gutter - 2) + "  " + cut(rows[n - 1] ?? ""));
+    out.push(" ".repeat(gutter + caret - start) + "^");
+    return out.join("\n");
+}
+
 function readText(raw, state, defaults, keepChannel, opaque, literals) {
     let parsed = null;
     let problem = "not an object";
+    let at = null;
     try {
         parsed = JSON.parse(raw);
     } catch (e) {
         problem = e.message;
+        at = jsonErrorAt(raw);
     }
     if (!isPlainObject(parsed))
-        return { values: state.values, loaded: true, unreadable: true, problem: problem, save: false };
+        return { values: state.values, loaded: true, unreadable: true, problem: problem, at: at, save: false };
     const values = merge(defaults, upgrade(parsed, keepChannel), "", opaque, literals);
-    return { values: values, loaded: true, unreadable: false, problem: "", save: JSON.stringify(values) !== JSON.stringify(parsed) };
+    return { values: values, loaded: true, unreadable: false, problem: "", at: null, save: JSON.stringify(values) !== JSON.stringify(parsed) };
 }
 
 function readFailed(missing) {

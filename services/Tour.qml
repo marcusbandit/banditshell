@@ -58,7 +58,7 @@ Singleton {
     })
 
     readonly property var facts: ({
-            apps: DesktopEntries.applications.values.filter(e => !e.noDisplay).length,
+            apps: Apps.all.length,
             workspaces: Hypr.known,
             binds: HyprConfig.binds.length
         })

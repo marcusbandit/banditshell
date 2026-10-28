@@ -1355,25 +1355,54 @@ Singleton {
         return best ? `next alarm ${TimeFormat.time(new Date(best), false)}` : "no alarms set";
     }
 
+    readonly property bool watching: Settings.open
+
     property double tick: Date.now()
+
+    onWatchingChanged: if (root.watching)
+        root.tick = Date.now()
+
+    onTickChanged: root.readUsage()
+
+    Component.onCompleted: if (root.watching)
+        root.readUsage()
 
     Timer {
         interval: 60000
-        running: true
+        running: root.watching
         repeat: true
         onTriggered: root.tick = Date.now()
     }
 
-    readonly property var usageToday: {
-        const now = root.tick;
-        return Usage.forDay(new Date(now));
+    Connections {
+        target: Usage
+        enabled: root.watching
+
+        function onRevisionChanged(): void {
+            root.readUsage();
+        }
     }
+
+    Connections {
+        target: UsageApps
+        enabled: root.watching
+
+        function onRevisionChanged(): void {
+            root.readUsage();
+        }
+    }
+
+    property var usageToday: null
 
     readonly property int usedMinutes: root.usageToday?.minutes ?? 0
 
-    readonly property var usageHours: {
-        const live = Usage.revision;
+    property var usageHours: []
+
+    property var usageApps: []
+
+    function readUsage(): void {
         const now = new Date(root.tick);
+        root.usageToday = Usage.forDay(now);
         const from = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         const out = [];
         for (let h = 0; h < 24; h++)
@@ -1388,7 +1417,8 @@ Singleton {
                 t = edge;
             }
         }
-        return out.map(m => Math.round(m));
+        root.usageHours = out.map(m => Math.round(m));
+        root.usageApps = UsageApps.appsFor(now).slice(0, 5);
     }
 
     function minutesLabel(m: int): string {
@@ -1397,14 +1427,15 @@ Singleton {
 
     readonly property string usedLabel: root.minutesLabel(root.usedMinutes)
 
-    readonly property var usageApps: {
-        const live = UsageApps.revision;
-        const now = root.tick;
-        return UsageApps.appsFor(new Date(now)).slice(0, 5);
-    }
-
     readonly property bool idleHandled: Idle.handledElsewhere
     readonly property string idleHandler: Idle.handler
+    readonly property var idleTimes: Idle.handlerTimes
+    readonly property bool idleRead: Idle.handlerRead
+
+    function idleTime(role: string): string {
+        const seconds = root.idleTimes?.[role];
+        return seconds === null || seconds === undefined ? "" : Durations.choiceFromSeconds(seconds);
+    }
 
     readonly property var hyprOptions: ({
             kbDelay: {

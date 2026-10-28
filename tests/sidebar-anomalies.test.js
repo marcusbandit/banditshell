@@ -154,10 +154,18 @@ test("every mark shows while the rail has room, and the count only takes a slot 
     assert.strictEqual(keys(all, 7).length, 7);
     assert.strictEqual(keys(all, 6).length, 5);
     assert.strictEqual(Anomalies.slotsIn(400, 33), 12);
-    assert.strictEqual(Anomalies.slotsIn(32, 33), 1);
-    assert.strictEqual(Anomalies.slotsIn(-50, 33), 1);
+    assert.strictEqual(Anomalies.slotsIn(33, 33), 1);
+    assert.strictEqual(Anomalies.slotsIn(32, 33), 0);
+    assert.strictEqual(Anomalies.slotsIn(-50, 33), 0);
     assert.strictEqual(Anomalies.slotsIn(Infinity, 33), Infinity);
     assert.strictEqual(Anomalies.slotsIn(400, 0), Infinity);
+});
+
+test("a rail with no room under the pips keeps no mark there", () => {
+    const all = { batteryPercent: 5, micStreams: true, recording: true, vpn: true };
+    const none = Anomalies.split(Object.assign({}, calm, all), Anomalies.slotsIn(-40, 33));
+    assert.deepStrictEqual([none.kept, none.dropped.length], [[], 4]);
+    assert.deepStrictEqual(Anomalies.split(Object.assign({}, calm, { vpn: true }), 0).kept, []);
 });
 
 const alone = [{ batteryPercent: 5 }, { micStreams: true }, { recording: true }, { vpn: true }, { awake: true }, { wifiOn: false, bluetoothOn: false }, { quiet: true }, { update: "available" }, { modeIcon: "target" }, { layout: "US", layoutAway: true, layoutName: "English (US)" }];
