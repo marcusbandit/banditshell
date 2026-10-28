@@ -56,6 +56,8 @@ Column {
     onControlsWidthChanged: root.noteTrail()
     onResettableChanged: root.noteTrail()
     onHereChanged: root.noteTrail()
+    onCrampedChanged: if (!root.cramped && root.unrolled)
+        SettingsView.setOpen(root.row.uid, false)
     Component.onCompleted: root.noteTrail()
     Component.onDestruction: SettingsView.noteTrail(root.noted, -1)
 
@@ -298,7 +300,30 @@ Column {
                 icon: option.chosen ? "check" : "radio_button_unchecked"
                 label: String(option.modelData[1])
                 selected: option.chosen
+                lead: root.row.swatches ? swatch : null
                 off: (Catalogue.val(root.row.unavailable, SettingsState) ?? []).some(u => Catalogue.same(u, option.modelData[0]))
+                Component {
+                    id: swatch
+
+                    Row {
+                        spacing: Appearance.padding.small
+
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: option.chosen ? "check" : "radio_button_unchecked"
+                            color: option.iconColour
+                        }
+
+                        SquircleRect {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 18
+                            height: 18
+                            radius: 6
+                            color: Appearance.roleColour(String(option.modelData[0]))
+                        }
+                    }
+                }
+
                 onActivated: {
                     SettingsView.setOpen(root.row.uid, false);
                     root.set(option.modelData[0]);

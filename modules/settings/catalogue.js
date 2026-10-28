@@ -1184,8 +1184,9 @@ function search(query) {
     if (num)
         hits = INDEX.filter(x => x.nums.indexOf(+num[1]) >= 0);
     else {
-        const words = q.split(/\s+/);
-        hits = INDEX.filter(x => words.every(w => x.hay.indexOf(w) >= 0 || x.flat.indexOf(w.replace(/[^a-z0-9]/g, "")) >= 0));
+        const words = q.split(/\s+/).filter(w => /[a-z0-9]/.test(w));
+        const flat = w => w.replace(/[^a-z0-9]+/g, " ").trim();
+        hits = words.length ? INDEX.filter(x => words.every(w => x.hay.indexOf(w) >= 0 || x.flat.indexOf(flat(w)) >= 0)) : [];
         const lead = x => x.label.toLowerCase().indexOf(q) === 0 ? 1 : 0;
         hits = hits.map((x, i) => ({ x: x, i: i })).sort((a, b) => lead(b.x) - lead(a.x) || a.i - b.i).map(e => e.x);
     }

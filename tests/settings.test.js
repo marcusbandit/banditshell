@@ -247,6 +247,9 @@ test("search joins what was typed, never two keywords across their gap", () => {
     const keys = Catalogue.search("keys").map(h => h.row.k);
     assert.ok(!keys.includes("sheetBoard") && !keys.includes("sheetKeyboard"));
     assert.ok(Catalogue.search("wifi").some(h => /wi-fi/i.test(`${h.label} ${h.row.kw || ""}`) && !/wifi/i.test(h.hay)));
+    assert.ok(Catalogue.search("lock-screen").length > 0 && Catalogue.search("night-light").length > 0);
+    assert.strictEqual(Catalogue.search("-").length, 0);
+    assert.strictEqual(Catalogue.search("& -").length, 0);
 });
 
 test("lid rows say sleep and still store suspend", () => {

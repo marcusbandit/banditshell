@@ -42,9 +42,10 @@ Item {
     property real fixedTrail: root.trailWidth
     property real reserve: 0
     readonly property real labelMin: 150
-    readonly property real need: Math.min(root.labelMin, Math.ceil(Math.max(labelInk.advanceWidth, root.detail !== "" ? detailInk.advanceWidth : 0)))
+    readonly property real natural: Math.ceil(Math.max(labelInk.advanceWidth, detailInk.advanceWidth))
+    readonly property real need: Math.min(root.labelMin, root.natural)
     readonly property bool wrapped: root.fixedTrail > 0 && (root.leadWidth + root.labelMin + root.gapX + root.fixedTrail - root.reserve > root.inner || root.leadWidth + root.need + root.gapX + root.fixedTrail > root.inner)
-    readonly property real slack: root.wrapped ? root.inner - root.fixedTrail : root.inner - root.leadWidth - root.need - root.gapX - root.fixedTrail
+    readonly property real slack: root.wrapped ? root.inner - root.fixedTrail : root.inner - root.leadWidth - root.natural - root.gapX - root.fixedTrail
 
     readonly property real lineHeight: Math.max(words.implicitHeight, leadSlot.visible ? leadSlot.height : 0, root.wrapped ? 0 : trail.implicitHeight)
 
@@ -54,14 +55,14 @@ Item {
         id: labelInk
 
         font: labelText.font
-        text: root.label
+        text: root.reserve > 0 ? root.label : ""
     }
 
     TextMetrics {
         id: detailInk
 
         font: detailText.font
-        text: root.detail
+        text: root.reserve > 0 ? root.detail : ""
     }
 
     SquircleRect {
