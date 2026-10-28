@@ -30,11 +30,6 @@
           "text": "Battery, Nearly empty offers do nothing"
         },
         {
-          "type": "ui",
-          "severity": "minor",
-          "text": "Settings lists mark the chosen option with a filled circle"
-        },
-        {
           "type": "issues",
           "severity": "minor",
           "text": "Settings says why some theme cards are off"

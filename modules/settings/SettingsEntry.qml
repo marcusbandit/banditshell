@@ -316,7 +316,7 @@ Column {
                 readonly property bool chosen: Catalogue.same(option.modelData[0], root.value)
 
                 width: parent ? parent.width : 0
-                icon: option.chosen ? "radio_button_checked" : "radio_button_unchecked"
+                icon: option.chosen ? "check" : "radio_button_unchecked"
                 label: String(option.modelData[1])
                 selected: option.chosen
                 lead: root.row.swatches ? swatch : null
@@ -329,7 +329,7 @@ Column {
 
                         Icon {
                             anchors.verticalCenter: parent.verticalCenter
-                            name: option.chosen ? "radio_button_checked" : "radio_button_unchecked"
+                            name: option.chosen ? "check" : "radio_button_unchecked"
                             color: option.iconColour
                         }
 
