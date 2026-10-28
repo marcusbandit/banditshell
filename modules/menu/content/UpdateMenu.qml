@@ -42,7 +42,7 @@ Column {
 
     readonly property var sections: root.shortList.length > 0 ? [] : WhatsNew.sections(root.listed, root.unread)
     readonly property int unreadCount: WhatsNew.unreadCount(root.shortList, root.sections)
-    readonly property real unreadDot: Math.max(6, Math.round(Appearance.font.size.small / 2.5))
+    readonly property real unreadBar: Math.max(3, Appearance.font.stem * 3)
     readonly property var linesBefore: {
         const out = [];
         let seen = 0;
@@ -97,6 +97,7 @@ Column {
         width: parent.width
         visible: !root.leaving && !root.wentBack
         alignInk: true
+        wrapMode: Text.Wrap
         text: Update.haveLabel
         color: Appearance.colour.textFaint
     }
@@ -374,18 +375,18 @@ Column {
                 SquircleRect {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: root.unreadCount > 0
-                    width: newCount.implicitWidth + newDot.width + Appearance.padding.small * 3
+                    width: newCount.implicitWidth + newMark.width + Appearance.padding.small * 3
                     height: Appearance.font.line.small
                     pill: "object"
                     color: Appearance.withAlpha(Appearance.colour.accent, 0.14)
 
                     SquircleRect {
-                        id: newDot
+                        id: newMark
 
                         x: Appearance.padding.small
                         anchors.verticalCenter: parent.verticalCenter
-                        width: root.unreadDot
-                        height: width
+                        width: root.unreadBar
+                        height: Math.round(parent.height * 0.6)
                         pill: "object"
                         color: Appearance.colour.accent
                     }
@@ -393,9 +394,9 @@ Column {
                     StyledText {
                         id: newCount
 
-                        x: newDot.x + newDot.width + Appearance.padding.small
+                        x: newMark.x + newMark.width + Appearance.padding.small
                         anchors.verticalCenter: parent.verticalCenter
-                        text: `${root.unreadCount} new`
+                        text: `${root.unreadCount} unread`
                         color: Appearance.blend(Appearance.colour.text, Appearance.colour.accent, 0.55)
                     }
                 }
@@ -439,9 +440,8 @@ Column {
 
                 SquircleRect {
                     visible: tagged.modelData.unread === true
-                    y: Math.round((Appearance.font.line.small - height) / 2)
-                    width: root.unreadDot
-                    height: width
+                    width: root.unreadBar
+                    height: tagged.height
                     pill: "object"
                     color: Appearance.colour.accent
                 }
@@ -449,7 +449,7 @@ Column {
                 SquircleRect {
                     id: tagChip
 
-                    x: root.unreadCount > 0 ? root.unreadDot + Appearance.padding.small : 0
+                    x: root.unreadCount > 0 ? root.unreadBar + Appearance.padding.small : 0
                     width: Math.ceil(tagWidth.advanceWidth) + Appearance.padding.small * 2
                     height: Appearance.font.line.small
                     pill: "object"
@@ -468,7 +468,7 @@ Column {
                     x: tagChip.x + tagChip.width + Appearance.padding.small
                     width: tagged.width - x
                     text: tagged.modelData.text
-                    color: Appearance.colour.text
+                    color: root.unreadCount > 0 && tagged.modelData.unread !== true ? Appearance.colour.textDim : Appearance.colour.text
                     wrapMode: Text.WordWrap
                 }
             }
@@ -524,7 +524,7 @@ Column {
 
                     UpdateChangeLines {
                         width: sectionBody.width
-                        unreadDot: root.unreadDot
+                        unreadBar: root.unreadBar
                         lines: section.modelData.changes.slice(0, section.eager)
                         hue: section.hue
                         major: section.major
@@ -536,7 +536,7 @@ Column {
                         asynchronous: true
 
                         sourceComponent: UpdateChangeLines {
-                            unreadDot: root.unreadDot
+                            unreadBar: root.unreadBar
                             lines: section.modelData.changes.slice(section.eager)
                             hue: section.hue
                             major: section.major
@@ -591,10 +591,41 @@ Column {
         wrapMode: Text.WordWrap
     }
 
+    Column {
+        width: parent.width
+        visible: Update.diverged && Update.own.length > 0
+        spacing: Appearance.padding.hair
+
+        StyledText {
+            width: parent.width
+            text: Update.ownTitle
+            color: Appearance.colour.textDim
+        }
+
+        Repeater {
+            model: Update.own
+
+            delegate: UpdateChangeLine {
+                required property string modelData
+
+                width: root.width
+                text: modelData
+                major: true
+            }
+        }
+
+        StyledText {
+            width: parent.width
+            visible: Update.ahead > Update.own.length
+            text: `and ${Update.ahead - Update.own.length} more`
+            color: Appearance.colour.textFaint
+        }
+    }
+
     StyledText {
         width: parent.width
         visible: Update.diverged
-        text: `It cannot just move forward. To keep this copy's commits, run in a terminal: git -C ${Update.dir} pull --rebase`
+        text: `This copy cannot just move forward. To keep ${Update.ahead === 1 ? "your change" : "your changes"}, run in a terminal: git -C ${Update.dir} pull --rebase`
         color: Appearance.colour.updateFailed
         wrapMode: Text.WordWrap
     }

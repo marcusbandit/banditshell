@@ -295,10 +295,14 @@ test("check reports a copy on another branch and a diverged copy without offerin
     advance(world, "v2", { "shell.qml": "// v2\n" });
     write(world.live, "extra.txt", "mine\n");
     git(world.live, "add", "-A");
-    git(world.live, "commit", "-q", "-m", "local");
+    git(world.live, "commit", "-q", "-m", "Keep my own clock face");
     const diverged = run(world, ["update", "check", "--json"]);
     assert.strictEqual(diverged.status, 0);
-    assert.strictEqual(JSON.parse(diverged.out).state, "diverged");
+    const json = JSON.parse(diverged.out);
+    assert.strictEqual(json.state, "diverged");
+    assert.strictEqual(json.baseVersion, "v1");
+    assert.deepStrictEqual(json.own, ["Keep my own clock face"]);
+    assert.match(run(world, ["update", "check"]).out, /^v1 is waiting on main, but this copy has 1 change\(s\) of your own/);
     git(world.live, "switch", "-q", "-c", "elsewhere");
     const paused = JSON.parse(run(world, ["update", "check", "--json"]).out);
     assert.strictEqual(paused.state, "paused");

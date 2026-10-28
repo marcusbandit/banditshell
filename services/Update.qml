@@ -60,7 +60,10 @@ Singleton {
     readonly property string channel: Words.channelOf(Config.values.updates.channel)
     readonly property string branch: Words.branchFor(Config.values.updates.channel, Config.values.updates.branch)
     readonly property string channelLabel: Words.channelText(Config.values.updates.channel, Config.values.updates.branch)
-    readonly property string haveLabel: Words.haveText(root.version, Config.values.updates.channel, Config.values.updates.branch)
+    readonly property string haveLabel: Words.haveText(root.diverged && root.baseVersion !== "" ? Words.withOwn(root.baseVersion, root.ahead) : root.version, Config.values.updates.channel, Config.values.updates.branch)
+    property string baseVersion: ""
+    property var own: []
+    readonly property string ownTitle: Words.ownTitle(root.ahead)
     property string release: ""
     readonly property string version: root.release || WhatsNew.version
     property string targetVersion: ""
@@ -92,7 +95,7 @@ Singleton {
         if (root.state === root.updated)
             return "Updated";
         if (root.state === root.rolledback)
-            return root.wentBackByHand ? `You are on ${root.version}` : "Update rolled back";
+            return root.wentBackByHand ? Words.wentBackHeadline(root.version, Config.values.updates.channel, Config.values.updates.branch) : "Update rolled back";
         if (root.state === root.restarting)
             return root.goingBack ? "Going back..." : "Restarting...";
         if (root.state === root.verifying)
@@ -465,6 +468,8 @@ Singleton {
                 root.ahead = counts ? Number(got.ahead) || 0 : 0;
                 root.entries = got.entries ?? [];
                 root.notes = Array.isArray(got.notes) ? got.notes : [];
+                root.baseVersion = got.baseVersion ?? "";
+                root.own = Array.isArray(got.own) ? got.own : [];
                 root.summaryText = got.summary ?? "";
                 root.detailsText = got.details ?? got.summary ?? "";
                 root.buttonText = got.button ?? "Update";

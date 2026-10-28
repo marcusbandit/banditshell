@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, details, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, divergedHeadline, aheadText, plainProbe, presentSteps, reportWords, reportContext, reportScript };")();
+const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, details, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, divergedHeadline, aheadText, withOwn, ownTitle, wentBackHeadline, plainProbe, presentSteps, reportWords, reportContext, reportScript };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -42,7 +42,7 @@ test("a long list is cut after three names", () => {
 
 test("diverged history is said plainly", () => {
     const text = said("hint: Diverging branches can't be fast-forwarded, you need to either:\nhint:\nhint: \tgit merge --no-ff\nfatal: Not possible to fast-forward, aborting.");
-    assert.match(text, /commits of its own/);
+    assert.match(text, /changes of its own/);
 });
 
 test("network and access failures read as such", () => {
@@ -186,7 +186,18 @@ test("new install steps this machine already passes are left out of the deps", (
     assert.deepStrictEqual(c.deps, ["home-bin", "gone"]);
     const none = Update.classify({ nameStatus: status("M\tinstall.sh"), installBefore: before, installAfter: after, present: ["fd", "pair", "home-bin", "gone"] });
     assert.deepStrictEqual(none.deps, []);
+    assert.strictEqual(Update.details(c), "1 change. After updating, run install.sh for: home-bin and gone");
+    assert.strictEqual(Update.details(none), "1 change");
+    const both = Update.classify({ nameStatus: status("M\tinstall.sh", "M\tcli/banditshell"), installBefore: before, installAfter: after, present: ["fd", "pair", "gone"], entries: [{ changes: [{ text: "a" }] }] });
+    assert.strictEqual(Update.details(both), "Commands changed. After updating, run install.sh for: home-bin");
     assert.doesNotMatch(Update.summary(none), /needs/);
+});
+
+test("going back says where you are and on which channel", () => {
+    assert.strictEqual(Update.wentBackHeadline("v0.1.0", "stable", "main"), "You are on v0.1.0, stable");
+    assert.strictEqual(Update.wentBackHeadline("v0.2.0+2", "main", "main"), "You are on v0.2.0+2, main");
+    assert.strictEqual(Update.wentBackHeadline("v0.1.0", "stable", "dev"), "You are on v0.1.0, following dev");
+    assert.strictEqual(Update.wentBackHeadline("", "stable", "main"), "You are on the stable channel");
 });
 
 test("a copy with changes of its own still names the waiting version", () => {
@@ -197,6 +208,10 @@ test("a copy with changes of its own still names the waiting version", () => {
     assert.strictEqual(Update.aheadText(4), "4 changes of your own are not on GitHub yet");
     assert.strictEqual(Update.aheadText(0), "1 change of your own is not on GitHub yet");
     assert.strictEqual(Update.aheadText("x"), "1 change of your own is not on GitHub yet");
+    assert.strictEqual(Update.withOwn("v0.1.0", 1), "v0.1.0 plus 1 change of your own");
+    assert.strictEqual(Update.withOwn("", 2), "2 changes of your own");
+    assert.strictEqual(Update.ownTitle(1), "Your change");
+    assert.strictEqual(Update.ownTitle(3), "Your 3 changes");
 });
 
 test("edits here that the update also touches are listed, others are not", () => {
@@ -329,7 +344,7 @@ test("the outcome tells where the person stands in plain words", () => {
 test("a rollback by hand says where it went back to, not that something failed", () => {
     const back = { ok: false, hand: true, fromLabel: "2026-10-24", toLabel: "2026-10-25", why: "rolled back by hand" };
     assert.strictEqual(Update.outcomeText(back, "2026-10-24"),
-        "Updates skip 2026-10-25 until a newer version arrives.");
+        "Because you went back, 2026-10-25 is not offered again. The next version will be.");
     assert.match(Update.outcomeText(back, "2026-10-25"), /still runs 2026-10-25\. Run banditshell restart to start 2026-10-24\./);
     assert.strictEqual(Update.byHand({ ok: false, why: "rolled back by hand" }), false);
 });

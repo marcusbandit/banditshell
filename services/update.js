@@ -50,6 +50,20 @@ function aheadText(ahead) {
     return `${ownChanges(ahead)} ${ownCount(ahead) === 1 ? "is" : "are"} not on GitHub yet`;
 }
 
+function withOwn(version, ahead) {
+    return version ? `${version} plus ${ownChanges(ahead)}` : ownChanges(ahead);
+}
+
+function ownTitle(count) {
+    return ownCount(count) === 1 ? "Your change" : `Your ${ownCount(count)} changes`;
+}
+
+function wentBackHeadline(version, channel, branch) {
+    const followed = branchFor(channel, branch);
+    const where = followed === "stable" || followed === "main" ? followed : `following ${followed}`;
+    return version ? `You are on ${version}, ${where}` : `You are on the ${where === followed ? `${followed} channel` : where}`;
+}
+
 function report(text) {
     const got = { failed: false, output: [], values: {} };
     for (const line of String(text ?? "").split("\n")) {
@@ -94,7 +108,7 @@ function explain(output, branch) {
         return `The update brings files that already exist here: ${named(listedAfter(lines, untracked))}. Move them out of the way, then try again.`;
 
     if (/Not possible to fast-forward|Diverging branches/.test(text))
-        return "This copy has commits of its own that GitHub does not have, so it cannot just move forward.";
+        return "This copy has changes of its own that GitHub does not have, so it cannot just move forward.";
     if (/index\.lock'?: File exists/.test(text))
         return "Another git command is busy in this folder. Try again when it has finished.";
     if (/^fatal: not a git repository/m.test(text))
@@ -349,15 +363,18 @@ function summary(c) {
 }
 
 function details(c) {
-    const parts = extras(c);
+    const parts = extras(c, false);
     const count = c.commits > 0 ? c.commits : c.files;
     if (c.notes === 0 && count > 0)
         parts.unshift(plural(count, "change", "changes"));
     const text = parts.join(", ");
-    return text ? `${text[0].toUpperCase()}${text.slice(1)}` : "";
+    const said = text ? `${text[0].toUpperCase()}${text.slice(1)}` : "";
+    if (c.deps.length === 0)
+        return said;
+    return `${said ? `${said}. ` : ""}After updating, run install.sh for: ${listed(c.deps)}`;
 }
 
-function extras(c) {
+function extras(c, deps = true) {
     const parts = [];
     if (c.cli)
         parts.push("commands changed");
@@ -369,7 +386,7 @@ function extras(c) {
         parts.push("helpers rebuild");
     if (c.shaders)
         parts.push("shaders changed");
-    if (c.deps.length > 0)
+    if (deps && c.deps.length > 0)
         parts.push(`needs ${listed(c.deps)}`);
     if (c.config)
         parts.push("settings defaults changed");
@@ -410,7 +427,7 @@ function outcomeText(result, running) {
     if (result.ok)
         return `Updated to ${to}.`;
     if (byHand(result)) {
-        const skipped = `Updates skip ${to} until a newer version arrives.`;
+        const skipped = `Because you went back, ${to} is not offered again. The next version will be.`;
         if (!running || running === from)
             return skipped;
         return `Went back to ${from}, but the shell still runs ${running}. Run banditshell restart to start ${from}. ${skipped}`;

@@ -186,13 +186,18 @@ definition. Where it shows:
 - `banditshell update check --json` carries `version` (this copy), `targetVersion` (what is
   waiting) and `previousVersion` (where rollback goes). When nothing is waiting it also carries
   `notes`: the what's-new entries this copy has and `previous` did not, so what going back would
-  undo.
+  undo. A copy with commits of its own adds `baseVersion`, the version where it left the followed
+  branch, and `own`, the subjects of up to three of those commits.
 - The update menu says `You have <release>, on the stable channel`; a waiting update is headed
   `<version> is ready` on every channel, with its what's-new entries under "What changed" above the
   Update button. Up to date, the same list shows `notes`. A copy with commits of its own is headed
-  `<version> is ready, but this copy has 1 change of your own` (#338). Lines from entries not
-  read yet carry an accent dot, the list title says how many are new, and Mark as read beside it
-  clears them (#337).
+  `<version> is ready, but this copy has 1 change of your own`, says `You have v0.1.0 plus 1
+  change of your own` from the check's `baseVersion`, and lists the subjects from `own` (#338).
+  Lines from entries not read yet carry an accent bar and full-strength text, the list title
+  says `2 unread`, and Mark as read beside it clears them (#337). After going back by hand the
+  headline names the channel, `You are on v0.1.0, stable`. A new install step this machine lacks
+  reads `After updating, run install.sh for: <steps>`, after, because only the new version's
+  `install.sh` knows the step.
 - Settings > About shows the same version.
 
 `update rollback` on `stable` goes to the release before the one this copy is on, found from the

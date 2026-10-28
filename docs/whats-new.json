@@ -17,7 +17,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Unread lines in the update menu carry a dot; Mark as read clears them"
+          "text": "Unread lines in the update menu are marked; Mark as read clears them"
         },
         {
           "type": "issues",
