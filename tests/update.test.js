@@ -214,6 +214,8 @@ test("own changes count on main and a followed branch, never ahead of stable", (
     assert.strictEqual(Update.aheadKept("current", "dev", 1), 1);
     assert.strictEqual(Update.aheadKept("current", "stable", 3), 0);
     assert.strictEqual(Update.aheadKept("diverged", "stable", 1), 1);
+    assert.strictEqual(Update.aheadKept("available", "main", 0), 0);
+    assert.strictEqual(Update.aheadKept("available", "stable", 2), 2);
     assert.strictEqual(Update.aheadKept("paused", "main", 4), 0);
     assert.strictEqual(Update.aheadKept("skipped", "main", 4), 0);
     assert.strictEqual(Update.aheadKept("current", "main", "x"), 0);
