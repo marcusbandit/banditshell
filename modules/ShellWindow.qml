@@ -211,6 +211,8 @@ PanelWindow {
             Idle.awake = false;
         else if (opens?.stops === "recording")
             ScreenRecorder.stop();
+        else if (opens?.cycles === "layout")
+            Keymap.next();
     }
 
     function act(notice: var): void {

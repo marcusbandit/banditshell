@@ -2030,7 +2030,10 @@ rail and not against the full column): one mark per workspace, and below them a 
 whatever is unusual and nothing for what is normal. Unusual is decided in `anomalies.js`: the
 microphone live or muted while something records from it, a
 screen recording, a VPN, keep-awake, airplane mode (every radio off), quiet or a mode, an update
-waiting or stuck. Every mark's tooltip says what it is and then what a press does ("VPN on,
+waiting or stuck. One mark is not about the unusual: with more than one keyboard layout the rail
+always shows the current one's code (`DK`, `US`) on a small chip of its own, so it never reads as part of the time below it, because the switch bind changes every key with
+nothing else moving; it is dim on the first layout and plain light on any other, and a press moves
+every keyboard to the next layout. Every mark's tooltip says what it is and then what a press does ("VPN on,
 click for settings"). Battery, sound, airplane and update open their sidebar menus, so the rail
 grows under them; VPN, a mode and quiet open their Settings page; keep-awake and a screen
 recording stop. Pointing at a mark holds the rail at rest so it can be pressed before the rail
@@ -2040,8 +2043,8 @@ the rail is tall enough, and the status marks stay a clear gap below, so they re
 group and never as one more workspace. Every mark shows while
 the rail has room for it between the workspace marks and its foot; when it runs out, the most
 important stay by a fixed rank: the microphone, a screen recording, a low battery that is not
-charging, quiet or a mode, a stuck update, then VPN, airplane, keep-awake, and last a charging
-battery or an update that is only waiting. Privacy and anything that swallows notifications stay
+charging, quiet or a mode, a stuck update or a keyboard away from its first layout, then VPN, airplane, keep-awake, and last a charging
+battery or an update that is only waiting, and the code of a keyboard on its first layout. Privacy and anything that swallows notifications stay
 in view. A `+N` under the marks counts what did not fit and names them on hover, and a mark
 that goes leaves by shrinking, not by blinking out. The marks never wear the accent, which belongs
 to the active workspace pip: what is only on (VPN, airplane, quiet, a mode, keep-awake, a muted
@@ -4604,7 +4607,8 @@ the history. Quiet timers, the pomodoro's, stay out.
 
 Volume, mute, brightness and mic mute are a moment, not a thing that stays: a
 row with a mark, a bar and the number, for a second, at the bottom of whatever
-holds the big spot. Nothing in the shell answered the volume keys before, which
+holds the big spot. A keyboard layout switch is the same row with the layout's
+name and its code, since the key that switches it changes every letter after. Nothing in the shell answered the volume keys before, which
 read as dead. `Levels` watches Audio, Display and Backlight and keeps quiet when
 a surface that already shows that level is open (the sound menu, the quick
 controls, the settings volume row declare it with `LevelCover`), when the device

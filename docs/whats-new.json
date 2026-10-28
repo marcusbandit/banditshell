@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-4",
+      "id": "2026-10-28-5",
       "date": "2026-10-28",
       "changes": [
         {
@@ -28,6 +28,27 @@
           "type": "issues",
           "severity": "minor",
           "text": "LEAP networks say plainly that they cannot be joined"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-4",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The rail shows your keyboard layout's code, press it to switch"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Switching keyboard layout names the new one in the island"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Short island rows such as Mic muted show their whole label"
         }
       ]
     },
