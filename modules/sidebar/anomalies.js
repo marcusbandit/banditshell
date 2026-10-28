@@ -57,6 +57,7 @@ function found(state) {
         airplaneOn(s) ? { key: "airplane", icon: "flight", tone: "notice", title: "Airplane mode", hint: "click for network", rank: 6, opens: { menu: "network" } } : null,
         s.modeIcon ? { key: "mode", icon: s.modeIcon, tone: "notice", title: "Mode on", hint: "click for modes", rank: 3, opens: { settings: "modes" } } : null,
         s.quiet && !s.modeIcon ? { key: "quiet", icon: "do_not_disturb_on", tone: "notice", title: "Do not disturb", hint: "click for settings", rank: 3, opens: { settings: "modes", row: "dnd" } } : null,
+        s.layout ? { key: "layout", text: s.layout, tone: s.layoutAway ? "notice" : "dim", title: (s.layoutName || s.layout) + " keyboard", hint: "click to switch", rank: s.layoutAway ? 4 : 9, spare: !s.layoutAway, opens: { cycles: "layout" } } : null,
         updateEntry(s)
     ].filter(function (e) {
         return e !== null;
@@ -80,7 +81,12 @@ function kept(all, slots) {
 }
 
 function split(state, slots) {
+    var room = slots === undefined ? Infinity : slots;
     var all = found(state);
+    if (all.length > room)
+        all = all.filter(function (e) {
+            return !e.spare;
+        });
     var keep = kept(all, slots);
     return {
         kept: all.filter(function (e) {

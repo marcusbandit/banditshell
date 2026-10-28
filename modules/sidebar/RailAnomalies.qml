@@ -43,7 +43,10 @@ Item {
         quiet: Notifications.quieted,
         update: Update.state,
         updateMode: Config.values.sidebar.update,
-        diverged: Update.diverged
+        diverged: Update.diverged,
+        layout: Keymap.several ? Keymap.layout : "",
+        layoutAway: Keymap.index > 0,
+        layoutName: Keymap.name
     })
 
     readonly property var split: Anomalies.split(root.reading, Anomalies.slotsIn(root.room, Appearance.sizes.statusSlot + Appearance.sizes.statusGap))
@@ -118,6 +121,7 @@ Item {
 
                 readonly property var entry: root.entryOf(mark.modelData.key)
                 readonly property bool present: mark.entry?.present ?? false
+                readonly property string text: mark.entry?.text ?? mark.modelData.text ?? ""
 
                 width: column.width
                 height: Math.round((Appearance.sizes.statusSlot + Appearance.sizes.statusGap) * grow.value)
@@ -132,7 +136,8 @@ Item {
                     anchors.top: parent.top
                     anchors.topMargin: Math.round(Appearance.sizes.statusGap / 2)
                     height: Appearance.sizes.statusSlot
-                    name: mark.entry?.icon ?? mark.modelData.icon
+                    visible: !mark.text
+                    name: mark.entry?.icon ?? mark.modelData.icon ?? ""
                     fill: glyph.dotted ? 0 : 1
                     color: root.toneColour(mark.entry?.tone ?? mark.modelData.tone)
 
@@ -173,6 +178,33 @@ Item {
                     HoverTip {
                         text: area.enabled ? Anomalies.tip(mark.entry) : ""
                         host: mark
+                    }
+                }
+
+                SquircleRect {
+                    id: chip
+
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: Math.round(Appearance.sizes.statusGap / 2 + (Appearance.sizes.statusSlot - chip.height) / 2)
+                    width: Math.min(code.implicitWidth + Appearance.padding.small, mark.width - Appearance.padding.hair * 2)
+                    height: Math.round(Appearance.sizes.statusSlot * 0.8)
+                    visible: !!mark.text
+                    pill: "object"
+                    color: Appearance.colour.fill
+
+                    StyledText {
+                        id: code
+
+                        anchors.centerIn: parent
+                        width: Math.min(implicitWidth, chip.width - Appearance.padding.hair * 2)
+                        verticalAlignment: Text.AlignVCenter
+                        horizontalAlignment: Text.AlignHCenter
+                        fontSizeMode: Text.HorizontalFit
+                        minimumPixelSize: Math.round(Appearance.font.size.small / 2)
+                        text: mark.text
+                        color: root.toneColour(mark.entry?.tone ?? mark.modelData.tone)
+                        font.pixelSize: Appearance.font.size.small
                     }
                 }
 

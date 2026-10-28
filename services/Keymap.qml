@@ -11,13 +11,20 @@ Singleton {
 
     property var layouts: []
     property int index: 0
+    property string name: ""
     property bool capsLock: false
 
     readonly property string layout: (root.layouts[root.index] ?? "").toUpperCase()
     readonly property bool several: root.layouts.length > 1
 
+    property bool stale: false
+
     function refresh(): void {
-        if (Compositor.isHyprland)
+        if (!Compositor.isHyprland)
+            return;
+        if (reader.running)
+            root.stale = true;
+        else
             reader.running = true;
     }
 
@@ -36,6 +43,7 @@ Singleton {
         const main = keyboards.find(k => k.main) ?? keyboards[0];
         if (!main)
             return;
+        root.name = String(main.active_keymap ?? "");
         root.layouts = String(main.layout ?? "").split(",").map(l => l.trim()).filter(l => l);
         root.index = main.active_layout_index ?? 0;
         root.capsLock = !!main.capsLock;
@@ -47,7 +55,7 @@ Singleton {
         target: Hyprland
 
         function onRawEvent(event): void {
-            if (event.name === "activelayout")
+            if (event.name === "activelayout" || event.name === "configreloaded")
                 root.refresh();
         }
     }
@@ -59,6 +67,13 @@ Singleton {
 
         stdout: StdioCollector {
             onStreamFinished: root.read(text)
+        }
+
+        onExited: {
+            if (!root.stale)
+                return;
+            root.stale = false;
+            reader.running = true;
         }
     }
 

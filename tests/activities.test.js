@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/activities.js"), "utf8");
-const A = new Function(src + "\nreturn { ACTIVE_MAX, LINGER_MS, ENDING_MS, LEVEL_MS, parseSpan, readProgress, push, update, end, remove, sweep, nextWake, ordered, itemOf, listLine, clockText, clockSample, timerRemaining, timerItem, timerItems, alarmItem, alarmActions, levelIcon, levelMoment, levelDiffers, coveredKinds, levelWanted };")();
+const A = new Function(src + "\nreturn { ACTIVE_MAX, LINGER_MS, ENDING_MS, LEVEL_MS, parseSpan, readProgress, push, update, end, remove, sweep, nextWake, ordered, itemOf, listLine, clockText, clockSample, timerRemaining, timerItem, timerItems, alarmItem, alarmActions, levelIcon, levelMoment, layoutMoment, levelDiffers, coveredKinds, levelWanted };")();
 
 const NOW = 1_000_000;
 
@@ -357,6 +357,20 @@ test.describe("level moments", () => {
 
     test.it("knows only three kinds", () => {
         assert.strictEqual(A.levelMoment("caps", 1, false, 1), null);
+    });
+
+    test.it("says a keyboard layout by its name with the short code beside it", () => {
+        const m = A.layoutMoment("DK", "Danish");
+        assert.strictEqual(m.key, "level:layout");
+        assert.strictEqual(m.kind, "level");
+        assert.strictEqual(m.icon, "keyboard");
+        assert.strictEqual(m.text, "Danish");
+        assert.strictEqual(m.readout, "DK");
+        assert.strictEqual(m.meter, -1);
+        assert.strictEqual(m.ms, A.LEVEL_MS);
+        assert.strictEqual(A.layoutMoment("US", "English (US)").text, "English");
+        assert.strictEqual(A.layoutMoment("US", "").text, "US");
+        assert.strictEqual(A.layoutMoment("", "Danish"), null);
     });
 
     test.it("notices a real change and ignores noise", () => {

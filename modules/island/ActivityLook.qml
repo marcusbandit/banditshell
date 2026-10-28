@@ -212,8 +212,8 @@ QtObject {
                 meter: a.meter,
                 trailing: a.readout ? "text" : "",
                 trailingText: a.readout,
-                trailingSample: "100%",
-                trailingTone: Appearance.colour.textDim
+                trailingSample: a.level === "layout" ? a.readout : "100%",
+                trailingTone: a.level === "layout" ? Appearance.colour.text : Appearance.colour.textDim
             };
         case "notifications":
             return {
