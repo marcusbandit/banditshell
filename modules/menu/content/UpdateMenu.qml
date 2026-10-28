@@ -61,7 +61,7 @@ Column {
 
     readonly property bool wentBack: Update.wentBackByHand && Update.resultPending
 
-    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, goBackOffer.implicitWidth, goBackRow.implicitWidth, Update.diverged ? pullRow.fullWidth : 0, reinstallRow.implicitWidth, reportRow.implicitWidth)
+    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, root.listed.length > 0 && root.unreadCount > 0 ? titleRow.implicitWidth + Appearance.padding.normal + markRead.implicitWidth : 0, goBackOffer.implicitWidth, goBackRow.implicitWidth, Update.diverged ? pullRow.fullWidth : 0, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
     onShowingChanged: if (root.showing) {
         root.settled = true;
@@ -282,6 +282,7 @@ Column {
         ButtonPair {
             id: reportRow
 
+            rest: "ring"
             actions: [{ text: "Review in a terminal", icon: "terminal" }, { text: "Don't send" }]
 
             onTriggered: index => {
@@ -308,6 +309,7 @@ Column {
         ButtonPair {
             id: reinstallRow
 
+            rest: "ring"
             actions: [{ text: `Update to ${Update.skippedVersion} again`, icon: "download" }, { text: `Stay on ${Update.version}` }]
 
             onTriggered: index => {
@@ -328,6 +330,7 @@ Column {
             visible: Update.canReinstall
             text: `Update to ${Update.skippedVersion} again`
             icon: "download"
+            style: "accent"
 
             onClicked: root.reinstallConfirm = true
         }
@@ -335,6 +338,7 @@ Column {
         Button {
             visible: Update.resultPending
             text: "Hide message"
+            style: "ring"
             onClicked: Update.dismissResult()
         }
     }
@@ -342,10 +346,9 @@ Column {
     Button {
         id: reportLink
 
-        x: -reportLink.padX
         visible: !root.asking && Update.wentBackByHand && Update.resultPending
         text: "Tell us why you went back"
-        style: "bare"
+        style: "ring"
 
         onClicked: {
             root.reportHanded = false;
@@ -363,6 +366,8 @@ Column {
             height: Math.max(listTitle.implicitHeight, markRead.visible ? markRead.implicitHeight : 0)
 
             Row {
+                id: titleRow
+
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: Appearance.padding.small
 
@@ -408,12 +413,11 @@ Column {
                 id: markRead
 
                 anchors.right: parent.right
-                anchors.rightMargin: -markRead.padX
                 anchors.verticalCenter: parent.verticalCenter
                 visible: !root.asking && root.unreadCount > 0
                 text: "Mark all read"
                 icon: "done_all"
-                style: "bare"
+                style: "ring"
 
                 onClicked: WhatsNew.markSeen(WhatsNew.pending[0].id)
             }
@@ -602,7 +606,7 @@ Column {
 
     Column {
         width: parent.width
-        visible: Update.diverged && Update.own.length > 0
+        visible: Update.ahead > 0 && Update.own.length > 0 && (Update.diverged || !root.asking)
         spacing: Appearance.padding.hair
 
         StyledText {
@@ -679,7 +683,7 @@ Column {
             anchors.verticalCenter: parent.verticalCenter
             text: copiedPull.running ? "Copied" : "Copy"
             icon: copiedPull.running ? "check" : "content_copy"
-            style: "bare"
+            style: "ring"
 
             onClicked: {
                 Quickshell.execDetached(["wl-copy", "-n", "--", Update.pullCommand]);
@@ -694,22 +698,13 @@ Column {
         }
     }
 
-    StyledText {
-        width: parent.width
-        visible: Update.ahead > 0 && !Update.diverged
-        text: Update.aheadText
-        color: Appearance.colour.textFaint
-        wrapMode: Text.WordWrap
-    }
-
     Button {
         id: goBackOffer
 
-        x: -goBackOffer.padX
         visible: !root.asking && Update.canGoBack
         text: `Go back to ${Update.previousVersion}`
         icon: "history"
-        style: "bare"
+        style: "ring"
 
         onClicked: root.goBackConfirm = true
     }
@@ -717,6 +712,7 @@ Column {
     ButtonPair {
         id: goBackRow
 
+        rest: "ring"
         visible: root.leaving
         actions: [{ text: `Go back to ${Update.previousVersion}`, icon: "history" }, { text: `Stay on ${Update.version}` }]
 
@@ -743,7 +739,7 @@ Column {
         Button {
             anchors.verticalCenter: parent.verticalCenter
             text: Update.checking ? "Refreshing..." : "Refresh"
-            style: "bare"
+            style: "ring"
             interactive: !Update.checking
 
             onClicked: Update.check()
@@ -771,6 +767,7 @@ Column {
         ButtonPair {
             id: offerRow
 
+            rest: "ring"
             visible: !root.declineConfirm
             actions: [{ text: "Migrate" }, { text: "Manual fix" }]
 
@@ -794,6 +791,7 @@ Column {
         ButtonPair {
             id: confirmRow
 
+            rest: "ring"
             visible: root.declineConfirm
             actions: [{ text: "Migrate" }, { text: "Leave it" }]
 

@@ -392,6 +392,9 @@ test("steps stay inside the range and off the float crumbs", () => {
     assert.strictEqual(Catalogue.step(r, 50, -1), 50);
     assert.strictEqual(Catalogue.step(Catalogue.ROW_BY_KEY.iconScale, 1.1, 1), 1.15);
     assert.strictEqual(Catalogue.nearest(Catalogue.ROW_BY_KEY.wallFit, 1.27), 1.25);
+    const zoomState = { filesZoomRange: [0.7, 2.5] };
+    assert.strictEqual(Catalogue.step(Catalogue.ROW_BY_KEY.filesZoom, 2.5, 1, zoomState), 2.5);
+    assert.strictEqual(Catalogue.nearest(Catalogue.ROW_BY_KEY.filesZoom, 0.6, zoomState), 0.7);
 });
 
 test("pages count the settings they cover and the new ones among them", () => {
@@ -619,7 +622,9 @@ test("hibernate is greyed where the machine cannot do it", () => {
         assert.strictEqual(off.length, 1, k);
         assert.ok(Catalogue.options(row, cannot).some(o => o[0] === off[0] && /^hibernate/.test(o[0])), k);
     }
-    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[1]), ["sleep at 5%", "hibernate at 5%", "nothing"]);
+    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[1]), ["sleep at 5%", "hibernate at 5%", "do nothing"]);
+    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[0]), ["sleep at 5%", "hibernate at 5%", "nothing"]);
+    assert.strictEqual(Catalogue.show(Catalogue.ROW_BY_KEY.lowAction, "nothing", can), "do nothing");
 });
 
 test("the power mode row offers what the daemon offers and greys without one", () => {

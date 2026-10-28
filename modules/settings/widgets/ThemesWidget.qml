@@ -13,6 +13,10 @@ Item {
 
     readonly property bool fromWall: SettingsState.v("fromWall")
     readonly property real gap: Appearance.padding.small
+    readonly property string offNames: {
+        const names = Themes.catalogue.map(t => t.name);
+        return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+    }
     readonly property real cardNeed: Math.max(names.implicitWidth, 18 * 4 + 4 * 3) + Appearance.padding.normal * 2
     readonly property bool squeezed: SettingsView.tiny || root.cellAt(3) < root.cardNeed
     readonly property int columns: root.squeezed ? 2 : 3
@@ -54,7 +58,7 @@ Item {
                 }])
 
     width: parent ? parent.width : 0
-    implicitHeight: grid.childrenRect.height + Appearance.padding.small + Appearance.padding.normal
+    implicitHeight: grid.childrenRect.height + Appearance.padding.small + Appearance.padding.normal + reason.height + Appearance.padding.small
 
     HoverHandler {
         onHoveredChanged: if (hovered)
@@ -168,5 +172,16 @@ Item {
                 }
             }
         }
+    }
+
+    StyledText {
+        id: reason
+
+        y: grid.y + grid.childrenRect.height + Appearance.padding.small
+        width: root.width
+        text: root.fromWall ? `${root.offNames} ${Themes.catalogue.length === 1 ? "is" : "are"} off while “Take it from the wallpaper” is on` : "wallpaper is off until “Take it from the wallpaper” is on"
+        color: Appearance.colour.textDim
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WordWrap
     }
 }

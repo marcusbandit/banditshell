@@ -223,17 +223,23 @@ Column {
         detail: root.opened !== "pair" ? "" : Bluetooth.strangers.length ? `${Bluetooth.strangers.length} nearby` : "looking"
         onActivated: root.toggleLayer("pair")
 
-        Icon {
-            name: "expand_more"
-            color: root.opened === "pair" ? Appearance.colour.text : Appearance.colour.textFaint
-            rotation: chevronTurn.value
+        Item {
+            implicitWidth: Math.max(Appearance.sizes.minTarget, Appearance.font.iconSize + Appearance.padding.small * 2)
+            implicitHeight: implicitWidth
 
-            Follow {
-                id: chevronTurn
+            Icon {
+                anchors.centerIn: parent
+                name: "expand_more"
+                color: root.opened === "pair" ? Appearance.colour.text : Appearance.colour.textFaint
+                rotation: chevronTurn.value
 
-                target: root.opened === "pair" ? 180 : 0
-                speed: Appearance.animation.revealSpeed
-                startsAtTarget: true
+                Follow {
+                    id: chevronTurn
+
+                    target: root.opened === "pair" ? 180 : 0
+                    speed: Appearance.animation.revealSpeed
+                    startsAtTarget: true
+                }
             }
         }
     }

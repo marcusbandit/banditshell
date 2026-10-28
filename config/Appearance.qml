@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import "scheme.js" as Scheme
+import "files-zoom.js" as FilesZoom
 
 Singleton {
     id: root
@@ -432,7 +433,7 @@ Singleton {
         readonly property int filesWidth: root.config.files.width
         readonly property int filesHeight: root.config.files.height
 
-        readonly property real filesZoom: root.config.files.zoom
+        readonly property real filesZoom: FilesZoom.clamp(root.config.files.zoom)
         readonly property int filesTile: Math.round(root.config.files.tile * filesZoom)
         readonly property int filesPreview: root.config.files.preview
 

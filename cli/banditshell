@@ -3438,6 +3438,7 @@ update_read() {
         U_UNRELEASED=$([ "$U_FOUND_NONE" = 1 ] && echo none || echo unchecked)
         U_TARGET="$U_HEAD" U_STATE=current U_BEHIND=0 U_AHEAD=0 U_PREVIOUS=""
         update_on_branch || U_STATE=paused
+        update_count_unpushed
         return 0
     fi
     [ -n "$U_TARGET" ] || update_fail "fatal: there is no fetched copy of $U_REMOTE/$U_BRANCH yet"
@@ -3464,6 +3465,13 @@ update_read() {
         [ "$U_PREVIOUS" = "$U_HEAD" ] || ! ugit merge-base --is-ancestor "$U_PREVIOUS" HEAD 2>/dev/null; then
         U_PREVIOUS=""
     fi
+    update_count_unpushed
+}
+
+update_count_unpushed() {
+    U_UNPUSHED=0
+    [ "$U_STATE" = current ] || return 0
+    U_UNPUSHED=$(ugit rev-list --count --no-merges HEAD --not --remotes="$U_REMOTE" 2>/dev/null || echo 0)
 }
 
 release_tags() {
@@ -3496,12 +3504,12 @@ update_meta() {
 }
 
 update_meta_json() {
-    printf '{"state":%s,"head":%s,"target":%s,"channel":%s,"branch":%s,"headBranch":%s,"remote":%s,"behind":%s,"ahead":%s,"skipped":%s,"checkedAt":%s,"version":%s,"targetVersion":%s,"previous":%s,"previousVersion":%s' \
+    printf '{"state":%s,"head":%s,"target":%s,"channel":%s,"branch":%s,"headBranch":%s,"remote":%s,"behind":%s,"ahead":%s,"skipped":%s,"checkedAt":%s,"version":%s,"targetVersion":%s,"previous":%s,"previousVersion":%s,"unpushed":%s' \
         "$(json_quote "$U_STATE")" "$(json_quote "$U_HEAD")" "$(json_quote "$U_TARGET")" "$(json_quote "$U_CHANNEL")" "$(json_quote "$U_BRANCH")" \
         "$(json_quote "$U_BRANCH_NOW")" "$(json_quote "$U_REMOTE")" "$U_BEHIND" "$U_AHEAD" \
         "$([ "$U_STATE" = skipped ] && echo true || echo false)" "$(update_fetched_at)" \
         "$(json_quote "$(update_label "$U_HEAD")")" "$(json_quote "$(update_label "$U_TARGET")")" \
-        "$(json_quote "$U_PREVIOUS")" "$(json_quote "$(update_label "$U_PREVIOUS")")"
+        "$(json_quote "$U_PREVIOUS")" "$(json_quote "$(update_label "$U_PREVIOUS")")" "${U_UNPUSHED:-0}"
 }
 
 update_facts() {
@@ -3579,12 +3587,18 @@ update_left_by_hand() {
 }
 
 update_own_json() {
-    local base line subjects=()
-    [ "$U_AHEAD" -gt 0 ] 2>/dev/null || return 0
+    local base line subjects=() range=()
+    if [ "$U_STATE" = current ]; then
+        [ "${U_UNPUSHED:-0}" -gt 0 ] 2>/dev/null || return 0
+        range=(HEAD --not --remotes="$U_REMOTE")
+    else
+        [ "$U_AHEAD" -gt 0 ] 2>/dev/null || return 0
+        range=(--end-of-options "$U_REMOTE/$U_BRANCH..HEAD")
+    fi
     base=$(ugit merge-base HEAD "$U_TARGET" 2>/dev/null || true)
     while IFS= read -r line; do
         subjects+=("$line")
-    done < <(ugit log --no-merges --format=%s --max-count=3 --end-of-options "$U_REMOTE/$U_BRANCH..HEAD" 2>/dev/null)
+    done < <(ugit log --no-merges --format=%s --max-count=3 "${range[@]}" 2>/dev/null)
     printf ',"baseVersion":%s,"own":%s' "$(json_quote "$(update_label "$base")")" "$(json_list "${subjects[@]}")"
 }
 

@@ -224,9 +224,9 @@ Column {
 
     Item {
         parent: frame
-        x: (controls.parent?.x ?? 0) + controls.x
+        x: (controls.parent?.x ?? 0) + controls.x + controls.width - width
         y: frame.height - Appearance.padding.small
-        width: controls.width
+        width: Math.min(Math.max(controls.width, 200), frame.inner - frame.leadWidth)
         height: 0
         visible: places.active
         z: 1
@@ -418,8 +418,8 @@ Column {
             Component.onCompleted: root.noteTail(slider.tail)
             Component.onDestruction: root.noteTail(-1)
             value: Number(root.value ?? 0)
-            from: root.row.min
-            to: root.row.max
+            from: Catalogue.val(root.row.min, SettingsState)
+            to: Catalogue.val(root.row.max, SettingsState)
             step: root.row.step ?? 1
             ends: root.row.ends ?? []
             text: Catalogue.format(root.row, Number(root.value ?? 0), SettingsState)
@@ -433,8 +433,8 @@ Column {
 
         SettingsStepper {
             value: Number(root.value ?? 0)
-            from: root.row.min
-            to: root.row.max
+            from: Catalogue.val(root.row.min, SettingsState)
+            to: Catalogue.val(root.row.max, SettingsState)
             step: root.row.step ?? 1
             text: Catalogue.format(root.row, Number(root.value ?? 0), SettingsState)
             enabled: !root.off
@@ -471,6 +471,11 @@ Column {
         id: textControl
 
         SettingsField {
+            id: textField
+
+            implicitWidth: Math.max(120, Math.min(frame.inner - frame.leadWidth, Math.ceil(Math.max(valueWidth.advanceWidth, placeholderWidth.advanceWidth)) + Appearance.padding.normal * 2 + 2))
+            framed: true
+            placeholderColour: Appearance.colour.text
             text: String(root.value ?? "")
             placeholder: root.row.placeholder ?? ""
             mono: !!root.row.mono
@@ -480,6 +485,22 @@ Column {
             pick: places.item?.chosen ?? ""
             onStepped: by => places.item.step(by)
             onCommitted: t => root.set(t)
+
+            TextMetrics {
+                id: valueWidth
+
+                font.family: textField.mono ? Appearance.sizes.filesTerminalFont : Appearance.font.family
+                font.pixelSize: Appearance.font.size.small
+                text: textField.draft
+            }
+
+            TextMetrics {
+                id: placeholderWidth
+
+                font.family: Appearance.font.family
+                font.pixelSize: Appearance.font.size.small
+                text: textField.placeholder
+            }
         }
     }
 

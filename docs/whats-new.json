@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-26",
+      "id": "2026-10-28-28",
       "date": "2026-10-28",
       "changes": [
         {
@@ -38,6 +38,93 @@
           "type": "issues",
           "severity": "minor",
           "text": "Closing the sign-in form or Settings closes its file chooser too"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-27",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The update menu lists your own changes that GitHub lacks"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Update menu actions look pressable; only the main one is filled"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A paused timer in the clock menu shows a pause mark"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Pair new device's arrow lines up with the other Bluetooth arrows"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Battery, Nearly empty offers do nothing"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings says why some theme cards are off"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings text fields fit their value and grow as you type"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-26",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A Files thumbnail updates when its picture changes on disk"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files list rows drop the time, then the size, instead of overlapping"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Shortened Files names keep their extension and use the free room"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "In Files list view the preview narrows so names stay readable"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files zoom goes from 70% to 250% in Settings as well as with keys"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files settings grow with the zoom and fade where more rows follow"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Empty states, the preview title and details grow with the zoom"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Delete button in Files confirm prompts sits on an alarm tint"
         }
       ]
     },

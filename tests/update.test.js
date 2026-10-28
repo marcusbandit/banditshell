@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, details, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, divergedHeadline, aheadText, withOwn, ownTitle, wentBackHeadline, buttonNote, pullCommand, plainProbe, presentSteps, reportWords, reportContext, reportScript };")();
+const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, details, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, divergedHeadline, aheadKept, currentHeadline, withOwn, ownTitle, unpushedTitle, wentBackHeadline, buttonNote, pullCommand, plainProbe, presentSteps, reportWords, reportContext, reportScript };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -209,18 +209,30 @@ test("going back says where you are and on which channel", () => {
     assert.strictEqual(Update.wentBackHeadline("", "stable", "main"), "You are on the stable channel");
 });
 
+test("own changes count what is on no GitHub branch while current, and the git count otherwise", () => {
+    assert.strictEqual(Update.aheadKept("current", 3, "2"), 2);
+    assert.strictEqual(Update.aheadKept("current", 3, 0), 0);
+    assert.strictEqual(Update.aheadKept("current", 0, undefined), 0);
+    assert.strictEqual(Update.aheadKept("diverged", 1, 0), 1);
+    assert.strictEqual(Update.aheadKept("available", 0, 5), 0);
+    assert.strictEqual(Update.aheadKept("paused", 4, 4), 0);
+    assert.strictEqual(Update.aheadKept("skipped", 4, 4), 0);
+    assert.strictEqual(Update.aheadKept("current", 0, "x"), 0);
+    assert.strictEqual(Update.currentHeadline(0), "You are up to date");
+    assert.strictEqual(Update.currentHeadline(1), "Up to date, plus 1 change of your own");
+    assert.strictEqual(Update.currentHeadline(2), "Up to date, plus 2 changes of your own");
+});
+
 test("a copy with changes of its own still names the waiting version", () => {
     assert.strictEqual(Update.divergedHeadline("v0.2.0", 1), "v0.2.0 is ready, but this copy has 1 change of your own");
     assert.strictEqual(Update.divergedHeadline("v0.2.0", 3), "v0.2.0 is ready, but this copy has 3 changes of your own");
     assert.strictEqual(Update.divergedHeadline("", 2), "A new version is ready, but this copy has 2 changes of your own");
-    assert.strictEqual(Update.aheadText(1), "1 change of your own is not on GitHub yet");
-    assert.strictEqual(Update.aheadText(4), "4 changes of your own are not on GitHub yet");
-    assert.strictEqual(Update.aheadText(0), "1 change of your own is not on GitHub yet");
-    assert.strictEqual(Update.aheadText("x"), "1 change of your own is not on GitHub yet");
     assert.strictEqual(Update.withOwn("v0.1.0", 1), "v0.1.0 plus 1 change of your own");
     assert.strictEqual(Update.withOwn("", 2), "2 changes of your own");
     assert.strictEqual(Update.ownTitle(1), "Your change");
     assert.strictEqual(Update.ownTitle(3), "Your 3 changes");
+    assert.strictEqual(Update.unpushedTitle(1), "Your change, not on GitHub yet");
+    assert.strictEqual(Update.unpushedTitle(2), "Your 2 changes, not on GitHub yet");
 });
 
 test("edits here that the update also touches are listed, others are not", () => {
