@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-22",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clipboard picture titles line up with every other row"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A pinned clipboard row says pinned, apart from the selected one"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Two layouts with one code are named by what sets them apart"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A failed island task no longer wears the live microphone orange"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Island rows line up with the clock above them"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rail marks no longer write binding loop warnings to the log"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-21",
       "date": "2026-10-28",
       "changes": [
