@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-17",
+      "id": "2026-10-28-18",
       "date": "2026-10-28",
       "changes": [
         {
@@ -18,6 +18,22 @@
           "type": "issues",
           "severity": "minor",
           "text": "A menu opened by its shortcut takes the keyboard at once"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-17",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The update menu opens faster when it lists many changes"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Closed Settings no longer redoes its screen time chart every minute"
         }
       ]
     },

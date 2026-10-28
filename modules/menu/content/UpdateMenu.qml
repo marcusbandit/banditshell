@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -9,6 +10,7 @@ Column {
     id: root
 
     property bool showing: false
+    property bool settled: false
 
     readonly property var incoming: Update.behind > 0 && !Update.diverged ? Update.entries : []
 
@@ -37,11 +39,30 @@ Column {
         return "What changed";
     }
 
+    readonly property var sections: root.shortList.length > 0 ? [] : WhatsNew.sections(root.listed)
+    readonly property var linesBefore: {
+        const out = [];
+        let seen = 0;
+        for (const section of root.sections) {
+            out.push(seen);
+            seen += section.changes.length;
+        }
+        return out;
+    }
+    readonly property int eagerLines: {
+        let tallest = 0;
+        for (const screen of Quickshell.screens)
+            tallest = Math.max(tallest, screen.height);
+        return Math.ceil(tallest / Appearance.font.line.small);
+    }
+
     readonly property bool wentBack: Update.wentBackByHand && Update.resultPending
 
     readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, goBackOffer.implicitWidth, goBackRow.implicitWidth, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
-    onShowingChanged: if (!root.showing) {
+    onShowingChanged: if (root.showing) {
+        root.settled = true;
+    } else {
         root.goBackConfirm = false;
         root.reinstallConfirm = false;
         root.reportOpen = false;
@@ -388,12 +409,15 @@ Column {
         }
 
         Repeater {
-            model: root.shortList.length > 0 ? [] : WhatsNew.sections(root.listed)
+            model: root.sections
 
             delegate: SquircleRect {
                 id: section
 
                 required property var modelData
+                required property int index
+
+                readonly property int eager: Math.max(0, root.eagerLines - root.linesBefore[section.index])
 
                 readonly property color hue: root.hue(section.modelData.key)
                 readonly property bool major: section.modelData.key === "major"
@@ -432,35 +456,22 @@ Column {
                         }
                     }
 
-                    Repeater {
-                        model: section.modelData.changes
+                    UpdateChangeLines {
+                        width: sectionBody.width
+                        lines: section.modelData.changes.slice(0, section.eager)
+                        hue: section.hue
+                        major: section.major
+                    }
 
-                        delegate: Item {
-                            id: changeLine
+                    Loader {
+                        width: sectionBody.width
+                        active: root.settled && section.modelData.changes.length > section.eager
+                        asynchronous: true
 
-                            required property var modelData
-
-                            width: sectionBody.width
-                            height: changeText.height
-
-                            SquircleRect {
-                                x: Math.round((Appearance.font.iconSize - width) / 2)
-                                y: Math.round((Appearance.font.line.small - height) / 2)
-                                width: Math.max(4, Math.round(Appearance.font.size.small / 4))
-                                height: width
-                                pill: "object"
-                                color: Appearance.blend(Appearance.colour.textFaint, section.hue, 0.5)
-                            }
-
-                            StyledText {
-                                id: changeText
-
-                                x: Appearance.font.iconSize + Appearance.padding.small
-                                width: changeLine.width - x
-                                text: changeLine.modelData.text
-                                color: section.major ? Appearance.colour.text : Appearance.colour.textDim
-                                wrapMode: Text.WordWrap
-                            }
+                        sourceComponent: UpdateChangeLines {
+                            lines: section.modelData.changes.slice(section.eager)
+                            hue: section.hue
+                            major: section.major
                         }
                     }
                 }

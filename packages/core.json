@@ -41,7 +41,8 @@
       "services/quoting.js",
       "services/ranking.js",
       "services/system-binaries.js",
-      "services/timeformat.js"
+      "services/timeformat.js",
+      "services/trace.js"
     ],
     "components": ["components"],
     "scripts": [
@@ -84,6 +85,7 @@
       "tests/squircle.test.js",
       "tests/fixtures/user-dirs.dirs",
       "tests/timeformat.test.js",
+      "tests/trace.test.js",
       "tests/user-folders.test.js",
       "tests/wall-clock.test.js"
     ]
