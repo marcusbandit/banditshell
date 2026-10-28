@@ -164,3 +164,39 @@ function fitting(files, kind, most) {
     }
     return out;
 }
+
+function shortPath(path, home) {
+    var full = String(path || "");
+    var base = String(home || "").replace(/\/+$/, "");
+    return base && full.indexOf(base + "/") === 0 ? "~" + full.slice(base.length) : full;
+}
+
+function fullPath(text, home) {
+    var typed = String(text || "").trim();
+    var base = String(home || "").replace(/\/+$/, "");
+    return base && typed.indexOf("~/") === 0 ? base + typed.slice(1) : typed;
+}
+
+function problem(files, path, want, now) {
+    var file = null;
+    for (var i = 0; i < files.length && !file; i++) {
+        if (files[i].path === path)
+            file = files[i];
+    }
+    if (!file)
+        return "";
+    var name = path.slice(path.lastIndexOf("/") + 1);
+    var expired = file.until > 0 && file.until <= now ? name + " expired in " + monthOf(file.until) + "." : "";
+    if (want === "authority")
+        return file.kind !== "authority" ? name + " is not a root certificate." : expired;
+    if (want === "client") {
+        if (file.kind === "authority")
+            return name + " is a root certificate, not one issued to you.";
+        if (file.kind === "key")
+            return name + " is a key, not a certificate.";
+        return expired;
+    }
+    if (want === "key")
+        return file.kind !== "key" && !file.key ? name + " holds no key." : "";
+    return "";
+}

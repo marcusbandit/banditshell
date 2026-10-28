@@ -1286,8 +1286,8 @@ Singleton {
     readonly property string weatherPlaceState: root.weatherPlaceTrouble ? "" : (Weather.location ? "" : Weather.ready && Weather.fetchedFor === "" && Weather.place ? `from your connection: ${Weather.place}` : "from your connection")
     readonly property string weatherPlaceTrouble: Weather.failed && Weather.failure === "place" && Weather.failedFor === Weather.location ? Weather.location ? `no place called "${Weather.location}"` : "could not place you" : ""
     readonly property var weatherSuggestion: root.weatherPlaceTrouble !== "" ? Weather.placeSuggestion : null
-    readonly property string networkMissing: Network.managerRunning ? "" : "needs NetworkManager"
-    readonly property string managerStage: Network.managerStarting === "started" ? "restart" : Network.managerStart ? "start" : Network.managerInstall ? "install" : ""
+    readonly property string networkMissing: Network.managerRunning ? "" : Network.managerStarting === "started" ? "restart to use it" : "needs NetworkManager"
+    readonly property string managerStage: Network.managerStarting === "started" ? "restart" : Network.managerStart ? "start" : !Network.managerInstalled && Network.managerInstall ? "install" : ""
     readonly property bool managerInstalled: Network.managerInstalled
     readonly property string managerStarting: Network.managerStarting
     readonly property string managerStartTrouble: Network.managerStartTrouble
@@ -1296,6 +1296,10 @@ Singleton {
 
     function recheckManager(): void {
         Network.recheckManager();
+    }
+
+    function openManagerLog(): void {
+        Network.openManagerLog();
     }
 
     function startManager(): void {

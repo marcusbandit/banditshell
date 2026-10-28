@@ -11,7 +11,6 @@ Column {
     property var cat: SettingsView.cat
     readonly property var s: SettingsState
     readonly property var note: root.cat ? root.cat.suggest(root.s) : null
-    readonly property var notice: root.cat?.notice ? root.cat.notice(root.s) : null
     readonly property var tiles: (root.cat?.tiles ?? []).filter(t => Catalogue.present(t, SettingsState))
     readonly property int columns: SettingsView.compact && !SettingsView.tiny && root.tiles.length === 4 ? 4 : 2
 
@@ -36,19 +35,6 @@ Column {
 
     width: parent ? parent.width : 0
     spacing: 0
-
-    SettingsCell {
-        width: root.width
-        row: root.notice ?? {
-            kind: "fact",
-            text: ""
-        }
-    }
-
-    Item {
-        width: 1
-        height: root.notice ? Appearance.padding.card : 0
-    }
 
     SettingsRowFrame {
         width: root.width

@@ -108,7 +108,7 @@ Column {
         interactive: false
         icon: "folder_open"
         label: "Another file"
-        detail: chooser.available ? "" : "move it to Downloads to see it here"
+        detail: chooser.available ? "" : "browsing needs a file chooser such as zenity · move the file to Downloads instead"
         onPointed: SettingsView.hovered = root.row
 
         Button {

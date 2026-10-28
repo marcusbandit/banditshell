@@ -13,6 +13,7 @@ SceneGauge {
     readonly property bool on: SettingsState.v("wifi") && SettingsState.wifiNet !== ""
     readonly property bool live: SettingsState.v("keepFresh") && SettingsState.v("wifi")
     readonly property int sig: Network.active ? Network.bars(Network.active) : 0
+    readonly property string action: SettingsState.managerStage === "restart" ? "Restart the shell" : SettingsState.managerStarting === "failed" ? "Open the log" : SettingsState.managerStage === "start" ? "Start" : ""
 
     SceneClock {
         id: clock
@@ -108,7 +109,7 @@ SceneGauge {
         visible: !Network.managerRunning
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
-        text: "The shell cannot show the network status here."
+        text: SettingsState.managerStage === "restart" ? "NetworkManager is running." : "The shell cannot show the network status here."
     }
 
     StyledText {
@@ -123,12 +124,37 @@ SceneGauge {
     Item {
         width: parent.width
         height: Appearance.padding.small
-        visible: Network.managerCommand !== ""
+        visible: !Network.managerRunning && SettingsState.managerStage !== ""
+    }
+
+    Button {
+        anchors.horizontalCenter: parent.horizontalCenter
+        visible: !Network.managerRunning && root.action !== ""
+        style: "accent"
+        interactive: SettingsState.managerStarting !== "starting"
+        text: SettingsState.managerStarting === "starting" ? "Starting…" : root.action
+        onClicked: {
+            if (root.action === "Start")
+                SettingsState.startManager();
+            else if (root.action === "Restart the shell")
+                SettingsState.restartShell();
+            else
+                SettingsState.openManagerLog();
+        }
+    }
+
+    StyledText {
+        width: parent.width
+        visible: !Network.managerRunning && SettingsState.managerStage === "start" && SettingsState.managerStarting !== "failed"
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WordWrap
+        text: "Turns it on now and at every boot."
+        color: Appearance.colour.textFaint
     }
 
     SquircleRect {
         anchors.horizontalCenter: parent.horizontalCenter
-        visible: Network.managerCommand !== ""
+        visible: SettingsState.managerStage === "install"
         width: Math.min(parent.width, command.implicitWidth + Appearance.padding.normal * 2)
         height: command.height + Appearance.padding.small * 2
         radius: Appearance.rounding.small
@@ -159,7 +185,7 @@ SceneGauge {
 
     StyledText {
         width: parent.width
-        visible: Network.managerCommand !== ""
+        visible: SettingsState.managerStage === "install"
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
         text: "click to copy, then run it in a terminal"

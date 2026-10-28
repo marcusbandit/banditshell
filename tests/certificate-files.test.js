@@ -7,7 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/controls/certificate-files.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Files = new Function(src + "\nreturn { read, fitting, needsKey, roots, carriesKey };")();
+const Files = new Function(src + "\nreturn { read, fitting, needsKey, roots, carriesKey, shortPath, fullPath, problem };")();
 const SCAN = path.join(ROOT, "scripts/certificate-files.sh");
 const FIXTURE = fs.readFileSync(path.join(ROOT, "tests/fixtures/certificate-files.txt"), "utf8");
 
@@ -88,6 +88,26 @@ test.describe("certificate files", () => {
         const files = Files.read(text);
         assert.strictEqual(Files.roots(files, "radius.tu-berlin.de", now, 1)[0].detail, "TU-Berlin, Inc. · until Jan 2035 · matches radius.tu-berlin.de");
         assert.ok(!Files.roots(files, "wifi.it.dk", now, 10).some(r => r.detail.includes("matches")));
+    });
+
+    test.it("shows a picked file under home with a tilde and expands it back", () => {
+        assert.strictEqual(Files.shortPath("/home/me/Downloads/uni-root.der", "/home/me"), "~/Downloads/uni-root.der");
+        assert.strictEqual(Files.shortPath("/home/meg/x.pem", "/home/me"), "/home/meg/x.pem");
+        assert.strictEqual(Files.fullPath(" ~/Downloads/uni-root.der ", "/home/me/"), "/home/me/Downloads/uni-root.der");
+        assert.strictEqual(Files.fullPath("/etc/ssl/a.pem", "/home/me"), "/etc/ssl/a.pem");
+    });
+
+    test.it("says why a picked file cannot be used for its field", () => {
+        const now = Date.UTC(2026, 9, 28);
+        const files = Files.read(FIXTURE);
+        assert.strictEqual(Files.problem(files, "/home/me/Downloads/uni-root-2014.pem", "authority", now), "uni-root-2014.pem expired in Jan 2024.");
+        assert.strictEqual(Files.problem(files, "/home/me/Downloads/laptop-17.crt", "authority", now), "laptop-17.crt is not a root certificate.");
+        assert.strictEqual(Files.problem(files, "/home/me/Downloads/uni-root.der", "authority", now), "");
+        assert.strictEqual(Files.problem(files, "/home/me/Downloads/uni-root.der", "client", now), "uni-root.der is a root certificate, not one issued to you.");
+        assert.strictEqual(Files.problem(files, "/home/me/Downloads/laptop-17.key", "client", now), "laptop-17.key is a key, not a certificate.");
+        assert.strictEqual(Files.problem(files, "/home/me/Downloads/laptop-17.crt", "key", now), "laptop-17.crt holds no key.");
+        assert.strictEqual(Files.problem(files, "/home/me/Downloads/laptop-17.key", "key", now), "");
+        assert.strictEqual(Files.problem(files, "/elsewhere/typed.pem", "authority", now), "");
     });
 
     test.it("knows when the picked certificate carries its own key", () => {

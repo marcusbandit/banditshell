@@ -5,6 +5,7 @@ FileChoiceRow 1.0 FileChoiceRow.qml
 FileChooser 1.0 FileChooser.qml
 FormChoice 1.0 FormChoice.qml
 FormLine 1.0 FormLine.qml
+FormWarning 1.0 FormWarning.qml
 HoverTip 1.0 HoverTip.qml
 IdentityField 1.0 IdentityField.qml
 MenuRow 1.0 MenuRow.qml
