@@ -776,7 +776,7 @@ const PAGES_SOURCE = {
                 { n: 92, icon: "swap_vert", label: "Order", k: "filesReversed", kind: "seg", o: s => filesOrders(s.v("filesSort")), cfg: "files.reversed", kw: "files sort order direction reverse oldest smallest z to a" },
                 { n: 92, icon: "visibility_off", label: "Hidden files", k: "filesHidden", kind: "toggle", cfg: "files.hidden", keys: "files:hidden", kw: "files hidden" },
                 { n: 92, icon: "markdown", label: "Markdown", k: "filesMarkdown", kind: "seg", o: [["rendered", "rendered"], ["raw", "source"]], cfg: "files.markdown", kw: "files previews" },
-                { n: 92, icon: "zoom_in", label: "Zoom", k: "filesZoom", kind: "slider", min: 0.6, max: 2, step: 0.1, fmt: v => `${v.toFixed(1)}×`, cfg: "files.zoom", kw: "files previews" }
+                { n: 92, icon: "zoom_in", label: "Zoom", k: "filesZoom", kind: "slider", min: s => s.filesZoomRange[0], max: s => s.filesZoomRange[1], step: 0.1, fmt: v => `${v.toFixed(1)}×`, cfg: "files.zoom", kw: "files previews" }
             ] }
         ]
     },
@@ -1370,15 +1370,16 @@ function rowCount(cat) {
     return n;
 }
 
-function step(row, v, delta) {
+function step(row, v, delta, state) {
     const s = row.step === undefined ? 1 : row.step;
-    return Math.min(row.max, Math.max(row.min, +(v + s * delta).toFixed(4)));
+    return Math.min(val(row.max, state), Math.max(val(row.min, state), +(v + s * delta).toFixed(4)));
 }
 
-function nearest(row, v) {
+function nearest(row, v, state) {
     const s = row.step === undefined ? 1 : row.step;
-    const n = Math.round((v - row.min) / s) * s + row.min;
-    return Math.min(row.max, Math.max(row.min, +n.toFixed(4)));
+    const low = val(row.min, state);
+    const n = Math.round((v - low) / s) * s + low;
+    return Math.min(val(row.max, state), Math.max(low, +n.toFixed(4)));
 }
 
 function dwindleRects(n) {
