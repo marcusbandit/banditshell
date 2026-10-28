@@ -12,6 +12,9 @@ Item {
     property var row: ({})
 
     readonly property bool fromWall: SettingsState.v("fromWall")
+    readonly property string onBelow: "turn on"
+    readonly property string offBelow: "turn off"
+    readonly property real hintIcon: Appearance.icon.small
     readonly property real gap: Appearance.padding.small
     readonly property real cardNeed: Math.max(names.implicitWidth, 18 * 4 + 4 * 3) + Appearance.padding.normal * 2
     readonly property bool squeezed: SettingsView.tiny || root.cellAt(3) < root.cardNeed
@@ -75,6 +78,17 @@ Item {
                 text: modelData.name
             }
         }
+
+        Repeater {
+            model: [root.onBelow, root.offBelow]
+
+            delegate: StyledText {
+                required property string modelData
+
+                leftPadding: root.hintIcon + 4
+                text: modelData
+            }
+        }
     }
 
     Item {
@@ -100,10 +114,11 @@ Item {
 
                 readonly property bool on: root.picked(card.modelData)
                 readonly property bool usable: !card.modelData.wall && !root.fromWall
+                readonly property bool faded: !card.modelData.wall && root.fromWall
+                readonly property string hint: card.faded ? root.offBelow : card.modelData.wall && !root.fromWall ? root.onBelow : ""
 
                 width: root.cell
                 height: body.implicitHeight + Appearance.padding.normal * 2
-                opacity: !card.modelData.wall && root.fromWall ? Appearance.opacity.disabled : 1
 
                 SquircleRect {
                     anchors.fill: parent
@@ -125,6 +140,7 @@ Item {
                     anchors.margins: card.on ? 4 : 0
                     radius: Appearance.rounding.normal - (card.on ? 4 : 0)
                     color: card.modelData.background
+                    opacity: card.faded ? Appearance.opacity.disabled : 1
                 }
 
                 Column {
@@ -139,10 +155,31 @@ Item {
                         width: parent.width
                         text: card.modelData.name
                         color: card.modelData.foreground
+                        opacity: card.faded ? Appearance.opacity.disabled : 1
                         elide: Text.ElideRight
                     }
 
                     Row {
+                        height: 18
+                        visible: card.hint !== ""
+                        spacing: 4
+
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: "arrow_downward"
+                            size: root.hintIcon
+                            color: Appearance.colour.textDim
+                        }
+
+                        StyledText {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: card.hint
+                            color: Appearance.colour.textDim
+                        }
+                    }
+
+                    Row {
+                        visible: card.hint === ""
                         spacing: 4
 
                         Repeater {
