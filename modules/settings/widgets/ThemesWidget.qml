@@ -54,7 +54,7 @@ Item {
                 }])
 
     width: parent ? parent.width : 0
-    implicitHeight: grid.childrenRect.height + Appearance.padding.small + Appearance.padding.normal
+    implicitHeight: grid.childrenRect.height + Appearance.padding.small + Appearance.padding.normal + reason.height + Appearance.padding.small
 
     HoverHandler {
         onHoveredChanged: if (hovered)
@@ -168,5 +168,16 @@ Item {
                 }
             }
         }
+    }
+
+    StyledText {
+        id: reason
+
+        y: grid.y + grid.childrenRect.height + Appearance.padding.small
+        width: root.width
+        text: root.fromWall ? "Off while Take it from the wallpaper is on" : "Off until Take it from the wallpaper is on"
+        color: Appearance.colour.textDim
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WordWrap
     }
 }
