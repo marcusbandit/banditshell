@@ -54,9 +54,10 @@ function squeezed(rest, extension, fits, headed) {
         const head = headed ? Math.ceil(shown / 2) : 0;
         return rest.slice(0, head).replace(/^\s+/, "") + ELLIPSIS + rest.slice(rest.length - extension - (shown - head));
     };
-    if (!fits(line(0)))
+    const least = Math.min(1, stem);
+    if (!fits(line(least)))
         return cropped(rest.replace(/^\s+/, ""), fits);
-    let lo = 0;
+    let lo = least;
     let hi = stem;
     while (lo < hi) {
         const mid = Math.ceil((lo + hi) / 2);

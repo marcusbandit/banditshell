@@ -33,6 +33,8 @@ test.describe("tile names: wrapping a name under an icon", () => {
 
     test.it("elides inside one line when only one is allowed", () => {
         assert.deepStrictEqual(Names.lines("report-final.pdf", 1, room(10)), ["rep\u2026al.pdf"]);
+        assert.deepStrictEqual(Names.lines("quarterly.xlsx", 1, room(7)), ["q\u2026.xlsx"]);
+        assert.deepStrictEqual(Names.lines("quarterly.xlsx", 1, room(6)), ["quart\u2026"]);
     });
 
     test.it("treats a leading dot as part of the name, not an extension", () => {
