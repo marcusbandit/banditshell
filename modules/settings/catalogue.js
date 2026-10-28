@@ -81,10 +81,13 @@ const WIDGET_WHY = {
 const PAGES_SOURCE = {
     wifi: {
         id: "wifi", name: "Wi-Fi", icon: "wifi", preview: "network",
-        status: s => s.v("wifi") ? s.wifiState : "off",
+        status: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"),
         groups: [
-            { rows: [
-                { n: 1, icon: "wifi", label: "Wi-Fi", k: "wifi", kind: "toggle", state: s => s.v("wifi") ? s.wifiState : "off",
+            { notice: true, away: s => !s.networkMissing, rows: [
+                { n: [], kind: "w", w: "networkManager" }
+            ] },
+            { away: s => !!s.networkMissing, rows: [
+                { n: 1, icon: "wifi", label: "Wi-Fi", k: "wifi", kind: "toggle", state: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "",
                     why: "Turns the radio off. Ethernet keeps working." },
                 { n: [2, 3, 6], kind: "w", w: "nets", kw: "networks join password forget qr share scan portal sign in" },
                 { n: 4, icon: "autorenew", label: "Join on its own", k: "autoJoin", kind: "toggle", state: s => s.v("autoJoin") ? "" : "waits to be told", dis: s => !s.v("wifi"),
@@ -92,7 +95,7 @@ const PAGES_SOURCE = {
                 { n: 8, icon: "radar", label: "Keep the list fresh", k: "keepFresh", kind: "toggle", cfg: "network.keepListFresh",
                     why: "Rescans in the background so the list is current when you open it. Each scan holds the radio for a moment." }
             ] },
-            { t: "Checks", rows: [
+            { t: "Checks", away: s => !!s.networkMissing, rows: [
                 { n: 7, icon: "public", label: "Check for internet", k: "netCheck", kind: "toggle", cfg: "network.checkForInternet", state: s => s.v("netCheck") ? s.reach : "", kw: "internet check",
                     why: "Pings a check server so the sidebar can tell you when a network has no way out. Off, it guesses." },
                 { n: 6, icon: "login", label: "Sign-in page", k: "portalUri", kind: "text", cfg: "network.portalUri", placeholder: "the network decides", kw: "captive portal",
@@ -116,9 +119,12 @@ const PAGES_SOURCE = {
     },
     wired: {
         id: "wired", name: "Ethernet", icon: "lan", preview: "network",
-        status: s => s.v("wired") ? s.wiredDetail : "off",
+        status: s => s.networkMissing || (s.v("wired") ? s.wiredDetail : "off"),
         groups: [
-            { rows: [
+            { notice: true, away: s => !s.networkMissing, rows: [
+                { n: [], kind: "w", w: "networkManager" }
+            ] },
+            { away: s => !!s.networkMissing, rows: [
                 { n: 5, icon: "lan", label: "Ethernet", k: "wired", kind: "toggle", state: s => s.v("wired") ? s.wiredDetail : "off", kw: "wired connection",
                     why: "The dock’s port.", layer: [
                         { n: 5, icon: "autorenew", label: "Join on its own", k: "wiredAuto", kind: "toggle", state: s => s.v("wiredAuto") ? "" : "waits to be told" },
@@ -129,9 +135,12 @@ const PAGES_SOURCE = {
     },
     vpn: {
         id: "vpn", name: "Hotspot and VPN", icon: "vpn_lock", preview: "network",
-        status: s => [s.v("hotspot") ? "sharing" : "not sharing", s.vpnOn ? `vpn ${s.vpnOn}` : "no vpn"].join(" · "),
+        status: s => s.networkMissing || [s.v("hotspot") ? "sharing" : "not sharing", s.vpnOn ? `vpn ${s.vpnOn}` : "no vpn"].join(" · "),
         groups: [
-            { t: "Hotspot", rows: [
+            { notice: true, away: s => !s.networkMissing, rows: [
+                { n: [], kind: "w", w: "networkManager" }
+            ] },
+            { t: "Hotspot", away: s => !!s.networkMissing, rows: [
                 { n: 9, icon: "wifi_tethering", label: "Share this connection", k: "hotspot", kind: "toggle", state: s => s.hotspotStatus, dis: s => s.hotspotBlocked,
                     why: "Lends your ethernet connection to other devices over Wi-Fi. Wi-Fi stops joining networks while it runs.", layer: [
                         { n: 9, icon: "badge", label: "Name", k: "hotspotName", kind: "text" },
@@ -139,7 +148,7 @@ const PAGES_SOURCE = {
                         { n: 9, icon: "settings_input_antenna", label: "Band", k: "hotspotBand", kind: "seg", o: ["2.4 GHz", "5 GHz"] }
                     ] }
             ] },
-            { t: "VPN", rows: [
+            { t: "VPN", away: s => !!s.networkMissing, rows: [
                 { n: 10, kind: "w", w: "tunnels", kw: "vpn wireguard openvpn tunnel add import" }
             ] }
         ]
@@ -897,12 +906,12 @@ const PAGES_SOURCE = {
 
 const CATS = [
     { id: "connections", name: "Connections", icon: "wifi",
-        blurb: s => [s.v("wifi") && s.wifiNet ? s.wifiNet : s.v("hotspot") ? "hotspot on" : "wi-fi off", s.v("bt") ? `${s.btConnected.length} devices` : "bluetooth off", s.vpnOn ? "vpn on" : ""].filter(Boolean).join(" · "),
+        blurb: s => [s.networkMissing || (s.v("wifi") && s.wifiNet ? s.wifiNet : s.v("hotspot") ? "hotspot on" : "wi-fi off"), s.v("bt") ? `${s.btConnected.length} devices` : "bluetooth off", s.vpnOn ? "vpn on" : ""].filter(Boolean).join(" · "),
         tiles: [
-            { k: "wifi", icon: "wifi", label: "Wi-Fi", det: s => s.v("wifi") ? s.wifiState : "off" },
+            { k: "wifi", icon: "wifi", label: "Wi-Fi", explains: true, det: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "" },
             { k: "bt", icon: "bluetooth", label: "Bluetooth", det: s => s.v("bt") ? "on" : "off" },
-            { k: "hotspot", icon: "wifi_tethering", label: "Hotspot", det: s => s.hotspotStatus || "off", dis: s => s.hotspotBlocked },
-            { k: "vpnFirst", icon: "vpn_lock", label: "VPN", det: s => s.vpnOn || (s.tunnelCount ? "off" : "no tunnels"), dis: s => !s.tunnelCount }
+            { k: "hotspot", icon: "wifi_tethering", label: "Hotspot", explains: true, det: s => s.hotspotStatus || "off", dis: s => s.hotspotBlocked },
+            { k: "vpnFirst", icon: "vpn_lock", label: "VPN", explains: true, det: s => s.vpnOn || (s.networkMissing ? "needs NetworkManager" : s.tunnelCount ? "off" : "no tunnels"), dis: s => !s.tunnelCount }
         ],
         suggest: s => s.v("bt") && s.btNear > 0 ? { icon: "bluetooth_searching", label: `${s.btNear} devices nearby`, detail: "ready to pair", go: "bluetooth" } : null,
         subs: ["wifi", "bluetooth", "wired", "vpn"] },
@@ -1324,7 +1333,7 @@ function rowCount(cat) {
     let n = 0;
     for (const p of cat.pages)
         for (const g of p.groups)
-            n += g.rows.length;
+            n += g.notice ? 0 : g.rows.length;
     return n;
 }
 

@@ -11,7 +11,7 @@ import "../restore.js" as Restore
 Column {
     id: root
 
-    readonly property string documents: `${Quickshell.env("HOME")}/Documents`
+    readonly property string documents: UserFolders.documents
 
     property string target: ""
     property bool listing: true

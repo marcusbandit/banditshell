@@ -1,4 +1,4 @@
--- banditshell shim, format 1. Written by banditshell; never edit by hand.
+-- banditshell shim, format 2. Written by banditshell; never edit by hand.
 local home = os.getenv("HOME") or ""
 local state = os.getenv("XDG_STATE_HOME") or (home .. "/.local/state")
 
@@ -13,7 +13,7 @@ local function first_line(path)
 end
 
 local candidates = {}
-for _, root in ipairs({ os.getenv("BANDITSHELL_DIR") or "", first_line(state .. "/banditshell/root") or "", home .. "/Projects/banditshell", home .. "/banditshell" }) do
+for _, root in ipairs({ os.getenv("BANDITSHELL_DIR") or "", first_line(state .. "/banditshell/root") or "" }) do
     if root ~= "" then
         candidates[#candidates + 1] = root
     end

@@ -2154,7 +2154,8 @@ bare or not; a shell reduced to a wallpaper runner is still the machine looking 
 `bin/banditshell` wraps a Quickshell `IpcHandler`. It is a symlink to `cli/banditshell`, never a
 copy: every start, restart and `doctor` recreates that link inside the checkout, so a merge that
 changes the CLI cannot leave Hyprland's binds running an old copy (issue #20). The link in
-`~/bin` is made by `doctor` alone, and `doctor` leaves a `~/bin/banditshell` that is a real file
+`~/bin`, which an `exec-once` line starts the shell with, is made by `install.sh` and `doctor`,
+and both leave a `~/bin/banditshell` that is a real file
 (a wrapper someone wrote) as it is. Nothing used to put `banditshell` on a PATH, so `install.sh`
 now links `~/.local/bin/banditshell` to `cli/banditshell` when no other `banditshell` is found,
 and `doctor api` says whether the one on the PATH is this checkout.
@@ -2415,8 +2416,7 @@ launcher" for a plain `hl.bind(keys, bs.launcher.toggle)`.
 so `require("banditshell")` works. It is frozen: no action, no verb, a format number in its first
 line, replaced only by a higher format, and a `banditshell.lua` that is not ours (no such first
 line, or a link) is never touched. It finds the checkout through `$BANDITSHELL_DIR`, then the
-pointer file `$XDG_STATE_HOME/banditshell/root`, then the two usual homes of a clone, and with
-none it returns a hollow object that never raises. A pointer file, because the repo is not always
+pointer file `$XDG_STATE_HOME/banditshell/root`, and with neither it returns a hollow object that never raises. A pointer file, because the repo is not always
 where the owner keeps it, and a link would dangle after a move and make `require` raise in a
 config we do not own. `ensure_lua` writes the pointer and the shim on `start`, `restart`,
 `doctor` and a tried worktree (`dev try`, `dev back`), atomically, and never from the last good
