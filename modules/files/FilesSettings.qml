@@ -221,6 +221,7 @@ Item {
                     label: "View"
 
                     SettingChoice {
+                        zoom: Files.magnification
                         choices: [
                             {label: "Icons", value: "icons"},
                             {label: "List", value: "list"}
@@ -241,6 +242,7 @@ Item {
                         Button {
                             text: "Reset"
                             style: "bare"
+                            zoom: Files.magnification
                             interactive: Files.magnification !== 1
                             onClicked: Files.zoom(0)
                         }
@@ -257,6 +259,7 @@ Item {
                                 }
                             ]
                             primary: -1
+                            zoom: Files.magnification
                             onTriggered: index => Files.zoom(index === 0 ? -0.1 : 0.1)
                         }
                     }
@@ -267,6 +270,7 @@ Item {
                     label: "Hidden files"
 
                     Toggle {
+                        zoom: Files.magnification
                         checked: Files.showHidden
                         onToggled: Config.set("files.hidden", !Files.showHidden)
                     }
@@ -277,6 +281,7 @@ Item {
                     label: "Search reaches"
 
                     SettingChoice {
+                        zoom: Files.magnification
                         choices: [
                             {label: "This folder", value: "folder"},
                             {label: "All of home", value: "home"}
@@ -291,6 +296,7 @@ Item {
                     label: "Results from home"
 
                     SettingChoice {
+                        zoom: Files.magnification
                         choices: [
                             {label: "List", value: "list"},
                             {label: "Icons", value: "icons"}
@@ -306,6 +312,7 @@ Item {
                     detail: "Also .git, node_modules, keys and other drives in home"
 
                     Toggle {
+                        zoom: Files.magnification
                         checked: FilesFind.everywhere
                         onToggled: Config.set("files.searchEverywhere", !FilesFind.everywhere)
                     }
@@ -316,6 +323,7 @@ Item {
                     label: "Sort by"
 
                     SettingChoice {
+                        zoom: Files.magnification
                         choices: ["name", "mtime", "size", "kind"].map(value => ({
                                     label: Files.sortWords[value].replace(/^\w/, c => c.toUpperCase()),
                                     value: value
@@ -331,6 +339,7 @@ Item {
                     detail: Files.foldersNote
 
                     SettingChoice {
+                        zoom: Files.magnification
                         choices: Files.orderWords.map((words, i) => ({
                                     label: words.replace(/^\w|\b[a-z]\b/g, c => c.toUpperCase()),
                                     value: i === 1
@@ -345,6 +354,7 @@ Item {
                     label: "Markdown"
 
                     SettingChoice {
+                        zoom: Files.magnification
                         choices: [
                             {label: "Rendered", value: "rendered"},
                             {label: "Source", value: "raw"}
