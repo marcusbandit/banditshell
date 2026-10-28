@@ -7,12 +7,12 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "The update menu says when this copy has changes GitHub lacks"
+          "text": "The update menu lists your own changes that GitHub lacks"
         },
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Update menu actions look pressable, and Go back stands out"
+          "text": "Update menu actions look pressable; only the main one is filled"
         },
         {
           "type": "issues",
@@ -30,14 +30,19 @@
           "text": "Battery, Nearly empty offers do nothing"
         },
         {
-          "type": "issues",
+          "type": "ui",
           "severity": "minor",
-          "text": "A dimmed theme card says which switch makes it usable"
+          "text": "Settings lists mark the chosen option with a filled circle"
         },
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Settings text fields fit their value, so Place reads in full"
+          "text": "Settings says why some theme cards are off"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings text fields fit their value and grow as you type"
         }
       ]
     },
