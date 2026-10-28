@@ -61,7 +61,7 @@ Column {
 
     readonly property bool wentBack: Update.wentBackByHand && Update.resultPending
 
-    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, goBackOffer.implicitWidth, goBackRow.implicitWidth, Update.diverged ? pullRow.fullWidth : 0, reinstallRow.implicitWidth, reportRow.implicitWidth)
+    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, markRead.visible ? titleRow.implicitWidth + Appearance.padding.normal + markRead.implicitWidth : 0, goBackOffer.implicitWidth, goBackRow.implicitWidth, Update.diverged ? pullRow.fullWidth : 0, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
     onShowingChanged: if (root.showing) {
         root.settled = true;
@@ -342,10 +342,9 @@ Column {
     Button {
         id: reportLink
 
-        x: -reportLink.padX
         visible: !root.asking && Update.wentBackByHand && Update.resultPending
         text: "Tell us why you went back"
-        style: "bare"
+        style: "ring"
 
         onClicked: {
             root.reportHanded = false;
@@ -363,6 +362,8 @@ Column {
             height: Math.max(listTitle.implicitHeight, markRead.visible ? markRead.implicitHeight : 0)
 
             Row {
+                id: titleRow
+
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: Appearance.padding.small
 
@@ -408,12 +409,11 @@ Column {
                 id: markRead
 
                 anchors.right: parent.right
-                anchors.rightMargin: -markRead.padX
                 anchors.verticalCenter: parent.verticalCenter
                 visible: !root.asking && root.unreadCount > 0
                 text: "Mark all read"
                 icon: "done_all"
-                style: "bare"
+                style: "ring"
 
                 onClicked: WhatsNew.markSeen(WhatsNew.pending[0].id)
             }
@@ -679,7 +679,7 @@ Column {
             anchors.verticalCenter: parent.verticalCenter
             text: copiedPull.running ? "Copied" : "Copy"
             icon: copiedPull.running ? "check" : "content_copy"
-            style: "bare"
+            style: "ring"
 
             onClicked: {
                 Quickshell.execDetached(["wl-copy", "-n", "--", Update.pullCommand]);
@@ -705,11 +705,9 @@ Column {
     Button {
         id: goBackOffer
 
-        x: -goBackOffer.padX
         visible: !root.asking && Update.canGoBack
         text: `Go back to ${Update.previousVersion}`
         icon: "history"
-        style: "bare"
 
         onClicked: root.goBackConfirm = true
     }
@@ -743,7 +741,7 @@ Column {
         Button {
             anchors.verticalCenter: parent.verticalCenter
             text: Update.checking ? "Refreshing..." : "Refresh"
-            style: "bare"
+            style: "ring"
             interactive: !Update.checking
 
             onClicked: Update.check()
