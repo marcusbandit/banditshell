@@ -13,6 +13,7 @@ Singleton {
 
     readonly property var wifiDevice: Networking.devices.values.find(d => d.type === DeviceType.Wifi) ?? null
 
+    readonly property bool managerRunning: Networking.backend !== NetworkBackendType.None
     readonly property bool available: !!wifiDevice
     readonly property bool enabled: Networking.wifiEnabled
     readonly property bool hardwareEnabled: Networking.wifiHardwareEnabled

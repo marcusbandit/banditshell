@@ -84,7 +84,7 @@ const PAGES_SOURCE = {
         status: s => s.v("wifi") ? s.wifiState : "off",
         groups: [
             { rows: [
-                { n: 1, icon: "wifi", label: "Wi-Fi", k: "wifi", kind: "toggle", state: s => s.v("wifi") ? s.wifiState : "off",
+                { n: 1, icon: "wifi", label: "Wi-Fi", k: "wifi", kind: "toggle", state: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "",
                     why: "Turns the radio off. Ethernet keeps working." },
                 { n: [2, 3, 6], kind: "w", w: "nets", kw: "networks join password forget qr share scan portal sign in" },
                 { n: 4, icon: "autorenew", label: "Join on its own", k: "autoJoin", kind: "toggle", state: s => s.v("autoJoin") ? "" : "waits to be told", dis: s => !s.v("wifi"),
@@ -899,7 +899,7 @@ const CATS = [
     { id: "connections", name: "Connections", icon: "wifi",
         blurb: s => [s.v("wifi") && s.wifiNet ? s.wifiNet : s.v("hotspot") ? "hotspot on" : "wi-fi off", s.v("bt") ? `${s.btConnected.length} devices` : "bluetooth off", s.vpnOn ? "vpn on" : ""].filter(Boolean).join(" · "),
         tiles: [
-            { k: "wifi", icon: "wifi", label: "Wi-Fi", det: s => s.v("wifi") ? s.wifiState : "off" },
+            { k: "wifi", icon: "wifi", label: "Wi-Fi", det: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "" },
             { k: "bt", icon: "bluetooth", label: "Bluetooth", det: s => s.v("bt") ? "on" : "off" },
             { k: "hotspot", icon: "wifi_tethering", label: "Hotspot", det: s => s.hotspotStatus || "off", dis: s => s.hotspotBlocked },
             { k: "vpnFirst", icon: "vpn_lock", label: "VPN", det: s => s.vpnOn || (s.tunnelCount ? "off" : "no tunnels"), dis: s => !s.tunnelCount }

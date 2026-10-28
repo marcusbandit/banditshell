@@ -299,7 +299,7 @@ Column {
         icon: Network.wifiIcon()
         label: "Wi-Fi"
 
-        detail: !Network.available ? "no adapter" : !Network.hardwareEnabled ? "blocked by hardware switch" : !Network.enabled ? "off" : !Network.connected ? "not connected" : Network.reachFor("wifi") ? `${Network.activeName} · ${Network.reachFor("wifi")}` : Network.activeName
+        detail: !Network.managerRunning ? "needs NetworkManager" : !Network.available ? "no adapter" : !Network.hardwareEnabled ? "blocked by hardware switch" : !Network.enabled ? "off" : !Network.connected ? "not connected" : Network.reachFor("wifi") ? `${Network.activeName} · ${Network.reachFor("wifi")}` : Network.activeName
         interactive: Network.available && Network.hardwareEnabled
         onActivated: Network.setEnabled(!Network.enabled)
         tip: Network.enabled ? "turn off" : "turn on"
