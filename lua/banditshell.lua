@@ -79,9 +79,9 @@ local function load_table()
                 notify("the action table is api " .. number .. " but this module is api " .. API .. "; run: banditshell doctor api")
             end
         elseif line ~= "" then
-            local id, status, since, _, description = line:match("^([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t?(.*)$")
+            local id, status, since, argv, description = line:match("^([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t?(.*)$")
             if id and id ~= "" then
-                local row = { id = id, status = status, since = tonumber(since) or 1, description = description }
+                local row = { id = id, status = status, since = tonumber(since) or 1, head = table.concat({ id, status, since, argv }, "\t"), description = description }
                 rows[id] = row
                 insert(id, row)
             end
@@ -91,13 +91,16 @@ local function load_table()
     loaded = true
 end
 
-local function command_for(id, args)
+local function command_for(id, args, row)
     local parts = {
         "cli=" .. quote(root .. "/cli/banditshell") .. ";",
         '[ -x "$cli" ] || cli="$(head -n 1 ' .. quote(pointer) .. ' 2>/dev/null)/cli/banditshell";',
         '[ -x "$cli" ] || cli=banditshell;',
-        'exec "$cli" action ' .. quote(id),
     }
+    if row and not row.status:match("^deprecated") and not row.status:match("^removed") then
+        parts[#parts + 1] = "BANDITSHELL_ROW=" .. quote(row.head)
+    end
+    parts[#parts + 1] = 'exec "$cli" action ' .. quote(id)
     for i = 1, #args do
         parts[#parts + 1] = quote(args[i])
     end
@@ -111,14 +114,41 @@ local function fire(command)
     end
 end
 
-local SHORTCUTS = {
-    ["launcher.toggle"] = "banditshell:launcher",
-}
+local VERBS = { toggle = true, open = true, close = true }
+local SERVED = {}
+for name in ("launcher session clipboard media calculator quickcontrols keyboard notifications island hotkeys files wallpaper audio network bluetooth battery calendar clock update"):gmatch("%S+") do
+    SERVED[name] = true
+end
+
+local function shortcut_for(id)
+    if id == "panel.close" then
+        return "panel.close"
+    end
+    local name, verb = id:match("^panel%.([a-z0-9_]+)%.([a-z]+)$")
+    if not name then
+        name, verb = id:match("^(launcher)%.([a-z]+)$")
+    end
+    if not name or not VERBS[verb] or not SERVED[name] then
+        return nil
+    end
+    if name == "launcher" then
+        return verb == "toggle" and "launcher" or ("launcher." .. verb)
+    end
+    return "panel." .. name .. "." .. verb
+end
+
+local function shell_up()
+    if type(hl.get_layers) ~= "function" then
+        return false
+    end
+    local ok, layers = pcall(hl.get_layers, { namespace = "banditshell" })
+    return ok and type(layers) == "table" and #layers > 0
+end
 
 local function press(id, command)
-    local name = SHORTCUTS[id]
-    if name and hl.dsp and hl.dsp.global and hl.dispatch then
-        local made, dispatcher = pcall(hl.dsp.global, name)
+    local name = shortcut_for(id)
+    if name and hl.dsp and hl.dsp.global and hl.dispatch and shell_up() then
+        local made, dispatcher = pcall(hl.dsp.global, "banditshell:" .. name)
         if made and pcall(hl.dispatch, dispatcher) then
             return
         end
@@ -209,8 +239,8 @@ local function absent(id)
     return nothing
 end
 
-local function bound(id, args)
-    local command = command_for(id, args)
+local function bound(id, args, row)
+    local command = command_for(id, args, row)
     return function()
         fire(command)
     end
@@ -228,7 +258,7 @@ end
 
 local function leaf(id, row)
     judge(id, row)
-    local command = command_for(id, {})
+    local command = command_for(id, {}, row)
     local function action(...)
         local count = select("#", ...)
         if count == 0 then
@@ -240,7 +270,7 @@ local function leaf(id, row)
             press(id, command)
             return nil
         end
-        return bound(id, args)
+        return bound(id, args, row)
     end
     ids[action] = id
     return action
@@ -327,7 +357,15 @@ local function resolve(spec, ...)
         return absent(id), nil
     end
     judge(id, row)
-    local callable = bound(id, args)
+    local callable
+    if #args == 0 then
+        local command = command_for(id, {}, row)
+        callable = function()
+            press(id, command)
+        end
+    else
+        callable = bound(id, args, row)
+    end
     ids[callable] = id
     return callable, id
 end

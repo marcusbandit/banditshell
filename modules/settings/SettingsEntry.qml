@@ -37,6 +37,7 @@ Column {
         const parts = [shortcut.visible ? shortcut.width : -1, controls.item ? controls.width : -1, extra.visible ? extra.width : -1, more.visible ? more.width : -1].filter(w => w >= 0);
         return parts.reduce((a, b) => a + b, 0) + Math.max(0, parts.length - 1) * Appearance.padding.normal;
     }
+    readonly property bool here: root.row.page === SettingsView.current
     property string noted: ""
     readonly property bool flashing: !!SettingsView.flash && !!root.row.uid && SettingsView.flash.uid === root.row.uid
 
@@ -44,11 +45,12 @@ Column {
 
     onControlsWidthChanged: root.noteTrail()
     onResettableChanged: root.noteTrail()
+    onHereChanged: root.noteTrail()
     Component.onCompleted: root.noteTrail()
     Component.onDestruction: SettingsView.noteTrail(root.noted, -1)
 
     function noteTrail(): void {
-        const uid = root.resettable ? root.row.uid ?? "" : "";
+        const uid = root.resettable && root.here ? root.row.uid ?? "" : "";
         if (root.noted !== uid)
             SettingsView.noteTrail(root.noted, -1);
         root.noted = uid;

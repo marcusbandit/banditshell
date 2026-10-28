@@ -39,6 +39,21 @@ test("a running shell that does not take the call is exit 4 with a different mes
     assert.doesNotMatch(run.err, /not running/);
 });
 
+test("a shell that never answers gives up after the limit instead of piling up blocked presses", () => {
+    const stub = stubs();
+    fs.writeFileSync(path.join(stub.dir, "qs"), `#!/bin/sh
+case "$1" in
+list) printf '%s' "$QS_LIST" ;;
+ipc) exec sleep 30 ;;
+esac
+`, { mode: 0o755 });
+    const started = Date.now();
+    const run = cli(["panel", "clipboard", "toggle"], { stub, env: { QS_LIST: instance(process.pid), BANDITSHELL_IPC_LIMIT: "0.3" } });
+    assert.ok(Date.now() - started < 5000);
+    assert.strictEqual(run.code, 4);
+    assert.match(run.err, /did not answer `clipboard toggle` within 0\.3s/);
+});
+
 test("a handler that refuses is exit 4, its words go to stderr and stdout stays empty", () => {
     for (const reply of ["refused: ends how? (hour, evening, tomorrow or never)", "no shell window", "no such screen: DP-9"]) {
         const stub = stubs();
@@ -604,4 +619,27 @@ test("the watchdog looks for every shell again once the known one stops answerin
     assert.deepStrictEqual(rounds[1], ["qs ipc"]);
     assert.ok(rounds[2].includes("qs list"), rounds[2].join(", "));
     assert.ok(rounds[2].filter(c => c === "qs ipc").length >= 2, rounds[2].join(", "));
+});
+
+test("stop has the shell save a setting still waiting to be written before it ends it", () => {
+    const stub = stubs();
+    const pid = Number(spawnSync("sh", ["-c", "sleep 60 >/dev/null 2>&1 & echo $!"], { encoding: "utf8" }).stdout);
+    try {
+        fs.writeFileSync(path.join(stub.dir, "qs"), `#!/bin/sh
+case "$1" in
+list) printf '%s' "$QS_LIST" ;;
+ipc) kill -0 "$3" 2>/dev/null && echo "qs $* while running" >>"$STUB_LOG" ;;
+esac
+`, { mode: 0o755 });
+        fs.writeFileSync(path.join(stub.dir, "git"), "#!/bin/sh\n", { mode: 0o755 });
+        const run = cli(["stop"], { stub, env: { QS_LIST: instance(pid) } });
+        assert.strictEqual(run.code, 0);
+        assert.strictEqual(run.out, "stopped\n");
+        assert.deepStrictEqual(run.calls, [`qs ipc --pid ${pid} call shell flush while running`]);
+        assert.throws(() => process.kill(pid, 0));
+    } finally {
+        try {
+            process.kill(pid);
+        } catch (e) {}
+    }
 });

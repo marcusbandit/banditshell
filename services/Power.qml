@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.config
 import "suspension.js" as Sleep
 
 Singleton {
@@ -41,6 +42,7 @@ Singleton {
     ]
 
     function run(entry: var): void {
+        Config.flush();
         runner.command = entry.command;
         runner.running = true;
     }

@@ -14,6 +14,8 @@ ShellRoot {
 
     readonly property string shots: Quickshell.env("BANDITSHELL_SHOTS") ?? ""
 
+    readonly property var levels: Levels
+
     readonly property var steps: [
         {
             name: "a timer runs: a row with a ring and the time left",
@@ -127,6 +129,32 @@ ShellRoot {
         },
         {
             name: "the level row is gone",
+            run: () => {},
+            wait: 1500,
+            expect: "hidden"
+        },
+        {
+            name: "a keyboard with two layouts settles on its first: nothing to say",
+            run: () => {
+                Keymap.name = "Danish";
+                Keymap.layouts = ["dk", "us"];
+                Keymap.index = 0;
+            },
+            wait: 400,
+            expect: "hidden"
+        },
+        {
+            name: "the layout switches: its name and code for a second",
+            run: () => {
+                Keymap.name = "English (US)";
+                Keymap.index = 1;
+            },
+            wait: 400,
+            expect: "level",
+            holds: () => Notices.passing.some(p => p.key === "level:layout" && p.text === "English" && p.readout === "US")
+        },
+        {
+            name: "the layout row is gone",
             run: () => {},
             wait: 1500,
             expect: "hidden"

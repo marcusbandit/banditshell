@@ -159,6 +159,11 @@ Item {
                 width: parent.width
                 height: stage.fills ? Math.max(stage.wanted, scroll.height - info.implicitHeight - body.spacing) : Math.max(220, stage.wanted)
 
+                HoverHandler {
+                    onHoveredChanged: if (hovered)
+                        SettingsView.replays++
+                }
+
                 SquircleRect {
                     anchors.fill: parent
                     radius: Appearance.rounding.large

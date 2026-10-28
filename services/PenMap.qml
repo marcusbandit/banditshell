@@ -870,11 +870,15 @@ Singleton {
     Connections {
         target: Config
 
-        function onValuesChanged(): void {
+        function onLoadedChanged(): void {
             root.syncPad();
         }
+    }
 
-        function onLoadedChanged(): void {
+    Connections {
+        target: Config.values
+
+        function onPenChanged(): void {
             root.syncPad();
         }
     }

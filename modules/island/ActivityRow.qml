@@ -51,7 +51,7 @@ Item {
     readonly property int maxChars: 30
     readonly property string spoken: root.lights && root.look.detail ? `${root.look.text}  ${root.look.detail}` : (root.look.text ?? "")
     readonly property bool metered: (root.look.meter ?? -1) >= 0
-    readonly property real textWidth: em.advanceWidth * Math.min(root.maxChars, (root.look.text ?? "").length)
+    readonly property real textWidth: Math.min(em.advanceWidth * root.maxChars, Math.ceil(fit.implicitWidth))
     readonly property real meterWidth: root.slot * 5
     readonly property real centreWidth: root.look.bars ? bars.implicitWidth : root.metered ? root.meterWidth : root.textWidth
     readonly property var actions: root.look.trailing === "actions" ? (root.look.actions ?? []) : []
@@ -78,6 +78,13 @@ Item {
         font.family: Appearance.font.family
         font.pixelSize: Appearance.font.size.small
         text: "0"
+    }
+
+    StyledText {
+        id: fit
+
+        visible: false
+        text: root.look.text ?? ""
     }
 
     TextMetrics {
@@ -140,7 +147,8 @@ Item {
         visible: !root.look.bars && !root.metered
         text: root.spoken
         color: root.look.dim ? Appearance.colour.textDim : Appearance.colour.text
-        elide: root.kind === "download" ? Text.ElideMiddle : Text.ElideRight
+        clip: true
+        elide: root.spoken === fit.text && fit.implicitWidth <= root.textWidth ? Text.ElideNone : root.kind === "download" ? Text.ElideMiddle : Text.ElideRight
     }
 
     Item {
