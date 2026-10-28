@@ -1266,7 +1266,7 @@ Singleton {
     readonly property string wifiNet: Network.enabled && Network.connected ? Network.activeName : ""
     readonly property real launcherPlaced: Panels.host?.forScreen(Settings.screenName)?.launcher?.placedAt ?? -1
 
-    readonly property string reach: Network.online ? "online" : Network.reachLabel() || (Network.linked ? "checking" : "offline")
+    readonly property string reach: !Network.managerRunning ? "unknown" : Network.online ? "online" : Network.reachLabel() || (Network.linked ? "checking" : "offline")
 
     readonly property string btName: Bluetooth.adapterName || "this machine"
     readonly property var btConnected: Bluetooth.connectedDevices.map(d => d.name || d.deviceName || "device")
@@ -1287,6 +1287,7 @@ Singleton {
     readonly property string weatherPlaceTrouble: Weather.failed && Weather.failure === "place" && Weather.failedFor === Weather.location ? Weather.location ? `no place called "${Weather.location}"` : "could not place you" : ""
     readonly property var weatherSuggestion: root.weatherPlaceTrouble !== "" ? Weather.placeSuggestion : null
     readonly property string networkMissing: Network.managerRunning ? "" : "needs NetworkManager"
+    readonly property string networkWhy: Network.managerMissing
     readonly property string wifiState: Hotspot.active ? "running your hotspot" : root.wifiNet || "not connected"
 
     readonly property var outputs: Audio.sinks.map(n => [n.name, Audio.deviceLabel(n)])

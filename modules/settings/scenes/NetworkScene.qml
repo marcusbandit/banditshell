@@ -82,13 +82,13 @@ SceneGauge {
     StyledText {
         width: parent.width
         horizontalAlignment: Text.AlignHCenter
-        text: root.on ? SettingsState.wifiNet : Network.wiredConnected ? "ethernet" : "offline"
+        text: !Network.managerRunning ? "status unknown" : root.on ? SettingsState.wifiNet : Network.wiredConnected ? "ethernet" : "offline"
     }
 
     StyledText {
         width: parent.width
         horizontalAlignment: Text.AlignHCenter
-        text: root.on || Network.wiredConnected ? SettingsState.reach : SettingsState.v("wifi") ? "pick a network" : "wi-fi is off"
+        text: !Network.managerRunning ? Network.managerMissing : root.on || Network.wiredConnected ? SettingsState.reach : SettingsState.v("wifi") ? "pick a network" : "wi-fi is off"
         color: Appearance.colour.textFaint
     }
 }

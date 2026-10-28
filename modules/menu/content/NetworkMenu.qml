@@ -309,6 +309,7 @@ Column {
 
             Toggle {
                 anchors.verticalCenter: parent.verticalCenter
+                visible: Network.managerRunning
                 checked: Network.enabled
                 onToggled: Network.setEnabled(!Network.enabled)
             }

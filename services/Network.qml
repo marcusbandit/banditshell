@@ -14,6 +14,8 @@ Singleton {
     readonly property var wifiDevice: Networking.devices.values.find(d => d.type === DeviceType.Wifi) ?? null
 
     readonly property bool managerRunning: Networking.backend !== NetworkBackendType.None
+    property bool managerInstalled: true
+    readonly property string managerMissing: root.managerRunning ? "" : root.managerInstalled ? "NetworkManager is not running" : "NetworkManager is not installed"
     readonly property bool available: !!wifiDevice
     readonly property bool enabled: Networking.wifiEnabled
     readonly property bool hardwareEnabled: Networking.wifiHardwareEnabled
@@ -937,11 +939,19 @@ Singleton {
     }
 
     function wifiIcon(): string {
+        if (!root.managerRunning)
+            return "signal_wifi_statusbar_not_connected";
         if (!root.available || !root.enabled)
             return "wifi_off";
         if (!root.connected)
             return "signal_wifi_bad";
         return "wifi";
+    }
+
+    Process {
+        running: !root.managerRunning
+        command: ["sh", "-c", "command -v nmcli || command -v NetworkManager || [ -x /usr/sbin/NetworkManager ]"]
+        onExited: code => root.managerInstalled = code === 0
     }
 
     readonly property bool stranded: !!root.reachLabel()
