@@ -44,6 +44,10 @@ list)
     pid=$!
     disown
     printf '%s\n' "$target" >"$dir/inst/$pid"
+    if [ -e "$target/RELOADFAIL" ]; then
+        mkdir -p "$dir/cold"
+        : >"$dir/cold/$pid"
+    fi
     ;;
 ipc)
     shift
@@ -61,6 +65,9 @@ log)
     [ "${1:-}" = --pid ] || exit 1
     where=$(instance_dir "$2") || exit 1
     echo "INFO: loaded $where"
+    if [ -e "$where/RELOADFAIL" ] && [ ! -e "$dir/cold/$2" ]; then
+        echo "ERROR: Failed to load configuration"
+    fi
     if [ -e "$where/REFERROR" ]; then
         echo "ERROR: ReferenceError: Missing is not defined"
     fi

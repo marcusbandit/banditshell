@@ -264,70 +264,6 @@ Item {
         }
     }
 
-    component Line: StyledText {
-        width: parent.width
-        leftPadding: Appearance.padding.normal
-        rightPadding: Appearance.padding.normal
-        topPadding: Appearance.padding.small
-        bottomPadding: Appearance.padding.small
-        wrapMode: Text.Wrap
-        color: Appearance.colour.textFaint
-        font.pixelSize: Appearance.font.size.small
-    }
-
-    component Choice: Item {
-        id: choice
-
-        property string label: ""
-        property alias options: pick.options
-        property alias current: pick.current
-
-        signal picked(int index)
-
-        implicitHeight: visible ? pick.implicitHeight + Appearance.padding.small * 2 : 0
-
-        StyledText {
-            anchors.left: parent.left
-            anchors.leftMargin: Appearance.padding.normal
-            anchors.verticalCenter: parent.verticalCenter
-
-            text: choice.label
-            color: Appearance.colour.textDim
-        }
-
-        Segments {
-            id: pick
-
-            anchors.right: parent.right
-            anchors.rightMargin: Appearance.padding.normal
-            anchors.verticalCenter: parent.verticalCenter
-
-            onPicked: i => choice.picked(i)
-        }
-    }
-
-    component FileChips: Flow {
-        width: parent.width
-        leftPadding: Appearance.padding.normal
-        rightPadding: Appearance.padding.normal
-        spacing: Appearance.padding.small
-        visible: root.found.length > 0
-
-        Repeater {
-            model: root.found
-
-            Button {
-                required property string modelData
-
-                size: 0
-                style: "bare"
-                icon: "description"
-                text: modelData.slice(modelData.lastIndexOf("/") + 1)
-                onClicked: root.pickFile(modelData)
-            }
-        }
-    }
-
     Column {
         id: stack
 
@@ -335,7 +271,7 @@ Item {
         anchors.right: parent.right
         spacing: 0
 
-        Line {
+        FormLine {
             visible: !!root.refusal
             text: root.refusal
             color: Appearance.colour.textDim
@@ -352,12 +288,12 @@ Item {
                 width: parent.width
                 spacing: 0
 
-                Line {
+                FormLine {
                     text: root.tls ? `Sign in to ${root.placeholder} with a certificate from your school or work.` : `Sign in to ${root.placeholder} with your ${root.school ? root.school.school : "school or work"} account.`
                     color: Appearance.colour.textDim
                 }
 
-                Line {
+                FormLine {
                     visible: !!root.note
                     text: root.note
                     color: root.noteIsTrouble || root.noteWarns ? Appearance.colour.warning : Appearance.colour.textDim
@@ -395,7 +331,9 @@ Item {
                 }
 
                 FileChips {
+                    files: root.found
                     visible: root.tls && root.found.length > 0
+                    onPicked: path => root.pickFile(path)
                 }
 
                 Entry {
@@ -428,7 +366,7 @@ Item {
                     }
                 }
 
-                Line {
+                FormLine {
                     visible: root.looksUp && !root.busy
                     text: "Looking up sends nothing secret, but your Wi-Fi drops for a moment."
                 }
@@ -525,17 +463,17 @@ Item {
                         next: root.trustKey === "file" ? authority.input : identity.input
                     }
 
-                    Line {
+                    FormLine {
                         visible: root.localField === "server"
                         text: root.local
                         color: Appearance.colour.warning
                     }
 
-                    Line {
+                    FormLine {
                         text: root.tls ? "Your certificate only goes to a server with this name." : "Your password only goes to a server with this name."
                     }
 
-                    Choice {
+                    FormChoice {
                         width: parent.width
                         label: "trust"
                         options: root.trustNames
@@ -560,14 +498,16 @@ Item {
                         next: identity.input
                     }
 
-                    Line {
+                    FormLine {
                         visible: root.localField === "authority"
                         text: root.local
                         color: Appearance.colour.warning
                     }
 
                     FileChips {
+                        files: root.found
                         visible: root.trustKey === "file" && root.found.length > 0
+                        onPicked: path => root.pickFile(path)
                     }
 
                     Entry {
@@ -580,7 +520,7 @@ Item {
                         next: identity.input
                     }
 
-                    Choice {
+                    FormChoice {
                         width: parent.width
                         visible: root.methods.length > 1
                         label: "sign-in method"
