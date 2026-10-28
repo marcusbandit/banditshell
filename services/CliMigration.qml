@@ -27,7 +27,7 @@ Singleton {
 
     readonly property bool declined: root.declinedGeneration >= root.generation
 
-    readonly property bool stale: !root.declined && root.deprecated > 0
+    readonly property bool stale: Config.writable && !root.declined && root.deprecated > 0
 
     property bool nodeAvailable: false
 

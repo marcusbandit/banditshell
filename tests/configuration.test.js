@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "config/configuration.js"), "utf8");
-const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue, readText, readFailed, reuse, saveDelay, reapply };")();
+const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue, readText, readFailed, reuse, saveDelay, reapply, jsonErrorAt, errorSnippet };")();
 
 const OPAQUE = ["files.keys", "files.grid"];
 
@@ -436,6 +436,57 @@ test.describe("reading config.json", () => {
         assert.strictEqual(got.save, false);
         assert.deepStrictEqual(got.values, defaults());
         assert.match(got.problem, /JSON|token|property/i);
+    });
+
+    test.it("says the line and column of a stray comma", () => {
+        const got = read('{\n  "theme": "slate",\n}\n', boot());
+        assert.deepStrictEqual(got.at, { line: 3, column: 1, reason: "Extra comma before }" });
+    });
+
+    test.it("names only the mistakes it can be sure of", () => {
+        const cases = {
+            '{\n  "a": 1\n  "b": 2\n}': "Missing comma",
+            "[1 2]": "Missing comma",
+            "[1,2,]": "Extra comma before ]",
+            '{"a":}': "Unexpected }",
+            '{"a" 1}': "Missing : after the key",
+            '{"a":"x\n}': "Unclosed string",
+            '{"a":"x': "Unclosed string",
+            '{"a":[1,2': "The file ends too early",
+            '{"a":"\\q"}': "Bad escape in a string",
+            '{"a":tru}': "",
+            "{} x": "",
+            "{a:1}": ""
+        };
+        for (const [raw, reason] of Object.entries(cases))
+            assert.strictEqual(Configuration.jsonErrorAt(raw).reason, reason, raw);
+    });
+
+    test.it("shows the line before a column-1 error, with the caret under the spot", () => {
+        const raw = '{\n  "theme": "slate",\n}\n';
+        assert.strictEqual(Configuration.errorSnippet(raw, 3, 1, 40), '2    "theme": "slate",\n3  }\n   ^');
+    });
+
+    test.it("lines the caret up across tabs and scrolls a long line to keep the spot in view", () => {
+        assert.strictEqual(Configuration.errorSnippet('{\n\t"a": 1\n\t"b": 2\n}', 3, 2, 40), '2      "a": 1\n3      "b": 2\n       ^');
+        const raw = '{\n  "x": "' + "a".repeat(80) + '" "y": 1\n}';
+        const at = Configuration.jsonErrorAt(raw);
+        const rows = Configuration.errorSnippet(raw, at.line, at.column, 40).split("\n");
+        assert.ok(rows.every(r => r.length <= 40), rows.join("|"));
+        assert.strictEqual(rows[1][rows[2].length - 1], '"');
+    });
+
+    test.it("finds a position exactly when JSON.parse refuses", () => {
+        const samples = ['{"a" 1}', '{"a":tru}', "[1,2", "{} x", "", '{"a":01}', '{"a":"x\\q"}', '{"a":"\t"}', '{"a":[1,{"b":null}]}', '  {"a":-1.5e3}  ', '"ok"', '{"a":"\\u00e9"}', '{"a":"\\u00g9"}'];
+        for (const raw of samples) {
+            let parses = true;
+            try {
+                JSON.parse(raw);
+            } catch (e) {
+                parses = false;
+            }
+            assert.strictEqual(Configuration.jsonErrorAt(raw) === null, parses, raw);
+        }
     });
 
     test.it("treats a file that parses to something other than an object as broken", () => {

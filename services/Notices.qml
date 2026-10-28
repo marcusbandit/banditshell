@@ -17,6 +17,11 @@ Singleton {
         const out = [];
         if (!root.live)
             return out;
+        if (Config.unreadable)
+            out.push({
+                key: `config:${root.configBreaks}`,
+                kind: "config"
+            });
         if (root.updateShown)
             out.push({
                 key: `update:${Update.target}`,
@@ -39,6 +44,8 @@ Singleton {
             });
         return out;
     }
+
+    property int configBreaks: 0
 
     property var passing: []
 
@@ -84,6 +91,18 @@ Singleton {
         const live = new Set([...root.standing, ...root.passing].map(n => n.key));
         if (root.glancing.some(k => !live.has(k)))
             root.glancing = root.glancing.filter(k => live.has(k));
+    }
+
+    readonly property bool configBroken: Config.unreadable
+    onConfigBrokenChanged: {
+        if (root.configBroken)
+            root.configBreaks++;
+        else if (root.live)
+            root.pass({
+                key: `config-read:${root.configBreaks}`,
+                kind: "configRead",
+                ms: 3000
+            });
     }
 
     onStandingChanged: root.meet()

@@ -9,6 +9,7 @@ DictationWave 1.0 DictationWave.qml
 InspectIpc 1.0 InspectIpc.qml
 Island 1.0 Island.qml
 IslandCalendar 1.0 IslandCalendar.qml
+IslandConfig 1.0 IslandConfig.qml
 IslandInspector 1.0 IslandInspector.qml
 IslandIpc 1.0 IslandIpc.qml
 IslandMedia 1.0 IslandMedia.qml

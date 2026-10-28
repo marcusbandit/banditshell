@@ -90,6 +90,17 @@ test.describe("the password window", () => {
         assert.match(out.stdout, /the password window closed without an answer\n.*falling back to the terminal/);
         assert.match(out.stdout, /authentication failed \(3 of 3\)\nroot 1\n$/);
     });
+
+    test.it("stops the install when the window is cancelled, without asking in the terminal", () => {
+        const dir = world({
+            qs: `${WINDOW}; touch "$d/cancelled"; printf '\\n' >"$d/rsp"; exec sleep 30`,
+            sudo: '[ "$1" = -A ] && { "$SUDO_ASKPASS" >/dev/null || exit 1; exit 0; }\necho "sudo $*" >>"$HOME/sudo.log"; exit 1'
+        });
+        const out = installer(dir, `UI_DIR="${ROOT}/installer"; ASKPASS_RUN="${dir}/run"; need_root; echo "root $?"`, { WAYLAND_DISPLAY: "wayland-test" });
+        assert.strictEqual(out.status, 130);
+        assert.strictEqual(out.stdout, "  install cancelled\n");
+        assert.strictEqual(fs.readFileSync(path.join(dir, "home/sudo.log"), "utf8"), "sudo -n true\n");
+    });
 });
 
 test.describe("Omarchy", () => {
