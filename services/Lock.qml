@@ -492,7 +492,8 @@ Singleton {
         id: lookupRetry
 
         interval: 5000
-        onTriggered: lookup.running = true
+        onTriggered: if (SessionControl.logind)
+            lookup.running = true
     }
 
     Process {
@@ -530,7 +531,7 @@ Singleton {
         interval: root.monitorDelay
         onTriggered: {
             root.monitorDelay = Math.min(root.monitorDelay * 2, root.slowestRestart);
-            monitor.running = true;
+            monitor.running = SessionControl.logind;
         }
     }
 
@@ -557,7 +558,7 @@ Singleton {
         interval: root.inhibitorDelay
         onTriggered: {
             root.inhibitorDelay = Math.min(root.inhibitorDelay * 2, root.slowestRestart);
-            if (!root.sleeping)
+            if (!root.sleeping && SessionControl.logind)
                 inhibitor.running = true;
         }
     }
