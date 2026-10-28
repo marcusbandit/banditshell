@@ -16,6 +16,17 @@ QtObject {
 
     readonly property bool intent: root.explicit
 
+    readonly property var prefixes: [
+        {
+            section: "Ask and look up",
+            word: "emoji",
+            example: "emoji heart",
+            about: "Emoji and symbols",
+            icon: "mood",
+            also: ["emojis", "symbols"]
+        }
+    ]
+
     readonly property var groups: [
         {
             key: "emoji",

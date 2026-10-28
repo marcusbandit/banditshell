@@ -19,6 +19,17 @@ QtObject {
 
     readonly property bool saving: root.explicit && root.asked.term !== "" && !Snippets.list.some(s => String(s?.name ?? "").toLowerCase() === root.asked.term.toLowerCase())
 
+    readonly property var prefixes: [
+        {
+            section: "Files and clipboard",
+            word: "snip",
+            example: "snip signature",
+            about: "Snippets",
+            icon: "short_text",
+            also: ["snippet", "snippets"]
+        }
+    ]
+
     readonly property var groups: [
         {
             key: "snippets",

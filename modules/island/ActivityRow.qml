@@ -20,6 +20,8 @@ Item {
     readonly property real slot: Appearance.font.line.small
     readonly property real inset: Appearance.padding.small
     readonly property real gap: Appearance.padding.normal
+    property real lead: root.inset
+    property real textX: root.lead + root.slot + root.gap
 
     readonly property bool pressable: ["music", "download", "update", "kernel", "restart", "upgrade", "notifications", "held", "notification", "recording", "timer"].includes(root.kind) || ((root.kind === "external" || root.kind === "privacy") && !!root.activity?.pressable && root.activity?.state !== "ended") || (root.lights && (root.kind === "dictation" || (root.kind === "launch" && root.activity?.state === "here")))
 
@@ -63,7 +65,8 @@ Item {
     }
     readonly property real tailWidth: root.look.trailingSample ? Math.max(root.slot, sample.advanceWidth) : Math.max(root.slot, tail.implicitWidth)
     readonly property real trailingWidth: root.look.trailing === "text" ? root.tailWidth : root.look.trailing === "actions" ? root.actionsWidth : root.look.trailing ? root.slot : 0
-    readonly property real ends: root.inset * 2 + root.slot + root.gap + (root.trailingWidth > 0 ? root.gap + root.trailingWidth : 0)
+    readonly property real tailRoom: root.trailingWidth > 0 ? root.gap + root.trailingWidth + root.inset : root.gap
+    readonly property real ends: root.textX + root.tailRoom
     readonly property real middle: Math.max(0, root.width - root.ends)
 
     implicitHeight: root.slot + root.inset * 2
@@ -120,7 +123,7 @@ Item {
     ActivityMark {
         id: mark
 
-        x: root.inset
+        x: root.lead
         anchors.verticalCenter: parent.verticalCenter
         size: root.slot
         look: root.look
@@ -131,7 +134,7 @@ Item {
     StyledText {
         id: words
 
-        x: mark.x + mark.width + root.gap
+        x: root.textX
         anchors.verticalCenter: parent.verticalCenter
         width: root.middle
         visible: !root.look.bars && !root.metered
@@ -143,7 +146,7 @@ Item {
     Item {
         id: meter
 
-        x: mark.x + mark.width + root.gap
+        x: root.textX
         anchors.verticalCenter: parent.verticalCenter
         width: root.middle
         height: Math.max(2, Math.round(root.slot / 4))
@@ -166,7 +169,7 @@ Item {
     DictationWave {
         id: bars
 
-        x: mark.x + mark.width + root.gap
+        x: root.textX
         anchors.verticalCenter: parent.verticalCenter
         width: root.middle
         height: root.slot

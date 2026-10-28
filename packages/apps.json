@@ -4,8 +4,8 @@
   "layer": 2,
   "owns": {
     "services": ["AppIcons", "Apps", "DefaultApps", "DesktopIndex", "LauncherMemory", "Launching", "StartupApps"],
-    "js": ["services/default-apps.js", "services/startup-apps.js"],
-    "tests": ["tests/default-apps.test.js", "tests/fixtures/apps", "tests/startup-apps.test.js"]
+    "js": ["services/default-apps.js", "services/launcher-memory.js", "services/startup-apps.js"],
+    "tests": ["tests/default-apps.test.js", "tests/fixtures/apps", "tests/launcher-memory.test.js", "tests/startup-apps.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor"],

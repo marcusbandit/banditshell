@@ -20,6 +20,17 @@ QtObject {
 
     readonly property var kinds: ["record", "recordstop", "recordinstall", "recordlast"]
 
+    readonly property var prefixes: !ScreenRecorder.enabled ? [] : [
+            {
+                section: "Desktop",
+                word: "record",
+                example: "record window with sound",
+                about: "Record the screen",
+                icon: "screen_record",
+                also: ["recording"]
+            }
+        ]
+
     readonly property var phrases: [
         {
             head: "record ",

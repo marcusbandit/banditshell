@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "files-undo.js" as Undo
+import "files-trash.js" as Trash
 
 Singleton {
     id: root
@@ -66,17 +67,36 @@ Singleton {
 
     function perform(entry: var, done: var): void {
         if (entry.kind === "batch")
-            root.picked(entry.parts, picks => root.chain(entry.parts.map((part, i) => Undo.command(part, picks[i])), [], done));
+            root.picked(entry.parts, picks => root.chain(entry.parts.map((part, i) => root.command(part, picks[i])), [], done));
         else if (entry.kind === "trash")
-            root.picked([entry], picks => root.start(Undo.command(entry, picks[0]), out => done([out])));
+            root.picked([entry], picks => root.start(root.command(entry, picks[0]), out => done([out])));
         else
-            root.start(Undo.command(entry, []), out => done([out]));
+            root.start(root.command(entry, []), out => done([out]));
+    }
+
+    function command(entry: var, picks: var): var {
+        return entry.kind === "trash" ? Trash.restoreCommand(picks) : Undo.command(entry);
     }
 
     function picked(parts: var, done: var): void {
-        root.start(Undo.TRASH_LISTING, text => {
-            const items = Undo.parseTrash(text ?? "");
+        const paths = parts.filter(part => part.kind === "trash").reduce((all, part) => all.concat(part.paths), []);
+        root.start(Trash.readCommand("-", Files.trashHome, Trash.topdirs(paths)), text => {
+            const items = Trash.parse(text ?? "").items;
             done(parts.map(part => part.kind === "trash" ? Undo.pick(items, part) : []));
+        });
+    }
+
+    function restore(items: var): void {
+        if (items.length === 0)
+            return;
+        const entry = Undo.trashed(items.map(item => item.path), 0);
+        root.start(Trash.restoreCommand(items), out => {
+            const told = Undo.report(entry, [out ?? ""], Files.cwd, Files.home, dir => Files.placeOf(dir));
+            if (told.ok)
+                root.say(told.text);
+            else
+                Files.failure = told.text;
+            Files.refresh();
         });
     }
 

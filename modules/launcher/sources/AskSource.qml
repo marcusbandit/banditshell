@@ -32,6 +32,17 @@ QtObject {
         Assistant.warm();
     }
 
+    readonly property var prefixes: !Assistant.enabled ? [] : [
+            {
+                section: "Ask and look up",
+                word: "ask",
+                example: "ask why is the sky blue",
+                about: "Ask the assistant",
+                icon: "auto_awesome",
+                also: []
+            }
+        ]
+
     readonly property var groups: [
         {
             key: "ask",

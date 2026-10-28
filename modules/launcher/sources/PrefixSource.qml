@@ -12,16 +12,22 @@ QtObject {
 
     readonly property bool intent: root.alone
 
-    readonly property var groups: !root.alone ? [] : Prefixes.SECTIONS.map(section => ({
+    readonly property var chip: ({
+            icon: "keyboard_return",
+            text: "Type"
+        })
+
+    readonly property var groups: !root.alone ? [] : Prefixes.sections(root.search.prefixes).map(section => ({
                 key: `prefixes:${section.title}`,
                 title: section.title,
                 items: section.prefixes.map(p => ({
-                        key: `prefix:${p.word}`,
+                        key: `prefix:${section.title}:${p.word}`,
                         kind: "prefix",
                         complete: Prefixes.completion(p),
-                        label: p.word,
+                        label: p.label ?? p.word,
                         detail: Prefixes.detail(p),
                         icon: p.icon,
+                        reserve: root.chip,
                         score: 1
                     }))
             }))
@@ -38,8 +44,10 @@ QtObject {
     function actionsFor(row: var): var {
         return [
             {
-                icon: "keyboard_tab",
-                label: "Search",
+                icon: root.chip.icon,
+                label: `Type ${row.complete.trim()}`,
+                short: root.chip.text,
+                button: true,
                 run: () => root.activate(row)
             }
         ];

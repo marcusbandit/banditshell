@@ -173,6 +173,16 @@ QtObject {
         }
     ]
 
+    readonly property var prefixes: [
+        {
+            section: "Desktop",
+            word: "scripts",
+            about: "Your script commands",
+            icon: "terminal",
+            also: []
+        }
+    ]
+
     readonly property var groups: [
         {
             key: "scripts",

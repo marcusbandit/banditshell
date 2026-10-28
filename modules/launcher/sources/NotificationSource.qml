@@ -23,6 +23,17 @@ QtObject {
 
     readonly property bool intent: root.explicit && root.search.onStage
 
+    readonly property var prefixes: [
+        {
+            section: "Desktop",
+            word: "notifs",
+            example: "notifs slack",
+            about: "Notifications",
+            icon: "notifications",
+            also: ["notif", "notifications"]
+        }
+    ]
+
     readonly property var groups: [
         {
             key: "notifications",

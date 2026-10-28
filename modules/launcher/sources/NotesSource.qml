@@ -78,6 +78,25 @@ QtObject {
         return out.concat(hits.map(h => root.noteRow(h.note, ask ? Infinity : Logic.ambientScore(h.score))).filter(r => r.score > 0));
     }
 
+    readonly property var prefixes: [
+        {
+            section: "Files and clipboard",
+            word: "notes",
+            example: "notes budget",
+            about: "Search existing notes",
+            icon: "description",
+            also: ["vault", "obsidian"]
+        },
+        {
+            section: "Files and clipboard",
+            word: "note",
+            example: "note meeting",
+            about: "Start a new note",
+            icon: "note_add",
+            also: []
+        }
+    ]
+
     readonly property var groups: [
         {
             key: "notes",

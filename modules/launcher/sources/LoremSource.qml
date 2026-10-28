@@ -15,6 +15,17 @@ QtObject {
 
     readonly property string generated: root.ask ? Lorem.generate(root.ask.count, root.ask.unit) : ""
 
+    readonly property var prefixes: [
+        {
+            section: "Text and numbers",
+            word: "lorem",
+            example: "lorem 3 sentences",
+            about: "Copy placeholder text",
+            icon: "notes",
+            also: ["ipsum"]
+        }
+    ]
+
     readonly property var groups: [
         {
             key: "lorem",
