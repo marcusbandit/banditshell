@@ -559,13 +559,13 @@ function ruleL16(ctx) {
 
 function ruleL17(ctx) {
     const { code, at } = ctx.scanned;
-    if (!/^\s*import\s+Quickshell\.Networking\b/m.test(code))
+    if (!/^[ \t]*import[ \t]+Quickshell\.Networking(?:[ \t]+[\d.]+)?[ \t]*;?[ \t]*$/m.test(code))
         return [];
     const found = [];
-    const use = /(?<![\w$.])Network\s*\./g;
+    const use = /(?<![\w$.])Network(?![\w$])(?!\s*[{:])/g;
     let m;
     while ((m = use.exec(code)) !== null)
-        found.push({ line: at(m.index), detail: "Network. beside import Quickshell.Networking" });
+        found.push({ line: at(m.index), detail: "Network beside import Quickshell.Networking" });
     return found;
 }
 

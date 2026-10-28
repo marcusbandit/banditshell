@@ -71,6 +71,7 @@
       "tests/lint-rules.test.js",
       "tests/markup.test.js",
       "tests/notify.test.js",
+      "tests/pick-file.test.js",
       "tests/quoting.test.js",
       "tests/ranking.test.js",
       "tests/scheme.test.js",

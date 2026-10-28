@@ -92,13 +92,15 @@ Column {
         Qt.callLater(root.takeSignIn);
     }
 
+    readonly property string screenName: QsWindow.window?.screen?.name ?? ""
+
     function takeSignIn(): void {
         const name = WifiJoin.signIn;
-        if (!root.showing || !name)
+        if (!root.showing || !name || !Network.find(name))
+            return;
+        if (WifiJoin.signInScreen && WifiJoin.signInScreen !== root.screenName)
             return;
         WifiJoin.signIn = "";
-        if (!Network.find(name))
-            return;
         root.opened = "";
         root.asking = name;
         root.frozen = [name].concat(root.frozen.filter(other => other !== name));
@@ -108,6 +110,15 @@ Column {
         target: WifiJoin
 
         function onSignInChanged(): void {
+            root.takeSignIn();
+        }
+    }
+
+    Connections {
+        target: Network
+        enabled: !!WifiJoin.signIn
+
+        function onNetworksChanged(): void {
             root.takeSignIn();
         }
     }

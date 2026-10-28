@@ -15,6 +15,10 @@ except (ImportError, ValueError):
     GLib = Gio = None
 
 PICKED, CANCELLED, NO_CHOOSER = 0, 1, 2
+
+
+def either_case(glob):
+    return "".join(f"[{c.lower()}{c.upper()}]" if c.isalpha() else c for c in glob)
 PATIENCE_SECONDS = 1800
 
 
@@ -39,7 +43,7 @@ def through_portal(title, pattern, folder):
     listen(handle)
     options = {
         "handle_token": GLib.Variant("s", token),
-        "filters": GLib.Variant("a(sa(us))", [(pattern, [(0, glob) for glob in pattern.split()])]),
+        "filters": GLib.Variant("a(sa(us))", [(pattern, [(0, either_case(glob)) for glob in pattern.split()])]),
     }
     if os.path.isdir(folder):
         options["current_folder"] = GLib.Variant("ay", folder.encode() + b"\0")
@@ -59,7 +63,7 @@ def through_portal(title, pattern, folder):
 def through_zenity(title, pattern, folder):
     if not shutil.which("zenity"):
         return NO_CHOOSER, ""
-    done = subprocess.run(["zenity", "--file-selection", f"--title={title}", f"--file-filter={pattern} | {pattern}",
+    done = subprocess.run(["zenity", "--file-selection", f"--title={title}", f"--file-filter={pattern} | {' '.join(either_case(glob) for glob in pattern.split())}",
                            f"--filename={folder.rstrip('/')}/"], capture_output=True, text=True)
     return (PICKED, done.stdout.strip()) if done.returncode == 0 and done.stdout.strip() else (CANCELLED, "")
 

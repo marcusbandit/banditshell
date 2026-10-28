@@ -10,8 +10,22 @@ Singleton {
     property string pending: ""
     property string screenName: ""
     property string signIn: ""
+    property string signInScreen: ""
 
-    onSignInChanged: Network.setViewing(root, !!root.signIn)
+    onSignInChanged: {
+        Network.setViewing(root, !!root.signIn);
+        if (root.signIn)
+            signInExpiry.restart();
+        else
+            signInExpiry.stop();
+    }
+
+    Timer {
+        id: signInExpiry
+
+        interval: 5000
+        onTriggered: root.signIn = ""
+    }
 
     readonly property string wrongPassword: "That password did not work"
 
@@ -25,6 +39,7 @@ Singleton {
         Network.clearEnroll(name);
         root.screenName = screenName;
         if (Network.enterprise(n) && !n.known) {
+            root.signInScreen = screenName;
             root.signIn = name;
             if (Panels.openMenu("network", screenName))
                 return;

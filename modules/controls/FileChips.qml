@@ -8,6 +8,7 @@ Flow {
     property var files: []
     property string lead: ""
     property bool browsing: false
+    property bool choosing: false
 
     signal picked(string path)
     signal browse
@@ -46,7 +47,7 @@ Flow {
         size: 0
         style: "bare"
         icon: "folder_open"
-        interactive: !root.browsing
+        interactive: !root.choosing
         text: root.browsing ? "Choosing…" : "Browse…"
         onClicked: root.browse()
     }

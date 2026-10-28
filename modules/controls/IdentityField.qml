@@ -69,6 +69,11 @@ Item {
         }
     }
 
+    readonly property bool wantsFiles: root.visible && !root.refusal && (root.tls || root.trustKey === "file")
+
+    onWantsFilesChanged: if (root.wantsFiles)
+        files.running = true
+
     function browse(entry: Item, title: string, pattern: string): void {
         if (chooser.running)
             return;
@@ -166,8 +171,11 @@ Item {
         if (root.visible && !root.refusal) {
             Prompts.request(root);
             identity.input.forceActiveFocus();
-            files.running = true;
+            if (root.wantsFiles)
+                files.running = true;
         } else {
+            chooser.into = null;
+            chooser.running = false;
             Prompts.release(root);
         }
     }
@@ -392,6 +400,7 @@ Item {
                     visible: root.tls
                     files: root.clients
                     lead: "Certificates found:"
+                    choosing: chooser.running
                     browsing: chooser.running && chooser.into === certificate
                     onPicked: path => root.pickFile(certificate, path)
                     onBrowse: root.browse(certificate, "Pick your certificate", "*.p12 *.pfx *.pem *.crt *.cer")
@@ -417,6 +426,7 @@ Item {
                     visible: root.tls
                     files: root.keys
                     lead: "Keys found:"
+                    choosing: chooser.running
                     browsing: chooser.running && chooser.into === key
                     onPicked: path => root.pickFile(key, path)
                     onBrowse: root.browse(key, "Pick your key file", "*.key *.pem")
@@ -592,7 +602,8 @@ Item {
                         visible: root.trustKey === "file"
                         files: root.authorities
                         lead: "Root certificates found:"
-                        browsing: chooser.running && chooser.into === authority
+                        choosing: chooser.running
+                    browsing: chooser.running && chooser.into === authority
                         onPicked: path => root.pickFile(authority, path)
                         onBrowse: root.browse(authority, "Pick your school's root certificate", "*.pem *.crt *.cer *.der")
                     }

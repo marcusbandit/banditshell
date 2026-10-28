@@ -660,6 +660,8 @@ test("L17 flags the Network singleton in a file that imports Quickshell.Networki
         "}"
     ].join("\n");
     assert.deepStrictEqual(lines("services/a.qml", shadowed, "L17"), [3]);
+    assert.deepStrictEqual(lines("services/c.qml", "import Quickshell.Networking\nItem {\n    Connections { target: Network }\n}", "L17"), [3]);
+    assert.deepStrictEqual(lines("services/d.qml", shadowed.replace("import Quickshell.Networking", "import Quickshell.Networking as Nm"), "L17"), []);
     assert.deepStrictEqual(lines("services/b.qml", shadowed.replace("import Quickshell.Networking", "import qs.services"), "L17"), []);
 });
 
