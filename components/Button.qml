@@ -22,10 +22,19 @@ Item {
 
     property bool keyed: false
 
+    readonly property bool keyable: root.interactive
+
+    function press(): void {
+        if (root.checkable)
+            root.toggled();
+        else
+            root.clicked();
+    }
+
     property bool alarm: false
 
-    readonly property bool hovered: root.interactive && !root.keyed && press.containsMouse
-    readonly property bool pressed: root.interactive && press.pressed
+    readonly property bool hovered: root.interactive && !root.keyed && pointer.containsMouse
+    readonly property bool pressed: root.interactive && pointer.pressed
 
     readonly property real labelSize: root.size < 2 ? Appearance.font.size.small : root.size < 3 ? Appearance.font.size.normal : Appearance.font.size.large
     readonly property real padX: Appearance.button.padX(root.size)
@@ -119,6 +128,17 @@ Item {
         strokeWidth: root.ringW
     }
 
+    FocusMark {
+        id: focusRing
+
+        shown: root.activeFocus
+        pill: "object"
+        topLeftRadius: plate.topLeftRadius + focusRing.reach
+        bottomLeftRadius: plate.bottomLeftRadius + focusRing.reach
+        topRightRadius: plate.topRightRadius + focusRing.reach
+        bottomRightRadius: plate.bottomRightRadius + focusRing.reach
+    }
+
     scale: pressGlide.value
 
     Follow {
@@ -180,13 +200,13 @@ Item {
     }
 
     MouseArea {
-        id: press
+        id: pointer
 
         anchors.fill: parent
         anchors.margins: -Appearance.padding.small
         enabled: root.interactive
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.checkable ? root.toggled() : root.clicked()
+        onClicked: root.press()
     }
 }

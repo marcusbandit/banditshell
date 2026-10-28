@@ -26,6 +26,8 @@ Column {
 
         property bool urgent: false
 
+        property string focusGroup: ""
+
         signal requested(real v)
         signal toggled
 
@@ -39,6 +41,17 @@ Column {
 
             name: level.glyph
             color: !level.muted ? Appearance.colour.text : level.urgent ? Appearance.colour.accent : Appearance.colour.textFaint
+
+            readonly property bool keyable: true
+
+            function press(): void {
+                level.toggled();
+            }
+
+            FocusMark {
+                shown: mark.activeFocus
+                pill: "object"
+            }
 
             MouseArea {
                 anchors.fill: parent
@@ -91,6 +104,8 @@ Column {
 
         required property var node
 
+        property string focusGroup: ""
+
         readonly property string title: Audio.streamLabel(node)
         readonly property bool muted: Audio.streamMuted(node)
         readonly property real value: Audio.streamVolume(node)
@@ -105,7 +120,17 @@ Column {
 
             width: Appearance.font.iconSize
             height: name.implicitHeight
-            opacity: channel.muted ? Appearance.opacity.disabled : 1
+
+            readonly property bool keyable: true
+
+            function press(): void {
+                Audio.toggleStreamMute(channel.node);
+            }
+
+            FocusMark {
+                shown: art.activeFocus
+                pill: "object"
+            }
 
             Image {
                 id: shot
@@ -118,6 +143,7 @@ Column {
                 sourceSize.height: height * Screen.devicePixelRatio
 
                 visible: status === Image.Ready
+                opacity: channel.muted ? Appearance.opacity.disabled : 1
                 source: Apps.iconSourceFor([Audio.streamBinary(channel.node), channel.title])
                 fillMode: Image.PreserveAspectFit
                 asynchronous: true
@@ -127,6 +153,7 @@ Column {
             Icon {
                 anchors.centerIn: parent
                 visible: !shot.visible
+                opacity: channel.muted ? Appearance.opacity.disabled : 1
                 name: Apps.iconFor(Audio.streamBinary(channel.node) || channel.title)
                 color: Appearance.colour.textDim
             }
@@ -197,6 +224,7 @@ Column {
 
     Level {
         width: parent.width
+        focusGroup: "output"
 
         glyph: Audio.muted ? "no_sound" : Audio.deviceIcon(Audio.sink)
         value: Audio.volume
@@ -222,6 +250,7 @@ Column {
 
             width: root.width
             node: modelData
+            focusGroup: "output"
         }
     }
 
@@ -237,6 +266,7 @@ Column {
 
     Level {
         width: parent.width
+        focusGroup: "input"
 
         glyph: Audio.sourceMuted || Audio.sourceVolume <= 0 ? "mic_off" : Audio.deviceIcon(Audio.source)
         value: Audio.sourceVolume
@@ -261,6 +291,7 @@ Column {
 
             width: root.width
             node: modelData
+            focusGroup: "input"
         }
     }
 
@@ -281,6 +312,8 @@ Column {
             id: sinkRow
 
             required property var modelData
+
+            readonly property string focusGroup: "outputs"
 
             width: root.width
             icon: Audio.deviceIcon(modelData)
@@ -309,6 +342,8 @@ Column {
             id: sourceRow
 
             required property var modelData
+
+            readonly property string focusGroup: "inputs"
 
             width: root.width
             icon: Audio.deviceIcon(modelData)

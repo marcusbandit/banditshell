@@ -132,6 +132,8 @@ Item {
         const sameBody = body === root.currentBody;
 
         grace.stop();
+        if (swapping)
+            chain.reset();
         root.currentKey = key;
         root.currentTitle = title;
         root.currentBody = body;
@@ -153,6 +155,7 @@ Item {
     function hide(): void {
         const span = root.open ? Trace.begin(`menu ${root.currentKey} close`) : null;
         grace.stop();
+        chain.reset();
         root.currentKey = "";
 
         root.pinnedKey = "";
@@ -160,6 +163,10 @@ Item {
 
         root.held = Qt.rect(0, 0, 0, 0);
         Trace.step("hidden", span);
+    }
+
+    function startKeys(): void {
+        chain.start();
     }
 
     function release(): void {
@@ -269,13 +276,24 @@ Item {
 
     Item {
         id: keys
+    }
 
-        Keys.onPressed: event => {
-            if (event.key === Qt.Key_Escape && root.open) {
-                Appearance.instantly();
-                root.hide();
-                event.accepted = true;
-            }
+    FocusChain {
+        id: chain
+
+        scope: panel.shownPage?.content ?? null
+        area: root
+        holder: keys
+        scroller: panel.shownPage?.scroller ?? null
+    }
+
+    Keys.onPressed: event => {
+        if (root.pinned && chain.handle(event)) {
+            event.accepted = true;
+        } else if (event.key === Qt.Key_Escape && root.open) {
+            Appearance.instantly();
+            root.hide();
+            event.accepted = true;
         }
     }
 }

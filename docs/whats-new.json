@@ -1,6 +1,37 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-22",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Arrow keys and Enter work in every menu, and Tab jumps between groups"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A menu opened by its shortcut starts with focus on its first row"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Arrows move a day cursor in the calendar; Page keys change month"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Wi-Fi list holds still while the keyboard is in it"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Tray switches show their own state, without a grey row behind them"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-21",
       "date": "2026-10-28",
       "changes": [

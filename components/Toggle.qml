@@ -8,6 +8,12 @@ Item {
 
     signal toggled
 
+    property bool keyable: true
+
+    function press(): void {
+        root.toggled();
+    }
+
     implicitWidth: Appearance.sizes.toggleWidth
     implicitHeight: Appearance.sizes.toggleHeight
 
@@ -26,6 +32,11 @@ Item {
         color: Appearance.blend(Appearance.colour.fill, Appearance.colour.accent, lit.value)
         stroke: Appearance.blend(Appearance.colour.textFaint, Appearance.colour.accent, lit.value)
         strokeWidth: Appearance.stroke.ring
+    }
+
+    FocusMark {
+        shown: root.activeFocus
+        pill: "place"
     }
 
     SquircleRect {

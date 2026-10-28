@@ -37,6 +37,12 @@ Item {
     signal activated
     signal asked(real x, real y)
 
+    readonly property bool keyable: root.interactive
+
+    function press(): void {
+        root.activated();
+    }
+
     readonly property bool hovered: interactive && pointer.containsMouse
 
     implicitWidth: parent ? parent.width : 0
@@ -47,6 +53,10 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.normal
         color: plate.value
+    }
+
+    FocusMark {
+        shown: root.activeFocus
     }
 
     FollowColour {
