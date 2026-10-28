@@ -201,6 +201,13 @@ test.describe("doas", () => {
         assert.match(out.stdout, /authentication failed \(3 of 3\)\n1\nno doas, so jq was not installed\n-n true\ntrue\ntrue\ntrue\n$/);
     });
 
+    test.it("says once that doas without persist will ask at every step", () => {
+        const dir = world({ doas: '[ "$1" = -n ] && exit 1; printf "%s\\n" "$*" >>"$HOME/doas.log"' });
+        const out = installer(dir, `PKG_MANAGER=apk; install_pkg jq; install_pkg ripgrep; cat "$HOME/doas.log"`, bare(dir));
+        assert.strictEqual(out.stdout.match(/doas will ask again for each step/g).length, 1);
+        assert.match(out.stdout, /true\napk add jq\napk add ripgrep\n$/);
+    });
+
     test.it("keeps sudo wherever sudo is installed", () => {
         const dir = world({ doas: "exit 0", sudo: '[ "$*" = "-n -v" ] && exit 1; printf "%s\\n" "$*" >>"$HOME/sudo.log"' });
         const out = installer(dir, `PKG_MANAGER=dnf; install_pkg jq; echo "$ROOT_TOOL"; cat "$HOME/sudo.log"`, bare(dir));

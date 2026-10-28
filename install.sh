@@ -413,6 +413,7 @@ need_doas() {
     for try in 1 2 3; do
         if doas true; then
             SUDO_READY=1
+            doas -n true 2>/dev/null || say "  doas will ask again for each step; 'permit persist' in doas.conf asks once"
             return 0
         fi
         say "  authentication failed ($try of 3)"
