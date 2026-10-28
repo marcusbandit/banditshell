@@ -11,10 +11,9 @@ import "../../services/files-find.js" as Find
 Item {
     id: root
 
-    required property var modelData
+    required property var entry
     required property int index
 
-    readonly property var entry: root.modelData
     readonly property string path: Files.pathOf(root.entry)
     readonly property string place: root.entry.trash ? Files.originPlace(root.entry) : root.entry.dir ? Find.place(root.entry.dir, Files.home) : FilesFind.active ? Find.place(Files.cwd, Files.home) : ""
 
@@ -32,6 +31,7 @@ Item {
 
     property bool picked: false
     property bool focused: false
+    property bool previewed: false
     property bool keyed: false
 
     property bool row: false
@@ -66,6 +66,31 @@ Item {
 
             shown: root.focused
         }
+
+        SquircleRect {
+            anchors.left: parent.left
+            anchors.leftMargin: Appearance.padding.hair
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.previewed && root.row
+
+            width: Appearance.padding.hair
+            height: parent.height - Appearance.padding.hair * 2
+
+            pill: "object"
+            color: Appearance.colour.accent
+        }
+
+        SquircleRect {
+            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            visible: root.previewed && !root.row
+
+            width: parent.width - Appearance.rounding.normal * 2
+            height: Appearance.padding.hair
+
+            pill: "object"
+            color: Appearance.colour.accent
+        }
     }
 
     HoverHandler {
@@ -74,6 +99,7 @@ Item {
 
     Column {
         anchors.centerIn: parent
+        anchors.verticalCenterOffset: -Appearance.padding.hair
         width: parent.width - mark.reach * 2 - Appearance.padding.small
         spacing: Appearance.padding.hair
         visible: !root.row
@@ -86,9 +112,10 @@ Item {
             SquircleImage {
                 id: thumb
 
-                anchors.centerIn: parent
+                anchors.top: parent.top
+                anchors.horizontalCenter: parent.horizontalCenter
                 width: parent.width
-                height: parent.height
+                height: parent.height - Appearance.padding.hair * 2
                 visible: root.isImage && status !== Image.Error
 
                 source: root.isImage ? Urls.fileUrl(root.path) : ""
@@ -98,7 +125,7 @@ Item {
             }
 
             FileMark {
-                anchors.centerIn: parent
+                anchors.centerIn: thumb
                 visible: !thumb.visible || thumb.status !== Image.Ready
 
                 fileClass: root.entry.class
@@ -111,7 +138,7 @@ Item {
                 owned: root.entry.mine
                 rooted: root.entry.root
                 worldWritable: root.entry.world
-                size: Math.min(parent.height, root.width * 0.46)
+                size: Math.min(thumb.height, root.width * 0.46)
             }
         }
 
@@ -156,7 +183,7 @@ Item {
 
     Item {
         anchors.fill: parent
-        anchors.leftMargin: Appearance.padding.small
+        anchors.leftMargin: Appearance.padding.small + Appearance.padding.hair * 2
         anchors.rightMargin: Appearance.padding.small
         visible: root.row
 

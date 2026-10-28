@@ -9,6 +9,7 @@ import "urls.js" as Urls
 import "markdown.js" as Markdown
 import "../../services/files-order.js" as FilesOrder
 import "../../services/files-find.js" as Find
+import "../../services/files-listing.js" as Listing
 
 Item {
     id: root
@@ -51,8 +52,28 @@ Item {
         return "";
     }
 
-    property var contents: []
+    property var listed: []
+    readonly property var contents: root.listed.filter(e => Files.showHidden || !e.hidden)
     property string contentsError: ""
+
+    property var seen: null
+    property real readAt: 0
+    readonly property string version: root.seen && Files.pathOf(root.seen) === root.path ? `?v=${root.seen.mtime}-${root.seen.size}` : ""
+
+    readonly property var folderRows: FilesOrder.ordered(root.contents, Files.sort, Files.reversed)
+    property string folderShown: ""
+
+    onFolderRowsChanged: {
+        const y = folderList.contentY;
+        folderList.model = root.folderRows;
+        if (root.folderShown === root.path) {
+            folderList.forceLayout();
+            folderList.contentY = Math.max(0, Math.min(y, folderList.maxScroll));
+        } else {
+            folderList.reset();
+        }
+        root.folderShown = root.path;
+    }
 
     readonly property var player: playback.item
 
@@ -60,20 +81,65 @@ Item {
 
     onPathChanged: {
         root.stat = null;
-        root.contents = [];
+        root.listed = [];
         root.contentsError = "";
         root.player?.stop();
         body.content = "";
-        if (!root.path)
+        later.stop();
+        if (root.path)
+            root.read();
+    }
+
+    onEntryChanged: root.follow()
+
+    function follow(): void {
+        if (!root.visible || !root.entry || Files.pathOf(root.entry) !== root.path)
             return;
+        if (!root.seen) {
+            root.seen = root.entry;
+            return;
+        }
+        if (!Listing.stale(root.seen, root.entry))
+            return;
+        const wait = Listing.rereadIn(Date.now(), root.readAt);
+        if (wait === 0)
+            root.reread();
+        else if (!later.running) {
+            later.interval = wait;
+            later.start();
+        }
+    }
 
+    function read(): void {
+        root.seen = root.entry && Files.pathOf(root.entry) === root.path ? root.entry : null;
+        root.readAt = Date.now();
         statter.exec([Files.helper("bs-ls"), "--stat", root.path]);
-
         peek.exec([Files.helper("bs-ls"), root.path]);
     }
 
-    onVisibleChanged: if (!root.visible)
-        root.player?.stop()
+    function reread(): void {
+        root.seen = root.entry;
+        root.readAt = Date.now();
+        statter.exec([Files.helper("bs-ls"), "--stat", root.path]);
+        if (root.isFolder)
+            peek.exec([Files.helper("bs-ls"), root.path]);
+        if (body.path !== "" && root.entry.size <= Config.values.files.textMax)
+            body.reload();
+    }
+
+    Timer {
+        id: later
+
+        onTriggered: if (Listing.stale(root.seen, root.entry))
+            root.reread()
+    }
+
+    onVisibleChanged: {
+        if (!root.visible)
+            root.player?.stop();
+        else
+            root.follow();
+    }
 
     Connections {
         target: Files
@@ -95,9 +161,9 @@ Item {
                         return;
                     root.contentsError = answer.ok ? "" : answer.error;
 
-                    root.contents = answer.ok ? answer.entries.filter(e => Files.showHidden || !e.hidden) : [];
+                    root.listed = answer.ok ? answer.entries : [];
                 } catch (e) {
-                    root.contents = [];
+                    root.listed = [];
                 }
             }
         }
@@ -199,15 +265,23 @@ Item {
                 const size = root.isFolder ? `${root.contents.length} item${root.contents.length === 1 ? "" : "s"}` : Files.humanSize(root.entry.size);
                 if (root.entry.trash)
                     return [size, `Trashed ${TimeFormat.dateText(new Date(root.entry.trashed * 1000), "year")} ${TimeFormat.time(new Date(root.entry.trashed * 1000), false)}`].join("  ·  ");
-                const parts = [size, Files.humanTime(root.entry.mtime)];
-                if (root.stat && root.stat.owner)
-                    parts.push(`${root.stat.owner} ${Files.humanMode(root.stat.mode)}`);
-                return parts.join("  ·  ");
+                return [size, Files.humanTime(root.entry.mtime)].join("  ·  ");
             }
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
 
             elide: Text.ElideRight
+        }
+
+        StyledText {
+            width: parent.width
+            visible: !!root.entry && !root.entry.trash && !!root.stat && !!root.stat.owner
+
+            text: root.stat && root.stat.owner ? `${root.stat.owner}  ·  ${Files.humanMode(root.stat.mode)}` : ""
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
+            color: Appearance.colour.textFaint
+
+            wrapMode: Text.Wrap
         }
 
         Item {
@@ -288,7 +362,7 @@ Item {
             anchors.fill: parent
             visible: root.isImage
 
-            source: root.isImage ? Urls.fileUrl(root.path) : ""
+            source: root.isImage ? Urls.fileUrl(root.path) + root.version : ""
             fillMode: Image.PreserveAspectFit
             radius: Appearance.rounding.small
         }
@@ -384,11 +458,11 @@ Item {
         }
 
         GlideList {
+            id: folderList
+
             anchors.fill: parent
             visible: root.isFolder && root.contents.length > 0
             clip: true
-
-            model: FilesOrder.ordered(root.contents, Files.sort, Files.reversed)
 
             delegate: Row {
                 id: line
@@ -455,6 +529,7 @@ Item {
             visible: root.isText && !root.rendered
 
             text: body.content
+            document: root.path
 
             language: root.language
             wrap: true
