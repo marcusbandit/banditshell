@@ -28,6 +28,9 @@ Item {
     signal exited
 
     readonly property bool isImage: root.entry.kind === "image" && !!root.entry.file
+    property string brokenFile: ""
+    readonly property bool broken: root.isImage && root.brokenFile === root.entry.file
+    readonly property bool pictured: root.isImage && !root.broken
     readonly property bool hovered: hover.hovered
 
     readonly property bool secret: Clipboard.sensitive(root.entry)
@@ -41,7 +44,7 @@ Item {
 
     readonly property bool focused: root.selected || root.hovered
 
-    implicitHeight: (root.isImage ? Appearance.sizes.clipboardPreview : Math.max(Appearance.sizes.rowHeight, body.implicitHeight + Appearance.padding.normal * 2)) + Appearance.padding.small
+    implicitHeight: (root.pictured ? Appearance.sizes.clipboardPreview : Math.max(Appearance.sizes.rowHeight, body.implicitHeight + Appearance.padding.normal * 2)) + Appearance.padding.small
 
     Follow {
         id: slide
@@ -165,28 +168,32 @@ Item {
             readonly property real known: root.entry.w > 0 && root.entry.h > 0 ? root.entry.w / root.entry.h : root.entry.aspect > 0 ? root.entry.aspect : 0
             readonly property real aspect: known > 0 ? Math.max(minAspect, Math.min(known, maxAspect)) : 1
 
-            width: root.isImage ? Math.round(height * aspect) : Appearance.sizes.clipboardIcon
-            height: root.isImage ? parent.height - Appearance.padding.normal * 2 : Appearance.sizes.clipboardIcon
+            width: root.pictured ? Math.round(height * aspect) : Appearance.sizes.clipboardIcon
+            height: root.pictured ? parent.height - Appearance.padding.normal * 2 : Appearance.sizes.clipboardIcon
 
             SquircleImage {
                 id: thumb
 
                 anchors.fill: parent
-                visible: root.isImage
+                visible: root.pictured
                 source: root.isImage ? `file://${root.entry.file}` : ""
                 radius: Appearance.rounding.small
                 fillMode: Image.PreserveAspectCrop
 
                 decodeWidth: 0
-                decodeHeight: markSlot.height
+                decodeHeight: Appearance.sizes.clipboardPreview - Appearance.padding.normal * 2
 
-                onStatusChanged: if (thumb.status === Image.Ready && thumb.implicitSourceHeight > 0)
-                    Clipboard.noteAspect(root.entry.id, thumb.implicitSourceWidth / thumb.implicitSourceHeight)
+                onStatusChanged: {
+                    if (thumb.status === Image.Error)
+                        root.brokenFile = root.entry.file;
+                    else if (thumb.status === Image.Ready && thumb.implicitSourceHeight > 0)
+                        Clipboard.noteAspect(root.entry.id, thumb.implicitSourceWidth / thumb.implicitSourceHeight);
+                }
             }
 
             Icon {
                 anchors.centerIn: parent
-                visible: root.isImage && thumb.status === Image.Error
+                visible: root.broken
                 name: "broken_image"
                 size: Appearance.sizes.clipboardIcon
                 color: Appearance.colour.textFaint
@@ -305,9 +312,11 @@ Item {
         if (!root.isImage)
             return Clipboard.summarise(root.entry);
 
+        if (root.broken)
+            return "Picture (missing)";
         if (root.entry.w > 0)
             return `${root.entry.w} × ${root.entry.h}`;
-        return thumb.status === Image.Error ? "Picture (missing)" : "Picture";
+        return "Picture";
     }
 
     readonly property string detail: {

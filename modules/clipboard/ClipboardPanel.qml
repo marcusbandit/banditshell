@@ -629,7 +629,7 @@ Item {
                                 }
 
                                 HoverTip {
-                                    text: "The history file on disk could not be read, so it was left unchanged. These copies were never saved to it."
+                                    text: "The history file on disk could not be read or copied, so it was left unchanged. These copies were never saved to it."
                                     asked: !Clipboard.clearSaves && clearedTextHover.hovered
                                 }
                             }

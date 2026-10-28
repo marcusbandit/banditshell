@@ -49,6 +49,24 @@ test.describe("clipboard sweep", () => {
         }
     });
 
+    test.it("never deletes a picture that was there when the history was found damaged", () => {
+        const dir = blobsWith(["kept.png", "cut off.png", "after.png", "after kept.png"]);
+        const backup = `${dir}.json.damaged-20261028-140509`;
+        try {
+            const then = new Date(Date.now() - 60000);
+            for (const n of ["kept.png", "cut off.png"])
+                fs.utimesSync(path.join(dir, n), then, then);
+            fs.writeFileSync(backup, '{"entries":[{"file":"/s/cut o');
+            const at = new Date(Date.now() - 30000);
+            fs.utimesSync(backup, at, at);
+            run(Sweep.command(dir, [{ file: `${dir}/kept.png` }, { file: `${dir}/after kept.png` }], true));
+            assert.deepStrictEqual(fs.readdirSync(dir).sort(), ["after kept.png", "cut off.png", "kept.png"]);
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+            fs.rmSync(backup, { force: true });
+        }
+    });
+
     test.it("leaves a missing blobs folder alone", () => {
         const dir = path.join(os.tmpdir(), `clipboard-sweep-missing-${process.pid}`);
         run(Sweep.command(dir, [], true));

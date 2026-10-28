@@ -108,20 +108,22 @@ function salvage(text) {
     return found;
 }
 
-function survivors(current, salvaged) {
-    var taken = {};
-    var out = (current || []).slice();
-    out.forEach(function (e) {
-        taken[identity(e)] = true;
-    });
-    (salvaged || []).forEach(function (e) {
-        if (!e.pinned || !(e.text || e.file || (e.paths || []).length))
-            return;
-        var key = identity(e);
-        if (taken[key])
-            return;
-        taken[key] = true;
-        out.push(e);
-    });
-    return out;
+var BACKUP = [
+    'umask 077',
+    'dest="$1.damaged-$2"',
+    'n=1',
+    'while [ -e "$dest" ]; do n=$((n + 1)); dest="$1.damaged-$2-$n"; done',
+    'cp -- "$1" "$dest" && cmp -s -- "$1" "$dest" && printf "%s\\n" "$dest"'
+].join("\n");
+
+function two(n) {
+    return (n < 10 ? "0" : "") + n;
+}
+
+function stamp(when) {
+    return "" + when.getFullYear() + two(when.getMonth() + 1) + two(when.getDate()) + "-" + two(when.getHours()) + two(when.getMinutes()) + two(when.getSeconds());
+}
+
+function backupCommand(path, when) {
+    return ["sh", "-c", BACKUP, "sh", path, stamp(when)];
 }

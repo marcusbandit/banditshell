@@ -52,3 +52,7 @@ function sensitive(entry) {
         return false;
     return marked(entry.types) || looksSecret(entry.text);
 }
+
+function copyCommand(entry, sensitiveCopy) {
+    return sensitiveCopy && sensitive(entry) ? ["wl-copy", "--sensitive", "-n"] : ["wl-copy", "-n"];
+}

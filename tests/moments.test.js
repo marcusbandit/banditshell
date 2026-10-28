@@ -85,6 +85,11 @@ test.describe("copied", () => {
         assert.strictEqual(M.copiedSpec(["wl-copy", "-n"], "x").data.secret, false);
     });
 
+    test.it("masks a secret even when wl-copy had no --sensitive to send it with", () => {
+        assert.strictEqual(M.copiedLabel(["wl-copy", "-n"], "hunter2-correct-horse", true), "Copied: ••••••••");
+        assert.strictEqual(M.copiedSpec(["wl-copy", "-n"], "hunter2-correct-horse", true).data.secret, true);
+    });
+
     test.it("names images and files instead of showing their bytes", () => {
         assert.strictEqual(M.copiedLabel(["sh", "-c", "exec wl-copy -t \"$1\" < \"$2\"", "sh", "image/png", "/a.png"], ""), "Copied: image");
         assert.strictEqual(M.copiedLabel(["wl-copy", "-t", "text/uri-list"], "file:///a\r\nfile:///b"), "Copied: 2 files");
