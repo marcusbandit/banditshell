@@ -181,20 +181,31 @@ Item {
                     }
                 }
 
-                StyledText {
+                SquircleRect {
+                    id: chip
+
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: parent.top
-                    anchors.topMargin: Math.round(Appearance.sizes.statusGap / 2)
-                    height: Appearance.sizes.statusSlot
-                    width: Math.min(implicitWidth, parent.width - Appearance.padding.small)
+                    anchors.topMargin: Math.round(Appearance.sizes.statusGap / 2 + (Appearance.sizes.statusSlot - chip.height) / 2)
+                    width: Math.min(code.implicitWidth + Appearance.padding.small, mark.width - Appearance.padding.hair * 2)
+                    height: Math.round(Appearance.sizes.statusSlot * 0.8)
                     visible: !!mark.text
-                    verticalAlignment: Text.AlignVCenter
-                    horizontalAlignment: Text.AlignHCenter
-                    fontSizeMode: Text.HorizontalFit
-                    minimumPixelSize: Math.round(Appearance.font.size.small / 2)
-                    text: mark.text
-                    color: root.toneColour(mark.entry?.tone ?? mark.modelData.tone)
-                    font.pixelSize: Appearance.font.size.small
+                    pill: "object"
+                    color: Appearance.colour.fill
+
+                    StyledText {
+                        id: code
+
+                        anchors.centerIn: parent
+                        width: Math.min(implicitWidth, chip.width - Appearance.padding.hair * 2)
+                        verticalAlignment: Text.AlignVCenter
+                        horizontalAlignment: Text.AlignHCenter
+                        fontSizeMode: Text.HorizontalFit
+                        minimumPixelSize: Math.round(Appearance.font.size.small / 2)
+                        text: mark.text
+                        color: root.toneColour(mark.entry?.tone ?? mark.modelData.tone)
+                        font.pixelSize: Appearance.font.size.small
+                    }
                 }
 
                 Follow {

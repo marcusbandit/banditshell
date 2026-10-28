@@ -2029,7 +2029,7 @@ whatever is unusual and nothing for what is normal. Unusual is decided in `anoma
 microphone live or muted while something records from it, a
 screen recording, a VPN, keep-awake, airplane mode (every radio off), quiet or a mode, an update
 waiting or stuck. One mark is not about the unusual: with more than one keyboard layout the rail
-always shows the current one's code (`DK`, `US`), because the switch bind changes every key with
+always shows the current one's code (`DK`, `US`) on a small chip of its own, so it never reads as part of the time below it, because the switch bind changes every key with
 nothing else moving; it is dim on the first layout and plain light on any other, and a press moves
 every keyboard to the next layout. Every mark's tooltip says what it is and then what a press does ("VPN on,
 click for settings"). Battery, sound, airplane and update open their sidebar menus, so the rail
