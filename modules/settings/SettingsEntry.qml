@@ -320,6 +320,7 @@ Column {
             from: root.row.min
             to: root.row.max
             step: root.row.step ?? 1
+            ends: root.row.ends ?? []
             text: Catalogue.format(root.row, Number(root.value ?? 0), SettingsState)
             enabled: !root.off
             onMoved: v => root.set(v)
