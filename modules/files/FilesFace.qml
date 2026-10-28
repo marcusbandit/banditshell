@@ -348,7 +348,7 @@ Item {
         acts.push({
             icon: "delete_forever",
             label: "Delete permanently…",
-            apart: true,
+            alarm: true,
             run: () => root.confirmDelete()
         });
 
@@ -410,7 +410,7 @@ Item {
             acts.push({
                 icon: "delete_forever",
                 label: "Empty Trash…",
-                apart: true,
+                alarm: true,
                 run: () => root.confirmEmpty()
             });
 

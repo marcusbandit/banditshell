@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-24",
+      "id": "2026-10-28-26",
       "date": "2026-10-28",
       "changes": [
         {
@@ -43,6 +43,68 @@
           "type": "issues",
           "severity": "minor",
           "text": "The Delete button in Files confirm prompts sits on an alarm tint"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-25",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "School Wi-Fi root certificates show issuer, expiry and server match"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The picked certificate is marked; a bundled key hides the key field"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Browse shows only when a file chooser exists; else type the path"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A missing server name shows its field and a warning outside More"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The closed More line keeps the sign-in method and the server name"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Without NetworkManager, Settings offers Start or the install command"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-24",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings labels, sliders and theme cards fit a narrow panel"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Long Settings pages and search lists fade where more follows"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Delete and other harmful menu actions show in the alarm colour"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Lid rows offer do nothing"
         }
       ]
     },

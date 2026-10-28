@@ -536,6 +536,7 @@ LauncherConcept {
             acts.push({
                 icon: "delete",
                 label: "Uninstall",
+                alarm: true,
                 tucked: true,
                 run: () => {
                     search.armUninstall(entry);

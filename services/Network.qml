@@ -16,8 +16,44 @@ Singleton {
     readonly property bool managerRunning: Networking.backend !== NetworkBackendType.None
     property bool managerInstalled: true
     property bool systemd: false
-    readonly property string managerMissing: root.managerRunning ? "" : `These settings work through NetworkManager, which is not ${root.managerInstalled ? "running" : "installed"} here.`
-    readonly property string managerStart: !root.managerRunning && root.managerInstalled && root.systemd ? "systemctl enable --now NetworkManager" : ""
+    readonly property string managerMissing: {
+        if (root.managerRunning)
+            return "";
+        if (root.managerStarting === "started")
+            return "Restart the shell to use it. Your open windows stay open.";
+        if (root.managerStarting === "failed")
+            return `Could not start NetworkManager: ${root.managerStartTrouble}. Its log may say why.`;
+        if (root.managerRival)
+            return `${root.managerRival} runs the network here. Start NetworkManager only to switch to it.`;
+        if (root.managerInstalled && !root.systemd)
+            return "These settings work through NetworkManager, which is not running here. Start it the way your system starts services, then restart the shell.";
+        return `These settings work through NetworkManager, which is not ${root.managerInstalled ? "running" : "installed"} here.`;
+    }
+    property string managerRival: ""
+    readonly property string managerStart: !root.managerRunning && root.managerInstalled && root.systemd && !root.managerRival ? "systemctl enable --now NetworkManager" : ""
+    readonly property var managerPackages: ["pacman:networkmanager", "apt:network-manager", "dnf:NetworkManager", "zypper:NetworkManager", "xbps:NetworkManager", "apk:networkmanager"]
+    property string managerInstall: ""
+    readonly property string managerCommand: root.managerStart || root.managerInstall
+    property string managerStarting: ""
+    property string managerStartTrouble: ""
+
+    function openManagerLog(): void {
+        Quickshell.execDetached([Quickshell.shellPath("scripts/in-terminal.sh"), "journalctl -b -u NetworkManager --no-pager -n 80; echo; echo 'Press Enter to close.'; read _"]);
+    }
+
+    function recheckManager(): void {
+        if (!root.managerRunning && !managerProbe.running)
+            managerProbe.running = true;
+    }
+
+    function startManager(): void {
+        if (starter.running || !root.managerStart)
+            return;
+        root.managerStarting = "starting";
+        root.managerStartTrouble = "";
+        Polkit.expect("Start NetworkManager", "systemctl");
+        starter.running = true;
+    }
     readonly property bool available: !!wifiDevice
     readonly property bool enabled: Networking.wifiEnabled
     readonly property bool hardwareEnabled: Networking.wifiHardwareEnabled
@@ -973,12 +1009,41 @@ Singleton {
     }
 
     Process {
+        id: managerProbe
+
         running: !root.managerRunning
-        command: ["sh", "-c", "[ -d /run/systemd/system ] && echo systemd; command -v nmcli >/dev/null || command -v NetworkManager >/dev/null || [ -x /usr/sbin/NetworkManager ]"]
+        command: ["sh", "-c", "if [ -d /run/systemd/system ]; then echo systemd; for unit in systemd-networkd iwd connman; do systemctl is-active --quiet \"$unit\" 2>/dev/null && echo \"rival $unit\"; done; fi; command -v nmcli >/dev/null || command -v NetworkManager >/dev/null || [ -x /usr/sbin/NetworkManager ]"]
         stdout: StdioCollector {
-            onStreamFinished: root.systemd = text.trim() === "systemd"
+            onStreamFinished: {
+                const lines = text.trim().split("\n");
+                root.systemd = lines.includes("systemd");
+                root.managerRival = lines.filter(line => line.startsWith("rival ")).map(line => line.slice(6)).join(", ");
+            }
         }
         onExited: code => root.managerInstalled = code === 0
+    }
+
+    Process {
+        running: !root.managerRunning && !root.managerInstalled
+        command: ["bash", ToolInstaller.installer, "--command", ...root.managerPackages]
+        stdout: StdioCollector {
+            onStreamFinished: root.managerInstall = text.trim().split(" ").filter(word => !["--noconfirm", "--non-interactive", "-y", "--"].includes(word)).join(" ")
+        }
+    }
+
+    Process {
+        id: starter
+
+        command: ["systemctl", "enable", "--now", "NetworkManager.service"]
+        stderr: StdioCollector {
+            id: starterSaid
+        }
+        onExited: code => {
+            Polkit.forget();
+            const said = starterSaid.text.trim().split("\n").filter(l => l.trim()).pop() ?? "";
+            root.managerStarting = code === 0 ? "started" : "failed";
+            root.managerStartTrouble = code === 0 ? "" : /access denied|not authori[sz]ed|authentication|interactive/i.test(said) ? "permission was refused" : said.replace(/\.$/, "") || `systemctl stopped with ${code}`;
+        }
     }
 
     readonly property bool stranded: !!root.reachLabel()

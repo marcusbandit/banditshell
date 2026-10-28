@@ -1293,7 +1293,30 @@ Singleton {
     readonly property string weatherPlaceState: root.weatherPlaceTrouble ? "" : (Weather.location ? "" : Weather.ready && Weather.fetchedFor === "" && Weather.place ? `from your connection: ${Weather.place}` : "from your connection")
     readonly property string weatherPlaceTrouble: Weather.failed && Weather.failure === "place" && Weather.failedFor === Weather.location ? Weather.location ? `no place called "${Weather.location}"` : "could not place you" : ""
     readonly property var weatherSuggestion: root.weatherPlaceTrouble !== "" ? Weather.placeSuggestion : null
-    readonly property string networkMissing: Network.managerRunning ? "" : "needs NetworkManager"
+    readonly property string networkMissing: Network.managerRunning ? "" : Network.managerStarting === "started" ? "Restart the shell to use NetworkManager" : "needs NetworkManager"
+    readonly property string networkTile: Network.managerRunning ? "" : Network.managerStarting === "started" ? "restart the shell" : "needs NetworkManager"
+    readonly property string managerStage: Network.managerStarting === "started" ? "restart" : Network.managerStart ? "start" : !Network.managerInstalled && Network.managerInstall ? "install" : ""
+    readonly property bool managerInstalled: Network.managerInstalled
+    readonly property string managerStarting: Network.managerStarting
+    readonly property string managerStartTrouble: Network.managerStartTrouble
+    readonly property string managerInstall: Network.managerInstall
+    readonly property string managerRival: Network.managerRival
+
+    function recheckManager(): void {
+        Network.recheckManager();
+    }
+
+    function openManagerLog(): void {
+        Network.openManagerLog();
+    }
+
+    function startManager(): void {
+        Network.startManager();
+    }
+
+    function restartShell(): void {
+        Update.restart();
+    }
     readonly property string wifiState: Hotspot.active ? "running your hotspot" : root.wifiNet || "not connected"
 
     readonly property var outputs: Audio.sinks.map(n => [n.name, Audio.deviceLabel(n)])
