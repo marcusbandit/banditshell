@@ -1,6 +1,47 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-10",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "major",
+          "text": "Copying a hidden clipboard entry keeps it hidden in the island"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A damaged clipboard history loads what it can and keeps a copy"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A clipboard picture that cannot load lines up with the other rows"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A discarded dictation shows a bin, not a muted mic"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A finished island task says Done or Failed, not what it was doing"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell island end --text sets the task's final words"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Two layouts with one code show apart, such as US and US-I"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-9",
       "date": "2026-10-28",
       "changes": [
