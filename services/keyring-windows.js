@@ -1,10 +1,6 @@
 .pragma library
 
-function isGcrPrompter(program) {
-    return String(program ?? "").replace(/ \(deleted\)$/, "") === "gcr-prompter";
-}
-
-function windowsToBring(text, pid, workspace, brought) {
+function windowsToBring(text, pid, special, workspace, brought) {
     let clients = [];
     try {
         clients = JSON.parse(text);
@@ -15,6 +11,6 @@ function windowsToBring(text, pid, workspace, brought) {
         return [];
     return clients.filter(client => client && client.pid === pid && client.mapped !== false && client.address && !brought.includes(client.address)).map(client => ({
                 address: client.address,
-                move: (client.workspace?.id ?? 0) !== workspace
+                move: special ? client.workspace?.name !== special : (client.workspace?.id ?? 0) !== workspace
             }));
 }

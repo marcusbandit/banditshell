@@ -253,7 +253,7 @@ class Prompter:
         if not pid:
             return ""
         try:
-            return os.path.basename(os.readlink(f"/proc/{pid}/exe"))
+            return os.path.basename(os.readlink(f"/proc/{pid}/exe").removesuffix(" (deleted)"))
         except OSError:
             pass
         try:

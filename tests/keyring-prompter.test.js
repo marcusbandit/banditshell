@@ -122,6 +122,25 @@ print(json.dumps({"agreed": agreed}))
         assert.strictEqual(result.agreed, true);
     });
 
+    test("names a program by its binary even after an upgrade deleted it", () => {
+        const result = python(`
+import importlib.util, json, os, shutil, subprocess, sys, tempfile
+spec = importlib.util.spec_from_file_location("prompter", sys.argv[1])
+prompter = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(prompter)
+where = tempfile.mkdtemp()
+binary = os.path.join(where, "gcr-prompter")
+shutil.copy(shutil.which("sleep"), binary)
+running = subprocess.Popen([binary, "30"])
+os.remove(binary)
+deleted = os.readlink(f"/proc/{running.pid}/exe").endswith(" (deleted)")
+named = prompter.Prompter(None).program_at(running.pid)
+running.kill()
+print(json.dumps({"deleted": deleted, "named": named}))
+`);
+        assert.deepStrictEqual(result, { deleted: true, named: "gcr-prompter" });
+    });
+
     test("tells gnome-keyring a typed password is not blank", { skip: !hasBus && "dbus-run-session missing" }, () => {
         const result = python(`
 ${CLIENT}

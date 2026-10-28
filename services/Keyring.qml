@@ -46,7 +46,7 @@ Singleton {
 
     property var brought: []
 
-    readonly property bool gcrAsking: root.blocked && KeyringWindows.isGcrPrompter(root.owner)
+    readonly property bool gcrAsking: root.blocked && root.owner === "gcr-prompter"
 
     onGcrAskingChanged: root.bringGcr()
 
@@ -152,14 +152,14 @@ Singleton {
         }
 
         if (event.event === "owner") {
+            if (event.name !== "org.gnome.keyring.SystemPrompter")
+                return;
             if ((event.pid ?? 0) !== root.ownerPid)
                 root.brought = [];
             root.ownerPid = event.pid ?? 0;
             root.owner = event.program ?? "";
-            if (event.name === "org.gnome.keyring.SystemPrompter") {
-                root.holding = false;
-                root.blocked = true;
-            }
+            root.holding = false;
+            root.blocked = true;
             return;
         }
 
@@ -235,11 +235,15 @@ Singleton {
 
         stdout: StdioCollector {
             onStreamFinished: {
-                const found = KeyringWindows.windowsToBring(text, root.ownerPid, Hypr.activeId, root.brought);
+                if (!root.gcrAsking)
+                    return;
+                const special = Hypr.specialOn(Hypr.focusedScreen);
+                const found = KeyringWindows.windowsToBring(text, root.ownerPid, special, Hypr.activeId, root.brought);
                 for (const window of found) {
                     if (window.move)
-                        Hypr.sendToWorkspace(window.address, Hypr.activeId, true);
-                    Hypr.focusAddress(window.address);
+                        Hypr.sendToWorkspace(window.address, special || Hypr.activeId, true);
+                    else
+                        Hypr.focusAddress(window.address);
                 }
                 root.brought = [...root.brought, ...found.map(window => window.address)];
             }
