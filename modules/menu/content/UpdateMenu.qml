@@ -25,8 +25,21 @@ Column {
     readonly property bool reinstallAsking: root.reinstallConfirm && Update.canReinstall
     readonly property bool reportAsking: root.reportOpen && Update.wentBackByHand && Update.resultPending
     readonly property bool asking: root.goBackConfirm || root.reinstallAsking || root.reportAsking
+    readonly property bool leaving: root.goBackConfirm && Update.canGoBack
 
-    readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, goBackOffer.implicitWidth, goBackRow.implicitWidth, afterRow.implicitWidth, reinstallRow.implicitWidth, reportRow.implicitWidth)
+    readonly property var listed: root.leaving ? Update.notes : root.card
+    readonly property var shortList: WhatsNew.shortList(root.listed)
+    readonly property string listTitle: {
+        if (root.leaving)
+            return "What you leave behind";
+        if (root.cardKind === "incoming")
+            return Update.targetVersion ? `In ${Update.targetVersion}` : "In this update";
+        if (root.cardKind === "running")
+            return Update.version ? `In ${Update.version}` : "In this version";
+        return "What's new";
+    }
+
+    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, goBackOffer.implicitWidth, goBackRow.implicitWidth, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
     onShowingChanged: if (!root.showing) {
         root.goBackConfirm = false;
@@ -52,59 +65,40 @@ Column {
         width: parent.width
         alignInk: true
         wrapMode: Text.Wrap
-        text: Update.headline
+        text: root.leaving ? `Go back to ${Update.previousVersion}?` : Update.headline
         color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.text
     }
 
     InkText {
         width: parent.width
+        visible: !root.leaving
         alignInk: true
         text: Update.haveLabel
         color: Appearance.colour.textFaint
     }
 
-    Row {
-        id: metaRow
-
-        visible: !root.reportAsking
-        spacing: Appearance.padding.small
-
-        Button {
-            anchors.verticalCenter: parent.verticalCenter
-            text: Update.checking ? "Refreshing..." : "Refresh"
-            interactive: !Update.checking
-
-            onClicked: Update.check()
-        }
-
-        InkText {
-            anchors.verticalCenter: parent.verticalCenter
-            alignInk: true
-            text: "|"
-            color: Appearance.colour.textFaint
-        }
-
-        InkText {
-            anchors.verticalCenter: parent.verticalCenter
-            alignInk: true
-            text: Update.checkedAt.getTime() === 0 ? "Never checked" : `Last checked ${Update.ago(Update.checkedAt)}`
-            color: Appearance.colour.textFaint
-        }
-    }
-
     StyledText {
         width: parent.width
-        visible: Update.behind > 0 && !Update.diverged && Update.summaryText !== ""
-        text: Update.summaryText
-        color: Update.restartNeeded ? Appearance.colour.accent : Appearance.colour.textDim
+        visible: root.leaving
+        text: `Restarts on ${Update.previousVersion}, and ${Update.version} is skipped until a newer version arrives.`
+        color: Appearance.colour.textDim
         wrapMode: Text.WordWrap
     }
 
     StyledText {
         width: parent.width
-        visible: Update.behind > 0 && !!Update.remoteHead && Update.branch !== "stable"
-        text: `latest: ${Update.targetVersion || Update.remoteHead}`
-        color: Appearance.colour.textFaint
+        visible: root.leaving
+        text: "Only the shell's own files go back. Your settings and anything else this update changed stay changed."
+        color: Appearance.colour.textDim
+        wrapMode: Text.WordWrap
+    }
+
+    StyledText {
+        width: parent.width
+        visible: !root.leaving && Update.behind > 0 && !Update.diverged && Update.summaryText !== ""
+        text: Update.summaryText
+        color: Update.restartNeeded ? Appearance.colour.accent : Appearance.colour.textDim
+        wrapMode: Text.WordWrap
     }
 
     Repeater {
@@ -122,7 +116,7 @@ Column {
 
     Column {
         width: parent.width
-        visible: Update.resultPending
+        visible: Update.resultPending && !root.leaving
         spacing: Appearance.padding.small
 
         InkText {
@@ -280,14 +274,14 @@ Column {
         InkText {
             width: parent.width
             alignInk: true
-            text: `Reinstall ${Update.skippedVersion}? The shell restarts on it, and it is no longer skipped.`
+            text: `Switch back to ${Update.skippedVersion}? Restarts on ${Update.skippedVersion}, and it is no longer skipped.`
             wrapMode: Text.Wrap
         }
 
         ButtonPair {
             id: reinstallRow
 
-            actions: [{ text: "Reinstall", icon: "restart_alt" }, { text: `Stay on ${Update.version}` }]
+            actions: [{ text: `Switch back to ${Update.skippedVersion}`, icon: "restart_alt" }, { text: `Stay on ${Update.version}` }]
 
             onTriggered: index => {
                 root.reinstallConfirm = false;
@@ -304,15 +298,11 @@ Column {
         spacing: Appearance.padding.small
 
         Button {
-            visible: Update.wentBackByHand && Update.resultPending
-            text: "Report what broke"
-            icon: "bug_report"
-            style: "accent"
+            visible: Update.canReinstall
+            text: `Switch back to ${Update.skippedVersion}`
+            icon: "restart_alt"
 
-            onClicked: {
-                root.reportHanded = false;
-                root.reportOpen = true;
-            }
+            onClicked: root.reinstallConfirm = true
         }
 
         Button {
@@ -322,79 +312,81 @@ Column {
         }
     }
 
-    Row {
-        id: afterRow
-
-        visible: !root.asking && Update.canReinstall
-        spacing: Appearance.padding.small
-
-        Button {
-            text: "Reinstall the version you just left"
-            style: "bare"
-
-            onClicked: root.reinstallConfirm = true
-        }
-    }
-
-    StyledText {
-        width: parent.width
-        visible: !!Update.error
-        text: Update.error
-        color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.textFaint
-        wrapMode: Text.WordWrap
-    }
-
-    StyledText {
-        width: parent.width
-        visible: Update.diverged
-        text: `It cannot just move forward. To keep this copy's commits, run in a terminal: git -C ${Update.dir} pull --rebase`
-        color: Appearance.colour.updateFailed
-        wrapMode: Text.WordWrap
-    }
-
-    StyledText {
-        width: parent.width
-        visible: Update.ahead > 0 && !Update.diverged
-        text: `${Update.ahead} commit${Update.ahead === 1 ? " here is" : "s here are"} not on GitHub yet`
-        color: Appearance.colour.textFaint
-        wrapMode: Text.WordWrap
-    }
-
     Button {
-        visible: Update.busy || (!root.asking && !Update.diverged && !Update.paused && (Update.behind > 0 || Update.state === Update.failed))
-        text: {
-            if (Update.busy)
-                return Update.phaseText || "Updating...";
-            if (Update.state === Update.failed)
-                return "Try again";
-            return Update.buttonText;
-        }
-        icon: {
-            if (Update.busy)
-                return "hourglass_top";
-            if (Update.state === Update.failed)
-                return "refresh";
-            return Update.restartNeeded ? "restart_alt" : "download";
-        }
-        style: "accent"
-        interactive: !Update.busy
+        id: reportLink
 
-        onClicked: Update.state === Update.failed ? Update.retry() : Update.apply()
+        x: -reportLink.padX
+        visible: !root.asking && Update.wentBackByHand && Update.resultPending
+        text: `Report a problem with ${Update.skippedVersion || Update.result?.toLabel || "that version"}`
+        style: "bare"
+
+        onClicked: {
+            root.reportHanded = false;
+            root.reportOpen = true;
+        }
     }
 
     Column {
         width: parent.width
-        visible: root.card.length > 0
+        visible: root.listed.length > 0 && (root.leaving || !root.asking || root.reinstallAsking)
         spacing: Appearance.padding.small
 
         StyledText {
             width: parent.width
-            text: root.cardKind === "incoming" ? "In this update" : root.cardKind === "running" ? "In this version" : "What's new"
+            text: root.listTitle
             color: Appearance.colour.textDim
         }
 
+        TextMetrics {
+            id: tagWidth
+
+            font.family: Appearance.font.family
+            font.pixelSize: Appearance.font.size.small
+            text: root.shortList.reduce((longest, line) => line.tag.length > longest.length ? line.tag : longest, "")
+        }
+
         Repeater {
-            model: WhatsNew.sections(root.card)
+            model: root.shortList
+
+            delegate: Item {
+                id: tagged
+
+                required property var modelData
+
+                readonly property color hue: root.hue(tagged.modelData.key)
+
+                width: root.width
+                height: Math.max(tagChip.height, taggedText.height)
+
+                SquircleRect {
+                    id: tagChip
+
+                    width: Math.ceil(tagWidth.advanceWidth) + Appearance.padding.small * 2
+                    height: Appearance.font.line.small
+                    pill: "object"
+                    color: Appearance.withAlpha(tagged.hue, 0.14)
+
+                    StyledText {
+                        anchors.centerIn: parent
+                        text: tagged.modelData.tag
+                        color: Appearance.blend(Appearance.colour.text, tagged.hue, 0.55)
+                    }
+                }
+
+                StyledText {
+                    id: taggedText
+
+                    x: tagChip.width + Appearance.padding.small
+                    width: tagged.width - x
+                    text: tagged.modelData.text
+                    color: Appearance.colour.text
+                    wrapMode: Text.WordWrap
+                }
+            }
+        }
+
+        Repeater {
+            model: root.shortList.length > 0 ? [] : WhatsNew.sections(root.listed)
 
             delegate: SquircleRect {
                 id: section
@@ -475,55 +467,102 @@ Column {
     }
 
     Button {
+        visible: Update.busy || (!root.asking && !Update.diverged && !Update.paused && (Update.behind > 0 || Update.state === Update.failed))
+        text: {
+            if (Update.busy)
+                return Update.phaseText || "Updating...";
+            if (Update.state === Update.failed)
+                return "Try again";
+            return Update.buttonText;
+        }
+        icon: {
+            if (Update.busy)
+                return "hourglass_top";
+            if (Update.state === Update.failed)
+                return "refresh";
+            return Update.restartNeeded ? "restart_alt" : "download";
+        }
+        style: "accent"
+        interactive: !Update.busy
+
+        onClicked: Update.state === Update.failed ? Update.retry() : Update.apply()
+    }
+
+    StyledText {
+        width: parent.width
+        visible: !!Update.error
+        text: Update.error
+        color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.textFaint
+        wrapMode: Text.WordWrap
+    }
+
+    StyledText {
+        width: parent.width
+        visible: Update.diverged
+        text: `It cannot just move forward. To keep this copy's commits, run in a terminal: git -C ${Update.dir} pull --rebase`
+        color: Appearance.colour.updateFailed
+        wrapMode: Text.WordWrap
+    }
+
+    StyledText {
+        width: parent.width
+        visible: Update.ahead > 0 && !Update.diverged
+        text: `${Update.ahead} commit${Update.ahead === 1 ? " here is" : "s here are"} not on GitHub yet`
+        color: Appearance.colour.textFaint
+        wrapMode: Text.WordWrap
+    }
+
+    Button {
         visible: !root.asking && root.cardKind !== "incoming" && WhatsNew.pending.length > 0
         text: "Mark as read"
         onClicked: WhatsNew.markSeen(WhatsNew.pending[0].id)
     }
 
-    Row {
+    Button {
         id: goBackOffer
 
+        x: -goBackOffer.padX
         visible: !root.asking && Update.canGoBack
-        spacing: Appearance.padding.small
+        text: `Go back to ${Update.previousVersion}`
+        icon: "history"
+        style: "bare"
 
-        Button {
-            text: `Go back to ${Update.previousVersion}`
-            icon: "history"
-            style: "bare"
+        onClicked: root.goBackConfirm = true
+    }
 
-            onClicked: root.goBackConfirm = true
+    ButtonPair {
+        id: goBackRow
+
+        visible: root.leaving
+        actions: [{ text: `Go back to ${Update.previousVersion}`, icon: "history" }, { text: `Stay on ${Update.version}` }]
+
+        onTriggered: index => {
+            root.goBackConfirm = false;
+            if (index === 0)
+                Update.goBack();
         }
     }
 
-    Column {
-        width: parent.width
-        visible: Update.canGoBack && root.goBackConfirm
+    Row {
+        id: refreshRow
+
+        visible: !root.asking
         spacing: Appearance.padding.small
 
         InkText {
-            width: parent.width
+            anchors.verticalCenter: parent.verticalCenter
             alignInk: true
-            text: `Go back to ${Update.previousVersion}? The shell restarts on it, and ${Update.version} is skipped until a newer version arrives.`
-            wrapMode: Text.Wrap
+            text: Update.checkedAt.getTime() === 0 ? "Never checked" : `Last checked ${Update.ago(Update.checkedAt)}`
+            color: Appearance.colour.textFaint
         }
 
-        InkText {
-            width: parent.width
-            alignInk: true
-            text: "Only the shell's own files go back. Your settings and anything else this update changed stay changed."
-            wrapMode: Text.Wrap
-        }
+        Button {
+            anchors.verticalCenter: parent.verticalCenter
+            text: Update.checking ? "Refreshing..." : "Refresh"
+            style: "bare"
+            interactive: !Update.checking
 
-        ButtonPair {
-            id: goBackRow
-
-            actions: [{ text: "Go back", icon: "history" }, { text: `Stay on ${Update.version}` }]
-
-            onTriggered: index => {
-                root.goBackConfirm = false;
-                if (index === 0)
-                    Update.goBack();
-            }
+            onClicked: Update.check()
         }
     }
 

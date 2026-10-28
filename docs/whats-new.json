@@ -7,6 +7,11 @@
         {
           "type": "issues",
           "severity": "minor",
+          "text": "The update menu names the waiting version, not a count of commits"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
           "text": "Up to date, the update menu lists what your version brought"
         },
         {

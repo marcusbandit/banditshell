@@ -57,13 +57,13 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    of its own, and when the recorded commit is not behind HEAD; a reset git refuses changes and
    skips nothing. The check reports that commit as `previous`, with its id as `previousVersion`,
    under the same rules, and the menu then offers a quiet "Go back to <id>" below the what's-new
-   card, asks once in its place, and runs `rollback --detach`, whose first progress line is `goback`. Only the
+   list, asks "Go back to <id>?" as its headline with that list as what is left behind, and runs `rollback --detach`, whose first progress line is `goback`. Only the
    checkout moves: `config.json`, files the newer version wrote elsewhere and stashed edits stay
-   as they are, and the confirm says so (#171). After a go-back the outcome offers a quiet
-   "Reinstall the version you just left", asked once, which runs `update apply --detach --to <sha>` on the commit it left. Once an
+   as they are, and the confirm says so (#171). After a go-back the outcome offers
+   "Switch back to <id>", asked once, which runs `update apply --detach --to <sha>` on the commit it left. Once an
    applied commit starts, it leaves `update/skip`, and the shell clears `updates.skip` when
-   `result.json` names it (#178). It leads with
-   "Report what broke": a few lines of words, handed to `banditshell triage` in a terminal
+   `result.json` names it (#178). A quiet "Report a problem with <id>" link takes
+   a few lines of words, handed to `banditshell triage` in a terminal
    (`scripts/in-terminal.sh`) with the skipped and current versions as `--context`, so they
    land under the words in the report and stay out of the issue title (#228),
    where triage shows the whole report and sends nothing until the person answers y (#180).
@@ -178,9 +178,9 @@ definition. Where it shows:
   waiting) and `previousVersion` (where rollback goes). When nothing is waiting it also carries
   `notes`: the what's-new entries this copy has and `previous` did not, so what going back would
   undo.
-- The update menu says `You have <release>, on the stable channel`; on stable a waiting update is headed
-  `<release> is ready`, with that release's what's-new entries under "In this update". Up to date,
-  the same card lists `notes` under "In this version".
+- The update menu says `You have <release>, on the stable channel`; a waiting update is headed
+  `<version> is ready` on every channel, with its what's-new entries under "In <version>" above the
+  Update button. Up to date, the same list shows `notes` under "In <version>".
 - Settings > About shows the same version.
 
 `update rollback` on `stable` goes to the release before the one this copy is on, found from the

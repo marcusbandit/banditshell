@@ -282,7 +282,7 @@ test("the outcome tells where the person stands in plain words", () => {
 test("a rollback by hand says where it went back to, not that something failed", () => {
     const back = { ok: false, hand: true, fromLabel: "2026-10-24", toLabel: "2026-10-25", why: "rolled back by hand" };
     assert.strictEqual(Update.outcomeText(back, "2026-10-24"),
-        "Back on 2026-10-24; the shell restarted on it. 2026-10-25 is skipped until a newer version arrives.");
+        "Restarted on 2026-10-24. You chose to skip 2026-10-25 until a newer version arrives.");
     assert.match(Update.outcomeText(back, "2026-10-25"), /still runs 2026-10-25\. Run banditshell restart to start 2026-10-24\./);
     assert.strictEqual(Update.byHand({ ok: false, why: "rolled back by hand" }), false);
 });
@@ -370,10 +370,10 @@ test("a missing stable branch says there is no release yet, without sending anyo
     assert.strictEqual(Update.explain(text.split("\n"), "dev"), 'GitHub has no branch called "dev".');
 });
 
-test("a waiting release on stable is named by its number, anything else by its commits", () => {
-    assert.strictEqual(Update.waitingHeadline("stable", 4, "v0.2.0"), "v0.2.0 is ready");
-    assert.strictEqual(Update.waitingHeadline("stable", 1, ""), "1 new commit on stable");
-    assert.strictEqual(Update.waitingHeadline("main", 3, "v0.1.0+3"), "3 new commits on main");
+test("a waiting update is named by its version on every channel, never by commits", () => {
+    assert.strictEqual(Update.waitingHeadline("v0.2.0"), "v0.2.0 is ready");
+    assert.strictEqual(Update.waitingHeadline("v0.1.0+3"), "v0.1.0+3 is ready");
+    assert.strictEqual(Update.waitingHeadline(""), "A new version is ready");
 });
 
 test("the count is the changes listed, and commits only when nothing is listed", () => {

@@ -1662,24 +1662,26 @@ banditshell/
 │       │                    a menu are one object; the answer stays on the line
 │   │       ├── TrayMenu.qml     one tray item: what it says, and "show it"
 │   │       ├── TrayEntries.qml  its own menu, off the bus. CONTAINS ITSELF
-│   │       └── UpdateMenu.qml   the update's menu: the one-line summary of
-│   │                            what is coming ("5 changes, restart
-│   │                            needed, commands changed"), the What's new
-│   │                            entries of the change BEFORE it is taken,
-│   │                            one button that says Update or Update and
-│   │                            restart, and the outcome of the last
-│   │                            update, a rollback included. Up to date,
-│   │                            the card lists what the running version
-│   │                            brought, In this version. Below the card
-│   │                            sits a quiet Go back to <id> once one is
-│   │                            recorded, asked once in its place. After
-│   │                            a go-back the outcome leads with Report
-│   │                            what broke, a few lines
-│   │                            that banditshell triage shows in a
-│   │                            terminal before anything is sent, and
-│   │                            offers a quiet Reinstall the version you
-│   │                            just left, asked once. The What's
-│   │                            new card is marked seen when dismissed
+│   │       └── UpdateMenu.qml   the update's menu, in versions, never
+│   │                            commits: "<version> is ready", the one-line
+│   │                            summary ("5 changes, restart needed"),
+│   │                            what that version brings, THEN the button
+│   │                            that says Update or Update and restart.
+│   │                            Up to date, the list is what the running
+│   │                            version brought, "In <version>". Six
+│   │                            changes or fewer read as one list with a
+│   │                            small New, Changed or Fixed tag per line;
+│   │                            more fold into a card per kind. Quiet
+│   │                            below: Go back to <id>, and Refresh. Go
+│   │                            back asks first, as the headline, with the
+│   │                            list as what you leave behind. After a
+│   │                            go-back the outcome says the skip was the
+│   │                            person's choice, offers Switch back to
+│   │                            <id>, asked once, and keeps Report a
+│   │                            problem as a quiet link: a few lines that
+│   │                            banditshell triage shows in a terminal
+│   │                            before anything is sent. The What's new
+│   │                            card is marked seen when dismissed
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)
 │   │   ├── FilesWindow.qml      the body: a real window, kept alive, because

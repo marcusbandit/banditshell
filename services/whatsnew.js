@@ -183,13 +183,15 @@ function releaseNotes(entries, first) {
 }
 
 const SECTIONS = [
-    { key: "major", title: "Big changes", glyph: "new_releases", types: null },
-    { key: "features", title: "New", glyph: "add_circle", types: ["features"] },
-    { key: "ui", title: "Changed", glyph: "border_color", types: ["ui"] },
-    { key: "bugs", title: "Fixed", glyph: "build", types: ["bugs", "issues"] },
-    { key: "config", title: "Settings", glyph: "tune", types: ["config"] },
-    { key: "other", title: "Other", glyph: "chevron_right", types: [] }
+    { key: "major", title: "Big changes", tag: "Big", glyph: "new_releases", types: null },
+    { key: "features", title: "New", tag: "New", glyph: "add_circle", types: ["features"] },
+    { key: "ui", title: "Changed", tag: "Changed", glyph: "border_color", types: ["ui"] },
+    { key: "bugs", title: "Fixed", tag: "Fixed", glyph: "build", types: ["bugs", "issues"] },
+    { key: "config", title: "Settings", tag: "Settings", glyph: "tune", types: ["config"] },
+    { key: "other", title: "Other", tag: "Other", glyph: "chevron_right", types: [] }
 ];
+
+const SHORT_LIST = 6;
 
 function sectionOf(c) {
     if (c.severity === "major")
@@ -211,6 +213,14 @@ function sections(entries) {
             buckets[key].push(c);
         }
     return SECTIONS.filter(s => buckets[s.key]).map(s => ({ key: s.key, title: s.title, glyph: s.glyph, changes: buckets[s.key] }));
+}
+
+function shortList(entries) {
+    const out = [];
+    for (const s of sections(entries))
+        for (const c of s.changes)
+            out.push({ key: s.key, tag: SECTIONS.find(known => known.key === s.key).tag, text: c.text });
+    return out.length <= SHORT_LIST ? out : [];
 }
 
 function main(argv) {

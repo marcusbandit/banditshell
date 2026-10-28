@@ -29,10 +29,8 @@ function channelText(channel, branch) {
     return `${followed} channel`;
 }
 
-function waitingHeadline(branch, behind, targetVersion) {
-    if (branch === "stable" && targetVersion)
-        return `${targetVersion} is ready`;
-    return `${behind} new commit${behind === 1 ? "" : "s"} on ${branch}`;
+function waitingHeadline(targetVersion) {
+    return targetVersion ? `${targetVersion} is ready` : "A new version is ready";
 }
 
 function report(text) {
@@ -346,9 +344,9 @@ function outcomeText(result, running) {
     if (result.ok)
         return `Updated to ${to}.`;
     if (byHand(result)) {
-        const skipped = `${to} is skipped until a newer version arrives.`;
+        const skipped = `You chose to skip ${to} until a newer version arrives.`;
         if (!running || running === from)
-            return `Back on ${from}; the shell restarted on it. ${skipped}`;
+            return `Restarted on ${from}. ${skipped}`;
         return `Went back to ${from}, but the shell still runs ${running}. Run banditshell restart to start ${from}. ${skipped}`;
     }
     const why = result.why ? ` ${result.why}.` : "";

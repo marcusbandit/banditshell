@@ -104,7 +104,7 @@ Singleton {
         if (root.diverged)
             return `${root.behind} new on ${root.branch}, but this copy has ${root.ahead} of its own`;
         if (root.behind > 0)
-            return Words.waitingHeadline(root.branch, root.behind, root.targetVersion);
+            return Words.waitingHeadline(root.targetVersion);
         return "You are up to date";
     }
 
