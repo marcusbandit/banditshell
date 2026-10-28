@@ -302,8 +302,10 @@ static int sniffs_text(const char *path, long long *bytes) {
             odd++;
             continue;
         }
+        unsigned char low = c == 0xe0 ? 0xa0 : c == 0xf0 ? 0x90 : 0x80;
+        unsigned char high = c == 0xed ? 0x9f : c == 0xf4 ? 0x8f : 0xbf;
         size_t k = 1;
-        while (k <= follow && i + k < n && (buf[i + k] & 0xc0) == 0x80)
+        while (k <= follow && i + k < n && (k == 1 ? buf[i + k] >= low && buf[i + k] <= high : (buf[i + k] & 0xc0) == 0x80))
             k++;
         if (k <= follow && i + k < n) {
             odd++;
@@ -342,8 +344,7 @@ static void stat_one(const char *path) {
         cls = "program";
 
     long long sniffed = 0;
-    int readable_kind = strcmp(cls, "unknown") == 0 || strcmp(cls, "program") == 0 || strcmp(cls, "text") == 0 || strcmp(cls, "code") == 0;
-    int text = S_ISREG(st.st_mode) && !broken && readable_kind && sniffs_text(path, &sniffed);
+    int text = S_ISREG(st.st_mode) && !broken && strcmp(cls, "pdf") != 0 && sniffs_text(path, &sniffed);
 
     if (text && (strcmp(cls, "unknown") == 0 || strcmp(cls, "program") == 0))
         cls = "text";

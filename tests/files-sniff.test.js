@@ -28,9 +28,9 @@ test.describe("which files the preview reads as text", {skip: cc ? false : "no C
         assert.strictEqual(stat("scan", pdf).text, false);
     });
 
-    test.it("never reads a known binary kind as text even when its first bytes look like it", () => {
-        assert.strictEqual(stat("song.mp3", "ID3 looks like words").text, false);
-        assert.strictEqual(stat("report.docx", "PK plain enough").text, false);
+    test.it("still reads text whose extension the kind table files elsewhere", () => {
+        assert.strictEqual(stat("app.ts", "export const a = 1;\n").text, true);
+        assert.strictEqual(stat("go.mod", "module example.com/x\n").text, true);
     });
 
     test.it("reads bytes that are not UTF-8 as binary", () => {
@@ -38,6 +38,8 @@ test.describe("which files the preview reads as text", {skip: cc ? false : "no C
         for (let i = 0; i < bytes.length; i++)
             bytes[i] = 0x80 + (i * 37) % 0x7f;
         assert.strictEqual(stat("blob", bytes).text, false);
+        for (const unit of [[0xe0, 0x80, 0x80], [0xed, 0xa0, 0x80], [0xf4, 0x90, 0x80, 0x80], [0xc0, 0xaf]])
+            assert.strictEqual(stat("odd", Buffer.from(Array(600).fill(unit).flat())).text, false, unit.map(b => b.toString(16)).join(" "));
     });
 
     test.it("still reads UTF-8 text, accents and a character cut at the end included", () => {
