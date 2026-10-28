@@ -3789,7 +3789,7 @@ update_finish_work() {
             if health_check "$pid" "$mark"; then
                 refresh_backup || true
             else
-                update_restart "The reload did not take, restarting..." || return 1
+                update_restart "The reload did not take, restarting..." "the reload failed, $HEALTH_WHY. A restart failed as well: " || return 1
             fi
         fi
     fi
@@ -3801,7 +3801,7 @@ update_restart() {
     stop_shell || true
     ensure_built || true
     if ! launch "$SHELL_DIR"; then
-        update_roll_back "the new version did not start: ${HEALTH_WHY:-it failed to load}" 1
+        update_roll_back "${2:-}the new version did not start: $HEALTH_WHY" 1
         return 1
     fi
     refresh_backup || true

@@ -752,7 +752,7 @@ test("a reload that breaks the shell, and a restart that breaks it too, rolls ba
     assert.strictEqual(got.status, 1, got.err + got.out);
     assert.match(got.out, /reload did not take, restarting/);
     assert.strictEqual(liveHead(world), before);
-    assert.match(JSON.parse(readState(world, "result.json")).why, /ReferenceError/);
+    assert.match(JSON.parse(readState(world, "result.json")).why, /^the reload failed, the log shows errors: .*ReferenceError.*\. A restart failed as well: the new version did not start: .*ReferenceError/);
     assert.strictEqual(pids(world).length, 1);
 });
 
