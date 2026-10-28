@@ -60,10 +60,12 @@ Item {
     readonly property string certificateProblem: root.tls ? CertificateFiles.problem(root.found, root.pathOf(certificate), "client", root.now) : ""
     readonly property string keyProblem: root.tls && !root.keyCarried && !!root.pathOf(key) ? CertificateFiles.problem(root.found, root.pathOf(key), "key", root.now) : ""
     readonly property string fileProblem: root.authorityProblem || root.certificateProblem || root.keyProblem
-    readonly property bool blocked: root.authorityMissing || root.outerSpaced || !!root.fileProblem || (!root.looksUp && (!identity.text || root.certificateMissing || root.keyMissing || root.keyPasswordMissing || root.passwordMissing || root.serverMissing))
+    readonly property bool blocked: root.authorityMissing || root.outerSpaced || !!root.fileProblem || (!root.looksUp && (!identity.text || root.certificateMissing || root.keyMissing || root.passwordMissing || root.serverMissing)) || chooser.running
     readonly property string blockReason: {
         if (!root.blocked)
             return "";
+        if (chooser.running)
+            return "a file chooser is open.";
         if (root.authorityMissing)
             return "pick your school's root certificate.";
         if (root.fileProblem)
@@ -76,8 +78,6 @@ Item {
             return "pick your certificate file.";
         if (root.keyMissing)
             return "pick the certificate's key file.";
-        if (root.keyPasswordMissing)
-            return "fill in the key password.";
         if (root.passwordMissing)
             return "fill in your password.";
         if (root.serverMissing)
@@ -117,6 +117,42 @@ Item {
     readonly property bool keyCarried: root.tls && CertificateFiles.carriesKey(root.found, root.pathOf(certificate))
     readonly property bool keyLocked: root.tls && CertificateFiles.locked(root.found, root.keyCarried ? root.pathOf(certificate) : root.pathOf(key))
     property Item browsingInto: null
+    property string autoKey: ""
+    property bool keyPasswordWarned: false
+    property bool keyPasswordVisited: false
+
+    onFoundChanged: root.matchKey()
+
+    function matchKey(): void {
+        if (!root.tls)
+            return;
+        const current = root.pathOf(key);
+        if (current && current !== root.autoKey)
+            return;
+        const want = CertificateFiles.keyFor(root.found, root.pathOf(certificate));
+        root.autoKey = want;
+        key.text = want ? CertificateFiles.shortPath(want, System.home) : "";
+    }
+
+    readonly property string autoKeyNote: {
+        const path = root.pathOf(key);
+        if (!root.autoKey || path !== root.autoKey)
+            return "";
+        const name = path.slice(path.lastIndexOf("/") + 1);
+        const cert = root.pathOf(certificate);
+        return path.slice(0, path.lastIndexOf("/")) === cert.slice(0, cert.lastIndexOf("/")) ? `${name}, found next to your certificate.` : `${name} fits your certificate.`;
+    }
+
+    Connections {
+        target: keyPassword.input
+
+        function onActiveFocusChanged(): void {
+            if (keyPassword.input.activeFocus)
+                root.keyPasswordVisited = true;
+            else if (root.keyPasswordVisited && root.keyPasswordMissing)
+                root.keyPasswordWarned = true;
+        }
+    }
     property string local: ""
     property string localField: ""
     property string autoServer: ""
@@ -207,6 +243,11 @@ Item {
             return root.fault(server, "server", "That server name needs a dot, such as school.edu.");
         if (!root.filled || root.blocked)
             return;
+        if (root.keyPasswordMissing) {
+            root.keyPasswordWarned = true;
+            keyPassword.input.forceActiveFocus();
+            return;
+        }
         if (root.needsServer)
             return root.fault(server, "server", "Fill in the server name your school's Wi-Fi guide gives.");
         root.accepted(root.form(), root.tls ? keyPassword.text : password.text);
@@ -227,6 +268,9 @@ Item {
         password.shown = false;
         server.text = root.fill || root.domain;
         root.autoServer = "";
+        root.autoKey = "";
+        root.keyPasswordWarned = false;
+        root.keyPasswordVisited = false;
         root.local = "";
         root.localField = "";
         root.serverUp = root.needsServer;
@@ -455,6 +499,11 @@ Item {
                     path: true
                     field: "certificate"
                     next: root.keyCarried ? keyPassword.input : key.input
+                    onTextChanged: {
+                        root.keyPasswordWarned = false;
+                        root.keyPasswordVisited = false;
+                        root.matchKey();
+                    }
                 }
 
                 FormLine {
@@ -520,6 +569,12 @@ Item {
                     color: Appearance.colour.textDim
                 }
 
+                FormLine {
+                    visible: key.visible && !!root.autoKeyNote
+                    text: root.autoKeyNote
+                    color: Appearance.colour.textDim
+                }
+
                 FileChips {
                     visible: root.tls && !root.keyCarried
                     files: root.keys
@@ -550,9 +605,14 @@ Item {
                 }
 
                 FormLine {
-                    visible: root.keyPasswordMissing
-                    text: "This file is locked. Fill in its password."
+                    visible: root.keyPasswordMissing && !root.keyPasswordWarned
+                    text: "This key is locked. Enter its password."
                     color: Appearance.colour.textDim
+                }
+
+                FormWarning {
+                    visible: root.keyPasswordMissing && root.keyPasswordWarned
+                    text: "This key is locked. Enter its password."
                 }
 
                 Entry {
@@ -823,7 +883,8 @@ Item {
                         anchors.rightMargin: Appearance.padding.normal
                         anchors.verticalCenter: parent.verticalCenter
 
-                        style: "accent"
+                        style: act.interactive ? "accent" : "ring"
+                        opacity: act.interactive ? 1 : 0.75
                         interactive: !root.busy && !root.blocked && (root.looksUp || root.filled)
                         text: root.busy ? (root.checking ? "Looking…" : "Connecting…") : root.looksUp ? (root.suggestion ? "Look up again" : "Look up the server") : "Connect"
                         onClicked: root.submit()

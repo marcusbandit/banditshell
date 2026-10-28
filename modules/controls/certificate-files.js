@@ -246,6 +246,16 @@ function keys(files, most) {
     return out;
 }
 
+function keyFor(files, path) {
+    var cert = fileAt(files, path);
+    if (!cert || cert.kind !== "client" || cert.key || !cert.publicKey)
+        return "";
+    var file = find(files, function (f) {
+        return f.kind === "key" && f.ownKey === cert.publicKey;
+    });
+    return file ? file.path : "";
+}
+
 function locked(files, path) {
     var file = fileAt(files, path);
     return !!file && file.locked;

@@ -50,26 +50,14 @@ Column {
         }
     }
 
-    Row {
+    Button {
         visible: root.canBrowse
-        spacing: Appearance.padding.small
-
-        Button {
-            size: 0
-            style: "plate"
-            icon: "folder_open"
-            interactive: !root.choosing
-            text: root.browsing ? "Choosing…" : "Browse…"
-            onClicked: root.browse()
-        }
-
-        Button {
-            visible: root.browsing
-            size: 0
-            style: "bare"
-            text: "Cancel"
-            onClicked: root.cancel()
-        }
+        size: 0
+        style: "plate"
+        icon: root.browsing ? "close" : "folder_open"
+        interactive: root.browsing || !root.choosing
+        text: root.browsing ? "Cancel choosing" : "Browse…"
+        onClicked: root.browsing ? root.cancel() : root.browse()
     }
 
     StyledText {

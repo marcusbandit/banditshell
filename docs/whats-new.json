@@ -22,6 +22,11 @@
         {
           "type": "issues",
           "severity": "minor",
+          "text": "Picking a certificate fills in its key file when it is found"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
           "text": "A certificate's key password shows next to it, not under More"
         },
         {

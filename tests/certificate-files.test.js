@@ -7,7 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/controls/certificate-files.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Files = new Function(src + "\nreturn { read, needsKey, roots, clients, keys, locked, carriesKey, shortPath, fullPath, problem };")();
+const Files = new Function(src + "\nreturn { read, needsKey, roots, clients, keys, keyFor, locked, carriesKey, shortPath, fullPath, problem };")();
 const SCAN = path.join(ROOT, "scripts/certificate-files.sh");
 const FIXTURE = fs.readFileSync(path.join(ROOT, "tests/fixtures/certificate-files.txt"), "utf8");
 
@@ -87,6 +87,14 @@ test.describe("certificate files", () => {
         assert.deepStrictEqual(Files.keys(alone, 10).map(r => r.detail), ["no certificate here fits it"]);
         const bare = Files.read("\x1e/home/me/Downloads/laptop.crt\nsubject=CN=laptop\nissuer=CN=Uni CA\n    CA:FALSE\npublic 0123\n");
         assert.match(Files.clients(bare, 0, 10)[0].detail, /needs its key file$/);
+    });
+
+    test.it("finds the key file that fits a certificate, and none for one that carries its key", () => {
+        const files = Files.read(FIXTURE);
+        assert.strictEqual(Files.keyFor(files, "/home/me/Downloads/laptop-17.crt"), "/home/me/Downloads/laptop-17.key");
+        assert.strictEqual(Files.keyFor(files, "/home/me/Documents/wifi/laptop-17-with-key.pem"), "");
+        assert.strictEqual(Files.keyFor(files, "/home/me/Downloads/laptop-17.p12"), "");
+        assert.strictEqual(Files.keyFor(files, "/elsewhere/typed.crt"), "");
     });
 
     test.it("knows a locked bundle or key from one that opens without a password", () => {
