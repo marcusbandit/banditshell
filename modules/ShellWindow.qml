@@ -123,17 +123,21 @@ PanelWindow {
 
     readonly property var idleWarm: [cheatLayer, keyboardLayer]
 
+    property bool warmsHere: true
+
     Timer {
         id: warmer
 
         interval: 6000
         repeat: true
-        running: win.idleWarm.some(panel => !panel.built)
+        running: win.warmsHere && win.idleWarm.some(panel => !panel.built)
 
         onTriggered: {
             warmer.interval = 1000;
             if (Shell.forScreen("") === win)
                 win.idleWarm.find(panel => !panel.built)?.warm();
+            else
+                win.warmsHere = false;
         }
     }
 

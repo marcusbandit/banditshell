@@ -98,8 +98,10 @@ Item {
         active: false
         sourceComponent: root.alphabetical ? alphabet : list
 
-        onLoaded: if (loader.asynchronous)
-            Trace.note("built")
+        onLoaded: if (loader.asynchronous) {
+            loader.asynchronous = false;
+            Trace.note("built");
+        }
     }
 
     Component {

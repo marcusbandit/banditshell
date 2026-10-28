@@ -38,6 +38,15 @@ function names() {
     return out;
 }
 
+function describe(shortcut) {
+    if (shortcut === "launcher")
+        return "Toggle the launcher";
+    var parts = String(shortcut).split(".");
+    var verb = parts[parts.length - 1];
+    var what = parts.length === 3 ? "the " + parts[1] : parts[0] === "panel" ? "every panel" : "the launcher";
+    return (verb === "toggle" ? "Toggle " : verb === "open" ? "Open " : "Close ") + what;
+}
+
 function callsFor(shortcut) {
     if (shortcut === "panel.close")
         return [["panels", "closeAll"], ["files", "close"], ["penmap", "cancel"]];

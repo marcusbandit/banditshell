@@ -117,13 +117,14 @@ Scope {
     }
 
     Instantiator {
-        model: BindShortcuts.names().filter(name => name !== "launcher")
+        model: BindShortcuts.names()
 
         delegate: GlobalShortcut {
             required property string modelData
 
             appid: "banditshell"
             name: modelData
+            description: BindShortcuts.describe(modelData)
 
             onPressed: root.runShortcut(modelData)
         }

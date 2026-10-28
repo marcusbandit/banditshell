@@ -80,7 +80,9 @@ Item {
         active: false
         sourceComponent: root.panel
 
-        onLoaded: if (loader.asynchronous)
-            Trace.note("built")
+        onLoaded: if (loader.asynchronous) {
+            loader.asynchronous = false;
+            Trace.note("built");
+        }
     }
 }

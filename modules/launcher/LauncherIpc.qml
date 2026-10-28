@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQml
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import qs.services
 import qs.modules.panel
@@ -22,14 +21,6 @@ Scope {
             }
             onLeave: what => what()
         }
-    }
-
-    GlobalShortcut {
-        appid: "banditshell"
-        name: "launcher"
-        description: "Toggle the launcher"
-
-        onPressed: PanelWindows.toggle("launcher", "")
     }
 
     IpcHandler {
