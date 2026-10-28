@@ -36,7 +36,9 @@ Singleton {
     property var warnings: []
 
     property var entries: []
+    property var notes: []
     property string summaryText: ""
+    property string detailsText: ""
     property string buttonText: "Update"
     property bool restartNeeded: false
 
@@ -89,7 +91,7 @@ Singleton {
         if (root.state === root.updated)
             return "Updated";
         if (root.state === root.rolledback)
-            return root.wentBackByHand ? "Back on the previous version" : "Update rolled back";
+            return root.wentBackByHand ? `You are on ${root.version}` : "Update rolled back";
         if (root.state === root.restarting)
             return root.goingBack ? "Going back..." : "Restarting...";
         if (root.state === root.verifying)
@@ -103,7 +105,7 @@ Singleton {
         if (root.diverged)
             return `${root.behind} new on ${root.branch}, but this copy has ${root.ahead} of its own`;
         if (root.behind > 0)
-            return Words.waitingHeadline(root.branch, root.behind, root.targetVersion);
+            return Words.waitingHeadline(root.targetVersion);
         return "You are up to date";
     }
 
@@ -285,6 +287,7 @@ Singleton {
             Qt.callLater(root.inspect, false);
         } else if (last.phase === "rolledback") {
             root.previous = "";
+            root.notes = [];
             root.state = root.rolledback;
             resultFile.reload();
         } else if (last.phase === "failed") {
@@ -460,7 +463,9 @@ Singleton {
                 root.behind = counts ? Number(got.behind) || 0 : 0;
                 root.ahead = counts ? Number(got.ahead) || 0 : 0;
                 root.entries = got.entries ?? [];
+                root.notes = Array.isArray(got.notes) ? got.notes : [];
                 root.summaryText = got.summary ?? "";
+                root.detailsText = got.details ?? got.summary ?? "";
                 root.buttonText = got.button ?? "Update";
                 root.restartNeeded = got.class?.restart === true;
 

@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-16",
+      "id": "2026-10-28-18",
       "date": "2026-10-28",
       "changes": [
         {
@@ -28,6 +28,48 @@
           "type": "issues",
           "severity": "minor",
           "text": "Reopening the pen area editor no longer resumes an old drag"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-17",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The update menu opens faster when it lists many changes"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Closed Settings no longer redoes its screen time chart every minute"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-16",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The update menu names the waiting version, not a count of commits"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Up to date, the update menu lists what your version brought"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Going back a version is a quiet button under those notes"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A version you went back from no longer reads as one that failed"
         }
       ]
     },

@@ -57,6 +57,10 @@ Singleton {
         return WhatsNewLog.sections(entries);
     }
 
+    function shortList(entries: var): var {
+        return WhatsNewLog.shortList(entries);
+    }
+
     FileView {
         id: store
 
