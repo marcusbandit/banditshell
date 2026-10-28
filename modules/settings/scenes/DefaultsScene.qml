@@ -15,6 +15,7 @@ Item {
     readonly property real stageHeight: 240
 
     property int turn: 0
+    property int played: 0
 
     readonly property string pinned: Catalogue.OPENS.some(o => o.k === SettingsView.hovered?.k) ? SettingsView.hovered.k : ""
     readonly property var kind: root.pinned ? Catalogue.OPENS.find(o => o.k === root.pinned) : Catalogue.OPENS[root.turn % Catalogue.OPENS.length]
@@ -32,12 +33,21 @@ Item {
         running: false
     }
 
+    Connections {
+        target: SettingsView
+
+        function onReplaysChanged(): void {
+            root.played = 0;
+        }
+    }
+
     Timer {
         interval: 2000
-        running: root.visible && !Appearance.lessMotion
+        running: root.visible && !Appearance.lessMotion && root.played < Catalogue.OPENS.length * 2
         repeat: true
         triggeredOnStart: true
         onTriggered: {
+            root.played++;
             if (!root.pinned)
                 root.turn++;
             if (SettingsView.reduceMotion || Appearance.lessMotion)

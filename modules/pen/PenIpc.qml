@@ -7,6 +7,8 @@ import qs.services
 Scope {
     id: root
 
+    property alias handler: served
+
     function penmapStatus(): string {
         const r = PenMap.region;
         const lock = PenMap.aspectLocked ? "locked" : "free";
@@ -16,6 +18,8 @@ Scope {
     }
 
     IpcHandler {
+        id: served
+
         target: "penmap"
 
         function open(): string {

@@ -45,6 +45,21 @@ function scenarios(menuKeys) {
             steps: [["settings", "open", pages[0], ""], ...pages.slice(1).map(p => ["settings", "page", p]), ["settings", "close"]]
         },
         {
+            id: "settings revisits",
+            steps: [["settings", "open", "launcher", ""], ...["sidebar", "launcher", "windows", "sidebar", "launcher", "desktop", "launcher"].map(p => ["settings", "page", p]), ["settings", "close"]],
+            rename: spans => {
+                const seen = new Set(["launcher"]);
+                return spans.map(span => {
+                    const page = /^settings page (.+)$/.exec(span.name)?.[1];
+                    const again = !!page && seen.has(page);
+                    if (page)
+                        seen.add(page);
+                    const name = !page ? `${span.name}, revisits round` : again ? `settings page ${page} again` : `${span.name}, before going back`;
+                    return Object.assign({}, span, { name });
+                });
+            }
+        },
+        {
             id: "menus",
             steps: [...menuKeys.map(key => ["menu", "open", key, ""]), ["menu", "close"]]
         },
@@ -61,6 +76,12 @@ function scenarios(menuKeys) {
         {
             id: "hotkey path",
             cli: true,
+            steps: [["action", "panel.clipboard.toggle"], ["action", "panel.clipboard.toggle"]]
+        },
+        {
+            id: "hotkey path, as a Lua bind sends it",
+            cli: true,
+            env: { BANDITSHELL_ROW: "panel.*.toggle\tstable\t1\tpanel $1 toggle" },
             steps: [["action", "panel.clipboard.toggle"], ["action", "panel.clipboard.toggle"]]
         },
         idle("idle after everything opened once")
@@ -106,9 +127,9 @@ class Shell {
         return { ns: Number(now() - start), out: (run.stdout || "").trim(), ok: run.status === 0 };
     }
 
-    command(...args) {
+    command(env, ...args) {
         const start = now();
-        const run = spawnSync("bash", [this.cli, ...args], { encoding: "utf8", cwd: process.env.HOME || "/" });
+        const run = spawnSync("bash", [this.cli, ...args], { encoding: "utf8", cwd: process.env.HOME || "/", env: Object.assign({}, process.env, env) });
         return { ns: Number(now() - start), out: (run.stdout || "").trim(), ok: run.status === 0 };
     }
 
@@ -163,7 +184,7 @@ function drive(shell, options) {
             const calls = [];
             for (const step of scenario.build ? scenario.build(shell) : scenario.steps) {
                 const before = cpu(shell.pid);
-                const reply = scenario.cli ? shell.command(...step) : shell.call(...step);
+                const reply = scenario.cli ? shell.command(scenario.env ?? {}, ...step) : shell.call(...step);
                 if (!shell.settle(scenario.wait ?? 8000))
                     process.stderr.write("(did not settle) ");
                 const after = cpu(shell.pid);
@@ -177,7 +198,8 @@ function drive(shell, options) {
                 });
                 sleep(options.gap);
             }
-            runs.push({ scenario: scenario.id, run, calls, spans: shell.take() });
+            const spans = shell.take();
+            runs.push({ scenario: scenario.id, run, calls, spans: scenario.rename ? scenario.rename(spans) : spans });
             process.stderr.write(`${run} `);
         }
         process.stderr.write("\n");

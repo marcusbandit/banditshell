@@ -8,7 +8,7 @@ import "catalogue.js" as Catalogue
 Column {
     id: root
 
-    readonly property var cat: SettingsView.cat
+    property var cat: SettingsView.cat
     readonly property var s: SettingsState
     readonly property var note: root.cat ? root.cat.suggest(root.s) : null
     readonly property var tiles: (root.cat?.tiles ?? []).filter(t => Catalogue.present(t, SettingsState))

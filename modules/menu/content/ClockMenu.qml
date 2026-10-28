@@ -51,6 +51,13 @@ Column {
 
     readonly property double beat: Math.max(Clock.tick, root.timersSeen)
 
+    property bool showing: false
+
+    onShowingChanged: if (!root.showing) {
+        root.picking = false;
+        root.editing = "";
+    }
+
     property bool picking: false
 
     readonly property string query: filter.value

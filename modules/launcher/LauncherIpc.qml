@@ -2,13 +2,14 @@ pragma ComponentBehavior: Bound
 
 import QtQml
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import qs.services
 import qs.modules.panel
 
 Scope {
     id: root
+
+    property alias handler: served
 
     Component {
         id: rowRunner
@@ -22,15 +23,9 @@ Scope {
         }
     }
 
-    GlobalShortcut {
-        appid: "banditshell"
-        name: "launcher"
-        description: "Toggle the launcher"
-
-        onPressed: PanelWindows.toggle("launcher", "")
-    }
-
     IpcHandler {
+        id: served
+
         target: "launcher"
 
         function toggle(): string {

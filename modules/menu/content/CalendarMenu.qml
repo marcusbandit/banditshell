@@ -16,8 +16,17 @@ Column {
 
     readonly property date today: clock.date
 
+    property bool showing: false
+
     property int shownYear: new Date().getFullYear()
     property int shownMonth: new Date().getMonth()
+
+    onShowingChanged: if (!root.showing) {
+        const now = new Date();
+        root.shownYear = now.getFullYear();
+        root.shownMonth = now.getMonth();
+        root.slide = 0;
+    }
 
     readonly property bool showingToday: root.shownYear === root.today.getFullYear() && root.shownMonth === root.today.getMonth()
 

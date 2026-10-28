@@ -10,6 +10,8 @@ import "../cli.js" as Words
 Scope {
     id: root
 
+    property alias handler: served
+
     function walkWallpaper(screen: string, delta: int): string {
         if (!Wallpaper.available.length)
             return "nothing to step to";
@@ -131,6 +133,8 @@ Scope {
     }
 
     ScreenPanelIpc {
+        id: served
+
         target: "wallpapers"
 
         function status(): string {

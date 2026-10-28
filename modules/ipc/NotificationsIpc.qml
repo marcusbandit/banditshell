@@ -10,6 +10,8 @@ import "../cli.js" as Words
 Scope {
     id: root
 
+    property alias handler: served
+
     function showHistory(screen: string, query: string): string {
         const win = Shell.forScreen(screen);
         if (!win)
@@ -40,6 +42,8 @@ Scope {
     }
 
     IpcHandler {
+        id: served
+
         target: "notifications"
 
         function open(screen: string): string {
