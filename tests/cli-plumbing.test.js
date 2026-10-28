@@ -333,6 +333,22 @@ test("the path step links ~/.local/bin/banditshell to this checkout's CLI and no
     assert.deepStrictEqual(listing(home).filter(f => !f.startsWith(".local/bin/")), []);
 });
 
+test("the home-bin step links ~/bin/banditshell for exec-once lines and keeps a real file there", () => {
+    const home = directory("home");
+    const repo = directory("repo");
+    fs.mkdirSync(path.join(repo, "bin"));
+    fs.symlinkSync(path.join(ROOT, "cli/banditshell"), path.join(repo, "bin/banditshell"));
+    assert.strictEqual(installer(`REPO="${repo}"; home_bin_present && echo yes || echo no`, home).stdout.trim(), "no");
+    const made = installer(`REPO="${repo}"; install_home_bin && home_bin_present && echo yes`, home);
+    assert.strictEqual(made.stdout.trim(), "yes", made.stderr);
+    assert.strictEqual(fs.readlinkSync(path.join(home, "bin/banditshell")), path.join(repo, "bin/banditshell"));
+    assert.deepStrictEqual(listing(home), ["bin/banditshell"]);
+    const own = directory("home");
+    fs.mkdirSync(path.join(own, "bin"));
+    fs.writeFileSync(path.join(own, "bin/banditshell"), "#!/bin/sh\nexec mine\n");
+    assert.strictEqual(installer("home_bin_present && echo \"yes $PROBE_NOTE\"", own).stdout.trim(), "yes kept your own ~/bin/banditshell");
+});
+
 test("something else on the PATH already provides banditshell, so the step is satisfied", () => {
     const home = directory("home");
     const bin = directory("bin");

@@ -21,7 +21,7 @@ usage: install.sh [--dry-run] [--no-ui] [--list] [--charge-limit] [--beside-omar
 
 A fresh clone on main first moves to the newest release, the version the
 update loop follows by default. Then it installs what banditshell needs: the
-CLI into bin/ and, when nothing else
+CLI into bin/ and ~/bin/banditshell and, when nothing else
 provides one, ~/.local/bin/banditshell, quickshell, the fonts, every package
 the shell calls, the C helpers (banditshell dev build), tab completion for zsh
 and bash, and the Lua module your Hyprland binds load (a shim beside
@@ -149,6 +149,7 @@ build_table() {
     add_step helpers                       "helpers_built"                           @helpers                      2 "the pty, the directory lister and the gamma client"
     add_step completion                    "completion_present"                      @completion                   2 "tab completion for the CLI, in zsh and bash"
     add_step path                          "path_present"                            @path                         2 "banditshell on your PATH: ~/.local/bin/banditshell, when nothing else provides one"
+    add_step home-bin                      "home_bin_present"                        @home-bin                     2 "the command an exec-once line starts the shell with: ~/bin/banditshell"
     add_step lua-api                       "lua_api_present"                         @lua-api                      2 "the Lua module for binds: the shim beside hyprland.lua and the checkout pointer"
     add_step spicy-lyrics                  "spicy_lyrics_present"                    @spicy                        2 "word-timed lyrics: Spicetify and Spicy Lyrics, in Spotify"
 
@@ -234,6 +235,23 @@ path_present() {
 
 install_path() {
     mkdir -p "$LOCAL_BIN" && ln -sfn "$REPO/cli/banditshell" "$LOCAL_BIN/banditshell"
+}
+
+HOME_BIN="$HOME/bin"
+
+home_bin_present() {
+    if [ -e "$HOME_BIN/banditshell" ] && [ ! -L "$HOME_BIN/banditshell" ]; then
+        PROBE_NOTE="kept your own ~/bin/banditshell"
+        return 0
+    fi
+    local have want
+    have=$(readlink -f "$HOME_BIN/banditshell" 2>/dev/null) || return 1
+    want=$(readlink -f "$REPO/bin/banditshell" 2>/dev/null) || return 1
+    [ -n "$want" ] && [ "$have" = "$want" ]
+}
+
+install_home_bin() {
+    mkdir -p "$HOME_BIN" && ln -sfn "$REPO/bin/banditshell" "$HOME_BIN/banditshell"
 }
 
 lua_api_present() {
@@ -864,6 +882,7 @@ run_step() {
         @completion) install_completion && ok=0 ;;
         @cli) install_cli && ok=0 ;;
         @path) install_path && ok=0 ;;
+        @home-bin) install_home_bin && ok=0 ;;
         @lua-api) install_lua_api && ok=0 ;;
         @helpers) install_helpers && ok=0 ;;
         @spicy) install_spicy_lyrics && ok=0 ;;

@@ -2147,7 +2147,8 @@ bare or not; a shell reduced to a wallpaper runner is still the machine looking 
 `bin/banditshell` wraps a Quickshell `IpcHandler`. It is a symlink to `cli/banditshell`, never a
 copy: every start, restart and `doctor` recreates that link inside the checkout, so a merge that
 changes the CLI cannot leave Hyprland's binds running an old copy (issue #20). The link in
-`~/bin` is made by `doctor` alone, and `doctor` leaves a `~/bin/banditshell` that is a real file
+`~/bin`, which an `exec-once` line starts the shell with, is made by `install.sh` and `doctor`,
+and both leave a `~/bin/banditshell` that is a real file
 (a wrapper someone wrote) as it is. Nothing used to put `banditshell` on a PATH, so `install.sh`
 now links `~/.local/bin/banditshell` to `cli/banditshell` when no other `banditshell` is found,
 and `doctor api` says whether the one on the PATH is this checkout.
