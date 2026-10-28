@@ -69,11 +69,12 @@ Item {
 
         SquircleRect {
             anchors.left: parent.left
+            anchors.leftMargin: Appearance.padding.hair
             anchors.verticalCenter: parent.verticalCenter
             visible: root.previewed && root.row
 
-            width: Appearance.stroke.ring
-            height: parent.height * 0.5
+            width: Appearance.padding.hair
+            height: parent.height * 0.6
 
             pill: "object"
             color: Appearance.colour.accent
@@ -98,9 +99,10 @@ Item {
             SquircleImage {
                 id: thumb
 
-                anchors.centerIn: parent
+                anchors.top: parent.top
+                anchors.horizontalCenter: parent.horizontalCenter
                 width: parent.width
-                height: parent.height
+                height: parent.height - Appearance.padding.hair * 2
                 visible: root.isImage && status !== Image.Error
 
                 source: root.isImage ? Urls.fileUrl(root.path) : ""
@@ -110,7 +112,7 @@ Item {
             }
 
             FileMark {
-                anchors.centerIn: parent
+                anchors.centerIn: thumb
                 visible: !thumb.visible || thumb.status !== Image.Ready
 
                 fileClass: root.entry.class
@@ -123,17 +125,16 @@ Item {
                 owned: root.entry.mine
                 rooted: root.entry.root
                 worldWritable: root.entry.world
-                size: Math.min(parent.height, root.width * 0.46)
+                size: Math.min(thumb.height, root.width * 0.46)
             }
 
             SquircleRect {
-                anchors.top: parent.bottom
-                anchors.topMargin: (Appearance.padding.hair - Appearance.stroke.ring) / 2
+                anchors.bottom: parent.bottom
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: root.previewed
 
-                width: parent.width * 0.3
-                height: Appearance.stroke.ring
+                width: parent.width * 0.4
+                height: Appearance.padding.hair
 
                 pill: "object"
                 color: Appearance.colour.accent
@@ -181,7 +182,7 @@ Item {
 
     Item {
         anchors.fill: parent
-        anchors.leftMargin: Appearance.padding.small
+        anchors.leftMargin: Appearance.padding.small + Appearance.padding.hair * 2
         anchors.rightMargin: Appearance.padding.small
         visible: root.row
 
