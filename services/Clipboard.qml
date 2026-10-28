@@ -508,7 +508,7 @@ Singleton {
         }
         root.sweepOwed = false;
 
-        const command = Sweep.command(root.blobs, root.shelf ? root.entries.concat(root.shelf.entries) : root.entries, root.keep && root.loaded);
+        const command = Sweep.command(root.blobs, root.path, root.shelf ? root.entries.concat(root.shelf.entries) : root.entries, root.keep && root.loaded);
         if (!command)
             return;
         reaper.command = command;
@@ -641,8 +641,6 @@ Singleton {
     Process {
         id: backup
 
-        command: Shelf.backupCommand(root.path, new Date())
-
         stdout: StdioCollector {
             onStreamFinished: if (text.trim())
                 console.log(`Clipboard: the damaged history is kept as ${text.trim()}.`)
@@ -698,7 +696,7 @@ Singleton {
 
             let disk = [];
             try {
-                const data = JSON.parse(raw);
+                const data = raw.trim() === "" && !root.loaded ? {} : JSON.parse(raw);
                 disk = Array.isArray(data?.entries) ? data.entries : [];
             } catch (err) {
 
@@ -708,6 +706,7 @@ Singleton {
                 disk = Shelf.salvage(raw);
                 console.warn(`Clipboard: ${root.path} is not valid JSON; keeping a copy of it and going on with the ${disk.length} entries it still holds.`, err);
                 root.keep = false;
+                backup.command = Shelf.backupCommand(root.path, new Date());
                 backup.running = true;
             }
 

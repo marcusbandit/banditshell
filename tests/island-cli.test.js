@@ -18,7 +18,7 @@ test("island end hands the outcome and an optional final text to the shell", () 
 });
 
 test("island end refuses an unknown flag and a --text with no words", () => {
-    for (const args of [["island", "end", "build", "--colour", "red"], ["island", "end", "build", "--text"], ["island", "end"]]) {
+    for (const args of [["island", "end", "build", "--colour", "red"], ["island", "end", "build", "--text"], ["island", "end"], ["island", "end", "--text", "Built"]]) {
         const run = cli(args, { env: { BANDITSHELL_DRY: "1" } });
         assert.strictEqual(run.code, 2, args.join(" "));
     }

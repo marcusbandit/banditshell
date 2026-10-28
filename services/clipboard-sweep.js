@@ -1,12 +1,12 @@
 .pragma library
 
 var SCRIPT = [
-    'dir=$1; shift',
+    'dir=$1; history=$2; shift 2',
     '[ -d "$dir" ] || exit 0',
     'keep=$(mktemp) || exit 0',
     "printf '%s\\n' \"$@\" > \"$keep\"",
     'newest=',
-    'for b in "$dir".json.damaged-*; do',
+    'for b in "$history".damaged-*; do',
     '    [ -e "$b" ] || continue',
     '    if [ -z "$newest" ] || [ "$b" -nt "$newest" ]; then newest=$b; fi',
     'done',
@@ -34,8 +34,8 @@ function wanted(entries) {
     return out;
 }
 
-function command(blobs, entries, readable) {
-    if (!readable || !blobs)
+function command(blobs, history, entries, readable) {
+    if (!readable || !blobs || !history)
         return null;
-    return ["sh", "-c", SCRIPT, "sh", blobs].concat(wanted(entries));
+    return ["sh", "-c", SCRIPT, "sh", blobs, history].concat(wanted(entries));
 }

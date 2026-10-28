@@ -26,8 +26,8 @@ test.describe("clipboard sweep", () => {
     test.it("sweeps nothing while the history file could not be read", () => {
         const dir = blobsWith(["a.png", "b.png"]);
         try {
-            assert.strictEqual(Sweep.command(dir, [], false), null);
-            assert.strictEqual(Sweep.command(dir, [{ file: `${dir}/a.png` }], false), null);
+            assert.strictEqual(Sweep.command(dir, `${dir}.json`, [], false), null);
+            assert.strictEqual(Sweep.command(dir, `${dir}.json`, [{ file: `${dir}/a.png` }], false), null);
             assert.deepStrictEqual(fs.readdirSync(dir).sort(), ["a.png", "b.png"]);
         } finally {
             fs.rmSync(dir, { recursive: true, force: true });
@@ -42,7 +42,7 @@ test.describe("clipboard sweep", () => {
                 { file: `${dir}/kept.png` },
                 { file: `${dir}/pinned shot 1.png`, pinned: true }
             ];
-            run(Sweep.command(dir, entries, true));
+            run(Sweep.command(dir, `${dir}.json`, entries, true));
             assert.deepStrictEqual(fs.readdirSync(dir).sort(), ["kept.png", "pinned shot 1.png"]);
         } finally {
             fs.rmSync(dir, { recursive: true, force: true });
@@ -59,7 +59,7 @@ test.describe("clipboard sweep", () => {
             fs.writeFileSync(backup, '{"entries":[{"file":"/s/cut o');
             const at = new Date(Date.now() - 30000);
             fs.utimesSync(backup, at, at);
-            run(Sweep.command(dir, [{ file: `${dir}/kept.png` }, { file: `${dir}/after kept.png` }], true));
+            run(Sweep.command(dir, `${dir}.json`, [{ file: `${dir}/kept.png` }, { file: `${dir}/after kept.png` }], true));
             assert.deepStrictEqual(fs.readdirSync(dir).sort(), ["after kept.png", "cut off.png", "kept.png"]);
         } finally {
             fs.rmSync(dir, { recursive: true, force: true });
@@ -67,9 +67,25 @@ test.describe("clipboard sweep", () => {
         }
     });
 
+    test.it("looks for damaged copies beside the history file it is given", () => {
+        const dir = blobsWith(["old.png"]);
+        const history = `${dir}-history.json`;
+        try {
+            const then = new Date(Date.now() - 60000);
+            fs.utimesSync(path.join(dir, "old.png"), then, then);
+            fs.writeFileSync(`${history}.damaged-20261028-140509`, "{");
+            run(Sweep.command(dir, history, [], true));
+            assert.deepStrictEqual(fs.readdirSync(dir), ["old.png"]);
+            assert.strictEqual(Sweep.command(dir, "", [], true), null);
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+            fs.rmSync(`${history}.damaged-20261028-140509`, { force: true });
+        }
+    });
+
     test.it("leaves a missing blobs folder alone", () => {
         const dir = path.join(os.tmpdir(), `clipboard-sweep-missing-${process.pid}`);
-        run(Sweep.command(dir, [], true));
+        run(Sweep.command(dir, `${dir}.json`, [], true));
         assert.strictEqual(fs.existsSync(dir), false);
     });
 
