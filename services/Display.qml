@@ -99,8 +99,12 @@ Singleton {
             if (Config.loaded)
                 root.adoptConfig();
         }
+    }
 
-        function onValuesChanged(): void {
+    Connections {
+        target: Config.values
+
+        function onScreenChanged(): void {
             if (Config.loaded && !gammaDebounce.running)
                 root.followWarmth(false);
         }

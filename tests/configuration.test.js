@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "config/configuration.js"), "utf8");
-const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue, readText, readFailed, reuse, saveDelay };")();
+const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue, readText, readFailed, reuse, saveDelay, reapply };")();
 
 const OPAQUE = ["files.keys", "files.grid"];
 
@@ -219,6 +219,22 @@ test.describe("reuse", () => {
         delete shorter.files.zoom;
         assert.strictEqual("zoom" in Configuration.reuse(before, shorter).files, false);
         assert.strictEqual(before.files.zoom, 1.0);
+    });
+});
+
+test.describe("reapply", () => {
+    test.it("keeps a change still waiting to be saved when the file is edited from outside", () => {
+        const fromFile = defaults();
+        fromFile.theme = "paper";
+        const out = Configuration.reapply(fromFile, [["sidebar.width", 90], ["sidebar.width", 96]]);
+        assert.strictEqual(out.sidebar.width, 96);
+        assert.strictEqual(out.theme, "paper");
+    });
+
+    test.it("takes the file as it is when nothing is waiting or a waiting key no longer fits", () => {
+        const fromFile = defaults();
+        assert.strictEqual(Configuration.reapply(fromFile, []), fromFile);
+        assert.strictEqual(Configuration.reapply(fromFile, [["sidebar.gone", 1]]), fromFile);
     });
 });
 
@@ -452,5 +468,32 @@ test.describe("reading config.json", () => {
     test.it("writes a fresh file only when there was none", () => {
         const got = Configuration.readFailed(true);
         assert.deepStrictEqual([got.loaded, got.unreadable, got.fresh, got.save], [true, false, true, true]);
+    });
+});
+
+test.describe("readers", () => {
+    function qmlFiles(dir) {
+        const found = [];
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            if ([".git", ".scratch", "node_modules", "tests"].includes(entry.name))
+                continue;
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory())
+                found.push(...qmlFiles(full));
+            else if (entry.name.endsWith(".qml"))
+                found.push(full);
+        }
+        return found;
+    }
+
+    test.it("listen to the section they read, since the values as a whole never change", () => {
+        const waiting = [];
+        for (const file of qmlFiles(ROOT)) {
+            const text = fs.readFileSync(file, "utf8");
+            for (const at of text.matchAll(/target:\s*Config\s*\n/g))
+                if (/function onValuesChanged\b/.test(text.slice(at.index, text.indexOf("\n    }", at.index) + 1 || undefined)))
+                    waiting.push(path.relative(ROOT, file));
+        }
+        assert.deepStrictEqual(waiting, []);
     });
 });

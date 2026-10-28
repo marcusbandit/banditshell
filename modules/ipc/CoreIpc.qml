@@ -33,7 +33,6 @@ IpcHandler {
     }
 
     function flush(): string {
-        Config.flush();
-        return "saved";
+        return Config.flush() ? "saved" : "nothing waiting to be saved";
     }
 }

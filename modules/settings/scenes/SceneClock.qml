@@ -23,6 +23,8 @@ QtObject {
 
         function onReplaysChanged(): void {
             root.rested = false;
+            if (root.moving)
+                root.rest.restart();
         }
     }
 

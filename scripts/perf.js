@@ -54,7 +54,8 @@ function scenarios(menuKeys) {
                     const again = !!page && seen.has(page);
                     if (page)
                         seen.add(page);
-                    return Object.assign({}, span, { name: again ? `settings page ${page} again` : `${span.name}, before going back` });
+                    const name = !page ? `${span.name}, revisits round` : again ? `settings page ${page} again` : `${span.name}, before going back`;
+                    return Object.assign({}, span, { name });
                 });
             }
         },

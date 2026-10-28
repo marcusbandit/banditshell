@@ -228,6 +228,13 @@ function reuse(before, after) {
     return same ? before : out;
 }
 
+function reapply(values, pairs, literals) {
+    if (!pairs.length)
+        return values;
+    const again = assign(values, pairs, literals);
+    return again.refused ? values : again.values;
+}
+
 function saveDelay(unsavedSince, now, quiet, longest) {
     return Math.max(0, Math.min(quiet, unsavedSince + longest - now));
 }

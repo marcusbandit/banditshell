@@ -1105,6 +1105,7 @@ Singleton {
         if (!result.changed.length)
             return;
         root.adopt(result.values);
+        root.unsaved = root.unsaved.concat(pairs);
 
         if (root.unreadable)
             return console.warn(`Config: ${keys} not saved, because ${root.path} could not be read and is left untouched`);
@@ -1120,6 +1121,7 @@ Singleton {
     }
 
     property double unsavedSince: 0
+    property var unsaved: []
 
     function saveSoon(): void {
         const now = Date.now();
@@ -1129,16 +1131,20 @@ Singleton {
         saver.restart();
     }
 
-    function flush(): void {
+    function flush(): bool {
         if (!saver.running)
-            return;
+            return false;
         saver.stop();
+        file.blockWrites = true;
         root.save();
+        file.blockWrites = false;
+        return root.writable;
     }
 
     function save(): void {
         if (!root.writable)
             return;
+        root.unsaved = [];
         root.lastWritten = JSON.stringify(root.tree, null, 4) + "\n";
         file.setText(root.lastWritten);
     }
@@ -1149,10 +1155,7 @@ Singleton {
         onTriggered: root.save()
     }
 
-    Component.onDestruction: {
-        file.blockWrites = true;
-        root.flush();
-    }
+    Component.onDestruction: root.flush()
 
     FileView {
         id: keepChannel
@@ -1182,8 +1185,9 @@ Singleton {
                 values: root.tree
             }, root.defaults, root.keepsChannel(), root.opaque, root.literals);
             root.unreadable = got.unreadable;
-            if (got.values !== root.tree)
-                root.adopt(Configuration.reuse(root.tree, got.values));
+            const next = saver.running ? Configuration.reapply(got.values, root.unsaved, root.literals) : got.values;
+            if (next !== root.tree)
+                root.adopt(Configuration.reuse(root.tree, next));
             root.loaded = got.loaded;
 
             if (got.unreadable)

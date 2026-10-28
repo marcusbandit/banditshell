@@ -754,9 +754,9 @@ PanelWindow {
                 }
 
                 Connections {
-                    target: Config
+                    target: Config.values
 
-                    function onValuesChanged(): void {
+                    function onCheatsheetChanged(): void {
                         cheatSheet.board = Config.get("cheatsheet.board");
                     }
                 }
