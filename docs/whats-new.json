@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-17",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Arrow keys and Enter work in every menu, and Tab jumps between groups"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Left and right move a slider, and Enter on a volume slider mutes it"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A menu opened by its shortcut takes the keyboard at once"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-16",
       "date": "2026-10-28",
       "changes": [
