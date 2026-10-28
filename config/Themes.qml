@@ -93,7 +93,8 @@ Singleton {
             mid: p.mid,
             bright: p.bright,
             alarm: p.alarm,
-            brass: colour(p.brass) ? p.brass : root.slate.brass
+            brass: colour(p.brass) ? p.brass : root.slate.brass,
+            error: colour(p.ansi?.red) ? p.ansi.red : root.slate.error
         };
     }
 
@@ -165,6 +166,7 @@ Singleton {
         bright: p ? p.bright : root.slate.bright
         alarm: p ? p.alarm : root.slate.alarm
         brass: p ? p.brass : root.slate.brass
+        error: p ? p.error : root.slate.error
     }
 
     FileView {
@@ -225,6 +227,7 @@ Singleton {
 
         required property color alarm
         required property color brass
+        required property color error
     }
 
     readonly property Theme slate: Theme {
@@ -236,5 +239,6 @@ Singleton {
         bright: "#b8dcf0"
         alarm: "#ff7a4d"
         brass: "#d8c48c"
+        error: "#f29ba8"
     }
 }

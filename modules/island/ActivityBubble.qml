@@ -58,7 +58,7 @@ Item {
         if (root.kind === "launch" && a.state === "lost")
             return {
                 icon: "priority_high",
-                tone: Appearance.colour.alarm
+                tone: Appearance.colour.failed
             };
         if (root.kind === "notification" && root.count > 1)
             return {
@@ -67,7 +67,7 @@ Item {
         if (root.kind === "external" && a.state === "ended")
             return {
                 icon: a.outcome === "failed" ? "priority_high" : a.outcome === "cancelled" ? "close" : "check",
-                tone: a.outcome === "failed" ? Appearance.colour.alarm : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent
+                tone: a.outcome === "failed" ? Appearance.colour.failed : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent
             };
         if (root.kind === "timer")
             return {

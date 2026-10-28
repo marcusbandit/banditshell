@@ -1637,8 +1637,8 @@ Item {
                         readonly property bool carried: row.here && !root.tasking && row.toY >= 0
                         readonly property real t: row.carried ? root.opened : 0
                         readonly property real fromWidth: root.pillWidth - swell.value * 2
-                        readonly property real toX: overview.x + overview.pad
-                        readonly property real toWidth: overview.width - overview.pad * 2
+                        readonly property real toX: overview.x + overview.rowX
+                        readonly property real toWidth: overview.rowWidth
                         readonly property real restY: cardRoom.value + offset.value
                         readonly property real under: underCard.value * (1 - row.t)
                         readonly property real restText: row.inset + row.slot + row.gap
