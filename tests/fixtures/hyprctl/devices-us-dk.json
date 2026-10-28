@@ -1,0 +1,22 @@
+{
+    "keyboards": [
+        {
+            "name": "rdmctmzt-galaxy100-2.4g-dongle",
+            "layout": "us,dk",
+            "variant": "",
+            "active_layout_index": 0,
+            "active_keymap": "English (US)",
+            "capsLock": false,
+            "main": true
+        },
+        {
+            "name": "rdmctmzt-galaxy100-2.4g-dongle-system-control",
+            "layout": "us,dk",
+            "variant": "",
+            "active_layout_index": 0,
+            "active_keymap": "English (US)",
+            "capsLock": false,
+            "main": false
+        }
+    ]
+}

@@ -61,13 +61,17 @@ function restored(current, shelf) {
     return fresh.concat(old);
 }
 
-function salvage(text) {
+function scan(text) {
     var s = String(text || "");
     var key = s.indexOf('"entries"');
     var open = key < 0 ? -1 : s.indexOf("[", key);
-    if (open < 0)
-        return [];
     var found = [];
+    var seen = 0;
+    if (open < 0)
+        return {
+            found: found,
+            seen: seen
+        };
     var depth = 0;
     var start = -1;
     var quoted = false;
@@ -86,8 +90,10 @@ function salvage(text) {
         if (c === '"') {
             quoted = true;
         } else if (c === "{") {
-            if (depth === 0)
+            if (depth === 0) {
                 start = i;
+                seen++;
+            }
             depth++;
         } else if (c === "}") {
             depth--;
@@ -105,23 +111,36 @@ function salvage(text) {
             break;
         }
     }
-    return found;
+    return {
+        found: found,
+        seen: seen
+    };
 }
 
-function survivors(current, salvaged) {
-    var taken = {};
-    var out = (current || []).slice();
-    out.forEach(function (e) {
-        taken[identity(e)] = true;
-    });
-    (salvaged || []).forEach(function (e) {
-        if (!e.pinned || !(e.text || e.file || (e.paths || []).length))
-            return;
-        var key = identity(e);
-        if (taken[key])
-            return;
-        taken[key] = true;
-        out.push(e);
-    });
-    return out;
+function salvage(text) {
+    return scan(text).found;
+}
+
+function seen(text) {
+    return scan(text).seen;
+}
+
+var BACKUP = [
+    'umask 077',
+    'dest="$1.damaged-$2"',
+    'n=1',
+    'while [ -e "$dest" ]; do n=$((n + 1)); dest="$1.damaged-$2-$n"; done',
+    'cp -- "$1" "$dest" && cmp -s -- "$1" "$dest" && printf "%s\\n" "$dest"'
+].join("\n");
+
+function two(n) {
+    return (n < 10 ? "0" : "") + n;
+}
+
+function stamp(when) {
+    return "" + when.getFullYear() + two(when.getMonth() + 1) + two(when.getDate()) + "-" + two(when.getHours()) + two(when.getMinutes()) + two(when.getSeconds());
+}
+
+function backupCommand(path, when) {
+    return ["sh", "-c", BACKUP, "sh", path, stamp(when)];
 }

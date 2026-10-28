@@ -86,7 +86,9 @@ QtObject {
         const bytes = Clipboard.size(entry.bytes);
         if (bytes)
             parts.push(bytes);
-        parts.push(Clipboard.age(entry.recorded));
+        const when = Clipboard.age(entry.recorded);
+        if (when)
+            parts.push(when);
         return {
             key: `clipboard:${entry.id}`,
             kind: "clipboard",

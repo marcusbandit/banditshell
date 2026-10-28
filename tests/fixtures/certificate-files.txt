@@ -1,0 +1,33 @@
+/home/me/Documents/dtu-root-ca-01.pem
+subject=C=DK, O=Danmarks Tekniske Universitet, CN=DTU ROOT CA 01
+issuer=C=DK, O=Danmarks Tekniske Universitet, CN=DTU ROOT CA 01
+X509v3 Basic Constraints: critical
+    CA:TRUE
+/home/me/Downloads/uni-root.der
+subject=CN=Uni Root CA, O=Uni
+issuer=CN=Uni Root CA, O=Uni
+X509v3 Basic Constraints: critical
+    CA:TRUE
+/home/me/Downloads/uni-root-ca.pem
+subject=CN=Uni Root CA, O=Uni
+issuer=CN=Uni Root CA, O=Uni
+X509v3 Basic Constraints: critical
+    CA:TRUE
+/home/me/Downloads/old-root.crt
+subject=CN=laptop-17
+issuer=CN=laptop-17
+/home/me/Downloads/laptop-17.p12
+/home/me/Downloads/laptop-17.key
+private key
+/home/me/Downloads/laptop-17.crt
+subject=CN=laptop-17
+issuer=CN=Uni Root CA, O=Uni
+X509v3 Basic Constraints: 
+    CA:FALSE
+/home/me/Downloads/broken.pem
+/home/me/Documents/wifi/laptop-17-with-key.pem
+private key
+subject=CN=laptop-17
+issuer=CN=Uni Root CA, O=Uni
+X509v3 Basic Constraints: 
+    CA:FALSE

@@ -141,8 +141,9 @@
 #                                replaces the first
 #   banditshell island update <id> [--text <text>] [--detail <text>] [--progress <fraction>] [--icon <name>] [--until <span>]
 #                                change what it shows; a detail of - clears it
-#   banditshell island end <id> [done|failed|cancelled]
-#                                finish it: its mark stays for a moment, then it goes
+#   banditshell island end <id> [done|failed|cancelled] [--text <text>]
+#                                finish it: its mark stays for a moment, then it goes;
+#                                the row says --text, or its text and how it ended
 #   banditshell island list      every activity and where it stands
 #
 # tablet                         tablet mode, the lid and the pen's area
@@ -1466,6 +1467,31 @@ island_post() {
     fi
 }
 
+island_end() {
+    local id="$1" outcome="done" text=""
+    case "$id" in -*) say_usage "island end <id> [done|failed|cancelled] [--text <text>]" ;; esac
+    shift
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --text)
+            [ $# -ge 2 ] || say_usage "island end: --text needs a value"
+            text="$2"
+            shift 2
+            ;;
+        --*) nope island "end $1" ;;
+        *)
+            outcome="$1"
+            shift
+            ;;
+        esac
+    done
+    if [ -n "$text" ]; then
+        activity_call endSaying "$id" "$outcome" "$text"
+    else
+        activity_call end "$id" "$outcome"
+    fi
+}
+
 route_notifications() {
     local verb="${1:-}" filter="" app="" word
     if [ $# -gt 0 ]; then shift; fi
@@ -1502,8 +1528,8 @@ route_island() {
     "") ipc island status "" ;;
     push | update) island_post "$verb" "$@" ;;
     end)
-        [ $# -ge 1 ] || say_usage "island end <id> [done|failed|cancelled]"
-        activity_call end "$1" "${2:-done}"
+        [ $# -ge 1 ] || say_usage "island end <id> [done|failed|cancelled] [--text <text>]"
+        island_end "$@"
         ;;
     list) activity_call list ;;
     *) nope island "$verb" ;;
@@ -3537,8 +3563,28 @@ update_state_text() {
         fi ;;
     paused) echo "this copy is on ${U_BRANCH_NOW/#HEAD/no branch}, so it does not follow $U_BRANCH" ;;
     diverged) echo "$U_BEHIND new on $U_BRANCH, but this copy has $U_AHEAD commit(s) of its own, so it cannot just move forward" ;;
-    skipped) echo "$(update_label "$U_TARGET") did not start last time and is skipped until a newer version arrives" ;;
+    skipped)
+        if update_left_by_hand "$U_TARGET"; then
+            echo "you went back from $(update_label "$U_TARGET"); updates skip it until a newer version arrives"
+        else
+            echo "$(update_label "$U_TARGET") did not start last time and is skipped until a newer version arrives"
+        fi ;;
     esac
+}
+
+update_left_by_hand() {
+    local result
+    result=$(cat "$UPDATE_STATE/result.json" 2>/dev/null) || return 1
+    [[ $result == *'"ok":false'* && $result == *'"hand":true'* && $result == *"\"to\":\"$1\""* ]]
+}
+
+update_notes() {
+    if [ -z "$U_PREVIOUS" ] || ! update_has_node; then
+        printf '[]'
+        return 0
+    fi
+    node "$U_DIR/services/update.js" notes <(ugit show "$U_PREVIOUS:docs/whats-new.json" 2>/dev/null) \
+        <(ugit show "HEAD:docs/whats-new.json" 2>/dev/null) || printf '[]'
 }
 
 update_check() {
@@ -3573,7 +3619,7 @@ update_check() {
         exit 10
     fi
     if [ "$UPDATE_JSON" = 1 ]; then
-        printf '%s}\n' "$(update_meta_json)"
+        printf '%s,"notes":%s}\n' "$(update_meta_json)" "$(update_notes)"
     else
         update_state_text
     fi
@@ -3961,13 +4007,16 @@ update_status() {
 }
 
 update_last_result() {
-    local ok why to
+    local ok hand why to
     [ -n "$1" ] || return 0
     ok=$(sed -n 's/.*"ok":\(true\|false\).*/\1/p' <<<"$1")
+    hand=$(sed -n 's/.*"hand":\(true\|false\).*/\1/p' <<<"$1")
     to=$(sed -n 's/.*"toLabel":"\([^"]*\)".*/\1/p' <<<"$1")
     why=$(sed -n 's/.*"why":"\([^"]*\)".*/\1/p' <<<"$1")
     if [ "$ok" = true ]; then
         echo "last update: reached $to"
+    elif [ "$hand" = true ]; then
+        echo "last update: you went back from $to"
     else
         echo "last update: $to did not start${why:+ ($why)}; it is skipped until a newer version arrives"
     fi
