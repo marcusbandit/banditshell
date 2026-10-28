@@ -16,21 +16,30 @@ Item {
     property string domain: ""
     property string note: ""
     property bool noteIsTrouble: false
+    property bool noteWarns: false
     property string suggestion: ""
+    property string fill: ""
     property bool busy: false
     property var readServer: text => text.trim()
+    property var schoolOf: (domain, identity) => null
 
     signal accepted(var form, string password)
     signal check(var form)
     signal cancelled
 
     property int method: 0
-    property int trust: 0
+    property string trust: "auto"
+    property bool more: false
 
     readonly property string methodName: root.methods[Math.min(root.method, root.methods.length - 1)] ?? ""
     readonly property bool tls: root.methodName === "tls"
     readonly property bool canCheck: root.methods.includes("peap")
     readonly property bool needsServer: !server.text.trim()
+
+    readonly property var school: server.text.trim() ? root.schoolOf(server.text, "") : root.schoolOf("", identity.text)
+    readonly property var trustKeys: root.school ? ["school", "system", "file"] : ["system", "file"]
+    readonly property var trustNames: root.school ? [root.school.school, "system", "a file"] : ["system", "a file"]
+    readonly property string trustKey: root.trustKeys.includes(root.trust) ? root.trust : root.school ? "school" : "system"
 
     property var found: []
     property Item target: null
@@ -39,7 +48,7 @@ Item {
     function pickFile(path: string): void {
         let entry = root.target;
         if (!entry || !entry.visible)
-            entry = root.tls && !certificate.text.trim() ? certificate : root.trust === 1 ? authority : root.tls ? key : null;
+            entry = root.tls && !certificate.text.trim() ? certificate : root.trustKey === "file" ? authority : root.tls ? key : null;
         if (entry)
             entry.text = path;
     }
@@ -51,24 +60,30 @@ Item {
             method: root.methodName,
             identity: identity.text,
             domain: server.text,
-            authority: root.trust === 1 ? authority.text.trim() : "",
+            trust: root.trustKey,
+            authority: root.trustKey === "file" ? authority.text.trim() : "",
             certificate: root.tls ? certificate.text.trim() : "",
             key: root.tls ? (key.text.trim() || certificate.text.trim()) : "",
             locked: root.tls && !!password.text
         };
     }
 
+    function inMore(entry: Item): void {
+        root.more = true;
+        entry.input.forceActiveFocus();
+    }
+
     function submit(): void {
         if (root.refusal || root.busy)
             return;
         root.local = "";
-        if (root.trust === 1 && !authority.text.trim())
-            return authority.input.forceActiveFocus();
+        if (root.trustKey === "file" && !authority.text.trim())
+            return root.inMore(authority);
         if (root.needsServer && root.canCheck && !root.tls)
             return root.check(root.form());
         if (!root.needsServer && !root.readServer(server.text)) {
             root.local = "That server name needs a dot, such as school.edu.";
-            return server.input.forceActiveFocus();
+            return root.inMore(server);
         }
         if (!identity.text)
             identity.input.forceActiveFocus();
@@ -77,7 +92,7 @@ Item {
         else if (root.tls && !certificate.text.trim())
             certificate.input.forceActiveFocus();
         else if (root.needsServer)
-            server.input.forceActiveFocus();
+            root.inMore(server);
         else {
             const filled = root.form();
             const secret = password.text;
@@ -86,6 +101,9 @@ Item {
         }
     }
 
+    onFillChanged: if (root.fill)
+        server.text = root.fill
+
     readonly property bool surfaceActive: root.Window.active
     onSurfaceActiveChanged: if (root.surfaceActive && root.visible && !root.refusal)
         identity.input.forceActiveFocus()
@@ -93,7 +111,8 @@ Item {
     function claim(): void {
         identity.text = "";
         password.text = "";
-        server.text = root.domain;
+        password.shown = false;
+        server.text = root.fill || root.domain;
         root.local = "";
         if (root.visible && !root.refusal) {
             Prompts.request(root);
@@ -123,55 +142,102 @@ Item {
 
         property alias input: box
         property alias text: box.text
+        property string label: ""
         property string hint: ""
         property bool secret: false
+        property bool shown: false
         property bool file: false
 
         property Item next: null
 
-        implicitHeight: visible ? box.implicitHeight + Appearance.padding.normal * 2 : 0
+        implicitHeight: visible ? heading.height + field.height : 0
 
-        SquircleRect {
-            anchors.fill: parent
-            anchors.topMargin: Appearance.padding.small
-            anchors.bottomMargin: Appearance.padding.small
-            radius: Appearance.rounding.small
-            color: Appearance.colour.fillStrong
+        StyledText {
+            id: heading
+
+            anchors.left: parent.left
+            anchors.leftMargin: Appearance.padding.normal
+            height: entry.label ? implicitHeight + Appearance.padding.small : 0
+            visible: !!entry.label
+            verticalAlignment: Text.AlignBottom
+            text: entry.label
+            color: Appearance.colour.textDim
+            font.pixelSize: Appearance.font.size.small
         }
 
-        TextInput {
-            id: box
+        Item {
+            id: field
 
-            anchors.fill: parent
-            anchors.leftMargin: Appearance.padding.normal
-            anchors.rightMargin: Appearance.padding.normal
+            anchors.top: heading.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: box.implicitHeight + Appearance.padding.normal * 2
 
-            verticalAlignment: TextInput.AlignVCenter
-            echoMode: entry.secret ? TextInput.Password : TextInput.Normal
-            clip: true
+            SquircleRect {
+                anchors.fill: parent
+                anchors.topMargin: Appearance.padding.small
+                anchors.bottomMargin: Appearance.padding.small
+                radius: Appearance.rounding.small
+                color: Appearance.colour.fillStrong
+            }
 
-            font.family: Appearance.font.family
-            font.pixelSize: Appearance.font.size.small
-            renderType: Text.NativeRendering
-            color: Appearance.colour.text
-            selectionColor: Appearance.colour.accent
-            selectedTextColor: Appearance.colour.accentText
+            TextInput {
+                id: box
 
-            KeyNavigation.tab: entry.next
+                anchors.fill: parent
+                anchors.leftMargin: Appearance.padding.normal
+                anchors.rightMargin: entry.secret ? eye.width + Appearance.padding.normal * 2 : Appearance.padding.normal
 
-            onActiveFocusChanged: if (box.activeFocus && entry.file)
-                root.target = entry
+                verticalAlignment: TextInput.AlignVCenter
+                echoMode: entry.secret && !entry.shown ? TextInput.Password : TextInput.Normal
+                clip: true
 
-            onAccepted: root.submit()
-
-            Keys.onEscapePressed: root.cancelled()
-
-            StyledText {
-                anchors.verticalCenter: parent.verticalCenter
-                visible: !box.text && !box.activeFocus
-                text: entry.hint
-                color: Appearance.colour.textFaint
+                font.family: Appearance.font.family
                 font.pixelSize: Appearance.font.size.small
+                renderType: Text.NativeRendering
+                color: Appearance.colour.text
+                selectionColor: Appearance.colour.accent
+                selectedTextColor: Appearance.colour.accentText
+
+                KeyNavigation.tab: entry.next
+
+                onActiveFocusChanged: if (box.activeFocus && entry.file)
+                    root.target = entry
+
+                onAccepted: root.submit()
+
+                Keys.onEscapePressed: root.cancelled()
+
+                StyledText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: !box.text && !box.activeFocus
+                    text: entry.hint
+                    color: Appearance.colour.textFaint
+                    font.pixelSize: Appearance.font.size.small
+                }
+            }
+
+            Icon {
+                id: eye
+
+                anchors.right: parent.right
+                anchors.rightMargin: Appearance.padding.normal
+                anchors.verticalCenter: parent.verticalCenter
+
+                visible: entry.secret
+                name: entry.shown ? "visibility_off" : "visibility"
+                color: Appearance.colour.textDim
+
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -Appearance.padding.small
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: entry.shown = !entry.shown
+                }
+
+                HoverTip {
+                    text: entry.shown ? "hide" : "show"
+                }
             }
         }
     }
@@ -204,7 +270,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
 
             text: choice.label
-            color: Appearance.colour.textFaint
+            color: Appearance.colour.textDim
         }
 
         Segments {
@@ -215,6 +281,28 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
 
             onPicked: i => choice.picked(i)
+        }
+    }
+
+    component FileChips: Flow {
+        width: parent.width
+        leftPadding: Appearance.padding.normal
+        rightPadding: Appearance.padding.normal
+        spacing: Appearance.padding.small
+        visible: root.found.length > 0
+
+        Repeater {
+            model: root.found
+
+            Button {
+                required property string modelData
+
+                size: 0
+                style: "bare"
+                icon: "description"
+                text: modelData.slice(modelData.lastIndexOf("/") + 1)
+                onClicked: root.pickFile(modelData)
+            }
         }
     }
 
@@ -243,24 +331,23 @@ Item {
                 spacing: 0
 
                 Line {
-                    text: root.tls ? `${root.placeholder} lets you on with a certificate from your school or work.` : `${root.placeholder} lets you on with your school or work account.`
+                    text: root.tls ? `Sign in to ${root.placeholder} with a certificate from your school or work.` : `Sign in to ${root.placeholder} with your ${root.school ? root.school.school : "school or work"} account.`
+                    color: Appearance.colour.textDim
+                }
+
+                Line {
+                    visible: !!root.note && root.noteIsTrouble
+                    text: root.note
+                    color: Appearance.colour.warning
                 }
 
                 Entry {
                     id: identity
 
                     width: parent.width
-                    hint: root.placeholder ? `username for ${root.placeholder}` : "username"
-                    next: password.input
-                }
-
-                Entry {
-                    id: password
-
-                    width: parent.width
-                    hint: root.tls ? "key password, if it has one" : "password"
-                    secret: true
-                    next: root.tls ? certificate.input : server.input
+                    label: root.tls ? "Name on your certificate" : root.school ? `${root.school.school} username or email` : "Username or email"
+                    hint: root.tls ? "" : root.school ? `username@${root.school.suffix}` : "name@school.edu"
+                    next: root.tls ? certificate.input : password.input
                 }
 
                 Entry {
@@ -268,7 +355,8 @@ Item {
 
                     width: parent.width
                     visible: root.tls
-                    hint: "your certificate file"
+                    label: "Certificate file"
+                    hint: "pick one below or type its path"
                     file: true
                     next: key.input
                 }
@@ -278,76 +366,22 @@ Item {
 
                     width: parent.width
                     visible: root.tls
-                    hint: "its key file, if separate"
+                    label: "Key file, if separate"
                     file: true
-                    next: server.input
+                    next: password.input
+                }
+
+                FileChips {
+                    visible: root.tls && root.found.length > 0
                 }
 
                 Entry {
-                    id: server
+                    id: password
 
                     width: parent.width
-                    hint: "server name, such as school.edu"
-                    next: root.trust === 1 ? authority.input : identity.input
-                }
-
-                Line {
-                    text: root.needsServer && root.canCheck && !root.tls ? "Not sure of the server name? Look it up first. Nothing secret is sent, but your Wi-Fi drops for a moment." : root.tls ? "Your certificate only goes to a server with this name." : "Your password only goes to a server with this name."
-                }
-
-                Choice {
-                    width: parent.width
-                    label: "trusted by"
-                    options: ["system", "a file"]
-                    current: root.trust
-                    onPicked: i => {
-                        root.trust = i;
-                        if (i === 1) {
-                            root.target = authority;
-                            authority.input.forceActiveFocus();
-                        }
-                    }
-                }
-
-                Entry {
-                    id: authority
-
-                    width: parent.width
-                    visible: root.trust === 1
-                    hint: "your school's root certificate file"
-                    file: true
+                    label: root.tls ? "Key password, if it has one" : "Password"
+                    secret: true
                     next: identity.input
-                }
-
-                Flow {
-                    width: parent.width
-                    leftPadding: Appearance.padding.normal
-                    rightPadding: Appearance.padding.normal
-                    spacing: Appearance.padding.small
-                    visible: (root.trust === 1 || root.tls) && root.found.length > 0
-
-                    Repeater {
-                        model: root.found
-
-                        Button {
-                            required property string modelData
-
-                            size: 0
-                            style: "bare"
-                            icon: "description"
-                            text: modelData.slice(modelData.lastIndexOf("/") + 1)
-                            onClicked: root.pickFile(modelData)
-                        }
-                    }
-                }
-
-                Choice {
-                    width: parent.width
-                    visible: root.methods.length > 1
-                    label: "sign-in method"
-                    options: root.methods
-                    current: root.method
-                    onPicked: i => root.method = i
                 }
 
                 Line {
@@ -357,9 +391,9 @@ Item {
                 }
 
                 Line {
-                    visible: !!root.note
+                    visible: !!root.note && !root.noteIsTrouble
                     text: root.note
-                    color: root.noteIsTrouble ? Appearance.colour.warning : Appearance.colour.textDim
+                    color: root.noteWarns ? Appearance.colour.warning : Appearance.colour.textDim
                 }
 
                 Item {
@@ -389,14 +423,119 @@ Item {
                     Button {
                         id: act
 
+                        anchors.left: parent.left
+                        anchors.leftMargin: Appearance.padding.normal
                         anchors.right: parent.right
                         anchors.rightMargin: Appearance.padding.normal
                         anchors.verticalCenter: parent.verticalCenter
 
-                        size: 0
+                        style: "accent"
                         interactive: !root.busy
-                        text: root.busy ? "Looking…" : root.needsServer && root.canCheck && !root.tls ? "Look up the server" : "Sign in"
+                        text: root.busy ? "Looking…" : root.needsServer && root.canCheck && !root.tls ? "Look up the server" : "Connect"
                         onClicked: root.submit()
+                    }
+                }
+
+                Line {
+                    visible: root.needsServer && root.canCheck && !root.tls && !root.busy
+                    text: "Looking up sends nothing secret, but your Wi-Fi drops for a moment."
+                }
+
+                Item {
+                    width: parent.width
+                    implicitHeight: Math.max(moreLabel.implicitHeight, opener.implicitHeight) + Appearance.padding.small * 2
+
+                    StyledText {
+                        id: moreLabel
+
+                        anchors.left: parent.left
+                        anchors.leftMargin: Appearance.padding.normal
+                        anchors.right: opener.left
+                        anchors.rightMargin: Appearance.padding.normal
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        elide: Text.ElideRight
+                        text: root.more ? "More" : `More   ${root.methodName.toUpperCase()} · ${root.trustNames[root.trustKeys.indexOf(root.trustKey)]} · ${server.text.trim() || "no server yet"}`
+                        color: Appearance.colour.textDim
+                        font.pixelSize: Appearance.font.size.small
+                    }
+
+                    Expander {
+                        id: opener
+
+                        anchors.right: parent.right
+                        anchors.rightMargin: Appearance.padding.normal
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        open: root.more
+                        tip: root.more ? "less" : "more"
+                        onToggled: root.more = !root.more
+                    }
+
+                    MouseArea {
+                        anchors.left: parent.left
+                        anchors.right: opener.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.more = !root.more
+                    }
+                }
+
+                Column {
+                    width: parent.width
+                    visible: root.more
+                    spacing: 0
+
+                    Entry {
+                        id: server
+
+                        width: parent.width
+                        label: "Server name"
+                        hint: "such as school.edu"
+                        next: root.trustKey === "file" ? authority.input : identity.input
+                    }
+
+                    Line {
+                        text: root.tls ? "Your certificate only goes to a server with this name." : "Your password only goes to a server with this name."
+                    }
+
+                    Choice {
+                        width: parent.width
+                        label: "trust"
+                        options: root.trustNames
+                        current: root.trustKeys.indexOf(root.trustKey)
+                        onPicked: i => {
+                            root.trust = root.trustKeys[i];
+                            if (root.trust === "file") {
+                                root.target = authority;
+                                authority.input.forceActiveFocus();
+                            }
+                        }
+                    }
+
+                    Entry {
+                        id: authority
+
+                        width: parent.width
+                        visible: root.trustKey === "file"
+                        label: "Your school's root certificate file"
+                        hint: "pick one below or type its path"
+                        file: true
+                        next: identity.input
+                    }
+
+                    FileChips {
+                        visible: root.trustKey === "file" && root.found.length > 0
+                    }
+
+                    Choice {
+                        width: parent.width
+                        visible: root.methods.length > 1
+                        label: "sign-in method"
+                        options: root.methods.map(m => m.toUpperCase())
+                        current: root.method
+                        onPicked: i => root.method = i
                     }
                 }
             }

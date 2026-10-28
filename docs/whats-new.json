@@ -12,6 +12,11 @@
         {
           "type": "issues",
           "severity": "minor",
+          "text": "DTUsecure and DTU's eduroam sign in with a username and password"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
           "text": "The sign-in asks for the server name and can look it up for you"
         },
         {

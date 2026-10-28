@@ -532,6 +532,9 @@ Column {
                             noteIsTrouble: Network.enrollFailedName === entry.name
                             suggestion: Network.checkedName === entry.name ? Network.checkedServer : ""
                             readServer: text => Network.serverName(text)
+                            schoolOf: (domain, identity) => Network.school(domain, identity)
+                            fill: Network.checkedName === entry.name ? Network.checkedFill : ""
+                            noteWarns: Network.checkedName === entry.name && Network.checkedState === "mismatch"
 
                             onAccepted: (form, password) => {
                                 if (Network.find(entry.name))

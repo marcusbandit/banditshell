@@ -101,6 +101,15 @@ const KNOWN_SERVERS = {
     DTUsecure: "dtu.dk"
 };
 
+const SCHOOL_CERTIFICATES = [
+    {
+        school: "DTU",
+        suffix: "dtu.dk",
+        file: "dtu-root-ca-01.pem",
+        sha256: "ad61accf9a75deca01522ec5f6f95500c73f65c116149c09a6ac5aef410a0fe2"
+    }
+];
+
 const UNMATCHABLE_SERVER = "server-check.invalid";
 
 function signInMethods(kind) {
@@ -122,6 +131,51 @@ function knownServer(name) {
 function serverDomain(text) {
     const name = String(text ?? "").trim().toLowerCase().replace(/^[a-z]+:\/\//, "").replace(/[\/:].*$/, "").replace(/^[*.]+/, "").replace(/\.+$/, "");
     return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(name) ? name : "";
+}
+
+function underDomain(name, suffix) {
+    return !!name && (name === suffix || name.endsWith(`.${suffix}`));
+}
+
+function schoolCertificate(domain) {
+    const name = serverDomain(domain);
+    return SCHOOL_CERTIFICATES.find(entry => underDomain(name, entry.suffix)) || null;
+}
+
+function realmOf(identity) {
+    const text = String(identity ?? "");
+    return text.includes("@") ? serverDomain(text.slice(text.lastIndexOf("@") + 1)) : "";
+}
+
+function schoolFor(domain, identity) {
+    return serverDomain(domain) ? schoolCertificate(domain) : schoolCertificate(realmOf(identity));
+}
+
+function trustedAuthority(form, home, certificates) {
+    if (form?.trust === "school") {
+        const entry = schoolCertificate(form.domain);
+        return entry && certificates ? `${certificates}/${entry.file}` : null;
+    }
+    if (form?.trust === "file")
+        return filePath(form.authority, home) || null;
+    return "";
+}
+
+function checkAuthority(form, home, certificates) {
+    if (form?.trust === "school") {
+        const entry = schoolFor(form.domain, form.identity);
+        return entry && certificates ? `${certificates}/${entry.file}` : null;
+    }
+    return trustedAuthority(form, home, certificates);
+}
+
+function serverMatch(server, identity) {
+    const realm = realmOf(identity);
+    if (!server)
+        return { state: "none", realm: realm, fill: "" };
+    if (!realm)
+        return { state: "unknown", realm: "", fill: "" };
+    return underDomain(server, realm) ? { state: "match", realm: realm, fill: realm } : { state: "mismatch", realm: realm, fill: "" };
 }
 
 function filePath(text, home) {
@@ -274,18 +328,25 @@ function serverMessage(trouble, domain) {
     case "name":
         return `The server answered as ${trouble.server || "something else"}${domain ? `, not ${domain}` : ""}${by}. Your password was not sent.`;
     case "untrusted":
-        return `This computer does not trust the chain the server sent${trouble.authority ? `, which ends at ${trouble.authority}` : ""}. Pick your school's root certificate under trusted by; its Wi-Fi guide has it. Your password was not sent.`;
+        return `This computer does not trust the chain the server sent${trouble.authority ? `, which ends at ${trouble.authority}` : ""}. Under More, set trust to a file and pick your school's root certificate; its Wi-Fi guide has it. Your password was not sent.`;
     case "expired":
         return "The server's certificate has run out of date. Your password was not sent.";
     }
     return "The server's certificate was refused. Your password was not sent.";
 }
 
-function serverSeenMessage(trouble) {
+function serverSeenMessage(trouble, identity) {
     if (!trouble)
         return "Could not see the server's name. Your school's Wi-Fi guide lists it.";
-    if (trouble.kind === "name" && trouble.server)
-        return `It answered as ${trouble.server}${trouble.authority ? `, vouched for by ${trouble.authority}` : ""}. Use that name if it is your school's.`;
+    if (trouble.kind === "name" && trouble.server) {
+        const match = serverMatch(trouble.server, identity);
+        const by = trouble.authority ? `, vouched for by ${trouble.authority}` : "";
+        if (match.state === "match")
+            return `It answered as ${trouble.server}${by}. That matches ${match.realm}, the school in your username, so the server name is filled in.`;
+        if (match.state === "mismatch")
+            return `It answered as ${trouble.server}, which is not part of ${match.realm}, the school in your username. A look-alike network would do this. Only use it if your school's Wi-Fi guide names this server.`;
+        return `It answered as ${trouble.server}${by}. Your username has no @school part to check it against, so check the name with your school's Wi-Fi guide.`;
+    }
     if (trouble.kind === "name")
         return "It answered under no name this form can use. Your school's Wi-Fi guide lists the server name.";
     return serverMessage(trouble, "");

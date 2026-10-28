@@ -292,6 +292,9 @@ Singleton {
     property string checkedName: ""
     property string checkedNote: ""
     property string checkedServer: ""
+    property string checkedFill: ""
+    property string checkedState: ""
+    property string enrollIdentity: ""
 
     property var enrollArgs: []
     property string enrollSecrets: ""
@@ -321,6 +324,8 @@ Singleton {
             root.checkedName = "";
             root.checkedNote = "";
             root.checkedServer = "";
+            root.checkedFill = "";
+            root.checkedState = "";
         }
     }
 
@@ -334,7 +339,7 @@ Singleton {
         root.enrollChecking = false;
     }
 
-    function startEnroll(name: string, checking: bool, profileName: string, domain: string, args: var, secrets: string): void {
+    function startEnroll(name: string, checking: bool, profileName: string, domain: string, args: var, secrets: string, copy: var): void {
         if (!root.deviceName) {
             root.enrollFailedName = name;
             root.enrollTrouble = "there is no wireless adapter to put it on";
@@ -356,7 +361,26 @@ Singleton {
         profile.want = profileName;
         profile.exists = false;
         up.refused = false;
-        profile.running = true;
+        if (copy.length) {
+            stash.command = copy;
+            stash.running = true;
+        } else {
+            profile.running = true;
+        }
+    }
+
+    Process {
+        id: stash
+
+        onExited: code => {
+            if (!root.enrollingName)
+                return;
+            if (code !== 0) {
+                root.failEnroll("could not put the school's certificate in place", "");
+                return;
+            }
+            profile.running = true;
+        }
     }
 
     function signInMethods(kind: string): var {
@@ -375,39 +399,59 @@ Singleton {
         return WifiList.serverDomain(text);
     }
 
-    function signInFiles(form: var): var {
+    readonly property string certificateDir: `${Config.stateDir}/certificates`
+
+    function school(domain: string, identity: string): var {
+        const entry = WifiList.schoolFor(domain, identity);
+        return entry ? {
+            school: entry.school,
+            suffix: entry.suffix
+        } : null;
+    }
+
+    function signInFiles(form: var, checking: bool): var {
         const home = Quickshell.env("HOME") ?? "";
         const files = Object.assign({}, form);
-        for (const field of ["authority", "certificate", "key"]) {
+        for (const field of ["certificate", "key"]) {
             if (!form[field])
                 continue;
             files[field] = WifiList.filePath(form[field], home);
             if (!files[field])
                 return null;
         }
-        return files;
+        files.authority = checking ? WifiList.checkAuthority(form, home, root.certificateDir) : WifiList.trustedAuthority(form, home, root.certificateDir);
+        return files.authority === null ? null : files;
+    }
+
+    function schoolCopy(files: var): var {
+        if (files.trust !== "school" || !files.authority)
+            return [];
+        const file = files.authority.slice(files.authority.lastIndexOf("/") + 1);
+        return ["install", "-D", "-m", "0644", Quickshell.shellPath(`assets/certificates/${file}`), files.authority];
     }
 
     function joinEnterprise(name: string, kind: string, form: var, password: string): void {
         if (!name || root.enrollingName)
             return;
-        const files = root.signInFiles(form);
+        const files = root.signInFiles(form, false);
         const args = files ? WifiList.signInArgs(kind, files) : null;
         if (!args) {
             root.enrollFailedName = name;
-            root.enrollTrouble = files ? "the sign-in is missing a field" : "a certificate file needs its full path";
+            root.enrollTrouble = files ? "the sign-in is missing a field" : form.trust === "school" ? "that school's certificate does not cover this server" : "a certificate file needs its full path";
             root.enrollDetail = "";
             return;
         }
-        root.startEnroll(name, false, name, WifiList.serverDomain(files.domain), args, WifiList.signInSecrets(files.method, files.identity, password));
+        root.enrollIdentity = files.identity;
+        root.startEnroll(name, false, name, WifiList.serverDomain(files.domain), args, WifiList.signInSecrets(files.method, files.identity, password), root.schoolCopy(files));
     }
 
     function checkServer(name: string, kind: string, form: var): void {
-        const files = root.signInFiles(form);
+        const files = root.signInFiles(form, true);
         const args = files ? WifiList.serverCheckArgs(kind, files) : null;
         if (!name || root.enrollingName || !args)
             return;
-        root.startEnroll(name, true, `${name} server check`, "", args, WifiList.serverCheckSecrets(files));
+        root.enrollIdentity = files.identity ?? "";
+        root.startEnroll(name, true, `${name} server check`, "", args, WifiList.serverCheckSecrets(files), root.schoolCopy(files));
     }
 
     Process {
@@ -465,8 +509,11 @@ Singleton {
             root.failEnroll("", "");
             root.enrollFailedName = "";
             root.checkedName = name;
-            root.checkedServer = trouble?.kind === "name" ? trouble.server : "";
-            root.checkedNote = WifiList.serverSeenMessage(trouble);
+            const match = WifiList.serverMatch(trouble?.kind === "name" ? trouble.server : "", root.enrollIdentity);
+            root.checkedState = match.state;
+            root.checkedFill = match.fill;
+            root.checkedServer = match.state === "match" ? "" : trouble?.kind === "name" ? trouble.server : "";
+            root.checkedNote = WifiList.serverSeenMessage(trouble, root.enrollIdentity);
         } else if (trouble) {
             root.failEnroll(WifiList.serverLabel(trouble), WifiList.serverMessage(trouble, root.enrollDomain));
         } else {
