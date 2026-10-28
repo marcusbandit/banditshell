@@ -1353,15 +1353,16 @@ function rowCount(cat) {
     return n;
 }
 
-function step(row, v, delta) {
+function step(row, v, delta, state) {
     const s = row.step === undefined ? 1 : row.step;
-    return Math.min(row.max, Math.max(row.min, +(v + s * delta).toFixed(4)));
+    return Math.min(val(row.max, state), Math.max(val(row.min, state), +(v + s * delta).toFixed(4)));
 }
 
-function nearest(row, v) {
+function nearest(row, v, state) {
     const s = row.step === undefined ? 1 : row.step;
-    const n = Math.round((v - row.min) / s) * s + row.min;
-    return Math.min(row.max, Math.max(row.min, +n.toFixed(4)));
+    const low = val(row.min, state);
+    const n = Math.round((v - low) / s) * s + low;
+    return Math.min(val(row.max, state), Math.max(low, +n.toFixed(4)));
 }
 
 function dwindleRects(n) {

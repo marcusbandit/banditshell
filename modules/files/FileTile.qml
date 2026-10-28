@@ -219,7 +219,7 @@ Item {
             anchors.leftMargin: Appearance.padding.small
             anchors.verticalCenter: parent.stacked ? undefined : parent.verticalCenter
             anchors.bottom: parent.stacked ? parent.verticalCenter : undefined
-            readonly property real room: (parent.stacked ? rowDate.x : rowSize.x + rowSize.width - rowSize.contentWidth) - rowName.x - Appearance.padding.normal
+            readonly property real room: (parent.stacked ? rowDate.x : root.place !== "" ? rowSize.x - Appearance.padding.normal : rowSize.x + rowSize.width - rowSize.contentWidth) - rowName.x - Appearance.padding.normal
             width: Math.min(rowName.implicitWidth, rowName.room)
 
             text: root.entry.name

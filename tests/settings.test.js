@@ -365,6 +365,9 @@ test("steps stay inside the range and off the float crumbs", () => {
     assert.strictEqual(Catalogue.step(r, 50, -1), 50);
     assert.strictEqual(Catalogue.step(Catalogue.ROW_BY_KEY.iconScale, 1.1, 1), 1.15);
     assert.strictEqual(Catalogue.nearest(Catalogue.ROW_BY_KEY.wallFit, 1.27), 1.25);
+    const zoomState = { filesZoomRange: [0.7, 2.5] };
+    assert.strictEqual(Catalogue.step(Catalogue.ROW_BY_KEY.filesZoom, 2.5, 1, zoomState), 2.5);
+    assert.strictEqual(Catalogue.nearest(Catalogue.ROW_BY_KEY.filesZoom, 0.6, zoomState), 0.7);
 });
 
 test("pages count the settings they cover and the new ones among them", () => {

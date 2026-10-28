@@ -430,7 +430,7 @@ Singleton {
             Config.set("files.preview", root.previewWidth);
     }
 
-    readonly property real magnification: FilesZoom.clamp(Config.values.files.zoom)
+    readonly property real magnification: Appearance.sizes.filesZoom
     readonly property real smallest: FilesZoom.SMALLEST
     readonly property real largest: FilesZoom.LARGEST
 
