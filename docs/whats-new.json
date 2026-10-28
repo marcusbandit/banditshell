@@ -12,12 +12,22 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Left and right move a slider, and Enter on a volume slider mutes it"
+          "text": "A menu opened by its shortcut starts with focus on its first row"
         },
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A menu opened by its shortcut takes the keyboard at once"
+          "text": "Arrows move a day cursor in the calendar; Page keys change month"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Wi-Fi list holds still while the keyboard is in it"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Tray switches show their own state, without a grey row behind them"
         }
       ]
     },

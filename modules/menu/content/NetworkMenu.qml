@@ -59,7 +59,14 @@ Column {
 
     spacing: Appearance.padding.small
 
-    readonly property bool busy: !!root.asking || !!root.opened
+    readonly property bool keyedInList: {
+        for (let at = list.Window.activeFocusItem; at; at = at.parent)
+            if (at === list)
+                return true;
+        return false;
+    }
+
+    readonly property bool busy: !!root.asking || !!root.opened || root.keyedInList
 
     property var frozen: []
 
@@ -139,7 +146,6 @@ Column {
         onActivated: choice.flipped()
 
         Toggle {
-            keyable: false
             checked: choice.on
             onToggled: choice.flipped()
         }
@@ -364,7 +370,6 @@ Column {
 
             Toggle {
                 anchors.verticalCenter: parent.verticalCenter
-                keyable: false
                 visible: Network.managerRunning
                 checked: Network.enabled
                 onToggled: Network.setEnabled(!Network.enabled)

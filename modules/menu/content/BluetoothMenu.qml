@@ -51,7 +51,6 @@ Column {
         onActivated: choice.flipped()
 
         Toggle {
-            keyable: false
             checked: choice.on
             onToggled: choice.flipped()
         }
@@ -84,7 +83,6 @@ Column {
 
             Toggle {
                 anchors.verticalCenter: parent.verticalCenter
-                keyable: false
                 checked: Bluetooth.enabled
                 onToggled: Bluetooth.setEnabled(!Bluetooth.enabled)
             }

@@ -165,6 +165,10 @@ Item {
         Trace.step("hidden", span);
     }
 
+    function startKeys(): void {
+        chain.start();
+    }
+
     function release(): void {
         if (root.open && !root.pinned)
             grace.restart();

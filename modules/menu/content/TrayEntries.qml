@@ -55,7 +55,6 @@ Column {
                 iconSource: entry.modelData?.icon ?? ""
                 label: entry.modelData?.text ?? ""
                 interactive: entry.modelData?.enabled ?? false
-                selected: entry.ticked && entry.button !== QsMenuButtonType.None
 
                 onActivated: {
                     if (entry.branch)
@@ -65,7 +64,6 @@ Column {
                 }
 
                 Toggle {
-                    keyable: false
                     visible: entry.button === QsMenuButtonType.CheckBox
                     checked: entry.ticked
                     onToggled: entry.modelData?.triggered()

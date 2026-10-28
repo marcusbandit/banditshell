@@ -19,6 +19,7 @@ IpcHandler {
         if (!win.openMenu(key))
             return `no such menu: ${key}`;
         win.takeKeyboard();
+        win.menus.startKeys();
         return `open ${key}`;
     }
 
