@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import "trace.js" as Stalls
 
 Singleton {
     id: root
@@ -36,7 +37,6 @@ Singleton {
             frames: 0,
             first: -1,
             last: -1,
-            previous: -1,
             worst: 0
         };
         root.live.push(span);
@@ -62,7 +62,7 @@ Singleton {
             root.step(label, root.boot);
     }
 
-    function frame(): void {
+    function frame(took: real): void {
         if (root.liveCount === 0)
             return;
         const at = root.now();
@@ -70,12 +70,21 @@ Singleton {
             if (span.first < 0)
                 span.first = at - span.start;
             else
-                span.worst = Math.max(span.worst, at - span.previous);
-            span.previous = at;
+                span.worst = Math.max(span.worst, took);
             span.last = at - span.start;
             span.frames++;
             span.touched = at;
         }
+    }
+
+    property real beatAt: 0
+
+    function beat(): void {
+        const at = root.now();
+        const gap = at - root.beatAt;
+        root.beatAt = at;
+        for (const span of root.live)
+            span.worst = Math.max(span.worst, Stalls.heartbeatStall(gap, heartbeat.interval * 1e6, span.first < 0 ? -1 : at - span.start - span.first));
     }
 
     function settle(): void {
@@ -109,7 +118,7 @@ Singleton {
             wall: span.wall,
             steps: steps,
             frames: span.frames,
-            worstGap: span.worst,
+            worstStall: span.worst,
             capped: capped
         });
         if (root.done.length > root.keep)
@@ -123,11 +132,17 @@ Singleton {
     }
 
     Timer {
-        interval: 50
+        id: heartbeat
+
+        interval: 16
         repeat: true
         running: root.liveCount > 0
 
-        onTriggered: root.settle()
+        onRunningChanged: root.beatAt = root.now()
+        onTriggered: {
+            root.beat();
+            root.settle();
+        }
     }
 
     function stop(): void {
