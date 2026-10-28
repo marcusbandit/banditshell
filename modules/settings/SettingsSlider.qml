@@ -13,6 +13,10 @@ Row {
     property string text: ""
     property real trackWidth: 180
     property var ends: []
+    property real tailWidth: 0
+
+    readonly property real endRoom: root.ends.length > 1 ? lastEnd.implicitWidth + root.spacing : 0
+    readonly property real tail: root.endRoom + Math.max(64, reading.implicitWidth)
 
     signal moved(real value)
 
@@ -43,6 +47,8 @@ Row {
     }
 
     StyledText {
+        id: lastEnd
+
         anchors.verticalCenter: parent.verticalCenter
         visible: root.ends.length > 1
         text: root.ends[1] ?? ""
@@ -52,8 +58,10 @@ Row {
     }
 
     StyledText {
+        id: reading
+
         anchors.verticalCenter: parent.verticalCenter
-        width: Math.max(64, implicitWidth)
+        width: Math.max(64, implicitWidth, root.tailWidth - root.endRoom)
         horizontalAlignment: Text.AlignRight
         text: root.text
         color: Appearance.colour.textDim

@@ -243,6 +243,22 @@ test("search matches labels, keywords and config keys, and takes a list number",
     assert.strictEqual(Catalogue.search("nothing like this at all").length, 0);
 });
 
+test("search joins what was typed, never two keywords across their gap", () => {
+    const keys = Catalogue.search("keys").map(h => h.row.k);
+    assert.ok(!keys.includes("sheetBoard") && !keys.includes("sheetKeyboard"));
+    assert.ok(Catalogue.search("wifi").some(h => /wi-fi/i.test(`${h.label} ${h.row.kw || ""}`) && !/wifi/i.test(h.hay)));
+});
+
+test("lid rows say sleep and still store suspend", () => {
+    for (const k of ["lidBattery", "lidPlugged", "lidDocked"]) {
+        const row = Catalogue.ROW_BY_KEY[k];
+        assert.ok(Catalogue.options(row, {}).some(o => o[0] === "suspend" && o[1] === "sleep"), k);
+        assert.strictEqual(Catalogue.show(row, "suspend", {}), "sleep", k);
+    }
+    const s = { hasLid: true, v: k => ({ profile: "balanced", lidBattery: "suspend" })[k] };
+    assert.strictEqual(Catalogue.PAGE_BY_ID.powermode.status(s), "balanced · lid sleep");
+});
+
 test("a search hit names its row with the heading it sits under and marks what matched", () => {
     const s = fakeState();
     const titles = q => Catalogue.search(q).map(h => Catalogue.hitTitle(h, s));

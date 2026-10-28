@@ -52,6 +52,9 @@ Singleton {
     property var trails: ({})
     property real resetColumn: 0
 
+    property var tails: ({})
+    property var tailColumns: ({})
+
     property real scroll: 0
     property real resumeScroll: 0
 
@@ -204,6 +207,27 @@ Singleton {
 
     function measureTrails(): void {
         root.resetColumn = Object.values(root.trails).reduce((a, b) => Math.max(a, b), 0);
+    }
+
+    function noteTail(uid: string, group: string, width: real): void {
+        if (!uid)
+            return;
+        const had = root.tails[uid];
+        if (width < 0 ? had === undefined : had && had.group === group && had.width === width)
+            return;
+        if (width < 0)
+            delete root.tails[uid];
+        else
+            root.tails[uid] = { group, width };
+        Qt.callLater(root.measureTails);
+    }
+
+    function measureTails(): void {
+        const out = {};
+        for (const t of Object.values(root.tails))
+            out[t.group] = Math.max(out[t.group] ?? 0, t.width);
+        if (JSON.stringify(out) !== JSON.stringify(root.tailColumns))
+            root.tailColumns = out;
     }
 
     function drop(text: string, icon: string, action: var): void {

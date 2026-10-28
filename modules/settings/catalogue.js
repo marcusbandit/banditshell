@@ -340,8 +340,8 @@ const PAGES_SOURCE = {
                 { n: 58, icon: "side_navigation", label: "Sidebar", k: "sidebar", kind: "toggle", cfg: "sidebar.enabled", keys: "shell:screen.sidebar.toggle" },
                 { n: [], icon: "view_column_2", label: "Style", k: "sbStyle", kind: "seg", o: ["full", "rail"], cfg: "sidebar.style", dis: s => !s.v("sidebar"), kw: "sidebar rail simplified expand hover pips anomalies",
                     why: "Full keeps everything on show. Rail rests as workspace marks and shows a status icon only when something is unusual; point at it and it grows into the full column." },
-                { n: [], icon: "schedule", label: "Time at rest", k: "sbGlance", kind: "choice", o: [["rail", "rail"], ["rail top", "rail top"], ["top", "top"], ["tabs", "tabs"], ["wide", "wide"], ["off", "off"]], cfg: "sidebar.glance", dis: s => s.v("sbStyle") !== "rail", kw: "clock time battery glance rest rail top tabs wide",
-                    why: "Where the time and the battery sit while the rail rests. Rail stacks the time over a battery level bar at the rail's foot, rail top at its head. Top hangs them from the top edge, tabs grow them out of the rail, wide widens the rail to hold them." },
+                { n: [], icon: "schedule", label: "Clock and battery sit", k: "sbGlance", kind: "choice", o: [["rail", "at the rail's foot"], ["rail top", "at the rail's head"], ["top", "in a pill up top"], ["tabs", "in tabs off the rail"], ["wide", "in a wider rail"], ["off", "nowhere"]], cfg: "sidebar.glance", dis: s => s.v("sbStyle") !== "rail", kw: "clock time battery glance rest resting place where rail foot head top pill tabs wide wider",
+                    why: "Where the time and the battery sit while the rail rests. At the foot or the head, the time stacks over a battery level bar inside the rail. A pill hangs them from the top edge, tabs grow them out of the rail, and a wider rail makes room for them." },
                 { n: 59, icon: "width", label: "Width", k: "sidebarW", kind: "slider", min: 40, max: 72, fmt: v => `${v} px`, cfg: "sidebar.width", dis: s => !s.v("sidebar") }
             ] },
             { t: "Workspaces", rows: [
@@ -358,7 +358,7 @@ const PAGES_SOURCE = {
                     why: "The clock in the open sidebar. Stacked is hours over minutes. One line turns the time on its side so it reads as 14:32." },
                 { n: [], icon: "format_size", label: "Size when open", k: "sbClockWideSize", kind: "seg", o: ["large", "small"], cfg: "sidebar.clock.wideSize", dis: s => s.v("sbClockWide") === "off", kw: "sidebar clock size big small large wide open" },
                 { n: [], icon: "schedule", label: "Clock at rest", k: "sbClock", kind: "seg", o: ["stacked", "one line", "off"], cfg: "sidebar.clock.style", dis: s => s.v("sbStyle") !== "rail" || !["rail", "rail top"].includes(s.v("sbGlance")), kw: "sidebar clock style rail rest compact stacked one line hide",
-                    why: "The clock on the resting rail. It sits at the same height as the clock in the open sidebar, so it stays put when the rail grows. It applies when Time at rest is rail or rail top." },
+                    why: "The clock on the resting rail. It sits at the same height as the clock in the open sidebar, so it stays put when the rail grows. It applies when the clock and battery sit at the rail's foot or head." },
                 { n: [], icon: "format_size", label: "Size at rest", k: "sbClockSize", kind: "seg", o: ["small", "large"], cfg: "sidebar.clock.size", dis: s => s.v("sbStyle") !== "rail" || !["rail", "rail top"].includes(s.v("sbGlance")) || s.v("sbClock") === "off", kw: "sidebar clock size big small large rail rest compact" },
                 { n: [], icon: "calendar_today", label: "Date", k: "sbDate", kind: "seg", o: [["day and month", "14 oct"], ["day", "14"], ["off", "off"]], cfg: "sidebar.clock.date", kw: "sidebar calendar date hide",
                     why: "The date under the clock. It still opens the calendar when you tap or pull it." }
@@ -704,15 +704,15 @@ const PAGES_SOURCE = {
     },
     powermode: {
         id: "powermode", name: "Power and lid", lidless: "Power", icon: "bolt", preview: "battery",
-        status: s => s.hasLid ? `${s.v("profile")} · lid ${s.v("lidBattery")}` : s.v("profile"),
+        status: s => s.hasLid ? `${s.v("profile")} · lid ${optionLabel(ROW_BY_KEY.lidBattery, s, s.v("lidBattery"))}` : s.v("profile"),
         groups: [
             { rows: [
                 { n: 105, icon: "bolt", label: "Power mode", k: "profile", kind: "seg", o: s => s.profileChoices, state: s => s.profileTrouble, dis: s => s.profileChoices.length === 0, kw: "power profile performance" }
             ] },
             { t: "Lid", away: s => !s.hasLid, rows: [
-                { n: 108, icon: "laptop", label: "On battery", k: "lidBattery", kind: "choice", cfg: "power.lid.onBattery", o: ["suspend", "hibernate", "lock", "nothing"], unavailable: s => s.hibernatePossible ? [] : ["hibernate"], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", kw: "lid close action" },
-                { n: 108, icon: "power", label: "Plugged in", k: "lidPlugged", kind: "choice", cfg: "power.lid.pluggedIn", o: ["suspend", "lock", "nothing"], kw: "lid close action" },
-                { n: 108, icon: "monitor", label: "With screens attached", k: "lidDocked", kind: "choice", cfg: "power.lid.docked", o: ["nothing", "lock", "suspend"], kw: "lid close action docked" }
+                { n: 108, icon: "laptop", label: "On battery", k: "lidBattery", kind: "choice", cfg: "power.lid.onBattery", o: [["suspend", "sleep"], "hibernate", "lock", "nothing"], unavailable: s => s.hibernatePossible ? [] : ["hibernate"], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", kw: "lid close action sleep suspend" },
+                { n: 108, icon: "power", label: "Plugged in", k: "lidPlugged", kind: "choice", cfg: "power.lid.pluggedIn", o: [["suspend", "sleep"], "lock", "nothing"], kw: "lid close action sleep suspend" },
+                { n: 108, icon: "monitor", label: "With screens attached", k: "lidDocked", kind: "choice", cfg: "power.lid.docked", o: ["nothing", "lock", ["suspend", "sleep"]], kw: "lid close action docked sleep suspend" }
             ] }
         ]
     },
@@ -1165,7 +1165,7 @@ for (const p of PAGES) {
                     label: label || r.kw.split(" ")[0],
                     nums: numbers(r),
                     hay: `${label} ${r.kw || ""} ${typeof g.t === "string" ? g.t : ""} ${r.cfg || ""} ${p.name}`.toLowerCase(),
-                    flat: `${label} ${r.kw || ""}`.toLowerCase().replace(/[^a-z0-9]/g, "")
+                    flat: ` ${label} ${r.kw || ""} `.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ")
                 });
             if (r.layer)
                 visit(r.layer, g);

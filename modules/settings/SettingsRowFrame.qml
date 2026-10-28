@@ -20,7 +20,6 @@ Item {
     property bool flashing: false
     property real flashStamp: 0
     property real minHeight: Appearance.sizes.rowHeight
-    property real loose: 0
     property Component lead: null
     property Component under: null
 
@@ -40,12 +39,30 @@ Item {
     readonly property real leadWidth: leadSlot.visible ? leadSlot.width + root.gapX : 0
     readonly property real inner: root.width - root.padX * 2
     readonly property real trailWidth: trail.implicitWidth
-    readonly property real fixedTrail: root.trailWidth - root.loose
-    readonly property bool wrapped: root.fixedTrail > 0 && root.leadWidth + 150 + root.gapX + root.fixedTrail > root.inner
+    property real fixedTrail: root.trailWidth
+    property real reserve: 0
+    readonly property real labelMin: 150
+    readonly property real need: Math.min(root.labelMin, Math.ceil(Math.max(labelInk.advanceWidth, root.detail !== "" ? detailInk.advanceWidth : 0)))
+    readonly property bool wrapped: root.fixedTrail > 0 && (root.leadWidth + root.labelMin + root.gapX + root.fixedTrail - root.reserve > root.inner || root.leadWidth + root.need + root.gapX + root.fixedTrail > root.inner)
+    readonly property real slack: root.wrapped ? root.inner - root.fixedTrail : root.inner - root.leadWidth - root.need - root.gapX - root.fixedTrail
 
     readonly property real lineHeight: Math.max(words.implicitHeight, leadSlot.visible ? leadSlot.height : 0, root.wrapped ? 0 : trail.implicitHeight)
 
     implicitHeight: root.wrapped ? root.padY * 2 + root.lineHeight + root.gapY + trail.implicitHeight : Math.max(root.minHeight, root.padY * 2 + root.lineHeight)
+
+    TextMetrics {
+        id: labelInk
+
+        font: labelText.font
+        text: root.label
+    }
+
+    TextMetrics {
+        id: detailInk
+
+        font: detailText.font
+        text: root.detail
+    }
 
     SquircleRect {
         id: plate
@@ -151,6 +168,8 @@ Item {
         opacity: root.off ? Appearance.opacity.disabled : 1
 
         StyledText {
+            id: labelText
+
             width: parent.width
             text: root.label
             elide: Text.ElideRight
@@ -159,6 +178,8 @@ Item {
         }
 
         StyledText {
+            id: detailText
+
             width: parent.width
             text: root.detail
             elide: Text.ElideRight

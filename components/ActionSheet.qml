@@ -19,14 +19,15 @@ Item {
 
     signal closed
 
-    function popup(x: real, y: real, list: var, start: int): void {
+    function popup(x: real, y: real, list: var, start: var): void {
         root.actions = list ?? [];
         if (!root.actions.length)
             return;
+        const at = typeof start === "number" && start >= 0 ? start : -1;
         root.atX = x;
         root.atY = y;
-        root.worn = start >= 0 ? start : -1;
-        root.selected = Math.max(0, Math.min(root.actions.length - 1, start >= 0 ? start : 0));
+        root.worn = at;
+        root.selected = Math.max(0, Math.min(root.actions.length - 1, at));
 
         marker.snap();
         root.open = true;

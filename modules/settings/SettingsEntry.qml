@@ -33,6 +33,16 @@ Column {
     readonly property var fallback: root.resettable ? SettingsState.defaultOf(root.key) : undefined
     readonly property bool changed: !root.off && Catalogue.changed(root.value, root.fallback)
     readonly property string fallbackText: root.resettable ? String(Catalogue.show(root.row, root.fallback, SettingsState)) : ""
+    readonly property real besideControls: {
+        const parts = [root.combos.length > 0 ? shortcut.width : -1, root.row.extra ? extra.width : -1, root.hasLayer ? more.width : -1].filter(w => w >= 0);
+        return parts.reduce((a, b) => a + b + Appearance.padding.normal, 0);
+    }
+    readonly property real resetRoom: root.resettable ? reset.width + Appearance.padding.normal * 2 + 1 : 0
+    readonly property real afterControls: (root.row.extra ? extra.width + Appearance.padding.normal : 0) + (root.hasLayer ? more.width + Appearance.padding.normal : 0)
+    readonly property string groupKey: root.row.group?.rows?.[0]?.uid ?? ""
+    property real segNatural: 0
+    readonly property bool cramped: root.kind === "seg" && root.segNatural > frame.inner - root.besideControls - root.resetRoom
+    readonly property string shape: root.cramped ? "choice" : root.kind
     readonly property real controlsWidth: {
         const parts = [shortcut.visible ? shortcut.width : -1, controls.item ? controls.width : -1, extra.visible ? extra.width : -1, more.visible ? more.width : -1].filter(w => w >= 0);
         return parts.reduce((a, b) => a + b, 0) + Math.max(0, parts.length - 1) * Appearance.padding.normal;
@@ -48,6 +58,10 @@ Column {
     onHereChanged: root.noteTrail()
     Component.onCompleted: root.noteTrail()
     Component.onDestruction: SettingsView.noteTrail(root.noted, -1)
+
+    function noteTail(width: real): void {
+        SettingsView.noteTail(root.row.uid ?? "", root.groupKey, width < 0 ? -1 : width + root.afterControls);
+    }
 
     function noteTrail(): void {
         const uid = root.resettable && root.here ? root.row.uid ?? "" : "";
@@ -70,7 +84,7 @@ Column {
             return;
         if (root.kind === "toggle")
             root.set(!root.value);
-        else if (root.kind === "choice" || root.hasLayer)
+        else if (root.shape === "choice" || root.hasLayer)
             root.toggleOpen();
         else if (root.kind === "text" || root.kind === "secret")
             controls.item?.take?.();
@@ -87,9 +101,10 @@ Column {
         detailLines: root.bad ? 3 : root.row.lines ?? 1
         pending: root.pendingText
         off: root.off
-        loose: reset.visible ? reset.width + resetGap.width + Appearance.padding.normal * 2 : 0
+        fixedTrail: root.controlsWidth + root.resetRoom
+        reserve: root.resetRoom
         flashStamp: root.flashing ? SettingsView.flash.at : 0
-        interactive: root.kind === "toggle" || root.kind === "choice" || root.hasLayer
+        interactive: root.kind === "toggle" || root.shape === "choice" || root.hasLayer
         onActivated: root.activate()
         onPointed: SettingsView.hovered = root.row
 
@@ -121,7 +136,7 @@ Column {
             id: resetGap
 
             visible: reset.visible
-            width: 1 + Math.max(0, SettingsView.resetColumn - root.controlsWidth)
+            width: 1 + Math.max(0, Math.min(SettingsView.resetColumn - root.controlsWidth, frame.slack))
             height: 1
         }
 
@@ -267,10 +282,10 @@ Column {
         id: choiceLayer
 
         width: root.width
-        open: root.kind === "choice" && root.unrolled
+        open: root.shape === "choice" && root.unrolled
 
         Repeater {
-            model: root.kind === "choice" && (root.unrolled || choiceLayer.visible) ? root.choices : []
+            model: root.shape === "choice" && (root.unrolled || choiceLayer.visible) ? root.choices : []
 
             delegate: SettingsRowFrame {
                 id: option
@@ -305,12 +320,30 @@ Column {
     Component {
         id: segControl
 
-        Segments {
-            options: root.choices.map(o => String(o[1]))
-            swatches: root.row.swatches ? root.choices.map(o => Appearance.roleColour(String(o[0]))) : []
-            current: Math.max(0, root.choices.findIndex(o => Catalogue.same(o[0], root.value)))
-            enabled: !root.off
-            onPicked: i => root.set(root.choices[i][0])
+        Item {
+            implicitWidth: root.cramped ? asChoice.implicitWidth : segments.implicitWidth
+            implicitHeight: root.cramped ? asChoice.implicitHeight : segments.implicitHeight
+
+            Segments {
+                id: segments
+
+                visible: !root.cramped
+                options: root.choices.map(o => String(o[1]))
+                swatches: root.row.swatches ? root.choices.map(o => Appearance.roleColour(String(o[0]))) : []
+                current: Math.max(0, root.choices.findIndex(o => Catalogue.same(o[0], root.value)))
+                enabled: !root.off
+                onPicked: i => root.set(root.choices[i][0])
+                onImplicitWidthChanged: root.segNatural = implicitWidth
+                Component.onCompleted: root.segNatural = implicitWidth
+            }
+
+            Loader {
+                id: asChoice
+
+                anchors.verticalCenter: parent.verticalCenter
+                active: root.cramped
+                sourceComponent: choiceControl
+            }
         }
     }
 
@@ -318,6 +351,12 @@ Column {
         id: sliderControl
 
         SettingsSlider {
+            id: slider
+
+            tailWidth: (SettingsView.tailColumns[root.groupKey] ?? 0) - root.afterControls
+            onTailChanged: root.noteTail(slider.tail)
+            Component.onCompleted: root.noteTail(slider.tail)
+            Component.onDestruction: root.noteTail(-1)
             value: Number(root.value ?? 0)
             from: root.row.min
             to: root.row.max
