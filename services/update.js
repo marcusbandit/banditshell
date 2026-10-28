@@ -46,9 +46,13 @@ function divergedHeadline(targetVersion, ahead) {
     return `${waitingHeadline(targetVersion)}, but this copy has ${ownChanges(ahead)}`;
 }
 
-function aheadKept(state, branch, ahead) {
-    const kept = state === "available" || state === "diverged" || (state === "current" && branch !== "stable");
-    return kept ? Math.max(0, Math.floor(Number(ahead) || 0)) : 0;
+function aheadKept(state, ahead, unpushed) {
+    const count = state === "available" || state === "diverged" ? ahead : state === "current" ? unpushed : 0;
+    return Math.max(0, Math.floor(Number(count) || 0));
+}
+
+function currentHeadline(ahead) {
+    return Number(ahead) > 0 ? `Up to date, plus ${ownChanges(ahead)}` : "You are up to date";
 }
 
 function withOwn(version, ahead) {

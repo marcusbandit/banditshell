@@ -112,7 +112,7 @@ Singleton {
             return Words.divergedHeadline(root.targetVersion, root.ahead);
         if (root.behind > 0)
             return Words.waitingHeadline(root.targetVersion);
-        return "You are up to date";
+        return Words.currentHeadline(root.ahead);
     }
 
     function commit(sha: string): bool {
@@ -467,7 +467,7 @@ Singleton {
                 root.previous = root.commit(got.previous ?? "") ? got.previous : "";
                 root.previousVersion = got.previousVersion ?? "";
                 root.behind = counts ? Number(got.behind) || 0 : 0;
-                root.ahead = Words.aheadKept(got.state, got.branch, got.ahead);
+                root.ahead = Words.aheadKept(got.state, got.ahead, got.unpushed);
                 root.entries = got.entries ?? [];
                 root.notes = Array.isArray(got.notes) ? got.notes : [];
                 root.baseVersion = got.baseVersion ?? "";
