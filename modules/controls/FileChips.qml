@@ -49,15 +49,6 @@ Column {
         }
     }
 
-    StyledText {
-        visible: !root.canBrowse
-        width: root.width - root.leftPadding - root.rightPadding
-        wrapMode: Text.Wrap
-        text: "Browsing needs a file chooser such as zenity."
-        color: Appearance.colour.textFaint
-        font.pixelSize: Appearance.font.size.small
-    }
-
     Button {
         visible: root.canBrowse
         size: 0

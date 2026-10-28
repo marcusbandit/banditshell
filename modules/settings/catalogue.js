@@ -907,13 +907,14 @@ const PAGES_SOURCE = {
 
 const CATS = [
     { id: "connections", name: "Connections", icon: "wifi",
-        blurb: s => [s.networkMissing || (s.v("wifi") && s.wifiNet ? s.wifiNet : s.v("hotspot") ? "hotspot on" : "wi-fi off"), s.v("bt") ? `${s.btConnected.length} devices` : "bluetooth off", s.vpnOn ? "vpn on" : ""].filter(Boolean).join(" · "),
+        blurb: s => [s.networkTile || (s.v("wifi") && s.wifiNet ? s.wifiNet : s.v("hotspot") ? "hotspot on" : "wi-fi off"), s.v("bt") ? `${s.btConnected.length} devices` : "bluetooth off", s.vpnOn ? "vpn on" : ""].filter(Boolean).join(" · "),
         tiles: [
-            { k: "wifi", icon: "wifi", label: "Wi-Fi", explains: true, det: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "" },
+            { k: "wifi", icon: "wifi", label: "Wi-Fi", explains: true, det: s => s.networkTile || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "" },
             { k: "bt", icon: "bluetooth", label: "Bluetooth", det: s => s.v("bt") ? "on" : "off" },
-            { k: "hotspot", icon: "wifi_tethering", label: "Hotspot", explains: true, det: s => s.networkMissing || s.hotspotStatus || "off", dis: s => s.hotspotBlocked },
-            { k: "vpnFirst", icon: "vpn_lock", label: "VPN", explains: true, det: s => s.vpnOn || s.networkMissing || (s.tunnelCount ? "off" : "no tunnels"), dis: s => !s.tunnelCount }
+            { k: "hotspot", icon: "wifi_tethering", label: "Hotspot", explains: true, det: s => s.networkTile || s.hotspotStatus || "off", dis: s => s.hotspotBlocked },
+            { k: "vpnFirst", icon: "vpn_lock", label: "VPN", explains: true, det: s => s.vpnOn || s.networkTile || (s.tunnelCount ? "off" : "no tunnels"), dis: s => !s.tunnelCount }
         ],
+        notice: s => s.managerStarting === "started" || s.managerStarting === "failed" ? { kind: "w", w: "networkManager", page: "connections" } : null,
         suggest: s => s.v("bt") && s.btNear > 0 ? { icon: "bluetooth_searching", label: `${s.btNear} devices nearby`, detail: "ready to pair", go: "bluetooth" } : null,
         subs: ["wifi", "bluetooth", "wired", "vpn"] },
     { id: "sound", name: "Sound", icon: "volume_up",

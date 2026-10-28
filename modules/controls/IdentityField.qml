@@ -164,10 +164,9 @@ Item {
         const method = root.methodName.toUpperCase() + inner;
         const name = server.text.trim();
         const full = [method, root.trustNames[root.trustKeys.indexOf(root.trustKey)], name].filter(p => p).join(" · ");
-        if (summaryInk.advanceWidth(full) <= room)
+        if (!name || summaryInk.advanceWidth(full) <= room)
             return full;
-        const brief = [method, name].filter(p => p).join(" · ");
-        return summaryInk.advanceWidth(brief) <= room ? brief : `${method}\n${name}`;
+        return `${method} · ${root.trustNames[root.trustKeys.indexOf(root.trustKey)]}\n${name}`;
     }
 
     implicitHeight: visible ? stack.implicitHeight : 0
@@ -279,6 +278,7 @@ Item {
         property bool secret: false
         property bool shown: false
         property bool warn: false
+        property bool path: false
         property string field: ""
 
         property Item next: null
@@ -312,8 +312,8 @@ Item {
                 anchors.bottomMargin: Appearance.padding.small
                 radius: Appearance.rounding.small
                 color: entry.warn ? Appearance.colour.warningFill : Appearance.colour.fillStrong
-                stroke: entry.warn ? Appearance.colour.warning : "transparent"
-                strokeWidth: entry.warn ? Appearance.stroke.ring : 0
+                stroke: entry.warn ? Appearance.colour.warning : entry.path ? Appearance.colour.textFaint : "transparent"
+                strokeWidth: entry.warn || entry.path ? Appearance.stroke.ring : 0
             }
 
             TextInput {
@@ -450,8 +450,14 @@ Item {
                     visible: root.tls
                     label: "Certificate file"
                     hint: root.hintFor(root.clients)
+                    path: true
                     field: "certificate"
                     next: key.input
+                }
+
+                FormLine {
+                    visible: !chooser.available && certificate.visible
+                    text: "Type the path, or install a file chooser such as zenity to browse."
                 }
 
                 FormWarning {
@@ -490,8 +496,14 @@ Item {
                     visible: root.tls && !root.keyCarried
                     label: "Key file, if separate"
                     hint: root.hintFor(root.keys)
+                    path: true
                     field: "key"
                     next: identity.input
+                }
+
+                FormLine {
+                    visible: !chooser.available && key.visible
+                    text: "Type the path, or install a file chooser such as zenity to browse."
                 }
 
                 FormWarning {
@@ -726,8 +738,14 @@ Item {
                         visible: root.trustKey === "file"
                         label: "Your school's root certificate file"
                         hint: root.hintFor(root.authorities)
+                        path: true
                         field: "authority"
                         next: identity.input
+                    }
+
+                    FormLine {
+                        visible: !chooser.available && authority.visible
+                        text: "Type the path, or install a file chooser such as zenity to browse."
                     }
 
                     FormWarning {
