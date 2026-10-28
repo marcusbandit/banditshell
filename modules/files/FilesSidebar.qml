@@ -16,6 +16,22 @@ Item {
 
     property string receiving: ""
 
+    readonly property real natural: {
+        if (measure.font.pixelSize <= 0)
+            return 0;
+        let widest = 0;
+        for (const row of [...Files.places, ...Files.drives])
+            widest = Math.max(widest, measure.advanceWidth(row.name) + (row.detail ? measure.advanceWidth(row.detail) : 0));
+        return widest + Files.zoomed(Appearance.font.iconSize) + Appearance.padding.small * 4 + Appearance.padding.normal * 2;
+    }
+
+    FontMetrics {
+        id: measure
+
+        font.family: Appearance.font.family
+        font.pixelSize: Files.zoomed(Appearance.font.size.small)
+    }
+
     Column {
         id: column
 

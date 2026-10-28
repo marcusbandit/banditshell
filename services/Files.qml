@@ -46,7 +46,7 @@ Singleton {
 
         const how = root.trashTop ? FilesOrder.trashOrder(root.sort, root.reversed) : {key: root.sort, reversed: root.reversed};
         const order = list => FilesOrder.ordered(list, how.key, how.reversed);
-        return FilesFind.active ? Find.grouped(matched, FilesFind.results, root.cwd, order) : order(matched);
+        return FilesFind.active ? Find.grouped(matched, FilesFind.results, root.cwd, order, root.sort === "mtime") : order(matched);
     }
 
     onSearchChanged: FilesFind.ask(root.inTrash ? "" : root.search, root.cwd, root.showHidden)
@@ -401,6 +401,8 @@ Singleton {
     readonly property string foldersNote: FilesOrder.foldersNote(root.sort)
 
     readonly property string view: Config.values.files.view
+    readonly property string searchView: Config.values.files.searchView
+    readonly property bool listed: FilesFind.active ? root.searchView === "list" : root.view === "list"
 
     readonly property bool markdownRendered: Config.values.files.markdown !== "raw"
 
@@ -409,7 +411,10 @@ Singleton {
     }
 
     function toggleView(): void {
-        Config.set("files.view", root.view === "list" ? "icons" : "list");
+        if (FilesFind.active)
+            Config.set("files.searchView", root.searchView === "list" ? "icons" : "list");
+        else
+            Config.set("files.view", root.view === "list" ? "icons" : "list");
     }
 
     property bool sidebarOpen: true
@@ -425,6 +430,8 @@ Singleton {
     }
 
     readonly property real magnification: Config.values.files.zoom
+    readonly property real smallest: 0.7
+    readonly property real largest: 2.5
 
     function zoomed(size: real): int {
         return Math.round(size * root.magnification);
@@ -432,7 +439,7 @@ Singleton {
 
     function zoom(step: real): void {
         const now = root.magnification;
-        const next = step === 0 ? 1 : Math.max(0.7, Math.min(2.5, Math.round((now + step) * 20) / 20));
+        const next = step === 0 ? 1 : Math.max(root.smallest, Math.min(root.largest, Math.round((now + step) * 20) / 20));
         if (next !== now)
             Config.set("files.zoom", next);
     }
@@ -453,6 +460,12 @@ Singleton {
     property var drives: []
     property var mounts: []
 
+    function setDrives(next: var): void {
+        const shown = list => JSON.stringify(list.map(d => [d.name, d.path, d.detail, d.icon, d.usage ? [root.humanSize(d.usage.used), root.humanSize(d.usage.size), Math.round(d.usage.fraction * 100)] : null]));
+        if (shown(next) !== shown(root.drives))
+            root.drives = next;
+    }
+
     onMountsChanged: if (root.trashTop)
         root.refresh()
 
@@ -472,7 +485,9 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 const found = text.split("\n").filter(l => l.length > 0);
-                root.places = [...root.placeSpec.filter(p => found.includes(p.path)), {name: "Trash", icon: "delete", path: root.trashFiles}];
+                const next = [...root.placeSpec.filter(p => found.includes(p.path)), {name: "Trash", icon: "delete", path: root.trashFiles}];
+                if (JSON.stringify(next) !== JSON.stringify(root.places))
+                    root.places = next;
             }
         }
     }
@@ -516,7 +531,10 @@ Singleton {
                     for (const device of tree)
                         walk(device, false);
 
-                    root.drives = out;
+                    const known = {};
+                    for (const d of root.drives)
+                        known[d.path] = d.usage ?? null;
+                    root.setDrives(out.map(d => Object.assign(d, {usage: known[d.path] ?? null})));
                     if (mounted.join("\n") !== root.mounts.join("\n"))
                         root.mounts = mounted;
 
@@ -555,7 +573,7 @@ Singleton {
                         filled[where] = {used: used, size: size, fraction: used / size};
                 }
 
-                root.drives = root.drives.map(d => Object.assign({}, d, {usage: filled[d.path] ?? null}));
+                root.setDrives(root.drives.map(d => Object.assign({}, d, {usage: filled[d.path] ?? null})));
             }
         }
     }
@@ -606,6 +624,10 @@ Singleton {
 
     function humanTime(epoch: real): string {
         return TimeFormat.recent(new Date(epoch * 1000));
+    }
+
+    function changedTime(epoch: real): string {
+        return TimeFormat.changed(new Date(epoch * 1000));
     }
 
     function humanMode(mode: int): string {
@@ -971,6 +993,58 @@ Singleton {
         const infos = root.entries.filter(e => e.trash && paths.includes(e.key)).map(e => Trash.infoPath(e.trash));
         root.run(["rm", "-rf", "--"], [...paths, ...infos]);
         FilesFind.forget(paths);
+    }
+
+    readonly property var trashItems: root.trashTop ? root.entries.filter(e => e.trash).map(e => e.trash) : []
+
+    function emptyTrash(items: var): void {
+        for (const command of Trash.emptyCommands(items, root.trashHome))
+            root.spawn(command, "");
+    }
+
+    function trashFrom(entry: var): var {
+        const top = Trash.topOf(entry.trash.dir);
+        if (top === null)
+            return {origin: root.originPlace(entry), drive: ""};
+        const drive = root.drives.find(d => d.path === top);
+        return {
+            origin: entry.dir ? entry.dir.slice(top.length) || "/" : "",
+            drive: drive ? drive.name : top
+        };
+    }
+
+    function measureTrash(items: var, done: var): void {
+        measurer.createObject(root, {
+            command: Trash.sizeCommand(),
+            input: Trash.sizeInput(items),
+            done: done,
+            running: true
+        });
+    }
+
+    Component {
+        id: measurer
+
+        Process {
+            id: measuring
+
+            property string input: ""
+            property var done: null
+
+            stdinEnabled: true
+
+            stdout: StdioCollector {
+                onStreamFinished: measuring.done?.(Trash.sizes(text))
+            }
+
+            onStarted: {
+                measuring.write(measuring.input);
+                measuring.stdinEnabled = false;
+            }
+
+            onRunningChanged: if (!measuring.running)
+                measuring.destroy()
+        }
     }
 
     function copyInto(paths: var, dir: string): void {

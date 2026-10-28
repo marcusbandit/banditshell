@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/whatsnew.js"), "utf8");
 const WhatsNew = new Function(src
-    + "\nreturn { parse, accumulated, severityOf, readSeen, lastSeen, legacyToMove, newestId, newestRelease, nextRelease, entriesSince, releaseNotes, sections, shortList, TYPES, IMPACT_KEYS };")();
+    + "\nreturn { parse, accumulated, severityOf, readSeen, lastSeen, legacyToMove, newestId, newestRelease, nextRelease, entriesSince, releaseNotes, sections, shortList, unreadCount, TYPES, IMPACT_KEYS };")();
 
 const log = [
     { id: "third", date: "2026-09-03", changes: [{ type: "bugs", severity: "minor", text: "Fixed the thing." }] },
@@ -259,11 +259,25 @@ test("a few changes read as one tagged list in section order, and a long log kee
         { changes: [{ type: "ui", severity: "major", text: "Big thing" }] }
     ]);
     assert.deepStrictEqual(few, [
-        { key: "major", tag: "Big", text: "Big thing" },
-        { key: "features", tag: "New", text: "New thing" },
-        { key: "bugs", tag: "Fixed", text: "Fixed thing" }
+        { key: "major", tag: "Big", text: "Big thing", unread: false },
+        { key: "features", tag: "New", text: "New thing", unread: false },
+        { key: "bugs", tag: "Fixed", text: "Fixed thing", unread: false }
     ]);
     const many = Array.from({ length: 7 }, (_, i) => ({ type: "bugs", severity: "minor", text: `Fix ${i}` }));
     assert.deepStrictEqual(WhatsNew.shortList([{ changes: many }]), []);
     assert.strictEqual(WhatsNew.shortList([{ changes: many.slice(0, 6) }]).length, 6);
+});
+
+test("changes from entries not read yet are marked unread, in both lists, and counted", () => {
+    const log = [
+        { id: "2026-11-04", changes: [{ type: "ui", severity: "minor", text: "Newest" }] },
+        { id: "2026-11-03", changes: [{ type: "bugs", severity: "minor", text: "Older" }, { type: "bugs", severity: "minor", text: "Older too" }] }
+    ];
+    const pending = [log[0]];
+    assert.deepStrictEqual(WhatsNew.shortList(log, pending).map(l => [l.text, l.unread]), [["Newest", true], ["Older", false], ["Older too", false]]);
+    assert.deepStrictEqual(WhatsNew.sections(log, ["2026-11-03"]).map(s => s.changes.map(c => c.unread)), [[false], [true, true]]);
+    assert.strictEqual(WhatsNew.unreadCount(WhatsNew.shortList(log, pending), []), 1);
+    assert.strictEqual(WhatsNew.unreadCount([], WhatsNew.sections(log, log)), 3);
+    assert.strictEqual(WhatsNew.unreadCount(WhatsNew.shortList(log, []), []), 0);
+    assert.strictEqual(WhatsNew.unreadCount(), 0);
 });

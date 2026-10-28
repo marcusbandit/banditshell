@@ -119,6 +119,8 @@ Item {
 
     property bool opening: false
 
+    property Item shownPage: null
+
     onKeyChanged: if (root.key === "")
         root.opening = false
 
@@ -166,6 +168,13 @@ Item {
 
                 readonly property bool current: index === root.slot
 
+                readonly property Item content: bodyLoader.item
+
+                readonly property WheelStep scroller: wheel
+
+                Component.onCompleted: if (page.current)
+                    root.shownPage = page
+
                 readonly property bool leaving: index === root.prevSlot && !fade.settled
 
                 readonly property bool live: (root.reveal > 0 || root.opening) && (page.current || page.leaving)
@@ -199,7 +208,7 @@ Item {
                 y: Appearance.padding.large
                 width: root.fullWidth - Appearance.padding.large * 2
 
-                implicitHeight: view.y + view.contentHeight
+                implicitHeight: view.y + view.contentHeight - view.ringRoom
 
                 opacity: current ? fade.value : leaving ? (1 - fade.value) * (1 - fade.value) : 0
 
@@ -216,6 +225,8 @@ Item {
                     root.widthHint = Math.max(0, widthHint)
 
                 onCurrentChanged: if (current) {
+                    root.shownPage = page;
+
                     root.widthHint = Math.max(0, widthHint);
 
                     root.pageHeight = implicitHeight;
@@ -250,12 +261,15 @@ Item {
 
                     readonly property real overflowSlack: 0.5
 
-                    y: page.titled ? rule.y + rule.height + Appearance.padding.normal : Appearance.padding.normal
-                    width: page.width
+                    readonly property real ringRoom: Appearance.padding.hair
 
-                    height: Math.max(0, root.implicitHeight - Appearance.padding.large * 2 - y)
+                    x: -view.ringRoom
+                    y: (page.titled ? rule.y + rule.height + Appearance.padding.normal : Appearance.padding.normal) - view.ringRoom
+                    width: page.width + view.ringRoom * 2
 
-                    contentHeight: bodyLoader.height
+                    height: Math.max(0, root.implicitHeight - Appearance.padding.large * 2 - y + view.ringRoom)
+
+                    contentHeight: bodyLoader.height + view.ringRoom * 2
 
                     interactive: page.current && contentHeight > height + overflowSlack
 
@@ -269,12 +283,16 @@ Item {
                         returnToBounds()
 
                     WheelStep {
+                        id: wheel
+
                         flick: view
                     }
 
                     Loader {
                         id: bodyLoader
 
+                        x: view.ringRoom
+                        y: view.ringRoom
                         width: page.width
                         active: page.warm && (root.focusedHere || page.kept) || page.live || page.holds
 

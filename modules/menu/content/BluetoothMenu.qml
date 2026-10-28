@@ -69,6 +69,8 @@ Column {
     MenuRow {
         id: adapterRow
 
+        readonly property string focusGroup: "adapter"
+
         width: root.width
         icon: Bluetooth.statusIcon()
         label: "Bluetooth"
@@ -97,6 +99,8 @@ Column {
     }
 
     MenuLayer {
+        readonly property string focusGroup: "adapter"
+
         width: root.width
         open: root.opened === "adapter" && Bluetooth.enabled
 
@@ -139,6 +143,8 @@ Column {
 
             readonly property bool known: entry.modelData.paired || entry.modelData.bonded
             readonly property bool showing: root.opened === entry.modelData.address
+
+            readonly property string focusGroup: "devices"
 
             width: root.width
             spacing: 0
@@ -208,6 +214,8 @@ Column {
     }
 
     MenuRow {
+        readonly property string focusGroup: "pair"
+
         width: root.width
         visible: Bluetooth.enabled
         icon: "add"
@@ -231,6 +239,8 @@ Column {
     }
 
     MenuLayer {
+        readonly property string focusGroup: "pair"
+
         width: root.width
         open: root.opened === "pair"
 
