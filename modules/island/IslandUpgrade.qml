@@ -184,6 +184,7 @@ Item {
                         required property int index
 
                         readonly property real fill: SystemUpgrade.fills[piece.index] ?? 0
+                        readonly property bool broke: root.failed && SystemUpgrade.stage === piece.index
 
                         width: track.segment
                         height: track.thickness
@@ -199,14 +200,14 @@ Item {
                         SquircleRect {
                             anchors.fill: parent
                             pill: "place"
-                            color: Appearance.colour.fillStrong
+                            color: piece.broke ? Appearance.colour.failedFill : Appearance.colour.fillStrong
                         }
 
                         SquircleRect {
                             width: piece.height + (piece.width - piece.height) * grown.value
                             height: piece.height
                             pill: "place"
-                            color: root.tone
+                            color: root.failed && !piece.broke ? Appearance.colour.textFaint : root.tone
                             opacity: Math.min(1, grown.value * 20)
                             visible: opacity > 0.01
                         }
@@ -221,16 +222,32 @@ Item {
                 Repeater {
                     model: SystemUpgrade.stageNames
 
-                    StyledText {
+                    Row {
+                        id: step
+
                         required property int index
                         required property string modelData
 
-                        readonly property bool current: root.running && SystemUpgrade.stage === index
+                        readonly property bool current: root.running && SystemUpgrade.stage === step.index
+                        readonly property bool broke: root.failed && SystemUpgrade.stage === step.index
 
                         width: track.segment
-                        text: modelData
-                        color: current ? Appearance.colour.text : (SystemUpgrade.fills[index] ?? 0) >= 1 ? Appearance.colour.textDim : Appearance.colour.textFaint
-                        elide: Text.ElideRight
+                        spacing: Appearance.padding.hair
+
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: step.broke
+                            name: "close"
+                            size: Appearance.font.size.small
+                            color: Appearance.colour.failed
+                        }
+
+                        StyledText {
+                            width: step.width - (step.broke ? Appearance.font.size.small + step.spacing : 0)
+                            text: step.modelData
+                            color: step.broke ? Appearance.colour.failed : step.current ? Appearance.colour.text : (SystemUpgrade.fills[step.index] ?? 0) >= 1 ? Appearance.colour.textDim : Appearance.colour.textFaint
+                            elide: Text.ElideRight
+                        }
                     }
                 }
             }

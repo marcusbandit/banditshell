@@ -167,7 +167,11 @@ Singleton {
 
         readonly property color warningFill: Qt.rgba(warning.r, warning.g, warning.b, root.config.material.accentFill)
 
-        readonly property color failed: warning
+        readonly property color error: root.theme.error ?? root.theme.alarm
+
+        readonly property color failed: error
+
+        readonly property color failedFill: Qt.rgba(failed.r, failed.g, failed.b, root.config.material.accentFill)
 
         readonly property color accentText: root.rampAt(1, 1)
 
