@@ -18,6 +18,7 @@
     "tests": [
       "tests/fixtures/system-upgrade",
       "tests/fixtures/update",
+      "tests/installer.test.js",
       "tests/pacman.test.js",
       "tests/release.test.js",
       "tests/system-upgrade.test.js",
