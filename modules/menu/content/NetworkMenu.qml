@@ -13,6 +13,19 @@ Column {
     property bool showing: false
 
     property string asking: ""
+    property string signingIn: ""
+
+    Connections {
+        target: Network
+
+        function onEnrollingNameChanged(): void {
+            if (Network.enrollingName || !root.signingIn)
+                return;
+            if (Network.enrollFailedName !== root.signingIn && root.asking === root.signingIn)
+                root.asking = "";
+            root.signingIn = "";
+        }
+    }
 
     property string opened: ""
 
@@ -521,12 +534,31 @@ Column {
                         id: signIn
 
                         IdentityField {
-                            placeholder: entry.name
+                            readonly property string kind: Network.signInKind(entry.modelData)
 
-                            onAccepted: (identity, password, eap, phase2) => {
+                            placeholder: entry.name
+                            methods: Network.signInMethods(kind)
+                            refusal: Network.signInRefusal(kind)
+                            domain: Network.knownServer(entry.name)
+                            busy: Network.enrollingName === entry.name
+                            checking: Network.enrollChecking
+                            note: Network.enrollFailedName === entry.name ? Network.enrollDetail || `Could not sign in: ${Network.enrollTrouble}.` : Network.checkedName === entry.name ? Network.checkedNote : ""
+                            noteIsTrouble: Network.enrollFailedName === entry.name
+                            suggestion: Network.checkedName === entry.name ? Network.checkedServer : Network.enrollFailedName === entry.name ? Network.enrollServer : ""
+                            readServer: text => Network.serverName(text)
+                            schoolOf: (domain, identity) => Network.school(domain, identity)
+                            fill: Network.checkedName === entry.name ? Network.checkedFill : ""
+                            noteWarns: Network.checkedName === entry.name && Network.checkedState === "mismatch"
+
+                            onAccepted: (form, password) => {
+                                if (!Network.find(entry.name))
+                                    return;
+                                root.signingIn = entry.name;
+                                Network.joinEnterprise(entry.name, kind, form, password);
+                            }
+                            onCheck: form => {
                                 if (Network.find(entry.name))
-                                    Network.joinEnterprise(entry.name, identity, password, eap, phase2);
-                                root.asking = "";
+                                    Network.checkServer(entry.name, kind, form);
                             }
                             onCancelled: root.asking = ""
                         }
