@@ -13,6 +13,11 @@
           "type": "issues",
           "severity": "minor",
           "text": "Switching keyboard layout names the new one in the island"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Short island rows such as Mic muted show their whole label"
         }
       ]
     },
