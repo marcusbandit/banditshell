@@ -309,7 +309,7 @@ function geocodeResults(output) {
     return results;
 }
 
-var TYPEAHEAD_LIMIT = 5;
+var TYPEAHEAD_LIMIT = 4;
 
 function typeaheadCommand(text) {
     const name = placeName(text);

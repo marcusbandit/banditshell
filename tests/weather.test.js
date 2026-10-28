@@ -299,7 +299,7 @@ test("typing a place asks the geocoder once for the name, never for under three 
 test("the type-ahead lists towns that start with what was typed, with the region only where a country has twins", () => {
     const paris = Forecast.geocodeResults(fs.readFileSync(path.join(__dirname, "fixtures/weather/geocode-pariss.txt"), "utf8").split("\n")[1]);
     const listed = Forecast.placeMatches("Paris", paris);
-    assert.deepStrictEqual(listed.map(p => p.text), ["Paris, France", "Paris, Texas, United States", "Paris, Tennessee, United States", "Paris, Kentucky, United States", "Paris, Illinois, United States"]);
+    assert.deepStrictEqual(listed.map(p => p.text), ["Paris, France", "Paris, Texas, United States", "Paris, Tennessee, United States", "Paris, Kentucky, United States"]);
     assert.deepStrictEqual(listed[0], { name: "Paris", region: "Île-de-France Region", country: "France", text: "Paris, France" });
     assert.strictEqual(Forecast.placeMatches("Paris, US", paris)[0].text, "Paris, Texas, United States");
     assert.ok(Forecast.placeMatches("Paris", paris).every(p => p.name.indexOf("Mountain") < 0));

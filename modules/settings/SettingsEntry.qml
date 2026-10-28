@@ -221,8 +221,9 @@ Column {
 
     Item {
         parent: frame
-        y: frame.height
-        width: root.width
+        x: (controls.parent?.x ?? 0) + controls.x
+        y: frame.height - Appearance.padding.small
+        width: controls.width
         height: 0
         visible: places.active
         z: 1
@@ -232,11 +233,11 @@ Column {
 
             readonly property int count: places.item?.shown.length ?? 0
 
-            width: root.width
+            width: parent.width
             active: !!root.row.places
 
             sourceComponent: SettingsPlaces {
-                width: root.width
+                width: places.width
                 active: root.typing
                 query: root.typing ? controls.item.draft : ""
                 saved: String(root.value ?? "")

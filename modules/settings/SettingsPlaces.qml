@@ -88,7 +88,7 @@ Item {
                 readonly property bool chosen: place.index === root.current
 
                 width: list.width
-                height: Appearance.sizes.rowHeight
+                height: Appearance.font.line.normal + Appearance.font.line.small + Appearance.padding.small
                 opacity: root.fresh ? 1 : 0.5
 
                 SquircleRect {
@@ -99,33 +99,24 @@ Item {
                     color: place.chosen ? Appearance.colour.fillStrong : hover.hovered ? Appearance.colour.fill : "transparent"
                 }
 
-                Row {
-                    x: Appearance.padding.normal
-                    width: parent.width - Appearance.padding.normal * 2
+                Column {
+                    anchors.left: parent.left
+                    anchors.leftMargin: Appearance.padding.normal
+                    anchors.right: parent.right
+                    anchors.rightMargin: Appearance.padding.normal
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: Appearance.padding.normal
-
-                    Icon {
-                        id: pin
-
-                        anchors.verticalCenter: parent.verticalCenter
-                        name: "location_on"
-                        fill: place.chosen ? 1 : 0
-                        color: place.chosen ? Appearance.colour.text : Appearance.colour.textDim
-                    }
 
                     StyledText {
-                        id: town
-
-                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width
                         text: place.modelData.name
                         color: Appearance.colour.text
+                        elide: Text.ElideRight
                     }
 
                     StyledText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: Math.min(implicitWidth, parent.width - pin.width - town.width - parent.spacing * 2)
-                        text: [place.modelData.region, place.modelData.country].filter(Boolean).join(", ")
+                        width: parent.width
+                        text: place.modelData.text.slice(place.modelData.name.length).replace(/^,\s*/, "")
+                        font.pixelSize: Appearance.font.size.small
                         color: Appearance.colour.textFaint
                         elide: Text.ElideRight
                     }
