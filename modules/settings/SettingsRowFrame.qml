@@ -40,7 +40,7 @@ Item {
     readonly property real inner: root.width - root.padX * 2
     readonly property real trailWidth: trail.implicitWidth
     readonly property real labelMin: 150
-    readonly property real need: Math.min(root.labelMin, Math.ceil(Math.max(labelInk.advanceWidth, detailInk.advanceWidth)))
+    readonly property real need: Math.ceil(Math.max(labelInk.advanceWidth, Math.min(root.labelMin, detailInk.advanceWidth)))
     readonly property bool wrapped: root.trailWidth > 0 && root.leadWidth + root.need + root.gapX + root.trailWidth > root.inner
 
     readonly property real lineHeight: Math.max(words.implicitHeight, leadSlot.visible ? leadSlot.height : 0, root.wrapped ? 0 : trail.implicitHeight)

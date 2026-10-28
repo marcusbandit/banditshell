@@ -178,6 +178,15 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
+        readonly property real fade: Appearance.font.line.normal * 1.5
+
+        layer.enabled: list.contentHeight > list.height
+        layer.effect: ShaderEffect {
+            readonly property vector4d fades: Qt.vector4d(list.atYBeginning ? 0 : list.fade, list.atYEnd ? 0 : list.fade, height, 1)
+
+            fragmentShader: Qt.resolvedUrl("../../components/edgefade.frag.qsb")
+        }
+
         WheelStep {
             flick: list
         }
@@ -513,8 +522,17 @@ Item {
             width: parent.width - x - Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
 
-            StyledText {
+            BalancedText {
+                id: shape
+
                 width: parent.width
+                visible: false
+                text: hr.label
+                maxLines: 2
+            }
+
+            StyledText {
+                width: shape.balanced
                 textFormat: Text.StyledText
                 text: Catalogue.marked(hr.label, hr.query, Appearance.colour.accent)
                 wrapMode: Text.WordWrap

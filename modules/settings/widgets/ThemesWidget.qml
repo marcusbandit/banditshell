@@ -12,9 +12,14 @@ Item {
     property var row: ({})
 
     readonly property bool fromWall: SettingsState.v("fromWall")
-    readonly property int columns: SettingsView.tiny ? 2 : 3
     readonly property real gap: Appearance.padding.small
-    readonly property real cell: (root.width - Appearance.padding.normal * 2 - (root.columns - 1) * root.gap) / root.columns
+    readonly property real cardNeed: Math.max(names.implicitWidth, 18 * 4 + 4 * 3) + Appearance.padding.normal * 2
+    readonly property int columns: SettingsView.tiny || root.cellAt(3) < root.cardNeed ? 2 : 3
+    readonly property real cell: root.cellAt(root.columns)
+
+    function cellAt(columns: int): real {
+        return (root.width - Appearance.padding.normal * 2 - (columns - 1) * root.gap) / columns;
+    }
 
     readonly property var cards: Themes.catalogue.map(t => Appearance.lightCard({
                 name: t.name,
@@ -42,6 +47,22 @@ Item {
     HoverHandler {
         onHoveredChanged: if (hovered)
             SettingsView.hovered = root.row
+    }
+
+    Column {
+        id: names
+
+        visible: false
+
+        Repeater {
+            model: root.cards
+
+            delegate: StyledText {
+                required property var modelData
+
+                text: modelData.name
+            }
+        }
     }
 
     Grid {

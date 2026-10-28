@@ -163,6 +163,7 @@ QtObject {
         }, {
             icon: "delete",
             label: "Delete",
+            alarm: true,
             tucked: true,
             run: () => root.search.armed = `snippetdelete:${row.snippet.id}`
         });

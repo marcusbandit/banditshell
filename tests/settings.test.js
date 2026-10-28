@@ -252,11 +252,13 @@ test("search joins what was typed, never two keywords across their gap", () => {
     assert.strictEqual(Catalogue.search("& -").length, 0);
 });
 
-test("lid rows say sleep and still store suspend", () => {
+test("lid rows say sleep and do nothing and still store suspend and nothing", () => {
     for (const k of ["lidBattery", "lidPlugged", "lidDocked"]) {
         const row = Catalogue.ROW_BY_KEY[k];
         assert.ok(Catalogue.options(row, {}).some(o => o[0] === "suspend" && o[1] === "sleep"), k);
         assert.strictEqual(Catalogue.show(row, "suspend", {}), "sleep", k);
+        assert.ok(Catalogue.options(row, {}).some(o => o[0] === "nothing" && o[1] === "do nothing"), k);
+        assert.strictEqual(Catalogue.show(row, "nothing", {}), "do nothing", k);
     }
     const s = { hasLid: true, v: k => ({ profile: "balanced", lidBattery: "suspend" })[k] };
     assert.strictEqual(Catalogue.PAGE_BY_ID.powermode.status(s), "balanced · lid sleep");

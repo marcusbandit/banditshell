@@ -207,6 +207,7 @@ QtObject {
             acts.push({
                 icon: "delete",
                 label: "Forget",
+                alarm: true,
                 tucked: true,
                 run: () => root.search.armed = `wififorget:${name}`
             });

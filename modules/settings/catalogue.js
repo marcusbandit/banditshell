@@ -719,9 +719,9 @@ const PAGES_SOURCE = {
                 { n: 105, icon: "bolt", label: "Power mode", k: "profile", kind: "seg", o: s => s.profileChoices, state: s => s.profileTrouble, dis: s => s.profileChoices.length === 0, kw: "power profile performance" }
             ] },
             { t: "Lid", away: s => !s.hasLid, rows: [
-                { n: 108, icon: "laptop", label: "On battery", k: "lidBattery", kind: "choice", cfg: "power.lid.onBattery", o: [["suspend", "sleep"], "hibernate", "lock", "nothing"], unavailable: s => s.hibernatePossible ? [] : ["hibernate"], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", kw: "lid close action sleep suspend" },
-                { n: 108, icon: "power", label: "Plugged in", k: "lidPlugged", kind: "choice", cfg: "power.lid.pluggedIn", o: [["suspend", "sleep"], "lock", "nothing"], kw: "lid close action sleep suspend" },
-                { n: 108, icon: "monitor", label: "With screens attached", k: "lidDocked", kind: "choice", cfg: "power.lid.docked", o: ["nothing", "lock", ["suspend", "sleep"]], kw: "lid close action docked sleep suspend" }
+                { n: 108, icon: "laptop", label: "On battery", k: "lidBattery", kind: "choice", cfg: "power.lid.onBattery", o: [["suspend", "sleep"], "hibernate", "lock", ["nothing", "do nothing"]], unavailable: s => s.hibernatePossible ? [] : ["hibernate"], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", kw: "lid close action sleep suspend" },
+                { n: 108, icon: "power", label: "Plugged in", k: "lidPlugged", kind: "choice", cfg: "power.lid.pluggedIn", o: [["suspend", "sleep"], "lock", ["nothing", "do nothing"]], kw: "lid close action sleep suspend" },
+                { n: 108, icon: "monitor", label: "With screens attached", k: "lidDocked", kind: "choice", cfg: "power.lid.docked", o: [["nothing", "do nothing"], "lock", ["suspend", "sleep"]], kw: "lid close action docked sleep suspend" }
             ] }
         ]
     },

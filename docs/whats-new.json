@@ -1,6 +1,47 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-19",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings search titles keep to two lines and stop above the footer"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A Settings page that scrolls fades at its bottom edge"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Lid rows offer do nothing rather than nothing"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Delete and other harmful menu actions sit apart in the alarm colour"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The launcher Position slider fits a narrow Settings panel"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Theme cards go two to a line when their names would not fit"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings row labels read in full beside wide controls"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-18",
       "date": "2026-10-28",
       "changes": [

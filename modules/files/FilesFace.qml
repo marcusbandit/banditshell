@@ -344,7 +344,7 @@ Item {
         acts.push({
             icon: "delete_forever",
             label: "Delete permanently…",
-            apart: true,
+            alarm: true,
             run: () => root.confirmDelete()
         });
 

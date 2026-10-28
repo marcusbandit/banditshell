@@ -86,7 +86,7 @@ Column {
         label: Catalogue.labelOf(root.row)
         detail: root.stateText
         detailColour: root.bad ? Appearance.colour.alarm : Appearance.colour.textFaint
-        detailLines: root.bad ? 3 : root.row.lines ?? 1
+        detailLines: root.bad ? 3 : root.row.lines ?? 3
         pending: root.pendingText
         off: root.off
         flashStamp: root.flashing ? SettingsView.flash.at : 0
@@ -370,6 +370,7 @@ Column {
 
             tailWidth: (SettingsView.tailColumns[root.groupKey] ?? 0) - root.afterControls
             room: root.lineRoom
+            trackWidth: SettingsView.tiny ? 120 : 180
             onTailChanged: root.noteTail(slider.tail)
             Component.onCompleted: root.noteTail(slider.tail)
             Component.onDestruction: root.noteTail(-1)
