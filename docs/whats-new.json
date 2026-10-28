@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-17",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Searching home in Files lists each file with its folder and date"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Sorting a home search by date puts the newest file first"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files can empty the Trash, after asking how many items go"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "At a large Files zoom, folder and drive names stay whole"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files Size buttons dim when they would do nothing"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files window opens faster the first time"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-16",
       "date": "2026-10-28",
       "changes": [

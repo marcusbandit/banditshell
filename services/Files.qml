@@ -458,13 +458,13 @@ Singleton {
     ]
 
     property var drives: []
+    property var mounts: []
 
     function setDrives(next: var): void {
         const shown = list => JSON.stringify(list.map(d => [d.name, d.path, d.detail, d.icon, d.usage ? [root.humanSize(d.usage.used), root.humanSize(d.usage.size), Math.round(d.usage.fraction * 100)] : null]));
         if (shown(next) !== shown(root.drives))
             root.drives = next;
     }
-    property var mounts: []
 
     onMountsChanged: if (root.trashTop)
         root.refresh()
