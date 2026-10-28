@@ -652,8 +652,21 @@ test("L16 flags Quickshell's SystemClock and leaves WallClock alone", () => {
     assert.deepStrictEqual(lines("modules/a.qml", text, "L16"), [2, 3]);
 });
 
+test("L17 flags the Network singleton in a file that imports Quickshell.Networking", () => {
+    const shadowed = [
+        "import Quickshell.Networking",
+        "Item {",
+        "    function f() { return Network.find(\"x\") ?? root.Network; }",
+        "}"
+    ].join("\n");
+    assert.deepStrictEqual(lines("services/a.qml", shadowed, "L17"), [3]);
+    assert.deepStrictEqual(lines("services/c.qml", "import Quickshell.Networking\nItem {\n    Connections { target: Network }\n}", "L17"), [3]);
+    assert.deepStrictEqual(lines("services/d.qml", shadowed.replace("import Quickshell.Networking", "import Quickshell.Networking as Nm"), "L17"), []);
+    assert.deepStrictEqual(lines("services/b.qml", shadowed.replace("import Quickshell.Networking", "import qs.services"), "L17"), []);
+});
+
 test("every rule has an id in order and a reason", () => {
-    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 16 }, (_, i) => `L${i + 1}`));
+    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 17 }, (_, i) => `L${i + 1}`));
     for (const rule of lintRules.RULES)
         assert.ok(rule.reason.length > 20, rule.id);
 });
