@@ -29,10 +29,8 @@ function channelText(channel, branch) {
     return `${followed} channel`;
 }
 
-function waitingHeadline(branch, behind, targetVersion) {
-    if (branch === "stable" && targetVersion)
-        return `${targetVersion} is ready`;
-    return `${behind} new commit${behind === 1 ? "" : "s"} on ${branch}`;
+function waitingHeadline(targetVersion) {
+    return targetVersion ? `${targetVersion} is ready` : "A new version is ready";
 }
 
 function report(text) {
@@ -290,11 +288,20 @@ function summary(c) {
     const count = c.notes > 0 ? c.notes : c.commits > 0 ? c.commits : c.files;
     if (count === 0)
         return "no changes";
-    const parts = [plural(count, "change", "changes")];
-    if (c.kind === "restart")
-        parts.push("restart needed");
-    else
-        parts.push("no restart needed");
+    return [plural(count, "change", "changes"), c.kind === "restart" ? "restart needed" : "no restart needed", ...extras(c)].join(", ");
+}
+
+function details(c) {
+    const parts = extras(c);
+    const count = c.commits > 0 ? c.commits : c.files;
+    if (c.notes === 0 && count > 0)
+        parts.unshift(plural(count, "change", "changes"));
+    const text = parts.join(", ");
+    return text ? `${text[0].toUpperCase()}${text.slice(1)}` : "";
+}
+
+function extras(c) {
+    const parts = [];
     if (c.cli)
         parts.push("commands changed");
     if (c.apiRemoved.length > 0)
@@ -313,7 +320,7 @@ function summary(c) {
         parts.push(`${plural(c.dirty.length, "of your edits is", "of your edits are")} in the way`);
     if (c.blocked.length > 0)
         parts.push(`${plural(c.blocked.length, "file is", "files are")} in the way`);
-    return parts.join(", ");
+    return parts;
 }
 
 function button(c) {
@@ -346,9 +353,9 @@ function outcomeText(result, running) {
     if (result.ok)
         return `Updated to ${to}.`;
     if (byHand(result)) {
-        const skipped = `${to} is skipped until a newer version arrives.`;
+        const skipped = `Updates skip ${to} until a newer version arrives.`;
         if (!running || running === from)
-            return `Back on ${from}; the shell restarted on it. ${skipped}`;
+            return skipped;
         return `Went back to ${from}, but the shell still runs ${running}. Run banditshell restart to start ${from}. ${skipped}`;
     }
     const why = result.why ? ` ${result.why}.` : "";
@@ -404,6 +411,7 @@ function assess(facts) {
         checkedAt: Number(meta.checkedAt) || 0,
         class: c,
         summary: summary(c),
+        details: details(c),
         button: button(c),
         entries: entries
     });
@@ -476,12 +484,25 @@ function main(argv) {
             process.stdout.write(JSON.stringify(report) + "\n");
         return 0;
     }
+    if (mode === "notes") {
+        const fs = require("node:fs");
+        const read = file => {
+            try {
+                return fs.readFileSync(file, "utf8");
+            } catch (e) {
+                return "";
+            }
+        };
+        const before = read(argv[1]);
+        process.stdout.write(JSON.stringify(logEntries(before).length > 0 ? incomingEntries(before, read(argv[2])) : []) + "\n");
+        return 0;
+    }
     if (mode === "explain") {
         const input = require("node:fs").readFileSync(0, "utf8");
         process.stdout.write(explain(input.split("\n"), argv[1] ?? "main") + "\n");
         return 0;
     }
-    process.stderr.write("usage: node update.js report <facts-dir> [--json|--lines|--text] | explain <branch>\n");
+    process.stderr.write("usage: node update.js report <facts-dir> [--json|--lines|--text] | notes <before> <after> | explain <branch>\n");
     return 2;
 }
 

@@ -726,6 +726,8 @@ test("a shell that never answers rolls back on its own, skips that version and s
     const check = run(world, ["update", "check", "--json"]);
     assert.strictEqual(check.status, 0);
     assert.strictEqual(JSON.parse(check.out).state, "skipped");
+    assert.match(run(world, ["update", "check", "--no-fetch"]).out, /did not start last time and is skipped until a newer version arrives/);
+    assert.match(run(world, ["update", "status"]).out, /^last update: .* did not start \(.*did not answer.*\); it is skipped/m);
     const newer = advance(world, "fix", { "shell.qml": "// fixed\n" });
     const again = JSON.parse(run(world, ["update", "check", "--json"]).out);
     assert.strictEqual(again.state, "available");
@@ -801,6 +803,58 @@ test("rollback by hand returns to the recorded version and skips the one it left
     const again = run(world, ["update", "rollback"]);
     assert.strictEqual(again.status, 1);
     assert.match(again.err, /no earlier version/);
+});
+
+test("a version left by hand is reported as gone back from, not as one that did not start", () => {
+    const world = makeWorld();
+    startShell(world);
+    const target = advance(world, "v2", { "shell.qml": "// v2\n", "docs/whats-new.json": whatsNew("v2", "v1") });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    assert.strictEqual(run(world, ["update", "rollback"]).status, 0);
+    const check = run(world, ["update", "check", "--no-fetch"]);
+    assert.strictEqual(check.out, "you went back from v2; updates skip it until a newer version arrives\n");
+    const status = run(world, ["update", "status"]).out;
+    assert.match(status, /^v1 on main, you went back from v2; updates skip it until a newer version arrives$/m);
+    assert.match(status, /^last update: you went back from v2$/m);
+    assert.doesNotMatch(status, /did not start/);
+});
+
+test("the check lists what the running version brought, from the version going back would return to", () => {
+    const world = makeWorld();
+    assert.deepStrictEqual(JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out).notes, []);
+    startShell(world);
+    const target = advance(world, "v2", { "shell.qml": "// v2\n", "docs/whats-new.json": whatsNew("v3", "v2", "v1") });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    const after = JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out);
+    assert.strictEqual(after.state, "current");
+    assert.deepStrictEqual(after.notes.map(e => e.id), ["v3", "v2"]);
+    assert.deepStrictEqual(after.notes[0].changes, [{ type: "ui", severity: "minor", text: "Change v3." }]);
+    assert.strictEqual(run(world, ["update", "rollback"]).status, 0);
+    assert.deepStrictEqual(JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out).notes, []);
+});
+
+test("the check lists no notes when the earlier version's log cannot be read", () => {
+    const world = makeWorld();
+    const broken = advance(world, "broken log", { "docs/whats-new.json": "{ not json" });
+    git(world.live, "pull", "-q", "--ff-only");
+    const target = advance(world, "v2", { "docs/whats-new.json": whatsNew("v2", "v1") });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    const json = JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out);
+    assert.strictEqual(json.previous, broken);
+    assert.deepStrictEqual(json.notes, []);
+});
+
+test("on stable the running release's notes are the entries the release before it did not have", () => {
+    const world = makeWorld();
+    forget(world);
+    cut(world, "v0.1.0", liveHead(world));
+    const second = advance(world, "feat: two", { "services/Foo.qml": "// foo two\n", "docs/whats-new.json": whatsNew("v2", "v1") });
+    cut(world, "v0.2.0", second);
+    assert.strictEqual(applyTo(world, second).status, 0);
+    fs.rmSync(stateFile(world, "previous"));
+    const json = JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out);
+    assert.strictEqual(json.version, "v0.2.0");
+    assert.deepStrictEqual(json.notes.map(e => e.id), ["v2"]);
 });
 
 test("reinstalling the version a rollback skipped takes it again and forgets the skip", () => {

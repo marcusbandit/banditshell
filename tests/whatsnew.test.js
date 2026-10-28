@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/whatsnew.js"), "utf8");
 const WhatsNew = new Function(src
-    + "\nreturn { parse, accumulated, severityOf, readSeen, lastSeen, legacyToMove, newestId, newestRelease, nextRelease, entriesSince, releaseNotes, sections, TYPES, IMPACT_KEYS };")();
+    + "\nreturn { parse, accumulated, severityOf, readSeen, lastSeen, legacyToMove, newestId, newestRelease, nextRelease, entriesSince, releaseNotes, sections, shortList, TYPES, IMPACT_KEYS };")();
 
 const log = [
     { id: "third", date: "2026-09-03", changes: [{ type: "bugs", severity: "minor", text: "Fixed the thing." }] },
@@ -251,4 +251,19 @@ test("sections put big changes first and fold minor ones by kind across updates"
         ["bugs", ["B", "C"]],
         ["other", ["E"]]
     ]);
+});
+
+test("a few changes read as one tagged list in section order, and a long log keeps its sections", () => {
+    const few = WhatsNew.shortList([
+        { changes: [{ type: "bugs", severity: "minor", text: "Fixed thing" }, { type: "features", severity: "minor", text: "New thing" }] },
+        { changes: [{ type: "ui", severity: "major", text: "Big thing" }] }
+    ]);
+    assert.deepStrictEqual(few, [
+        { key: "major", tag: "Big", text: "Big thing" },
+        { key: "features", tag: "New", text: "New thing" },
+        { key: "bugs", tag: "Fixed", text: "Fixed thing" }
+    ]);
+    const many = Array.from({ length: 7 }, (_, i) => ({ type: "bugs", severity: "minor", text: `Fix ${i}` }));
+    assert.deepStrictEqual(WhatsNew.shortList([{ changes: many }]), []);
+    assert.strictEqual(WhatsNew.shortList([{ changes: many.slice(0, 6) }]).length, 6);
 });
