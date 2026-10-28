@@ -37,6 +37,18 @@ Column {
         return "What changed";
     }
 
+    readonly property var sections: root.shortList.length > 0 ? [] : WhatsNew.sections(root.listed)
+    readonly property var linesBefore: {
+        const out = [];
+        let seen = 0;
+        for (const section of root.sections) {
+            out.push(seen);
+            seen += section.changes.length;
+        }
+        return out;
+    }
+    readonly property int eagerLines: Math.ceil((root.Window.height || Screen.height) / Appearance.font.line.small)
+
     readonly property bool wentBack: Update.wentBackByHand && Update.resultPending
 
     readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, goBackOffer.implicitWidth, goBackRow.implicitWidth, reinstallRow.implicitWidth, reportRow.implicitWidth)
@@ -386,12 +398,15 @@ Column {
         }
 
         Repeater {
-            model: root.shortList.length > 0 ? [] : WhatsNew.sections(root.listed)
+            model: root.sections
 
             delegate: SquircleRect {
                 id: section
 
                 required property var modelData
+                required property int index
+
+                readonly property int eager: Math.max(0, root.eagerLines - root.linesBefore[section.index])
 
                 readonly property color hue: root.hue(section.modelData.key)
                 readonly property bool major: section.modelData.key === "major"
@@ -431,33 +446,40 @@ Column {
                     }
 
                     Repeater {
-                        model: section.modelData.changes
+                        model: section.modelData.changes.slice(0, section.eager)
 
-                        delegate: Item {
-                            id: changeLine
-
+                        delegate: UpdateChangeLine {
                             required property var modelData
 
                             width: sectionBody.width
-                            height: changeText.height
+                            text: modelData.text
+                            hue: section.hue
+                            major: section.major
+                        }
+                    }
 
-                            SquircleRect {
-                                x: Math.round((Appearance.font.iconSize - width) / 2)
-                                y: Math.round((Appearance.font.line.small - height) / 2)
-                                width: Math.max(4, Math.round(Appearance.font.size.small / 4))
-                                height: width
-                                pill: "object"
-                                color: Appearance.blend(Appearance.colour.textFaint, section.hue, 0.5)
-                            }
+                    Loader {
+                        id: rest
 
-                            StyledText {
-                                id: changeText
+                        width: sectionBody.width
+                        visible: rest.status === Loader.Ready
+                        active: section.modelData.changes.length > section.eager
+                        asynchronous: true
 
-                                x: Appearance.font.iconSize + Appearance.padding.small
-                                width: changeLine.width - x
-                                text: changeLine.modelData.text
-                                color: section.major ? Appearance.colour.text : Appearance.colour.textDim
-                                wrapMode: Text.WordWrap
+                        sourceComponent: Column {
+                            spacing: Appearance.padding.hair
+
+                            Repeater {
+                                model: section.modelData.changes.slice(section.eager)
+
+                                delegate: UpdateChangeLine {
+                                    required property var modelData
+
+                                    width: rest.width
+                                    text: modelData.text
+                                    hue: section.hue
+                                    major: section.major
+                                }
                             }
                         }
                     }

@@ -11,4 +11,5 @@ NetworkMenu 1.0 NetworkMenu.qml
 SoundMenu 1.0 SoundMenu.qml
 TrayEntries 1.0 TrayEntries.qml
 TrayMenu 1.0 TrayMenu.qml
+UpdateChangeLine 1.0 UpdateChangeLine.qml
 UpdateMenu 1.0 UpdateMenu.qml
