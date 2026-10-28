@@ -98,8 +98,8 @@ Item {
         property real progress: 0
 
         function begin(): void {
-            root.grabOffset = zone.containsMouse || zone.pressed ? root.offsetAt(zone.mouseX) : 0;
-            root.bulgeAt = root.grabOffset;
+            root.grabOffset = zone.containsMouse || zone.pressed ? zone.mouseX - root.span / 2 : 0;
+            root.bulgeAt = root.offsetAt(zone.mouseX);
             zone.pulling = false;
             zone.velocity = 0;
             zone.lastUp = 0;

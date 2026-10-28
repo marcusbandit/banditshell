@@ -5,65 +5,52 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/launcher/placement.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Placement = new Function(`${src}\nreturn { searchAt, restTop, roomBelow, bornAt, LOWEST, HIGHEST };`)();
+const Placement = new Function(`${src}\nreturn { searchAt, restTop };`)();
 
 const BAR_OFFSET = 30;
-const ROOM = 60 + 44 * 3;
-const GAP = 34;
+const MARGIN = 12 + 34;
+const FULL = 60 + 16 + 1 + 44 * 10 + 30 * 2;
 
-const SCREENS = [
-    { name: "5120x1440", height: 1440, inset: 12 },
-    { name: "1280x720", height: 720, inset: 12 },
-    { name: "1024x600", height: 600, inset: 12 }
-];
+const SCREENS = [1440, 1080, 720, 600];
+
+const tallestOn = height => Math.min(height - MARGIN * 2, FULL);
 
 test.describe("launcher placement", () => {
-    test.it("keeps the search bar, its room below and a gap above the frame on screen at every value", () => {
-        for (const screen of SCREENS)
-            for (let i = 10; i <= 60; i++) {
-                const top = Placement.restTop(screen.height, i / 100, BAR_OFFSET, screen.inset, ROOM, GAP);
-                const room = Placement.roomBelow(screen.height, top, screen.inset, GAP);
-                assert.ok(top >= screen.inset, `${screen.name} at ${i}%: top ${top}`);
-                assert.ok(room >= ROOM, `${screen.name} at ${i}%: only ${room} px below`);
-                assert.strictEqual(top + room, screen.height - screen.inset - GAP, `${screen.name} at ${i}%`);
+    test.it("keeps the launcher's full height on screen with the same margin top and bottom at every value", () => {
+        for (const height of SCREENS)
+            for (let i = 0; i <= 100; i++) {
+                const tallest = tallestOn(height);
+                const top = Placement.restTop(height, i / 100, BAR_OFFSET, MARGIN, tallest);
+                assert.ok(top >= MARGIN, `${height} at ${i}%: top ${top}`);
+                assert.ok(top + tallest <= height - MARGIN, `${height} at ${i}%: bottom ${top + tallest}`);
             }
     });
 
-    test.it("caps a long list on a 720 px screen at the default so it ends a gap above the frame", () => {
-        const top = Placement.restTop(720, 0.4, BAR_OFFSET, 12, ROOM, GAP);
-        const list = 1200;
-        const bottom = top + Math.min(list, Placement.roomBelow(720, top, 12, GAP));
-        assert.strictEqual(bottom, 720 - 12 - GAP);
+    test.it("moves the launcher up instead of shrinking it when the list would run past the bottom at 720 px", () => {
+        const tallest = tallestOn(720);
+        assert.strictEqual(tallest, FULL);
+        const top = Placement.restTop(720, 0.4, BAR_OFFSET, MARGIN, tallest);
+        assert.ok(top < 720 * 0.4 - BAR_OFFSET);
+        assert.strictEqual(top + tallest, 720 - MARGIN);
     });
 
-    test.it("puts the middle of the search bar where the setting says", () => {
-        assert.strictEqual(Placement.restTop(1440, 0.4, BAR_OFFSET, 12, ROOM, GAP) + BAR_OFFSET, 576);
-        assert.strictEqual(Placement.restTop(1440, 0.5, BAR_OFFSET, 12, ROOM, GAP) + BAR_OFFSET, 720);
+    test.it("puts the middle of the search bar where the setting says when it fits", () => {
+        assert.strictEqual(Placement.restTop(1440, 0.4, BAR_OFFSET, MARGIN, FULL) + BAR_OFFSET, 576);
+        assert.strictEqual(Placement.restTop(1440, 0.5, BAR_OFFSET, MARGIN, FULL) + BAR_OFFSET, 720);
     });
 
-    test.it("starts the tab where it was grabbed and has it in the middle by the time it opens", () => {
-        assert.strictEqual(Placement.bornAt(240, 0, 800), 240);
-        assert.strictEqual(Placement.bornAt(-240, 400, 800), -120);
-        assert.strictEqual(Placement.bornAt(240, 800, 800), 0);
-        assert.strictEqual(Placement.bornAt(240, 900, 800), 0);
-        let last = 240;
-        for (let lift = 0; lift <= 800; lift += 10) {
-            const at = Placement.bornAt(240, lift, 800);
-            assert.ok(at <= last, `moves back out at ${lift}`);
-            last = at;
-        }
+    test.it("works the lowest place out from the panel and the screen, not a fixed cap", () => {
+        const low1440 = Placement.restTop(1440, 1, BAR_OFFSET, MARGIN, FULL);
+        const low1080 = Placement.restTop(1080, 1, BAR_OFFSET, MARGIN, FULL);
+        assert.strictEqual(low1440, 1440 - MARGIN - FULL);
+        assert.strictEqual(low1080, 1080 - MARGIN - FULL);
+        assert.ok((low1080 + BAR_OFFSET) / 1080 < (low1440 + BAR_OFFSET) / 1440);
     });
 
-    test.it("holds the setting inside its range, so 1 no longer leaves a sliver and 0 stays below the top", () => {
-        assert.strictEqual(Placement.searchAt(1), Placement.HIGHEST);
-        assert.strictEqual(Placement.searchAt(0), Placement.LOWEST);
-        assert.strictEqual(Placement.searchAt(-3), Placement.LOWEST);
-        assert.strictEqual(Placement.searchAt(0.33), 0.33);
-    });
-
-    test.it("offers in Settings exactly the range the launcher keeps", () => {
+    test.it("offers in Settings the whole screen from top to bottom", () => {
         const catalogue = fs.readFileSync(path.join(ROOT, "modules/settings/catalogue.js"), "utf8");
         const row = catalogue.split("\n").find(line => line.includes('cfg: "launcher.list.searchAt"'));
-        assert.match(row, new RegExp(`min: ${Placement.LOWEST}, max: ${Placement.HIGHEST},`));
+        assert.match(row, /min: 0, max: 1,/);
+        assert.match(row, /ends: \["top", "bottom"\]/);
     });
 });

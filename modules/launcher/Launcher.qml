@@ -21,6 +21,7 @@ Item {
     readonly property real drawnHeight: root.concept?.drawnHeight ?? 0
     readonly property real reach: root.concept?.travel ?? 0
     readonly property real tabWidth: root.concept?.tabWidth ?? 0
+    readonly property real placedAt: root.concept?.placedAt ?? -1
     readonly property int resultCount: root.concept?.resultCount ?? 0
     readonly property string scrollInfo: root.concept?.scrollInfo ?? "-"
 

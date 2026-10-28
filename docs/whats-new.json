@@ -7,7 +7,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Settings, Launcher, Position moves the launcher up or down the screen"
+          "text": "Settings, Launcher, Position moves it up or down; it moves up to fit"
         },
         {
           "type": "issues",
@@ -22,7 +22,7 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Pulling the launcher up starts it where you grab the bottom edge"
+          "text": "The launcher tab stays under your pointer while you pull it up"
         }
       ]
     },
