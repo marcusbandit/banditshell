@@ -36,6 +36,7 @@ Singleton {
     readonly property string passwordTrouble: HotspotLogic.passwordProblem(root.password)
 
     readonly property string blocker: HotspotLogic.blocker({
+        managed: Network.managerRunning,
         hasDevice: !!root.deviceName,
         capabilitiesKnown: root.capabilitiesKnown,
         accessPoint: root.accessPoint,

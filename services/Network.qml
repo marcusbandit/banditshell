@@ -13,6 +13,11 @@ Singleton {
 
     readonly property var wifiDevice: Networking.devices.values.find(d => d.type === DeviceType.Wifi) ?? null
 
+    readonly property bool managerRunning: Networking.backend !== NetworkBackendType.None
+    property bool managerInstalled: true
+    property bool systemd: false
+    readonly property string managerMissing: root.managerRunning ? "" : `These settings work through NetworkManager, which is not ${root.managerInstalled ? "running" : "installed"} here.`
+    readonly property string managerStart: !root.managerRunning && root.managerInstalled && root.systemd ? "systemctl enable --now NetworkManager" : ""
     readonly property bool available: !!wifiDevice
     readonly property bool enabled: Networking.wifiEnabled
     readonly property bool hardwareEnabled: Networking.wifiHardwareEnabled
@@ -958,11 +963,22 @@ Singleton {
     }
 
     function wifiIcon(): string {
+        if (!root.managerRunning)
+            return "signal_wifi_statusbar_not_connected";
         if (!root.available || !root.enabled)
             return "wifi_off";
         if (!root.connected)
             return "signal_wifi_bad";
         return "wifi";
+    }
+
+    Process {
+        running: !root.managerRunning
+        command: ["sh", "-c", "[ -d /run/systemd/system ] && echo systemd; command -v nmcli >/dev/null || command -v NetworkManager >/dev/null || [ -x /usr/sbin/NetworkManager ]"]
+        stdout: StdioCollector {
+            onStreamFinished: root.systemd = text.trim() === "systemd"
+        }
+        onExited: code => root.managerInstalled = code === 0
     }
 
     readonly property bool stranded: !!root.reachLabel()

@@ -53,6 +53,7 @@
       "scripts/pick-file.py",
       "scripts/qml-compile-check.sh",
       "scripts/qmldirs.sh",
+      "scripts/quickshell-version.sh",
       "scripts/testbed.sh",
       "scripts/write-private.sh"
     ],
@@ -72,6 +73,7 @@
       "tests/markup.test.js",
       "tests/notify.test.js",
       "tests/pick-file.test.js",
+      "tests/quickshell-version.test.js",
       "tests/quoting.test.js",
       "tests/ranking.test.js",
       "tests/scheme.test.js",
@@ -79,7 +81,9 @@
       "tests/site.test.js",
       "tests/spring.test.js",
       "tests/squircle.test.js",
+      "tests/fixtures/user-dirs.dirs",
       "tests/timeformat.test.js",
+      "tests/user-folders.test.js",
       "tests/wall-clock.test.js"
     ]
   },
@@ -107,7 +111,8 @@
       "TimeFormat",
       "ToolInstaller",
       "Tooltips",
-      "Trace"
+      "Trace",
+      "UserFolders"
     ],
     "ipc": ["shell", "trace"]
   },

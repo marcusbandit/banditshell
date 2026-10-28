@@ -48,8 +48,8 @@ Singleton {
         return "";
     }
 
-    function end(id: string, outcome: string, lingerMs: var): string {
-        const out = Logic.end(root.entries, id, outcome, Date.now(), lingerMs);
+    function end(id: string, outcome: string, lingerMs: var, text: string): string {
+        const out = Logic.end(root.entries, id, outcome, Date.now(), lingerMs, text);
         if (out.error)
             return out.error;
         root.entries = out.list;

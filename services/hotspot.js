@@ -40,6 +40,8 @@ function capabilities(text) {
 }
 
 function blocker(facts) {
+    if (facts.managed === false)
+        return "needs NetworkManager";
     if (!facts.hasDevice)
         return "no wi-fi adapter";
     if (facts.capabilitiesKnown && !facts.accessPoint)

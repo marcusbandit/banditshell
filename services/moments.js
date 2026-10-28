@@ -2,7 +2,6 @@ const SCREENSHOT_MS = 6000;
 const BLUETOOTH_MS = 3000;
 const COPIED_MS = 900;
 const COPIED_PREVIEW = 20;
-const MASK = "••••••••";
 const MOMENT_KINDS = ["screenshot", "privacy", "copied", "bluetooth", "wifi"];
 const SCREENSHOT_ACTIONS = ["copy", "edit", "folder", "delete"];
 const AUDIO_ICONS = ["headphones", "speaker"];
@@ -73,17 +72,17 @@ function preview(text, max) {
     return flat.length > limit ? flat.slice(0, limit).replace(/\s+$/, "") + "\u2026" : flat;
 }
 
-function copyShape(command) {
+function copyShape(command, secret) {
     const parts = Array.isArray(command) ? command.map(String) : [];
     return {
-        secret: parts.includes("--sensitive"),
+        secret: secret === true || parts.includes("--sensitive"),
         image: parts.some(p => /^image\//.test(p)),
         files: parts.includes("text/uri-list")
     };
 }
 
-function copiedLabel(command, input) {
-    const shape = copyShape(command);
+function copiedLabel(command, input, secret) {
+    const shape = copyShape(command, secret);
     if (shape.image)
         return "Copied: image";
     if (shape.files) {
@@ -93,11 +92,11 @@ function copiedLabel(command, input) {
     const shown = squash(input);
     if (shown === "")
         return "";
-    return shape.secret ? `Copied: ${MASK}` : `Copied: ${preview(input, COPIED_PREVIEW)}`;
+    return shape.secret ? "Copied secret" : `Copied: ${preview(input, COPIED_PREVIEW)}`;
 }
 
-function copiedSpec(command, input) {
-    const label = copiedLabel(command, input);
+function copiedSpec(command, input, secret) {
+    const label = copiedLabel(command, input, secret);
     if (label === "")
         return null;
     return {
@@ -108,7 +107,7 @@ function copiedSpec(command, input) {
         until: COPIED_MS,
         priority: 20,
         source: "moments",
-        data: { secret: copyShape(command).secret }
+        data: { secret: copyShape(command, secret).secret }
     };
 }
 

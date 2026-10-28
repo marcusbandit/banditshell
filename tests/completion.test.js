@@ -151,6 +151,7 @@ test("each group offers its parts, and each part its actions", () => {
     assert.deepStrictEqual(bashComplete("clock", ""), ["alarm", "timer", "zone"]);
     assert.deepStrictEqual(bashComplete("island", ""), ["end", "list", "push", "update"]);
     assert.deepStrictEqual(bashComplete("island", "end", "build", ""), ["cancelled", "done", "failed"]);
+    assert.deepStrictEqual(bashComplete("island", "end", "build", "done", ""), ["--text"]);
     assert.deepStrictEqual(bashComplete("clock", "timer", ""), ["cancel", "pause", "resume", "start", "toggle"]);
     assert.deepStrictEqual(bashComplete("tablet", ""), ["lid", "off", "on", "pen", "probe", "toggle"]);
     assert.deepStrictEqual(bashComplete("tablet", "lid", ""), ["closed", "open", "toggle"]);

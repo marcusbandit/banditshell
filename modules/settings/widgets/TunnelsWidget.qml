@@ -30,8 +30,8 @@ Column {
         visible: root.list.length === 0
         interactive: false
         icon: "vpn_lock"
-        label: "No tunnels yet"
-        detail: "import one below"
+        label: SettingsState.networkMissing ? "Tunnels need NetworkManager" : "No tunnels yet"
+        detail: SettingsState.networkMissing ? "it is not running here" : "import one below"
         onPointed: SettingsView.hovered = root.row
     }
 
