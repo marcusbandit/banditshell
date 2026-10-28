@@ -12,6 +12,8 @@ Item {
 
     property var swatches: []
 
+    property bool fit: false
+
     signal picked(int index)
 
     readonly property int count: root.options.length
@@ -20,36 +22,56 @@ Item {
 
     readonly property real swatchRoom: root.swatches.length > 0 ? 18 + Appearance.padding.small : 0
 
-    readonly property string widest: {
-        let out = "";
-        for (const o of root.options)
-            if (o.length > out.length)
-                out = o;
-        return out;
+    readonly property var widths: {
+        ink.font;
+        return root.options.map(o => Math.ceil(ink.advanceWidth(o)) + root.swatchRoom + Appearance.padding.normal * 2);
+    }
+    readonly property real natural: root.count * root.widths.reduce((a, b) => Math.max(a, b), 0)
+    readonly property real compact: root.widths.reduce((a, b) => a + b, 0)
+
+    function segmentX(i: int): real {
+        return root.fit ? root.widths.slice(0, i).reduce((a, b) => a + b, 0) : i * root.segment;
     }
 
-    implicitWidth: root.count * (Math.ceil(ink.width) + root.swatchRoom + Appearance.padding.normal * 2)
+    function segmentWidth(i: int): real {
+        return root.fit ? root.widths[i] ?? 0 : root.segment;
+    }
+
+    implicitWidth: root.fit ? root.compact : root.natural
     implicitHeight: Math.max(Appearance.sizes.minTarget, Appearance.font.line.small + Appearance.padding.small * 2)
     width: implicitWidth
     height: implicitHeight
 
-    TextMetrics {
+    FontMetrics {
         id: ink
 
         font.family: Appearance.font.family
         font.pixelSize: Appearance.font.size.small
-        text: root.widest
     }
 
     Follow {
         id: slide
 
         speed: Appearance.animation.trackSpeed
-        target: root.current * root.segment
+        target: root.segmentX(root.current)
     }
 
-    Component.onCompleted: slide.snap()
-    onSegmentChanged: slide.snap()
+    Follow {
+        id: span
+
+        speed: Appearance.animation.trackSpeed
+        target: root.segmentWidth(root.current)
+    }
+
+    function settle(): void {
+        slide.snap();
+        span.snap();
+    }
+
+    Component.onCompleted: root.settle()
+    onSegmentChanged: root.settle()
+    onFitChanged: root.settle()
+    onWidthsChanged: root.settle()
 
     SquircleRect {
         anchors.fill: parent
@@ -59,7 +81,7 @@ Item {
 
     SquircleRect {
         x: slide.value
-        width: root.segment
+        width: span.value
         height: parent.height
         pill: "place"
         color: Appearance.colour.accent
@@ -75,10 +97,10 @@ Item {
             required property string modelData
             required property int index
 
-            readonly property real covered: root.segment > 0 ? Math.max(0, 1 - Math.abs(slide.value - seg.x) / root.segment) : 0
+            readonly property real covered: seg.width > 0 ? Math.max(0, 1 - Math.abs(slide.value - seg.x) / seg.width) : 0
 
-            x: seg.index * root.segment
-            width: root.segment
+            x: root.segmentX(seg.index)
+            width: root.segmentWidth(seg.index)
             height: root.height
 
             StyledText {
