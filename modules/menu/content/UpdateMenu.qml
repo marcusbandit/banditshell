@@ -9,6 +9,7 @@ Column {
     id: root
 
     property bool showing: false
+    property bool settled: false
 
     readonly property var incoming: Update.behind > 0 && !Update.diverged ? Update.entries : []
 
@@ -53,7 +54,9 @@ Column {
 
     readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, goBackOffer.implicitWidth, goBackRow.implicitWidth, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
-    onShowingChanged: if (!root.showing) {
+    onShowingChanged: if (root.showing) {
+        root.settled = true;
+    } else {
         root.goBackConfirm = false;
         root.reinstallConfirm = false;
         root.reportOpen = false;
@@ -462,9 +465,8 @@ Column {
                         id: rest
 
                         width: sectionBody.width
-                        visible: rest.status === Loader.Ready
-                        active: section.modelData.changes.length > section.eager
-                        asynchronous: true
+                        visible: rest.active
+                        active: root.settled && section.modelData.changes.length > section.eager
 
                         sourceComponent: Column {
                             spacing: Appearance.padding.hair
