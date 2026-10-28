@@ -9,6 +9,7 @@ Loader {
     property var row: ({})
 
     width: parent ? parent.width : 0
+    z: !!root.row.uid && root.row.uid === SettingsView.lifted ? 1 : 0
 
     sourceComponent: root.row.kind === "fact" ? fact : root.row.kind === "w" ? widget : entry
 

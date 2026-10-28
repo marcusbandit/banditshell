@@ -32,7 +32,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Rail marks no longer draw over the workspaces on a short rail"
+          "text": "The rail clock and marks stay clear of the workspaces at any height"
         }
       ]
     },

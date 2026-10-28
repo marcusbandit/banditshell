@@ -219,28 +219,36 @@ Column {
         }
     }
 
-    Loader {
-        id: places
-
-        readonly property int count: places.item?.shown.length ?? 0
-
+    Item {
+        parent: frame
+        y: frame.height
         width: root.width
-        active: !!root.row.places
-        visible: places.item?.wanted ?? false
+        height: 0
+        visible: places.active
+        z: 1
 
-        sourceComponent: SettingsPlaces {
+        Loader {
+            id: places
+
+            readonly property int count: places.item?.shown.length ?? 0
+
             width: root.width
-            active: root.typing
-            query: root.typing ? controls.item.draft : ""
-            saved: String(root.value ?? "")
-            indent: frame.padX + frame.leadWidth
-            onPicked: text => controls.item.choose(text)
+            active: !!root.row.places
+
+            sourceComponent: SettingsPlaces {
+                width: root.width
+                active: root.typing
+                query: root.typing ? controls.item.draft : ""
+                saved: String(root.value ?? "")
+                uid: root.row.uid ?? ""
+                onPicked: text => controls.item.choose(text)
+            }
         }
     }
 
     Flow {
         width: root.width
-        visible: !!root.offer && !root.off && !places.visible
+        visible: !!root.offer && !root.off && !(places.item?.wanted ?? false)
         leftPadding: frame.padX + frame.leadWidth
         rightPadding: frame.padX
         bottomPadding: Appearance.padding.small

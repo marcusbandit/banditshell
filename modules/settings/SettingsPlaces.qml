@@ -6,14 +6,14 @@ import qs.components
 import qs.services
 import "../../services/weather.js" as Forecast
 
-Column {
+Item {
     id: root
 
     property bool active: false
     property string query: ""
     property string saved: ""
-    property real indent: 0
-    property int current: -1
+    property string uid: ""
+    property int current: 0
 
     signal picked(string text)
 
@@ -27,8 +27,14 @@ Column {
     readonly property bool wanted: root.shown.length > 0 || root.note !== ""
 
     visible: root.wanted
-    leftPadding: root.indent
-    bottomPadding: Appearance.padding.small
+    implicitHeight: list.implicitHeight
+
+    onWantedChanged: SettingsView.lift(root.uid, root.wanted)
+    Component.onDestruction: {
+        SettingsView.lift(root.uid, false);
+        if (root.asking)
+            Weather.stopLooking();
+    }
 
     function step(by: int): void {
         const count = root.shown.length;
@@ -37,7 +43,7 @@ Column {
     }
 
     function ask(): void {
-        root.current = -1;
+        root.current = 0;
         if (root.asking)
             Weather.lookUp(root.query);
         else if (Weather.placeQuery !== "")
@@ -46,33 +52,96 @@ Column {
 
     onQueryChanged: root.ask()
     onAskingChanged: root.ask()
-    Component.onDestruction: if (root.asking)
-        Weather.stopLooking()
 
-    StyledText {
-        x: Appearance.padding.normal
-        visible: root.note !== ""
-        text: root.note
-        color: Appearance.colour.textFaint
+    SquircleRect {
+        width: root.width
+        height: list.implicitHeight
+        radius: Appearance.rounding.normal
+        color: Appearance.colour.surfaceSolid
+        stroke: Appearance.colour.separator
+        strokeWidth: 1
     }
 
-    Repeater {
-        model: root.shown
+    Column {
+        id: list
 
-        delegate: SettingsRowFrame {
-            id: place
+        width: root.width
+        topPadding: Appearance.padding.small
+        bottomPadding: Appearance.padding.small
 
-            required property var modelData
-            required property int index
+        StyledText {
+            x: Appearance.padding.normal
+            visible: root.note !== ""
+            text: root.note
+            color: Appearance.colour.textFaint
+        }
 
-            width: root.width - root.indent
-            icon: "location_on"
-            label: place.modelData.name
-            detail: [place.modelData.region, place.modelData.country].filter(Boolean).join(", ")
-            selected: place.index === root.current
-            off: !root.fresh
-            onActivated: if (root.fresh)
-                root.picked(place.modelData.text)
+        Repeater {
+            model: root.shown
+
+            delegate: Item {
+                id: place
+
+                required property var modelData
+                required property int index
+
+                readonly property bool chosen: place.index === root.current
+
+                width: list.width
+                height: Appearance.sizes.rowHeight
+                opacity: root.fresh ? 1 : 0.5
+
+                SquircleRect {
+                    anchors.fill: parent
+                    anchors.leftMargin: Appearance.padding.small
+                    anchors.rightMargin: Appearance.padding.small
+                    radius: Appearance.rounding.small
+                    color: place.chosen ? Appearance.colour.fillStrong : hover.hovered ? Appearance.colour.fill : "transparent"
+                }
+
+                Row {
+                    x: Appearance.padding.normal
+                    width: parent.width - Appearance.padding.normal * 2
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Appearance.padding.normal
+
+                    Icon {
+                        id: pin
+
+                        anchors.verticalCenter: parent.verticalCenter
+                        name: "location_on"
+                        fill: place.chosen ? 1 : 0
+                        color: place.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                    }
+
+                    StyledText {
+                        id: town
+
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: place.modelData.name
+                        color: Appearance.colour.text
+                    }
+
+                    StyledText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Math.min(implicitWidth, parent.width - pin.width - town.width - parent.spacing * 2)
+                        text: [place.modelData.region, place.modelData.country].filter(Boolean).join(", ")
+                        color: Appearance.colour.textFaint
+                        elide: Text.ElideRight
+                    }
+                }
+
+                HoverHandler {
+                    id: hover
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: root.fresh ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: if (root.fresh)
+                        root.picked(place.modelData.text)
+                }
+            }
         }
     }
 }
