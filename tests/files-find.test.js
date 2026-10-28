@@ -12,7 +12,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Find = lib("services/files-find.js", ["LEAST", "LIMIT", "SKIP_NAMES", "SKIP_PATHS", "command", "parse", "place", "fitPlace", "without", "named", "narrows", "merged", "grouped", "searchable"]);
+const Find = lib("services/files-find.js", ["LEAST", "LIMIT", "SKIP_NAMES", "SKIP_PATHS", "command", "parse", "place", "fitPlace", "without", "named", "narrows", "merged", "grouped", "searchable", "fitTail"]);
 const Order = lib("services/files-order.js", ["ordered"]);
 
 const HOME = "/home/ada";
@@ -103,6 +103,14 @@ test.describe("reading what the walk says", () => {
             assert.strictEqual(Find.parse(line), null, line);
     });
 
+    test.it("cuts a long folder at its start, so the folder nearest the file stays", () => {
+        assert.strictEqual(Find.fitTail("~/Documents/taxes/2023", 40), "~/Documents/taxes/2023");
+        assert.strictEqual(Find.fitTail("~/Documents/taxes/2023", 16), "…/taxes/2023");
+        assert.strictEqual(Find.fitTail("~/Downloads/mail attachments", 20), "…/mail attachments");
+        assert.strictEqual(Find.fitTail("~/a/a very long folder name", 10), "…lder name");
+        assert.strictEqual(Find.fitTail("~/x", 1), "…");
+    });
+
     test.it("says where a result lives relative to home", () => {
         assert.strictEqual(Find.place(HOME, HOME), "~");
         assert.strictEqual(Find.place(`${HOME}/Documents/work`, HOME), "~/Documents/work");
@@ -131,6 +139,14 @@ test.describe("ordering results", () => {
         assert.deepStrictEqual(out.map(x => x.key ?? x.name), ["a report.txt", "zz report.txt", `${cwd}/deep/c report.txt`, `${HOME}/Other/a report.txt`, `${HOME}/b report.txt`]);
         const big = Find.grouped(local, found, cwd, list => Order.ordered(list, "size", false));
         assert.deepStrictEqual(big.slice(3).map(x => x.key), [`${HOME}/b report.txt`, `${HOME}/Other/a report.txt`]);
+    });
+
+    test.it("sorted by date, lists every result newest first wherever it lives", () => {
+        const dated = [e(HOME, "b report.txt", {mtime: 50}), e(`${cwd}/deep`, "c report.txt", {mtime: 2}), e(`${HOME}/Other`, "a report.txt", {mtime: 30})];
+        const newest = Find.grouped(local, dated, cwd, list => Order.ordered(list, "mtime", false), true);
+        assert.deepStrictEqual(newest.map(x => x.key ?? x.name), [`${HOME}/b report.txt`, `${HOME}/Other/a report.txt`, "zz report.txt", `${cwd}/deep/c report.txt`, "a report.txt"]);
+        const oldest = Find.grouped(local, dated, cwd, list => Order.ordered(list, "mtime", true), true);
+        assert.deepStrictEqual(oldest.map(x => x.key ?? x.name), newest.map(x => x.key ?? x.name).reverse());
     });
 
     test.it("narrows a finished walk instead of walking again", () => {

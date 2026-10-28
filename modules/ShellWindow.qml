@@ -188,6 +188,13 @@ PanelWindow {
         islandLayer.task = "";
     }
 
+    function takeKeyboard(): void {
+        if (body.Window.active)
+            return;
+        win.claiming = true;
+        claim.restart();
+    }
+
     function openMenu(key: string, pin = true): bool {
         if (win.underFullscreen)
             return false;

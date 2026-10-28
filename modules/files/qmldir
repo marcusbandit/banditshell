@@ -22,3 +22,4 @@ Setting 1.0 Setting.qml
 SettingChoice 1.0 SettingChoice.qml
 SplitHandle 1.0 SplitHandle.qml
 TerminalPane 1.0 TerminalPane.qml
+TrashMark 1.0 TrashMark.qml

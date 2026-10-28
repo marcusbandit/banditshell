@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const FIXTURES = path.join(__dirname, "fixtures/apps");
 const src = fs.readFileSync(path.join(ROOT, "services/desktop-entries.js"), "utf8");
-const Entries = new Function(src + "\nreturn { unescapeValue, escapeValue, parseEntry, parseBundle, indexEntries, indexPrograms, programOf, stripFieldCodes, shownIn, setHidden, autostartText, autostartName, sessionLaunches, splitList, idOf };")();
+const Entries = new Function(src + "\nreturn { unescapeValue, escapeValue, parseEntry, parseBundle, indexEntries, indexPrograms, programOf, stripFieldCodes, shownIn, setHidden, autostartText, autostartName, sessionLaunches, splitList, idOf, sameEntries };")();
 
 function bundleOf(dir) {
     return fs.readdirSync(dir).filter(f => f.endsWith(".desktop")).sort().map(f => `@@@${f}\n${fs.readFileSync(path.join(dir, f), "utf8")}`).join("");
@@ -143,4 +143,13 @@ test("an autostart entry another source already starts is not started again", ()
     const files = Entries.parseBundle(`@@@/home/a/.config/autostart/spotify.desktop\n${text}`);
     assert.deepStrictEqual(Entries.sessionLaunches(files, ["Hyprland"], ["spotify"]), []);
     assert.deepStrictEqual(Entries.sessionLaunches(files, ["Hyprland"], ["vesktop"]), ["exec spotify"]);
+});
+
+test("sameEntries holds for the same entries in any order and fails on any swap", () => {
+    const zen = { id: "zen" };
+    const kitty = { id: "kitty" };
+    assert.strictEqual(Entries.sameEntries([zen, kitty], [kitty, zen]), true);
+    assert.strictEqual(Entries.sameEntries([zen, kitty], [zen, { id: "kitty" }]), false);
+    assert.strictEqual(Entries.sameEntries([zen], [zen, kitty]), false);
+    assert.strictEqual(Entries.sameEntries([], []), true);
 });

@@ -233,10 +233,12 @@ Item {
                     color: root.rendered ? Appearance.colour.fillStrong : togglepress.containsMouse ? Appearance.colour.fill : "transparent"
                 }
 
-                Icon {
+                InkIcon {
                     id: toggleGlyph
 
                     anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: toggleGlyph.inkOffsetX
+                    anchors.verticalCenterOffset: toggleGlyph.inkOffsetY
 
                     name: root.rendered ? "article" : "code"
                     size: Files.zoomed(Appearance.font.iconSize)
@@ -265,7 +267,7 @@ Item {
                 const size = root.isFolder ? `${root.contents.length} item${root.contents.length === 1 ? "" : "s"}` : Files.humanSize(root.entry.size);
                 if (root.entry.trash)
                     return [size, `Trashed ${TimeFormat.dateText(new Date(root.entry.trashed * 1000), "year")} ${TimeFormat.time(new Date(root.entry.trashed * 1000), false)}`].join("  ·  ");
-                return [size, Files.humanTime(root.entry.mtime)].join("  ·  ");
+                return [size, FilesFind.active ? Files.changedTime(root.entry.mtime) : Files.humanTime(root.entry.mtime)].join("  ·  ");
             }
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
@@ -409,10 +411,12 @@ Item {
                     strokeWidth: Appearance.stroke.ring
                 }
 
-                Icon {
+                InkIcon {
                     id: playGlyph
 
                     anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: playGlyph.inkOffsetX
+                    anchors.verticalCenterOffset: playGlyph.inkOffsetY
 
                     name: root.player?.playing ? "pause" : "play_arrow"
                 }

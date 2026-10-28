@@ -25,11 +25,11 @@ Item {
     signal dragged(point position)
     signal dropped(point position)
 
-    readonly property bool list: Files.view === "list"
+    readonly property bool list: Files.listed
 
     readonly property int columns: root.list ? 1 : Math.max(1, Math.floor(width / Appearance.sizes.filesTile))
     readonly property real cell: width / root.columns
-    readonly property real cellHeight: root.list ? Appearance.sizes.filesRow : root.cell * 1.18
+    readonly property real cellHeight: root.list ? Appearance.sizes.filesRow + (FilesFind.active ? Files.zoomed(Appearance.font.line.small) : 0) : root.cell * 1.18
 
     readonly property int target: root.dragging ? root.dropIndexAt(root.dragPoint) : -1
 
@@ -47,6 +47,10 @@ Item {
             grid.contentY = top;
         else if (bottom > grid.contentY + grid.height)
             grid.contentY = bottom - grid.height;
+    }
+
+    function warm(): void {
+        grid.forceLayout();
     }
 
     property string shown: ""

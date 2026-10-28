@@ -29,6 +29,11 @@ Singleton {
     property string failedFor: ""
     property var suggestion: null
     property string suggestedFor: ""
+    property string placeQuery: ""
+    property var places: []
+    property string placesFor: ""
+    property bool placesFailed: false
+    property var placeCache: ({})
 
     readonly property bool failed: root.wanted && root.failure !== ""
     readonly property bool ready: root.wanted && !!root.current && (root.failure === "" || root.failure !== "place" && root.failedFor === root.fetchedFor)
@@ -36,6 +41,7 @@ Singleton {
     readonly property bool loading: reader.running
     readonly property var failureLook: Forecast.failureLook(root.failure)
     readonly property bool suggesting: suggester.running
+    readonly property bool findingPlaces: placeDelay.running || placeFinder.running
     readonly property var placeSuggestion: root.failed && root.failure === "place" && root.failedFor === root.location && root.suggestedFor === root.location ? root.suggestion : null
     readonly property string temperature: root.current ? `${root.imperial ? root.current.temp_F : root.current.temp_C}°${root.imperial ? "F" : "C"}` : ""
     readonly property string summary: root.current?.weatherDesc?.[0]?.value ?? ""
@@ -111,6 +117,42 @@ Singleton {
         suggester.running = true;
     }
 
+    function lookUp(text: string): void {
+        root.placeQuery = text;
+        placeDelay.restart();
+    }
+
+    function stopLooking(): void {
+        root.placeQuery = "";
+        placeDelay.stop();
+        root.places = [];
+        root.placesFor = "";
+    }
+
+    function findPlaces(): void {
+        const text = root.placeQuery;
+        const key = Forecast.folded(Forecast.placeName(text));
+        const command = Forecast.typeaheadCommand(text);
+        root.placesFailed = false;
+        if (!command.length) {
+            root.places = [];
+            root.placesFor = text;
+            return;
+        }
+        const known = root.placeCache[key];
+        if (known) {
+            root.places = Forecast.placeMatches(text, known);
+            root.placesFor = text;
+            return;
+        }
+        if (placeFinder.running)
+            return;
+        placeFinder.query = text;
+        placeFinder.key = key;
+        placeFinder.command = command;
+        placeFinder.running = true;
+    }
+
     function useConnection(): void {
         Config.set("weather.location", "");
     }
@@ -132,6 +174,39 @@ Singleton {
 
         onRunningChanged: if (!suggester.running)
             Qt.callLater(root.suggest)
+    }
+
+    Timer {
+        id: placeDelay
+
+        interval: 350
+        onTriggered: root.findPlaces()
+    }
+
+    Process {
+        id: placeFinder
+
+        property string query: ""
+        property string key: ""
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const results = Forecast.geocodeResults(text);
+                if (results.length) {
+                    const cache = Object.keys(root.placeCache).length > 40 ? {} : root.placeCache;
+                    cache[placeFinder.key] = results;
+                    root.placeCache = cache;
+                }
+                if (placeFinder.query === root.placeQuery) {
+                    root.placesFailed = text.trim() === "";
+                    root.places = Forecast.placeMatches(placeFinder.query, results);
+                    root.placesFor = placeFinder.query;
+                }
+            }
+        }
+
+        onRunningChanged: if (!placeFinder.running && root.placeQuery !== "" && placeFinder.query !== root.placeQuery)
+            placeDelay.restart()
     }
 
     Process {

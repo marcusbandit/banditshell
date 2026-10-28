@@ -65,12 +65,12 @@ function found(state) {
 }
 
 function slotsIn(height, pitch) {
-    return pitch > 0 ? Math.max(1, Math.floor(height / pitch)) : Infinity;
+    return pitch > 0 ? Math.max(0, Math.floor(height / pitch)) : Infinity;
 }
 
 function kept(all, slots) {
     var room = slots === undefined ? Infinity : slots;
-    var take = all.length <= room ? all.length : room - 1;
+    var take = all.length <= room ? all.length : Math.max(0, room - 1);
     return all.map(function (e, i) {
         return { entry: e, rank: e.rank, at: i };
     }).sort(function (a, b) {

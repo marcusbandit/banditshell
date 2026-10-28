@@ -205,6 +205,8 @@ Column {
             TextEdit {
                 id: reportBody
 
+                readonly property bool typable: true
+
                 anchors.fill: parent
                 anchors.margins: Appearance.padding.normal
                 wrapMode: TextEdit.Wrap
@@ -435,8 +437,15 @@ Column {
 
                 readonly property color hue: root.hue(tagged.modelData.key)
 
+                readonly property bool keyable: true
+
                 width: root.width
                 height: Math.max(tagChip.height, taggedText.height)
+
+                FocusMark {
+                    shown: tagged.activeFocus
+                    around: Appearance.rounding.small
+                }
 
                 SquircleRect {
                     visible: tagged.modelData.unread === true

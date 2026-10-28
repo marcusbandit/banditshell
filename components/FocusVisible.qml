@@ -7,6 +7,10 @@ Item {
 
     property point resting: Qt.point(-1, -1)
 
+    property bool followsPointer: true
+
+    property Item watched: root.parent
+
     function keyed(): void {
         root.active = true;
     }
@@ -18,11 +22,11 @@ Item {
     HoverHandler {
         id: pointer
 
-        parent: root.parent
+        parent: root.watched
 
         onPointChanged: {
             const at = pointer.point.scenePosition;
-            if (at.x === root.resting.x && at.y === root.resting.y)
+            if (!root.followsPointer || at.x === root.resting.x && at.y === root.resting.y)
                 return;
             root.resting = at;
             root.clear();
@@ -30,7 +34,7 @@ Item {
     }
 
     PointHandler {
-        parent: root.parent
+        parent: root.watched
         acceptedButtons: Qt.AllButtons
         onActiveChanged: if (active)
             root.clear()

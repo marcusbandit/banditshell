@@ -59,7 +59,14 @@ Column {
 
     spacing: Appearance.padding.small
 
-    readonly property bool busy: !!root.asking || !!root.opened
+    readonly property bool keyedInList: {
+        for (let at = list.Window.activeFocusItem; at; at = at.parent)
+            if (at === list)
+                return true;
+        return false;
+    }
+
+    readonly property bool busy: !!root.asking || !!root.opened || root.keyedInList
 
     property var frozen: []
 
@@ -155,7 +162,13 @@ Column {
 
         signal activated
 
-        readonly property bool hovered: press.containsMouse
+        readonly property bool keyable: true
+
+        function press(): void {
+            tool.activated();
+        }
+
+        readonly property bool hovered: toolPointer.containsMouse
 
         implicitWidth: Math.max(Appearance.sizes.minTarget, Appearance.font.iconSize + Appearance.padding.small * 2)
         implicitHeight: implicitWidth
@@ -176,6 +189,11 @@ Column {
             }
         }
 
+        FocusMark {
+            shown: tool.activeFocus
+            pill: "object"
+        }
+
         Icon {
             anchors.centerIn: parent
 
@@ -194,7 +212,7 @@ Column {
         }
 
         MouseArea {
-            id: press
+            id: toolPointer
 
             anchors.fill: parent
             hoverEnabled: true
@@ -258,6 +276,8 @@ Column {
     }
 
     Item {
+        readonly property string focusGroup: "tools"
+
         width: root.width
         implicitHeight: tools.implicitHeight
 
@@ -288,6 +308,8 @@ Column {
     }
 
     MenuRow {
+        readonly property string focusGroup: "adapter"
+
         width: root.width
         visible: Network.wiredShowing
         icon: "lan"
@@ -304,6 +326,8 @@ Column {
     }
 
     MenuLayer {
+        readonly property string focusGroup: "adapter"
+
         width: root.width
         visible: Network.wiredShowing
         open: root.opened === "wire"
@@ -330,6 +354,8 @@ Column {
     }
 
     MenuRow {
+        readonly property string focusGroup: "adapter"
+
         width: root.width
         icon: Network.wifiIcon()
         label: "Wi-Fi"
@@ -361,6 +387,8 @@ Column {
     }
 
     MenuLayer {
+        readonly property string focusGroup: "adapter"
+
         width: root.width
         open: root.opened === "adapter"
 
@@ -444,6 +472,8 @@ Column {
 
         Column {
             id: list
+
+            readonly property string focusGroup: "networks"
 
             width: parent.width
 

@@ -252,3 +252,12 @@ function sessionLaunches(files, desktops, startedElsewhere) {
     }
     return out;
 }
+
+function sameEntries(a, b) {
+    if (a.length !== b.length)
+        return false;
+    for (const entry of b)
+        if (a.indexOf(entry) < 0)
+            return false;
+    return true;
+}

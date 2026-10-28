@@ -11,7 +11,14 @@ Item {
     property bool unread: false
     property real unreadBar: 3
 
+    readonly property bool keyable: true
+
     height: changeText.height
+
+    FocusMark {
+        shown: root.activeFocus
+        around: Appearance.rounding.small
+    }
 
     SquircleRect {
         x: root.unread ? 0 : Math.round((Appearance.font.iconSize - width) / 2)

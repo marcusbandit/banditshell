@@ -20,6 +20,7 @@ Singleton {
     readonly property string paneTitle: root.hoveredGroup ? String(Catalogue.val(root.hoveredGroup.t, SettingsState) ?? root.title) : root.title
 
     property var hovered: null
+    property string lifted: ""
     property int replays: 0
 
     onHoveredChanged: if (root.hovered)
@@ -112,6 +113,13 @@ Singleton {
         root.turn++;
         Settings.page = root.current;
         Trace.step("switched", span);
+    }
+
+    function lift(uid: string, on: bool): void {
+        if (on)
+            root.lifted = uid;
+        else if (root.lifted === uid)
+            root.lifted = "";
     }
 
     function isOpen(uid: string): bool {

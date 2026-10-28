@@ -16,6 +16,15 @@ Item {
 
     signal picked(int index)
 
+    readonly property bool keyable: root.count > 1
+    readonly property string adjusts: "horizontal"
+
+    function adjust(steps: int): void {
+        const to = Math.max(0, Math.min(root.count - 1, root.current + steps));
+        if (to !== root.current)
+            root.picked(to);
+    }
+
     readonly property int count: root.options.length
 
     readonly property real segment: root.count > 0 ? root.width / root.count : root.width
@@ -86,6 +95,11 @@ Item {
         pill: "place"
         color: Appearance.colour.accent
         visible: root.current >= 0 && root.current < root.count
+    }
+
+    FocusMark {
+        shown: root.activeFocus
+        pill: "place"
     }
 
     Repeater {
