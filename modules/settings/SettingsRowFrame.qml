@@ -170,6 +170,7 @@ Item {
             width: parent.width
             text: root.label
             elide: Text.ElideRight
+            wrapMode: root.wrapped ? Text.Wrap : Text.NoWrap
             color: root.notice ? Appearance.colour.accent : root.hot || root.selected ? Appearance.colour.text : Appearance.colour.textDim
             visible: root.label !== ""
         }

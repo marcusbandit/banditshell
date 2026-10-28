@@ -19,7 +19,7 @@ Row {
     readonly property real firstRoom: root.ends.length > 0 ? firstEnd.implicitWidth + root.spacing : 0
     readonly property real lastRoom: root.ends.length > 1 ? lastEnd.implicitWidth + root.spacing : 0
     readonly property real readingRoom: Math.max(64, reading.implicitWidth)
-    readonly property bool endsShown: root.ends.length > 0 && root.room - root.firstRoom - root.lastRoom - root.spacing - root.readingRoom >= 80
+    readonly property bool endsShown: root.ends.length > 0 && root.room - root.firstRoom - root.spacing - Math.max(root.lastRoom + root.readingRoom, root.tailWidth) >= 80
     readonly property real lead: (root.endsShown ? root.firstRoom : 0) + root.spacing
     readonly property real endRoom: root.endsShown ? root.lastRoom : 0
     readonly property real tail: root.endRoom + root.readingRoom

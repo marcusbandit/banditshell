@@ -166,6 +166,7 @@ Singleton {
         readonly property color warning: root.theme.brass
 
         readonly property color warningFill: Qt.rgba(warning.r, warning.g, warning.b, root.config.material.accentFill)
+        readonly property color alarmFill: Qt.rgba(alarm.r, alarm.g, alarm.b, root.config.material.accentFill)
 
         readonly property color accentText: root.rampAt(1, 1)
 

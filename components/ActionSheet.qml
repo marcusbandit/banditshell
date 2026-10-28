@@ -161,7 +161,22 @@ Item {
             width: root.rowWidth
             height: root.rowHeight
             radius: root.cellRadius
-            color: root.actions[root.selected]?.alarm ? Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.alarm, 0.22) : Appearance.colour.fillStronger
+            color: Appearance.colour.fillStronger
+
+            SquircleRect {
+                anchors.fill: parent
+                radius: root.cellRadius
+                color: Appearance.colour.alarmFill
+                opacity: alarmShown.value
+
+                Follow {
+                    id: alarmShown
+
+                    target: root.actions[root.selected]?.alarm ? 1 : 0
+                    speed: Appearance.animation.trackSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                }
+            }
         }
 
         Column {

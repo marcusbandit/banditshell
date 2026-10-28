@@ -713,7 +713,7 @@ const PAGES_SOURCE = {
     },
     powermode: {
         id: "powermode", name: "Power and lid", lidless: "Power", icon: "bolt", preview: "battery",
-        status: s => s.hasLid ? `${s.v("profile")} · lid ${optionLabel(ROW_BY_KEY.lidBattery, s, s.v("lidBattery"))}` : s.v("profile"),
+        status: s => s.hasLid ? `${s.v("profile")} · lid ${s.v("lidBattery") === "nothing" ? "does nothing" : optionLabel(ROW_BY_KEY.lidBattery, s, s.v("lidBattery"))}` : s.v("profile"),
         groups: [
             { rows: [
                 { n: 105, icon: "bolt", label: "Power mode", k: "profile", kind: "seg", o: s => s.profileChoices, state: s => s.profileTrouble, dis: s => s.profileChoices.length === 0, kw: "power profile performance" }

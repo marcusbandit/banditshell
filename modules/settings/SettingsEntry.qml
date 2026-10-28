@@ -89,7 +89,7 @@ Column {
         label: Catalogue.labelOf(root.row)
         detail: root.stateText
         detailColour: root.bad ? Appearance.colour.alarm : Appearance.colour.textFaint
-        detailLines: root.bad ? 3 : root.row.lines ?? 3
+        detailLines: root.row.lines ?? 3
         pending: root.pendingText
         off: root.off
         flashStamp: root.flashing ? SettingsView.flash.at : 0

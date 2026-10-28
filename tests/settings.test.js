@@ -262,6 +262,8 @@ test("lid rows say sleep and do nothing and still store suspend and nothing", ()
     }
     const s = { hasLid: true, v: k => ({ profile: "balanced", lidBattery: "suspend" })[k] };
     assert.strictEqual(Catalogue.PAGE_BY_ID.powermode.status(s), "balanced · lid sleep");
+    const idle = { hasLid: true, v: k => ({ profile: "balanced", lidBattery: "nothing" })[k] };
+    assert.strictEqual(Catalogue.PAGE_BY_ID.powermode.status(idle), "balanced · lid does nothing");
 });
 
 test("a search hit names its row with the heading it sits under and marks what matched", () => {

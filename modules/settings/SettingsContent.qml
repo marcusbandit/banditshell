@@ -333,8 +333,9 @@ Item {
         let want = at - view.height / 3;
         const group = root.groupOf(target);
         if (group) {
-            const top = group.mapToItem(body, 0, 0).y;
-            const bottom = top + group.height + Appearance.padding.normal;
+            const inset = view.layer.enabled ? view.fade : 0;
+            const top = group.mapToItem(body, 0, 0).y - inset;
+            const bottom = top + group.height + Appearance.padding.normal + inset * 2;
             if (bottom - top <= view.height)
                 want = Math.min(top, Math.max(want, bottom - view.height));
         }
