@@ -228,7 +228,7 @@ Singleton {
 
                 enabled: true,
 
-                dir: `${UserFolders.shown(UserFolders.pictures)}/Wallpapers`,
+                dir: `${UserFolders.picturesAtStart}/Wallpapers`,
 
                 fit: 1.25,
 
@@ -259,7 +259,7 @@ Singleton {
             },
 
             picker: {
-                dir: `${UserFolders.shown(UserFolders.pictures)}/Screenshots`,
+                dir: `${UserFolders.picturesAtStart}/Screenshots`,
 
                 editor: "swappy -f",
                 outline: 2

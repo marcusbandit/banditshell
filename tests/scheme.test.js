@@ -26,7 +26,7 @@ function block(opener) {
 
 const Scheme = lib(path.join(ROOT, "config/scheme.js"), ["modeOf", "isLight"]);
 const Configuration = lib(path.join(ROOT, "config/configuration.js"), ["merge", "upgrade", "assign"]);
-const DEFAULTS = new Function("UserFolders", `return (${block("readonly property var defaults:")});`)({ pictures: "/home/u/Pictures", shown: p => p.replace("/home/u", "~") });
+const DEFAULTS = new Function("UserFolders", `return (${block("readonly property var defaults:")});`)({ picturesAtStart: "~/Pictures" });
 const OPAQUE = new Function(`return ${fs.readFileSync(CONFIG, "utf8").match(/readonly property var opaque: (\[.*\])/)[1]};`)();
 const LITERALS = new Function(`return (${block("readonly property var literals:")});`)();
 

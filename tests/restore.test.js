@@ -31,7 +31,7 @@ const Configuration = lib(path.join(ROOT, "config/configuration.js"), ["assign"]
 
 const CONFIG = path.join(ROOT, "config/Config.qml");
 const STATE = path.join(SETTINGS, "SettingsState.qml");
-const DEFAULTS = new Function("UserFolders", `return (${block(CONFIG, "readonly property var defaults:")});`)({ pictures: "/home/u/Pictures", shown: p => p.replace("/home/u", "~") });
+const DEFAULTS = new Function("UserFolders", `return (${block(CONFIG, "readonly property var defaults:")});`)({ picturesAtStart: "~/Pictures" });
 const OPAQUE = new Function(`return ${fs.readFileSync(CONFIG, "utf8").match(/readonly property var opaque: (\[.*\])/)[1]};`)();
 const LITERALS = new Function(`return (${block(CONFIG, "readonly property var literals:")});`)();
 const CONFIG_BACKED = new Function(`return (${block(STATE, "readonly property var configBacked:")});`)();

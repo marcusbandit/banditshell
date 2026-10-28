@@ -21,7 +21,7 @@ function defaults() {
     for (let i = start; ; i++) {
         depth += text[i] === "{" ? 1 : text[i] === "}" ? -1 : 0;
         if (depth === 0)
-            return new Function("UserFolders", `return (${text.slice(start, i + 1)});`)({ pictures: "/home/u/Pictures", shown: p => p.replace("/home/u", "~") });
+            return new Function("UserFolders", `return (${text.slice(start, i + 1)});`)({ picturesAtStart: "~/Pictures" });
     }
 }
 

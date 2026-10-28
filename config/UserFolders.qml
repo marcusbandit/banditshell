@@ -15,6 +15,7 @@ Singleton {
     readonly property string documents: root.folders.Documents
     readonly property string downloads: root.folders.Downloads
     readonly property string pictures: root.folders.Pictures
+    property string picturesAtStart: ""
 
     function shown(path: string): string {
         return Logic.shown(path, root.home);
@@ -26,7 +27,10 @@ Singleton {
             root.folders = next;
     }
 
-    Component.onCompleted: root.adopt(file.text())
+    Component.onCompleted: {
+        root.adopt(file.text());
+        root.picturesAtStart = root.shown(root.pictures);
+    }
 
     FileView {
         id: file
