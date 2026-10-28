@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-13",
+      "id": "2026-10-28-14",
       "date": "2026-10-28",
       "changes": [
         {
@@ -23,6 +23,52 @@
           "type": "issues",
           "severity": "minor",
           "text": "A version you went back from no longer reads as one that failed"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-13",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "major",
+          "text": "Copying a hidden clipboard entry keeps it hidden in the island"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A damaged clipboard history says what it kept and where the copy is"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clear history also removes the copy of a damaged history"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A clipboard picture that cannot load lines up with the other rows"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A discarded dictation says Dictation discarded or Partly kept"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A finished island task names what finished and how it ended"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell island end --text sets the task's final words"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Two layouts with one code show apart, such as US and USI"
         }
       ]
     },

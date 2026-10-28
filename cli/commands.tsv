@@ -69,7 +69,7 @@ verb	island	post a task, a timer or a level to the island
 rule	island
 rule	island push --id,--text,--detail,--progress,--icon,--until,--priority,--run
 rule	island update @id --text,--detail,--progress,--icon,--until
-rule	island end @id done,failed,cancelled
+rule	island end @id done,failed,cancelled --text
 rule	island list
 verb	tablet	tablet mode, the lid and the pen's area
 rule	tablet

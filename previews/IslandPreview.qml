@@ -90,12 +90,13 @@ ShellRoot {
             expect: "2 activities"
         },
         {
-            name: "the build is done and the sync failed: each shows its mark",
+            name: "the build is done and the sync failed: each says so, with its mark",
             run: () => {
-                Activities.end("build", "done");
-                Activities.end("sync", "failed");
+                Activities.end("build", "done", undefined, "Build done");
+                Activities.end("sync", "failed", undefined, "");
             },
-            expect: "2 activities"
+            expect: "2 activities",
+            holds: () => Activities.entries.find(e => e.id === "build")?.text === "Build done" && Activities.entries.find(e => e.id === "sync")?.text === "Syncing photos failed"
         },
         {
             name: "the marks go and so do the rows",
@@ -160,6 +161,34 @@ ShellRoot {
             expect: "hidden"
         },
         {
+            name: "two US layouts, on the plain one: US and its whole name",
+            run: () => {
+                Keymap.name = "English (US)";
+                Keymap.layouts = ["us", "us"];
+                Keymap.variants = ["", "intl"];
+                Keymap.index = 0;
+            },
+            wait: 400,
+            expect: "level",
+            holds: () => Notices.passing.some(p => p.key === "level:layout" && p.text === "English (US)" && p.readout === "US")
+        },
+        {
+            name: "then the international one: US-I, not a second US",
+            run: () => {
+                Keymap.name = "English (US, intl., with dead keys)";
+                Keymap.index = 1;
+            },
+            wait: 400,
+            expect: "level",
+            holds: () => Notices.passing.some(p => p.key === "level:layout" && p.text === "English (US, intl., with dead keys)" && p.readout === "US-I")
+        },
+        {
+            name: "the second layout row is gone",
+            run: () => {},
+            wait: 1500,
+            expect: "hidden"
+        },
+        {
             name: "the volume changes while dictating: the level row sits below the bars",
             run: () => {
                 preview.speak("listening");
@@ -192,7 +221,7 @@ ShellRoot {
             holds: () => island.rowOfKind("dictation")?.actions[0]?.label === "Discard"
         },
         {
-            name: "discard: the row says Nothing typed",
+            name: "discard: the row says Dictation discarded",
             run: () => {
                 Dictation.phase = "idle";
                 Dictation.cancelledTyped = false;
@@ -200,14 +229,14 @@ ShellRoot {
             },
             wait: 400,
             expect: "overview",
-            holds: () => island.rowOfKind("dictation")?.look.text === "Nothing typed"
+            holds: () => island.rowOfKind("dictation")?.look.text === "Dictation discarded"
         },
         {
             name: "close the island: it says so at rest, with no button beside it",
             run: () => island.pinned = false,
             wait: 600,
             expect: "dictation",
-            holds: () => island.rowOfKind("dictation")?.look.text === "Nothing typed" && !island.rowOfKind("dictation")?.look.trailing
+            holds: () => island.rowOfKind("dictation")?.look.text === "Dictation discarded" && !island.rowOfKind("dictation")?.look.trailing
         },
         {
             name: "then it leaves",
@@ -216,7 +245,7 @@ ShellRoot {
             expect: "hidden"
         },
         {
-            name: "streaming, some words already typed, then discard: Partly typed",
+            name: "streaming, some words already typed, then discard: Partly kept",
             run: () => {
                 preview.speak("listening");
                 Dictation.phase = "idle";
@@ -225,7 +254,7 @@ ShellRoot {
             },
             wait: 1400,
             expect: "dictation",
-            holds: () => island.rowOfKind("dictation")?.look.text === "Partly typed"
+            holds: () => island.rowOfKind("dictation")?.look.text === "Partly kept"
         },
         {
             name: "and that leaves too",
@@ -253,7 +282,7 @@ ShellRoot {
             },
             wait: 100,
             expect: "hidden",
-            holds: () => !["Nothing typed", "Partly typed", "Discarded"].includes(island.rowOfKind("dictation")?.look.text)
+            holds: () => !["Dictation discarded", "Partly kept"].includes(island.rowOfKind("dictation")?.look.text)
         },
         {
             name: "and it is gone",
@@ -898,6 +927,13 @@ ShellRoot {
             run: () => Activities.push(MomentLogic.copiedSpec(["wl-copy", "--sensitive", "-n"], "hunter2")),
             wait: 400,
             expect: "privacy, below it: activity"
+        },
+        {
+            name: "a masked history entry is copied where wl-copy has no --sensitive: still masked",
+            run: () => Moments.copied(["wl-copy", "-n"], "Xk9#mP2qLwZ7", true),
+            wait: 400,
+            expect: "privacy, below it: activity",
+            holds: () => Activities.entries.some(e => e.id === "moment:copied" && e.data?.secret && !e.text.includes("Xk9"))
         },
         {
             name: "the copied row is gone",
