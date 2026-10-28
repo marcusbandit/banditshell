@@ -211,17 +211,14 @@ Item {
             anchors.right: trailing.left
             anchors.rightMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
-            width: root.pictured ? Math.round(height * maxAspect) : 0
+            width: root.pictured ? Math.round(height * aspect) : 0
             height: parent.height - Appearance.padding.normal * 2
             visible: root.pictured
 
             SquircleImage {
                 id: thumb
 
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: Math.round(height * picture.aspect)
+                anchors.fill: parent
                 source: root.isImage ? `file://${root.entry.file}` : ""
                 radius: Appearance.rounding.small
                 fillMode: Image.PreserveAspectCrop
