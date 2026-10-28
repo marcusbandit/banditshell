@@ -60,8 +60,9 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    "Reinstall the version you just left", asked once, which runs `update apply --detach --to <sha>` on the commit it left. Once an
    applied commit starts, it leaves `update/skip`, and the shell clears `updates.skip` when
    `result.json` names it (#178). It leads with
-   "Report what broke": a few lines of words, with the skipped and current versions added
-   after them, handed to `banditshell triage` in a terminal (`scripts/in-terminal.sh`),
+   "Report what broke": a few lines of words, handed to `banditshell triage` in a terminal
+   (`scripts/in-terminal.sh`) with the skipped and current versions as `--context`, so they
+   land under the words in the report and stay out of the issue title (#228),
    where triage shows the whole report and sends nothing until the person answers y (#180).
    `banditshell update status [--json]` says where the copy stands, the last outcome and the
    version before the last update. What's new shows nothing pending when the seen mark is a

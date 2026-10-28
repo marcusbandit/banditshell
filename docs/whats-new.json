@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-5",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Reports from the update menu keep the versions out of the title"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell triage --context adds lines that stay out of the title"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-4",
       "date": "2026-10-28",
       "changes": [
