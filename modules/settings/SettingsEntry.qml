@@ -471,7 +471,9 @@ Column {
         id: textControl
 
         SettingsField {
-            implicitWidth: Math.max(120, Math.min(200, need))
+            id: textField
+
+            implicitWidth: textField.editing ? 200 : Math.max(120, Math.min(200, Math.ceil(Math.max(valueWidth.advanceWidth, placeholderWidth.advanceWidth)) + Appearance.padding.normal * 2 + 2))
             text: String(root.value ?? "")
             placeholder: root.row.placeholder ?? ""
             mono: !!root.row.mono
@@ -481,6 +483,22 @@ Column {
             pick: places.item?.chosen ?? ""
             onStepped: by => places.item.step(by)
             onCommitted: t => root.set(t)
+
+            TextMetrics {
+                id: valueWidth
+
+                font.family: textField.mono ? Appearance.sizes.filesTerminalFont : Appearance.font.family
+                font.pixelSize: Appearance.font.size.small
+                text: textField.text
+            }
+
+            TextMetrics {
+                id: placeholderWidth
+
+                font.family: Appearance.font.family
+                font.pixelSize: Appearance.font.size.small
+                text: textField.placeholder
+            }
         }
     }
 
