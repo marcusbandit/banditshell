@@ -139,6 +139,36 @@ test("newlines in the words are flattened in the title and the empty case has a 
     assert.strictEqual(bare.arg("--title"), "triage: a problem report");
 });
 
+test("context lines go under the words in the body and stay out of the title", () => {
+    const run = triage(["--yes", "the bar went blank", "--context", "Went back in the update menu.\nSkipped: 2026-10-25 (2222222)", "--context", "Current: 2026-10-24"], world());
+    assert.strictEqual(run.code, 0, run.err);
+    assert.strictEqual(run.arg("--title"), "triage: the bar went blank");
+    assert.ok(run.body.startsWith("## what happened\nthe bar went blank\n\nWent back in the update menu.\nSkipped: 2026-10-25 (2222222)\nCurrent: 2026-10-24\n"));
+    const bare = triage(["--context", "Went back in the update menu.", "--yes"], world());
+    assert.strictEqual(bare.arg("--title"), "triage: a problem report");
+    assert.ok(bare.body.startsWith("## what happened\n(no words were given)\n\nWent back in the update menu.\n"));
+});
+
+test("context is masked like the words", () => {
+    const w = world();
+    const { text, leaks } = secretWords(w.home);
+    const run = triage(["--yes", "words", "--context", text], w);
+    for (const leak of leaks)
+        assert.ok(!run.body.includes(leak), `body leaks ${leak}`);
+});
+
+test("after -- every argument is a word, flags included, and --context without a value is refused", () => {
+    const run = triage(["--context", "ctx", "--", "--yes", "--context"], world());
+    assert.strictEqual(run.create, undefined);
+    assert.strictEqual(run.saved.length, 1);
+    assert.ok(fs.readFileSync(run.saved[0], "utf8").startsWith("## what happened\n--yes --context\n\nctx\n"));
+    const refused = triage(["--yes", "words", "--context"], world());
+    assert.strictEqual(refused.code, 2);
+    assert.match(refused.err, /--context needs a value/);
+    assert.strictEqual(refused.create, undefined);
+    assert.strictEqual(refused.saved.length, 0);
+});
+
 test("a report over the size cut is cut, still sent, and still ends with the cc line", () => {
     const w = world();
     const run = triage(["--yes", "word ".repeat(14000)], w);
@@ -340,5 +370,5 @@ test("a pager that is not installed falls back to printing the report before ask
 test("triage is in the help header", () => {
     const run = cli(["help", "triage"]);
     assert.strictEqual(run.code, 0);
-    assert.match(run.out, /banditshell triage \[<words>\] \[--yes\]/);
+    assert.match(run.out, /banditshell triage \[<words>\] \[--context <text>\] \[--yes\]/);
 });

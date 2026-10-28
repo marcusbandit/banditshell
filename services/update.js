@@ -363,13 +363,14 @@ function reportContext(result, running) {
     return ["Went back in the update menu.", `Skipped: ${named(result?.toLabel, result?.to)}`, `Current: ${current}`].join("\n");
 }
 
-function reportWords(words, result, running) {
-    const said = String(words ?? "").split("\n").map(line => line.replace(/\s+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
-    return `${said || "(no words were given)"}\n\n${reportContext(result, running)}`;
+function reportWords(words) {
+    return String(words ?? "").split("\n").map(line => line.replace(/\s+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
-function reportScript(quote, cli, words, result, running) {
-    return `bash ${quote(cli)} triage ${quote(reportWords(words, result, running))}; printf '\\n%s' 'Press Enter to close. '; read -r reply`;
+function reportScript(quote, cli, words, context) {
+    const said = reportWords(words);
+    const together = `${said || "(no words were given)"}\n\n${context}`;
+    return `if grep -qF -e '[--context <text>]' ${quote(cli)}; then bash ${quote(cli)} triage --context ${quote(context)} -- ${quote(said)}; else bash ${quote(cli)} triage ${quote(together)}; fi; printf '\\n%s' 'Press Enter to close. '; read -r reply`;
 }
 
 function lineValues(lines) {

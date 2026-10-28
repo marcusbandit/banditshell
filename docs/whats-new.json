@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-7",
+      "id": "2026-10-28-8",
       "date": "2026-10-28",
       "changes": [
         {
@@ -13,6 +13,22 @@
           "type": "bugs",
           "severity": "minor",
           "text": "The update with the new Wi-Fi sign-in installs without going back"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-7",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Reports from the update menu keep the versions out of the title"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell triage --context adds lines that stay out of the title"
         }
       ]
     },
