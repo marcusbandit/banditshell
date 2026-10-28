@@ -9,7 +9,7 @@
     "tests": ["tests/tour.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor", "settings"],
+    "packages": ["core", "compositor", "apps", "settings"],
     "optional": []
   },
   "provides": {

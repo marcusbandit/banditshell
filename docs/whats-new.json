@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-19",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The shell no longer freezes for seconds while it rereads your apps"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-18",
       "date": "2026-10-28",
       "changes": [
