@@ -1572,7 +1572,11 @@ screenshot_dir() {
     local cfg dir
     cfg="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json"
     dir=$(jq -r '.picker.dir // empty' "$cfg" 2>/dev/null || true)
-    dir="${dir:-~/Pictures/Screenshots}"
+    if [ -z "$dir" ]; then
+        dir=$(xdg-user-dir PICTURES 2>/dev/null || true)
+        [ -n "$dir" ] && [ "$dir" != "$HOME" ] || dir="$HOME/Pictures"
+        dir="$dir/Screenshots"
+    fi
     printf '%s' "${dir/#\~/$HOME}"
 }
 

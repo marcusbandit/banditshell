@@ -67,7 +67,7 @@ Column {
     Process {
         id: scan
 
-        command: ["sh", "-c", "find \"$HOME/Downloads\" -maxdepth 2 -type f -iname \"$1\" -size -512k -printf '%T@\\t%p\\n' 2>/dev/null | sort -rn | head -n 40 | while IFS= read -r line; do printf '\\036%s\\n' \"$line\"; cat -- \"${line#*\t}\" 2>/dev/null; done; true", "sh", root.pattern]
+        command: ["sh", "-c", "find \"$2\" -maxdepth 2 -type f -iname \"$1\" -size -512k -printf '%T@\\t%p\\n' 2>/dev/null | sort -rn | head -n 40 | while IFS= read -r line; do printf '\\036%s\\n' \"$line\"; cat -- \"${line#*\t}\" 2>/dev/null; done; true", "sh", root.pattern, UserFolders.downloads]
 
         stdout: StdioCollector {
             onStreamFinished: root.read(text)
@@ -77,7 +77,7 @@ Column {
     Process {
         id: chooser
 
-        command: ["python3", Quickshell.shellPath("scripts/pick-file.py"), root.title, root.pattern, "~/Downloads"]
+        command: ["python3", Quickshell.shellPath("scripts/pick-file.py"), root.title, root.pattern, UserFolders.downloads]
 
         stdout: StdioCollector {
             onStreamFinished: {

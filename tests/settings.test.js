@@ -34,7 +34,7 @@ function block(file, opener) {
     throw new Error(`unclosed ${opener}`);
 }
 
-const DEFAULTS = new Function(`return (${block(path.join(ROOT, "config/Config.qml"), "readonly property var defaults:")});`)();
+const DEFAULTS = new Function("UserFolders", `return (${block(path.join(ROOT, "config/Config.qml"), "readonly property var defaults:")});`)({ pictures: "/home/u/Pictures", shown: p => p.replace("/home/u", "~") });
 const STATE = path.join(SETTINGS, "SettingsState.qml");
 const CONFIG_BACKED = new Function(`return (${block(STATE, "readonly property var configBacked:")});`)();
 const PLAN_DEFAULTS = new Function(`return (${block(STATE, "readonly property var planDefaults:")});`)();

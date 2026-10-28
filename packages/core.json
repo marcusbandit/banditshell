@@ -76,7 +76,9 @@
       "tests/site.test.js",
       "tests/spring.test.js",
       "tests/squircle.test.js",
+      "tests/fixtures/user-dirs.dirs",
       "tests/timeformat.test.js",
+      "tests/user-folders.test.js",
       "tests/wall-clock.test.js"
     ]
   },
@@ -104,7 +106,8 @@
       "TimeFormat",
       "ToolInstaller",
       "Tooltips",
-      "Trace"
+      "Trace",
+      "UserFolders"
     ],
     "ipc": ["shell", "trace"]
   },
