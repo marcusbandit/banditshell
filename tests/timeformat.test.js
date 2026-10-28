@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/timeformat.js"), "utf8");
-const Format = new Function(src + "\nreturn { STYLES, styleOf, hourPart, minutePart, clockText, timeText, dateText, stampText, recentText, exampleText };")();
+const Format = new Function(src + "\nreturn { STYLES, styleOf, hourPart, minutePart, clockText, timeText, dateText, stampText, recentText, changedText, exampleText };")();
 
 const MORNING = new Date(2026, 9, 14, 9, 5, 7);
 const AFTERNOON = new Date(2026, 9, 14, 14, 32, 0);
@@ -75,6 +75,15 @@ test("a recent time shows the hour today, the day this year and the month before
     assert.strictEqual(Format.recentText(AFTERNOON, now, "words", true), "14:32");
     assert.strictEqual(Format.recentText(new Date(2026, 2, 3, 8, 0, 0), now, "words", true), "3 Mar");
     assert.strictEqual(Format.recentText(new Date(2025, 2, 3, 8, 0, 0), now, "words", true), "March 2025");
+});
+
+test("a changed date says Today, then day and month, with the year once it is not this year", () => {
+    const now = new Date(2026, 9, 14, 20, 0, 0);
+    assert.strictEqual(Format.changedText(AFTERNOON, now, "words"), "Today");
+    assert.strictEqual(Format.changedText(new Date(2026, 9, 13, 23, 59, 0), now, "words"), "13 Oct");
+    assert.strictEqual(Format.changedText(new Date(2026, 0, 1, 0, 0, 0), now, "words"), "1 Jan");
+    assert.strictEqual(Format.changedText(new Date(2025, 11, 31, 23, 0, 0), now, "words"), "31 Dec 2025");
+    assert.strictEqual(Format.changedText(new Date(2025, 4, 2, 8, 0, 0), now, "iso"), "2025-05-02");
 });
 
 test("every style has an example the panel can list, in lower case", () => {

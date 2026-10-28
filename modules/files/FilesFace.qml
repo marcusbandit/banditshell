@@ -251,6 +251,10 @@ Item {
         return Files.act(action);
     }
 
+    function warm(): void {
+        grid.warm();
+    }
+
     function select(index: int, extend: bool): void {
         if (Files.visible.length === 0)
             return;
@@ -373,8 +377,8 @@ Item {
             });
 
         acts.push({
-            icon: Files.view === "list" ? "grid_view" : "view_list",
-            label: Files.view === "list" ? "Icon view" : "List view",
+            icon: Files.listed ? "grid_view" : "view_list",
+            label: Files.listed ? "Icon view" : "List view",
             run: () => Files.toggleView()
         }, {
             icon: "select_all",
@@ -401,6 +405,14 @@ Item {
             label: "Settings…",
             run: () => settings.show()
         });
+
+        if (Files.trashItems.length > 0)
+            acts.push({
+                icon: "delete_forever",
+                label: "Empty Trash…",
+                apart: true,
+                run: () => root.confirmEmpty()
+            });
 
         return acts;
     }
@@ -436,6 +448,36 @@ Item {
                     origin: Files.originPlace(e)
                 }));
         confirm.ask(Deletion.what(items), Deletion.REST, "Delete", "delete_forever", answer => Files.deleteForever(Deletion.approved(answer, paths)));
+    }
+
+    function confirmEmpty(): void {
+        const all = Files.entries.filter(e => e.trash);
+        if (all.length === 0)
+            return;
+
+        const shown = Files.visible.filter(e => e.trash);
+        const seen = Object.create(null);
+        for (const e of shown)
+            seen[Files.keyOf(e)] = true;
+        const listed = all.filter(e => !seen[Files.keyOf(e)]).concat(shown);
+        const items = listed.map(e => e.trash);
+        const rows = sizes => listed.map(e => Object.assign({
+                    name: e.name,
+                    hidden: !!e.hidden,
+                    size: sizes && e.key in sizes ? Files.humanSize(sizes[e.key]) : ""
+                }, Files.trashFrom(e)));
+
+        confirm.ask("Empty Trash", Deletion.emptying(items.length, ""), "Empty", "delete_forever", answer => Files.emptyTrash(Deletion.emptied(answer, items)), rows(null));
+        const asked = confirm.accepted;
+        Files.measureTrash(items, sizes => {
+            if (!confirm.up || confirm.accepted !== asked)
+                return;
+            let total = 0;
+            for (const key in sizes)
+                total += sizes[key];
+            confirm.rows = rows(sizes);
+            confirm.sentence = Deletion.emptying(items.length, Files.humanSize(total));
+        });
     }
 
     Connections {
@@ -529,6 +571,7 @@ Item {
         receiving: root.dragging ? path.crumbAt(root.dragAt) : -1
 
         onDismissed: Qt.callLater(root.forceActiveFocus)
+        onEmptyAsked: root.confirmEmpty()
     }
 
     Separator {
@@ -546,7 +589,7 @@ Item {
         anchors.top: rule.bottom
         anchors.bottom: failure.top
 
-        width: Files.sidebarOpen ? Files.sidebarWidth : 0
+        width: Files.sidebarOpen ? Math.min(Math.max(Files.zoomed(Files.sidebarWidth), sidebar.natural), root.width * 0.4) : 0
         visible: width > 0
         clip: true
 
@@ -562,7 +605,7 @@ Item {
 
         visible: Files.sidebarOpen
 
-        onMoved: delta => Files.sidebarWidth = Math.max(120, Math.min(root.width * 0.4, sidebarEdge.from + delta))
+        onMoved: delta => Files.sidebarWidth = Math.round(Math.max(120, Math.min(root.width * 0.4, sidebarEdge.from + delta)) / Files.magnification)
         onCommitted: Files.commitWidths()
 
         property int from: 0
@@ -572,7 +615,7 @@ Item {
 
             function onActiveChanged(): void {
                 if (sidebarEdge.active)
-                    sidebarEdge.from = Files.sidebarWidth;
+                    sidebarEdge.from = sidebar.width;
             }
         }
     }
@@ -585,7 +628,8 @@ Item {
         anchors.top: rule.bottom
         anchors.bottom: failure.top
 
-        readonly property bool roomForBoth: width > Files.previewWidth * 1.8
+        readonly property real previewRoom: Math.min(Files.previewWidth, width * 0.45)
+        readonly property bool roomForBoth: previewRoom >= 200
 
         FileGrid {
             id: grid
@@ -676,7 +720,7 @@ Item {
 
                 function onActiveChanged(): void {
                     if (previewEdge.active)
-                        previewEdge.from = Files.previewWidth;
+                        previewEdge.from = preview.width;
                 }
             }
         }
@@ -689,7 +733,7 @@ Item {
             anchors.bottom: parent.bottom
             anchors.margins: Appearance.padding.normal
 
-            width: Files.previewWidth
+            width: middle.previewRoom
             visible: Files.previewOpen && middle.roomForBoth && !!Files.current
 
             entry: Files.current

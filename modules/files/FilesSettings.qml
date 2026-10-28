@@ -237,8 +237,14 @@ Item {
 
                         ButtonPair {
                             actions: [
-                                {text: "Smaller"},
-                                {text: "Bigger"}
+                                {
+                                    text: "Smaller",
+                                    enabled: Files.magnification > Files.smallest
+                                },
+                                {
+                                    text: "Bigger",
+                                    enabled: Files.magnification < Files.largest
+                                }
                             ]
                             primary: -1
                             onTriggered: index => Files.zoom(index === 0 ? -0.1 : 0.1)
@@ -267,6 +273,20 @@ Item {
                         ]
                         chosen: FilesFind.scope
                         onChose: value => FilesFind.setScope(value)
+                    }
+                }
+
+                Setting {
+                    width: body.width
+                    label: "Results from home"
+
+                    SettingChoice {
+                        choices: [
+                            {label: "List", value: "list"},
+                            {label: "Icons", value: "icons"}
+                        ]
+                        chosen: Files.searchView
+                        onChose: value => Config.set("files.searchView", value)
                     }
                 }
 

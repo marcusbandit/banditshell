@@ -2,6 +2,7 @@
 
 var WORD = "delete";
 var REST = "will be deleted and cannot be brought back.";
+var EMPTY_WORD = "empty";
 
 function named(item) {
     return item.origin ? item.name + " from " + item.origin : item.name;
@@ -21,4 +22,13 @@ function question(items) {
 
 function approved(answer, paths) {
     return typeof answer === "string" && answer.trim().toLowerCase() === WORD ? paths.slice() : [];
+}
+
+function emptying(count, size) {
+    var items = count === 1 ? "1 item" : count.toLocaleString() + " items";
+    return size ? items + ", " + size + " in all, " + REST : items + " " + REST;
+}
+
+function emptied(answer, items) {
+    return typeof answer === "string" && answer.trim().toLowerCase() === EMPTY_WORD ? items.slice() : [];
 }
