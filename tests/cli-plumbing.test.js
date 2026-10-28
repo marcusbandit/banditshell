@@ -637,6 +637,23 @@ test("the watchdog looks for every shell again once the known one stops answerin
     assert.ok(rounds[2].filter(c => c === "qs ipc").length >= 2, rounds[2].join(", "));
 });
 
+test("stop still finds the shell when git cannot list worktrees", () => {
+    const stub = stubs();
+    const pid = Number(spawnSync("sh", ["-c", "sleep 60 >/dev/null 2>&1 & echo $!"], { encoding: "utf8" }).stdout);
+    try {
+        fakeQuickshell(stub);
+        const run = cli(["stop"], { stub, env: { QS_LIST: instance(pid) } });
+        assert.strictEqual(run.code, 0, run.err);
+        assert.strictEqual(run.out, "stopped\n");
+        assert.ok(run.calls.some(c => c.startsWith("git ") && c.includes("worktree list")), run.calls.join(", "));
+        assert.throws(() => process.kill(pid, 0));
+    } finally {
+        try {
+            process.kill(pid);
+        } catch (e) {}
+    }
+});
+
 test("stop has the shell save a setting still waiting to be written before it ends it", () => {
     const stub = stubs();
     const pid = Number(spawnSync("sh", ["-c", "sleep 60 >/dev/null 2>&1 & echo $!"], { encoding: "utf8" }).stdout);

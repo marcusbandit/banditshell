@@ -23,7 +23,7 @@ Item {
     property real lead: root.inset
     property real textX: root.lead + root.slot + root.gap
 
-    readonly property bool pressable: ["music", "download", "update", "kernel", "restart", "upgrade", "notifications", "held", "notification", "recording", "timer"].includes(root.kind) || ((root.kind === "external" || root.kind === "privacy") && !!root.activity?.pressable && root.activity?.state !== "ended") || (root.lights && (root.kind === "dictation" || (root.kind === "launch" && root.activity?.state === "here")))
+    readonly property bool pressable: ["music", "download", "update", "kernel", "restart", "config", "upgrade", "notifications", "held", "notification", "recording", "timer"].includes(root.kind) || ((root.kind === "external" || root.kind === "privacy") && !!root.activity?.pressable && root.activity?.state !== "ended") || (root.lights && (root.kind === "dictation" || (root.kind === "launch" && root.activity?.state === "here")))
 
     readonly property bool hovered: press.containsMouse
 
