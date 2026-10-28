@@ -13,12 +13,21 @@ Row {
     property string text: ""
     property real trackWidth: 180
     property var ends: []
+    property real tailWidth: 0
+    property real room: Infinity
+
+    readonly property real lead: (root.ends.length > 0 ? firstEnd.implicitWidth + root.spacing : 0) + root.spacing
+    readonly property real endRoom: root.ends.length > 1 ? lastEnd.implicitWidth + root.spacing : 0
+    readonly property real tail: root.endRoom + Math.max(64, reading.implicitWidth)
+    readonly property real track: Math.max(80, Math.min(root.trackWidth, root.room - root.lead - root.tail))
 
     signal moved(real value)
 
     spacing: Appearance.padding.small
 
     StyledText {
+        id: firstEnd
+
         anchors.verticalCenter: parent.verticalCenter
         visible: root.ends.length > 0
         text: root.ends[0] ?? ""
@@ -28,7 +37,7 @@ Row {
 
     Slider {
         anchors.verticalCenter: parent.verticalCenter
-        width: root.trackWidth
+        width: root.track
         value: root.value
         from: root.from
         to: root.to
@@ -43,6 +52,8 @@ Row {
     }
 
     StyledText {
+        id: lastEnd
+
         anchors.verticalCenter: parent.verticalCenter
         visible: root.ends.length > 1
         text: root.ends[1] ?? ""
@@ -52,8 +63,10 @@ Row {
     }
 
     StyledText {
+        id: reading
+
         anchors.verticalCenter: parent.verticalCenter
-        width: Math.max(64, implicitWidth)
+        width: Math.max(64, implicitWidth, Math.min(root.tailWidth, root.room - root.lead - root.track) - root.endRoom)
         horizontalAlignment: Text.AlignRight
         text: root.text
         color: Appearance.colour.textDim

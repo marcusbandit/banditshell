@@ -262,7 +262,7 @@ Item {
 
                     SettingChoice {
                         choices: [
-                            {label: "The open folder", value: "folder"},
+                            {label: "This folder", value: "folder"},
                             {label: "All of home", value: "home"}
                         ]
                         chosen: FilesFind.scope

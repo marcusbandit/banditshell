@@ -2059,7 +2059,7 @@ battery is left, without pointing at anything. A plate the battery filled and di
 pips both failed: on a 5120 px screen they read as noise in a 32 px strip. What held was the plain
 small time with the battery given a shape of its own, a level bar, beside other places that leave
 the rail's width behind. Apple's iPhone Duo met the same problem in its side column and answered
-it the same way: a small time on top, the battery as a level rather than a battery icon. `sidebar.glance` picks where (Settings, Sidebar, "Time at rest"):
+it the same way: a small time on top, the battery as a level rather than a battery icon. `sidebar.glance` picks where (Settings, Sidebar, "Clock and battery"):
 
 - `rail` (the default): near the rail's foot, the time, and under it the battery as an upright
   level bar with a nub on top and its percent below. The time sits at the height of the open

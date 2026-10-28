@@ -1,6 +1,57 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-11",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings lid rows say sleep, like the rest of the shell"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings buttons that cannot fit narrow down, then become a list"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A changed Settings row keeps its whole name beside the reset arrow"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings search no longer matches a word across two keywords"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings, Sidebar: Clock and battery names each place plainly"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Search reaches in Files settings shows its whole name"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Menus opened with no current choice no longer mark their first row"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings controls end at one edge, with reset arrows in their own slot"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings sliders in one group line up on the same track"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-10",
       "date": "2026-10-28",
       "changes": [
