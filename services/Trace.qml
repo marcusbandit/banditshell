@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import "trace.js" as Stalls
 
 Singleton {
     id: root
@@ -83,8 +84,7 @@ Singleton {
         const gap = at - root.beatAt;
         root.beatAt = at;
         for (const span of root.live)
-            if (span.first >= 0)
-                span.worst = Math.max(span.worst, Math.min(gap, at - span.start - span.first));
+            span.worst = Math.max(span.worst, Stalls.heartbeatStall(gap, heartbeat.interval * 1e6, span.first < 0 ? -1 : at - span.start - span.first));
     }
 
     function settle(): void {
@@ -132,6 +132,8 @@ Singleton {
     }
 
     Timer {
+        id: heartbeat
+
         interval: 16
         repeat: true
         running: root.liveCount > 0
