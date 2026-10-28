@@ -1164,7 +1164,7 @@ LauncherConcept {
 
                         model: ScriptModel {
                             values: root.results
-                            objectProp: "key"
+                            objectProp: "slot"
                         }
 
                         cacheBuffer: root.rowPitch * 4
@@ -1312,7 +1312,7 @@ LauncherConcept {
 
                                     Loader {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        active: !!line.modelData.slider && !line.modelData.slider.bare
+                                        active: !!line.modelData.slider && !line.modelData.slider.bare && !line.rekeying
                                         visible: active
 
                                         sourceComponent: Slider {
@@ -1327,7 +1327,7 @@ LauncherConcept {
 
                                     Loader {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        active: line.modelData.toggle !== undefined
+                                        active: line.modelData.toggle !== undefined && !line.rekeying
                                         visible: active
 
                                         sourceComponent: Toggle {
@@ -1355,6 +1355,14 @@ LauncherConcept {
 
                             HoverHandler {
                                 id: lineHover
+                            }
+
+                            readonly property string rowKey: line.modelData.key ?? ""
+                            property bool rekeying: false
+
+                            onRowKeyChanged: {
+                                line.rekeying = true;
+                                line.rekeying = false;
                             }
 
                             readonly property bool opened: !line.modelData.header && !root.asking && !root.capture && (line.index === root.selected && !root.answerHolds && !assistantCard.holds && root.settled || lineHover.hovered)
