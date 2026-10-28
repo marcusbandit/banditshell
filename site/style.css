@@ -717,6 +717,26 @@ kbd {
     font: var(--normal) / 1.4 var(--pixel);
 }
 
+.fork {
+    display: grid;
+    gap: var(--s2);
+    max-width: var(--measure);
+    padding: var(--s3);
+    border-radius: var(--radius);
+    corner-shape: squircle;
+    background: var(--raised);
+    box-shadow: var(--ring);
+}
+
+.fork h3,
+.band > .path {
+    font-size: var(--normal);
+}
+
+.band > .path {
+    margin-top: var(--s6);
+}
+
 .commands {
     display: grid;
     grid-template-columns: minmax(0, 1fr);

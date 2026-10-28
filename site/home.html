@@ -77,11 +77,16 @@
 
 <section id="install" class="band">
 <h2>Install</h2>
-<p class="measure"><strong>On Omarchy? Install banditshell island instead.</strong> Omarchy and the full shell would both try to show your notifications, and only one can. <a href="https://github.com/marcusbandit/banditshell-island">banditshell island</a> brings the notifications, now playing with word-timed lyrics, and timers into Omarchy's own bar, as a plugin from the <a href="https://plugins.omarchy.org/plugin.html?id=banditshell.island">Omarchy plugin marketplace</a>.</p>
+<div class="fork">
+<h3>On Omarchy</h3>
+<p>Add banditshell island to Omarchy's own bar instead of installing the full shell: you get now playing, word-timed lyrics, timers and notifications, and leave out the launcher, sidebar and Settings that come with a second shell.</p>
 <ol class="commands">
 <li><code>omarchy plugin add https://github.com/marcusbandit/banditshell-island.git --enable</code><button type="button" data-copy>Copy</button></li>
 </ol>
-<p class="measure"><strong>Everywhere else, the full shell.</strong> You need Hyprland and Quickshell. The installer brings them where your distro packages them, along with the Monocraft font, every tool the shell calls and tab completion for zsh and bash. It uses whichever of pacman, apt, dnf, zypper, xbps or apk the machine has, and asks for sudo only when a package needs installing. Arch is where the shell lives every day.</p>
+<p class="dim">Only one program can show notifications, so the island shows them once you turn Omarchy's off with <code>omarchy plugin disable omarchy.notifications</code> and <code>omarchy restart shell</code>. More on <a href="https://github.com/marcusbandit/banditshell-island">GitHub</a> and the <a href="https://plugins.omarchy.org/plugin.html?id=banditshell.island">Omarchy plugin marketplace</a>.</p>
+</div>
+<h3 class="path">Everywhere else</h3>
+<p class="measure">You need Hyprland and Quickshell. The installer brings them where your distro packages them, along with the Monocraft font, every tool the shell calls and tab completion for zsh and bash. It uses whichever of pacman, apt, dnf, zypper, xbps or apk the machine has, and asks for sudo only when a package needs installing. Arch is where the shell lives every day.</p>
 <ol class="commands">
 <li><code>git clone https://github.com/marcusbandit/banditshell.git</code><button type="button" data-copy>Copy</button></li>
 <li><code>cd banditshell</code><button type="button" data-copy>Copy</button></li>
