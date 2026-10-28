@@ -84,7 +84,7 @@ const PAGES_SOURCE = {
         status: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"),
         groups: [
             { notice: true, away: s => !s.networkMissing, rows: [
-                { n: [], kind: "w", w: "networkManager", needs: "Wi-Fi finds and joins networks through it." }
+                { n: [], kind: "w", w: "networkManager" }
             ] },
             { away: s => !!s.networkMissing, rows: [
                 { n: 1, icon: "wifi", label: "Wi-Fi", k: "wifi", kind: "toggle", state: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "",
@@ -122,7 +122,7 @@ const PAGES_SOURCE = {
         status: s => s.networkMissing || (s.v("wired") ? s.wiredDetail : "off"),
         groups: [
             { notice: true, away: s => !s.networkMissing, rows: [
-                { n: [], kind: "w", w: "networkManager", needs: "Ethernet is set up through it." }
+                { n: [], kind: "w", w: "networkManager" }
             ] },
             { away: s => !!s.networkMissing, rows: [
                 { n: 5, icon: "lan", label: "Ethernet", k: "wired", kind: "toggle", state: s => s.v("wired") ? s.wiredDetail : "off", kw: "wired connection",
@@ -138,7 +138,7 @@ const PAGES_SOURCE = {
         status: s => s.networkMissing || [s.v("hotspot") ? "sharing" : "not sharing", s.vpnOn ? `vpn ${s.vpnOn}` : "no vpn"].join(" · "),
         groups: [
             { notice: true, away: s => !s.networkMissing, rows: [
-                { n: [], kind: "w", w: "networkManager", needs: "The hotspot and tunnels run through it." }
+                { n: [], kind: "w", w: "networkManager" }
             ] },
             { t: "Hotspot", away: s => !!s.networkMissing, rows: [
                 { n: 9, icon: "wifi_tethering", label: "Share this connection", k: "hotspot", kind: "toggle", state: s => s.hotspotStatus, dis: s => s.hotspotBlocked,
@@ -908,10 +908,10 @@ const CATS = [
     { id: "connections", name: "Connections", icon: "wifi",
         blurb: s => [s.networkMissing || (s.v("wifi") && s.wifiNet ? s.wifiNet : s.v("hotspot") ? "hotspot on" : "wi-fi off"), s.v("bt") ? `${s.btConnected.length} devices` : "bluetooth off", s.vpnOn ? "vpn on" : ""].filter(Boolean).join(" · "),
         tiles: [
-            { k: "wifi", icon: "wifi", label: "Wi-Fi", det: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "" },
+            { k: "wifi", icon: "wifi", label: "Wi-Fi", explains: true, det: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "" },
             { k: "bt", icon: "bluetooth", label: "Bluetooth", det: s => s.v("bt") ? "on" : "off" },
-            { k: "hotspot", icon: "wifi_tethering", label: "Hotspot", det: s => s.hotspotStatus || "off", dis: s => s.hotspotBlocked },
-            { k: "vpnFirst", icon: "vpn_lock", label: "VPN", det: s => s.vpnOn || (s.networkMissing ? "needs NetworkManager" : s.tunnelCount ? "off" : "no tunnels"), dis: s => !s.tunnelCount }
+            { k: "hotspot", icon: "wifi_tethering", label: "Hotspot", explains: true, det: s => s.hotspotStatus || "off", dis: s => s.hotspotBlocked },
+            { k: "vpnFirst", icon: "vpn_lock", label: "VPN", explains: true, det: s => s.vpnOn || (s.networkMissing ? "needs NetworkManager" : s.tunnelCount ? "off" : "no tunnels"), dis: s => !s.tunnelCount }
         ],
         suggest: s => s.v("bt") && s.btNear > 0 ? { icon: "bluetooth_searching", label: `${s.btNear} devices nearby`, detail: "ready to pair", go: "bluetooth" } : null,
         subs: ["wifi", "bluetooth", "wired", "vpn"] },

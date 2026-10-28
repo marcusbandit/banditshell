@@ -15,7 +15,9 @@ Singleton {
 
     readonly property bool managerRunning: Networking.backend !== NetworkBackendType.None
     property bool managerInstalled: true
-    readonly property string managerMissing: root.managerRunning ? "" : root.managerInstalled ? "NetworkManager is not running" : "NetworkManager is not installed"
+    property bool systemd: false
+    readonly property string managerMissing: root.managerRunning ? "" : `These settings work through NetworkManager, which is not ${root.managerInstalled ? "running" : "installed"} here.`
+    readonly property string managerStart: !root.managerRunning && root.managerInstalled && root.systemd ? "systemctl enable --now NetworkManager" : ""
     readonly property bool available: !!wifiDevice
     readonly property bool enabled: Networking.wifiEnabled
     readonly property bool hardwareEnabled: Networking.wifiHardwareEnabled
@@ -950,7 +952,10 @@ Singleton {
 
     Process {
         running: !root.managerRunning
-        command: ["sh", "-c", "command -v nmcli || command -v NetworkManager || [ -x /usr/sbin/NetworkManager ]"]
+        command: ["sh", "-c", "[ -d /run/systemd/system ] && echo systemd; command -v nmcli >/dev/null || command -v NetworkManager >/dev/null || [ -x /usr/sbin/NetworkManager ]"]
+        stdout: StdioCollector {
+            onStreamFinished: root.systemd = text.trim() === "systemd"
+        }
         onExited: code => root.managerInstalled = code === 0
     }
 

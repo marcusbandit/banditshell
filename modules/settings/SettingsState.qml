@@ -1287,7 +1287,6 @@ Singleton {
     readonly property string weatherPlaceTrouble: Weather.failed && Weather.failure === "place" && Weather.failedFor === Weather.location ? Weather.location ? `no place called "${Weather.location}"` : "could not place you" : ""
     readonly property var weatherSuggestion: root.weatherPlaceTrouble !== "" ? Weather.placeSuggestion : null
     readonly property string networkMissing: Network.managerRunning ? "" : "needs NetworkManager"
-    readonly property string networkWhy: Network.managerMissing
     readonly property string wifiState: Hotspot.active ? "running your hotspot" : root.wifiNet || "not connected"
 
     readonly property var outputs: Audio.sinks.map(n => [n.name, Audio.deviceLabel(n)])
