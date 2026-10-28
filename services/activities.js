@@ -363,11 +363,21 @@ function levelMoment(kind, value, muted, max) {
     });
 }
 
+function layoutWords(code, name, shared) {
+    const whole = String(name || "").trim();
+    const language = whole.replace(/\s*\([^)]*\)\s*$/, "");
+    if (!shared)
+        return language;
+    const inside = /\(([^)]*)\)\s*$/.exec(whole);
+    const base = String(code || "").split("-")[0].toUpperCase();
+    const parts = (inside ? inside[1].split(",") : []).map(p => p.trim().replace(/^with\s+/i, "")).filter(p => p && p.toUpperCase() !== base && !/^[A-Z]{2,3}$/.test(p));
+    return parts.length ? parts.join(", ") : language;
+}
+
 function layoutMoment(code, name, shared) {
     if (!code)
         return null;
-    const language = shared ? String(name || "").trim() : String(name || "").replace(/\s*\([^)]*\)\s*$/, "");
-    return { key: "level:layout", kind: "level", level: "layout", muted: false, ms: LEVEL_MS, icon: "keyboard", text: language || code, meter: -1, readout: code };
+    return { key: "level:layout", kind: "level", level: "layout", muted: false, ms: LEVEL_MS, icon: "keyboard", text: layoutWords(code, name, shared) || code, meter: -1, readout: code };
 }
 
 function levelDiffers(kind, before, after) {

@@ -23,6 +23,8 @@ Item {
 
     readonly property real pad: Appearance.padding.card
     readonly property real spotPad: Appearance.padding.small
+    readonly property real rowX: root.pad - Appearance.padding.small
+    readonly property real rowWidth: root.width - root.rowX * 2
 
     component Spot: MouseArea {
         id: spot
@@ -262,7 +264,8 @@ Item {
         Column {
             id: rows
 
-            width: parent.width
+            x: root.rowX - root.pad
+            width: root.rowWidth
             spacing: Appearance.padding.small
             visible: root.live.length > 0
 
@@ -323,7 +326,8 @@ Item {
         ActivityRow {
             id: summaryRow
 
-            width: parent.width
+            x: root.rowX - root.pad
+            width: root.rowWidth
             visible: root.hasSummary
             activity: root.summary
             lights: true

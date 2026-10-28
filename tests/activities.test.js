@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/activities.js"), "utf8");
-const A = new Function(src + "\nreturn { ACTIVE_MAX, LINGER_MS, ENDING_MS, LEVEL_MS, parseSpan, readProgress, push, update, end, remove, sweep, nextWake, ordered, itemOf, listLine, clockText, clockSample, timerRemaining, timerItem, timerItems, alarmItem, alarmActions, levelIcon, levelMoment, layoutMoment, levelDiffers, coveredKinds, levelWanted };")();
+const A = new Function(src + "\nreturn { ACTIVE_MAX, LINGER_MS, ENDING_MS, LEVEL_MS, parseSpan, readProgress, push, update, end, remove, sweep, nextWake, ordered, itemOf, listLine, clockText, clockSample, timerRemaining, timerItem, timerItems, alarmItem, alarmActions, levelIcon, levelMoment, layoutWords, layoutMoment, levelDiffers, coveredKinds, levelWanted };")();
 
 const NOW = 1_000_000;
 
@@ -383,9 +383,19 @@ test.describe("level moments", () => {
         assert.strictEqual(m.meter, -1);
         assert.strictEqual(m.ms, A.LEVEL_MS);
         assert.strictEqual(A.layoutMoment("US", "English (US)").text, "English");
-        assert.strictEqual(A.layoutMoment("US-I", "English (US, intl., with dead keys)", true).text, "English (US, intl., with dead keys)");
+        assert.strictEqual(A.layoutMoment("US-I", "English (US, intl., with dead keys)", true).text, "intl., dead keys");
         assert.strictEqual(A.layoutMoment("US", "").text, "US");
         assert.strictEqual(A.layoutMoment("", "Danish"), null);
+    });
+
+    test.it("names a layout that shares its code by what sets it apart, never by the code again", () => {
+        assert.strictEqual(A.layoutWords("US", "English (US)", true), "English");
+        assert.strictEqual(A.layoutWords("US-I", "English (US, intl., with dead keys)", true), "intl., dead keys");
+        assert.strictEqual(A.layoutWords("US-D", "English (Dvorak)", true), "Dvorak");
+        assert.strictEqual(A.layoutWords("GB-E", "English (UK, extended, Windows)", true), "extended, Windows");
+        assert.strictEqual(A.layoutWords("RS-L", "Serbian (Latin, with guillemets)", true), "Latin, guillemets");
+        assert.strictEqual(A.layoutWords("US-I", "English (US, intl., with dead keys)", false), "English");
+        assert.strictEqual(A.layoutWords("US", "", true), "");
     });
 
     test.it("notices a real change and ignores noise", () => {

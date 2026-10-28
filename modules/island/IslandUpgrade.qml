@@ -26,7 +26,7 @@ Item {
     readonly property bool cancelled: root.result === "cancelled"
     readonly property bool restarting: SystemUpgrade.good && Pacman.restartNeeded
 
-    readonly property color tone: root.failed ? Appearance.colour.alarm : root.cancelled ? Appearance.colour.textDim : Appearance.colour.accent
+    readonly property color tone: root.failed ? Appearance.colour.warning : root.cancelled ? Appearance.colour.textDim : Appearance.colour.accent
 
     readonly property string subtitle: {
         const parts = [];
@@ -58,7 +58,7 @@ Item {
             for (const e of SystemUpgrade.errors.slice(-2))
                 out.push({
                     text: e.charAt(0).toUpperCase() + e.slice(1),
-                    tone: Appearance.colour.alarm
+                    tone: Appearance.colour.warning
                 });
         const notes = SystemUpgrade.warnings;
         for (const w of notes.slice(-3))
@@ -240,7 +240,7 @@ Item {
             width: parent.width
             visible: !!root.summary
             text: root.summary
-            color: root.failed ? Appearance.colour.alarm : Appearance.colour.textDim
+            color: root.failed ? Appearance.colour.warning : Appearance.colour.textDim
             wrapMode: root.running ? Text.NoWrap : Text.Wrap
             elide: root.running ? Text.ElideMiddle : Text.ElideNone
             maximumLineCount: 3
