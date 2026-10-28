@@ -97,9 +97,12 @@ Item {
             page.pageTitle = root.title;
 
             if (!page.warm && (page.heldKey !== root.key || page.pageBody !== root.body)) {
+                page.holds = false;
                 page.pageBody = null;
                 page.pageBody = root.body;
                 page.heldKey = root.key;
+            } else if (!page.warm) {
+                page.rewind();
             }
         }
         if (next < root.spare)
@@ -168,6 +171,12 @@ Item {
                 readonly property bool live: (root.reveal > 0 || root.opening) && (page.current || page.leaving)
 
                 property string heldKey: ""
+
+                property bool holds: false
+
+                function rewind(): void {
+                    view.contentY = 0;
+                }
 
                 property bool believed: false
 
@@ -267,7 +276,7 @@ Item {
                         id: bodyLoader
 
                         width: page.width
-                        active: page.warm && (root.focusedHere || page.kept) || page.live || page.heldKey !== ""
+                        active: page.warm && (root.focusedHere || page.kept) || page.live || page.holds
 
                         asynchronous: page.warm && !page.current
                         sourceComponent: page.pageBody
@@ -277,8 +286,10 @@ Item {
                             if (page.warm)
                                 Qt.callLater(page.keep);
                             item.width = Qt.binding(() => page.width);
-                            if (item.showing !== undefined)
+                            if (item.showing !== undefined) {
                                 item.showing = Qt.binding(() => page.believed);
+                                page.holds = !page.warm;
+                            }
                         }
                     }
                 }
