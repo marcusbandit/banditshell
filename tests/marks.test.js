@@ -134,3 +134,12 @@ test.describe("marks: files", () => {
         assert.strictEqual(Marks.iconFor("/x/README.md", "README.md", true, HOME), "");
     });
 });
+
+test.describe("marks: localized home folders", () => {
+    test.it("marks a folder by what user-dirs.dirs says it is, whatever it is called", () => {
+        const folders = { "/home/bandit/Bilder": "Pictures", "/home/bandit/Dokumente": "Documents" };
+        assert.strictEqual(Marks.iconFor("/home/bandit/Bilder", "Bilder", true, HOME, folders), "image");
+        assert.strictEqual(Marks.iconFor("/home/bandit/Dokumente", "Dokumente", true, HOME, folders), "description");
+        assert.strictEqual(Marks.iconFor("/home/bandit/Bilder", "Bilder", false, HOME, folders), "");
+    });
+});

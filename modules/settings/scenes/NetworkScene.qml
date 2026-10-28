@@ -38,6 +38,7 @@ SceneGauge {
 
     Item {
         anchors.horizontalCenter: parent.horizontalCenter
+        visible: Network.managerRunning
         width: 120
         height: 90
 
@@ -82,13 +83,86 @@ SceneGauge {
     StyledText {
         width: parent.width
         horizontalAlignment: Text.AlignHCenter
+        visible: Network.managerRunning
         text: root.on ? SettingsState.wifiNet : Network.wiredConnected ? "ethernet" : "offline"
     }
 
     StyledText {
         width: parent.width
         horizontalAlignment: Text.AlignHCenter
+        visible: Network.managerRunning
         text: root.on || Network.wiredConnected ? SettingsState.reach : SettingsState.v("wifi") ? "pick a network" : "wi-fi is off"
+        color: Appearance.colour.textFaint
+    }
+
+    Icon {
+        anchors.horizontalCenter: parent.horizontalCenter
+        visible: !Network.managerRunning
+        name: "lan"
+        size: Appearance.icon.hero
+        color: Appearance.colour.textDim
+    }
+
+    StyledText {
+        width: parent.width
+        visible: !Network.managerRunning
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WordWrap
+        text: "The shell cannot show the network status here."
+    }
+
+    StyledText {
+        width: parent.width
+        visible: !Network.managerRunning
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WordWrap
+        text: Network.managerMissing
+        color: Appearance.colour.textDim
+    }
+
+    Item {
+        width: parent.width
+        height: Appearance.padding.small
+        visible: Network.managerStart !== ""
+    }
+
+    SquircleRect {
+        anchors.horizontalCenter: parent.horizontalCenter
+        visible: Network.managerStart !== ""
+        width: Math.min(parent.width, command.implicitWidth + Appearance.padding.normal * 2)
+        height: command.height + Appearance.padding.small * 2
+        radius: Appearance.rounding.small
+        color: copy.containsMouse ? Appearance.colour.fillStrong : Appearance.colour.fill
+
+        StyledText {
+            id: command
+
+            anchors.centerIn: parent
+            width: Math.min(implicitWidth, parent.width - Appearance.padding.normal * 2)
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+            text: Network.managerStart
+        }
+
+        MouseArea {
+            id: copy
+
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                System.copyText(Network.managerStart);
+                SettingsView.drop("command copied", "content_copy");
+            }
+        }
+    }
+
+    StyledText {
+        width: parent.width
+        visible: Network.managerStart !== ""
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WordWrap
+        text: "click to copy, then run it in a terminal"
         color: Appearance.colour.textFaint
     }
 }

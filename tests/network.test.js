@@ -71,6 +71,7 @@ test.describe("hotspot", () => {
 
     test("the blocker says why it cannot start, in order", () => {
         assert.strictEqual(Hotspot.blocker(ready), "");
+        assert.strictEqual(Hotspot.blocker({ ...ready, managed: false, hasDevice: false }), "needs NetworkManager");
         assert.strictEqual(Hotspot.blocker({ ...ready, hasDevice: false }), "no wi-fi adapter");
         assert.strictEqual(Hotspot.blocker({ ...ready, accessPoint: false }), "this adapter cannot host a hotspot");
         assert.strictEqual(Hotspot.blocker({ ...ready, radioOn: false }), "turn wi-fi on first");

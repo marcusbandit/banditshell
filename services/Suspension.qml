@@ -17,7 +17,7 @@ Singleton {
             return;
         }
         const command = Logic.commandFor(chosen);
-        if (command.length === 0)
+        if (command.length === 0 || SessionControl.lacksLogind(chosen === "hibernate" ? "Hibernate" : "Suspend"))
             return;
         sleeper.command = command;
         sleeper.running = true;

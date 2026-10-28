@@ -127,7 +127,7 @@ and `banditshell update` takes it to each new one. To follow every merge to
 mkdir -p ~/.local/state/banditshell && echo main > ~/.local/state/banditshell/keep-channel && banditshell config set updates.channel main
 ```
 
-The first start links the command into `~/bin/banditshell`. To bring the shell
+`install.sh` links the command into `~/bin/banditshell`. To bring the shell
 up with Hyprland, add it to your config:
 
 ```ini

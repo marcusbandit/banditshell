@@ -21,7 +21,7 @@ Singleton {
 
     readonly property bool present: Logic.hasLid(root.sensed, Monitors.outputs)
 
-    readonly property bool takesOver: root.present && Logic.differsFromLogind(root.actions)
+    readonly property bool takesOver: root.present && SessionControl.logind && Logic.differsFromLogind(root.actions)
 
     readonly property var actions: ({
             onBattery: Config.values.power.lid.onBattery,
