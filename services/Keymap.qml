@@ -18,6 +18,7 @@ Singleton {
 
     readonly property var codes: Logic.codes(root.layouts, root.variants)
     readonly property string layout: root.codes[root.index] ?? ""
+    readonly property string tag: Logic.codes(root.layouts, root.variants, "")[root.index] ?? ""
     readonly property bool shared: Logic.shared(root.layouts, root.index)
     readonly property bool several: root.layouts.length > 1
 

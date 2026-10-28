@@ -8,6 +8,7 @@ import "ranking.js" as Ranking
 import "clipboard-sweep.js" as Sweep
 import "clipboard-shelf.js" as Shelf
 import "clipboard-secret.js" as Secret
+import "clipboard-age.js" as Age
 
 Singleton {
     id: root
@@ -25,6 +26,9 @@ Singleton {
     property bool loaded: false
 
     property bool keep: true
+
+    property var recovery: null
+    property int salvaged: 0
 
     property bool reaped: false
 
@@ -188,27 +192,7 @@ Singleton {
     }
 
     function age(recorded: real): string {
-        if (!recorded)
-            return "some time ago";
-
-        const secs = Math.max(0, (Date.now() - recorded) / 1000);
-        if (secs < 45)
-            return "just now";
-
-        const mins = secs / 60;
-        if (mins < 60)
-            return `${Math.round(mins)}m ago`;
-
-        const hours = mins / 60;
-        if (hours < 24)
-            return `${Math.round(hours)}h ago`;
-
-        const days = hours / 24;
-        if (days < 7)
-            return Math.round(days) === 1 ? "yesterday" : `${Math.round(days)}d ago`;
-
-        const weeks = days / 7;
-        return weeks < 5 ? `${Math.round(weeks)}w ago` : `${Math.round(days / 30)}mo ago`;
+        return Age.age(recorded, Date.now());
     }
 
     function identity(e: var): string {
@@ -431,7 +415,7 @@ Singleton {
         if (root.current === entry.id)
             root.current = "";
         root.save();
-        root.sweep();
+        root.sweep(false);
     }
 
     function clear(): void {
@@ -485,7 +469,15 @@ Singleton {
         if (!root.shelf)
             return;
         root.shelf = null;
-        root.sweep();
+        root.recovery = null;
+        root.sweep(true);
+    }
+
+    function recoverySeen(): void {
+        if (!root.recovery)
+            return;
+        root.recovery = null;
+        root.save();
     }
 
     Timer {
@@ -500,7 +492,11 @@ Singleton {
         }
     }
 
-    function sweep(): void {
+    property bool purgeOwed: false
+
+    function sweep(purge: bool): void {
+        if (purge === true)
+            root.purgeOwed = true;
 
         if (reaper.running) {
             root.sweepOwed = true;
@@ -508,9 +504,10 @@ Singleton {
         }
         root.sweepOwed = false;
 
-        const command = Sweep.command(root.blobs, root.path, root.shelf ? root.entries.concat(root.shelf.entries) : root.entries, root.keep && root.loaded);
+        const command = Sweep.command(root.blobs, root.path, root.shelf ? root.entries.concat(root.shelf.entries) : root.entries, root.keep && root.loaded, root.purgeOwed);
         if (!command)
             return;
+        root.purgeOwed = false;
         reaper.command = command;
         reaper.running = true;
     }
@@ -635,7 +632,7 @@ Singleton {
         id: reaper
 
         onExited: if (root.sweepOwed)
-            root.sweep()
+            root.sweep(false)
     }
 
     Process {
@@ -652,6 +649,9 @@ Singleton {
                 return;
             }
             root.keep = true;
+            root.recovery = {
+                kept: root.salvaged
+            };
             root.write();
         }
     }
@@ -698,12 +698,17 @@ Singleton {
             try {
                 const data = raw.trim() === "" && !root.loaded ? {} : JSON.parse(raw);
                 disk = Array.isArray(data?.entries) ? data.entries : [];
+                if (!root.loaded)
+                    root.recovery = data?.recovered?.kept >= 0 ? {
+                        kept: data.recovered.kept
+                    } : null;
             } catch (err) {
 
                 if (root.loaded)
                     return;
 
                 disk = Shelf.salvage(raw);
+                root.salvaged = root.readable(disk.slice()).length;
                 console.warn(`Clipboard: ${root.path} is not valid JSON; keeping a copy of it and going on with the ${disk.length} entries it still holds.`, err);
                 root.keep = false;
                 backup.command = Shelf.backupCommand(root.path, new Date());
@@ -723,7 +728,7 @@ Singleton {
             if (Config.values.clipboard.importClipse)
                 clipse.reload();
             else if (root.keep)
-                root.sweep();
+                root.sweep(false);
         }
 
         onLoadFailed: err => {
@@ -784,10 +789,12 @@ Singleton {
         saveDelay.stop();
         if (!root.keep || !root.loaded)
             return;
-        const text = JSON.stringify({
+        const text = JSON.stringify(Object.assign({
             version: 1,
             entries: root.entries
-        });
+        }, root.recovery ? {
+            recovered: root.recovery
+        } : {}));
         if (text === root.lastWritten)
             return;
         root.lastWritten = text;

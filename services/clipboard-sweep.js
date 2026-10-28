@@ -1,7 +1,8 @@
 .pragma library
 
 var SCRIPT = [
-    'dir=$1; history=$2; shift 2',
+    'dir=$1; history=$2; purge=$3; shift 3',
+    'if [ "$purge" = 1 ]; then rm -f -- "$history".damaged-*; fi',
     '[ -d "$dir" ] || exit 0',
     'keep=$(mktemp) || exit 0',
     "printf '%s\\n' \"$@\" > \"$keep\"",
@@ -34,8 +35,8 @@ function wanted(entries) {
     return out;
 }
 
-function command(blobs, history, entries, readable) {
+function command(blobs, history, entries, readable, purge) {
     if (!readable || !blobs || !history)
         return null;
-    return ["sh", "-c", SCRIPT, "sh", blobs, history].concat(wanted(entries));
+    return ["sh", "-c", SCRIPT, "sh", blobs, history, purge ? "1" : "0"].concat(wanted(entries));
 }

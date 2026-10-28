@@ -24,6 +24,6 @@ function outcome(typed) {
     if (typed === false)
         return "Nothing typed";
     if (typed === true)
-        return "Partly typed";
+        return "First words stay in the app";
     return "Discarded";
 }

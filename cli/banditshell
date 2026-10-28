@@ -143,7 +143,7 @@
 #                                change what it shows; a detail of - clears it
 #   banditshell island end <id> [done|failed|cancelled] [--text <text>]
 #                                finish it: its mark stays for a moment, then it goes;
-#                                the row says --text, or Done, Failed or Cancelled
+#                                the row says --text, or its text and how it ended
 #   banditshell island list      every activity and where it stands
 #
 # tablet                         tablet mode, the lid and the pen's area

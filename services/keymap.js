@@ -43,7 +43,8 @@ function shared(layouts, index) {
     }).length > 1;
 }
 
-function codes(layouts, variants) {
+function codes(layouts, variants, joiner) {
+    var join = joiner === undefined ? "-" : joiner;
     return layouts.map(function (layout, i) {
         var code = String(layout).toUpperCase();
         var variant = String(variants[i] || "");
@@ -57,8 +58,8 @@ function codes(layouts, variants) {
             if (!others.some(function (o) {
                 return o.slice(0, n) === tag;
             }))
-                return code + "-" + tag.toUpperCase();
+                return code + join + tag.toUpperCase();
         }
-        return code + "-" + variant.toUpperCase();
+        return code + join + variant.toUpperCase();
     });
 }

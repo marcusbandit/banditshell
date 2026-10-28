@@ -32,7 +32,7 @@ test.describe("dictation events", () => {
 
     test.it("says Nothing typed only when the daemon says nothing was", () => {
         assert.strictEqual(Events.outcome(Events.read(cancelled).typed), "Nothing typed");
-        assert.strictEqual(Events.outcome(Events.read(streamed).typed), "Partly typed");
+        assert.strictEqual(Events.outcome(Events.read(streamed).typed), "First words stay in the app");
         assert.strictEqual(Events.outcome(Events.read('{"phase": "idle", "cancelled": true}').typed), "Discarded");
     });
 

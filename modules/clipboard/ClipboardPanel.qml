@@ -87,6 +87,8 @@ Item {
 
     readonly property bool undoing: !root.speech && !root.searching && Clipboard.shelved > 0
 
+    readonly property bool telling: !root.speech && !root.searching && !!Clipboard.recovery
+
     readonly property string cleared: {
         const gone = `${Clipboard.shelved} cleared`;
         if (!Clipboard.clearSaves)
@@ -116,6 +118,8 @@ Item {
         if (!root.shown)
             return;
         root.shown = false;
+        if (root.telling)
+            Clipboard.recoverySeen();
         root.reading = null;
         root.clearing = false;
         Clipboard.releaseShelf(root);
@@ -733,12 +737,39 @@ Item {
                         width: parent.width - Appearance.padding.large * 2
                     }
 
+                    Row {
+                        id: recovered
+
+                        anchors.top: rule.bottom
+                        anchors.topMargin: root.telling ? Appearance.padding.normal : 0
+                        x: Appearance.padding.large + Appearance.padding.normal
+                        width: parent.width - x * 2
+                        height: root.telling ? implicitHeight : 0
+                        visible: root.telling
+                        spacing: Appearance.padding.normal
+
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: "history"
+                            size: Appearance.font.iconSize
+                            color: Appearance.colour.textFaint
+                        }
+
+                        StyledText {
+                            width: parent.width - Appearance.font.iconSize - parent.spacing
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: `The history file was damaged. ${root.items(Clipboard.recovery?.kept ?? 0)} kept, and a copy of the damaged file is beside it.`
+                            color: Appearance.colour.textDim
+                            wrapMode: Text.Wrap
+                        }
+                    }
+
                     GlideList {
                         id: list
 
                         readonly property real pitch: Appearance.sizes.rowHeight + Appearance.padding.small
 
-                        anchors.top: rule.bottom
+                        anchors.top: recovered.bottom
                         anchors.topMargin: Appearance.padding.normal
                         x: Appearance.padding.large
                         width: parent.width - Appearance.padding.large * 2

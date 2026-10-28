@@ -180,17 +180,17 @@ test.describe("end", () => {
         assert.ok(A.end(list, "missing", "done", NOW).error);
     });
 
-    test.it("says how it ended instead of what it was doing", () => {
+    test.it("names what ended and how", () => {
         const list = filled({ id: "a", text: "Building", detail: "banditshell" });
-        assert.strictEqual(A.end(list, "a", "done", NOW).entry.text, "Done");
-        assert.strictEqual(A.end(list, "a", "failed", NOW).entry.text, "Failed");
-        assert.strictEqual(A.end(list, "a", "cancelled", NOW).entry.text, "Cancelled");
+        assert.strictEqual(A.end(list, "a", "done", NOW).entry.text, "Building finished");
+        assert.strictEqual(A.end(list, "a", "failed", NOW).entry.text, "Building failed");
+        assert.strictEqual(A.end(list, "a", "cancelled", NOW).entry.text, "Building cancelled");
         assert.strictEqual(A.end(list, "a", "done", NOW).entry.detail, "banditshell");
     });
 
     test.it("takes the poster's own final words when given", () => {
         const list = filled({ id: "a", text: "Building" });
-        assert.strictEqual(A.end(list, "a", "done", NOW, undefined, "  Built  ").entry.text, "Built");
+        assert.strictEqual(A.end(list, "a", "done", NOW, undefined, "  Build done  ").entry.text, "Build done");
         assert.ok(A.end(list, "a", "done", NOW, undefined, "x".repeat(121)).error);
     });
 
@@ -253,7 +253,7 @@ test.describe("itemOf and listLine", () => {
         const list = filled({ id: "build", text: "Building", progress: 0.4, until: "30s" });
         assert.strictEqual(A.listLine(list[0], NOW + 10000), "build\trunning\t40%\tBuilding\t20s left");
         const done = A.end(list, "build", "done", NOW).list[0];
-        assert.strictEqual(A.listLine(done, NOW), "build\tdone\t100%\tDone");
+        assert.strictEqual(A.listLine(done, NOW), "build\tdone\t100%\tBuilding finished");
     });
 });
 

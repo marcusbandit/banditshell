@@ -1,7 +1,7 @@
 .pragma library
 
 var HINT = "x-kde-passwordManagerHint";
-var MASK = "••••••••••••";
+var MASK = "••••••••";
 var KEY_BLOCK = /^-----BEGIN [A-Z0-9 ]*PRIVATE KEY( BLOCK)?-----/;
 var TOKEN = /^(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,}|glpat-[\w-]{20,}|sk-[\w-]{20,}|sk_(live|test)_\w{16,}|xox[abprs]-[\w-]{10,}|AKIA[0-9A-Z]{16}|AIza[\w-]{30,}|eyJ[\w-]+\.eyJ[\w-]+\.[\w-]+)$/;
 var ADDRESS = /^[a-z][a-z0-9+.-]*:\/\/|^[~\/.]|^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i;

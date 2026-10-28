@@ -6,7 +6,7 @@ const DETAIL_MAX = 200;
 const ENDING_MS = 10000;
 const LEVEL_MS = 1000;
 const OUTCOMES = ["done", "failed", "cancelled"];
-const OUTCOME_WORDS = { done: "Done", failed: "Failed", cancelled: "Cancelled" };
+const OUTCOME_WORDS = { done: "finished", failed: "failed", cancelled: "cancelled" };
 const KINDS = ["external", "privacy"];
 const STYLES = ["", "screenshot", "copied", "bluetooth", "wifi", "undo", "privacy"];
 const ACTIONS_MAX = 4;
@@ -217,7 +217,7 @@ function end(list, id, outcome, now, lingerMs, text) {
         return { list: list, error: said.error };
     const stay = lingerMs === undefined || lingerMs === null ? LINGER_MS : lingerMs;
     const next = Object.assign({}, before, {
-        text: said.value || OUTCOME_WORDS[named],
+        text: said.value || `${before.text} ${OUTCOME_WORDS[named]}`,
         state: "ended",
         outcome: named,
         progress: named === "done" ? 1 : before.progress,

@@ -331,7 +331,7 @@ Item {
                 parts.push(missing === (root.entry.paths ?? []).length ? "gone" : `${missing} gone`);
         }
         parts.push(Clipboard.age(root.entry.recorded));
-        return parts.join("  ·  ");
+        return parts.filter(p => p).join("  ·  ");
     }
 
     readonly property color swatch: {

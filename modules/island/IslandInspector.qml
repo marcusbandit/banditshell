@@ -219,7 +219,7 @@ Scope {
                 detail: "412 files",
                 icon: "hardware",
                 outcome: "done",
-                endText: "Built"
+                endText: "Build done"
             },
             broke: {
                 id: "mock-broke",

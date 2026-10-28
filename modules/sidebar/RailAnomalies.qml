@@ -44,7 +44,7 @@ Item {
         update: Update.state,
         updateMode: Config.values.sidebar.update,
         diverged: Update.diverged,
-        layout: Keymap.several ? Keymap.layout : "",
+        layout: Keymap.several ? Keymap.tag : "",
         layoutAway: Keymap.index > 0,
         layoutName: Keymap.name
     })
@@ -197,7 +197,7 @@ Item {
                         id: code
 
                         anchors.centerIn: parent
-                        width: Math.min(implicitWidth, chip.width - Appearance.padding.hair * 2)
+                        width: Math.min(implicitWidth, chip.width - Appearance.padding.small)
                         verticalAlignment: Text.AlignVCenter
                         horizontalAlignment: Text.AlignHCenter
                         fontSizeMode: Text.HorizontalFit

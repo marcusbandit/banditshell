@@ -30,6 +30,7 @@ test.describe("keyboard layout codes", () => {
         assert.deepStrictEqual(Keymap.codes(["us", "us", "dk"], ["dvorak", "intl", ""]), ["US-D", "US-I", "DK"]);
         assert.deepStrictEqual(Keymap.codes(["us", "us"], ["intl", "altgr-intl"]), ["US-I", "US-A"]);
         assert.deepStrictEqual(Keymap.codes(["de", "de"], ["nodeadkeys", "neo"]), ["DE-NO", "DE-NE"]);
+        assert.deepStrictEqual(Keymap.codes(main.layouts, main.variants, ""), ["US", "USI"]);
     });
 
     test.it("keeps variants in step with layouts when a layout is left empty", () => {

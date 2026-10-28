@@ -92,11 +92,11 @@ ShellRoot {
         {
             name: "the build is done and the sync failed: each says so, with its mark",
             run: () => {
-                Activities.end("build", "done", undefined, "Built");
+                Activities.end("build", "done", undefined, "Build done");
                 Activities.end("sync", "failed", undefined, "");
             },
             expect: "2 activities",
-            holds: () => Activities.entries.find(e => e.id === "build")?.text === "Built" && Activities.entries.find(e => e.id === "sync")?.text === "Failed"
+            holds: () => Activities.entries.find(e => e.id === "build")?.text === "Build done" && Activities.entries.find(e => e.id === "sync")?.text === "Syncing photos failed"
         },
         {
             name: "the marks go and so do the rows",
@@ -245,7 +245,7 @@ ShellRoot {
             expect: "hidden"
         },
         {
-            name: "streaming, some words already typed, then discard: Partly typed",
+            name: "streaming, some words already typed, then discard: the first words stay",
             run: () => {
                 preview.speak("listening");
                 Dictation.phase = "idle";
@@ -254,7 +254,7 @@ ShellRoot {
             },
             wait: 1400,
             expect: "dictation",
-            holds: () => island.rowOfKind("dictation")?.look.text === "Partly typed"
+            holds: () => island.rowOfKind("dictation")?.look.text === "First words stay in the app"
         },
         {
             name: "and that leaves too",
@@ -282,7 +282,7 @@ ShellRoot {
             },
             wait: 100,
             expect: "hidden",
-            holds: () => !["Nothing typed", "Partly typed", "Discarded"].includes(island.rowOfKind("dictation")?.look.text)
+            holds: () => !["Nothing typed", "First words stay in the app", "Discarded"].includes(island.rowOfKind("dictation")?.look.text)
         },
         {
             name: "and it is gone",

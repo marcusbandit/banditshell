@@ -12,7 +12,12 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A damaged clipboard history loads what it can and keeps a copy"
+          "text": "A damaged clipboard history loads what it can and says so once"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clear history also removes the copy of a damaged history"
         },
         {
           "type": "issues",
@@ -22,12 +27,12 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A discarded dictation shows a bin, not a muted mic"
+          "text": "A discarded dictation says whether its first words were typed"
         },
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A finished island task says Done or Failed, not what it was doing"
+          "text": "A finished island task names what finished and how it ended"
         },
         {
           "type": "features",
@@ -37,7 +42,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Two layouts with one code show apart, such as US and US-I"
+          "text": "Two layouts with one code show apart, such as US and USI"
         }
       ]
     },
