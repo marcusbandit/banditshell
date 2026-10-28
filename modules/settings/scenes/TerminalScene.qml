@@ -42,9 +42,11 @@ Item {
 
     Timer {
         interval: 500
-        running: !SettingsView.reduceMotion
+        running: clock.moving
         repeat: true
         onTriggered: root.blink = !root.blink
+        onRunningChanged: if (!running)
+            root.blink = true
     }
 
     function span(colour: color, text: string): string {

@@ -129,6 +129,7 @@ Singleton {
         root.fetching = fetch;
         watchdog.restart();
 
+        Config.flush();
         checker.command = fetch ? ["bash", root.cli, "update", "check", "--json"] : ["bash", root.cli, "update", "check", "--json", "--no-fetch"];
         checker.running = true;
     }
@@ -193,6 +194,7 @@ Singleton {
         watchdog.restart();
         silence.restart();
 
+        Config.flush();
         Quickshell.execDetached(["bash", root.cli, "update", "apply", "--detach", "--to", sha]);
     }
 
@@ -210,6 +212,7 @@ Singleton {
         watchdog.restart();
         silence.restart();
 
+        Config.flush();
         Quickshell.execDetached(["bash", root.cli, "update", "rollback", "--detach"]);
     }
 
@@ -222,6 +225,7 @@ Singleton {
     }
 
     function restart(): void {
+        Config.flush();
         Quickshell.execDetached(["setsid", "bash", root.cli, "restart"]);
     }
 

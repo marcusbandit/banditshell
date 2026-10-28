@@ -980,6 +980,9 @@ stop_shell() {
         say_dry "stop the running shell (${pids[*]})"
         return 0
     fi
+    for pid in "${pids[@]}"; do
+        (cd "$HOME" && timeout 2 qs ipc --pid "$pid" call shell flush) >/dev/null 2>&1 || true
+    done
     kill "${pids[@]}" 2>/dev/null || true
     while [ "$tries" -lt 40 ]; do
         alive=0

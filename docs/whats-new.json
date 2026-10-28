@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28",
+      "id": "2026-10-28-3",
       "date": "2026-10-28",
       "changes": [
         {
@@ -18,6 +18,48 @@
           "type": "issues",
           "severity": "minor",
           "text": "A menu opened again shows its content at once, with no pop-in"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-2",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings pages you have just visited open again at once"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings pages open faster the first time too"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Dragging a Settings slider no longer stutters"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Settings previews play twice, then rest until you point at them"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The installer stops waiting when its password window closes"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "On Omarchy, the installer can add the island plugin for you"
         }
       ]
     },
