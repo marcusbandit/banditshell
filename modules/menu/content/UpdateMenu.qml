@@ -30,7 +30,9 @@ Column {
     readonly property bool leaving: root.goBackConfirm && Update.canGoBack
 
     readonly property var listed: root.leaving ? Update.notes : root.card
-    readonly property var shortList: WhatsNew.shortList(root.listed)
+    readonly property var unread: root.leaving || root.cardKind === "incoming" ? [] : WhatsNew.pending
+    readonly property int unreadCount: WhatsNew.unreadCount(root.listed, root.unread)
+    readonly property var shortList: WhatsNew.shortList(root.listed, root.unread)
     readonly property string listTitle: {
         if (root.leaving)
             return "What you leave behind";
@@ -39,7 +41,7 @@ Column {
         return "What changed";
     }
 
-    readonly property var sections: root.shortList.length > 0 ? [] : WhatsNew.sections(root.listed)
+    readonly property var sections: root.shortList.length > 0 ? [] : WhatsNew.sections(root.listed, root.unread)
     readonly property var linesBefore: {
         const out = [];
         let seen = 0;
@@ -352,10 +354,65 @@ Column {
         visible: root.listed.length > 0 && (root.leaving || !root.asking || root.reinstallAsking)
         spacing: Appearance.padding.small
 
-        StyledText {
+        Item {
             width: parent.width
-            text: root.listTitle
-            color: Appearance.colour.textDim
+            height: Math.max(listTitle.implicitHeight, markRead.visible ? markRead.implicitHeight : 0)
+
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: Appearance.padding.small
+
+                StyledText {
+                    id: listTitle
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.listTitle
+                    color: Appearance.colour.textDim
+                }
+
+                SquircleRect {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.unreadCount > 0
+                    width: newCount.implicitWidth + newDot.width + Appearance.padding.small * 3
+                    height: Appearance.font.line.small
+                    pill: "object"
+                    color: Appearance.withAlpha(Appearance.colour.accent, 0.14)
+
+                    SquircleRect {
+                        id: newDot
+
+                        x: Appearance.padding.small
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Math.max(6, Math.round(Appearance.font.size.small / 2.5))
+                        height: width
+                        pill: "object"
+                        color: Appearance.colour.accent
+                    }
+
+                    StyledText {
+                        id: newCount
+
+                        x: newDot.x + newDot.width + Appearance.padding.small
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: `${root.unreadCount} new`
+                        color: Appearance.blend(Appearance.colour.text, Appearance.colour.accent, 0.55)
+                    }
+                }
+            }
+
+            Button {
+                id: markRead
+
+                anchors.right: parent.right
+                anchors.rightMargin: -markRead.padX
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !root.asking && root.unreadCount > 0
+                text: "Mark as read"
+                icon: "done_all"
+                style: "bare"
+
+                onClicked: WhatsNew.markSeen(WhatsNew.pending[0].id)
+            }
         }
 
         TextMetrics {
@@ -380,8 +437,18 @@ Column {
                 height: Math.max(tagChip.height, taggedText.height)
 
                 SquircleRect {
+                    visible: tagged.modelData.unread === true
+                    y: Math.round((Appearance.font.line.small - height) / 2)
+                    width: Math.max(6, Math.round(Appearance.font.size.small / 2.5))
+                    height: width
+                    pill: "object"
+                    color: Appearance.colour.accent
+                }
+
+                SquircleRect {
                     id: tagChip
 
+                    x: root.unreadCount > 0 ? Math.max(6, Math.round(Appearance.font.size.small / 2.5)) + Appearance.padding.small : 0
                     width: Math.ceil(tagWidth.advanceWidth) + Appearance.padding.small * 2
                     height: Appearance.font.line.small
                     pill: "object"
@@ -397,7 +464,7 @@ Column {
                 StyledText {
                     id: taggedText
 
-                    x: tagChip.width + Appearance.padding.small
+                    x: tagChip.x + tagChip.width + Appearance.padding.small
                     width: tagged.width - x
                     text: tagged.modelData.text
                     color: Appearance.colour.text
@@ -532,15 +599,9 @@ Column {
     StyledText {
         width: parent.width
         visible: Update.ahead > 0 && !Update.diverged
-        text: `${Update.ahead} commit${Update.ahead === 1 ? " here is" : "s here are"} not on GitHub yet`
+        text: Update.aheadText
         color: Appearance.colour.textFaint
         wrapMode: Text.WordWrap
-    }
-
-    Button {
-        visible: !root.asking && root.cardKind !== "incoming" && WhatsNew.pending.length > 0
-        text: "Mark as read"
-        onClicked: WhatsNew.markSeen(WhatsNew.pending[0].id)
     }
 
     Button {

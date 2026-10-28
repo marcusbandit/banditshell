@@ -33,6 +33,19 @@ function waitingHeadline(targetVersion) {
     return targetVersion ? `${targetVersion} is ready` : "A new version is ready";
 }
 
+function ownChanges(count) {
+    const n = Math.max(1, Number(count) || 0);
+    return n === 1 ? "1 change of your own" : `${n} changes of your own`;
+}
+
+function divergedHeadline(targetVersion, ahead) {
+    return `${waitingHeadline(targetVersion)}, but this copy has ${ownChanges(ahead)}`;
+}
+
+function aheadText(ahead) {
+    return `${ownChanges(ahead)} ${Number(ahead) === 1 ? "is" : "are"} not on GitHub yet`;
+}
+
 function report(text) {
     const got = { failed: false, output: [], values: {} };
     for (const line of String(text ?? "").split("\n")) {
@@ -170,6 +183,45 @@ function addedSteps(beforeText, afterText) {
     return stepNames(afterText).filter(name => before.indexOf(name) < 0);
 }
 
+function stepProbes(text) {
+    const probes = {};
+    const pattern = /^ {4}add_step[ \t]+([A-Za-z0-9_.@+-]+)[ \t]+"([^"\\$`]*)"/gm;
+    const source = String(text ?? "");
+    let hit = pattern.exec(source);
+    while (hit !== null) {
+        probes[hit[1]] = hit[2];
+        hit = pattern.exec(source);
+    }
+    return probes;
+}
+
+function plainProbe(probe) {
+    const parts = String(probe ?? "").trim().split(/\s+(&&|\|\|)\s+/);
+    const names = [];
+    const ops = [];
+    for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 1) {
+            ops.push(parts[i]);
+            continue;
+        }
+        const hit = /^command -v ([A-Za-z0-9_.+-]+)$/.exec(parts[i]);
+        if (!hit)
+            return null;
+        names.push(hit[1]);
+    }
+    if (ops.some(op => op !== ops[0]))
+        return null;
+    return { any: ops[0] === "||", names: names };
+}
+
+function presentSteps(beforeText, afterText, has) {
+    const probes = stepProbes(afterText);
+    return addedSteps(beforeText, afterText).filter(name => {
+        const plain = plainProbe(probes[name]);
+        return plain !== null && (plain.any ? plain.names.some(has) : plain.names.every(has));
+    });
+}
+
 function strings(list) {
     return Array.isArray(list) ? list.filter(s => typeof s === "string" && s.trim()).map(s => s.trim()) : [];
 }
@@ -253,6 +305,7 @@ function classify(input) {
     const restart = reasons.length > 0;
     const apiRemoved = removedActions(given.actionsBefore, given.actionsAfter);
     const untracked = lines(given.untracked);
+    const present = Array.isArray(given.present) ? given.present : [];
 
     return {
         files: files.length,
@@ -266,7 +319,7 @@ function classify(input) {
         apiRemoved: apiRemoved,
         helpers: paths.some(p => /^src\/.*\.(c|h)$/.test(p)),
         shaders: paths.some(p => /\.(frag|vert)$/.test(p)),
-        deps: unique(addedSteps(given.installBefore, given.installAfter).concat(...noted.map(i => i.deps))),
+        deps: unique(addedSteps(given.installBefore, given.installAfter).filter(name => present.indexOf(name) < 0).concat(...noted.map(i => i.deps))),
         binds: unique([].concat(...noted.map(i => i.binds))),
         config: paths.indexOf("config/Config.qml") >= 0,
         dirty: lines(given.dirty).filter(p => paths.indexOf(p) >= 0),
@@ -390,7 +443,7 @@ function lineValues(lines) {
     return values;
 }
 
-function assess(facts) {
+function assess(facts, has) {
     const meta = lineValues(facts.meta);
     const entries = incomingEntries(facts.whatsnewBefore, facts.whatsnewAfter);
     const c = classify({
@@ -401,6 +454,7 @@ function assess(facts) {
         actionsAfter: facts.actionsAfter,
         installBefore: facts.installBefore,
         installAfter: facts.installAfter,
+        present: typeof has === "function" ? presentSteps(facts.installBefore, facts.installAfter, has) : [],
         entries: entries,
         commits: Number(meta.behind) || 0
     });
@@ -471,10 +525,23 @@ function linesOf(report) {
     ].join("\n");
 }
 
+function onPath(path) {
+    const fs = require("node:fs");
+    const dirs = String(path ?? "").split(":").filter(dir => dir.startsWith("/"));
+    return name => dirs.some(dir => {
+        try {
+            fs.accessSync(`${dir}/${name}`, fs.constants.X_OK);
+            return fs.statSync(`${dir}/${name}`).isFile();
+        } catch (e) {
+            return false;
+        }
+    });
+}
+
 function main(argv) {
     const mode = argv[0];
     if (mode === "report") {
-        const report = assess(readFacts(argv[1]));
+        const report = assess(readFacts(argv[1]), onPath(process.env.PATH));
         const form = argv[2] ?? "--json";
         if (form === "--lines")
             process.stdout.write(linesOf(report) + "\n");

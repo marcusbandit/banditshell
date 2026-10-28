@@ -53,12 +53,16 @@ Singleton {
         root.keep(id);
     }
 
-    function sections(entries: var): var {
-        return WhatsNewLog.sections(entries);
+    function sections(entries: var, unread: var): var {
+        return WhatsNewLog.sections(entries, unread);
     }
 
-    function shortList(entries: var): var {
-        return WhatsNewLog.shortList(entries);
+    function shortList(entries: var, unread: var): var {
+        return WhatsNewLog.shortList(entries, unread);
+    }
+
+    function unreadCount(entries: var, unread: var): int {
+        return WhatsNewLog.unreadCount(entries, unread);
     }
 
     FileView {

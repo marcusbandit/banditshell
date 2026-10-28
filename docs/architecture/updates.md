@@ -22,7 +22,9 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    `api/actions.tsv`, `install.sh` and `docs/whats-new.json` from both sides) and
    `node services/update.js report` reads it into a class: restart or reload, commands changed,
    removed command ids, helpers to rebuild, new install steps, edits in the way, files in the
-   way, and the incoming what's-new entries. Exit 0 means nothing to do, 10 means a version is
+   way, and the incoming what's-new entries. A new install step whose check is a plain
+   `command -v` chain is looked up on `PATH` and left out when this machine passes it; any other
+   check waits for the apply, because the check never runs code it fetched. Exit 0 means nothing to do, 10 means a version is
    waiting, 1 means an error. `Update.qml` repeats this every `updates.interval` minutes and
    remembers the last fetch in `update.json`, so it does not fetch more than every 30 minutes.
 2. **Stage.** `banditshell update apply [--to <sha>] [--detach] [--json]`. The menu passes the sha
@@ -36,7 +38,9 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    here that the update also touches are set aside with `git stash` under a fixed identity and the
    names go into `update/aside`; edits the update does not touch ride along. Then
    `git merge --ff-only`. Helpers are copied from the staged tree, `bin/` is ensured and
-   completions are refreshed.
+   completions are refreshed. The new install steps are then run through the merged
+   `install.sh`'s own checks, and only the ones that fail here are named in
+   "this version needs ...; run install.sh" (#339).
 5. **Health.** If the class says restart, the shell is stopped and launched again. Otherwise the
    running shell is left to reload by itself, because Quickshell watches its files. In both cases
    the CLI waits for `shell status` to answer over IPC and then scans the log for
@@ -46,7 +50,11 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    refreshed with rsync, or `cp -a` if rsync is missing, and `update/result.json` records `ok`.
    A hot reload can fail where a cold start of the same tree works. An inline component added to
    a file the running shell already loaded is one way. So when a reload fails its check, the
-   shell is restarted once on the new version and that start is checked the same way.
+   shell is restarted once on the new version and that start is checked the same way. A reload
+   that makes the checkout's shell exit counts as a failed one: the instance is looked up before
+   the merge, and when it is gone after it with no other shell in its place, the same restart and
+   check follow. A shell run from the last known good copy or a tried worktree was never the
+   checkout's, so it is left alone (#307).
 6. **Roll back on failure.** If the health check of a start fails, `git reset --keep <previous>` puts the
    checkout back, the commit that failed goes into `update/skip` (it is not offered again until a
    newer one arrives) and the shell is relaunched. If even that launch fails, the last known
@@ -59,7 +67,8 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    under the same rules, and the menu then offers a quiet "Go back to <id>" below the what's-new
    list, asks "Go back to <id>?" as its headline with that list as what is left behind, and runs `rollback --detach`, whose first progress line is `goback`. Only the
    checkout moves: `config.json`, files the newer version wrote elsewhere and stashed edits stay
-   as they are, and the confirm says so (#171). After a go-back the outcome offers
+   as they are, and the confirm says so (#171). `result.json` names the commit it went back to as
+   `from`, which on stable is the release before, not `update/previous` (#328). After a go-back the outcome offers
    "Update to <id> again", asked once, which runs `update apply --detach --to <sha>` on the commit it left. Once an
    applied commit starts, it leaves `update/skip`, and the shell clears `updates.skip` when
    `result.json` names it (#178). A quiet "Tell us why you went back" link takes
@@ -180,7 +189,10 @@ definition. Where it shows:
   undo.
 - The update menu says `You have <release>, on the stable channel`; a waiting update is headed
   `<version> is ready` on every channel, with its what's-new entries under "What changed" above the
-  Update button. Up to date, the same list shows `notes`.
+  Update button. Up to date, the same list shows `notes`. A copy with commits of its own is headed
+  `<version> is ready, but this copy has 1 change of your own` (#338). Lines from entries not
+  read yet carry an accent dot, the list title says how many are new, and Mark as read beside it
+  clears them (#337).
 - Settings > About shows the same version.
 
 `update rollback` on `stable` goes to the release before the one this copy is on, found from the

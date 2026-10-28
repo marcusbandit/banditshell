@@ -1,6 +1,37 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-19",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "An update restarts the shell when its reload makes the shell quit"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Going back on stable names the release you went back to"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Unread lines in the update menu carry a dot; Mark as read clears them"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A copy with changes of its own still names the version that is ready"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Updates no longer ask for install steps your machine already has"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-18",
       "date": "2026-10-28",
       "changes": [

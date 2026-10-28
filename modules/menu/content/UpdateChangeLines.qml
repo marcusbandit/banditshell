@@ -22,6 +22,7 @@ Column {
             text: modelData.text
             hue: root.hue
             major: root.major
+            unread: modelData.unread === true
         }
     }
 }

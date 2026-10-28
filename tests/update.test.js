@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, details, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, reportWords, reportContext, reportScript };")();
+const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, details, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, divergedHeadline, aheadText, plainProbe, presentSteps, reportWords, reportContext, reportScript };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -159,6 +159,42 @@ test("new install steps are the deps, the definition line is not a step", () => 
     const guarded = after + "    if [ \"$PKG_MANAGER\" = apk ]; then\n        add_step gnu-userland x gnu-userland 1 \"x\"\n    fi\n";
     assert.deepStrictEqual(Update.addedSteps(after, guarded), []);
     assert.deepStrictEqual(Update.classify({ nameStatus: status("M\tinstall.sh"), installBefore: before, installAfter: after }).deps, ["fd", "ripgrep"]);
+});
+
+test("a plain command -v probe reads as the commands it needs, anything else is not read", () => {
+    assert.deepStrictEqual(Update.plainProbe("command -v jq"), { any: false, names: ["jq"] });
+    assert.deepStrictEqual(Update.plainProbe("command -v flock && command -v setsid"), { any: false, names: ["flock", "setsid"] });
+    assert.deepStrictEqual(Update.plainProbe("command -v fd || command -v fdfind"), { any: true, names: ["fd", "fdfind"] });
+    assert.strictEqual(Update.plainProbe("home_bin_present"), null);
+    assert.strictEqual(Update.plainProbe("command -v a && command -v b || command -v c"), null);
+    assert.strictEqual(Update.plainProbe("command -v jq; rm -rf ~"), null);
+    assert.strictEqual(Update.plainProbe(""), null);
+});
+
+test("new install steps this machine already passes are left out of the deps", () => {
+    const before = "main() {\n    add_step jq \"command -v jq\" jq 2 \"x\"\n}\n";
+    const after = before.replace(/\}\n$/, [
+        "    add_step fd \"command -v fd || command -v fdfind\" fd 2 \"x\"",
+        "    add_step pair \"command -v flock && command -v setsid\" util-linux 2 \"x\"",
+        "    add_step home-bin \"home_bin_present\" @home-bin 2 \"x\"",
+        "    add_step gone \"command -v gone\" gone 2 \"x\"",
+        "}", ""].join("\n"));
+    const has = name => ["fdfind", "flock", "setsid", "jq"].indexOf(name) >= 0;
+    assert.deepStrictEqual(Update.presentSteps(before, after, has), ["fd", "pair"]);
+    assert.deepStrictEqual(Update.presentSteps(before, after, () => false), []);
+    const c = Update.classify({ nameStatus: status("M\tinstall.sh"), installBefore: before, installAfter: after, present: ["fd", "pair"] });
+    assert.deepStrictEqual(c.deps, ["home-bin", "gone"]);
+    const none = Update.classify({ nameStatus: status("M\tinstall.sh"), installBefore: before, installAfter: after, present: ["fd", "pair", "home-bin", "gone"] });
+    assert.deepStrictEqual(none.deps, []);
+    assert.doesNotMatch(Update.summary(none), /needs/);
+});
+
+test("a copy with changes of its own still names the waiting version", () => {
+    assert.strictEqual(Update.divergedHeadline("v0.2.0", 1), "v0.2.0 is ready, but this copy has 1 change of your own");
+    assert.strictEqual(Update.divergedHeadline("v0.2.0", 3), "v0.2.0 is ready, but this copy has 3 changes of your own");
+    assert.strictEqual(Update.divergedHeadline("", 2), "A new version is ready, but this copy has 2 changes of your own");
+    assert.strictEqual(Update.aheadText(1), "1 change of your own is not on GitHub yet");
+    assert.strictEqual(Update.aheadText(4), "4 changes of your own are not on GitHub yet");
 });
 
 test("edits here that the update also touches are listed, others are not", () => {

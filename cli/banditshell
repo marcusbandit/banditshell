@@ -3640,8 +3640,8 @@ update_label() {
 }
 
 update_result() {
-    local ok="$1" why="$2" hand="${3:-false}" from to aside_items=() line
-    from=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
+    local ok="$1" why="$2" hand="${3:-false}" from="${4:-}" to aside_items=() line
+    [ -n "$from" ] || from=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
     to=$(cat "$UPDATE_STATE/target" 2>/dev/null || true)
     while IFS= read -r line; do
         [ -z "$line" ] || aside_items+=("$line")
@@ -3752,17 +3752,53 @@ update_after_merge() {
     done
 }
 
+update_steps_held() {
+    local scratch
+    [ -f "$U_DIR/install.sh" ] || return 0
+    scratch=$(mktemp -d) || return 0
+    (cd "$HOME" && BANDITSHELL_INSTALL="$U_DIR/install.sh" XDG_RUNTIME_DIR="$scratch" timeout -k 5 30 bash -c '
+        names=("$@")
+        set --
+        source "$BANDITSHELL_INSTALL" >/dev/null 2>&1 </dev/null || exit 0
+        trap - EXIT INT TERM
+        set +u
+        detect_manager >/dev/null 2>&1 </dev/null || true
+        build_table >/dev/null 2>&1 </dev/null || exit 0
+        for name in "${names[@]}"; do
+            for i in "${!STEP_NAME[@]}"; do
+                [ "${STEP_NAME[$i]}" = "$name" ] || continue
+                PROBE_NOTE=""
+                if eval "${STEP_PROBE[$i]}" >/dev/null 2>&1 </dev/null; then
+                    printf "%s\n" "$name"
+                fi
+            done
+        done
+    ' bash "$@" 2>/dev/null) || true
+    rm -rf "$scratch"
+}
+
+update_still_needed() {
+    local name held kept=()
+    [ -n "$A_DEPS" ] || return 0
+    held=$(update_steps_held $A_DEPS)
+    for name in $A_DEPS; do
+        grep -qxF -- "$name" <<<"$held" || kept+=("$name")
+    done
+    A_DEPS="${kept[*]}"
+}
+
 update_log_mark() {
-    local pid
-    if pid=$(instance_of "$U_DIR"); then
-        log_length "$pid" 2>/dev/null || echo 0
+    U_MARK=0
+    U_RAN=""
+    if U_RAN=$(instance_of "$U_DIR"); then
+        U_MARK=$(log_length "$U_RAN" 2>/dev/null) || U_MARK=0
     else
-        echo 0
+        U_RAN=""
     fi
 }
 
 update_apply() {
-    local to="" detach=0 arg line mark=0
+    local to="" detach=0 arg line
     UPDATE_JSON=0
     [ -z "${BANDITSHELL_JSON:-}" ] || UPDATE_JSON=1
     while [ $# -gt 0 ]; do
@@ -3833,21 +3869,22 @@ update_apply() {
     printf '%s\n' "$U_HEAD" >"$UPDATE_STATE/previous"
     printf '%s\n' "$U_TARGET" >"$UPDATE_STATE/target"
     rm -f "$UPDATE_STATE/result.json"
-    mark=$(update_log_mark)
+    update_log_mark
     update_set_aside
     update_merge
     update_after_merge
     rm -rf "$STAGED"
+    update_still_needed
     [ -z "$A_DEPS" ] || U_WARNINGS+=("this version needs $A_DEPS; run bash $U_DIR/install.sh")
     for line in "${U_WARNINGS[@]}"; do
         update_phase warning "$line"
     done
-    update_finish_work "$mark"
+    update_finish_work "$U_MARK" "$U_RAN"
 }
 
 update_finish_work() {
-    local mark="$1" restart="$A_RESTART" pid=""
-    if ! running; then
+    local mark="$1" ran="$2" restart="$A_RESTART" pid=""
+    if [ -z "$ran" ] && ! running; then
         update_conclude "Updated to $(update_label "$(cat "$UPDATE_STATE/target")"). The shell is not running; start it with banditshell start."
         return 0
     fi
@@ -3861,6 +3898,8 @@ update_finish_work() {
             else
                 update_restart "The reload did not take, restarting..." "the reload failed, $HEALTH_WHY. A restart failed as well: " || return 1
             fi
+        elif [ -n "$ran" ] && ! running; then
+            update_restart "The reload did not take, restarting..." "the reload failed, the shell exited. A restart failed as well: " || return 1
         fi
     fi
     update_conclude "Updated to $(update_label "$(cat "$UPDATE_STATE/target")")"
@@ -3910,7 +3949,7 @@ update_roll_back() {
             start_backup || true
         fi
     fi
-    update_result false "$why" "$hand"
+    update_result false "$why" "$hand" "$previous"
     [ "$hand" = true ] || complain "update $(update_label "$target") did not start, back on $(update_label "$previous")"
     update_phase rolledback "Went back to $(update_label "$previous")"
 }

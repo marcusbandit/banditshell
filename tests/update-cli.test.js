@@ -229,12 +229,55 @@ test("check reads dependencies from install.sh and removed commands from api/act
     git(world.live, "pull", "-q", "--ff-only");
     advance(world, "v2", {
         "api/actions.tsv": "# id\tstatus\tsince\targv\tdescription\nold.thing\tremoved\t1\told\tx\n",
-        "install.sh": INSTALL_V1.replace(/\}\n$/, "    add_step fd \"command -v fd\" fd 2 \"find\"\n}\n")
+        "install.sh": INSTALL_V1.replace(/\}\n$/, "    add_step nothing-here \"command -v banditshell-no-such-tool\" nothing 2 \"find\"\n}\n")
     });
     const json = JSON.parse(run(world, ["update", "check", "--json"]).out);
     assert.deepStrictEqual(json.class.apiRemoved, ["old.thing"]);
-    assert.deepStrictEqual(json.class.deps, ["fd"]);
-    assert.match(json.summary, /1 command removed, needs fd/);
+    assert.deepStrictEqual(json.class.deps, ["nothing-here"]);
+    assert.match(json.summary, /1 command removed, needs nothing-here/);
+});
+
+const INSTALL_STEPS = `STEP_NAME=()
+STEP_PROBE=()
+add_step() {
+    STEP_NAME+=("$1")
+    STEP_PROBE+=("$2")
+}
+mine_present() {
+    [ -e "$HOME/mine" ]
+}
+build_table() {
+    add_step jq "command -v jq" jq 2 "json"
+    add_step has-sh "command -v sh" sh 2 "a shell"
+    add_step mine "mine_present" @mine 2 "a file of mine"
+    add_step missing "command -v banditshell-no-such-tool" missing 2 "nothing"
+}
+if [ "\${BASH_SOURCE[0]}" = "$0" ]; then
+    build_table
+fi
+`;
+
+test("an update names only the new install steps this machine does not have yet", () => {
+    const world = makeWorld();
+    startShell(world);
+    write(world.home, "mine", "x\n");
+    const target = advance(world, "steps", { "install.sh": INSTALL_STEPS, "services/Foo.qml": "// foo version two\n" });
+    const check = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.deepStrictEqual(check.class.deps, ["mine", "missing"]);
+    const got = run(world, ["update", "apply", "--json", "--to", target]);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    const warnings = got.out.trim().split("\n").map(l => JSON.parse(l)).filter(l => l.phase === "warning").map(l => l.text);
+    assert.deepStrictEqual(warnings, [`this version needs missing; run bash ${world.live}/install.sh`]);
+});
+
+test("an update whose new install steps all pass here says nothing about install.sh", () => {
+    const world = makeWorld();
+    startShell(world);
+    write(world.home, "mine", "x\n");
+    const target = advance(world, "steps", { "install.sh": INSTALL_STEPS.replace(/ {4}add_step missing .*\n/, ""), "services/Foo.qml": "// foo version two\n" });
+    const got = applyTo(world, target, ["--json"]);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    assert.doesNotMatch(got.out, /install\.sh/);
 });
 
 test("check names edits here that the update touches, and leaves other edits out", () => {
@@ -529,6 +572,11 @@ test("rollback on stable goes to the release before, even with nothing recorded,
     assert.match(back.out, /Went back to v0\.1\.0/);
     assert.strictEqual(liveHead(world), first);
     assert.strictEqual(readState(world, "skip"), second);
+    const result = JSON.parse(readState(world, "result.json"));
+    assert.strictEqual(result.from, first);
+    assert.strictEqual(result.fromLabel, "v0.1.0");
+    assert.strictEqual(result.to, second);
+    assert.strictEqual(result.toLabel, "v0.2.0");
     const after = JSON.parse(run(world, ["update", "check", "--json"]).out);
     assert.strictEqual(after.state, "skipped");
     assert.strictEqual(after.previous, "");
@@ -773,6 +821,37 @@ test("a reload that fails but starts clean on a restart keeps the new version", 
     assert.strictEqual(JSON.parse(readState(world, "result.json")).ok, true);
     assert.strictEqual(fs.existsSync(stateFile(world, "skip")), false);
     assert.ok(fs.existsSync(backupFile(world, "RELOADFAIL")));
+});
+
+test("a reload that makes the checkout's shell exit restarts it on the new version", () => {
+    const world = makeWorld();
+    const pid = startShell(world);
+    const target = advance(world, "exits", { RELOADEXIT: "x\n", "services/Foo.qml": "// foo version two\n" });
+    const got = applyTo(world, target, ["--json"]);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    const phases = got.out.trim().split("\n").map(l => JSON.parse(l).phase);
+    assert.deepStrictEqual(phases, ["stage", "verify", "apply", "health", "restart", "done"]);
+    assert.strictEqual(liveHead(world), target);
+    const now = pids(world);
+    assert.strictEqual(now.length, 1);
+    assert.notStrictEqual(now[0], pid);
+    assert.strictEqual(JSON.parse(readState(world, "result.json")).ok, true);
+});
+
+test("a reload leaves a shell run from a tried worktree alone, even when the checkout's would exit", () => {
+    const world = makeWorld();
+    const tried = path.join(world.root, "tried");
+    write(tried, "shell.qml", "// tried\n");
+    const started = spawnSync(path.join(world.fakebin, "qs"), ["-d", "-p", tried], { env: { ...process.env, FAKE_QS_DIR: world.fakeqs } });
+    assert.strictEqual(started.status, 0);
+    const pid = pids(world)[0];
+    const target = advance(world, "exits", { RELOADEXIT: "x\n", "services/Foo.qml": "// foo version two\n" });
+    const got = applyTo(world, target, ["--json"]);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    const phases = got.out.trim().split("\n").map(l => JSON.parse(l).phase);
+    assert.deepStrictEqual(phases, ["stage", "verify", "apply", "health", "done"]);
+    assert.deepStrictEqual(pids(world), [pid]);
+    assert.strictEqual(liveHead(world), target);
 });
 
 test("errors that were already in the log before a reload are not the update's fault", () => {

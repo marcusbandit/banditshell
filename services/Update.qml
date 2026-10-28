@@ -30,6 +30,7 @@ Singleton {
     property string headBranch: ""
     readonly property bool paused: root.headBranch !== "" && !Words.following(root.headBranch, root.branch)
     readonly property bool diverged: root.behind > 0 && root.ahead > 0
+    readonly property string aheadText: Words.aheadText(root.ahead)
 
     property string error: ""
     property string phaseText: ""
@@ -103,7 +104,7 @@ Singleton {
         if (root.paused)
             return `This copy is on ${root.headBranch === "HEAD" ? "no branch" : root.headBranch}, so it does not follow ${root.branch}`;
         if (root.diverged)
-            return `${root.behind} new on ${root.branch}, but this copy has ${root.ahead} of its own`;
+            return Words.divergedHeadline(root.targetVersion, root.ahead);
         if (root.behind > 0)
             return Words.waitingHeadline(root.targetVersion);
         return "You are up to date";
