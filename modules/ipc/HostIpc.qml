@@ -8,6 +8,8 @@ Scope {
 
     required property var picker
 
+    property alias panels: panelsHandler
+
     readonly property var hidden: ["launcher", "session", "clipboard", "media", "calculator", "keyboard", "settings", "hotkeys", "wallpapers"]
     readonly property var pinned: ["quickControls", "island"]
 
@@ -43,6 +45,8 @@ Scope {
     }
 
     IpcHandler {
+        id: panelsHandler
+
         target: "panels"
 
         function closeAll(): string {

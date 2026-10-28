@@ -322,7 +322,7 @@ Item {
 
     readonly property real headWidth: title.implicitWidth + Appearance.padding.large + controls.implicitWidth
 
-    readonly property real wantWidth: Math.min(root.areaWidth, Math.max(Appearance.sizes.menuWidth, root.headWidth, root.board ? keyboard.naturalPitch * keyboard.totalUnits : root.contentWidth) + Appearance.padding.large * 2)
+    readonly property real wantWidth: Math.min(root.areaWidth, Math.max(Appearance.sizes.menuWidth, root.headWidth, root.board ? (keyboard.item?.naturalPitch ?? 0) * (keyboard.item?.totalUnits ?? 0) : root.contentWidth) + Appearance.padding.large * 2)
 
     readonly property real wantHeight: Math.min(root.areaHeight, head.implicitHeight + Appearance.padding.normal + (root.board ? keyboard.implicitHeight : list.implicitHeight) + Appearance.padding.large * 2)
 
@@ -365,7 +365,7 @@ Item {
         root.listY = 0;
         root.boardY = 0;
 
-        keyboard.forget();
+        keyboard.item?.forget();
         wide.snap();
         tall.snap();
         root.open = true;
@@ -632,23 +632,29 @@ Item {
                         onEnded: root.park()
                     }
 
-                    BindList {
+                    Loader {
                         id: list
 
                         width: view.width
                         visible: !root.board
+                        asynchronous: !list.visible
 
-                        sheet: root
+                        sourceComponent: BindList {
+                            sheet: root
+                        }
                     }
 
-                    Keyboard {
+                    Loader {
                         id: keyboard
 
                         width: view.width
                         visible: root.board
+                        asynchronous: !keyboard.visible
 
-                        sheet: root
-                        advance: root.advance
+                        sourceComponent: Keyboard {
+                            sheet: root
+                            advance: root.advance
+                        }
                     }
                 }
             }

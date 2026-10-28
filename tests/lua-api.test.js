@@ -91,20 +91,47 @@ test("a bound id runs the checkout's CLI with the action verb and nothing else",
     assert.deepStrictEqual(r.notifications, []);
 });
 
-test("the launcher toggle dispatches the shell's global shortcut when Hyprland offers it, everything else still runs the CLI", { skip }, () => {
+test("panel and menu binds dispatch the shell's global shortcut while the shell is up, everything else runs the CLI", { skip }, () => {
     const home = fresh("home");
     const r = run(checkout(), `
         local dispatched = {}
         hl.dsp.global = function(name) return { dispatcher = "global", name = name } end
         hl.dispatch = function(d) dispatched[#dispatched + 1] = d.name end
+        hl.get_layers = function(filter) return filter.namespace == "banditshell" and { { namespace = "banditshell" } } or {} end
         bs = load_api()
         hl.bind("SUPER + SPACE", bs.launcher.toggle)
         hl.bind("SUPER + V", bs.panel.clipboard.toggle)
-        press(1) press(2)
+        hl.bind("SUPER + U", bs.panel.update.open)
+        bs.bind("SUPER + ESCAPE", "panel.close")
+        hl.bind("SUPER + I", bs.panel.settings.toggle)
+        hl.bind("SUPER + D", bs.panel.files.toggle("DP-1"))
+        hl.bind("SUPER + B", bs.screen.border.toggle)
+        press(1) press(2) press(3) press(4) press(5) press(6) press(7)
         hl.notification.create({ text = "dispatched " .. table.concat(dispatched, ",") })
     `, { home });
     assert.strictEqual(r.ok, true, r.error);
-    assert.deepStrictEqual(r.notifications, ["dispatched banditshell:launcher"]);
+    assert.deepStrictEqual(r.notifications, ["dispatched banditshell:launcher,banditshell:panel.clipboard.toggle,banditshell:panel.update.open,banditshell:panel.close"]);
+    assert.deepStrictEqual(r.exec.map(c => execute(c, home)), [
+        ["action", "panel.settings.toggle"],
+        ["action", "panel.files.toggle", "DP-1"],
+        ["action", "screen.border.toggle"]
+    ]);
+});
+
+test("with no shell surface on screen a panel bind runs the CLI, so a stopped shell still says so", { skip }, () => {
+    const home = fresh("home");
+    const r = run(checkout(), `
+        local dispatched = 0
+        hl.dsp.global = function(name) return { dispatcher = "global", name = name } end
+        hl.dispatch = function(d) dispatched = dispatched + 1 end
+        hl.get_layers = function() return {} end
+        bs = load_api()
+        hl.bind("SUPER + V", bs.panel.clipboard.toggle)
+        press(1)
+        return { dispatched = dispatched }
+    `, { home });
+    assert.strictEqual(r.ok, true, r.error);
+    assert.strictEqual(r.result.dispatched, 0);
     assert.deepStrictEqual(r.exec.map(c => execute(c, home)), [["action", "panel.clipboard.toggle"]]);
 });
 

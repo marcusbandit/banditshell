@@ -39,6 +39,21 @@ test("a running shell that does not take the call is exit 4 with a different mes
     assert.doesNotMatch(run.err, /not running/);
 });
 
+test("a shell that never answers gives up after the limit instead of piling up blocked presses", () => {
+    const stub = stubs();
+    fs.writeFileSync(path.join(stub.dir, "qs"), `#!/bin/sh
+case "$1" in
+list) printf '%s' "$QS_LIST" ;;
+ipc) exec sleep 30 ;;
+esac
+`, { mode: 0o755 });
+    const started = Date.now();
+    const run = cli(["panel", "clipboard", "toggle"], { stub, env: { QS_LIST: instance(process.pid), BANDITSHELL_IPC_LIMIT: "0.3" } });
+    assert.ok(Date.now() - started < 5000);
+    assert.strictEqual(run.code, 4);
+    assert.match(run.err, /did not answer `clipboard toggle` within 0\.3s/);
+});
+
 test("a handler that refuses is exit 4, its words go to stderr and stdout stays empty", () => {
     for (const reply of ["refused: ends how? (hour, evening, tomorrow or never)", "no shell window", "no such screen: DP-9"]) {
         const stub = stubs();

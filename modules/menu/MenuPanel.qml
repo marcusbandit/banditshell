@@ -37,8 +37,15 @@ Item {
         for (let i = 0; i < root.warm.length; i++)
             if (root.warm[i].key === key)
                 return root.spare + i;
-        return root.slot < root.spare ? (root.slot + 1) % root.spare : 0;
+        for (let i = 0; i < root.spare; i++) {
+            const page = pages.itemAt(i);
+            if (page && page.heldKey === key && page.pageBody === root.body)
+                return i;
+        }
+        return root.slot < root.spare ? (root.slot + 1) % root.spare : root.lastSpare;
     }
+
+    property int lastSpare: 0
 
     property real reveal: 0
 
@@ -89,11 +96,17 @@ Item {
         if (page) {
             page.pageTitle = root.title;
 
-            if (!page.warm) {
+            if (!page.warm && (page.heldKey !== root.key || page.pageBody !== root.body)) {
+                page.holds = false;
                 page.pageBody = null;
                 page.pageBody = root.body;
+                page.heldKey = root.key;
+            } else if (!page.warm) {
+                page.rewind();
             }
         }
+        if (next < root.spare)
+            root.lastSpare = (next + 1) % root.spare;
 
         const closed = root.reveal === 0;
         fade.value = closed ? 1 : 0;
@@ -101,7 +114,13 @@ Item {
         root.unsized = closed;
         root.prevSlot = root.slot;
         root.slot = next;
+        root.opening = root.key !== "";
     }
+
+    property bool opening: false
+
+    onKeyChanged: if (root.key === "")
+        root.opening = false
 
     Follow {
         id: grow
@@ -149,7 +168,15 @@ Item {
 
                 readonly property bool leaving: index === root.prevSlot && !fade.settled
 
-                readonly property bool live: root.reveal > 0 && (page.current || page.leaving)
+                readonly property bool live: (root.reveal > 0 || root.opening) && (page.current || page.leaving)
+
+                property string heldKey: ""
+
+                property bool holds: false
+
+                function rewind(): void {
+                    view.contentY = 0;
+                }
 
                 property bool believed: false
 
@@ -249,7 +276,7 @@ Item {
                         id: bodyLoader
 
                         width: page.width
-                        active: page.warm && (root.focusedHere || page.kept) || page.live
+                        active: page.warm && (root.focusedHere || page.kept) || page.live || page.holds
 
                         asynchronous: page.warm && !page.current
                         sourceComponent: page.pageBody
@@ -259,8 +286,10 @@ Item {
                             if (page.warm)
                                 Qt.callLater(page.keep);
                             item.width = Qt.binding(() => page.width);
-                            if (item.showing !== undefined)
+                            if (item.showing !== undefined) {
                                 item.showing = Qt.binding(() => page.believed);
+                                page.holds = !page.warm;
+                            }
                         }
                     }
                 }
