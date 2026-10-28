@@ -267,6 +267,7 @@ Item {
         acts.push({
             icon: "delete",
             label: "Delete",
+            alarm: true,
             run: () => root.discard(e)
         });
 

@@ -188,6 +188,7 @@ QtObject {
                 {
                     icon: "delete_sweep",
                     label: "Clear history",
+                    alarm: true,
                     run: () => root.search.armed = "clipboardclear"
                 }
             ];
@@ -219,6 +220,7 @@ QtObject {
         }, {
             icon: "delete",
             label: "Delete",
+            alarm: true,
             run: () => Clipboard.remove(row.entry)
         });
         if (!typing && Typist.probed)
