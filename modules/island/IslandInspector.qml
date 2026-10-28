@@ -142,6 +142,9 @@ Scope {
             config: {
                 kind: "config"
             },
+            configRead: {
+                kind: "configRead"
+            },
             held: {
                 kind: "held",
                 count: 3
@@ -259,7 +262,8 @@ Scope {
             timer: "pauses or resumes the timer",
             alarm: "stops or snoozes the alarm from its buttons",
             level: "nothing, it only shows",
-            config: "nothing, it only shows",
+            config: "turns the island into the config error",
+            configRead: "nothing, it only shows",
             privacy: "turns the island into what is listening, for the microphone; nothing for the camera or a screen share",
             notifications: "turns the island into the notification history",
             held: "opens the launcher on what was held while quiet",
@@ -1368,7 +1372,7 @@ Scope {
                                 spacing: Appearance.padding.small
 
                                 Repeater {
-                                    model: ["download", "update", "kernel", "restart", "config", "held", "music", "volume", "mute", "brightness", "mic"]
+                                    model: ["download", "update", "kernel", "restart", "config", "configRead", "held", "music", "volume", "mute", "brightness", "mic"]
 
                                     Button {
                                         required property string modelData

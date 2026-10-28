@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "config/configuration.js"), "utf8");
-const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue, readText, readFailed, reuse, saveDelay, reapply };")();
+const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue, readText, readFailed, reuse, saveDelay, reapply, jsonErrorAt };")();
 
 const OPAQUE = ["files.keys", "files.grid"];
 
@@ -436,6 +436,24 @@ test.describe("reading config.json", () => {
         assert.strictEqual(got.save, false);
         assert.deepStrictEqual(got.values, defaults());
         assert.match(got.problem, /JSON|token|property/i);
+    });
+
+    test.it("says the line and column of a stray comma", () => {
+        const got = read('{\n  "theme": "slate",\n}\n', boot());
+        assert.deepStrictEqual(got.at, { line: 3, column: 1 });
+    });
+
+    test.it("finds a position exactly when JSON.parse refuses", () => {
+        const samples = ['{"a" 1}', '{"a":tru}', "[1,2", "{} x", "", '{"a":01}', '{"a":"x\\q"}', '{"a":"\t"}', '{"a":[1,{"b":null}]}', '  {"a":-1.5e3}  ', '"ok"', '{"a":"\\u00e9"}', '{"a":"\\u00g9"}'];
+        for (const raw of samples) {
+            let parses = true;
+            try {
+                JSON.parse(raw);
+            } catch (e) {
+                parses = false;
+            }
+            assert.strictEqual(Configuration.jsonErrorAt(raw) === null, parses, raw);
+        }
     });
 
     test.it("treats a file that parses to something other than an object as broken", () => {

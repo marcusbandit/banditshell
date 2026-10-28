@@ -1050,6 +1050,14 @@ Singleton {
 
     property bool unreadable: false
 
+    property string problem: ""
+
+    property int problemLine: 0
+
+    property int problemColumn: 0
+
+    property bool everRead: false
+
     property bool fresh: false
 
     readonly property bool writable: root.loaded && !root.unreadable
@@ -1184,6 +1192,11 @@ Singleton {
             const got = Configuration.readText(raw, {
                 values: root.tree
             }, root.defaults, root.keepsChannel(), root.opaque, root.literals);
+            root.problem = got.problem;
+            root.problemLine = got.at?.line ?? 0;
+            root.problemColumn = got.at?.column ?? 0;
+            if (!got.unreadable)
+                root.everRead = true;
             root.unreadable = got.unreadable;
             const next = saver.running ? Configuration.reapply(got.values, root.unsaved, root.literals) : got.values;
             if (next !== root.tree)
@@ -1202,6 +1215,11 @@ Singleton {
         onLoadFailed: err => {
             const kept = root.loaded ? "the values it had" : "the defaults";
             const got = Configuration.readFailed(err === FileViewError.FileNotFound);
+            root.problem = got.unreadable ? FileViewError.toString(err) : "";
+            root.problemLine = 0;
+            root.problemColumn = 0;
+            if (!got.unreadable)
+                root.everRead = true;
             root.unreadable = got.unreadable;
             root.fresh = got.fresh;
             root.loaded = got.loaded;

@@ -239,18 +239,139 @@ function saveDelay(unsavedSince, now, quiet, longest) {
     return Math.max(0, Math.min(quiet, unsavedSince + longest - now));
 }
 
+function jsonErrorAt(text) {
+    const raw = String(text);
+    let at = 0;
+    const fail = () => {
+        throw at;
+    };
+    const space = () => {
+        while (at < raw.length && " \t\n\r".includes(raw[at]))
+            at++;
+    };
+    const word = w => {
+        if (raw.startsWith(w, at))
+            at += w.length;
+        else
+            fail();
+    };
+    const string = () => {
+        at++;
+        while (at < raw.length && raw[at] !== '"') {
+            if (raw.charCodeAt(at) < 0x20)
+                fail();
+            if (raw[at] === "\\") {
+                at++;
+                if (raw[at] === "u") {
+                    if (!/^[0-9a-fA-F]{4}$/.test(raw.slice(at + 1, at + 5)))
+                        fail();
+                    at += 4;
+                } else if (!'"\\/bfnrt'.includes(raw[at] ?? "x")) {
+                    fail();
+                }
+            }
+            at++;
+        }
+        if (at >= raw.length)
+            fail();
+        at++;
+    };
+    const number = () => {
+        const match = /^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/.exec(raw.slice(at));
+        if (!match)
+            fail();
+        at += match[0].length;
+    };
+    const value = () => {
+        space();
+        const c = raw[at];
+        if (c === "{") {
+            at++;
+            space();
+            if (raw[at] === "}") {
+                at++;
+                return;
+            }
+            for (;;) {
+                space();
+                if (raw[at] !== '"')
+                    fail();
+                string();
+                space();
+                if (raw[at] !== ":")
+                    fail();
+                at++;
+                value();
+                space();
+                if (raw[at] === ",") {
+                    at++;
+                    continue;
+                }
+                if (raw[at] !== "}")
+                    fail();
+                at++;
+                return;
+            }
+        }
+        if (c === "[") {
+            at++;
+            space();
+            if (raw[at] === "]") {
+                at++;
+                return;
+            }
+            for (;;) {
+                value();
+                space();
+                if (raw[at] === ",") {
+                    at++;
+                    continue;
+                }
+                if (raw[at] !== "]")
+                    fail();
+                at++;
+                return;
+            }
+        }
+        if (c === '"')
+            return string();
+        if (c === "t")
+            return word("true");
+        if (c === "f")
+            return word("false");
+        if (c === "n")
+            return word("null");
+        number();
+    };
+    try {
+        value();
+        space();
+        if (at < raw.length)
+            fail();
+        return null;
+    } catch (stop) {
+        if (typeof stop !== "number")
+            throw stop;
+        const before = raw.slice(0, Math.min(stop, raw.length));
+        const lines = before.split("\n");
+        return { line: lines.length, column: lines[lines.length - 1].length + 1 };
+    }
+}
+
 function readText(raw, state, defaults, keepChannel, opaque, literals) {
     let parsed = null;
     let problem = "not an object";
+    let at = null;
     try {
         parsed = JSON.parse(raw);
     } catch (e) {
         problem = e.message;
+        at = jsonErrorAt(raw);
     }
     if (!isPlainObject(parsed))
-        return { values: state.values, loaded: true, unreadable: true, problem: problem, save: false };
+        return { values: state.values, loaded: true, unreadable: true, problem: problem, at: at, save: false };
     const values = merge(defaults, upgrade(parsed, keepChannel), "", opaque, literals);
-    return { values: values, loaded: true, unreadable: false, problem: "", save: JSON.stringify(values) !== JSON.stringify(parsed) };
+    return { values: values, loaded: true, unreadable: false, problem: "", at: null, save: JSON.stringify(values) !== JSON.stringify(parsed) };
 }
 
 function readFailed(missing) {

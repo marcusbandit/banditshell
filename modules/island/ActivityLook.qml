@@ -93,9 +93,18 @@ QtObject {
             };
         case "config":
             return {
-                icon: "error",
-                tone: Appearance.colour.alarm,
-                text: "config.json error: not saving"
+                icon: "warning",
+                tone: Appearance.colour.warning,
+                text: "Config broken",
+                trailing: "icon",
+                trailingIcon: "chevron_right",
+                trailingTone: Appearance.colour.warning
+            };
+        case "configRead":
+            return {
+                icon: "check_circle",
+                tone: Appearance.colour.accent,
+                text: "Config read again"
             };
         case "upgrade": {
             const state = SystemUpgrade.state;

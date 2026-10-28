@@ -97,6 +97,12 @@ Singleton {
     onConfigBrokenChanged: {
         if (root.configBroken)
             root.configBreaks++;
+        else if (root.live)
+            root.pass({
+                key: `config-read:${root.configBreaks}`,
+                kind: "configRead",
+                ms: 3000
+            });
     }
 
     onStandingChanged: root.meet()

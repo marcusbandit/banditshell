@@ -216,6 +216,7 @@ Item {
             calendar: "the calendar",
             microphone: "the microphone",
             wifi: "the failed Wi-Fi join",
+            config: "the config error",
             reading: "a notification"
         })
     readonly property var taskViews: ({
@@ -227,7 +228,8 @@ Item {
             weather: weatherView,
             calendar: calendarView,
             microphone: microphoneView,
-            wifi: wifiView
+            wifi: wifiView,
+            config: configView
         })
     property bool pulling: false
     property real pullProgress: 0
@@ -344,7 +346,7 @@ Item {
 
     function pressable(activity: var): bool {
         const kind = activity?.kind ?? "";
-        return ["music", "download", "update", "kernel", "restart", "upgrade", "held", "notification", "recording", "timer", "alarm"].includes(kind) || ((kind === "external" || kind === "privacy") && !!activity.pressable);
+        return ["music", "download", "update", "kernel", "restart", "config", "upgrade", "held", "notification", "recording", "timer", "alarm"].includes(kind) || ((kind === "external" || kind === "privacy") && !!activity.pressable);
     }
 
     readonly property bool whole: root.openness > 0 || root.deckRest || root.stackItems.some(i => root.pressable(i))
@@ -1933,5 +1935,11 @@ Item {
         id: wifiView
 
         IslandWifi {}
+    }
+
+    Component {
+        id: configView
+
+        IslandConfig {}
     }
 }
