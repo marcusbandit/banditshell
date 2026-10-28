@@ -96,6 +96,12 @@ Item {
         return root.held.find(e => e.key === key) ?? null;
     }
 
+    function drop(key: string): void {
+        const next = Anomalies.without(root.held, key);
+        if (next.length !== root.held.length)
+            root.held = next;
+    }
+
     function toneColour(tone: string): color {
         return tone === "alarm" ? Appearance.colour.alarm : tone === "warning" ? Appearance.colour.warning : tone === "notice" ? Appearance.colour.text : Appearance.colour.textDim;
     }
@@ -224,8 +230,10 @@ Item {
                     target: grow
 
                     function onSettledChanged(): void {
-                        if (grow.settled && !mark.present)
-                            root.held = Anomalies.without(root.held, mark.modelData.key);
+                        if (!grow.settled || mark.present)
+                            return;
+                        const key = mark.modelData.key;
+                        Qt.callLater(() => root.drop(key));
                     }
                 }
             }
