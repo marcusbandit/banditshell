@@ -11,6 +11,7 @@ Column {
     property var cat: SettingsView.cat
     readonly property var s: SettingsState
     readonly property var note: root.cat ? root.cat.suggest(root.s) : null
+    readonly property string notice: root.cat?.notice ? root.cat.notice(root.s) : ""
     readonly property var tiles: (root.cat?.tiles ?? []).filter(t => Catalogue.present(t, SettingsState))
     readonly property int columns: SettingsView.compact && !SettingsView.tiny && root.tiles.length === 4 ? 4 : 2
 
@@ -35,6 +36,18 @@ Column {
 
     width: parent ? parent.width : 0
     spacing: 0
+
+    Loader {
+        width: root.width
+        active: root.notice !== ""
+        source: root.notice ? Qt.resolvedUrl(`widgets/${root.notice.charAt(0).toUpperCase()}${root.notice.slice(1)}Widget.qml`) : ""
+        onLoaded: item.width = Qt.binding(() => width)
+    }
+
+    Item {
+        width: 1
+        height: root.notice ? Appearance.padding.card : 0
+    }
 
     SettingsRowFrame {
         width: root.width
@@ -154,7 +167,7 @@ Column {
                         width: parent.width
                         text: tile.det
                         elide: Text.ElideRight
-                        color: tile.explains ? Appearance.colour.textDim : Appearance.colour.textFaint
+                        color: tile.explains ? Appearance.colour.text : Appearance.colour.textFaint
                     }
                 }
 
@@ -186,16 +199,20 @@ Column {
             id: page
 
             required property var modelData
+            readonly property bool closed: !!page.modelData.closed && page.modelData.closed(root.s)
 
             width: root.width
             icon: page.modelData.icon
             label: Catalogue.nameOf(page.modelData, SettingsState)
             detail: String(page.modelData.status(root.s) ?? "")
             off: false
-            onActivated: SettingsView.go(page.modelData.id)
+            interactive: !page.closed
+            onActivated: if (!page.closed)
+                SettingsView.go(page.modelData.id)
 
             Icon {
                 anchors.verticalCenter: parent.verticalCenter
+                visible: !page.closed
                 name: "chevron_right"
                 color: Appearance.colour.textFaint
             }

@@ -7,7 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/controls/certificate-files.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Files = new Function(src + "\nreturn { read, fitting, needsKey };")();
+const Files = new Function(src + "\nreturn { read, fitting, needsKey, roots, carriesKey };")();
 const SCAN = path.join(ROOT, "scripts/certificate-files.sh");
 const FIXTURE = fs.readFileSync(path.join(ROOT, "tests/fixtures/certificate-files.txt"), "utf8");
 
@@ -22,6 +22,7 @@ test.describe("certificate files", () => {
             "uni-root.der": "authority",
             "uni-root-ca.pem": "authority",
             "old-root.crt": "authority",
+            "uni-root-2014.pem": "authority",
             "laptop-17.p12": "client",
             "laptop-17.key": "key",
             "laptop-17.crt": "client",
@@ -48,6 +49,35 @@ test.describe("certificate files", () => {
 
     test.it("keeps the newest first and stops at the limit", () => {
         assert.deepStrictEqual(Files.fitting(Files.read(FIXTURE), "authority", 2), ["/home/me/Documents/dtu-root-ca-01.pem", "/home/me/Downloads/uni-root.der"]);
+    });
+
+    test.it("shows each root's issuer and expiry, puts the ones naming the server first and expired ones last", () => {
+        const now = Date.UTC(2026, 9, 28);
+        const list = Files.roots(Files.read(FIXTURE), "uni.edu", now, 10);
+        assert.deepStrictEqual(list.map(r => [path.basename(r.path), r.detail, r.warn]), [
+            ["uni-root.der", "Uni · until Oct 2036 · matches uni.edu", false],
+            ["uni-root-ca.pem", "Uni · until Oct 2036 · matches uni.edu", false],
+            ["dtu-root-ca-01.pem", "Danmarks Tekniske Universitet · until Dec 2040", false],
+            ["old-root.crt", "laptop-17 · until Nov 2026", false],
+            ["uni-root-2014.pem", "Uni · expired Jan 2024 · matches uni.edu", true]
+        ]);
+    });
+
+    test.it("matches a root to a server under the school's name, past a shared second level", () => {
+        const now = Date.UTC(2026, 9, 28);
+        const files = Files.read(FIXTURE);
+        assert.strictEqual(path.basename(Files.roots(files, "radius.dtu.dk", now, 1)[0].path), "dtu-root-ca-01.pem");
+        assert.match(Files.roots(files, "wifi.uni.ac.uk", now, 1)[0].detail, /matches wifi\.uni\.ac\.uk$/);
+        assert.ok(!Files.roots(files, "", now, 10).some(r => r.detail.includes("matches")));
+    });
+
+    test.it("knows when the picked certificate carries its own key", () => {
+        const files = Files.read(FIXTURE);
+        assert.strictEqual(Files.carriesKey(files, "/home/me/Documents/wifi/laptop-17-with-key.pem"), true);
+        assert.strictEqual(Files.carriesKey(files, "/home/me/Downloads/laptop-17.p12"), true);
+        assert.strictEqual(Files.carriesKey(files, "/home/me/Downloads/laptop-17.crt"), false);
+        assert.strictEqual(Files.carriesKey(files, "/elsewhere/bundle.pfx"), true);
+        assert.strictEqual(Files.carriesKey(files, "/elsewhere/cert.pem"), false);
     });
 
     test.it("drops a file nothing could be read from", () => {

@@ -4,6 +4,6 @@ find "$HOME/Downloads" "$HOME/Documents" -maxdepth 2 -type f \( -iname '*.pem' -
     if grep -q -- '-----BEGIN [A-Z ]*PRIVATE KEY-----' "$file" </dev/null 2>/dev/null; then
         echo "private key"
     fi
-    openssl x509 -in "$file" -noout -subject -issuer -ext basicConstraints -passin pass: </dev/null 2>/dev/null
+    openssl x509 -in "$file" -noout -subject -issuer -enddate -ext basicConstraints -passin pass: </dev/null 2>/dev/null
 done
 true

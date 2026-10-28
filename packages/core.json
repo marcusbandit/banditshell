@@ -17,6 +17,7 @@
       "services/qmldir"
     ],
     "services": [
+      "FileDialogs",
       "Focus",
       "Lookup",
       "Notify",
@@ -99,6 +100,7 @@
       "Compositor",
       "Config",
       "ControlTuning",
+      "FileDialogs",
       "Focus",
       "Notify",
       "PanelWindows",

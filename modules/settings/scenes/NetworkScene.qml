@@ -123,12 +123,12 @@ SceneGauge {
     Item {
         width: parent.width
         height: Appearance.padding.small
-        visible: Network.managerStart !== ""
+        visible: Network.managerCommand !== ""
     }
 
     SquircleRect {
         anchors.horizontalCenter: parent.horizontalCenter
-        visible: Network.managerStart !== ""
+        visible: Network.managerCommand !== ""
         width: Math.min(parent.width, command.implicitWidth + Appearance.padding.normal * 2)
         height: command.height + Appearance.padding.small * 2
         radius: Appearance.rounding.small
@@ -141,7 +141,7 @@ SceneGauge {
             width: Math.min(implicitWidth, parent.width - Appearance.padding.normal * 2)
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
-            text: Network.managerStart
+            text: Network.managerCommand
         }
 
         MouseArea {
@@ -151,7 +151,7 @@ SceneGauge {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: {
-                System.copyText(Network.managerStart);
+                System.copyText(Network.managerCommand);
                 SettingsView.drop("command copied", "content_copy");
             }
         }
@@ -159,7 +159,7 @@ SceneGauge {
 
     StyledText {
         width: parent.width
-        visible: Network.managerStart !== ""
+        visible: Network.managerCommand !== ""
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
         text: "click to copy, then run it in a terminal"

@@ -6,6 +6,7 @@ import Quickshell.Io
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 import "../../services/update.js" as Words
 
 Column {
@@ -25,9 +26,6 @@ Column {
 
     width: parent ? parent.width : 0
 
-    Component.onDestruction: if (chooser.running)
-        Settings.away = false
-
     function look(): void {
         root.looked = false;
         scan.running = false;
@@ -35,10 +33,7 @@ Column {
     }
 
     function browse(): void {
-        if (chooser.running)
-            return;
-        Settings.away = true;
-        chooser.running = true;
+        chooser.open(root.title, root.pattern);
     }
 
     function read(text: string): void {
@@ -74,26 +69,11 @@ Column {
         }
     }
 
-    Process {
+    FileChooser {
         id: chooser
 
-        command: ["python3", Quickshell.shellPath("scripts/pick-file.py"), root.title, root.pattern, UserFolders.downloads]
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const path = text.trim();
-                if (path)
-                    root.picked(path);
-            }
-        }
-
-        onRunningChanged: if (!chooser.running)
-            Settings.away = false
-
-        onExited: code => {
-            if (code === 2)
-                SettingsView.drop("no file browser here · install xdg-desktop-portal-gtk or zenity", "error");
-        }
+        onPicked: path => root.picked(path)
+        onMissing: SettingsView.drop("no file chooser here · move the file to Downloads", "error")
     }
 
     Repeater {
@@ -128,10 +108,12 @@ Column {
         interactive: false
         icon: "folder_open"
         label: "Another file"
+        detail: chooser.available ? "" : "move it to Downloads to see it here"
         onPointed: SettingsView.hovered = root.row
 
         Button {
             anchors.verticalCenter: parent.verticalCenter
+            visible: chooser.available
             size: 0
             text: "Browse"
             onClicked: root.browse()

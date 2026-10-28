@@ -1,27 +1,32 @@
 /home/me/Documents/dtu-root-ca-01.pem
 subject=C=DK, O=Danmarks Tekniske Universitet, CN=DTU ROOT CA 01
 issuer=C=DK, O=Danmarks Tekniske Universitet, CN=DTU ROOT CA 01
+notAfter=Dec  2 11:14:48 2040 GMT
 X509v3 Basic Constraints: critical
     CA:TRUE
 /home/me/Downloads/uni-root.der
 subject=CN=Uni Root CA, O=Uni
 issuer=CN=Uni Root CA, O=Uni
+notAfter=Oct 25 14:18:25 2036 GMT
 X509v3 Basic Constraints: critical
     CA:TRUE
 /home/me/Downloads/uni-root-ca.pem
 subject=CN=Uni Root CA, O=Uni
 issuer=CN=Uni Root CA, O=Uni
+notAfter=Oct 25 14:18:25 2036 GMT
 X509v3 Basic Constraints: critical
     CA:TRUE
 /home/me/Downloads/old-root.crt
 subject=CN=laptop-17
 issuer=CN=laptop-17
+notAfter=Nov  7 14:18:25 2026 GMT
 /home/me/Downloads/laptop-17.p12
 /home/me/Downloads/laptop-17.key
 private key
 /home/me/Downloads/laptop-17.crt
 subject=CN=laptop-17
 issuer=CN=Uni Root CA, O=Uni
+notAfter=Oct 28 14:18:25 2027 GMT
 X509v3 Basic Constraints: 
     CA:FALSE
 /home/me/Downloads/broken.pem
@@ -29,5 +34,12 @@ X509v3 Basic Constraints:
 private key
 subject=CN=laptop-17
 issuer=CN=Uni Root CA, O=Uni
+notAfter=Oct 28 14:18:25 2027 GMT
 X509v3 Basic Constraints: 
     CA:FALSE
+/home/me/Downloads/uni-root-2014.pem
+subject=O=Uni, CN=Uni Root CA 2014
+issuer=O=Uni, CN=Uni Root CA 2014
+notAfter=Jan  1 00:00:00 2024 GMT
+X509v3 Basic Constraints: critical
+    CA:TRUE
