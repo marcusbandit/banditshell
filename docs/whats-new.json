@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-19",
+      "id": "2026-10-28-20",
       "date": "2026-10-28",
       "changes": [
         {
@@ -33,6 +33,17 @@
           "type": "issues",
           "severity": "minor",
           "text": "The rail clock and marks stay clear of the workspaces at any height"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-19",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The shell no longer freezes for seconds while it rereads your apps"
         }
       ]
     },
