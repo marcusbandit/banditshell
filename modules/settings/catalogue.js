@@ -1292,6 +1292,12 @@ function marked(text, query, colour) {
     return out;
 }
 
+function pathCuts(path, why) {
+    const parts = String(path).split(" › ");
+    const tail = why ? ` · ${why}` : "";
+    return parts.map((p, i) => (i ? "… › " : "") + parts.slice(i).join(" › ") + tail);
+}
+
 function hitIndexOf(hits, openUid) {
     return Math.max(0, hits.findIndex(h => h.row.uid === openUid));
 }

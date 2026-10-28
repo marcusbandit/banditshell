@@ -112,7 +112,11 @@ Item {
             Keys.onPressed: event => {
                 const n = root.listingRecent ? root.recent.length : root.hits.length;
                 if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
-                    root.point(Math.max(0, Math.min(n - 1, root.hitIndex + (event.key === Qt.Key_Down ? 1 : -1))));
+                    const next = Math.max(0, Math.min(n - 1, root.hitIndex + (event.key === Qt.Key_Down ? 1 : -1)));
+                    if (root.listingRecent)
+                        root.point(next);
+                    else
+                        root.openHit(next);
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                     if (root.listingRecent)
@@ -400,10 +404,11 @@ Item {
                     readonly property string why: root.listingRecent ? "" : Catalogue.hitWhy(hit.modelData, SettingsView.query, `${hit.label} ${hit.place}`)
 
                     label: hit.modelData.label
-                    detail: root.listingRecent ? `${hit.modelData.from} → ${hit.modelData.to}` : hit.why ? `${hit.place} · ${hit.why}` : hit.place
-                    path: !root.listingRecent
+                    detail: root.listingRecent ? `${hit.modelData.from} → ${hit.modelData.to}` : ""
+                    cuts: root.listingRecent ? [] : Catalogue.pathCuts(hit.place, hit.why)
                     query: root.listingRecent ? "" : SettingsView.query
-                    active: hit.index === root.hitIndex
+                    pointed: hit.index === root.hitIndex
+                    active: hit.pointed && (root.listingRecent || root.hitOpen)
                     onPicked: root.pick(hit.index)
                 }
             }
@@ -495,7 +500,9 @@ Item {
         property string detail: ""
         property string query: ""
         property bool active: false
-        property bool path: false
+        property bool pointed: false
+        property var cuts: []
+        readonly property string crumbs: hr.cuts.length ? hr.cuts.find(c => ink.advanceWidth(c) <= words.width) ?? hr.cuts[hr.cuts.length - 1] : hr.detail
 
         signal picked
 
@@ -532,12 +539,20 @@ Item {
             }
 
             StyledText {
+                id: crumb
+
                 width: parent.width
                 textFormat: Text.StyledText
-                text: Catalogue.marked(hr.detail, hr.query, Appearance.colour.accent)
-                elide: hr.path ? Text.ElideLeft : Text.ElideRight
+                text: Catalogue.marked(hr.crumbs, hr.query, Appearance.colour.accent)
+                elide: Text.ElideRight
                 color: Appearance.colour.textFaint
             }
+        }
+
+        FontMetrics {
+            id: ink
+
+            font: crumb.font
         }
 
         HoverHandler {

@@ -17,10 +17,16 @@ Item {
     readonly property bool squeezed: SettingsView.tiny || root.cellAt(3) < root.cardNeed
     readonly property int columns: root.squeezed ? 2 : 3
     readonly property real cell: root.squeezed ? Math.min(root.cellAt(2), root.cardNeed) : root.cellAt(3)
-    readonly property var shown: root.squeezed && root.cards.length % 2 === 1 ? root.cards.filter(c => root.dimmed(c)).concat(root.cards.filter(c => !root.dimmed(c))) : root.cards
+    readonly property var shown: {
+        const list = root.cards.slice();
+        const last = list.length - 1;
+        if (root.squeezed && list.length % 2 === 1 && last > 0 && root.picked(list[last]))
+            [list[last - 1], list[last]] = [list[last], list[last - 1]];
+        return list;
+    }
 
-    function dimmed(card: var): bool {
-        return card.wall ? !root.fromWall : root.fromWall;
+    function picked(card: var): bool {
+        return card.wall ? root.fromWall : !root.fromWall && Config.values.theme === card.name;
     }
 
     function cellAt(columns: int): real {
@@ -92,7 +98,7 @@ Item {
                 x: (root.width - card.across * root.cell - (card.across - 1) * root.gap) / 2 + (card.index % root.columns) * (root.cell + root.gap)
                 y: card.line * (card.height + root.gap)
 
-                readonly property bool on: card.modelData.wall ? root.fromWall : !root.fromWall && Config.values.theme === card.modelData.name
+                readonly property bool on: root.picked(card.modelData)
                 readonly property bool usable: !card.modelData.wall && !root.fromWall
 
                 width: root.cell
@@ -101,23 +107,23 @@ Item {
 
                 SquircleRect {
                     anchors.fill: parent
-                    anchors.margins: -4
                     visible: card.on
-                    radius: Appearance.rounding.normal + 4
+                    radius: Appearance.rounding.normal
                     color: Appearance.colour.accent
                 }
 
                 SquircleRect {
                     anchors.fill: parent
-                    anchors.margins: -2
+                    anchors.margins: 2
                     visible: card.on
-                    radius: Appearance.rounding.normal + 2
+                    radius: Appearance.rounding.normal - 2
                     color: Appearance.colour.surfaceSolid
                 }
 
                 SquircleRect {
                     anchors.fill: parent
-                    radius: Appearance.rounding.normal
+                    anchors.margins: card.on ? 4 : 0
+                    radius: Appearance.rounding.normal - (card.on ? 4 : 0)
                     color: card.modelData.background
                 }
 

@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "hitIndexOf", "hitIsOpen", "hitToOpen", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf", "resettable", "changed", "seeThrough", "loggedSeeThrough", "hitTitle", "hitWhy", "hitPath", "marked"]);
+const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "hitIndexOf", "hitIsOpen", "hitToOpen", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf", "resettable", "changed", "seeThrough", "loggedSeeThrough", "hitTitle", "hitWhy", "hitPath", "pathCuts", "marked"]);
 const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "anchor", "nudge", "resize", "fit"]);
 const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "extent", "rects", "board", "lit", "struck", "fromSheet"]);
 const Frames = lib(path.join(SETTINGS, "scenes/keyframes.js"), ["bezier", "STANDARD", "ARRIVE", "BACK", "at", "pulse", "steps"]);
@@ -281,6 +281,12 @@ test("a search hit keeps its row as the title and leads to it through a path, ne
     assert.strictEqual(Catalogue.hitPath(mixer, s), "sound");
     for (const h of Catalogue.search("on"))
         assert.ok(!Catalogue.hitPath(h, s).split(" › ").includes(h.label.toLowerCase()), h.label);
+});
+
+test("a shortened search path drops whole segments from the start, never part of a word", () => {
+    assert.deepStrictEqual(Catalogue.pathCuts("sound › output › volume", ""), ["sound › output › volume", "… › output › volume", "… › volume"]);
+    assert.deepStrictEqual(Catalogue.pathCuts("input › shortcuts › in files", "keys"), ["input › shortcuts › in files · keys", "… › shortcuts › in files · keys", "… › in files · keys"]);
+    assert.deepStrictEqual(Catalogue.pathCuts("sound", ""), ["sound"]);
 });
 
 test("a search hit names its row with the heading it sits under and marks what matched", () => {
