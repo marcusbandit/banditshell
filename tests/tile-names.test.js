@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/files/tile-names.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Names = new Function(src + "\nreturn { lines };")();
+const Names = new Function(src + "\nreturn { lines, heading };")();
 
 const room = width => s => s.length <= width;
 
@@ -51,5 +51,19 @@ test.describe("tile names: wrapping a name under an icon", () => {
 
     test.it("never leaves a blank line for leading spaces", () => {
         assert.deepStrictEqual(Names.lines("  leading.txt", 2, room(8)), ["leading", ".txt"]);
+    });
+});
+
+test.describe("tile names: a preview title over two lines", () => {
+    test.it("breaks after a separator and keeps the extension on the second line", () => {
+        assert.deepStrictEqual(Names.heading("quarterly-report-for-the-board-2026.xlsx", room(16)), ["quarterly-", "\u2026board-2026.xlsx"]);
+    });
+
+    test.it("fills the first line when a word is wider than the room", () => {
+        assert.deepStrictEqual(Names.heading("quarterly-report-for-the-board-2026.xlsx", room(6)), ["quarte", "rly-r\u2026"]);
+    });
+
+    test.it("keeps a name that fits on one line", () => {
+        assert.deepStrictEqual(Names.heading("notes.md", room(8)), ["notes.md"]);
     });
 });

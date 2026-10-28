@@ -193,7 +193,7 @@ Item {
         readonly property real dateWidth: rowLayout.stacked ? digit.advanceWidth * 13 : Files.zoomed(Appearance.font.size.small) * 7
         readonly property real sizeWidth: Files.zoomed(Appearance.font.size.small) * 5
         readonly property real gap: Appearance.padding.normal
-        readonly property real nameLeast: rowMark.width + Appearance.padding.small + digit.advanceWidth * 10
+        readonly property real nameLeast: rowMark.width + Appearance.padding.small + digit.advanceWidth * Files.nameLeast
         readonly property bool showsDate: rowLayout.width - rowLayout.nameLeast >= (rowLayout.stacked ? Math.max(rowLayout.dateWidth, rowLayout.sizeWidth) + rowLayout.gap : rowLayout.dateWidth + rowLayout.sizeWidth + rowLayout.gap * 2)
         readonly property bool showsSize: rowLayout.stacked ? rowLayout.showsDate : rowLayout.width - rowLayout.nameLeast >= rowLayout.sizeWidth + rowLayout.gap
 

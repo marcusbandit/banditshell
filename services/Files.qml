@@ -433,6 +433,7 @@ Singleton {
     readonly property real magnification: Appearance.sizes.filesZoom
     readonly property real smallest: FilesZoom.SMALLEST
     readonly property real largest: FilesZoom.LARGEST
+    readonly property int nameLeast: 18
 
     function zoomed(size: real): int {
         return Math.round(size * root.magnification);

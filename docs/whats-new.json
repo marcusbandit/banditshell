@@ -22,6 +22,11 @@
         {
           "type": "issues",
           "severity": "minor",
+          "text": "In Files list view the preview narrows so names stay readable"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
           "text": "Files zoom goes from 70% to 250% in Settings as well as with keys"
         },
         {
@@ -32,7 +37,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Empty states and the preview title in Files grow with the zoom"
+          "text": "Empty states, the preview title and details grow with the zoom"
         },
         {
           "type": "issues",

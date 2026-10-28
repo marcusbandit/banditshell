@@ -96,3 +96,24 @@ function lines(name, most, fits) {
     const rest = name.slice(kept.length > 0 ? kept[kept.length - 1].end : 0);
     return kept.map(l => l.text).concat(squeezed(rest, name.length - cut, fits, kept.length === 0));
 }
+
+function heading(name, fits) {
+    if (fits(name))
+        return [name];
+    let lo = 1;
+    let hi = name.length - 1;
+    while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        if (fits(name.slice(0, mid)))
+            lo = mid;
+        else
+            hi = mid - 1;
+    }
+    const soft = Math.max(name.lastIndexOf("-", lo - 1), name.lastIndexOf("_", lo - 1), name.lastIndexOf(" ", lo - 1), name.lastIndexOf(".", lo - 1)) + 1;
+    const cut = soft > lo / 2 && soft < lo ? soft : lo;
+    const first = trimmed(name.slice(0, cut));
+    const rest = name.slice(cut).replace(/^\s+/, "");
+    if (fits(rest))
+        return [first, rest];
+    return [first, squeezed(rest, rest.length - extensionAt(rest), fits, false)];
+}

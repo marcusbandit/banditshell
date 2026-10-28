@@ -61,6 +61,18 @@ Item {
     property real readAt: 0
     readonly property string version: root.seen && Files.pathOf(root.seen) === root.path ? `?v=${root.seen.mtime}-${root.seen.size}` : ""
 
+    function spread(parts: var, width: real): string {
+        const line = parts.join("  ·  ");
+        return detailInk.advanceWidth(line) <= width ? line : parts.join("\n");
+    }
+
+    FontMetrics {
+        id: detailInk
+
+        font.family: Appearance.font.family
+        font.pixelSize: Files.zoomed(Appearance.font.size.small)
+    }
+
     readonly property var folderRows: FilesOrder.ordered(root.contents, Files.sort, Files.reversed)
     property string folderShown: ""
 
@@ -216,9 +228,10 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: Math.max(0, parent.width - titleMark.width - Appearance.padding.normal - (root.isMarkdown ? toggle.width + Appearance.padding.normal : 0))
 
-                text: root.entry && title.width > 0 ? TileNames.lines(root.entry.name, 1, line => titleInk.advanceWidth(line) <= title.width)[0] : ""
+                text: root.entry && title.width > 0 ? TileNames.heading(root.entry.name, line => titleInk.advanceWidth(line) <= title.width).join("\n") : ""
 
                 font.pixelSize: Files.zoomed(Appearance.font.size.normal)
+                maximumLineCount: 2
                 elide: Text.ElideRight
 
                 FontMetrics {
@@ -270,6 +283,8 @@ Item {
         }
 
         StyledText {
+            id: facts
+
             width: parent.width
 
             text: {
@@ -278,20 +293,22 @@ Item {
 
                 const size = root.isFolder ? `${root.contents.length} item${root.contents.length === 1 ? "" : "s"}` : Files.humanSize(root.entry.size);
                 if (root.entry.trash)
-                    return [size, `Trashed ${TimeFormat.dateText(new Date(root.entry.trashed * 1000), "year")} ${TimeFormat.time(new Date(root.entry.trashed * 1000), false)}`].join("  ·  ");
-                return [size, FilesFind.active ? Files.changedTime(root.entry.mtime) : Files.humanTime(root.entry.mtime)].join("  ·  ");
+                    return root.spread([size, `Trashed ${TimeFormat.dateText(new Date(root.entry.trashed * 1000), "year")} ${TimeFormat.time(new Date(root.entry.trashed * 1000), false)}`], facts.width);
+                return root.spread([size, FilesFind.active ? Files.changedTime(root.entry.mtime) : Files.humanTime(root.entry.mtime)], facts.width);
             }
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
 
-            elide: Text.ElideRight
+            wrapMode: Text.Wrap
         }
 
         StyledText {
+            id: owner
+
             width: parent.width
             visible: !!root.entry && !root.entry.trash && !!root.stat && !!root.stat.owner
 
-            text: root.stat && root.stat.owner ? `${root.stat.owner}  ·  ${Files.humanMode(root.stat.mode)}` : ""
+            text: root.stat && root.stat.owner ? root.spread([root.stat.owner, Files.humanMode(root.stat.mode)], owner.width) : ""
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
 
