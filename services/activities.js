@@ -370,8 +370,11 @@ function layoutWords(code, name, shared) {
         return language;
     const inside = /\(([^)]*)\)\s*$/.exec(whole);
     const base = String(code || "").split("-")[0].toUpperCase();
-    const parts = (inside ? inside[1].split(",") : []).map(p => p.trim().replace(/^with\s+/i, "")).filter(p => p && p.toUpperCase() !== base && !/^[A-Z]{2,3}$/.test(p));
-    return parts.length ? parts.join(", ") : language;
+    const parts = inside ? inside[1].split(",").map(p => p.trim()).filter(p => p) : [];
+    if (!parts.some(p => p.toUpperCase() === base))
+        return whole;
+    const rest = parts.filter(p => p.toUpperCase() !== base);
+    return rest.length ? rest.join(", ") : language;
 }
 
 function layoutMoment(code, name, shared) {

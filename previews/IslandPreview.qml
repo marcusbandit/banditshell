@@ -180,7 +180,7 @@ ShellRoot {
             },
             wait: 400,
             expect: "level",
-            holds: () => Notices.passing.some(p => p.key === "level:layout" && p.text === "intl., dead keys" && p.readout === "US-I")
+            holds: () => Notices.passing.some(p => p.key === "level:layout" && p.text === "intl., with dead keys" && p.readout === "US-I")
         },
         {
             name: "the second layout row is gone",
