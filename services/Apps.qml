@@ -9,7 +9,25 @@ import "ranking.js" as Ranking
 Singleton {
     id: root
 
-    readonly property var all: DesktopEntries.applications.values.filter(e => !e.noDisplay)
+    property var all: []
+
+    function listed(): var {
+        return DesktopEntries.applications.values.filter(e => !e.noDisplay);
+    }
+
+    function onDisk(): int {
+        return DesktopEntries.applications.values.length;
+    }
+
+    Component.onCompleted: root.all = root.listed()
+
+    Connections {
+        target: DesktopEntries
+
+        function onApplicationsChanged(): void {
+            root.all = root.listed();
+        }
+    }
 
     readonly property var hidden: Config.values.launcher.hidden
 
