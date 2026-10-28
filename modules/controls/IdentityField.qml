@@ -58,8 +58,17 @@ Item {
     readonly property bool moreNeeded: root.started && (root.authorityMissing || root.outerSpaced)
     property bool serverUp: false
 
-    onServerMissingChanged: if (root.serverMissing)
+    onServerMissingChanged: if (root.serverMissing && !server.input.activeFocus)
         root.serverUp = true
+
+    Connections {
+        target: server.input
+
+        function onActiveFocusChanged(): void {
+            if (!server.input.activeFocus && root.serverMissing)
+                root.serverUp = true;
+        }
+    }
 
     onMoreNeededChanged: if (root.moreNeeded)
         root.more = true

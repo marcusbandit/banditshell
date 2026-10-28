@@ -71,6 +71,25 @@ test.describe("certificate files", () => {
         assert.ok(!Files.roots(files, "", now, 10).some(r => r.detail.includes("matches")));
     });
 
+    test.it("keeps a comma inside an issuer name, and matches a hyphenated school but not a two-letter one", () => {
+        const now = Date.UTC(2026, 9, 28);
+        const text = [
+            "\x1e/home/me/Downloads/tub.pem",
+            "subject=C=DE, O=TU-Berlin, Inc., CN=TUB Root",
+            "issuer=C=DE, O=TU-Berlin, Inc., CN=TUB Root",
+            "notAfter=Jan  1 00:00:00 2035 GMT",
+            "    CA:TRUE",
+            "\x1e/home/me/Downloads/it.pem",
+            "subject=O=IT Services, CN=IT Root",
+            "issuer=O=IT Services, CN=IT Root",
+            "    CA:TRUE",
+            ""
+        ].join("\n");
+        const files = Files.read(text);
+        assert.strictEqual(Files.roots(files, "radius.tu-berlin.de", now, 1)[0].detail, "TU-Berlin, Inc. · until Jan 2035 · matches radius.tu-berlin.de");
+        assert.ok(!Files.roots(files, "wifi.it.dk", now, 10).some(r => r.detail.includes("matches")));
+    });
+
     test.it("knows when the picked certificate carries its own key", () => {
         const files = Files.read(FIXTURE);
         assert.strictEqual(Files.carriesKey(files, "/home/me/Documents/wifi/laptop-17-with-key.pem"), true);

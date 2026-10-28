@@ -11,7 +11,7 @@ Column {
     property var cat: SettingsView.cat
     readonly property var s: SettingsState
     readonly property var note: root.cat ? root.cat.suggest(root.s) : null
-    readonly property string notice: root.cat?.notice ? root.cat.notice(root.s) : ""
+    readonly property var notice: root.cat?.notice ? root.cat.notice(root.s) : null
     readonly property var tiles: (root.cat?.tiles ?? []).filter(t => Catalogue.present(t, SettingsState))
     readonly property int columns: SettingsView.compact && !SettingsView.tiny && root.tiles.length === 4 ? 4 : 2
 
@@ -37,11 +37,12 @@ Column {
     width: parent ? parent.width : 0
     spacing: 0
 
-    Loader {
+    SettingsCell {
         width: root.width
-        active: root.notice !== ""
-        source: root.notice ? Qt.resolvedUrl(`widgets/${root.notice.charAt(0).toUpperCase()}${root.notice.slice(1)}Widget.qml`) : ""
-        onLoaded: item.width = Qt.binding(() => width)
+        row: root.notice ?? {
+            kind: "fact",
+            text: ""
+        }
     }
 
     Item {
@@ -207,8 +208,7 @@ Column {
             detail: String(page.modelData.status(root.s) ?? "")
             off: false
             interactive: !page.closed
-            onActivated: if (!page.closed)
-                SettingsView.go(page.modelData.id)
+            onActivated: SettingsView.go(page.modelData.id)
 
             Icon {
                 anchors.verticalCenter: parent.verticalCenter

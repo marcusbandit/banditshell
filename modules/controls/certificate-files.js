@@ -57,11 +57,17 @@ function endOf(text) {
 }
 
 function nameOf(dn) {
-    var found = {};
-    var part = /(?:^|,)\s*(O|CN)\s*=\s*([^,]*)/g;
+    var text = String(dn || "");
+    var keys = [];
+    var key = /(?:^|,\s*)([A-Za-z][A-Za-z0-9.]*)\s*=\s*/g;
     var m;
-    while ((m = part.exec(String(dn || ""))) !== null)
-        found[m[1]] = m[2].trim();
+    while ((m = key.exec(text)) !== null)
+        keys.push({ name: m[1], at: m.index, from: m.index + m[0].length });
+    var found = {};
+    for (var i = 0; i < keys.length; i++) {
+        var value = text.slice(keys[i].from, i + 1 < keys.length ? keys[i + 1].at : text.length).trim();
+        found[keys[i].name] = value.replace(/^"(.*)"$/, "$1");
+    }
     return found.O || found.CN || "";
 }
 
@@ -90,7 +96,7 @@ function schoolLabel(server) {
     var label = parts[parts.length - 2];
     if (SHARED.indexOf(label) >= 0 && parts.length >= 3)
         label = parts[parts.length - 3];
-    return label.length >= 2 ? label : "";
+    return label.length >= 3 ? label : "";
 }
 
 function fits(file, server) {
@@ -98,7 +104,9 @@ function fits(file, server) {
     if (!label)
         return false;
     var words = (file.subject + " " + file.issuer).toLowerCase().split(/[^a-z0-9]+/);
-    return words.indexOf(label) >= 0;
+    return label.split(/[^a-z0-9]+/).every(function (part) {
+        return !part || words.indexOf(part) >= 0;
+    });
 }
 
 function monthOf(ms) {

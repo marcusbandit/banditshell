@@ -1292,6 +1292,11 @@ Singleton {
     readonly property string managerStarting: Network.managerStarting
     readonly property string managerStartTrouble: Network.managerStartTrouble
     readonly property string managerInstall: Network.managerInstall
+    readonly property string managerRival: Network.managerRival
+
+    function recheckManager(): void {
+        Network.recheckManager();
+    }
 
     function startManager(): void {
         Network.startManager();

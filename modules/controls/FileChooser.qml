@@ -39,12 +39,11 @@ Item {
     onVisibleChanged: {
         if (root.visible)
             FileDialogs.check();
-        else
+        else if (!Prompts.away.includes(root.holder))
             root.stop();
     }
 
-    Component.onCompleted: if (root.visible)
-        FileDialogs.check()
+    Component.onCompleted: FileDialogs.check()
 
     Component.onDestruction: Prompts.back(root.holder)
 

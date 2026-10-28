@@ -22,13 +22,16 @@ SettingsRowFrame {
         if (root.failed)
             return `Could not start it: ${SettingsState.managerStartTrouble}.`;
         if (root.stage === "start")
-            return "Start turns it on now and at every login.";
+            return "Start turns it on now and at every boot.";
         if (root.stage === "install")
             return `Install it in a terminal: ${SettingsState.managerInstall}`;
+        if (SettingsState.managerRival)
+            return `${SettingsState.managerRival} runs the network here. Start NetworkManager only to switch to it.`;
         return SettingsState.managerInstalled ? "Start it the way your system starts services, then restart the shell." : "Install it from your system's packages, then start it.";
     }
     detailLines: 3
     onPointed: SettingsView.hovered = root.row
+    Component.onCompleted: SettingsState.recheckManager()
 
     Button {
         anchors.verticalCenter: parent.verticalCenter

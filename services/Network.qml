@@ -17,12 +17,18 @@ Singleton {
     property bool managerInstalled: true
     property bool systemd: false
     readonly property string managerMissing: root.managerRunning ? "" : `These settings work through NetworkManager, which is not ${root.managerInstalled ? "running" : "installed"} here.`
-    readonly property string managerStart: !root.managerRunning && root.managerInstalled && root.systemd ? "systemctl enable --now NetworkManager" : ""
+    property string managerRival: ""
+    readonly property string managerStart: !root.managerRunning && root.managerInstalled && root.systemd && !root.managerRival ? "systemctl enable --now NetworkManager" : ""
     readonly property var managerPackages: ["pacman:networkmanager", "apt:network-manager", "dnf:NetworkManager", "zypper:NetworkManager", "xbps:NetworkManager", "apk:networkmanager"]
     property string managerInstall: ""
     readonly property string managerCommand: root.managerStart || root.managerInstall
     property string managerStarting: ""
     property string managerStartTrouble: ""
+
+    function recheckManager(): void {
+        if (!root.managerRunning && !managerProbe.running)
+            managerProbe.running = true;
+    }
 
     function startManager(): void {
         if (starter.running || !root.managerStart)
@@ -987,10 +993,16 @@ Singleton {
     }
 
     Process {
+        id: managerProbe
+
         running: !root.managerRunning
-        command: ["sh", "-c", "[ -d /run/systemd/system ] && echo systemd; command -v nmcli >/dev/null || command -v NetworkManager >/dev/null || [ -x /usr/sbin/NetworkManager ]"]
+        command: ["sh", "-c", "if [ -d /run/systemd/system ]; then echo systemd; for unit in systemd-networkd iwd connman; do systemctl is-active --quiet \"$unit\" 2>/dev/null && echo \"rival $unit\"; done; fi; command -v nmcli >/dev/null || command -v NetworkManager >/dev/null || [ -x /usr/sbin/NetworkManager ]"]
         stdout: StdioCollector {
-            onStreamFinished: root.systemd = text.trim() === "systemd"
+            onStreamFinished: {
+                const lines = text.trim().split("\n");
+                root.systemd = lines.includes("systemd");
+                root.managerRival = lines.filter(line => line.startsWith("rival ")).map(line => line.slice(6)).join(", ");
+            }
         }
         onExited: code => root.managerInstalled = code === 0
     }
