@@ -458,7 +458,7 @@ Column {
                 text: root.clockText(timerCard.remainingMs)
                 font.pixelSize: Appearance.font.size.large
 
-                color: timerCard.modelData.finished ? Appearance.colour.accent : timerCard.modelData.paused ? Appearance.colour.textFaint : Appearance.colour.text
+                color: timerCard.modelData.finished ? Appearance.colour.accent : timerCard.modelData.paused ? Appearance.colour.textDim : Appearance.colour.text
             }
 
             Icon {
