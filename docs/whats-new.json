@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-10",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Home folders follow your language, such as ~/Bilder for pictures"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Without NetworkManager, Wi-Fi, hotspot and tunnels say they need it"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Without logind, Lock and Log out still work and the rest says why"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The installer uses doas on systems that have no sudo"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "doctor and the installer warn when quickshell is older than 0.3.2"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "On NixOS, install.sh --charge-limit says why it cannot install"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-9",
       "date": "2026-10-28",
       "changes": [
