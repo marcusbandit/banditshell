@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, details, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, divergedHeadline, aheadText, withOwn, ownTitle, wentBackHeadline, buttonNote, pullCommand, plainProbe, presentSteps, reportWords, reportContext, reportScript };")();
+const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, details, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, divergedHeadline, aheadKept, aheadText, withOwn, ownTitle, wentBackHeadline, buttonNote, pullCommand, plainProbe, presentSteps, reportWords, reportContext, reportScript };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -207,6 +207,16 @@ test("going back says where you are and on which channel", () => {
     assert.strictEqual(Update.wentBackHeadline("v0.2.0+2", "main", "main"), "You are on v0.2.0+2, main");
     assert.strictEqual(Update.wentBackHeadline("v0.1.0", "stable", "dev"), "You are on v0.1.0, following dev");
     assert.strictEqual(Update.wentBackHeadline("", "stable", "main"), "You are on the stable channel");
+});
+
+test("own changes count on main and a followed branch, never ahead of stable", () => {
+    assert.strictEqual(Update.aheadKept("current", "main", "2"), 2);
+    assert.strictEqual(Update.aheadKept("current", "dev", 1), 1);
+    assert.strictEqual(Update.aheadKept("current", "stable", 3), 0);
+    assert.strictEqual(Update.aheadKept("diverged", "stable", 1), 1);
+    assert.strictEqual(Update.aheadKept("paused", "main", 4), 0);
+    assert.strictEqual(Update.aheadKept("skipped", "main", 4), 0);
+    assert.strictEqual(Update.aheadKept("current", "main", "x"), 0);
 });
 
 test("a copy with changes of its own still names the waiting version", () => {

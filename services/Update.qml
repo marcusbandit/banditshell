@@ -468,7 +468,7 @@ Singleton {
                 root.previous = root.commit(got.previous ?? "") ? got.previous : "";
                 root.previousVersion = got.previousVersion ?? "";
                 root.behind = counts ? Number(got.behind) || 0 : 0;
-                root.ahead = counts ? Number(got.ahead) || 0 : 0;
+                root.ahead = Words.aheadKept(got.state, got.branch, got.ahead);
                 root.entries = got.entries ?? [];
                 root.notes = Array.isArray(got.notes) ? got.notes : [];
                 root.baseVersion = got.baseVersion ?? "";

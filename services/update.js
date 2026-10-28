@@ -46,6 +46,11 @@ function divergedHeadline(targetVersion, ahead) {
     return `${waitingHeadline(targetVersion)}, but this copy has ${ownChanges(ahead)}`;
 }
 
+function aheadKept(state, branch, ahead) {
+    const kept = state === "available" || state === "diverged" || (state === "current" && branch !== "stable");
+    return kept ? Math.max(0, Math.floor(Number(ahead) || 0)) : 0;
+}
+
 function aheadText(ahead) {
     return `${ownChanges(ahead)} ${ownCount(ahead) === 1 ? "is" : "are"} not on GitHub yet`;
 }
