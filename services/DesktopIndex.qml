@@ -75,7 +75,7 @@ Singleton {
     Timer {
         id: parser
 
-        interval: 0
+        interval: 1
         repeat: true
         onTriggered: root.parseNext()
     }
