@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -48,7 +49,12 @@ Column {
         }
         return out;
     }
-    readonly property int eagerLines: Math.ceil((root.Window.height || Screen.height) / Appearance.font.line.small)
+    readonly property int eagerLines: {
+        let tallest = 0;
+        for (const screen of Quickshell.screens)
+            tallest = Math.max(tallest, screen.height);
+        return Math.ceil(tallest / Appearance.font.line.small);
+    }
 
     readonly property bool wentBack: Update.wentBackByHand && Update.resultPending
 
@@ -448,41 +454,22 @@ Column {
                         }
                     }
 
-                    Repeater {
-                        model: section.modelData.changes.slice(0, section.eager)
-
-                        delegate: UpdateChangeLine {
-                            required property var modelData
-
-                            width: sectionBody.width
-                            text: modelData.text
-                            hue: section.hue
-                            major: section.major
-                        }
+                    UpdateChangeLines {
+                        width: sectionBody.width
+                        lines: section.modelData.changes.slice(0, section.eager)
+                        hue: section.hue
+                        major: section.major
                     }
 
                     Loader {
-                        id: rest
-
                         width: sectionBody.width
-                        visible: rest.active
                         active: root.settled && section.modelData.changes.length > section.eager
+                        asynchronous: true
 
-                        sourceComponent: Column {
-                            spacing: Appearance.padding.hair
-
-                            Repeater {
-                                model: section.modelData.changes.slice(section.eager)
-
-                                delegate: UpdateChangeLine {
-                                    required property var modelData
-
-                                    width: rest.width
-                                    text: modelData.text
-                                    hue: section.hue
-                                    major: section.major
-                                }
-                            }
+                        sourceComponent: UpdateChangeLines {
+                            lines: section.modelData.changes.slice(section.eager)
+                            hue: section.hue
+                            major: section.major
                         }
                     }
                 }
