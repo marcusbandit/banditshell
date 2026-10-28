@@ -815,7 +815,7 @@ test("a version left by hand is reported as gone back from, not as one that did 
     assert.strictEqual(check.out, "you went back from v2; it is skipped until a newer version arrives\n");
     const status = run(world, ["update", "status"]).out;
     assert.match(status, /^v1 on main, you went back from v2; it is skipped until a newer version arrives$/m);
-    assert.match(status, /^last update: you went back from v2; it is skipped until a newer version arrives$/m);
+    assert.match(status, /^last update: you went back from v2$/m);
     assert.doesNotMatch(status, /did not start/);
 });
 
@@ -831,6 +831,17 @@ test("the check lists what the running version brought, from the version going b
     assert.deepStrictEqual(after.notes[0].changes, [{ type: "ui", severity: "minor", text: "Change v3." }]);
     assert.strictEqual(run(world, ["update", "rollback"]).status, 0);
     assert.deepStrictEqual(JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out).notes, []);
+});
+
+test("the check lists no notes when the earlier version's log cannot be read", () => {
+    const world = makeWorld();
+    const broken = advance(world, "broken log", { "docs/whats-new.json": "{ not json" });
+    git(world.live, "pull", "-q", "--ff-only");
+    const target = advance(world, "v2", { "docs/whats-new.json": whatsNew("v2", "v1") });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    const json = JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out);
+    assert.strictEqual(json.previous, broken);
+    assert.deepStrictEqual(json.notes, []);
 });
 
 test("on stable the running release's notes are the entries the release before it did not have", () => {

@@ -12,9 +12,9 @@ Column {
 
     readonly property var incoming: Update.behind > 0 && !Update.diverged ? Update.entries : []
 
-    readonly property var running: root.incoming.length > 0 ? [] : Update.notes
+    readonly property string cardKind: root.incoming.length > 0 ? "incoming" : Update.notes.length > 0 ? "running" : "pending"
 
-    readonly property var card: root.incoming.length > 0 ? root.incoming : root.running.length > 0 ? root.running : WhatsNew.pending
+    readonly property var card: root.cardKind === "incoming" ? root.incoming : root.cardKind === "running" ? Update.notes : WhatsNew.pending
 
     property bool declineConfirm: false
     property bool goBackConfirm: false
@@ -389,7 +389,7 @@ Column {
 
         StyledText {
             width: parent.width
-            text: root.incoming.length > 0 ? "In this update" : root.running.length > 0 ? "In this version" : "What's new"
+            text: root.cardKind === "incoming" ? "In this update" : root.cardKind === "running" ? "In this version" : "What's new"
             color: Appearance.colour.textDim
         }
 
@@ -475,9 +475,9 @@ Column {
     }
 
     Button {
-        visible: !root.asking && root.incoming.length === 0 && root.running.length === 0 && root.card.length > 0
+        visible: !root.asking && root.cardKind !== "incoming" && WhatsNew.pending.length > 0
         text: "Mark as read"
-        onClicked: WhatsNew.markSeen(root.card[0].id)
+        onClicked: WhatsNew.markSeen(WhatsNew.pending[0].id)
     }
 
     Row {

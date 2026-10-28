@@ -1672,8 +1672,9 @@ banditshell/
 │   │                            the card lists what the running version
 │   │                            brought, In this version. Below the card
 │   │                            sits a quiet Go back to <id> once one is
-│   │                            recorded, asked once in its place. After a go-back the outcome
-│   │                            leads with Report what broke, a few lines
+│   │                            recorded, asked once in its place. After
+│   │                            a go-back the outcome leads with Report
+│   │                            what broke, a few lines
 │   │                            that banditshell triage shows in a
 │   │                            terminal before anything is sent, and
 │   │                            offers a quiet Reinstall the version you

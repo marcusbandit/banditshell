@@ -3983,7 +3983,7 @@ update_last_result() {
     if [ "$ok" = true ]; then
         echo "last update: reached $to"
     elif [ "$hand" = true ]; then
-        echo "last update: you went back from $to; it is skipped until a newer version arrives"
+        echo "last update: you went back from $to"
     else
         echo "last update: $to did not start${why:+ ($why)}; it is skipped until a newer version arrives"
     fi

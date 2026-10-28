@@ -485,7 +485,8 @@ function main(argv) {
                 return "";
             }
         };
-        process.stdout.write(JSON.stringify(incomingEntries(read(argv[1]), read(argv[2]))) + "\n");
+        const before = read(argv[1]);
+        process.stdout.write(JSON.stringify(logEntries(before).length > 0 ? incomingEntries(before, read(argv[2])) : []) + "\n");
         return 0;
     }
     if (mode === "explain") {

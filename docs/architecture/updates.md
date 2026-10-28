@@ -56,8 +56,8 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    `update/previous` and skips what it left. It refuses on a paused copy, on a copy with commits
    of its own, and when the recorded commit is not behind HEAD; a reset git refuses changes and
    skips nothing. The check reports that commit as `previous`, with its id as `previousVersion`,
-   under the same rules, and the menu then offers a quiet "Go back to <id>" below the what's-new card, asks once
-   in its place, and runs `rollback --detach`, whose first progress line is `goback`. Only the
+   under the same rules, and the menu then offers a quiet "Go back to <id>" below the what's-new
+   card, asks once in its place, and runs `rollback --detach`, whose first progress line is `goback`. Only the
    checkout moves: `config.json`, files the newer version wrote elsewhere and stashed edits stay
    as they are, and the confirm says so (#171). After a go-back the outcome offers a quiet
    "Reinstall the version you just left", asked once, which runs `update apply --detach --to <sha>` on the commit it left. Once an
