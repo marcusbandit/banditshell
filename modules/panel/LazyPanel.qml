@@ -16,8 +16,11 @@ Item {
     readonly property var blobs: root.item?.blobs ?? []
     readonly property Item maskItem: root.item?.maskItem ?? null
 
+    readonly property bool built: loader.status === Loader.Ready
+
     function build(span = undefined): var {
-        if (!loader.active) {
+        if (!loader.active || loader.status === Loader.Loading) {
+            loader.asynchronous = false;
             loader.active = true;
             if (span === undefined)
                 Trace.note("built");
@@ -25,6 +28,15 @@ Item {
                 Trace.step("built", span);
         }
         return loader.item;
+    }
+
+    function warm(): void {
+        if (loader.active)
+            return;
+        const span = Trace.begin(`${root.name} warm`);
+        loader.asynchronous = true;
+        loader.active = true;
+        Trace.step("asked", span);
     }
 
     function show(): void {
@@ -67,5 +79,8 @@ Item {
 
         active: false
         sourceComponent: root.panel
+
+        onLoaded: if (loader.asynchronous)
+            Trace.note("built")
     }
 }

@@ -25,7 +25,8 @@ Item {
     readonly property string scrollInfo: root.concept?.scrollInfo ?? "-"
 
     function build(span = undefined): var {
-        if (!loader.active) {
+        if (!loader.active || loader.status === Loader.Loading) {
+            loader.asynchronous = false;
             loader.active = true;
             if (span === undefined)
                 Trace.note("built");
@@ -81,7 +82,12 @@ Item {
         interval: 4000
         running: !loader.active
 
-        onTriggered: root.build(Trace.begin("launcher warm"))
+        onTriggered: {
+            const span = Trace.begin("launcher warm");
+            loader.asynchronous = true;
+            loader.active = true;
+            Trace.step("asked", span);
+        }
     }
 
     Loader {
@@ -91,6 +97,9 @@ Item {
 
         active: false
         sourceComponent: root.alphabetical ? alphabet : list
+
+        onLoaded: if (loader.asynchronous)
+            Trace.note("built")
     }
 
     Component {
