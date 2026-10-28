@@ -27,6 +27,15 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
+        readonly property real fade: Appearance.font.line.normal * 1.5
+
+        layer.enabled: view.contentHeight > view.height
+        layer.effect: ShaderEffect {
+            readonly property vector4d fades: Qt.vector4d(view.atYBeginning ? 0 : view.fade, view.atYEnd ? 0 : view.fade, height, 1)
+
+            fragmentShader: Qt.resolvedUrl("../../components/edgefade.frag.qsb")
+        }
+
         onContentYChanged: SettingsView.scroll = view.contentY
         onMovementStarted: {
             SettingsView.resumeScroll = 0;
@@ -324,8 +333,9 @@ Item {
         let want = at - view.height / 3;
         const group = root.groupOf(target);
         if (group) {
-            const top = group.mapToItem(body, 0, 0).y;
-            const bottom = top + group.height + Appearance.padding.normal;
+            const inset = view.layer.enabled ? view.fade : 0;
+            const top = group.mapToItem(body, 0, 0).y - inset;
+            const bottom = top + group.height + Appearance.padding.normal + inset * 2;
             if (bottom - top <= view.height)
                 want = Math.min(top, Math.max(want, bottom - view.height));
         }

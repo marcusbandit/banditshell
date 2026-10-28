@@ -40,10 +40,10 @@ Column {
         const parts = [root.combos.length > 0 ? shortcut.width : -1, root.row.extra ? extra.width : -1, root.hasLayer ? more.width : -1].filter(w => w >= 0);
         return parts.reduce((a, b) => a + b + Appearance.padding.normal, 0);
     }
-    readonly property bool slotted: !!Catalogue.PAGE_BY_ID[root.row.page]?.resets
+    readonly property bool slotted: root.resettable
     readonly property real slotRoom: root.slotted ? resetSlot.width + Appearance.padding.normal : 0
     readonly property real afterControls: (root.row.extra ? extra.width + Appearance.padding.normal : 0) + (root.hasLayer ? more.width + Appearance.padding.normal : 0)
-    readonly property string groupKey: root.row.group?.rows?.[0]?.uid ?? ""
+    readonly property string groupKey: root.row.groupKey ?? ""
     property real segNatural: 0
     property real segCompact: 0
     readonly property real lineRoom: frame.inner - root.besideControls - root.slotRoom
@@ -54,6 +54,9 @@ Column {
     readonly property bool flashing: !!SettingsView.flash && !!root.row.uid && SettingsView.flash.uid === root.row.uid
 
     width: parent ? parent.width : 0
+
+    onGroupKeyChanged: if (root.kind === "slider" && controls.item)
+        root.noteTail(controls.item.tail)
 
     onCrampedChanged: if (!root.cramped && root.unrolled)
         SettingsView.setOpen(root.row.uid, false)
@@ -89,13 +92,46 @@ Column {
         label: Catalogue.labelOf(root.row)
         detail: root.stateText
         detailColour: root.bad ? Appearance.colour.alarm : Appearance.colour.textFaint
-        detailLines: root.bad ? 3 : root.row.lines ?? 1
+        detailLines: root.row.lines ?? 3
         pending: root.pendingText
         off: root.off
         flashStamp: root.flashing ? SettingsView.flash.at : 0
         interactive: !root.held && (root.kind === "toggle" || root.shape === "choice" || root.hasLayer)
         onActivated: root.activate()
         onPointed: SettingsView.hovered = root.row
+
+        Item {
+            id: resetSlot
+
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.slotted
+            width: reset.implicitWidth
+            height: 1
+
+            SettingsTool {
+                id: reset
+
+                anchors.centerIn: parent
+                visible: root.resettable && !root.held && (root.changed || shown.value > 0)
+                enabled: root.changed
+                opacity: shown.value
+                icon: "restart_alt"
+                tip: `reset to default, ${root.fallbackText || "empty"}`
+                onClicked: {
+                    frame.pulse();
+                    SettingsState.reset(root.key);
+                }
+
+                Follow {
+                    id: shown
+
+                    target: root.changed ? 1 : 0
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
+                }
+            }
+        }
 
         Row {
             id: shortcut
@@ -183,39 +219,6 @@ Column {
             turned: root.unrolled
             tip: root.unrolled ? "fold" : "more"
             onClicked: root.toggleOpen()
-        }
-
-        Item {
-            id: resetSlot
-
-            anchors.verticalCenter: parent.verticalCenter
-            visible: root.slotted
-            width: reset.implicitWidth
-            height: 1
-
-            SettingsTool {
-                id: reset
-
-                anchors.centerIn: parent
-                visible: root.resettable && !root.held && (root.changed || shown.value > 0)
-                enabled: root.changed
-                opacity: shown.value
-                icon: "restart_alt"
-                tip: `reset to default, ${root.fallbackText || "empty"}`
-                onClicked: {
-                    frame.pulse();
-                    SettingsState.reset(root.key);
-                }
-
-                Follow {
-                    id: shown
-
-                    target: root.changed ? 1 : 0
-                    speed: Appearance.animation.revealSpeed
-                    epsilon: Appearance.animation.fadeEpsilon
-                    startsAtTarget: true
-                }
-            }
         }
     }
 
@@ -410,6 +413,7 @@ Column {
 
             tailWidth: (SettingsView.tailColumns[root.groupKey] ?? 0) - root.afterControls
             room: root.lineRoom
+            trackWidth: SettingsView.tiny ? 120 : 180
             onTailChanged: root.noteTail(slider.tail)
             Component.onCompleted: root.noteTail(slider.tail)
             Component.onDestruction: root.noteTail(-1)

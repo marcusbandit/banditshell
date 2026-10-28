@@ -713,15 +713,15 @@ const PAGES_SOURCE = {
     },
     powermode: {
         id: "powermode", name: "Power and lid", lidless: "Power", icon: "bolt", preview: "battery",
-        status: s => s.hasLid ? `${s.v("profile")} · lid ${optionLabel(ROW_BY_KEY.lidBattery, s, s.v("lidBattery"))}` : s.v("profile"),
+        status: s => s.hasLid ? `${s.v("profile")} · lid ${s.v("lidBattery") === "nothing" ? "does nothing" : optionLabel(ROW_BY_KEY.lidBattery, s, s.v("lidBattery"))}` : s.v("profile"),
         groups: [
             { rows: [
                 { n: 105, icon: "bolt", label: "Power mode", k: "profile", kind: "seg", o: s => s.profileChoices, state: s => s.profileTrouble, dis: s => s.profileChoices.length === 0, kw: "power profile performance" }
             ] },
             { t: "Lid", away: s => !s.hasLid, rows: [
-                { n: 108, icon: "laptop", label: "On battery", k: "lidBattery", kind: "choice", cfg: "power.lid.onBattery", o: [["suspend", "sleep"], "hibernate", "lock", "nothing"], unavailable: s => s.hibernatePossible ? [] : ["hibernate"], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", kw: "lid close action sleep suspend" },
-                { n: 108, icon: "power", label: "Plugged in", k: "lidPlugged", kind: "choice", cfg: "power.lid.pluggedIn", o: [["suspend", "sleep"], "lock", "nothing"], kw: "lid close action sleep suspend" },
-                { n: 108, icon: "monitor", label: "With screens attached", k: "lidDocked", kind: "choice", cfg: "power.lid.docked", o: ["nothing", "lock", ["suspend", "sleep"]], kw: "lid close action docked sleep suspend" }
+                { n: 108, icon: "laptop", label: "On battery", k: "lidBattery", kind: "choice", cfg: "power.lid.onBattery", o: [["suspend", "sleep"], "hibernate", "lock", ["nothing", "do nothing"]], unavailable: s => s.hibernatePossible ? [] : ["hibernate"], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", kw: "lid close action sleep suspend" },
+                { n: 108, icon: "power", label: "Plugged in", k: "lidPlugged", kind: "choice", cfg: "power.lid.pluggedIn", o: [["suspend", "sleep"], "lock", ["nothing", "do nothing"]], kw: "lid close action sleep suspend" },
+                { n: 108, icon: "monitor", label: "With screens attached", k: "lidDocked", kind: "choice", cfg: "power.lid.docked", o: [["nothing", "do nothing"], "lock", ["suspend", "sleep"]], kw: "lid close action docked sleep suspend" }
             ] }
         ]
     },
@@ -1037,6 +1037,7 @@ function walk(rows, page, group, parent, out) {
         r.group = group;
         r.parent = parent;
         r.uid = `${page.id}.${out.length}`;
+        r.groupKey = group.rows[0].uid;
         out.push(r);
         if (r.k && !ROW_BY_KEY[r.k])
             ROW_BY_KEY[r.k] = r;
@@ -1227,12 +1228,21 @@ function inSentence(label) {
     return /^[A-Z][a-z’'-]*$/.test(first) && PROPER_WORDS.indexOf(first) < 0 ? label.charAt(0).toLowerCase() + label.slice(1) : label;
 }
 
-function hitTitle(hit, s) {
+function hitContext(hit, s) {
     const g = hit.group;
     const context = (hit.row.parent && labelOf(hit.row.parent)) || (typeof g.t === "string" && g.t) || g.topic || nameOf(hit.page, s);
-    if (!context || ` ${hit.label.toLowerCase()} `.indexOf(` ${context.toLowerCase()} `) >= 0)
-        return hit.label;
-    return `${context}: ${inSentence(hit.label)}`;
+    return !context || ` ${hit.label.toLowerCase()} `.indexOf(` ${context.toLowerCase()} `) >= 0 ? "" : context;
+}
+
+function hitTitle(hit, s) {
+    const context = hitContext(hit, s);
+    return context ? `${context}: ${inSentence(hit.label)}` : hit.label;
+}
+
+function hitPath(hit, s) {
+    const title = hit.label.toLowerCase();
+    const parts = [CAT_BY_ID[hit.page.cat]?.name, nameOf(hit.page, s), hitContext(hit, s)].map(p => String(p || "").toLowerCase());
+    return parts.filter((p, i) => p && p !== title && parts.indexOf(p) === i).join(" › ");
 }
 
 function queryWords(query) {
@@ -1281,6 +1291,12 @@ function marked(text, query, colour) {
         i = j;
     }
     return out;
+}
+
+function pathCuts(path, why) {
+    const parts = String(path).split(" › ");
+    const tail = why ? ` · ${why}` : "";
+    return parts.map((p, i) => (i ? "… › " : "") + parts.slice(i).join(" › ") + tail);
 }
 
 function hitIndexOf(hits, openUid) {

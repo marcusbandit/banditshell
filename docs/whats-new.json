@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-24",
+      "id": "2026-10-28-25",
       "date": "2026-10-28",
       "changes": [
         {
@@ -33,6 +33,32 @@
           "type": "issues",
           "severity": "minor",
           "text": "Without NetworkManager, Settings offers Start or the install command"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-24",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings labels, sliders and theme cards fit a narrow panel"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Long Settings pages and search lists fade where more follows"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Delete and other harmful menu actions show in the alarm colour"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Lid rows offer do nothing"
         }
       ]
     },
