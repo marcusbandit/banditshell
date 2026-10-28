@@ -182,6 +182,7 @@ Singleton {
             concept: "launcher.concept",
             listPinned: "launcher.list.pinned",
             listRecents: "launcher.list.recents",
+            searchAt: "launcher.list.searchAt",
             hiddenFiles: "launcher.hiddenFiles",
             animatePreview: "launcher.animatePreview",
             polkitAgent: "polkit.agent",
@@ -1263,6 +1264,8 @@ Singleton {
     }
 
     readonly property string wifiNet: Network.enabled && Network.connected ? Network.activeName : ""
+    readonly property real launcherPlaced: Panels.host?.forScreen(Settings.screenName)?.launcher?.placedAt ?? -1
+
     readonly property string reach: Network.online ? "online" : Network.reachLabel() || (Network.linked ? "checking" : "offline")
 
     readonly property string btName: Bluetooth.adapterName || "this machine"
