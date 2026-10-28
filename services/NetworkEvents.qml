@@ -12,14 +12,15 @@ Singleton {
     Process {
         id: watcher
 
-        running: true
+        running: Network.managerRunning
         command: ["nmcli", "monitor"]
 
         stdout: SplitParser {
             onRead: settle.restart()
         }
 
-        onExited: rewatch.start()
+        onExited: if (Network.managerRunning)
+            rewatch.start()
     }
 
     Timer {

@@ -92,10 +92,12 @@ var FILES = {
     "agents.md": "smart_toy"
 };
 
-function iconFor(path, name, isDir, home) {
+function iconFor(path, name, isDir, home, folders) {
     if (isDir) {
         if (SYSTEM[path])
             return SYSTEM[path];
+        if (folders && folders[path])
+            return HOME_DIRS[folders[path]] ?? "";
 
         if (home && path === home)
             return HOME_DIRS[""];

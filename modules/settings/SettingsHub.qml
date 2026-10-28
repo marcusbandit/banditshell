@@ -91,7 +91,9 @@ Column {
 
                 width: tile.lead ? grid.width : grid.cell
                 height: Appearance.padding.card * 2 + Appearance.icon.large + Appearance.padding.small + Appearance.font.line.small * 2 + 4
-                opacity: tile.off ? Appearance.opacity.disabled : 1
+                readonly property bool explains: tile.off && !!tile.modelData.explains
+
+                opacity: tile.off && !tile.explains ? Appearance.opacity.disabled : 1
                 scale: squeeze.value
 
                 Follow {
@@ -133,7 +135,7 @@ Column {
                         name: tile.modelData.icon
                         size: Appearance.icon.large
                         fill: tile.on ? 1 : 0
-                        color: tile.on ? Appearance.colour.accent : Appearance.colour.textFaint
+                        color: tile.on ? Appearance.colour.accent : tile.explains ? Appearance.colour.textGhost : Appearance.colour.textFaint
                     }
 
                     Item {
@@ -152,7 +154,7 @@ Column {
                         width: parent.width
                         text: tile.det
                         elide: Text.ElideRight
-                        color: Appearance.colour.textFaint
+                        color: tile.explains ? Appearance.colour.textDim : Appearance.colour.textFaint
                     }
                 }
 

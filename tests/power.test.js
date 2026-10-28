@@ -1,13 +1,15 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
+const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const load = (file, names) => new Function(fs.readFileSync(path.join(ROOT, "services", file), "utf8") + `\nreturn { ${names.join(", ")} };`)();
 
 const Battery = load("battery.js", ["lowStep", "countdownMessage", "nearlyEmptyChoice", "nearlyEmptyAction", "afterResume", "nearlyEmptyFraction", "rearmMargin", "graceSeconds"]);
-const Suspension = load("suspension.js", ["parseHibernate", "resolve", "commandFor", "logindCommand"]);
+const Suspension = load("suspension.js", ["parseHibernate", "resolve", "commandFor", "logindCommand", "logoutCommand"]);
 const Lid = load("lid.js", ["internalOutput", "hasLid", "externalScreens", "differsFromLogind", "chooseAction", "closedFrom", "closedFromProperty"]);
 const Profile = load("powerprofile.js", ["nameFor", "profileFor", "parseProbe", "parseActive", "choices"]);
 const Charge = load("chargelimit.js", ["parseProbe", "wanted", "shouldWrite", "elsewhere", "trouble"]);
@@ -267,4 +269,27 @@ test("the charge helper takes one number from 50 to 100 and nothing else", () =>
         const run = spawnSync("sh", bad === undefined ? [helper] : [helper, bad]);
         assert.strictEqual(run.status, 2, `${bad}`);
     }
+});
+
+function logOut(withLogind, hyprctl) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "power-logout-"));
+    const bin = path.join(dir, "bin");
+    fs.mkdirSync(bin);
+    if (withLogind)
+        fs.mkdirSync(path.join(dir, "seats"));
+    const log = path.join(dir, "log");
+    const tools = { loginctl: 'echo "loginctl $*" >>"$LOG"', hyprctl: `echo "hyprctl $*" >>"$LOG"; ${hyprctl}`, id: "echo 1000" };
+    for (const [name, body] of Object.entries(tools))
+        fs.writeFileSync(path.join(bin, name), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+    const [shell, ...args] = Suspension.logoutCommand(path.join(dir, "seats"));
+    spawnSync(shell, args, { env: { PATH: `${bin}:/usr/bin:/bin`, LOG: log, XDG_SESSION_ID: "4" }, encoding: "utf8" });
+    const lines = fs.existsSync(log) ? fs.readFileSync(log, "utf8").trim().split("\n") : [];
+    fs.rmSync(dir, { recursive: true, force: true });
+    return lines;
+}
+
+test("log out ends the logind session where logind runs, and asks Hyprland to exit where it does not", () => {
+    assert.deepStrictEqual(logOut(true, "echo ok"), ["loginctl terminate-session 4"]);
+    assert.deepStrictEqual(logOut(false, '[ "$2" = "hl.dsp.exit()" ] && echo ok'), ["hyprctl dispatch hl.dsp.exit()"]);
+    assert.deepStrictEqual(logOut(false, "echo 'invalid dispatcher'"), ["hyprctl dispatch hl.dsp.exit()", "hyprctl dispatch exit"]);
 });

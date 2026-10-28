@@ -1011,7 +1011,7 @@ QtObject {
             dir: f.dir,
             label: f.name,
             detail: Search.shortPath(f.path.slice(0, f.path.lastIndexOf("/")) || "/", System.home),
-            icon: Marks.iconFor(f.path, f.name, f.dir, System.home) || (f.dir ? "folder" : "draft"),
+            icon: Marks.iconFor(f.path, f.name, f.dir, System.home, UserFolders.byPath) || (f.dir ? "folder" : "draft"),
             score: f.score ?? 0
         };
     }

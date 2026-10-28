@@ -30,6 +30,10 @@ function logindCommand(verb) {
     return ["sh", "-c", 'if [ -d /run/systemd/system ]; then exec systemctl "$1"; fi; exec loginctl "$1"', "sh", verb];
 }
 
+function logoutCommand(seats) {
+    return ["sh", "-c", 'if [ -d "$1" ]; then session="${XDG_SESSION_ID:-$(loginctl show-user "$(id -u)" -p Display --value)}"; [ -n "$session" ] || exit 1; exec loginctl terminate-session "$session"; fi; [ "$(hyprctl dispatch "hl.dsp.exit()")" = ok ] || exec hyprctl dispatch exit', "sh", seats ?? "/run/systemd/seats"];
+}
+
 function commandFor(action) {
     if (action === "suspend" || action === "hibernate")
         return logindCommand(action);
