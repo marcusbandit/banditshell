@@ -97,7 +97,7 @@ font_present() {
 
 build_table() {
     add_step cli                           "cli_installed"                           @cli                          1 "the CLI wrapper itself, cli/banditshell into bin/"
-    add_step quickshell                    "command -v qs"                           quickshell                    1 "the toolkit the shell is written against"
+    add_step quickshell                    "quickshell_present"                      quickshell                    1 "the toolkit the shell is written against"
     add_step curl                          "command -v curl"                         curl                          1 "fetching the font"
     add_step unzip                         "command -v unzip"                        unzip                         1 "unpacking the font"
     add_step fontconfig                    "command -v fc-list"                      fontconfig                    1 "finding the fonts once they are in place"
@@ -160,6 +160,15 @@ build_table() {
     if [ "$WANT_CHARGE_LIMIT" -eq 1 ]; then
         add_step charge-limit              "charge_limit_present"                    @charge-limit                 2 "the helper that writes the battery's charge limit, and its polkit action"
     fi
+}
+
+quickshell_present() {
+    local version
+    command -v qs >/dev/null 2>&1 || return 1
+    if ! version=$("$REPO/scripts/quickshell-version.sh"); then
+        PROBE_NOTE="$version"
+    fi
+    return 0
 }
 
 CHARGE_HELPER="/usr/local/libexec/banditshell-charge-limit"

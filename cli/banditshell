@@ -2565,7 +2565,7 @@ triage() {
 }
 
 doctor() {
-    local failed binds status=0
+    local failed binds version status=0
     if ensure_built; then
         echo "bin/ current, helpers in place"
     else
@@ -2580,6 +2580,9 @@ doctor() {
     fi
     if command -v qs >/dev/null 2>&1; then
         echo "quickshell $(qs --version 2>/dev/null | head -1)"
+        if ! version=$("$SHELL_DIR/scripts/quickshell-version.sh"); then
+            echo "$version"
+        fi
     else
         complain "quickshell missing (run: bash $SHELL_DIR/install.sh)"
     fi
