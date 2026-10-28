@@ -139,8 +139,7 @@ Item {
                     anchors.fill: parent
                     anchors.margins: card.on ? 4 : 0
                     radius: Appearance.rounding.normal - (card.on ? 4 : 0)
-                    color: card.modelData.background
-                    opacity: card.faded ? Appearance.opacity.disabled : 1
+                    color: card.faded ? Appearance.colour.fill : card.modelData.background
                 }
 
                 Column {
@@ -154,8 +153,7 @@ Item {
                     StyledText {
                         width: parent.width
                         text: card.modelData.name
-                        color: card.modelData.foreground
-                        opacity: card.faded ? Appearance.opacity.disabled : 1
+                        color: card.faded ? Appearance.colour.textDim : card.modelData.foreground
                         elide: Text.ElideRight
                     }
 
