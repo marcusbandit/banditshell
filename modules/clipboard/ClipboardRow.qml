@@ -44,7 +44,7 @@ Item {
 
     readonly property bool focused: root.selected || root.hovered
 
-    implicitHeight: (root.pictured ? Appearance.sizes.clipboardPreview : Math.max(Appearance.sizes.rowHeight, body.implicitHeight + Appearance.padding.normal * 2)) + Appearance.padding.small
+    implicitHeight: Math.max(Appearance.sizes.rowHeight, body.implicitHeight + Appearance.padding.normal * 2) + Appearance.padding.small
 
     Follow {
         id: slide
@@ -202,17 +202,13 @@ Item {
         Item {
             id: picture
 
-            readonly property real minAspect: 0.5
-            readonly property real maxAspect: 2.5
-
-            readonly property real known: root.entry.w > 0 && root.entry.h > 0 ? root.entry.w / root.entry.h : root.entry.aspect > 0 ? root.entry.aspect : 0
-            readonly property real aspect: known > 0 ? Math.max(minAspect, Math.min(known, maxAspect)) : 1
+            readonly property real aspect: 1.6
 
             anchors.right: trailing.left
             anchors.rightMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
             width: root.pictured ? Math.round(height * aspect) : 0
-            height: parent.height - Appearance.padding.normal * 2
+            height: parent.height - Appearance.padding.small * 2
             visible: root.pictured
 
             SquircleImage {
@@ -224,7 +220,7 @@ Item {
                 fillMode: Image.PreserveAspectCrop
 
                 decodeWidth: 0
-                decodeHeight: Appearance.sizes.clipboardPreview - Appearance.padding.normal * 2
+                decodeHeight: Math.round(picture.height * 2)
 
                 onStatusChanged: {
                     if (thumb.status === Image.Error)
