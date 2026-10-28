@@ -12,10 +12,19 @@ Row {
     property real warnAbove: root.to
     property string text: ""
     property real trackWidth: 180
+    property var ends: []
 
     signal moved(real value)
 
     spacing: Appearance.padding.small
+
+    StyledText {
+        anchors.verticalCenter: parent.verticalCenter
+        visible: root.ends.length > 0
+        text: root.ends[0] ?? ""
+        font.pixelSize: Appearance.font.size.small
+        color: Appearance.colour.textFaint
+    }
 
     Slider {
         anchors.verticalCenter: parent.verticalCenter
@@ -31,6 +40,15 @@ Row {
             const snapped = Math.round((v - root.from) / s) * s + root.from;
             root.moved(Math.max(root.from, Math.min(root.to, +snapped.toFixed(4))));
         }
+    }
+
+    StyledText {
+        anchors.verticalCenter: parent.verticalCenter
+        visible: root.ends.length > 1
+        text: root.ends[1] ?? ""
+        rightPadding: Appearance.padding.large
+        font.pixelSize: Appearance.font.size.small
+        color: Appearance.colour.textFaint
     }
 
     StyledText {

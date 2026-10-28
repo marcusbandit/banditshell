@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-5",
+      "id": "2026-10-28-6",
       "date": "2026-10-28",
       "changes": [
         {
@@ -28,6 +28,32 @@
           "type": "issues",
           "severity": "minor",
           "text": "LEAP networks say plainly that they cannot be joined"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-5",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings, Launcher, Position moves it up or down; it moves up to fit"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The dictionary page's footer no longer runs under its keys"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Dragging the launcher down keeps it in the frame and folds its preview"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The launcher tab stays under your pointer while you pull it up"
         }
       ]
     },
