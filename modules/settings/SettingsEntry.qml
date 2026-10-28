@@ -224,9 +224,9 @@ Column {
 
     Item {
         parent: frame
-        x: (controls.parent?.x ?? 0) + controls.x
+        x: (controls.parent?.x ?? 0) + controls.x + controls.width - width
         y: frame.height - Appearance.padding.small
-        width: controls.width
+        width: Math.min(Math.max(controls.width, 200), frame.inner - frame.leadWidth)
         height: 0
         visible: places.active
         z: 1
@@ -316,7 +316,7 @@ Column {
                 readonly property bool chosen: Catalogue.same(option.modelData[0], root.value)
 
                 width: parent ? parent.width : 0
-                icon: option.chosen ? "check" : "radio_button_unchecked"
+                icon: option.chosen ? "radio_button_checked" : "radio_button_unchecked"
                 label: String(option.modelData[1])
                 selected: option.chosen
                 lead: root.row.swatches ? swatch : null
@@ -329,7 +329,7 @@ Column {
 
                         Icon {
                             anchors.verticalCenter: parent.verticalCenter
-                            name: option.chosen ? "check" : "radio_button_unchecked"
+                            name: option.chosen ? "radio_button_checked" : "radio_button_unchecked"
                             color: option.iconColour
                         }
 
@@ -473,7 +473,9 @@ Column {
         SettingsField {
             id: textField
 
-            implicitWidth: textField.editing ? 200 : Math.max(120, Math.min(200, Math.ceil(Math.max(valueWidth.advanceWidth, placeholderWidth.advanceWidth)) + Appearance.padding.normal * 2 + 2))
+            implicitWidth: Math.max(120, Math.min(frame.inner - frame.leadWidth, Math.ceil(Math.max(valueWidth.advanceWidth, placeholderWidth.advanceWidth)) + Appearance.padding.normal * 2 + 2))
+            framed: true
+            placeholderColour: Appearance.colour.text
             text: String(root.value ?? "")
             placeholder: root.row.placeholder ?? ""
             mono: !!root.row.mono
@@ -489,7 +491,7 @@ Column {
 
                 font.family: textField.mono ? Appearance.sizes.filesTerminalFont : Appearance.font.family
                 font.pixelSize: Appearance.font.size.small
-                text: textField.text
+                text: textField.draft
             }
 
             TextMetrics {
