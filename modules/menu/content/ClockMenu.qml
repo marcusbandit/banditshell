@@ -461,6 +461,17 @@ Column {
                 color: timerCard.modelData.finished ? Appearance.colour.accent : timerCard.modelData.paused ? Appearance.colour.textFaint : Appearance.colour.text
             }
 
+            Icon {
+                anchors.left: remaining.right
+                anchors.leftMargin: Appearance.padding.small
+                anchors.verticalCenter: remaining.verticalCenter
+                visible: timerCard.modelData.paused && !timerCard.modelData.finished
+                name: "pause"
+                fill: 1
+                size: Appearance.icon.large
+                color: Appearance.colour.textDim
+            }
+
             StyledText {
                 anchors.right: parent.right
                 anchors.rightMargin: timerCard.discSpace
