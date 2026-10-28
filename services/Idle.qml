@@ -14,6 +14,10 @@ Singleton {
 
     readonly property bool handledElsewhere: root.handler !== ""
 
+    property string handlerConfig: ""
+
+    property var handlerTimes: null
+
     property bool idle: false
 
     property bool awake: false
@@ -148,6 +152,37 @@ Singleton {
         }
 
         onExited: root.handler = Plan.handlerOf(handlerOutput.text)
+    }
+
+    onHandlerChanged: {
+        root.handlerTimes = null;
+        root.handlerConfig = "";
+        if (root.handler === "hypridle")
+            configFinder.running = true;
+    }
+
+    Process {
+        id: configFinder
+
+        command: ["pgrep", "-a", "-x", "hypridle"]
+
+        stdout: StdioCollector {
+            id: configFinderOutput
+        }
+
+        onExited: root.handlerConfig = root.handler === "hypridle" ? Plan.hypridleConfigPath(configFinderOutput.text, Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`) : ""
+    }
+
+    FileView {
+        id: handlerFile
+
+        path: root.handlerConfig
+        printErrors: false
+        watchChanges: true
+
+        onFileChanged: handlerFile.reload()
+        onLoaded: root.handlerTimes = Plan.hypridleTimes(handlerFile.text())
+        onLoadFailed: root.handlerTimes = null
     }
 
     Timer {

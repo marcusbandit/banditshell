@@ -17,7 +17,7 @@ Item {
 
     readonly property real pad: Appearance.padding.card
     readonly property real natural: Appearance.padding.large + column.implicitHeight + root.pad
-    readonly property var days: Weather.forecast
+    readonly property var days: Forecast.upcoming(Weather.forecast, clock.date.getTime())
     readonly property var range: Forecast.weekRange(root.days)
     readonly property real barWidth: Appearance.padding.small
     readonly property real barHeight: Appearance.font.line.normal * 3
@@ -169,6 +169,14 @@ Item {
                 color: Appearance.colour.textDim
             }
 
+            StyledText {
+                width: parent.width
+                leftPadding: header.inset
+                visible: Weather.forecastReady && root.days.length === 0
+                text: "The last forecast has no days left"
+                color: Appearance.colour.textDim
+            }
+
             Row {
                 id: strip
 
@@ -184,6 +192,7 @@ Item {
                         required property var modelData
                         required property int index
 
+                        readonly property bool today: Forecast.isToday(cell.modelData.date, clock.date.getTime())
                         readonly property var bar: Forecast.barOf(cell.modelData, root.range)
                         readonly property real fillHeight: Math.max(root.barWidth, (cell.bar.to - cell.bar.from) * root.barHeight)
 
@@ -199,8 +208,8 @@ Item {
                             StyledText {
                                 width: parent.width
                                 horizontalAlignment: Text.AlignHCenter
-                                text: cell.index === 0 ? "Today" : Qt.locale().dayName(Forecast.dateOf(cell.modelData.date).getDay(), Locale.ShortFormat)
-                                color: cell.index === 0 ? Appearance.colour.text : Appearance.colour.textDim
+                                text: cell.today ? "Today" : Qt.locale().dayName(Forecast.dateOf(cell.modelData.date).getDay(), Locale.ShortFormat)
+                                color: cell.today ? Appearance.colour.text : Appearance.colour.textDim
                                 elide: Text.ElideRight
                             }
 
@@ -284,6 +293,13 @@ Item {
                 }
             }
         }
+    }
+
+    WallClock {
+        id: clock
+
+        precision: WallClock.Hours
+        enabled: root.watched
     }
 
     WallClock {

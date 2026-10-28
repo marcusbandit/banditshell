@@ -592,7 +592,7 @@ const PAGES_SOURCE = {
             { t: "Weather", preview: "weather", rows: [
                 { n: [], icon: "partly_cloudy_day", label: "Weather", k: "weatherShow", kind: "toggle", cfg: "weather.show", state: s => s.v("weatherShow") ? "beside the clock in the island" : "off", kw: "weather temperature forecast island",
                     why: "The temperature beside the island’s clock. Pressing it opens the week ahead." },
-                { n: [], icon: "location_on", label: "Place", k: "weatherPlace", kind: "text", cfg: "weather.location", placeholder: "automatic", state: s => s.weatherPlaceState, bad: s => s.weatherPlaceTrouble !== "", offer: s => placeOffer(s), dis: s => !s.v("weatherShow"), kw: "weather location town city",
+                { n: [], icon: "location_on", label: "Place", k: "weatherPlace", kind: "text", cfg: "weather.location", placeholder: "automatic", places: true, state: s => s.weatherPlaceState, bad: s => s.weatherPlaceTrouble !== "", offer: s => placeOffer(s), dis: s => !s.v("weatherShow"), kw: "weather location town city",
                     why: "A town or city. Left empty, the weather uses your connection's location." },
                 { n: [], icon: "thermostat", label: "Units", k: "weatherUnits", kind: "seg", o: [["metric", "°C"], ["imperial", "°F"]], cfg: "weather.units", dis: s => !s.v("weatherShow"), kw: "weather units celsius fahrenheit temperature",
                     why: "For the temperature in the island and the week ahead." },
@@ -736,9 +736,10 @@ const PAGES_SOURCE = {
                 { n: 90, icon: "lock", label: "Try it", kind: "button", btn: "Lock", act: "lockNow", why: "Locks the screen now. Your password brings you back." }
             ] },
             { t: "When idle", rows: [
-                { n: 91, icon: "lock_clock", label: "Lock after", k: "idleLock", kind: "choice", o: ["1 min", "5 min", "15 min", "never"], cfg: "idle.lock", state: s => s.idleHandled ? `${s.idleHandler} is handling this` : "", kw: "auto-lock idle" },
-                { n: 91, icon: "monitor", label: "Screens off after", k: "idleOff", kind: "choice", o: ["5 min", "10 min", "30 min", "never"], cfg: "idle.screensOff", state: s => s.idleHandled ? `${s.idleHandler} is handling this` : "", why: "A playing video holds it off.", kw: "screen-off idle" },
-                { n: 91, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], cfg: "idle.sleep", state: s => s.idleHandled ? `${s.idleHandler} is handling this` : "", why: "On a laptop it only counts on battery.", kw: "suspend idle" }
+                { n: 91, kind: "fact", text: s => idleNote(s) },
+                { n: 91, icon: "lock_clock", label: "Lock after", k: "idleLock", kind: "choice", o: ["1 min", "5 min", "15 min", "never"], cfg: "idle.lock", held: s => idleHeld(s, "lock"), kw: "auto-lock idle" },
+                { n: 91, icon: "monitor", label: "Screens off after", k: "idleOff", kind: "choice", o: ["5 min", "10 min", "30 min", "never"], cfg: "idle.screensOff", held: s => idleHeld(s, "screensOff"), why: "A playing video holds it off.", kw: "screen-off idle" },
+                { n: 91, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], cfg: "idle.sleep", held: s => idleHeld(s, "sleep"), why: "On a laptop it only counts on battery.", kw: "suspend idle" }
             ] }
         ]
     },
@@ -1001,6 +1002,19 @@ const PAGES = [];
 const PAGE_BY_ID = {};
 const ROWS = [];
 const ROW_BY_KEY = {};
+
+function idleNote(s) {
+    if (!s.idleHandled)
+        return "";
+    const read = s.idleTimes && Object.keys(s.idleTimes).some(k => s.idleTimes[k] !== null);
+    return read ? `${s.idleHandler} sets these times. Change them in its config.` : `${s.idleHandler} sets these times. The shell cannot read them, so they are not shown.`;
+}
+
+function idleHeld(s, role) {
+    if (!s.idleHandled)
+        return null;
+    return s.idleTime(role) || "not shown";
+}
 
 function placeOffer(s) {
     if (s.weatherPlaceTrouble === "")

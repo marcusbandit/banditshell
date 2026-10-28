@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-13",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The weather Place field lists matching towns and countries as you type"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The week ahead calls only today's date Today and drops days gone by"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings in the launcher read like Settings, as Volume: keys step by"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Idle rows show hypridle's own times and no longer look changeable"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Launcher rows whose details start alike show the words that differ"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rail marks no longer draw over the workspaces on a short rail"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-12",
       "date": "2026-10-28",
       "changes": [

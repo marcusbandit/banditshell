@@ -167,6 +167,26 @@ function matchesNothing(rows) {
     return !rows.some(r => !r.header && r.kind !== "fallback");
 }
 
+var SHARED_START = 12;
+
+function sharedStarts(details) {
+    return details.map((mine, i) => {
+        let best = 0;
+        for (let j = 0; j < details.length; j++) {
+            const other = details[j];
+            if (j === i || !mine || !other || mine === other)
+                continue;
+            let n = 0;
+            while (n < mine.length && n < other.length && mine[n] === other[n])
+                n++;
+            const cut = n > 0 ? mine.lastIndexOf(" ", n - 1) + 1 : 0;
+            if (cut > best)
+                best = cut;
+        }
+        return best >= SHARED_START && best < mine.length ? best : 0;
+    });
+}
+
 function arrange(groups, caps) {
     const best = g => g.items.reduce((m, it) => Math.max(m, it.score ?? 0), -Infinity);
     const live = (groups || []).map((g, i) => ({

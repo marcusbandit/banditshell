@@ -43,7 +43,8 @@ Loader {
         id: fact
 
         Item {
-            implicitHeight: words.implicitHeight + Appearance.padding.small + Appearance.padding.normal
+            visible: words.text !== ""
+            implicitHeight: visible ? words.implicitHeight + Appearance.padding.small + Appearance.padding.normal : 0
 
             HoverHandler {
                 onHoveredChanged: if (hovered && Catalogue.labelOf(root.row))

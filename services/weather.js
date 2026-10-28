@@ -140,6 +140,21 @@ function dateOf(text) {
     return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
 }
 
+function dayKey(time) {
+    const d = new Date(time);
+    const two = n => (n < 10 ? "0" : "") + n;
+    return d.getFullYear() + "-" + two(d.getMonth() + 1) + "-" + two(d.getDate());
+}
+
+function upcoming(days, now) {
+    const today = dayKey(now);
+    return days.filter(d => String(d.date) >= today);
+}
+
+function isToday(date, now) {
+    return String(date) === dayKey(now);
+}
+
 function weekRange(days) {
     if (!days.length)
         return { min: 0, max: 0 };
@@ -288,6 +303,43 @@ function geocodeResults(output) {
                 results.push(list[j]);
     }
     return results;
+}
+
+var TYPEAHEAD_LIMIT = 5;
+
+function typeaheadCommand(text) {
+    const name = placeName(text);
+    if (name.length < 3)
+        return [];
+    return ["curl", "-sS", "--max-time", "4", geocodeUrl(name)];
+}
+
+function placeMatches(text, results) {
+    const hint = folded(String(text || "").split(",").slice(1).join(","));
+    const typed = folded(placeName(text));
+    const towns = results.filter((r, i) => r && r.name && TOWN_RANK.hasOwnProperty(r.feature_code) && (r.id === undefined || results.findIndex(o => o && o.id === r.id) === i));
+    const twinOf = r => folded(r.name) + "|" + folded(r.country);
+    const twins = {};
+    towns.forEach(r => twins[twinOf(r)] = (twins[twinOf(r)] || 0) + 1);
+    const hinted = r => hint !== "" && [r.country, r.country_code, r.admin1].some(p => folded(p).indexOf(hint) === 0);
+    const weight = r => (hinted(r) ? 0 : 2) + (folded(r.name).indexOf(typed) === 0 ? 0 : 1);
+    const ordered = towns.map((r, i) => ({ r: r, w: weight(r), i: i })).sort((a, b) => a.w - b.w || a.i - b.i).map(e => e.r);
+    const out = [];
+    for (let i = 0; i < ordered.length && out.length < TYPEAHEAD_LIMIT; i++) {
+        const r = ordered[i];
+        const region = twins[twinOf(r)] > 1 && r.admin1 ? String(r.admin1) : "";
+        const parts = [String(r.name)].concat(region ? [region] : [], r.country ? [String(r.country)] : []);
+        const place = parts.join(", ");
+        if (out.some(p => p.text === place))
+            continue;
+        out.push({
+            name: String(r.name),
+            region: String(r.admin1 || ""),
+            country: String(r.country || ""),
+            text: place
+        });
+    }
+    return out;
 }
 
 function suggestPlace(location, results) {

@@ -11,7 +11,7 @@ function lib(file, names) {
 }
 
 const Calculation = lib("services/calculation.js", ["looksLikeCalculation", "qalcExpression", "readQalc"]);
-const Search = lib("modules/launcher/search.js", ["pathQuery", "shortPath", "pathRows", "fileRows", "urlOf", "webSearchUrl", "arrange", "nextPickable", "matchesNothing", "armsFirst"]);
+const Search = lib("modules/launcher/search.js", ["pathQuery", "shortPath", "pathRows", "fileRows", "urlOf", "webSearchUrl", "arrange", "nextPickable", "matchesNothing", "armsFirst", "sharedStarts"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 test.describe("looksLikeCalculation", () => {
@@ -350,4 +350,11 @@ test.describe("armsFirst", () => {
         assert.ok(Search.armsFirst({ id: "poweroff", confirm: true }, true));
         assert.ok(!Search.armsFirst({ id: "suspend" }, false));
     });
+});
+
+test("rows whose details share a long start learn where the part that differs begins", () => {
+    const details = ["Browse for Zeroconf-enabled SSH Servers", "Browse for Zeroconf-enabled VNC Servers", "Browse for Zeroconf services available on your network", "Application", ""];
+    assert.deepStrictEqual(Search.sharedStarts(details), [28, 28, 0, 0, 0]);
+    assert.deepStrictEqual(Search.sharedStarts(["Open the file", "Open the folder"]), [0, 0]);
+    assert.deepStrictEqual(Search.sharedStarts(["Settings page for sound", "Settings page for sound"]), [0, 0]);
 });

@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const src = fs.readFileSync(path.join(__dirname, "..", "services/weather.js"), "utf8");
-const Forecast = new Function(src + "\nreturn { wttrIcon, wmo, placeOf, coordsOf, wttrDays, outlookUrl, outlookDays, dateOf, weekRange, barOf, rainText, readWttr, failureLook, ago, suggestionQueries, geocodeUrl, editDistance, geocodeResults, suggestPlace, suggestionCommand };")();
+const Forecast = new Function(src + "\nreturn { wttrIcon, wmo, placeOf, coordsOf, wttrDays, outlookUrl, outlookDays, dateOf, upcoming, isToday, weekRange, barOf, rainText, readWttr, failureLook, ago, suggestionQueries, geocodeUrl, editDistance, geocodeResults, suggestPlace, suggestionCommand, typeaheadCommand, placeMatches };")();
 
 function hour(time, code, desc, rain) {
     return { time, weatherCode: String(code), weatherDesc: [{ value: desc }], chanceofrain: String(rain) };
@@ -268,4 +268,31 @@ test("the suggestion lookup is one curl over every query, and nothing for a name
     assert.deepStrictEqual(command.slice(0, 6), ["curl", "-sS", "--max-time", "4", "-w", "\n"]);
     assert.deepStrictEqual(command.slice(6), ["Lyngbyy", "Lyngby", "Lyngb", "Lyng", "Lyn"].map(Forecast.geocodeUrl));
     assert.deepStrictEqual(Forecast.suggestionCommand("Ny"), []);
+});
+
+test("a forecast fetched before midnight calls no past day upcoming or Today", () => {
+    const days = ["2026-10-27", "2026-10-28", "2026-10-29"].map(date => ({ date, high: 10, low: 2 }));
+    const afterMidnight = new Date(2026, 9, 28, 0, 30).getTime();
+    assert.deepStrictEqual(Forecast.upcoming(days, afterMidnight).map(d => d.date), ["2026-10-28", "2026-10-29"]);
+    assert.ok(Forecast.isToday("2026-10-28", afterMidnight));
+    assert.ok(!Forecast.isToday("2026-10-27", afterMidnight));
+    assert.deepStrictEqual(Forecast.upcoming(days, new Date(2026, 10, 2, 9).getTime()), []);
+    assert.ok(Forecast.isToday("2026-01-05", new Date(2026, 0, 5, 23, 59).getTime()));
+});
+
+test("typing a place asks the geocoder once for the name, never for under three letters", () => {
+    assert.deepStrictEqual(Forecast.typeaheadCommand("Pa"), []);
+    assert.deepStrictEqual(Forecast.typeaheadCommand("Paris, Tex"), ["curl", "-sS", "--max-time", "4", Forecast.geocodeUrl("Paris")]);
+});
+
+test("the type-ahead lists towns that start with what was typed, with the region only where a country has twins", () => {
+    const paris = Forecast.geocodeResults(fs.readFileSync(path.join(__dirname, "fixtures/weather/geocode-pariss.txt"), "utf8").split("\n")[1]);
+    const listed = Forecast.placeMatches("Paris", paris);
+    assert.deepStrictEqual(listed.map(p => p.text), ["Paris, France", "Paris, Texas, United States", "Paris, Tennessee, United States", "Paris, Kentucky, United States", "Paris, Illinois, United States"]);
+    assert.deepStrictEqual(listed[0], { name: "Paris", region: "Île-de-France Region", country: "France", text: "Paris, France" });
+    assert.strictEqual(Forecast.placeMatches("Paris, US", paris)[0].text, "Paris, Texas, United States");
+    assert.ok(Forecast.placeMatches("Paris", paris).every(p => p.name.indexOf("Mountain") < 0));
+    const lyngby = Forecast.placeMatches("Lyngby", geocoded("lyngbyy"));
+    assert.strictEqual(new Set(lyngby.map(p => p.text)).size, lyngby.length);
+    assert.deepStrictEqual(Forecast.placeMatches("Xqzwvb", geocoded("xqzwvb")), []);
 });

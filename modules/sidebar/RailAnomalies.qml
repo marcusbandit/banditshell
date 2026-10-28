@@ -49,7 +49,9 @@ Item {
         layoutName: Keymap.name
     })
 
-    readonly property var split: Anomalies.split(root.reading, Anomalies.slotsIn(root.room, Appearance.sizes.statusSlot + Appearance.sizes.statusGap))
+    readonly property real slots: Anomalies.slotsIn(root.room, Appearance.sizes.statusSlot + Appearance.sizes.statusGap)
+
+    readonly property var split: Anomalies.split(root.reading, root.slots)
 
     readonly property var wanted: root.split.kept
 
@@ -231,7 +233,7 @@ Item {
             id: more
 
             readonly property int live: root.dropped.length
-            readonly property bool shown: more.live > 0
+            readonly property bool shown: more.live > 0 && root.slots > 0
 
             property int count: 0
 

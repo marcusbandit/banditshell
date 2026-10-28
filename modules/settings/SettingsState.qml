@@ -1405,6 +1405,12 @@ Singleton {
 
     readonly property bool idleHandled: Idle.handledElsewhere
     readonly property string idleHandler: Idle.handler
+    readonly property var idleTimes: Idle.handlerTimes
+
+    function idleTime(role: string): string {
+        const seconds = root.idleTimes?.[role];
+        return seconds === null || seconds === undefined ? "" : Durations.choiceFromSeconds(seconds);
+    }
 
     readonly property var hyprOptions: ({
             kbDelay: {
