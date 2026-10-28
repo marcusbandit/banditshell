@@ -32,7 +32,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "The Files window opens faster the first time"
+          "text": "Files opens without its sidebar redrawing a moment later"
         }
       ]
     },
