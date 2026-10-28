@@ -353,6 +353,16 @@ test("the shim finds the checkout through BANDITSHELL_DIR, then the pointer file
     assert.strictEqual(b.result.api, 1);
 });
 
+test("the shim does not guess a clone in the home folder when the pointer is missing", { skip }, () => {
+    const home = fresh("home");
+    const guessed = path.join(home, "Projects/banditshell");
+    fs.mkdirSync(path.dirname(guessed), { recursive: true });
+    fs.renameSync(checkout(), guessed);
+    const shim = path.join(ROOT, "api/shim.lua");
+    const r = run(path.join(home, "unused"), `bs = load_api() return { api = bs.api }`, { home, via: "shim", env: { BS_SHIM: shim } });
+    assert.deepStrictEqual(r.result, { api: 0 });
+});
+
 test("the shim does not mention a single action, verb or version of the CLI", () => {
     const text = fs.readFileSync(path.join(ROOT, "api/shim.lua"), "utf8");
     assert.match(text.split("\n")[0], /^-- banditshell shim, format \d+\./);

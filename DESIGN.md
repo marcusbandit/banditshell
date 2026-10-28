@@ -2408,8 +2408,7 @@ launcher" for a plain `hl.bind(keys, bs.launcher.toggle)`.
 so `require("banditshell")` works. It is frozen: no action, no verb, a format number in its first
 line, replaced only by a higher format, and a `banditshell.lua` that is not ours (no such first
 line, or a link) is never touched. It finds the checkout through `$BANDITSHELL_DIR`, then the
-pointer file `$XDG_STATE_HOME/banditshell/root`, then the two usual homes of a clone, and with
-none it returns a hollow object that never raises. A pointer file, because the repo is not always
+pointer file `$XDG_STATE_HOME/banditshell/root`, and with neither it returns a hollow object that never raises. A pointer file, because the repo is not always
 where the owner keeps it, and a link would dangle after a move and make `require` raise in a
 config we do not own. `ensure_lua` writes the pointer and the shim on `start`, `restart`,
 `doctor` and a tried worktree (`dev try`, `dev back`), atomically, and never from the last good
