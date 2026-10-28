@@ -27,9 +27,26 @@ Singleton {
 
         function onApplicationsChanged(): void {
             const next = root.listed();
-            if (!Entries.sameEntries(root.all, next))
-                root.all = next;
+            if (Entries.sameEntries(root.all, next))
+                return;
+            if (!Entries.sameIds(root.all, next))
+                root.iconPaths = Object.create(null);
+            root.all = next;
         }
+    }
+
+    property var iconPaths: Object.create(null)
+
+    function iconPath(icon: string): string {
+        if (!icon)
+            return "";
+        const known = root.iconPaths[icon];
+        if (known)
+            return known;
+        const found = Quickshell.iconPath(icon, true);
+        if (found)
+            root.iconPaths[icon] = found;
+        return found;
     }
 
     readonly property var hidden: Config.values.launcher.hidden
