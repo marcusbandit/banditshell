@@ -191,6 +191,7 @@
     "toggle(): string"
   ],
   "shell": [
+    "flush(): string",
     "get(key: string): string",
     "set(key: string, value: string): string",
     "status(): string",

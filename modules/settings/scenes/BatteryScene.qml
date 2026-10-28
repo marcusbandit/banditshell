@@ -30,8 +30,14 @@ Item {
     readonly property bool low: root.present && root.sim.level <= root.warn
     readonly property bool charging: root.present && root.sim.charging
 
+    SceneClock {
+        id: awake
+
+        duration: 6000
+    }
+
     FrameAnimation {
-        running: root.visible && !SettingsView.reduceMotion && !Appearance.lessMotion
+        running: root.visible && awake.moving
         onTriggered: root.sim = Sim.step(Math.min(0.1, frameTime), root.options)
     }
 

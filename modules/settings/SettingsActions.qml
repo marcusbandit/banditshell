@@ -84,7 +84,7 @@ Singleton {
         const dir = `${Quickshell.env("HOME")}/Documents`;
         const file = `${dir}/banditshell-settings-${root.stamp()}.json`;
         exporter.path = file;
-        exporter.setText(JSON.stringify(Restore.exportable(Config.values, SettingsState.planned), null, 4) + "\n");
+        exporter.setText(JSON.stringify(Restore.exportable(Config.tree, SettingsState.planned), null, 4) + "\n");
     }
 
     FileView {

@@ -28,6 +28,17 @@ FloatingWindow {
 
     Component.onCompleted: win.follow()
 
+    Timer {
+        interval: 9000
+        running: !win.opened
+
+        onTriggered: {
+            Trace.begin("files warm");
+            Files.refreshPlaces();
+            win.opened = true;
+        }
+    }
+
     TraceFrames {
         label: "files"
     }
@@ -64,6 +75,10 @@ FloatingWindow {
 
         focus: true
         active: win.opened && !Files.helpersMissing
+        asynchronous: !win.visible
         sourceComponent: FilesFace {}
+
+        onLoaded: if (!win.visible)
+            Trace.note("built")
     }
 }

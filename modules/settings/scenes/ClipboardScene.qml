@@ -32,11 +32,18 @@ Item {
             });
     }
 
+    SceneClock {
+        id: awake
+
+        duration: 5400
+        live: root.recording
+    }
+
     Timer {
         id: tick
 
         interval: 900
-        running: root.recording && !SettingsView.reduceMotion && !Appearance.lessMotion && root.visible
+        running: root.visible && awake.moving
         repeat: true
         onTriggered: {
             const showing = [];

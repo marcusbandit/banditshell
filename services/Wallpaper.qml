@@ -559,9 +559,9 @@ Singleton {
     }
 
     Connections {
-        target: Config
+        target: Config.values
 
-        function onValuesChanged(): void {
+        function onWallpaperChanged(): void {
             root.reconcile();
         }
     }

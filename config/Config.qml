@@ -1036,7 +1036,15 @@ Singleton {
             }
         })
 
-    property var values: defaults
+    property var tree: defaults
+
+    readonly property var values: {
+        const keys = Object.keys(root.defaults);
+        const sections = Qt.createQmlObject(`import QtQml\nQtObject {\n${keys.map(key => `property var ${key}`).join("\n")}\n}`, root, "ConfigValues");
+        for (const key of keys)
+            sections[key] = root.defaults[key];
+        return sections;
+    }
 
     property bool loaded: false
 
@@ -1057,7 +1065,12 @@ Singleton {
         })
 
     function get(key: string): var {
-        return Configuration.lookup(root.values, key);
+        const dot = key.indexOf(".");
+        const top = dot < 0 ? key : key.slice(0, dot);
+        if (!Object.prototype.hasOwnProperty.call(root.defaults, top))
+            return undefined;
+        const section = root.values[top];
+        return dot < 0 ? section : Configuration.lookup(section, key.slice(dot + 1));
     }
 
     function set(key: string, value: var): void {
@@ -1077,11 +1090,11 @@ Singleton {
     }
 
     function accepts(key: string, value: var): bool {
-        return !Configuration.assign(root.values, [[key, value]], root.literals).refused;
+        return !Configuration.assign(root.tree, [[key, value]], root.literals).refused;
     }
 
     function setMany(pairs: var): void {
-        const result = Configuration.assign(root.values, pairs, root.literals);
+        const result = Configuration.assign(root.tree, pairs, root.literals);
         if (result.refused)
             return console.warn(`Config: no such setting "${result.refused}"`);
 
@@ -1089,21 +1102,60 @@ Singleton {
         if (!root.loaded)
             return console.warn(`Config: dropped ${keys}, because ${root.path} has not been read yet`);
 
-        if (JSON.stringify(result.values) === JSON.stringify(root.values))
+        if (!result.changed.length)
             return;
-        root.values = result.values;
+        root.adopt(result.values);
+        root.unsaved = root.unsaved.concat(pairs);
 
         if (root.unreadable)
             return console.warn(`Config: ${keys} not saved, because ${root.path} could not be read and is left untouched`);
+        root.saveSoon();
+    }
+
+    function adopt(next: var): void {
+        const before = root.tree;
+        root.tree = next;
+        for (const key of Object.keys(next))
+            if (next[key] !== before[key])
+                root.values[key] = next[key];
+    }
+
+    property double unsavedSince: 0
+    property var unsaved: []
+
+    function saveSoon(): void {
+        const now = Date.now();
+        if (!saver.running)
+            root.unsavedSince = now;
+        saver.interval = Configuration.saveDelay(root.unsavedSince, now, 300, 2000);
+        saver.restart();
+    }
+
+    function flush(): bool {
+        if (!saver.running)
+            return false;
+        saver.stop();
+        file.blockWrites = true;
         root.save();
+        file.blockWrites = false;
+        return root.writable;
     }
 
     function save(): void {
         if (!root.writable)
             return;
-        root.lastWritten = JSON.stringify(root.values, null, 4) + "\n";
+        root.unsaved = [];
+        root.lastWritten = JSON.stringify(root.tree, null, 4) + "\n";
         file.setText(root.lastWritten);
     }
+
+    Timer {
+        id: saver
+
+        onTriggered: root.save()
+    }
+
+    Component.onDestruction: root.flush()
 
     FileView {
         id: keepChannel
@@ -1129,10 +1181,13 @@ Singleton {
                 return;
 
             const kept = root.loaded ? "the values it had" : "the defaults";
-            const got = Configuration.readText(raw, root, root.defaults, root.keepsChannel(), root.opaque, root.literals);
+            const got = Configuration.readText(raw, {
+                values: root.tree
+            }, root.defaults, root.keepsChannel(), root.opaque, root.literals);
             root.unreadable = got.unreadable;
-            if (got.values !== root.values)
-                root.values = got.values;
+            const next = saver.running ? Configuration.reapply(got.values, root.unsaved, root.literals) : got.values;
+            if (next !== root.tree)
+                root.adopt(Configuration.reuse(root.tree, next));
             root.loaded = got.loaded;
 
             if (got.unreadable)

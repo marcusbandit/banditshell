@@ -15,6 +15,9 @@ Item {
     readonly property var s: SettingsState
     property string pendingReveal: ""
     property double revealUntil: 0
+    property var recent: []
+    readonly property real fade: SettingsView.reduceMotion ? 1 : 1 - arrive.value
+    readonly property real slide: SettingsView.reduceMotion ? 0 : arrive.value * 8
 
     Flickable {
         id: view
@@ -52,11 +55,6 @@ Item {
 
             width: view.width
 
-            opacity: SettingsView.reduceMotion ? 1 : 1 - arrive.value
-            transform: Translate {
-                y: SettingsView.reduceMotion ? 0 : arrive.value * 8
-            }
-
             Connections {
                 target: SettingsView
 
@@ -64,6 +62,10 @@ Item {
                     wheel.stop();
                     view.contentY = 0;
                     arrive.value = 1;
+                }
+
+                function onCurrentChanged(): void {
+                    root.keep(SettingsView.current);
                 }
 
                 function onFlashChanged(): void {
@@ -84,6 +86,10 @@ Item {
 
                 width: parent.width
                 height: Math.max(back.visible ? back.height + 4 : 0, words.implicitHeight) + 2 + Appearance.padding.card
+                opacity: root.fade
+                transform: Translate {
+                    y: root.slide
+                }
 
                 SettingsTool {
                     id: back
@@ -140,6 +146,10 @@ Item {
                 height: Math.round(folded.full * drop.value)
                 visible: height > 0.5
                 clip: true
+                opacity: root.fade
+                transform: Translate {
+                    y: root.slide
+                }
 
                 Follow {
                     id: drop
@@ -170,60 +180,114 @@ Item {
                 }
             }
 
-            Loader {
-                width: parent.width
-                active: SettingsView.hub
-                visible: active
-                sourceComponent: SettingsHub {}
-            }
-
             Repeater {
-                model: SettingsView.hub ? [] : (SettingsView.page?.groups ?? []).filter(g => Catalogue.present(g, root.s))
+                model: shelves
 
                 delegate: Column {
-                    id: group
+                    id: shelf
 
-                    required property var modelData
-                    required property int index
+                    required property string pageId
 
-                    readonly property string heading: String(Catalogue.val(group.modelData.t, root.s) ?? "")
+                    readonly property var cat: Catalogue.CAT_BY_ID[shelf.pageId] ?? null
+                    readonly property var page: shelf.cat ? null : Catalogue.PAGE_BY_ID[shelf.pageId] ?? null
+                    readonly property double born: Date.now()
+                    readonly property int budget: Math.ceil(view.height / Appearance.sizes.rowHeight) + 1
 
-                    width: body.width
-                    topPadding: Appearance.padding.card
-
-                    StyledText {
-                        x: Appearance.padding.normal
-                        visible: group.heading !== ""
-                        text: group.heading.toUpperCase()
-                        color: Appearance.colour.textDim
+                    visible: shelf.pageId === SettingsView.current
+                    opacity: shelf.visible ? root.fade : 1
+                    transform: Translate {
+                        y: shelf.visible ? root.slide : 0
                     }
 
-                    Item {
-                        width: parent.width
-                        height: Appearance.padding.normal + 1 + Appearance.padding.small
-                        visible: group.heading !== ""
+                    Binding on width {
+                        value: body.width
+                        when: shelf.visible
+                        restoreMode: Binding.RestoreNone
+                    }
 
-                        Rectangle {
-                            y: Appearance.padding.normal
-                            width: parent.width
-                            height: 1
-                            color: Appearance.colour.separator
+                    Loader {
+                        width: parent.width
+                        active: !!shelf.cat
+                        visible: active
+                        sourceComponent: SettingsHub {
+                            cat: shelf.cat
                         }
                     }
 
                     Repeater {
-                        model: group.modelData.rows
+                        model: (shelf.page?.groups ?? []).filter(g => Catalogue.present(g, root.s))
 
-                        delegate: SettingsCell {
+                        delegate: Column {
+                            id: group
+
                             required property var modelData
+                            required property int index
 
-                            width: body.width
-                            row: modelData
+                            readonly property string heading: String(Catalogue.val(group.modelData.t, root.s) ?? "")
+                            readonly property int before: shelf.page.groups.slice(0, shelf.page.groups.indexOf(group.modelData)).reduce((n, g) => n + g.rows.length, 0)
+
+                            width: shelf.width
+                            topPadding: Appearance.padding.card
+
+                            StyledText {
+                                x: Appearance.padding.normal
+                                visible: group.heading !== ""
+                                text: group.heading.toUpperCase()
+                                color: Appearance.colour.textDim
+                            }
+
+                            Item {
+                                width: parent.width
+                                height: Appearance.padding.normal + 1 + Appearance.padding.small
+                                visible: group.heading !== ""
+
+                                Rectangle {
+                                    y: Appearance.padding.normal
+                                    width: parent.width
+                                    height: 1
+                                    color: Appearance.colour.separator
+                                }
+                            }
+
+                            Repeater {
+                                model: group.modelData.rows
+
+                                delegate: SettingsCell {
+                                    required property var modelData
+                                    required property int index
+
+                                    width: shelf.width
+                                    row: modelData
+                                    asynchronous: Date.now() - shelf.born < 1000 && group.before + index >= shelf.budget
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    ListModel {
+        id: shelves
+    }
+
+    function keep(id: string): void {
+        if (!id)
+            return;
+        root.recent = [id].concat(root.recent.filter(seen => seen !== id));
+        let found = false;
+        for (let i = 0; i < shelves.count; i++)
+            found = found || shelves.get(i).pageId === id;
+        if (!found)
+            shelves.append({
+                pageId: id
+            });
+        const dropped = root.recent.slice(8);
+        root.recent = root.recent.slice(0, 8);
+        for (let i = shelves.count - 1; i >= 0; i--)
+            if (dropped.includes(shelves.get(i).pageId))
+                shelves.remove(i);
     }
 
     function resume(): void {
@@ -237,6 +301,7 @@ Item {
     }
 
     Component.onCompleted: {
+        root.keep(SettingsView.current);
         Qt.callLater(root.resume);
         if (SettingsView.flash && Date.now() - SettingsView.flash.at < 1500)
             root.takeFlash();

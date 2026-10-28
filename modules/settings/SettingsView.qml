@@ -20,6 +20,10 @@ Singleton {
     readonly property string paneTitle: root.hoveredGroup ? String(Catalogue.val(root.hoveredGroup.t, SettingsState) ?? root.title) : root.title
 
     property var hovered: null
+    property int replays: 0
+
+    onHoveredChanged: if (root.hovered)
+        root.replays++
     property var pin: null
 
     property bool paneOut: false
@@ -46,7 +50,7 @@ Singleton {
     property var openRows: ({})
 
     property var trails: ({})
-    readonly property real resetColumn: Object.values(root.trails).reduce((a, b) => Math.max(a, b), 0)
+    property real resetColumn: 0
 
     property real scroll: 0
     property real resumeScroll: 0
@@ -191,12 +195,15 @@ Singleton {
         const had = root.trails[uid];
         if (width < 0 ? had === undefined : had === width)
             return;
-        const next = Object.assign({}, root.trails);
         if (width < 0)
-            delete next[uid];
+            delete root.trails[uid];
         else
-            next[uid] = width;
-        root.trails = next;
+            root.trails[uid] = width;
+        Qt.callLater(root.measureTrails);
+    }
+
+    function measureTrails(): void {
+        root.resetColumn = Object.values(root.trails).reduce((a, b) => Math.max(a, b), 0);
     }
 
     function drop(text: string, icon: string, action: var): void {

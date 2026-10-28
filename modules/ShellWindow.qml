@@ -121,6 +121,26 @@ PanelWindow {
     onRememberedChanged: if (win.resumed)
         Relaunch.keep(win.memoryKey, win.remembered)
 
+    readonly property var idleWarm: [cheatLayer, keyboardLayer]
+
+    property bool warmsHere: true
+
+    Timer {
+        id: warmer
+
+        interval: 6000
+        repeat: true
+        running: win.warmsHere && win.idleWarm.some(panel => !panel.built)
+
+        onTriggered: {
+            warmer.interval = 1000;
+            if (Shell.forScreen("") === win)
+                win.idleWarm.find(panel => !panel.built)?.warm();
+            else
+                win.warmsHere = false;
+        }
+    }
+
     Timer {
         id: resumer
 
@@ -746,9 +766,7 @@ PanelWindow {
                 holeWidth: chassis.holeWidth
                 holeHeight: chassis.holeHeight
 
-                Component.onCompleted: {
-                    cheatSheet.board = Config.get("cheatsheet.board");
-                }
+                board: Config.get("cheatsheet.board")
 
                 onBoardChanged: {
                     if (cheatSheet.board !== Config.get("cheatsheet.board"))
@@ -756,9 +774,9 @@ PanelWindow {
                 }
 
                 Connections {
-                    target: Config
+                    target: Config.values
 
-                    function onValuesChanged(): void {
+                    function onCheatsheetChanged(): void {
                         cheatSheet.board = Config.get("cheatsheet.board");
                     }
                 }
@@ -779,6 +797,9 @@ PanelWindow {
                 if (win.claiming)
                     claim.restart();
             }
+
+            onBuiltChanged: if (mediaLayer.built && islandLayer.eyeingMusic)
+                mediaLayer.item.warm()
 
             panel: MediaController {
                 border: win.border
@@ -883,8 +904,12 @@ PanelWindow {
             yielded: win.underFullscreen || fullscreenBorder.yielded
 
             onChosen: notice => win.act(notice)
-            onEyeingMusicChanged: if (islandLayer.eyeingMusic)
-                mediaLayer.build().warm()
+            onEyeingMusicChanged: if (islandLayer.eyeingMusic) {
+                if (mediaLayer.built)
+                    mediaLayer.item.warm();
+                else
+                    mediaLayer.warm();
+            }
         }
 
         QuickControls {

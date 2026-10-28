@@ -22,6 +22,7 @@ Loader {
         id: widget
 
         Loader {
+            active: root.row.page === SettingsView.current
             source: Qt.resolvedUrl(`widgets/${root.row.w.charAt(0).toUpperCase()}${root.row.w.slice(1)}Widget.qml`)
 
             onLoaded: {
