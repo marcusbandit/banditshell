@@ -15,6 +15,7 @@ Singleton {
             icon: "power_settings_new",
             label: "Shut down",
             detail: "",
+            logind: true,
             command: Sleep.logindCommand("poweroff")
         },
         {
@@ -22,6 +23,7 @@ Singleton {
             icon: "autorenew",
             label: "Restart",
             detail: "",
+            logind: true,
             command: Sleep.logindCommand("reboot")
         },
         {
@@ -29,7 +31,7 @@ Singleton {
             icon: "logout",
             label: "Log out",
             detail: "",
-            command: ["sh", "-c", "session=\"${XDG_SESSION_ID:-$(loginctl show-user \"$(id -u)\" -p Display --value)}\"; [ -n \"$session\" ] || exit 1; exec loginctl terminate-session \"$session\""]
+            command: Sleep.logoutCommand()
         },
         {
             key: "lock",
@@ -42,6 +44,12 @@ Singleton {
     ]
 
     function run(entry: var): void {
+        if (entry.key === "lock" && !SessionControl.logind) {
+            SessionControl.requestLock();
+            return;
+        }
+        if (entry.logind && SessionControl.lacksLogind(entry.label))
+            return;
         Config.flush();
         runner.command = entry.command;
         runner.running = true;

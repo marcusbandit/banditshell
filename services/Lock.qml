@@ -472,7 +472,7 @@ Singleton {
     Process {
         id: lookup
 
-        running: true
+        running: SessionControl.logind
         command: ["busctl", "--json=short", "call", "org.freedesktop.login1", "/org/freedesktop/login1", "org.freedesktop.login1.Manager", "GetSession", "s", root.sessionId || "auto"]
 
         stdout: StdioCollector {
@@ -484,7 +484,7 @@ Singleton {
                 root.placeSession(lookupReply.text);
         }
 
-        onRunningChanged: if (!lookup.running && !root.sessionPath)
+        onRunningChanged: if (!lookup.running && !root.sessionPath && SessionControl.logind)
             lookupRetry.restart()
     }
 
@@ -513,14 +513,14 @@ Singleton {
     Process {
         id: monitor
 
-        running: true
+        running: SessionControl.logind
         command: ["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1"]
 
         stdout: SplitParser {
             onRead: line => root.hear(line)
         }
 
-        onRunningChanged: if (!monitor.running)
+        onRunningChanged: if (!monitor.running && SessionControl.logind)
             monitorRestart.restart()
     }
 
@@ -543,11 +543,11 @@ Singleton {
     Process {
         id: inhibitor
 
-        running: true
+        running: SessionControl.logind
         command: ["systemd-inhibit", "--what=sleep", "--mode=delay", "--who=banditshell", "--why=locking the screen", "cat"]
         stdinEnabled: true
 
-        onRunningChanged: if (!inhibitor.running && !root.sleeping)
+        onRunningChanged: if (!inhibitor.running && !root.sleeping && SessionControl.logind)
             inhibitorRestart.restart()
     }
 
