@@ -3532,7 +3532,7 @@ update_state_text() {
     diverged) echo "$U_BEHIND new on $U_BRANCH, but this copy has $U_AHEAD commit(s) of its own, so it cannot just move forward" ;;
     skipped)
         if update_left_by_hand "$U_TARGET"; then
-            echo "you went back from $(update_label "$U_TARGET"); it is skipped until a newer version arrives"
+            echo "you went back from $(update_label "$U_TARGET"); updates skip it until a newer version arrives"
         else
             echo "$(update_label "$U_TARGET") did not start last time and is skipped until a newer version arrives"
         fi ;;

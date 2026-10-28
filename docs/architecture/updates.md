@@ -60,9 +60,9 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    list, asks "Go back to <id>?" as its headline with that list as what is left behind, and runs `rollback --detach`, whose first progress line is `goback`. Only the
    checkout moves: `config.json`, files the newer version wrote elsewhere and stashed edits stay
    as they are, and the confirm says so (#171). After a go-back the outcome offers
-   "Switch back to <id>", asked once, which runs `update apply --detach --to <sha>` on the commit it left. Once an
+   "Update to <id> again", asked once, which runs `update apply --detach --to <sha>` on the commit it left. Once an
    applied commit starts, it leaves `update/skip`, and the shell clears `updates.skip` when
-   `result.json` names it (#178). A quiet "Report a problem with <id>" link takes
+   `result.json` names it (#178). A quiet "Tell us why you went back" link takes
    a few lines of words, handed to `banditshell triage` in a terminal
    (`scripts/in-terminal.sh`) with the skipped and current versions as `--context`, so they
    land under the words in the report and stay out of the issue title (#228),
@@ -179,8 +179,8 @@ definition. Where it shows:
   `notes`: the what's-new entries this copy has and `previous` did not, so what going back would
   undo.
 - The update menu says `You have <release>, on the stable channel`; a waiting update is headed
-  `<version> is ready` on every channel, with its what's-new entries under "In <version>" above the
-  Update button. Up to date, the same list shows `notes` under "In <version>".
+  `<version> is ready` on every channel, with its what's-new entries under "What changed" above the
+  Update button. Up to date, the same list shows `notes`.
 - Settings > About shows the same version.
 
 `update rollback` on `stable` goes to the release before the one this copy is on, found from the

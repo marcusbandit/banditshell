@@ -38,6 +38,7 @@ Singleton {
     property var entries: []
     property var notes: []
     property string summaryText: ""
+    property string detailsText: ""
     property string buttonText: "Update"
     property bool restartNeeded: false
 
@@ -90,7 +91,7 @@ Singleton {
         if (root.state === root.updated)
             return "Updated";
         if (root.state === root.rolledback)
-            return root.wentBackByHand ? "Back on the previous version" : "Update rolled back";
+            return root.wentBackByHand ? `You are on ${root.version}` : "Update rolled back";
         if (root.state === root.restarting)
             return root.goingBack ? "Going back..." : "Restarting...";
         if (root.state === root.verifying)
@@ -464,6 +465,7 @@ Singleton {
                 root.entries = got.entries ?? [];
                 root.notes = Array.isArray(got.notes) ? got.notes : [];
                 root.summaryText = got.summary ?? "";
+                root.detailsText = got.details ?? got.summary ?? "";
                 root.buttonText = got.button ?? "Update";
                 root.restartNeeded = got.class?.restart === true;
 

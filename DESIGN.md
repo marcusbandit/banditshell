@@ -1663,22 +1663,22 @@ banditshell/
 │   │       ├── TrayMenu.qml     one tray item: what it says, and "show it"
 │   │       ├── TrayEntries.qml  its own menu, off the bus. CONTAINS ITSELF
 │   │       └── UpdateMenu.qml   the update's menu, in versions, never
-│   │                            commits: "<version> is ready", the one-line
-│   │                            summary ("5 changes, restart needed"),
-│   │                            what that version brings, THEN the button
-│   │                            that says Update or Update and restart.
-│   │                            Up to date, the list is what the running
-│   │                            version brought, "In <version>". Six
+│   │                            commits, each named once: "<version> is
+│   │                            ready", What changed in it, THEN the button
+│   │                            that says Update or Update and restart,
+│   │                            with "No restart needed" beside it. Up to
+│   │                            date, What changed is what the running
+│   │                            version brought. Six
 │   │                            changes or fewer read as one list with a
 │   │                            small New, Changed or Fixed tag per line;
 │   │                            more fold into a card per kind. Quiet
 │   │                            below: Go back to <id>, and Refresh. Go
 │   │                            back asks first, as the headline, with the
 │   │                            list as what you leave behind. After a
-│   │                            go-back the outcome says the skip was the
-│   │                            person's choice, offers Switch back to
-│   │                            <id>, asked once, and keeps Report a
-│   │                            problem as a quiet link: a few lines that
+│   │                            go-back the outcome says updates skip the
+│   │                            version left, offers Update to <id> again,
+│   │                            asked once, and keeps Tell us why you went
+│   │                            back as a quiet link: a few lines that
 │   │                            banditshell triage shows in a terminal
 │   │                            before anything is sent. The What's new
 │   │                            card is marked seen when dismissed

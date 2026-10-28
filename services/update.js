@@ -288,11 +288,20 @@ function summary(c) {
     const count = c.notes > 0 ? c.notes : c.commits > 0 ? c.commits : c.files;
     if (count === 0)
         return "no changes";
-    const parts = [plural(count, "change", "changes")];
-    if (c.kind === "restart")
-        parts.push("restart needed");
-    else
-        parts.push("no restart needed");
+    return [plural(count, "change", "changes"), c.kind === "restart" ? "restart needed" : "no restart needed", ...extras(c)].join(", ");
+}
+
+function details(c) {
+    const parts = extras(c);
+    const count = c.commits > 0 ? c.commits : c.files;
+    if (c.notes === 0 && count > 0)
+        parts.unshift(plural(count, "change", "changes"));
+    const text = parts.join(", ");
+    return text ? `${text[0].toUpperCase()}${text.slice(1)}` : "";
+}
+
+function extras(c) {
+    const parts = [];
     if (c.cli)
         parts.push("commands changed");
     if (c.apiRemoved.length > 0)
@@ -311,7 +320,7 @@ function summary(c) {
         parts.push(`${plural(c.dirty.length, "of your edits is", "of your edits are")} in the way`);
     if (c.blocked.length > 0)
         parts.push(`${plural(c.blocked.length, "file is", "files are")} in the way`);
-    return parts.join(", ");
+    return parts;
 }
 
 function button(c) {
@@ -344,9 +353,9 @@ function outcomeText(result, running) {
     if (result.ok)
         return `Updated to ${to}.`;
     if (byHand(result)) {
-        const skipped = `You chose to skip ${to} until a newer version arrives.`;
+        const skipped = `Updates skip ${to} until a newer version arrives.`;
         if (!running || running === from)
-            return `Restarted on ${from}. ${skipped}`;
+            return skipped;
         return `Went back to ${from}, but the shell still runs ${running}. Run banditshell restart to start ${from}. ${skipped}`;
     }
     const why = result.why ? ` ${result.why}.` : "";
@@ -402,6 +411,7 @@ function assess(facts) {
         checkedAt: Number(meta.checkedAt) || 0,
         class: c,
         summary: summary(c),
+        details: details(c),
         button: button(c),
         entries: entries
     });

@@ -812,9 +812,9 @@ test("a version left by hand is reported as gone back from, not as one that did 
     assert.strictEqual(applyTo(world, target).status, 0);
     assert.strictEqual(run(world, ["update", "rollback"]).status, 0);
     const check = run(world, ["update", "check", "--no-fetch"]);
-    assert.strictEqual(check.out, "you went back from v2; it is skipped until a newer version arrives\n");
+    assert.strictEqual(check.out, "you went back from v2; updates skip it until a newer version arrives\n");
     const status = run(world, ["update", "status"]).out;
-    assert.match(status, /^v1 on main, you went back from v2; it is skipped until a newer version arrives$/m);
+    assert.match(status, /^v1 on main, you went back from v2; updates skip it until a newer version arrives$/m);
     assert.match(status, /^last update: you went back from v2$/m);
     assert.doesNotMatch(status, /did not start/);
 });

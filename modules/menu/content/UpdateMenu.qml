@@ -32,14 +32,14 @@ Column {
     readonly property string listTitle: {
         if (root.leaving)
             return "What you leave behind";
-        if (root.cardKind === "incoming")
-            return Update.targetVersion ? `In ${Update.targetVersion}` : "In this update";
-        if (root.cardKind === "running")
-            return Update.version ? `In ${Update.version}` : "In this version";
-        return "What's new";
+        if (root.cardKind === "pending")
+            return "What's new";
+        return "What changed";
     }
 
-    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, goBackOffer.implicitWidth, goBackRow.implicitWidth, reinstallRow.implicitWidth, reportRow.implicitWidth)
+    readonly property bool wentBack: Update.wentBackByHand && Update.resultPending
+
+    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, goBackOffer.implicitWidth, goBackRow.implicitWidth, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
     onShowingChanged: if (!root.showing) {
         root.goBackConfirm = false;
@@ -71,7 +71,7 @@ Column {
 
     InkText {
         width: parent.width
-        visible: !root.leaving
+        visible: !root.leaving && !root.wentBack
         alignInk: true
         text: Update.haveLabel
         color: Appearance.colour.textFaint
@@ -80,7 +80,7 @@ Column {
     StyledText {
         width: parent.width
         visible: root.leaving
-        text: `Restarts on ${Update.previousVersion}, and ${Update.version} is skipped until a newer version arrives.`
+        text: `Restarts on ${Update.previousVersion}. Updates skip ${Update.version} until a newer version arrives.`
         color: Appearance.colour.textDim
         wrapMode: Text.WordWrap
     }
@@ -95,9 +95,9 @@ Column {
 
     StyledText {
         width: parent.width
-        visible: !root.leaving && Update.behind > 0 && !Update.diverged && Update.summaryText !== ""
-        text: Update.summaryText
-        color: Update.restartNeeded ? Appearance.colour.accent : Appearance.colour.textDim
+        visible: !root.leaving && Update.behind > 0 && !Update.diverged && Update.detailsText !== ""
+        text: Update.detailsText
+        color: Appearance.colour.textDim
         wrapMode: Text.WordWrap
     }
 
@@ -116,7 +116,7 @@ Column {
 
     Column {
         width: parent.width
-        visible: Update.resultPending && !root.leaving
+        visible: Update.resultPending && !root.leaving && !root.reinstallAsking
         spacing: Appearance.padding.small
 
         InkText {
@@ -274,14 +274,14 @@ Column {
         InkText {
             width: parent.width
             alignInk: true
-            text: `Switch back to ${Update.skippedVersion}? Restarts on ${Update.skippedVersion}, and it is no longer skipped.`
+            text: `Restarts on ${Update.skippedVersion}, and updates stop skipping it.`
             wrapMode: Text.Wrap
         }
 
         ButtonPair {
             id: reinstallRow
 
-            actions: [{ text: `Switch back to ${Update.skippedVersion}`, icon: "restart_alt" }, { text: `Stay on ${Update.version}` }]
+            actions: [{ text: `Update to ${Update.skippedVersion} again`, icon: "download" }, { text: `Stay on ${Update.version}` }]
 
             onTriggered: index => {
                 root.reinstallConfirm = false;
@@ -299,8 +299,8 @@ Column {
 
         Button {
             visible: Update.canReinstall
-            text: `Switch back to ${Update.skippedVersion}`
-            icon: "restart_alt"
+            text: `Update to ${Update.skippedVersion} again`
+            icon: "download"
 
             onClicked: root.reinstallConfirm = true
         }
@@ -317,7 +317,7 @@ Column {
 
         x: -reportLink.padX
         visible: !root.asking && Update.wentBackByHand && Update.resultPending
-        text: `Report a problem with ${Update.skippedVersion || Update.result?.toLabel || "that version"}`
+        text: "Tell us why you went back"
         style: "bare"
 
         onClicked: {
@@ -466,26 +466,40 @@ Column {
         }
     }
 
-    Button {
-        visible: Update.busy || (!root.asking && !Update.diverged && !Update.paused && (Update.behind > 0 || Update.state === Update.failed))
-        text: {
-            if (Update.busy)
-                return Update.phaseText || "Updating...";
-            if (Update.state === Update.failed)
-                return "Try again";
-            return Update.buttonText;
-        }
-        icon: {
-            if (Update.busy)
-                return "hourglass_top";
-            if (Update.state === Update.failed)
-                return "refresh";
-            return Update.restartNeeded ? "restart_alt" : "download";
-        }
-        style: "accent"
-        interactive: !Update.busy
+    Row {
+        id: updateRow
 
-        onClicked: Update.state === Update.failed ? Update.retry() : Update.apply()
+        visible: Update.busy || (!root.asking && !Update.diverged && !Update.paused && (Update.behind > 0 || Update.state === Update.failed))
+        spacing: Appearance.padding.normal
+
+        Button {
+            anchors.verticalCenter: parent.verticalCenter
+            text: {
+                if (Update.busy)
+                    return Update.phaseText || "Updating...";
+                if (Update.state === Update.failed)
+                    return "Try again";
+                return Update.buttonText;
+            }
+            icon: {
+                if (Update.busy)
+                    return "hourglass_top";
+                if (Update.state === Update.failed)
+                    return "refresh";
+                return Update.restartNeeded ? "restart_alt" : "download";
+            }
+            style: "accent"
+            interactive: !Update.busy
+
+            onClicked: Update.state === Update.failed ? Update.retry() : Update.apply()
+        }
+
+        StyledText {
+            anchors.verticalCenter: parent.verticalCenter
+            visible: !Update.busy && Update.state !== Update.failed && !Update.restartNeeded
+            text: "No restart needed"
+            color: Appearance.colour.textDim
+        }
     }
 
     StyledText {

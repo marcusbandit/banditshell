@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, reportWords, reportContext, reportScript };")();
+const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, details, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, reportWords, reportContext, reportScript };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -201,6 +201,15 @@ test("the summary names what the person must know, in order", () => {
     assert.strictEqual(Update.button(c), "Update and restart");
 });
 
+test("the details beside a listed update leave out the count and the restart the button already says", () => {
+    const listed = Update.classify({ nameStatus: status("M\tservices/qmldir", "M\tcli/banditshell"), commits: 5, entries: [{ changes: [{ text: "a" }, { text: "b" }] }] });
+    assert.strictEqual(Update.details(listed), "Commands changed");
+    const unlisted = Update.classify({ nameStatus: status("M\tmodules/Bar.qml"), commits: 3 });
+    assert.strictEqual(Update.details(unlisted), "3 changes");
+    const plain = Update.classify({ nameStatus: status("M\tmodules/Bar.qml"), commits: 1, entries: [{ changes: [{ text: "a" }] }] });
+    assert.strictEqual(Update.details(plain), "");
+});
+
 test("a reload or a change to docs only both say no restart is needed", () => {
     const reload = Update.classify({ nameStatus: status("M\tmodules/Bar.qml"), commits: 1 });
     assert.strictEqual(Update.summary(reload), "1 change, no restart needed");
@@ -282,7 +291,7 @@ test("the outcome tells where the person stands in plain words", () => {
 test("a rollback by hand says where it went back to, not that something failed", () => {
     const back = { ok: false, hand: true, fromLabel: "2026-10-24", toLabel: "2026-10-25", why: "rolled back by hand" };
     assert.strictEqual(Update.outcomeText(back, "2026-10-24"),
-        "Restarted on 2026-10-24. You chose to skip 2026-10-25 until a newer version arrives.");
+        "Updates skip 2026-10-25 until a newer version arrives.");
     assert.match(Update.outcomeText(back, "2026-10-25"), /still runs 2026-10-25\. Run banditshell restart to start 2026-10-24\./);
     assert.strictEqual(Update.byHand({ ok: false, why: "rolled back by hand" }), false);
 });
