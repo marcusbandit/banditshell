@@ -44,7 +44,7 @@ Item {
 
     readonly property bool focused: root.selected || root.hovered
 
-    implicitHeight: (root.pictured ? Appearance.sizes.clipboardPreview : Math.max(Appearance.sizes.rowHeight, body.implicitHeight + Appearance.padding.normal * 2)) + Appearance.padding.small
+    implicitHeight: Math.max(Appearance.sizes.rowHeight, body.implicitHeight + Appearance.padding.normal * 2) + Appearance.padding.small
 
     Follow {
         id: slide
@@ -161,35 +161,8 @@ Item {
 
             x: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
-
-            readonly property real minAspect: 0.5
-            readonly property real maxAspect: 2.5
-
-            readonly property real known: root.entry.w > 0 && root.entry.h > 0 ? root.entry.w / root.entry.h : root.entry.aspect > 0 ? root.entry.aspect : 0
-            readonly property real aspect: known > 0 ? Math.max(minAspect, Math.min(known, maxAspect)) : 1
-
-            width: root.pictured ? Math.round(height * aspect) : Appearance.sizes.clipboardIcon
-            height: root.pictured ? parent.height - Appearance.padding.normal * 2 : Appearance.sizes.clipboardIcon
-
-            SquircleImage {
-                id: thumb
-
-                anchors.fill: parent
-                visible: root.pictured
-                source: root.isImage ? `file://${root.entry.file}` : ""
-                radius: Appearance.rounding.small
-                fillMode: Image.PreserveAspectCrop
-
-                decodeWidth: 0
-                decodeHeight: Appearance.sizes.clipboardPreview - Appearance.padding.normal * 2
-
-                onStatusChanged: {
-                    if (thumb.status === Image.Error)
-                        root.brokenFile = root.entry.file;
-                    else if (thumb.status === Image.Ready && thumb.implicitSourceHeight > 0)
-                        Clipboard.noteAspect(root.entry.id, thumb.implicitSourceWidth / thumb.implicitSourceHeight);
-                }
-            }
+            width: Appearance.sizes.clipboardIcon
+            height: Appearance.sizes.clipboardIcon
 
             Icon {
                 anchors.centerIn: parent
@@ -212,7 +185,7 @@ Item {
 
             Icon {
                 anchors.centerIn: parent
-                visible: !root.isImage && root.entry.kind !== "colour"
+                visible: root.pictured || (!root.isImage && root.entry.kind !== "colour")
                 name: root.secret ? "visibility_off" : Clipboard.markFor(root.entry.kind)
                 size: Appearance.sizes.clipboardIcon
                 color: markTone.value
@@ -226,12 +199,44 @@ Item {
             }
         }
 
+        Item {
+            id: picture
+
+            readonly property real aspect: 1.6
+
+            anchors.right: trailing.left
+            anchors.rightMargin: Appearance.padding.normal
+            anchors.verticalCenter: parent.verticalCenter
+            width: root.pictured ? Math.round(height * aspect) : 0
+            height: parent.height - Appearance.padding.small * 2
+            visible: root.pictured
+
+            SquircleImage {
+                id: thumb
+
+                anchors.fill: parent
+                source: root.isImage ? `file://${root.entry.file}` : ""
+                radius: Appearance.rounding.small
+                fillMode: Image.PreserveAspectCrop
+
+                decodeWidth: 0
+                decodeHeight: Math.round(picture.height * 2)
+
+                onStatusChanged: {
+                    if (thumb.status === Image.Error)
+                        root.brokenFile = root.entry.file;
+                    else if (thumb.status === Image.Ready && thumb.implicitSourceHeight > 0)
+                        Clipboard.noteAspect(root.entry.id, thumb.implicitSourceWidth / thumb.implicitSourceHeight);
+                }
+            }
+        }
+
         Column {
             id: body
 
             anchors.left: markSlot.right
             anchors.leftMargin: Appearance.padding.normal
-            anchors.right: trailing.left
+            anchors.right: root.pictured ? picture.left : trailing.left
             anchors.rightMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
             spacing: Appearance.padding.hair
@@ -270,15 +275,18 @@ Item {
             spacing: Appearance.padding.small
 
             Item {
+                readonly property bool shown: root.entry.pinned || root.hovered
+
                 width: Appearance.sizes.minTarget
                 height: Appearance.sizes.minTarget
-                visible: root.entry.pinned || root.hovered
+                visible: shown || root.pictured
 
                 Icon {
                     anchors.centerIn: parent
+                    visible: parent.shown
                     name: "keep"
                     fill: root.entry.pinned ? 1 : 0
-                    size: Appearance.font.iconSize
+                    size: root.entry.pinned ? Appearance.sizes.clipboardIcon : Appearance.font.iconSize
                     color: pinTone.value
 
                     FollowColour {
@@ -293,6 +301,7 @@ Item {
                     id: pinPress
 
                     anchors.fill: parent
+                    enabled: parent.shown
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.pinned()

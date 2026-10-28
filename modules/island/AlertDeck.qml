@@ -38,6 +38,8 @@ Item {
 
     property bool footed: true
 
+    property real contentLead: -1
+
     property bool liftsAway: true
 
     property bool clearQuiet: false
@@ -696,6 +698,7 @@ Item {
 
                     y: slot.windowed ? slot.fullBefore + gap.value - Math.max(0, slot.tailReach - slot.tailRoom) : gap.value
                     width: slot.width
+                    contentLead: root.contentLead
                     entry: slot.modelData
                     count: slot.tally
                     countOpen: slot.spread
@@ -715,8 +718,8 @@ Item {
                 }
 
                 Separator {
-                    x: card.pad
-                    width: slot.width - card.pad * 2
+                    x: card.side
+                    width: slot.width - card.side * 2
                     visible: slot.index > 0 && root.fanned > 0.01 && !root.grouped
                     opacity: root.fanned * (1 - card.shiftFade)
                 }

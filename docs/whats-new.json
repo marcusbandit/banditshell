@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-28",
+      "id": "2026-10-28-29",
       "date": "2026-10-28",
       "changes": [
         {
@@ -38,6 +38,47 @@
           "type": "issues",
           "severity": "minor",
           "text": "Closing the sign-in form or Settings closes its file chooser too"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-28",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Clipboard pictures get one thumbnail size and titles in one column"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Pinned clipboard rows end in a large accent pin, apart from selection"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Two layouts with one code are named by what sets them apart"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Failed island tasks show in red, apart from live orange and warnings"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A failed system update marks the step where it stopped"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Island rows and notifications line up with the clock above them"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Rail marks no longer write binding loop warnings to the log"
         }
       ]
     },

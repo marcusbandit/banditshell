@@ -464,7 +464,8 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   than two things that happen to match. One hue family climbing near-black to silvery white, with a
   saturated end (`dim` / `mid` / `bright`) spent sparingly so a bright stop reads as a specular
   highlight, plus one `alarm` outside the family and the theme's `brass` as `warning`, a second
-  colour outside it for what needs a hand soon but is no alarm.
+  colour outside it for what needs a hand soon but is no alarm. A third, `error`, is the
+  palette's `ansi.red`, kept for what failed.
   - **The Monocraft constraint is load-bearing.** Pixel-font stems are one device pixel, so
     anti-aliasing has nothing to work with and mid-tones turn text to mush. Pixel text goes a bright
     stop on a dark one. **Never on a mid tone.** That is why the panel is the darkest ramp stop and
@@ -4624,8 +4625,14 @@ from a terminal, `update` moves the progress or the words, `end` finishes it,
 (`ActivityIpc.qml`), so a program that can run a command can use the island.
 
 Progress is a ring in the row and around the bubble; left out, the ring spins.
-Ending is a mark, not a disappearance: a check, a red mark or a cross takes the
-ring's place for a moment, then the row goes. `until` is how long a forgotten
+Ending is a mark, not a disappearance: a check, an error mark or a cross takes the
+ring's place for a moment, then the row goes. Anything that failed in the island
+(a task, a launch, a join, the system update) wears `colour.failed`, the theme's
+error red (`ansi.red` in its palette), behind an error mark, so it never looks
+like the `alarm` orange of a live camera, microphone, screen share or recording,
+nor like the `warning` of something that only needs a hand, such as a weather
+place that was not found. A failed system update also marks the step it stopped
+at. `until` is how long a forgotten
 activity may stay. Posting an id again replaces it, twelve is the most, and the
 thirteenth pushes out a finished one first, then the weakest. Pressing the row
 runs the command it was given, and a row with none does nothing, so it never
@@ -4644,7 +4651,11 @@ the history. Quiet timers, the pomodoro's, stay out.
 Volume, mute, brightness and mic mute are a moment, not a thing that stays: a
 row with a mark, a bar and the number, for a second, at the bottom of whatever
 holds the big spot. A keyboard layout switch is the same row with the layout's
-name and its code, since the key that switches it changes every letter after. Nothing in the shell answered the volume keys before, which
+name and its code, since the key that switches it changes every letter after.
+When two layouts share a code, the row names the one it is on by what sets it
+apart (`intl., with dead keys` beside `US-I`, plain `English` beside `US`), never
+by the code a second time. Only a bracket that repeats the code is cut; any other
+name, `French (Switzerland)` or `Swedish (US)`, is shown whole. Nothing in the shell answered the volume keys before, which
 read as dead. `Levels` watches Audio, Display and Backlight and keeps quiet when
 a surface that already shows that level is open (the sound menu, the quick
 controls, the settings volume row declare it with `LevelCover`), when the device
