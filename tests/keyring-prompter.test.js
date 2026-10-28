@@ -148,9 +148,9 @@ print(json.dumps({"exited": not alive(helper)}))
 `, { bus: true });
         assert.strictEqual(result.exited, true);
     });
-    test("waits in line for the prompter name and takes it once the holder lets go", { skip: !hasBus && "dbus-run-session missing" }, () => {
+    test("waits in line for the prompter name, says which process holds it, and takes it once the holder lets go", { skip: !hasBus && "dbus-run-session missing" }, () => {
         const result = python(`
-import json, queue, subprocess, sys, threading, time
+import json, os, queue, subprocess, sys, threading, time
 from gi.repository import Gio, GLib
 
 NAME = "org.gnome.keyring.SystemPrompter"
@@ -172,17 +172,18 @@ def next_about(timeout=10):
         except queue.Empty:
             continue
         if event.get("name") == NAME:
-            return event["event"]
-    return None
+            return event
+    return {}
 
-first = next_about()
+owner = next_about()
+first = owner.get("event")
 time.sleep(0.3)
 waiting = helper.poll() is None
 call("ReleaseName", GLib.Variant("(s)", (NAME,)), "(u)")
-second = next_about()
+second = next_about().get("event")
 helper.kill()
-print(json.dumps({"held": held, "first": first, "waiting": waiting, "second": second}))
+print(json.dumps({"held": held, "first": first, "holder": owner.get("pid") == os.getpid(), "waiting": waiting, "second": second}))
 `, { bus: true });
-        assert.deepStrictEqual(result, { held: 1, first: "owner", waiting: true, second: "acquired" });
+        assert.deepStrictEqual(result, { held: 1, first: "owner", holder: true, waiting: true, second: "acquired" });
     });
 });

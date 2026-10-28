@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "keyring-windows.js" as KeyringWindows
 
 Singleton {
     id: root
@@ -40,6 +41,33 @@ Singleton {
     property bool blocked: false
 
     property string owner: ""
+
+    property int ownerPid: 0
+
+    property var brought: []
+
+    readonly property bool gcrAsking: root.blocked && KeyringWindows.isGcrPrompter(root.owner)
+
+    onGcrAskingChanged: root.bringGcr()
+
+    property bool lookAgain: false
+
+    function bringGcr(): void {
+        if (!root.gcrAsking)
+            return;
+        if (gcrWindows.running)
+            root.lookAgain = true;
+        else
+            gcrWindows.running = true;
+    }
+
+    function letGo(): void {
+        root.holding = false;
+        root.blocked = false;
+        root.owner = "";
+        root.ownerPid = 0;
+        root.brought = [];
+    }
 
     function submit(secret: string): void {
         if (!root.active || root.kind !== "password")
@@ -117,19 +145,21 @@ Singleton {
 
         if (event.event === "acquired") {
             if (event.name === "org.gnome.keyring.SystemPrompter") {
+                root.letGo();
                 root.holding = true;
-                root.blocked = false;
-                root.owner = "";
             }
             return;
         }
 
         if (event.event === "owner") {
+            if ((event.pid ?? 0) !== root.ownerPid)
+                root.brought = [];
+            root.ownerPid = event.pid ?? 0;
+            root.owner = event.program ?? "";
             if (event.name === "org.gnome.keyring.SystemPrompter") {
                 root.holding = false;
                 root.blocked = true;
             }
-            root.owner = event.program ?? "";
             return;
         }
 
@@ -194,9 +224,40 @@ Singleton {
 
         onExited: code => {
             root.clear();
-            root.holding = false;
-            root.blocked = false;
-            root.owner = "";
+            root.letGo();
+        }
+    }
+
+    Process {
+        id: gcrWindows
+
+        command: ["hyprctl", "-j", "clients"]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const found = KeyringWindows.windowsToBring(text, root.ownerPid, Hypr.activeId, root.brought);
+                for (const window of found) {
+                    if (window.move)
+                        Hypr.sendToWorkspace(window.address, Hypr.activeId, true);
+                    Hypr.focusAddress(window.address);
+                }
+                root.brought = [...root.brought, ...found.map(window => window.address)];
+            }
+        }
+
+        onExited: {
+            if (!root.lookAgain)
+                return;
+            root.lookAgain = false;
+            root.bringGcr();
+        }
+    }
+
+    Connections {
+        target: Hypr
+
+        function onWindowOpened(addr: string, title: string, cls: string): void {
+            root.bringGcr();
         }
     }
 
