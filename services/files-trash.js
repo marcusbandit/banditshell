@@ -32,6 +32,8 @@ var EMPTY = 'home=$1; shift; uid=$(id -u); rc=0; seen=; '
 
 var CHUNK = 500;
 
+var SIZE = 'xargs -d "\\n" -r du -s -b -c -- 2>/dev/null | awk -F "\\t" \'$2 == "total" { s += $1 } END { print s + 0 }\'';
+
 function baseName(path) {
     return path.slice(path.lastIndexOf("/") + 1);
 }
@@ -198,4 +200,21 @@ function emptyCommands(items, home, chunk) {
     for (var at = 0; at < paths.length; at += size)
         out.push(["sh", "-c", EMPTY, "sh", home].concat(paths.slice(at, at + size)));
     return out;
+}
+
+function sizeCommand() {
+    return ["sh", "-c", SIZE];
+}
+
+function sizeInput(items) {
+    var out = "";
+    for (var i = 0; i < items.length; i++)
+        if (items[i] && items[i].name.indexOf("\n") < 0)
+            out += items[i].dir + "/files/" + items[i].name + "\n";
+    return out;
+}
+
+function sizeTotal(text) {
+    var total = Number(String(text).trim());
+    return String(text).trim() !== "" && isFinite(total) ? total : NaN;
 }

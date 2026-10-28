@@ -14,7 +14,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Trash = lib("services/files-trash.js", ["within", "trashed", "topdirs", "readCommand", "parse", "entries", "infoPath", "restoreCommand", "emptyCommands"]);
+const Trash = lib("services/files-trash.js", ["within", "trashed", "topdirs", "readCommand", "parse", "entries", "infoPath", "restoreCommand", "emptyCommands", "sizeCommand", "sizeInput", "sizeTotal"]);
 
 const UID = process.getuid();
 
@@ -22,7 +22,7 @@ function sandbox() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "files-trash-"));
     const bin = path.join(dir, "bin");
     fs.mkdirSync(bin);
-    for (const tool of ["mv", "mkdir", "rm", "cat", "id", "awk", "find"])
+    for (const tool of ["mv", "mkdir", "rm", "cat", "id", "awk", "find", "xargs", "du"])
         fs.symlinkSync(spawnSync("sh", ["-c", `command -v ${tool}`], { encoding: "utf8" }).stdout.trim(), path.join(bin, tool));
     const lister = path.join(bin, "bs-ls");
     fs.writeFileSync(lister, `#!/bin/sh
@@ -205,6 +205,26 @@ test.describe("files trash", () => {
             assert.strictEqual(fs.readFileSync(box.at("other", ".Trash-1", "files", "theirs.txt"), "utf8"), "keep");
             assert.deepStrictEqual(Trash.emptyCommands([{ dir: box.at("notrash"), name: "keep.txt" }, { dir: "relative/.Trash-1000", name: "a" }, null], box.home), []);
             assert.strictEqual(Trash.emptyCommands([{ dir: "/.Trash-1000", name: "a" }, { dir: "/.Trash/1000", name: "b" }], box.home)[0].slice(5).join(" "), "/.Trash-1000/files/a /.Trash/1000/files/b");
+        } finally {
+            box.done();
+        }
+    });
+
+    test.it("adds up what an empty trash takes, folders by their contents", () => {
+        const box = sandbox();
+        try {
+            box.put(box.home, "a.txt", info("/h/a.txt"), "12345");
+            box.put(box.home, "two words", info("/h/two words"), "1234567890");
+            fs.mkdirSync(path.join(box.home, "files", "old project", "src"), { recursive: true });
+            fs.writeFileSync(path.join(box.home, "files", "old project", "src", "main.c"), "x".repeat(1000));
+            const items = ["a.txt", "two words", "old project"].map(name => ({ dir: box.home, name }));
+            const command = Trash.sizeCommand();
+            const run = spawnSync("/bin/sh", command.slice(1), { env: { PATH: path.join(box.dir, "bin") }, input: Trash.sizeInput(items), encoding: "utf8" });
+            const total = Trash.sizeTotal(run.stdout);
+            assert.ok(total >= 1015 && total < 1015 + 3 * 4096 + 1, String(total));
+            assert.strictEqual(Trash.sizeInput([{ dir: "/t", name: "a\nb" }, { dir: "/t", name: "c" }]), "/t/files/c\n");
+            assert.ok(Number.isNaN(Trash.sizeTotal("")));
+            assert.ok(Number.isNaN(Trash.sizeTotal("garbage")));
         } finally {
             box.done();
         }

@@ -92,6 +92,22 @@ function fitPlace(place, room) {
     return room > 1 ? `${last.slice(0, room - 1)}…` : "…";
 }
 
+function fitTail(place, room) {
+    if (place.length <= room)
+        return place;
+    const parts = place.split("/");
+    let tail = parts[parts.length - 1];
+    if (`…/${tail}`.length > room)
+        return room > 1 ? `…${tail.slice(tail.length - room + 1)}` : "…";
+    for (let i = parts.length - 2; i >= 1; i--) {
+        const next = `${parts[i]}/${tail}`;
+        if (`…/${next}`.length > room)
+            break;
+        tail = next;
+    }
+    return `…/${tail}`;
+}
+
 function named(entries, query) {
     const q = query.trim().toLowerCase();
     return entries.filter(e => e.name.toLowerCase().includes(q));

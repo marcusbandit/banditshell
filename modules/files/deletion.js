@@ -24,16 +24,30 @@ function approved(answer, paths) {
     return typeof answer === "string" && answer.trim().toLowerCase() === WORD ? paths.slice() : [];
 }
 
-function emptying(count, elsewhere, hidden) {
+function emptyLine(item) {
+    var line = item.name;
+    if (item.origin)
+        line += " from " + item.origin;
+    if (item.drive)
+        line += " on " + item.drive;
+    if (item.hidden)
+        line += ", hidden";
+    return line;
+}
+
+function emptyList(items, most) {
+    var shown = items.length > most + 1 ? most : items.length;
+    var lines = [];
+    for (var i = 0; i < shown; i++)
+        lines.push(emptyLine(items[i]));
+    if (shown < items.length)
+        lines.push("and " + (items.length - shown).toLocaleString() + " more");
+    return lines;
+}
+
+function emptying(count, size) {
     var items = count === 1 ? "1 item" : count.toLocaleString() + " items";
-    var also = [];
-    if (hidden > 0)
-        also.push(count === 1 ? "hidden" : hidden === count ? "all hidden" : hidden.toLocaleString() + " hidden");
-    if (elsewhere > 0)
-        also.push(count === 1 ? "from another drive" : elsewhere === count ? "all from other drives" : elsewhere === 1 ? "1 from another drive" : elsewhere.toLocaleString() + " from other drives");
-    if (also.length === 0)
-        return items + " " + REST;
-    return items + ", " + also.join(" and ") + ", " + REST;
+    return size ? items + ", " + size + " in all, " + REST : items + " " + REST;
 }
 
 function emptied(answer, items) {

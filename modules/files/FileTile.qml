@@ -182,13 +182,15 @@ Item {
     }
 
     Item {
+        id: rowLayout
+
         anchors.fill: parent
         anchors.leftMargin: Appearance.padding.small + Appearance.padding.hair * 2
         anchors.rightMargin: Appearance.padding.small
         visible: root.row
 
         readonly property bool stacked: FilesFind.active && !root.entry.trash
-        readonly property real dateWidth: Files.zoomed(Appearance.font.size.small) * 7
+        readonly property real dateWidth: rowLayout.stacked ? digit.advanceWidth * 13 : Files.zoomed(Appearance.font.size.small) * 7
         readonly property real sizeWidth: Files.zoomed(Appearance.font.size.small) * 5
 
         FileMark {
@@ -223,7 +225,7 @@ Item {
             text: root.entry.name
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             elide: Text.ElideMiddle
-            color: root.picked ? Appearance.colour.accent : root.focused ? Appearance.colour.text : Appearance.colour.textDim
+            color: root.picked ? Appearance.colour.accent : root.focused || parent.stacked ? Appearance.colour.text : Appearance.colour.textDim
         }
 
         StyledText {
@@ -237,9 +239,9 @@ Item {
             anchors.top: parent.stacked ? parent.verticalCenter : undefined
             visible: root.place !== "" && rowPlace.width >= digit.advanceWidth * 4
 
-            text: root.fitted(rowPlace.width)
+            text: parent.stacked ? Find.fitTail(root.place, Math.max(1, Math.floor(rowPlace.width / Math.max(1, digit.advanceWidth)))) : root.fitted(rowPlace.width)
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
-            color: Appearance.colour.textDim
+            color: parent.stacked ? Appearance.colour.text : Appearance.colour.textDim
         }
 
         StyledText {
@@ -267,9 +269,9 @@ Item {
             width: parent.dateWidth
 
             horizontalAlignment: Text.AlignRight
-            text: Files.humanTime(root.entry.trashed ?? root.entry.mtime)
+            text: parent.stacked ? Files.changedTime(root.entry.mtime) : Files.humanTime(root.entry.trashed ?? root.entry.mtime)
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
-            color: Appearance.colour.textFaint
+            color: parent.stacked ? Appearance.colour.textDim : Appearance.colour.textFaint
         }
     }
 

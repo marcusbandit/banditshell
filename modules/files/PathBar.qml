@@ -63,8 +63,8 @@ Item {
 
                 required property var modelData
 
-                implicitWidth: Appearance.sizes.minTarget
-                implicitHeight: Appearance.sizes.minTarget
+                implicitWidth: Math.max(Appearance.sizes.minTarget, Files.zoomed(Appearance.sizes.minTarget))
+                implicitHeight: Math.max(Appearance.sizes.minTarget, Files.zoomed(Appearance.sizes.minTarget))
 
                 SquircleRect {
                     anchors.fill: parent
@@ -82,6 +82,7 @@ Item {
                     anchors.verticalCenterOffset: glyph.inkOffsetY
 
                     name: button.modelData.icon
+                    size: Files.zoomed(Appearance.font.iconSize)
                     color: button.modelData.enabled ? Appearance.colour.text : Appearance.colour.textFaint
                 }
 
@@ -112,26 +113,48 @@ Item {
         spacing: 0
 
         readonly property real gap: Appearance.padding.normal * 2
+        readonly property real fold: foldText.implicitWidth + crumbs.gap
+        readonly property real mark: markText.implicitWidth
 
-        readonly property int kept: {
-            if (measure.font.pixelSize <= 0)
-                return 0;
-            const names = Files.crumbs.map(c => c.name);
+        readonly property var fit: {
+            const count = list.count;
+            const items = [];
+            let total = 0;
+            for (let i = 0; i < count; ++i) {
+                const item = list.itemAt(i);
+                if (!item)
+                    return {kept: 0, used: 0};
+                items.push(item.natural);
+                total += item.natural;
+            }
+            if (total <= crumbs.width)
+                return {kept: 0, used: total};
             let sum = 0;
-            for (let i = names.length - 1; i >= 0; --i) {
-                const more = sum + measure.advanceWidth(names[i]) + crumbs.gap;
-                const room = i > 0 ? crumbs.width - measure.advanceWidth("…") - crumbs.gap : crumbs.width;
-                if (i < names.length - 1 && more > room)
-                    return i + 1;
+            for (let i = count - 1; i >= 0; --i) {
+                const more = sum + items[i];
+                if (i < count - 1 && more > crumbs.width - crumbs.mark - crumbs.fold)
+                    return {kept: i + 1, used: sum};
                 sum = more;
             }
-            return 0;
+            return {kept: 0, used: sum};
+        }
+        readonly property int kept: crumbs.fit.kept
+
+        StyledText {
+            id: foldText
+
+            visible: false
+            text: "…"
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
         }
 
-        FontMetrics {
-            id: measure
+        StyledText {
+            id: markText
 
-            font.family: Appearance.font.family
+            visible: false
+            text: "›"
+            leftPadding: Appearance.padding.hair
+            rightPadding: Appearance.padding.hair
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
         }
 
@@ -148,13 +171,36 @@ Item {
 
                 readonly property bool last: crumb.index === Files.crumbs.length - 1
                 readonly property bool folded: crumb.index === crumbs.kept - 1
+                readonly property real lead: crumb.index > 0 ? crumbs.mark : 0
+                readonly property real natural: crumb.lead + whole.implicitWidth + crumbs.gap
 
                 visible: crumb.index >= crumbs.kept - 1
-                implicitWidth: Math.min(label.implicitWidth + crumbs.gap, crumbs.width - (crumb.last && crumbs.kept > 0 ? measure.advanceWidth("…") + crumbs.gap : 0))
+                implicitWidth: crumb.folded ? Math.max(crumb.lead + crumbs.fold, Math.min(crumb.natural + foldText.implicitWidth, crumbs.width - crumbs.fit.used)) : Math.min(crumb.natural, crumbs.width - (crumb.last && crumbs.kept > 0 ? crumbs.mark + crumbs.fold : 0))
                 implicitHeight: label.implicitHeight + Appearance.padding.small * 2
+
+                StyledText {
+                    id: whole
+
+                    visible: false
+                    text: crumb.modelData.name
+                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
+                }
+
+                StyledText {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: crumb.index > 0
+
+                    text: "›"
+                    leftPadding: Appearance.padding.hair
+                    rightPadding: Appearance.padding.hair
+                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
+                    color: Appearance.colour.textFaint
+                }
 
                 SquircleRect {
                     anchors.fill: parent
+                    anchors.leftMargin: crumb.lead
 
                     radius: Appearance.rounding.small
                     color: root.receiving === crumb.index ? Appearance.colour.accentFill : hover.hovered ? Appearance.colour.fill : "transparent"
@@ -165,14 +211,15 @@ Item {
                 StyledText {
                     id: label
 
-                    anchors.centerIn: parent
-                    width: crumb.implicitWidth - crumbs.gap
+                    x: crumb.lead + crumbs.gap / 2
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: crumb.implicitWidth - crumb.lead - crumbs.gap
 
-                    elide: Text.ElideMiddle
-                    text: crumb.folded ? "…" : crumb.modelData.name
+                    elide: crumb.folded ? Text.ElideLeft : Text.ElideMiddle
+                    text: crumb.folded ? `…${crumb.modelData.name}` : crumb.modelData.name
                     font.pixelSize: Files.zoomed(Appearance.font.size.small)
 
-                    color: crumb.last ? Appearance.colour.text : Appearance.colour.textFaint
+                    color: crumb.last ? Appearance.colour.text : Appearance.colour.textDim
                 }
 
                 HoverTip {
@@ -331,6 +378,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
 
             name: "search"
+            size: Files.zoomed(Appearance.font.iconSize)
             color: search.shown ? Appearance.colour.text : Appearance.colour.textFaint
         }
 

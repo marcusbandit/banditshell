@@ -451,13 +451,25 @@ Item {
     }
 
     function confirmEmpty(): void {
-        const items = Files.trashItems;
-        if (items.length === 0)
+        const all = Files.entries.filter(e => e.trash);
+        if (all.length === 0)
             return;
 
-        const elsewhere = items.filter(item => item.dir !== Files.trashHome).length;
-        const hidden = Files.showHidden ? 0 : Files.entries.filter(e => e.trash && e.hidden).length;
-        confirm.ask("Empty the Trash", Deletion.emptying(items.length, elsewhere, hidden), "Empty", "delete_forever", answer => Files.emptyTrash(Deletion.emptied(answer, items)));
+        const shown = Files.visible.filter(e => e.trash);
+        const seen = Object.create(null);
+        for (const e of shown)
+            seen[Files.keyOf(e)] = true;
+        const listed = all.filter(e => !seen[Files.keyOf(e)]).concat(shown);
+        const items = listed.map(e => e.trash);
+        const lines = Deletion.emptyList(listed.map(e => Object.assign({name: e.name, hidden: e.hidden}, Files.trashFrom(e))), 6).join("\n");
+        const ask = size => `${lines}\n\n${Deletion.emptying(items.length, size)}`;
+
+        confirm.ask("Empty the Trash", ask(""), "Empty", "delete_forever", answer => Files.emptyTrash(Deletion.emptied(answer, items)));
+        const asked = confirm.accepted;
+        Files.measureTrash(items, total => {
+            if (confirm.up && confirm.accepted === asked && isFinite(total))
+                confirm.sentence = ask(Files.humanSize(total));
+        });
     }
 
     Connections {
@@ -608,7 +620,8 @@ Item {
         anchors.top: rule.bottom
         anchors.bottom: failure.top
 
-        readonly property bool roomForBoth: width > Files.previewWidth * 1.8
+        readonly property real previewRoom: Math.min(Files.previewWidth, width * 0.45)
+        readonly property bool roomForBoth: previewRoom >= 200
 
         FileGrid {
             id: grid
@@ -699,7 +712,7 @@ Item {
 
                 function onActiveChanged(): void {
                     if (previewEdge.active)
-                        previewEdge.from = Files.previewWidth;
+                        previewEdge.from = preview.width;
                 }
             }
         }
@@ -712,7 +725,7 @@ Item {
             anchors.bottom: parent.bottom
             anchors.margins: Appearance.padding.normal
 
-            width: Files.previewWidth
+            width: middle.previewRoom
             visible: Files.previewOpen && middle.roomForBoth && !!Files.current
 
             entry: Files.current

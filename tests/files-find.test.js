@@ -12,7 +12,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Find = lib("services/files-find.js", ["LEAST", "LIMIT", "SKIP_NAMES", "SKIP_PATHS", "command", "parse", "place", "fitPlace", "without", "named", "narrows", "merged", "grouped", "searchable"]);
+const Find = lib("services/files-find.js", ["LEAST", "LIMIT", "SKIP_NAMES", "SKIP_PATHS", "command", "parse", "place", "fitPlace", "without", "named", "narrows", "merged", "grouped", "searchable", "fitTail"]);
 const Order = lib("services/files-order.js", ["ordered"]);
 
 const HOME = "/home/ada";
@@ -101,6 +101,14 @@ test.describe("reading what the walk says", () => {
         assert.deepStrictEqual(Find.parse('{"done":true,"scanned":9,"found":2,"capped":true}'), {done: true, scanned: 9, capped: true});
         for (const line of ["", "not json", "[]", "null", '{"name":"x"}', '{"dir":"/a","name":""}'])
             assert.strictEqual(Find.parse(line), null, line);
+    });
+
+    test.it("cuts a long folder at its start, so the folder nearest the file stays", () => {
+        assert.strictEqual(Find.fitTail("~/Documents/taxes/2023", 40), "~/Documents/taxes/2023");
+        assert.strictEqual(Find.fitTail("~/Documents/taxes/2023", 16), "…/taxes/2023");
+        assert.strictEqual(Find.fitTail("~/Downloads/mail attachments", 20), "…/mail attachments");
+        assert.strictEqual(Find.fitTail("~/a/a very long folder name", 10), "…lder name");
+        assert.strictEqual(Find.fitTail("~/x", 1), "…");
     });
 
     test.it("says where a result lives relative to home", () => {

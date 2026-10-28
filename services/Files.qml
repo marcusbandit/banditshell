@@ -626,6 +626,10 @@ Singleton {
         return TimeFormat.recent(new Date(epoch * 1000));
     }
 
+    function changedTime(epoch: real): string {
+        return TimeFormat.changed(new Date(epoch * 1000));
+    }
+
     function humanMode(mode: int): string {
         const letters = "rwx";
         let out = "";
@@ -996,6 +1000,51 @@ Singleton {
     function emptyTrash(items: var): void {
         for (const command of Trash.emptyCommands(items, root.trashHome))
             root.spawn(command, "");
+    }
+
+    function trashFrom(entry: var): var {
+        const top = Trash.topOf(entry.trash.dir);
+        if (top === null)
+            return {origin: root.originPlace(entry), drive: ""};
+        const drive = root.drives.find(d => d.path === top);
+        return {
+            origin: entry.dir ? entry.dir.slice(top.length) || "/" : "",
+            drive: drive ? drive.name : top
+        };
+    }
+
+    function measureTrash(items: var, done: var): void {
+        measurer.createObject(root, {
+            command: Trash.sizeCommand(),
+            input: Trash.sizeInput(items),
+            done: done,
+            running: true
+        });
+    }
+
+    Component {
+        id: measurer
+
+        Process {
+            id: measuring
+
+            property string input: ""
+            property var done: null
+
+            stdinEnabled: true
+
+            stdout: StdioCollector {
+                onStreamFinished: measuring.done?.(Trash.sizeTotal(text))
+            }
+
+            onStarted: {
+                measuring.write(measuring.input);
+                measuring.stdinEnabled = false;
+            }
+
+            onRunningChanged: if (!measuring.running)
+                measuring.destroy()
+        }
     }
 
     function copyInto(paths: var, dir: string): void {
