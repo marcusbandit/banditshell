@@ -40,9 +40,4 @@ test.describe("clipboard secrets", () => {
         assert.deepStrictEqual(Secret.copyCommand(secret, false), ["wl-copy", "-n"]);
         assert.deepStrictEqual(Secret.copyCommand({ text: "plain words", types: [] }, true), ["wl-copy", "-n"]);
     });
-
-    test.it("masks with the same dots as the island's Copied line, whatever the secret's length", () => {
-        const moments = fs.readFileSync(path.join(ROOT, "services/moments.js"), "utf8");
-        assert.strictEqual(moments.match(/const MASK = "([^"]*)"/)[1], Secret.MASK);
-    });
 });

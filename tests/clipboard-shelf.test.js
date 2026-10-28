@@ -7,7 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/clipboard-shelf.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Shelf = new Function(src + "\nreturn { identity, shelve, kept, restored, salvage, stamp, backupCommand };")();
+const Shelf = new Function(src + "\nreturn { identity, shelve, kept, restored, salvage, seen, stamp, backupCommand };")();
 
 const entry = (id, text, extra) => Object.assign({ id, recorded: Number(id), text, pinned: false }, extra);
 
@@ -50,11 +50,13 @@ test.describe("clipboard salvage from an unreadable history file", () => {
         const text = JSON.stringify(good);
         const cut = text.slice(0, text.indexOf('"/s/a.png"'));
         assert.deepStrictEqual(Shelf.salvage(cut).map(e => e.id), ["3", "2"]);
+        assert.strictEqual(Shelf.seen(cut), 3);
     });
 
     test.it("skips an entry garbled in the middle and keeps reading", () => {
         const text = JSON.stringify(good).replace('"loose"', '"loose" broken:');
         assert.deepStrictEqual(Shelf.salvage(text).map(e => e.id), ["3", "1"]);
+        assert.strictEqual(Shelf.seen(text), 3);
     });
 
     test.it("finds nothing in a file that is not a history at all", () => {

@@ -221,7 +221,7 @@ ShellRoot {
             holds: () => island.rowOfKind("dictation")?.actions[0]?.label === "Discard"
         },
         {
-            name: "discard: the row says Nothing typed",
+            name: "discard: the row says Dictation discarded",
             run: () => {
                 Dictation.phase = "idle";
                 Dictation.cancelledTyped = false;
@@ -229,14 +229,14 @@ ShellRoot {
             },
             wait: 400,
             expect: "overview",
-            holds: () => island.rowOfKind("dictation")?.look.text === "Nothing typed"
+            holds: () => island.rowOfKind("dictation")?.look.text === "Dictation discarded"
         },
         {
             name: "close the island: it says so at rest, with no button beside it",
             run: () => island.pinned = false,
             wait: 600,
             expect: "dictation",
-            holds: () => island.rowOfKind("dictation")?.look.text === "Nothing typed" && !island.rowOfKind("dictation")?.look.trailing
+            holds: () => island.rowOfKind("dictation")?.look.text === "Dictation discarded" && !island.rowOfKind("dictation")?.look.trailing
         },
         {
             name: "then it leaves",
@@ -245,7 +245,7 @@ ShellRoot {
             expect: "hidden"
         },
         {
-            name: "streaming, some words already typed, then discard: the first words stay",
+            name: "streaming, some words already typed, then discard: Partly kept",
             run: () => {
                 preview.speak("listening");
                 Dictation.phase = "idle";
@@ -254,7 +254,7 @@ ShellRoot {
             },
             wait: 1400,
             expect: "dictation",
-            holds: () => island.rowOfKind("dictation")?.look.text === "First words stay in the app"
+            holds: () => island.rowOfKind("dictation")?.look.text === "Partly kept"
         },
         {
             name: "and that leaves too",
@@ -282,7 +282,7 @@ ShellRoot {
             },
             wait: 100,
             expect: "hidden",
-            holds: () => !["Nothing typed", "First words stay in the app", "Discarded"].includes(island.rowOfKind("dictation")?.look.text)
+            holds: () => !["Dictation discarded", "Partly kept"].includes(island.rowOfKind("dictation")?.look.text)
         },
         {
             name: "and it is gone",

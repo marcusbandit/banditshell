@@ -22,8 +22,8 @@ function read(line) {
 
 function outcome(typed) {
     if (typed === false)
-        return "Nothing typed";
+        return "Dictation discarded";
     if (typed === true)
-        return "First words stay in the app";
-    return "Discarded";
+        return "Partly kept";
+    return "Dictation discarded";
 }

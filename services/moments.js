@@ -2,7 +2,6 @@ const SCREENSHOT_MS = 6000;
 const BLUETOOTH_MS = 3000;
 const COPIED_MS = 900;
 const COPIED_PREVIEW = 20;
-const MASK = "••••••••";
 const MOMENT_KINDS = ["screenshot", "privacy", "copied", "bluetooth", "wifi"];
 const SCREENSHOT_ACTIONS = ["copy", "edit", "folder", "delete"];
 const AUDIO_ICONS = ["headphones", "speaker"];
@@ -93,7 +92,7 @@ function copiedLabel(command, input, secret) {
     const shown = squash(input);
     if (shown === "")
         return "";
-    return shape.secret ? `Copied: ${MASK}` : `Copied: ${preview(input, COPIED_PREVIEW)}`;
+    return shape.secret ? "Copied secret" : `Copied: ${preview(input, COPIED_PREVIEW)}`;
 }
 
 function copiedSpec(command, input, secret) {

@@ -61,13 +61,17 @@ function restored(current, shelf) {
     return fresh.concat(old);
 }
 
-function salvage(text) {
+function scan(text) {
     var s = String(text || "");
     var key = s.indexOf('"entries"');
     var open = key < 0 ? -1 : s.indexOf("[", key);
-    if (open < 0)
-        return [];
     var found = [];
+    var seen = 0;
+    if (open < 0)
+        return {
+            found: found,
+            seen: seen
+        };
     var depth = 0;
     var start = -1;
     var quoted = false;
@@ -86,8 +90,10 @@ function salvage(text) {
         if (c === '"') {
             quoted = true;
         } else if (c === "{") {
-            if (depth === 0)
+            if (depth === 0) {
                 start = i;
+                seen++;
+            }
             depth++;
         } else if (c === "}") {
             depth--;
@@ -105,7 +111,18 @@ function salvage(text) {
             break;
         }
     }
-    return found;
+    return {
+        found: found,
+        seen: seen
+    };
+}
+
+function salvage(text) {
+    return scan(text).found;
+}
+
+function seen(text) {
+    return scan(text).seen;
 }
 
 var BACKUP = [

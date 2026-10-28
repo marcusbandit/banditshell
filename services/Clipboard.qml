@@ -29,6 +29,8 @@ Singleton {
 
     property var recovery: null
     property int salvaged: 0
+    property int started: 0
+    property string backupPath: ""
 
     property bool reaped: false
 
@@ -639,8 +641,18 @@ Singleton {
         id: backup
 
         stdout: StdioCollector {
-            onStreamFinished: if (text.trim())
-                console.log(`Clipboard: the damaged history is kept as ${text.trim()}.`)
+            onStreamFinished: {
+                root.backupPath = text.trim();
+                if (!root.backupPath)
+                    return;
+                console.log(`Clipboard: the damaged history is kept as ${root.backupPath}.`);
+                if (root.recovery && !root.recovery.copy) {
+                    root.recovery = Object.assign({}, root.recovery, {
+                        copy: root.backupPath
+                    });
+                    root.save();
+                }
+            }
         }
 
         onExited: code => {
@@ -650,7 +662,9 @@ Singleton {
             }
             root.keep = true;
             root.recovery = {
-                kept: root.salvaged
+                kept: root.salvaged,
+                of: Math.max(root.salvaged, root.started),
+                copy: root.backupPath
             };
             root.write();
         }
@@ -700,7 +714,9 @@ Singleton {
                 disk = Array.isArray(data?.entries) ? data.entries : [];
                 if (!root.loaded)
                     root.recovery = data?.recovered?.kept >= 0 ? {
-                        kept: data.recovered.kept
+                        kept: data.recovered.kept,
+                        of: data.recovered.of > 0 ? data.recovered.of : 0,
+                        copy: String(data.recovered.copy ?? "")
                     } : null;
             } catch (err) {
 
@@ -709,6 +725,7 @@ Singleton {
 
                 disk = Shelf.salvage(raw);
                 root.salvaged = root.readable(disk.slice()).length;
+                root.started = Shelf.seen(raw);
                 console.warn(`Clipboard: ${root.path} is not valid JSON; keeping a copy of it and going on with the ${disk.length} entries it still holds.`, err);
                 root.keep = false;
                 backup.command = Shelf.backupCommand(root.path, new Date());

@@ -12,7 +12,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A damaged clipboard history loads what it can and says so once"
+          "text": "A damaged clipboard history says what it kept and where the copy is"
         },
         {
           "type": "issues",
@@ -27,7 +27,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A discarded dictation says whether its first words were typed"
+          "text": "A discarded dictation says Dictation discarded or Partly kept"
         },
         {
           "type": "issues",

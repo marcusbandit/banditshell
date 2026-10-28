@@ -30,10 +30,10 @@ test.describe("dictation events", () => {
         assert.strictEqual(Events.read('{"phase": "listening", "cancelled": true}').cancelled, false);
     });
 
-    test.it("says Nothing typed only when the daemon says nothing was", () => {
-        assert.strictEqual(Events.outcome(Events.read(cancelled).typed), "Nothing typed");
-        assert.strictEqual(Events.outcome(Events.read(streamed).typed), "First words stay in the app");
-        assert.strictEqual(Events.outcome(Events.read('{"phase": "idle", "cancelled": true}').typed), "Discarded");
+    test.it("says Partly kept only when the daemon says some words were typed", () => {
+        assert.strictEqual(Events.outcome(Events.read(cancelled).typed), "Dictation discarded");
+        assert.strictEqual(Events.outcome(Events.read(streamed).typed), "Partly kept");
+        assert.strictEqual(Events.outcome(Events.read('{"phase": "idle", "cancelled": true}').typed), "Dictation discarded");
     });
 
     test.it("withdraws cancel when the daemon says it cannot", () => {
