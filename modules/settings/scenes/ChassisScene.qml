@@ -48,21 +48,7 @@ Item {
                 fillRule: ShapePath.OddEvenFill
 
                 PathSvg {
-                    path: {
-                        const outer = Squircle.path(frame.width, frame.height, root.corner, root.corner, root.corner, root.corner, Appearance.rounding.power);
-                        const hole = Squircle.path(frame.hw, frame.hh, root.corner, root.corner, root.corner, root.corner, Appearance.rounding.power);
-                        let axis = 0;
-                        const moved = hole.split(" ").filter(Boolean).map(tok => {
-                            if (/^[A-Za-z]$/.test(tok)) {
-                                axis = 0;
-                                return tok;
-                            }
-                            const v = +tok + (axis % 2 === 0 ? frame.hx : frame.hy);
-                            axis++;
-                            return v.toFixed(3);
-                        });
-                        return `${outer} ${moved.join(" ")}`;
-                    }
+                    path: `${Squircle.path(frame.width, frame.height, root.corner, root.corner, root.corner, root.corner, Appearance.rounding.power)} ${Squircle.path(frame.hw, frame.hh, root.corner, root.corner, root.corner, root.corner, Appearance.rounding.power, frame.hx, frame.hy)}`
                 }
             }
         }

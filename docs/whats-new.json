@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-8",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Typing in the launcher costs about half as much per key"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The installer and QR codes redraw less as they change size"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-7",
       "date": "2026-10-28",
       "changes": [
