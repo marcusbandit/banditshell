@@ -13,7 +13,7 @@ Singleton {
         return {
             defaults: Config.defaults,
             opaque: Config.opaque,
-            current: Config.values,
+            current: Config.tree,
             configBacked: SettingsState.configBacked,
             planDefaults: SettingsState.planDefaults,
             planned: SettingsState.planned,

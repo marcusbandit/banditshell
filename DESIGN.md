@@ -1629,7 +1629,9 @@ banditshell/
 │   │   │                        included); a tap names the setting it shows
 │   │   └── scenes/              the preview in the pane, one per page. Each loop is
 │   │                            one clock over keyframes copied from the mockup's
-│   │                            CSS (keyframes.js)
+│   │                            CSS (keyframes.js). It plays twice, then rests on
+│   │                            its still frame until a row or the scene itself is
+│   │                            pointed at (owner's call, 2026-10-28)
 │   ├── notifications/           discrete cards; none of it is part of the blob
 │   │   │                        field, and the history is not here: it is a
 │   │   │                        launcher mode (NotificationSource)

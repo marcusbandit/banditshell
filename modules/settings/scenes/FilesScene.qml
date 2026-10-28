@@ -45,9 +45,15 @@ Item {
     readonly property string current: root.shown[root.cursor % Math.max(1, root.shown.length)]?.[0] ?? ""
     readonly property string kind: root.current === "notes.md" ? "md" : root.current === "wallpaper.png" ? "img" : ""
 
+    SceneClock {
+        id: awake
+
+        duration: (root.kind ? 1500 : 650) * Math.max(1, root.shown.length)
+    }
+
     Timer {
         interval: root.kind ? 1500 : 650
-        running: root.visible && !SettingsView.reduceMotion
+        running: root.visible && awake.moving
         repeat: true
         onTriggered: root.cursor = (root.cursor + 1) % Math.max(1, root.shown.length)
     }

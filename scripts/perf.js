@@ -45,6 +45,21 @@ function scenarios(menuKeys) {
             steps: [["settings", "open", pages[0], ""], ...pages.slice(1).map(p => ["settings", "page", p]), ["settings", "close"]]
         },
         {
+            id: "settings revisits",
+            steps: [["settings", "open", "launcher", ""], ...["sidebar", "launcher", "windows", "sidebar", "launcher", "desktop", "launcher"].map(p => ["settings", "page", p]), ["settings", "close"]],
+            rename: spans => {
+                const seen = new Set(["launcher"]);
+                return spans.map(span => {
+                    const page = /^settings page (.+)$/.exec(span.name)?.[1];
+                    const again = !!page && seen.has(page);
+                    if (page)
+                        seen.add(page);
+                    const name = !page ? `${span.name}, revisits round` : again ? `settings page ${page} again` : `${span.name}, before going back`;
+                    return Object.assign({}, span, { name });
+                });
+            }
+        },
+        {
             id: "menus",
             steps: [...menuKeys.map(key => ["menu", "open", key, ""]), ["menu", "close"]]
         },
@@ -177,7 +192,8 @@ function drive(shell, options) {
                 });
                 sleep(options.gap);
             }
-            runs.push({ scenario: scenario.id, run, calls, spans: shell.take() });
+            const spans = shell.take();
+            runs.push({ scenario: scenario.id, run, calls, spans: scenario.rename ? scenario.rename(spans) : spans });
             process.stderr.write(`${run} `);
         }
         process.stderr.write("\n");
