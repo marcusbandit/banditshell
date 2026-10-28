@@ -7,6 +7,7 @@ import qs.components
 import qs.services
 import "urls.js" as Urls
 import "markdown.js" as Markdown
+import "tile-names.js" as TileNames
 import "../../services/files-order.js" as FilesOrder
 import "../../services/files-find.js" as Find
 import "../../services/files-listing.js" as Listing
@@ -199,21 +200,32 @@ Item {
             spacing: Appearance.padding.normal
 
             FileMark {
+                id: titleMark
+
                 anchors.verticalCenter: parent.verticalCenter
 
                 fileClass: root.entry ? root.entry.class : "unknown"
                 link: root.entry ? root.entry.link : false
                 broken: root.entry ? root.entry.broken : false
+                size: Files.zoomed(Appearance.font.iconSize)
             }
 
             StyledText {
+                id: title
+
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - Appearance.font.iconSize - Appearance.padding.normal - (root.isMarkdown ? toggle.width + Appearance.padding.normal : 0)
+                width: Math.max(0, parent.width - titleMark.width - Appearance.padding.normal - (root.isMarkdown ? toggle.width + Appearance.padding.normal : 0))
 
-                text: root.entry ? root.entry.name : ""
+                text: root.entry && title.width > 0 ? TileNames.lines(root.entry.name, 1, line => titleInk.advanceWidth(line) <= title.width)[0] : ""
 
-                font.pixelSize: Appearance.font.size.normal
-                elide: Text.ElideMiddle
+                font.pixelSize: Files.zoomed(Appearance.font.size.normal)
+                elide: Text.ElideRight
+
+                FontMetrics {
+                    id: titleInk
+
+                    font: title.font
+                }
             }
 
             Item {
@@ -541,6 +553,7 @@ Item {
 
         Column {
             anchors.centerIn: parent
+            width: parent.width - Appearance.padding.large * 2
             spacing: Files.zoomed(Appearance.padding.normal)
             visible: !root.isImage && !root.isAudio && !root.isText && !(root.isFolder && root.contents.length > 0)
 
@@ -553,7 +566,9 @@ Item {
             }
 
             StyledText {
-                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
 
                 text: {
                     if (!root.entry)

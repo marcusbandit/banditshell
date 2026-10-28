@@ -251,6 +251,7 @@ Item {
 
     Column {
         anchors.centerIn: parent
+        width: parent.width - Appearance.padding.large * 2
         spacing: Files.zoomed(Appearance.padding.normal)
         visible: root.entries.length === 0
 
@@ -263,7 +264,9 @@ Item {
         }
 
         StyledText {
-            anchors.horizontalCenter: parent.horizontalCenter
+            width: parent.width
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.Wrap
 
             text: Files.error ? Files.error : FilesFind.active && FilesFind.running ? "searching home…" : FilesFind.active ? `nothing matching "${Files.search}" in home` : Files.search ? `nothing matching "${Files.search}"` : "empty"
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
@@ -271,7 +274,9 @@ Item {
         }
 
         StyledText {
-            anchors.horizontalCenter: parent.horizontalCenter
+            width: parent.width
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.Wrap
             visible: FilesFind.active && !FilesFind.running && !Files.error
 
             text: FilesFind.everywhere || FilesFind.stopped || FilesFind.failed ? FilesFind.summary : `${FilesFind.summary}, caches and the Trash skipped`

@@ -12,7 +12,12 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Names in the Files list run up to the size column before they shorten"
+          "text": "Files list rows drop the time, then the size, instead of overlapping"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Shortened Files names keep their extension and use the free room"
         },
         {
           "type": "issues",
@@ -27,7 +32,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Empty folders and empty previews in Files grow with the zoom"
+          "text": "Empty states and the preview title in Files grow with the zoom"
         },
         {
           "type": "issues",
