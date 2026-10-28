@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28",
+      "id": "2026-10-28-2",
       "date": "2026-10-28",
       "changes": [
         {
@@ -23,6 +23,22 @@
           "type": "ui",
           "severity": "minor",
           "text": "Settings previews play twice, then rest until you point at them"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The installer stops waiting when its password window closes"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "On Omarchy, the installer can add the island plugin for you"
         }
       ]
     },

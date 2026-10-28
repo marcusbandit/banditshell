@@ -15,7 +15,13 @@ chmod 700 "$DIR" || exit 1
 
 [ -p "$REQ" ] || mkfifo -m 600 "$REQ" || exit 1
 [ -p "$RSP" ] || mkfifo -m 600 "$RSP" || exit 1
-rm -f "$DIR/cancelled"
+rm -f "$DIR/cancelled" "$DIR/why"
+
+give_up() {
+    printf '%s\n' "$1" >"$DIR/why"
+    printf 'askpass: %s\n' "$1" >&2
+    exit 1
+}
 
 ui_alive() {
     [ -f "$PIDF" ] || return 1
@@ -31,7 +37,7 @@ if ! ui_alive; then
         [ -f "$DIR/ready" ] && break
         sleep 0.2
     done
-    ui_alive || exit 1
+    ui_alive || give_up "the password window did not open"
 else
     printf '%s' "$(($(cat "$TRIES" 2>/dev/null || echo 1) + 1))" >"$TRIES"
 fi
@@ -42,12 +48,26 @@ token="ask"
 [ "$attempt" -gt 1 ] && token="retry"
 
 if ! timeout 20 sh -c 'printf "%s\n" "$1" > "$2"' _ "$token" "$REQ"; then
-    exit 1
+    give_up "the password window did not take the request"
 fi
 
-if ! IFS= read -r -t 300 secret <"$RSP"; then
-    exit 1
-fi
+exec 3<>"$RSP" || give_up "could not open the answer from the password window"
+secret=""
+waited=0
+wait_limit="${BANDITSHELL_ASKPASS_WAIT:-300}"
+while :; do
+    alive=0
+    ui_alive && alive=1
+    IFS= read -r -t 1 part <&3
+    status=$?
+    secret="$secret$part"
+    [ "$status" -eq 0 ] && break
+    [ "$alive" -eq 1 ] || give_up "the password window closed without an answer"
+    waited=$((waited + 1))
+    [ "$waited" -lt "$wait_limit" ] || give_up "no answer from the password window in $wait_limit seconds"
+done
+unset part
+exec 3<&-
 
 if [ -f "$DIR/cancelled" ]; then
     unset secret
