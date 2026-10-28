@@ -258,23 +258,11 @@ Item {
                 }
             }
 
-            Row {
+            StyledText {
                 width: parent.width
-
-                StyledText {
-                    id: pinnedTag
-
-                    visible: root.entry.pinned
-                    text: "pinned"
-                    color: Appearance.colour.accent
-                }
-
-                StyledText {
-                    width: parent.width - (pinnedTag.visible ? pinnedTag.implicitWidth : 0)
-                    text: root.entry.pinned ? `  ·  ${root.detail}` : root.detail
-                    color: Appearance.colour.textFaint
-                    elide: Text.ElideRight
-                }
+                text: root.detail
+                color: Appearance.colour.textFaint
+                elide: Text.ElideRight
             }
         }
 
@@ -298,7 +286,7 @@ Item {
                     visible: parent.shown
                     name: "keep"
                     fill: root.entry.pinned ? 1 : 0
-                    size: Appearance.font.iconSize
+                    size: root.entry.pinned ? Appearance.sizes.clipboardIcon : Appearance.font.iconSize
                     color: pinTone.value
 
                     FollowColour {

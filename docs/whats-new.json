@@ -12,7 +12,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A pinned clipboard row says pinned, apart from the selected one"
+          "text": "Pinned clipboard rows end in a large accent pin, apart from selection"
         },
         {
           "type": "issues",
