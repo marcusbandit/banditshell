@@ -33,7 +33,7 @@ puts Spicetify and Spicy Lyrics into it, for word-timed lyrics in the media
 card; that restarts Spotify if it is running. Steps already satisfied are
 skipped, so a re-run retries only what failed (and re-patches Spotify after a
 Spotify update). Run it as yourself; it asks for sudo when a package needs
-installing.
+installing, or for doas on a machine without sudo.
 
   --dry-run   walk every step without installing anything
   --no-ui     stay in the terminal; no progress window
@@ -48,7 +48,8 @@ installing.
                    small helper into /usr/local/libexec and a polkit action that
                    lets you, signed in on this machine, run only that helper. The
                    helper takes one number from 50 to 100 and writes it to the
-                   battery's threshold; it does nothing else. Needs sudo and polkit.
+                   battery's threshold; it does nothing else. Needs polkit, and
+                   sudo or doas.
 EOF
 }
 
@@ -66,7 +67,7 @@ done
 
 if [ "$(id -u)" -eq 0 ]; then
     echo "install.sh: run it as yourself, not as root; it writes into your own runtime" >&2
-    echo "and config directories and asks for sudo only for packages" >&2
+    echo "and config directories and asks for sudo or doas only for packages" >&2
     exit 1
 fi
 
@@ -185,11 +186,11 @@ charge_limit_present() {
 
 install_charge_limit() {
     if ! need_root; then
-        STEP_OUTPUT="no sudo, so the charge limit helper was not installed"
+        STEP_OUTPUT="no $ROOT_TOOL, so the charge limit helper was not installed"
         return 1
     fi
-    STEP_OUTPUT="$(sudo -n install -Dm755 -o root -g root "$REPO/scripts/charge-limit.sh" "$CHARGE_HELPER" 2>&1 \
-        && sudo -n install -Dm644 -o root -g root "$REPO/assets/polkit/org.banditshell.charge-limit.policy" "$CHARGE_POLICY" 2>&1)"
+    STEP_OUTPUT="$(as_root install -Dm755 -o root -g root "$REPO/scripts/charge-limit.sh" "$CHARGE_HELPER" 2>&1 \
+        && as_root install -Dm644 -o root -g root "$REPO/assets/polkit/org.banditshell.charge-limit.policy" "$CHARGE_POLICY" 2>&1)"
 }
 
 cli_installed() {
@@ -346,8 +347,22 @@ graphical_possible() {
     return 0
 }
 
+ROOT_TOOL=sudo
+if ! command -v sudo >/dev/null 2>&1 && command -v doas >/dev/null 2>&1; then
+    ROOT_TOOL=doas
+fi
+
+as_root() {
+    if [ "$ROOT_TOOL" = doas ]; then
+        doas "$@"
+    else
+        sudo -n "$@"
+    fi
+}
+
 need_root() {
     [ "$SUDO_READY" -eq 1 ] && return 0
+    [ "$ROOT_TOOL" = doas ] && { need_doas; return; }
 
     if sudo -n true 2>/dev/null; then
         SUDO_READY=1
@@ -377,6 +392,22 @@ need_root() {
         if sudo -v; then
             SUDO_READY=1
             start_keepalive
+            return 0
+        fi
+        say "  authentication failed ($try of 3)"
+    done
+    return 1
+}
+
+need_doas() {
+    local try
+    if doas -n true 2>/dev/null; then
+        SUDO_READY=1
+        return 0
+    fi
+    for try in 1 2 3; do
+        if doas true; then
+            SUDO_READY=1
             return 0
         fi
         say "  authentication failed ($try of 3)"
@@ -531,17 +562,17 @@ install_pkg() {
     @material-symbols) install_font "$MATERIAL_SYMBOLS_URL" "$MATERIAL_SYMBOLS_SHA" material-symbols; return ;;
     esac
     if ! need_root; then
-        STEP_OUTPUT="no sudo, so $names was not installed"
+        STEP_OUTPUT="no $ROOT_TOOL, so $names was not installed"
         return 1
     fi
     read -ra list <<<"$names"
     case "$PKG_MANAGER" in
-    pacman) STEP_OUTPUT="$(sudo -n pacman -S --needed --noconfirm "${list[@]}" 2>&1)" ;;
+    pacman) STEP_OUTPUT="$(as_root pacman -S --needed --noconfirm "${list[@]}" 2>&1)" ;;
     apt-get)
         if [ "$APT_REFRESHED" -eq 0 ]; then
-            sudo -n apt-get update >/dev/null 2>&1 && APT_REFRESHED=1
+            as_root apt-get update >/dev/null 2>&1 && APT_REFRESHED=1
         fi
-        STEP_OUTPUT="$(sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y "${list[@]}" 2>&1)" && return 0
+        STEP_OUTPUT="$(as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y "${list[@]}" 2>&1)" && return 0
         case "$STEP_OUTPUT" in
         *"Unable to locate package"* | *"has no installation candidate"*) ;;
         *) return 1 ;;
@@ -553,18 +584,18 @@ install_pkg() {
             STEP_OUTPUT="$first"$'\n'"not in the main archive; $backports may carry it: add it to your apt sources and run this again"
             return 1
         fi
-        STEP_OUTPUT="$(sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y -t "$backports" "${list[@]}" 2>&1)" && return 0
+        STEP_OUTPUT="$(as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y -t "$backports" "${list[@]}" 2>&1)" && return 0
         STEP_OUTPUT="$first"$'\n'"$STEP_OUTPUT"
         return 1
         ;;
-    dnf) STEP_OUTPUT="$(sudo -n dnf install -y "${list[@]}" 2>&1)" ;;
-    zypper) STEP_OUTPUT="$(sudo -n zypper --non-interactive install "${list[@]}" 2>&1)" ;;
+    dnf) STEP_OUTPUT="$(as_root dnf install -y "${list[@]}" 2>&1)" ;;
+    zypper) STEP_OUTPUT="$(as_root zypper --non-interactive install "${list[@]}" 2>&1)" ;;
     xbps-install)
         local sync=-S
         [ "$XBPS_SYNCED" -eq 0 ] || sync=""
-        STEP_OUTPUT="$(sudo -n xbps-install -y $sync "${list[@]}" 2>&1)" && XBPS_SYNCED=1
+        STEP_OUTPUT="$(as_root xbps-install -y $sync "${list[@]}" 2>&1)" && XBPS_SYNCED=1
         ;;
-    apk) STEP_OUTPUT="$(sudo -n apk add "${list[@]}" 2>&1)" ;;
+    apk) STEP_OUTPUT="$(as_root apk add "${list[@]}" 2>&1)" ;;
     esac
 }
 
@@ -732,10 +763,10 @@ install_spicy_lyrics() {
 
     if [ ! -w "$dir" ] || [ ! -w "$dir/Apps" ]; then
         if ! need_root; then
-            STEP_OUTPUT="no sudo, so Spicetify cannot patch $dir"
+            STEP_OUTPUT="no $ROOT_TOOL, so Spicetify cannot patch $dir"
             return 1
         fi
-        if ! sudo -n chmod a+wr "$dir" || ! sudo -n chmod -R a+wr "$dir/Apps"; then
+        if ! as_root chmod a+wr "$dir" || ! as_root chmod -R a+wr "$dir/Apps"; then
             STEP_OUTPUT="could not make $dir writable for Spicetify"
             return 1
         fi

@@ -181,3 +181,29 @@ test.describe("Omarchy", () => {
         assert.strictEqual(out.stdout, "go 0\n");
     });
 });
+
+test.describe("doas", () => {
+    function bare(dir, tools) {
+        for (const tool of ["bash", "env", "id", "dirname", "readlink", "cat", "awk"])
+            fs.symlinkSync(spawnSync("sh", ["-c", `command -v ${tool}`], { encoding: "utf8" }).stdout.trim(), path.join(dir, "bin", tool));
+        return { PATH: `${dir}/bin` };
+    }
+
+    test.it("installs packages through doas where there is no sudo", () => {
+        const dir = world({ doas: 'printf "%s\\n" "$*" >>"$HOME/doas.log"' });
+        const out = installer(dir, `PKG_MANAGER=pacman; install_pkg jq; echo "$ROOT_TOOL $?"; install_pkg ripgrep; cat "$HOME/doas.log"`, bare(dir));
+        assert.strictEqual(out.stdout, "doas 0\n-n true\npacman -S --needed --noconfirm jq\npacman -S --needed --noconfirm ripgrep\n");
+    });
+
+    test.it("asks on the terminal when doas has no persist, and gives up after three tries", () => {
+        const dir = world({ doas: 'printf "%s\\n" "$*" >>"$HOME/doas.log"; exit 1' });
+        const out = installer(dir, `PKG_MANAGER=apk; install_pkg jq; echo "$?"; echo "$STEP_OUTPUT"; cat "$HOME/doas.log"`, bare(dir));
+        assert.match(out.stdout, /authentication failed \(3 of 3\)\n1\nno doas, so jq was not installed\n-n true\ntrue\ntrue\ntrue\n$/);
+    });
+
+    test.it("keeps sudo wherever sudo is installed", () => {
+        const dir = world({ doas: "exit 0", sudo: '[ "$*" = "-n -v" ] && exit 1; printf "%s\\n" "$*" >>"$HOME/sudo.log"' });
+        const out = installer(dir, `PKG_MANAGER=dnf; install_pkg jq; echo "$ROOT_TOOL"; cat "$HOME/sudo.log"`, bare(dir));
+        assert.strictEqual(out.stdout, "sudo\n-n true\n-n dnf install -y jq\n");
+    });
+});
