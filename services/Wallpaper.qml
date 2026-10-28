@@ -33,13 +33,13 @@ Singleton {
 
     readonly property string fallback: `${root.shipped}moonrise.png`
 
-    readonly property string configured: Config.loaded ? root.normalise(root.expand(Config.values.wallpaper.current)) : ""
+    readonly property string configured: Config.ready ? root.normalise(root.expand(Config.values.wallpaper.current)) : ""
 
     property string verified: ""
     property string missing: ""
 
     readonly property string current: {
-        if (!Config.loaded)
+        if (!Config.ready)
             return "";
         const want = root.configured;
         if (!want || want === root.missing)
@@ -416,7 +416,7 @@ Singleton {
     readonly property string libraryCache: `${Config.cacheDir}/wallpaper-library.json`
 
     function refresh(): void {
-        if (!Config.loaded || !root.dir)
+        if (!Config.ready || !root.dir)
             return;
 
         const cmd = ["python3", Quickshell.shellPath("scripts/wallpaper-library.py"), root.libraryCache, root.posterDir, root.dir, root.extensions.join(","), root.formats.video.join(","), root.fallback];
@@ -443,7 +443,7 @@ Singleton {
     Connections {
         target: Config
 
-        function onLoadedChanged(): void {
+        function onReadyChanged(): void {
             root.refresh();
         }
     }

@@ -14,7 +14,7 @@ Singleton {
     property bool checked: false
     property var stored: Logic.parseState("")
 
-    readonly property bool ready: Config.loaded && root.checked
+    readonly property bool ready: Config.ready && root.checked
 
     property bool running: false
     property bool parting: false

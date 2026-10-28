@@ -1066,6 +1066,8 @@ Singleton {
 
     property bool fresh: false
 
+    readonly property bool ready: root.loaded && root.everRead
+
     readonly property bool writable: root.loaded && !root.unreadable
 
     function problemSnippet(width: int): string {

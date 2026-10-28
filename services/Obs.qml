@@ -21,7 +21,7 @@ Singleton {
 
     readonly property string passwordPath: `${Config.stateDir}/obs-password`
     property string ownPassword: ""
-    readonly property string legacyPassword: Config.loaded ? (Config.values.obs?.password ?? "") : ""
+    readonly property string legacyPassword: Config.ready ? (Config.values.obs?.password ?? "") : ""
 
     readonly property var endpoint: ObsProtocol.endpoint(ObsProtocol.withPassword(Config.values.obs, root.ownPassword || root.legacyPassword), root.server)
     readonly property string url: root.endpoint.url

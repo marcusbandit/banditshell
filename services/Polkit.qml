@@ -91,7 +91,7 @@ Singleton {
 
     function start(): void {
         retire.stop();
-        if (root.agent || !root.wanted || !Config.loaded || takeover.running)
+        if (root.agent || !root.wanted || !Config.ready || takeover.running)
             return;
         takeover.running = true;
     }
@@ -112,7 +112,7 @@ Singleton {
     Connections {
         target: Config
 
-        function onLoadedChanged(): void {
+        function onReadyChanged(): void {
             root.start();
         }
     }

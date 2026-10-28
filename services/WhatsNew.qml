@@ -18,12 +18,12 @@ Singleton {
     property bool seenChecked: false
     property string stored: ""
 
-    readonly property string legacy: Config.loaded ? (Config.values.updates.seen ?? "") : ""
+    readonly property string legacy: Config.ready ? (Config.values.updates.seen ?? "") : ""
     readonly property string seen: WhatsNewLog.lastSeen(root.stored, root.legacy)
 
     readonly property string version: WhatsNewLog.newestId(root.entries)
 
-    readonly property bool ready: Config.loaded && root.checked && root.seenChecked
+    readonly property bool ready: Config.ready && root.checked && root.seenChecked
 
     readonly property bool firstRun: Config.fresh && root.seen === ""
 

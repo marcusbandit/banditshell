@@ -164,7 +164,7 @@ Singleton {
     }
 
     function dropSpentDeadline(): void {
-        if (Config.loaded && root.quietUntil > 0 && (!root.quiet || root.quietUntil <= Date.now()))
+        if (Config.ready && root.quietUntil > 0 && (!root.quiet || root.quietUntil <= Date.now()))
             Config.set("notifications.quietUntil", 0);
     }
 
@@ -173,7 +173,7 @@ Singleton {
     signal heldReleased(int count)
 
     onQuietedChanged: {
-        if (root.quieted || !Config.loaded)
+        if (root.quieted || !Config.ready)
             return;
         const waiting = root.history.filter(e => e.withheld && !e.seen && !e.leaving).length;
         if (waiting > 0)
@@ -181,14 +181,14 @@ Singleton {
     }
 
     onQuietChanged: {
-        root.quietSince = root.quiet && Config.loaded ? Date.now() : 0;
+        root.quietSince = root.quiet && Config.ready ? Date.now() : 0;
         Qt.callLater(root.dropSpentDeadline);
     }
 
     Timer {
         interval: root.quiet && root.quietUntil > 0 ? 1000 : 20000
         repeat: true
-        running: Config.loaded && (root.nightly || (root.quiet && root.quietUntil > 0))
+        running: Config.ready && (root.nightly || (root.quiet && root.quietUntil > 0))
         triggeredOnStart: true
 
         onTriggered: {

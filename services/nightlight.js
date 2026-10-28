@@ -137,6 +137,11 @@ function nextEdge(nowMs, window) {
     return window.end > nowMs ? window.end : 0;
 }
 
+function warmthOf(text, neutral) {
+    const k = parseInt(String(text ?? "").trim(), 10);
+    return isFinite(k) ? Math.max(0, Math.min(neutral, k)) : -1;
+}
+
 function warmKelvin(fraction, neutral, target) {
     return Math.round(neutral + fraction * (target - neutral));
 }
