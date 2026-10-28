@@ -7,7 +7,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Clipboard picture titles line up with every other row"
+          "text": "Clipboard pictures get one thumbnail size and titles in one column"
         },
         {
           "type": "issues",
@@ -22,12 +22,17 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "A failed island task no longer wears the live microphone orange"
+          "text": "Failed island tasks show in red, apart from live orange and warnings"
         },
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Island rows line up with the clock above them"
+          "text": "A failed system update marks the step where it stopped"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Island rows and notifications line up with the clock above them"
         },
         {
           "type": "issues",
