@@ -49,25 +49,17 @@ Item {
     readonly property bool filled: !!identity.text && (root.tls ? !!certificate.text.trim() : !!password.text)
     readonly property bool authorityMissing: root.trustKey === "file" && !authority.text.trim()
     readonly property bool keyMissing: root.tls && !key.text.trim() && CertificateFiles.needsKey(root.found, certificate.text.trim())
-    readonly property string missing: {
-        if (root.authorityMissing)
-            return "Pick your school's root certificate under More, or set trust back to system.";
-        if (root.looksUp)
-            return "";
-        if (!identity.text)
-            return root.tls ? "Fill in the name on your certificate." : "Fill in your username.";
-        if (root.tls && !certificate.text.trim())
-            return "Pick your certificate file.";
-        if (root.keyMissing)
-            return "Pick the key file that goes with this certificate.";
-        if (!root.tls && !password.text)
-            return "Fill in your password.";
-        if (root.needsServer)
-            return "Fill in the server name under More.";
-        if (!root.tls && /\s/.test(outer.text.trim()))
-            return `Take out the space in the anonymous identity, as in ${root.outerDefault.includes("@") ? root.outerDefault : "anonymous@school.edu"}.`;
-        return "";
-    }
+    readonly property bool started: !!identity.text || !!password.text || !!certificate.text.trim()
+    readonly property bool certificateMissing: root.tls && !certificate.text.trim()
+    readonly property bool passwordMissing: !root.tls && !password.text && !root.looksUp
+    readonly property bool serverMissing: root.needsServer && !root.looksUp
+    readonly property bool outerSpaced: !root.tls && /\s/.test(outer.text.trim())
+    readonly property bool blocked: root.authorityMissing || root.outerSpaced || (!root.looksUp && (!identity.text || root.certificateMissing || root.keyMissing || root.passwordMissing || root.serverMissing))
+    readonly property bool moreNeeded: root.started && (root.serverMissing || root.authorityMissing || root.outerSpaced)
+
+    onMoreNeededChanged: if (root.moreNeeded)
+        root.more = true
+
     readonly property bool serverChecked: !!root.readServer(server.text) && !root.authorityMissing
     readonly property bool plainInside: root.methodName === "ttls" && root.innerName === "pap"
 
@@ -165,7 +157,7 @@ Item {
             return root.check(root.form());
         if (!root.needsServer && !root.readServer(server.text))
             return root.fault(server, "server", "That server name needs a dot, such as school.edu.");
-        if (!root.filled || root.missing)
+        if (!root.filled || root.blocked)
             return;
         if (root.needsServer)
             return root.fault(server, "server", "Fill in the server name your school's Wi-Fi guide gives.");
@@ -406,6 +398,12 @@ Item {
                     onTextChanged: root.realmServer()
                 }
 
+                FormLine {
+                    visible: root.started && !identity.text
+                    text: root.tls ? "Fill in the name on your certificate." : "Fill in your username."
+                    color: Appearance.colour.textDim
+                }
+
                 Entry {
                     id: certificate
 
@@ -415,6 +413,12 @@ Item {
                     hint: "pick one below or type its path"
                     field: "certificate"
                     next: key.input
+                }
+
+                FormLine {
+                    visible: root.started && root.certificateMissing
+                    text: "Pick your certificate file."
+                    color: Appearance.colour.textDim
                 }
 
                 FileChips {
@@ -443,6 +447,12 @@ Item {
                     next: identity.input
                 }
 
+                FormLine {
+                    visible: root.keyMissing
+                    text: "This certificate holds no key. Pick its key file."
+                    color: Appearance.colour.textDim
+                }
+
                 FileChips {
                     visible: root.tls
                     files: root.keys
@@ -469,6 +479,12 @@ Item {
                     next: identity.input
                 }
 
+                FormLine {
+                    visible: root.started && root.passwordMissing
+                    text: "Fill in your password."
+                    color: Appearance.colour.textDim
+                }
+
                 Item {
                     width: parent.width
                     implicitHeight: act.implicitHeight + Appearance.padding.small * 2
@@ -483,19 +499,14 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
 
                         style: "accent"
-                        interactive: !root.busy && !root.missing && (root.looksUp || root.filled)
+                        interactive: !root.busy && !root.blocked && (root.looksUp || root.filled)
                         text: root.busy ? (root.checking ? "Looking…" : "Connecting…") : root.looksUp ? (root.suggestion ? "Look up again" : "Look up the server") : "Connect"
                         onClicked: root.submit()
                     }
                 }
 
                 FormLine {
-                    visible: !root.busy && !!root.missing
-                    text: root.missing
-                }
-
-                FormLine {
-                    visible: root.looksUp && !root.busy && !root.missing
+                    visible: root.looksUp && !root.busy && !root.blocked
                     text: "Looking up sends nothing secret, but your Wi-Fi drops for a moment."
                 }
 
@@ -592,6 +603,12 @@ Item {
                     }
 
                     FormLine {
+                        visible: root.serverMissing && root.localField !== "server"
+                        text: "Fill in the server name your school's Wi-Fi guide gives."
+                        color: Appearance.colour.textDim
+                    }
+
+                    FormLine {
                         visible: root.localField === "server"
                         text: root.local
                         color: Appearance.colour.warning
@@ -628,6 +645,12 @@ Item {
                         hint: "pick one below or type its path"
                         field: "authority"
                         next: identity.input
+                    }
+
+                    FormLine {
+                        visible: root.authorityMissing && root.localField !== "authority"
+                        text: "Pick your school's root certificate below, or set trust back to system."
+                        color: Appearance.colour.textDim
                     }
 
                     FileChips {
@@ -685,6 +708,12 @@ Item {
                         hint: root.outerDefault || "same as your username"
                         field: "outer"
                         next: identity.input
+                    }
+
+                    FormLine {
+                        visible: root.outerSpaced
+                        text: `Take out the space in the middle, as in ${root.outerDefault.includes("@") ? root.outerDefault : "anonymous@school.edu"}.`
+                        color: Appearance.colour.warning
                     }
 
                     FormLine {
