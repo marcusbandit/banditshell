@@ -9,6 +9,7 @@ Column {
     property var lines: []
     property color hue: Appearance.colour.textDim
     property bool major: false
+    property real unreadBar: 3
 
     spacing: Appearance.padding.hair
 
@@ -22,6 +23,8 @@ Column {
             text: modelData.text
             hue: root.hue
             major: root.major
+            unread: modelData.unread === true
+            unreadBar: root.unreadBar
         }
     }
 }

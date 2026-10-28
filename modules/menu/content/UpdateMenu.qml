@@ -30,7 +30,8 @@ Column {
     readonly property bool leaving: root.goBackConfirm && Update.canGoBack
 
     readonly property var listed: root.leaving ? Update.notes : root.card
-    readonly property var shortList: WhatsNew.shortList(root.listed)
+    readonly property var unread: root.leaving || root.cardKind === "incoming" ? [] : WhatsNew.pending
+    readonly property var shortList: WhatsNew.shortList(root.listed, root.unread)
     readonly property string listTitle: {
         if (root.leaving)
             return "What you leave behind";
@@ -39,7 +40,9 @@ Column {
         return "What changed";
     }
 
-    readonly property var sections: root.shortList.length > 0 ? [] : WhatsNew.sections(root.listed)
+    readonly property var sections: root.shortList.length > 0 ? [] : WhatsNew.sections(root.listed, root.unread)
+    readonly property int unreadCount: WhatsNew.unreadCount(root.shortList, root.sections)
+    readonly property real unreadBar: Math.max(3, Appearance.font.stem * 3)
     readonly property var linesBefore: {
         const out = [];
         let seen = 0;
@@ -58,7 +61,7 @@ Column {
 
     readonly property bool wentBack: Update.wentBackByHand && Update.resultPending
 
-    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, goBackOffer.implicitWidth, goBackRow.implicitWidth, reinstallRow.implicitWidth, reportRow.implicitWidth)
+    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, root.listed.length > 0 && root.unreadCount > 0 ? titleRow.implicitWidth + Appearance.padding.normal + markRead.implicitWidth : 0, goBackOffer.implicitWidth, goBackRow.implicitWidth, Update.diverged ? pullRow.fullWidth : 0, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
     onShowingChanged: if (root.showing) {
         root.settled = true;
@@ -94,6 +97,7 @@ Column {
         width: parent.width
         visible: !root.leaving && !root.wentBack
         alignInk: true
+        wrapMode: Text.Wrap
         text: Update.haveLabel
         color: Appearance.colour.textFaint
     }
@@ -201,6 +205,8 @@ Column {
             TextEdit {
                 id: reportBody
 
+                readonly property bool typable: true
+
                 anchors.fill: parent
                 anchors.margins: Appearance.padding.normal
                 wrapMode: TextEdit.Wrap
@@ -276,6 +282,7 @@ Column {
         ButtonPair {
             id: reportRow
 
+            rest: "ring"
             actions: [{ text: "Review in a terminal", icon: "terminal" }, { text: "Don't send" }]
 
             onTriggered: index => {
@@ -302,6 +309,7 @@ Column {
         ButtonPair {
             id: reinstallRow
 
+            rest: "ring"
             actions: [{ text: `Update to ${Update.skippedVersion} again`, icon: "download" }, { text: `Stay on ${Update.version}` }]
 
             onTriggered: index => {
@@ -322,6 +330,7 @@ Column {
             visible: Update.canReinstall
             text: `Update to ${Update.skippedVersion} again`
             icon: "download"
+            style: "accent"
 
             onClicked: root.reinstallConfirm = true
         }
@@ -329,6 +338,7 @@ Column {
         Button {
             visible: Update.resultPending
             text: "Hide message"
+            style: "ring"
             onClicked: Update.dismissResult()
         }
     }
@@ -336,10 +346,9 @@ Column {
     Button {
         id: reportLink
 
-        x: -reportLink.padX
         visible: !root.asking && Update.wentBackByHand && Update.resultPending
         text: "Tell us why you went back"
-        style: "bare"
+        style: "ring"
 
         onClicked: {
             root.reportHanded = false;
@@ -352,10 +361,66 @@ Column {
         visible: root.listed.length > 0 && (root.leaving || !root.asking || root.reinstallAsking)
         spacing: Appearance.padding.small
 
-        StyledText {
+        Item {
             width: parent.width
-            text: root.listTitle
-            color: Appearance.colour.textDim
+            height: Math.max(listTitle.implicitHeight, markRead.visible ? markRead.implicitHeight : 0)
+
+            Row {
+                id: titleRow
+
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: Appearance.padding.small
+
+                StyledText {
+                    id: listTitle
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.listTitle
+                    color: Appearance.colour.textDim
+                }
+
+                SquircleRect {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.unreadCount > 0
+                    width: newCount.implicitWidth + newMark.width + Appearance.padding.small * 3
+                    height: Appearance.font.line.small
+                    pill: "object"
+                    color: Appearance.withAlpha(Appearance.colour.accent, 0.14)
+
+                    SquircleRect {
+                        id: newMark
+
+                        x: Appearance.padding.small
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: root.unreadBar
+                        height: Math.round(parent.height * 0.6)
+                        pill: "object"
+                        color: Appearance.colour.accent
+                    }
+
+                    StyledText {
+                        id: newCount
+
+                        x: newMark.x + newMark.width + Appearance.padding.small
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: `${root.unreadCount} unread`
+                        color: Appearance.blend(Appearance.colour.text, Appearance.colour.accent, 0.55)
+                    }
+                }
+            }
+
+            Button {
+                id: markRead
+
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !root.asking && root.unreadCount > 0
+                text: "Mark all read"
+                icon: "done_all"
+                style: "ring"
+
+                onClicked: WhatsNew.markSeen(WhatsNew.pending[0].id)
+            }
         }
 
         TextMetrics {
@@ -376,12 +441,28 @@ Column {
 
                 readonly property color hue: root.hue(tagged.modelData.key)
 
+                readonly property bool keyable: true
+
                 width: root.width
                 height: Math.max(tagChip.height, taggedText.height)
+
+                FocusMark {
+                    shown: tagged.activeFocus
+                    around: Appearance.rounding.small
+                }
+
+                SquircleRect {
+                    visible: tagged.modelData.unread === true
+                    width: root.unreadBar
+                    height: tagged.height
+                    pill: "object"
+                    color: Appearance.colour.accent
+                }
 
                 SquircleRect {
                     id: tagChip
 
+                    x: root.unreadCount > 0 ? root.unreadBar + Appearance.padding.small : 0
                     width: Math.ceil(tagWidth.advanceWidth) + Appearance.padding.small * 2
                     height: Appearance.font.line.small
                     pill: "object"
@@ -397,10 +478,10 @@ Column {
                 StyledText {
                     id: taggedText
 
-                    x: tagChip.width + Appearance.padding.small
+                    x: tagChip.x + tagChip.width + Appearance.padding.small
                     width: tagged.width - x
                     text: tagged.modelData.text
-                    color: Appearance.colour.text
+                    color: root.unreadCount > 0 && tagged.modelData.unread !== true ? Appearance.colour.textDim : Appearance.colour.text
                     wrapMode: Text.WordWrap
                 }
             }
@@ -456,6 +537,7 @@ Column {
 
                     UpdateChangeLines {
                         width: sectionBody.width
+                        unreadBar: root.unreadBar
                         lines: section.modelData.changes.slice(0, section.eager)
                         hue: section.hue
                         major: section.major
@@ -467,6 +549,7 @@ Column {
                         asynchronous: true
 
                         sourceComponent: UpdateChangeLines {
+                            unreadBar: root.unreadBar
                             lines: section.modelData.changes.slice(section.eager)
                             hue: section.hue
                             major: section.major
@@ -507,9 +590,9 @@ Column {
 
         StyledText {
             anchors.verticalCenter: parent.verticalCenter
-            visible: !Update.busy && Update.state !== Update.failed && !Update.restartNeeded
-            text: "No restart needed"
-            color: Appearance.colour.textDim
+            visible: !Update.busy && Update.state !== Update.failed && Update.buttonNote !== ""
+            text: Update.buttonNote
+            color: Update.deps.length > 0 ? Appearance.colour.text : Appearance.colour.textDim
         }
     }
 
@@ -521,36 +604,107 @@ Column {
         wrapMode: Text.WordWrap
     }
 
+    Column {
+        width: parent.width
+        visible: Update.ahead > 0 && Update.own.length > 0 && (Update.diverged || !root.asking)
+        spacing: Appearance.padding.hair
+
+        StyledText {
+            width: parent.width
+            text: Update.ownTitle
+            color: Appearance.colour.textDim
+        }
+
+        Repeater {
+            model: Update.own
+
+            delegate: UpdateChangeLine {
+                required property string modelData
+
+                width: root.width
+                text: modelData
+                major: true
+            }
+        }
+
+        StyledText {
+            width: parent.width
+            visible: Update.ahead > Update.own.length
+            text: `and ${Update.ahead - Update.own.length} more`
+            color: Appearance.colour.textFaint
+        }
+    }
+
     StyledText {
         width: parent.width
         visible: Update.diverged
-        text: `It cannot just move forward. To keep this copy's commits, run in a terminal: git -C ${Update.dir} pull --rebase`
+        text: `This copy cannot just move forward. To keep ${Update.ahead === 1 ? "your change" : "your changes"}, run in a terminal:`
         color: Appearance.colour.updateFailed
         wrapMode: Text.WordWrap
     }
 
-    StyledText {
-        width: parent.width
-        visible: Update.ahead > 0 && !Update.diverged
-        text: `${Update.ahead} commit${Update.ahead === 1 ? " here is" : "s here are"} not on GitHub yet`
-        color: Appearance.colour.textFaint
-        wrapMode: Text.WordWrap
-    }
+    Item {
+        id: pullRow
 
-    Button {
-        visible: !root.asking && root.cardKind !== "incoming" && WhatsNew.pending.length > 0
-        text: "Mark as read"
-        onClicked: WhatsNew.markSeen(WhatsNew.pending[0].id)
+        readonly property real copyWidth: copyPull.implicitWidth + Appearance.padding.small
+        readonly property real fullWidth: pullText.implicitWidth + Appearance.padding.normal * 2 + pullRow.copyWidth
+
+        width: parent.width
+        height: Math.max(pullBox.height, copyPull.implicitHeight)
+        visible: Update.diverged
+
+        SquircleRect {
+            id: pullBox
+
+            width: Math.min(pullText.implicitWidth + Appearance.padding.normal * 2, pullRow.width - pullRow.copyWidth)
+            height: Appearance.font.line.small + Appearance.padding.small * 2
+            anchors.verticalCenter: parent.verticalCenter
+            radius: Appearance.rounding.small
+            color: Appearance.colour.fillStrong
+
+            StyledText {
+                id: pullText
+
+                x: Appearance.padding.normal
+                width: parent.width - Appearance.padding.normal * 2
+                anchors.verticalCenter: parent.verticalCenter
+                text: Update.pullCommand
+                color: Appearance.colour.text
+                wrapMode: Text.NoWrap
+                elide: Text.ElideMiddle
+            }
+        }
+
+        Button {
+            id: copyPull
+
+            anchors.left: pullBox.right
+            anchors.leftMargin: Appearance.padding.small
+            anchors.verticalCenter: parent.verticalCenter
+            text: copiedPull.running ? "Copied" : "Copy"
+            icon: copiedPull.running ? "check" : "content_copy"
+            style: "ring"
+
+            onClicked: {
+                Quickshell.execDetached(["wl-copy", "-n", "--", Update.pullCommand]);
+                copiedPull.restart();
+            }
+        }
+
+        Timer {
+            id: copiedPull
+
+            interval: 2000
+        }
     }
 
     Button {
         id: goBackOffer
 
-        x: -goBackOffer.padX
         visible: !root.asking && Update.canGoBack
         text: `Go back to ${Update.previousVersion}`
         icon: "history"
-        style: "bare"
+        style: "ring"
 
         onClicked: root.goBackConfirm = true
     }
@@ -558,6 +712,7 @@ Column {
     ButtonPair {
         id: goBackRow
 
+        rest: "ring"
         visible: root.leaving
         actions: [{ text: `Go back to ${Update.previousVersion}`, icon: "history" }, { text: `Stay on ${Update.version}` }]
 
@@ -584,7 +739,7 @@ Column {
         Button {
             anchors.verticalCenter: parent.verticalCenter
             text: Update.checking ? "Refreshing..." : "Refresh"
-            style: "bare"
+            style: "ring"
             interactive: !Update.checking
 
             onClicked: Update.check()
@@ -612,6 +767,7 @@ Column {
         ButtonPair {
             id: offerRow
 
+            rest: "ring"
             visible: !root.declineConfirm
             actions: [{ text: "Migrate" }, { text: "Manual fix" }]
 
@@ -635,6 +791,7 @@ Column {
         ButtonPair {
             id: confirmRow
 
+            rest: "ring"
             visible: root.declineConfirm
             actions: [{ text: "Migrate" }, { text: "Leave it" }]
 

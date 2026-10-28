@@ -143,8 +143,8 @@ Item {
     SquircleRect {
         anchors.centerIn: parent
 
-        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, 640)
-        implicitHeight: Math.min(root.height - Appearance.padding.huge * 2, 720)
+        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, Math.max(640, Files.zoomed(640)))
+        implicitHeight: Math.min(root.height - Appearance.padding.huge * 2, Math.max(720, Files.zoomed(720)))
 
         radius: Appearance.rounding.large
         color: Appearance.colour.surfaceSolid
@@ -164,13 +164,14 @@ Item {
             Icon {
                 anchors.verticalCenter: parent.verticalCenter
                 name: "settings"
+                size: Files.zoomed(Appearance.font.iconSize)
             }
 
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
 
                 text: "File browser settings"
-                font.pixelSize: Appearance.font.size.normal
+                font.pixelSize: Files.zoomed(Appearance.font.size.normal)
             }
         }
 
@@ -195,6 +196,15 @@ Item {
             clip: true
             contentHeight: body.implicitHeight
             boundsBehavior: Flickable.StopAtBounds
+
+            readonly property real fade: Files.zoomed(Appearance.font.line.normal) * 1.5
+
+            layer.enabled: scroller.contentHeight > scroller.height
+            layer.effect: ShaderEffect {
+                readonly property vector4d fades: Qt.vector4d(scroller.atYBeginning ? 0 : scroller.fade, scroller.atYEnd ? 0 : scroller.fade, height, 1)
+
+                fragmentShader: Qt.resolvedUrl("../../components/edgefade.frag.qsb")
+            }
 
             WheelStep {
                 flick: scroller
@@ -366,7 +376,7 @@ Item {
 
                         StyledText {
                             text: group.modelData.title
-                            font.pixelSize: Appearance.font.size.normal
+                            font.pixelSize: Files.zoomed(Appearance.font.size.normal)
                             bottomPadding: Appearance.padding.small
                         }
 

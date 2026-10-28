@@ -17,6 +17,17 @@ Item {
     signal tapped
     signal dismissed
 
+    readonly property bool keyable: true
+
+    function press(): void {
+        if (root.tappable)
+            root.tapped();
+    }
+
+    function remove(): void {
+        root.dismissed();
+    }
+
     property real dragX: 0
     property real pulled: 0
 
@@ -194,6 +205,10 @@ Item {
             }
         }
 
+        FocusMark {
+            shown: root.activeFocus
+        }
+
         Item {
             id: slot
 
@@ -216,7 +231,7 @@ Item {
             Follow {
                 id: discFade
 
-                target: pointer.containsMouse || discPress.containsMouse ? 1 : 0
+                target: root.activeFocus || pointer.containsMouse || discPress.containsMouse ? 1 : 0
                 speed: Appearance.animation.revealSpeed
                 epsilon: Appearance.animation.fadeEpsilon
                 startsAtTarget: true

@@ -33,6 +33,46 @@ function waitingHeadline(targetVersion) {
     return targetVersion ? `${targetVersion} is ready` : "A new version is ready";
 }
 
+function ownCount(count) {
+    return Math.max(1, Math.floor(Number(count) || 0));
+}
+
+function ownChanges(count) {
+    const n = ownCount(count);
+    return n === 1 ? "1 change of your own" : `${n} changes of your own`;
+}
+
+function divergedHeadline(targetVersion, ahead) {
+    return `${waitingHeadline(targetVersion)}, but this copy has ${ownChanges(ahead)}`;
+}
+
+function aheadKept(state, ahead, unpushed) {
+    const count = state === "available" || state === "diverged" ? ahead : state === "current" ? unpushed : 0;
+    return Math.max(0, Math.floor(Number(count) || 0));
+}
+
+function currentHeadline(ahead) {
+    return Number(ahead) > 0 ? `Up to date, plus ${ownChanges(ahead)}` : "You are up to date";
+}
+
+function withOwn(version, ahead) {
+    return version ? `${version} plus ${ownChanges(ahead)}` : ownChanges(ahead);
+}
+
+function ownTitle(count) {
+    return ownCount(count) === 1 ? "Your change" : `Your ${ownCount(count)} changes`;
+}
+
+function unpushedTitle(count) {
+    return `${ownTitle(count)}, not on GitHub yet`;
+}
+
+function wentBackHeadline(version, channel, branch) {
+    const followed = branchFor(channel, branch);
+    const where = followed === "stable" || followed === "main" ? followed : `following ${followed}`;
+    return version ? `You are on ${version}, ${where}` : `You are on the ${where === followed ? `${followed} channel` : where}`;
+}
+
 function report(text) {
     const got = { failed: false, output: [], values: {} };
     for (const line of String(text ?? "").split("\n")) {
@@ -77,7 +117,7 @@ function explain(output, branch) {
         return `The update brings files that already exist here: ${named(listedAfter(lines, untracked))}. Move them out of the way, then try again.`;
 
     if (/Not possible to fast-forward|Diverging branches/.test(text))
-        return "This copy has commits of its own that GitHub does not have, so it cannot just move forward.";
+        return "This copy has changes of its own that GitHub does not have, so it cannot just move forward.";
     if (/index\.lock'?: File exists/.test(text))
         return "Another git command is busy in this folder. Try again when it has finished.";
     if (/^fatal: not a git repository/m.test(text))
@@ -170,6 +210,45 @@ function addedSteps(beforeText, afterText) {
     return stepNames(afterText).filter(name => before.indexOf(name) < 0);
 }
 
+function stepProbes(text) {
+    const probes = {};
+    const pattern = /^ {4}add_step[ \t]+([A-Za-z0-9_.@+-]+)[ \t]+"([^"\\$`]*)"/gm;
+    const source = String(text ?? "");
+    let hit = pattern.exec(source);
+    while (hit !== null) {
+        probes[hit[1]] = hit[2];
+        hit = pattern.exec(source);
+    }
+    return probes;
+}
+
+function plainProbe(probe) {
+    const parts = String(probe ?? "").trim().split(/\s+(&&|\|\|)\s+/);
+    const names = [];
+    const ops = [];
+    for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 1) {
+            ops.push(parts[i]);
+            continue;
+        }
+        const hit = /^command -v ([A-Za-z0-9_.+-]+)$/.exec(parts[i]);
+        if (!hit)
+            return null;
+        names.push(hit[1]);
+    }
+    if (ops.some(op => op !== ops[0]))
+        return null;
+    return { any: ops[0] === "||", names: names };
+}
+
+function presentSteps(beforeText, afterText, has) {
+    const probes = stepProbes(afterText);
+    return addedSteps(beforeText, afterText).filter(name => {
+        const plain = plainProbe(probes[name]);
+        return plain !== null && (plain.any ? plain.names.some(has) : plain.names.every(has));
+    });
+}
+
 function strings(list) {
     return Array.isArray(list) ? list.filter(s => typeof s === "string" && s.trim()).map(s => s.trim()) : [];
 }
@@ -253,6 +332,7 @@ function classify(input) {
     const restart = reasons.length > 0;
     const apiRemoved = removedActions(given.actionsBefore, given.actionsAfter);
     const untracked = lines(given.untracked);
+    const present = Array.isArray(given.present) ? given.present : [];
 
     return {
         files: files.length,
@@ -266,7 +346,7 @@ function classify(input) {
         apiRemoved: apiRemoved,
         helpers: paths.some(p => /^src\/.*\.(c|h)$/.test(p)),
         shaders: paths.some(p => /\.(frag|vert)$/.test(p)),
-        deps: unique(addedSteps(given.installBefore, given.installAfter).concat(...noted.map(i => i.deps))),
+        deps: unique(addedSteps(given.installBefore, given.installAfter).filter(name => present.indexOf(name) < 0).concat(...noted.map(i => i.deps))),
         binds: unique([].concat(...noted.map(i => i.binds))),
         config: paths.indexOf("config/Config.qml") >= 0,
         dirty: lines(given.dirty).filter(p => paths.indexOf(p) >= 0),
@@ -292,7 +372,7 @@ function summary(c) {
 }
 
 function details(c) {
-    const parts = extras(c);
+    const parts = extras(c, false);
     const count = c.commits > 0 ? c.commits : c.files;
     if (c.notes === 0 && count > 0)
         parts.unshift(plural(count, "change", "changes"));
@@ -300,7 +380,26 @@ function details(c) {
     return text ? `${text[0].toUpperCase()}${text.slice(1)}` : "";
 }
 
-function extras(c) {
+function buttonNote(restart, deps) {
+    const steps = strings(deps);
+    if (steps.length === 0)
+        return restart ? "" : "No restart needed";
+    return `${restart ? "" : "No restart. "}Then run install.sh for ${listed(steps)}`;
+}
+
+function pullCommand(dir, home) {
+    const where = String(dir ?? "");
+    const base = String(home ?? "").replace(/\/+$/, "");
+    const plain = /^[A-Za-z0-9._\/+-]+$/;
+    let shown = `'${where.replace(/'/g, "'\\''")}'`;
+    if (base && where.startsWith(`${base}/`) && plain.test(where.slice(base.length + 1)))
+        shown = `~/${where.slice(base.length + 1)}`;
+    else if (plain.test(where))
+        shown = where;
+    return `git -C ${shown} pull --rebase`;
+}
+
+function extras(c, deps = true) {
     const parts = [];
     if (c.cli)
         parts.push("commands changed");
@@ -312,7 +411,7 @@ function extras(c) {
         parts.push("helpers rebuild");
     if (c.shaders)
         parts.push("shaders changed");
-    if (c.deps.length > 0)
+    if (deps && c.deps.length > 0)
         parts.push(`needs ${listed(c.deps)}`);
     if (c.config)
         parts.push("settings defaults changed");
@@ -353,7 +452,7 @@ function outcomeText(result, running) {
     if (result.ok)
         return `Updated to ${to}.`;
     if (byHand(result)) {
-        const skipped = `Updates skip ${to} until a newer version arrives.`;
+        const skipped = `Because you went back, ${to} is not offered again. The next version after ${to} is offered as usual.`;
         if (!running || running === from)
             return skipped;
         return `Went back to ${from}, but the shell still runs ${running}. Run banditshell restart to start ${from}. ${skipped}`;
@@ -390,7 +489,7 @@ function lineValues(lines) {
     return values;
 }
 
-function assess(facts) {
+function assess(facts, has) {
     const meta = lineValues(facts.meta);
     const entries = incomingEntries(facts.whatsnewBefore, facts.whatsnewAfter);
     const c = classify({
@@ -401,6 +500,7 @@ function assess(facts) {
         actionsAfter: facts.actionsAfter,
         installBefore: facts.installBefore,
         installAfter: facts.installAfter,
+        present: typeof has === "function" ? presentSteps(facts.installBefore, facts.installAfter, has) : [],
         entries: entries,
         commits: Number(meta.behind) || 0
     });
@@ -471,10 +571,23 @@ function linesOf(report) {
     ].join("\n");
 }
 
+function onPath(path) {
+    const fs = require("node:fs");
+    const dirs = String(path ?? "").split(":").filter(dir => dir.startsWith("/"));
+    return name => dirs.some(dir => {
+        try {
+            fs.accessSync(`${dir}/${name}`, fs.constants.X_OK);
+            return fs.statSync(`${dir}/${name}`).isFile();
+        } catch (e) {
+            return false;
+        }
+    });
+}
+
 function main(argv) {
     const mode = argv[0];
     if (mode === "report") {
-        const report = assess(readFacts(argv[1]));
+        const report = assess(readFacts(argv[1]), onPath(process.env.PATH));
         const form = argv[2] ?? "--json";
         if (form === "--lines")
             process.stdout.write(linesOf(report) + "\n");

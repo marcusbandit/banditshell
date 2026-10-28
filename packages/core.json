@@ -17,6 +17,7 @@
       "services/qmldir"
     ],
     "services": [
+      "FileDialogs",
       "Focus",
       "Lookup",
       "Notify",
@@ -68,7 +69,10 @@
       "tests/configuration.test.js",
       "tests/desktop-entries.test.js",
       "tests/engine-compat.test.js",
+      "tests/files-zoom.test.js",
       "tests/fixtures/certificate-files.txt",
+      "tests/focus-chain.test.js",
+      "tests/fixtures/menu-chains.json",
       "tests/font-axes.test.js",
       "tests/lint-rules.test.js",
       "tests/markup.test.js",
@@ -99,6 +103,7 @@
       "Compositor",
       "Config",
       "ControlTuning",
+      "FileDialogs",
       "Focus",
       "Notify",
       "PanelWindows",

@@ -200,13 +200,19 @@ function sectionOf(c) {
     return hit ? hit.key : "other";
 }
 
-function sections(entries) {
+function unreadIds(unread) {
+    return (Array.isArray(unread) ? unread : []).map(e => typeof e === "string" ? e : e?.id).filter(id => typeof id === "string" && id);
+}
+
+function sections(entries, unread) {
+    const fresh = unreadIds(unread);
     const buckets = {};
     for (const e of Array.isArray(entries) ? entries : [])
         for (const raw of Array.isArray(e?.changes) ? e.changes : []) {
             const c = change(raw);
             if (!c)
                 continue;
+            c.unread = fresh.indexOf(e.id) >= 0;
             const key = sectionOf(c);
             if (!buckets[key])
                 buckets[key] = [];
@@ -215,12 +221,17 @@ function sections(entries) {
     return SECTIONS.filter(s => buckets[s.key]).map(s => ({ key: s.key, title: s.title, glyph: s.glyph, changes: buckets[s.key] }));
 }
 
-function shortList(entries) {
+function shortList(entries, unread) {
     const out = [];
-    for (const s of sections(entries))
+    for (const s of sections(entries, unread))
         for (const c of s.changes)
-            out.push({ key: s.key, tag: SECTIONS.find(known => known.key === s.key).tag, text: c.text });
+            out.push({ key: s.key, tag: SECTIONS.find(known => known.key === s.key).tag, text: c.text, unread: c.unread });
     return out.length <= SHORT_LIST ? out : [];
+}
+
+function unreadCount(lines, groups) {
+    const flat = (Array.isArray(lines) ? lines : []).filter(l => l?.unread === true).length;
+    return (Array.isArray(groups) ? groups : []).reduce((n, s) => n + (Array.isArray(s?.changes) ? s.changes.filter(c => c?.unread === true).length : 0), flat);
 }
 
 function main(argv) {

@@ -1,0 +1,315 @@
+import QtQuick
+import qs.config
+import "focus-chain.js" as Chain
+
+Item {
+    id: root
+
+    property Item scope: null
+
+    property Item area: root.scope
+
+    property Item holder: null
+
+    property WheelStep scroller: null
+
+    property Item current: null
+
+    readonly property bool active: shown.active
+
+    onScopeChanged: {
+        const starting = root.starting;
+        root.reset();
+        root.starting = starting;
+        if (starting)
+            Qt.callLater(root.begin);
+    }
+
+    property bool starting: false
+
+    function start(): void {
+        root.starting = true;
+        Qt.callLater(root.begin);
+    }
+
+    function begin(): void {
+        if (!root.starting)
+            return;
+        const chain = root.members();
+        if (!chain.items.length) {
+            waiting.restart();
+            return;
+        }
+        root.starting = false;
+        const at = Chain.first(chain.rects, root.scope.width);
+        root.land(chain.items[at], at);
+        root.fresh = true;
+        settling.restart();
+    }
+
+    property bool fresh: false
+
+    Timer {
+        id: settling
+
+        interval: Appearance.animation.settle
+        onTriggered: {
+            if (!root.fresh || !shown.active)
+                return;
+            root.fresh = false;
+            const chain = root.members();
+            const at = Chain.first(chain.rects, root.scope.width);
+            if (at >= 0 && chain.items[at] !== root.current)
+                root.land(chain.items[at], at);
+        }
+    }
+
+    Timer {
+        id: waiting
+
+        interval: 16
+        onTriggered: root.begin()
+    }
+
+    property rect spot: Qt.rect(0, 0, 0, 0)
+
+    property bool spotted: false
+
+    property int spotIndex: -1
+
+    property string spotKind: ""
+
+    function kindOf(item: Item): string {
+        return String(item).split("(")[0];
+    }
+
+    onCurrentChanged: if (!root.current && root.spotted)
+        rebuilt.restart()
+
+    Connections {
+        target: root.current
+
+        function onVisibleChanged(): void {
+            if (!root.current.visible)
+                rebuilt.restart();
+        }
+    }
+
+    Timer {
+        id: rebuilt
+
+        interval: Appearance.animation.settle
+        onTriggered: root.recover()
+    }
+
+    function anchor(chain: var): int {
+        const typing = chain.items.indexOf(root.Window.activeFocusItem);
+        if (typing >= 0)
+            return typing;
+        const at = chain.items.indexOf(root.current);
+        if (at >= 0 || !root.spotted)
+            return at;
+        const same = chain.items[root.spotIndex];
+        if (same && root.kindOf(same) === root.spotKind)
+            return root.spotIndex;
+        return Chain.nearest(chain.rects, {
+            x: root.spot.x,
+            y: root.spot.y,
+            w: root.spot.width,
+            h: root.spot.height
+        });
+    }
+
+    function recover(): void {
+        if (!root.spotted || !shown.active || root.current?.visible)
+            return;
+        const chain = root.members();
+        const near = root.anchor(chain);
+        if (near >= 0)
+            root.land(chain.items[near], near);
+    }
+
+    function reset(): void {
+        const was = root.current;
+        root.starting = false;
+        root.fresh = false;
+        root.spotted = false;
+        root.current = null;
+        shown.clear();
+        if (was?.activeFocus && root.holder)
+            root.holder.forceActiveFocus();
+    }
+
+    function found(): var {
+        const found = [];
+        const rects = [];
+        const walk = (item, clip) => {
+            for (const child of item.children) {
+                if (!child.visible || !child.enabled || child.opacity <= 0.01)
+                    continue;
+                const at = child.mapToItem(root.scope, 0, 0);
+                const box = {
+                    x: at.x,
+                    y: at.y,
+                    w: child.width,
+                    h: child.height
+                };
+                const seen = Chain.cut(clip, box);
+                if ((child.keyable === true || child.typable === true) && seen.w > 0 && seen.h > 0) {
+                    found.push(child);
+                    rects.push(box);
+                }
+                const inner = child.clip ? seen : clip;
+                if (!inner || inner.w > 0 && inner.h > 0)
+                    walk(child, inner);
+            }
+        };
+        if (root.scope)
+            walk(root.scope, null);
+        return {
+            items: found,
+            rects: rects
+        };
+    }
+
+    function members(): var {
+        const loose = root.found();
+        const arranged = Chain.arrange(loose.rects, Appearance.sizes.rowHeight);
+        return {
+            items: arranged.order.map(i => loose.items[i]),
+            rects: arranged.order.map(i => loose.rects[i]),
+            lines: arranged.lines
+        };
+    }
+
+    function groupOf(item: Item): string {
+        for (let at = item; at && at !== root.scope; at = at.parent)
+            if (typeof at.focusGroup === "string" && at.focusGroup !== "")
+                return at.focusGroup;
+        return "";
+    }
+
+    function land(item: Item, index: int): void {
+        if (!item)
+            return;
+        const at = item.mapToItem(root.scope, 0, 0);
+        root.spot = Qt.rect(at.x, at.y, item.width, item.height);
+        root.spotted = true;
+        root.spotIndex = index;
+        root.spotKind = root.kindOf(item);
+        root.current = item;
+        shown.keyed();
+        item.forceActiveFocus(Qt.TabFocusReason);
+        root.show(item);
+    }
+
+    function show(item: Item): void {
+        const flick = root.scroller?.flick;
+        if (!flick || !flick.interactive)
+            return;
+        const top = item.mapToItem(flick.contentItem, 0, 0).y;
+        const goal = root.scroller.goal;
+        const to = Chain.reveal(goal, flick.height, top, top + item.height, Appearance.padding.normal);
+        if (Math.abs(to - goal) > 0.5)
+            root.scroller.scrollTo(to);
+    }
+
+    function handle(event: var): bool {
+        root.fresh = false;
+        const shift = (event.modifiers & Qt.ShiftModifier) !== 0;
+        const key = event.key === Qt.Key_Tab && shift ? Qt.Key_Backtab : event.key;
+        const chain = root.members();
+        const count = chain.items.length;
+        if (!count)
+            return false;
+        const at = root.anchor(chain);
+        const here = at >= 0 ? chain.items[at] : null;
+        const across = key === Qt.Key_Left || key === Qt.Key_Right;
+        const along = key === Qt.Key_Up || key === Qt.Key_Down;
+        const typing = here?.typable === true && here.activeFocus;
+
+        if (key === Qt.Key_Escape)
+            return !!here && shown.active && typeof here.letGo === "function" && here.letGo();
+
+        if (typing && !along && key !== Qt.Key_Tab && key !== Qt.Key_Backtab && key !== Qt.Key_PageUp && key !== Qt.Key_PageDown)
+            return false;
+
+        if (here && !shown.active && !typing) {
+            root.land(here, at);
+            return true;
+        }
+
+        if (here?.activeFocus && typeof here.steer === "function" && here.steer(key)) {
+            root.land(here, at);
+            return true;
+        }
+
+        if (here && (here.adjusts === "horizontal" && across || here.adjusts === "vertical" && along)) {
+            root.land(here, at);
+            here.adjust(key === Qt.Key_Right || key === Qt.Key_Up ? 1 : -1);
+            rebuilt.restart();
+            return true;
+        }
+
+        let to = -1;
+        switch (key) {
+        case Qt.Key_Up:
+        case Qt.Key_Down:
+        case Qt.Key_Left:
+        case Qt.Key_Right:
+            if (at < 0)
+                to = key === Qt.Key_Up ? count - 1 : 0;
+            else
+                to = Chain.move(chain.lines, at, key === Qt.Key_Up ? "up" : key === Qt.Key_Down ? "down" : key === Qt.Key_Left ? "left" : "right");
+            break;
+        case Qt.Key_Home:
+            to = 0;
+            break;
+        case Qt.Key_End:
+            to = Chain.last(chain.lines);
+            break;
+        case Qt.Key_PageUp:
+        case Qt.Key_PageDown:
+            to = at < 0 ? 0 : Chain.page(chain.rects, at, key === Qt.Key_PageDown, root.scroller?.flick?.height ?? 0);
+            break;
+        case Qt.Key_Tab:
+        case Qt.Key_Backtab:
+            to = Chain.group(chain.items.map(item => root.groupOf(item)), at, key === Qt.Key_Tab);
+            break;
+        case Qt.Key_Return:
+        case Qt.Key_Enter:
+        case Qt.Key_Space:
+            if (!here?.activeFocus || typeof here.press !== "function")
+                return false;
+            root.land(here, at);
+            here.press();
+            rebuilt.restart();
+            return true;
+        case Qt.Key_Delete:
+            if (!here?.activeFocus || typeof here.remove !== "function")
+                return false;
+            here.remove();
+            return true;
+        default:
+            return false;
+        }
+        if (to >= 0)
+            root.land(chain.items[to], to);
+        else
+            root.land(here, at);
+        return true;
+    }
+
+    FocusVisible {
+        id: shown
+
+        parent: root.area
+        anchors.fill: parent
+        z: 1000
+        watched: shown
+        followsPointer: false
+
+        onActiveChanged: if (!shown.active && root.current?.activeFocus && root.current.keyable === true && root.holder)
+            root.holder.forceActiveFocus()
+    }
+}

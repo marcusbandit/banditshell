@@ -41,6 +41,9 @@ Singleton {
     property string detailsText: ""
     property string buttonText: "Update"
     property bool restartNeeded: false
+    property var deps: []
+    readonly property string buttonNote: Words.buttonNote(root.restartNeeded, root.deps)
+    readonly property string pullCommand: Words.pullCommand(root.dir, Quickshell.env("HOME"))
 
     property var result: null
     readonly property bool resultPending: root.result !== null && root.result.shown !== true
@@ -59,7 +62,10 @@ Singleton {
     readonly property string channel: Words.channelOf(Config.values.updates.channel)
     readonly property string branch: Words.branchFor(Config.values.updates.channel, Config.values.updates.branch)
     readonly property string channelLabel: Words.channelText(Config.values.updates.channel, Config.values.updates.branch)
-    readonly property string haveLabel: Words.haveText(root.version, Config.values.updates.channel, Config.values.updates.branch)
+    readonly property string haveLabel: Words.haveText(root.diverged && root.baseVersion !== "" ? Words.withOwn(root.baseVersion, root.ahead) : root.version, Config.values.updates.channel, Config.values.updates.branch)
+    property string baseVersion: ""
+    property var own: []
+    readonly property string ownTitle: root.diverged ? Words.ownTitle(root.ahead) : Words.unpushedTitle(root.ahead)
     property string release: ""
     readonly property string version: root.release || WhatsNew.version
     property string targetVersion: ""
@@ -91,7 +97,7 @@ Singleton {
         if (root.state === root.updated)
             return "Updated";
         if (root.state === root.rolledback)
-            return root.wentBackByHand ? `You are on ${root.version}` : "Update rolled back";
+            return root.wentBackByHand ? Words.wentBackHeadline(root.version, Config.values.updates.channel, Config.values.updates.branch) : "Update rolled back";
         if (root.state === root.restarting)
             return root.goingBack ? "Going back..." : "Restarting...";
         if (root.state === root.verifying)
@@ -103,10 +109,10 @@ Singleton {
         if (root.paused)
             return `This copy is on ${root.headBranch === "HEAD" ? "no branch" : root.headBranch}, so it does not follow ${root.branch}`;
         if (root.diverged)
-            return `${root.behind} new on ${root.branch}, but this copy has ${root.ahead} of its own`;
+            return Words.divergedHeadline(root.targetVersion, root.ahead);
         if (root.behind > 0)
             return Words.waitingHeadline(root.targetVersion);
-        return "You are up to date";
+        return Words.currentHeadline(root.ahead);
     }
 
     function commit(sha: string): bool {
@@ -461,13 +467,16 @@ Singleton {
                 root.previous = root.commit(got.previous ?? "") ? got.previous : "";
                 root.previousVersion = got.previousVersion ?? "";
                 root.behind = counts ? Number(got.behind) || 0 : 0;
-                root.ahead = counts ? Number(got.ahead) || 0 : 0;
+                root.ahead = Words.aheadKept(got.state, got.ahead, got.unpushed);
                 root.entries = got.entries ?? [];
                 root.notes = Array.isArray(got.notes) ? got.notes : [];
+                root.baseVersion = got.baseVersion ?? "";
+                root.own = Array.isArray(got.own) ? got.own : [];
                 root.summaryText = got.summary ?? "";
                 root.detailsText = got.details ?? got.summary ?? "";
                 root.buttonText = got.button ?? "Update";
                 root.restartNeeded = got.class?.restart === true;
+                root.deps = Array.isArray(got.class?.deps) ? got.class.deps : [];
 
                 if (root.busy || root.state === root.updated || root.state === root.rolledback)
                     return;

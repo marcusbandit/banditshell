@@ -63,10 +63,15 @@ Item {
     readonly property real step: root.rowHeight + root.gap
     readonly property real split: root.gap * 2 + 1
 
+    function apart(index: int): bool {
+        const action = root.actions[index];
+        return index > 0 && !!action && (!!action.apart || !!action.alarm !== !!root.actions[index - 1].alarm);
+    }
+
     function rowTop(index: int): real {
         let breaks = 0;
         for (let i = 1; i <= index && i < root.actions.length; i++)
-            if (root.actions[i].apart)
+            if (root.apart(i))
                 breaks += 1;
         return index * root.step + breaks * root.split;
     }
@@ -157,6 +162,21 @@ Item {
             height: root.rowHeight
             radius: root.cellRadius
             color: Appearance.colour.fillStronger
+
+            SquircleRect {
+                anchors.fill: parent
+                radius: root.cellRadius
+                color: Appearance.colour.alarmFill
+                opacity: alarmShown.value
+
+                Follow {
+                    id: alarmShown
+
+                    target: root.actions[root.selected]?.alarm ? 1 : 0
+                    speed: Appearance.animation.trackSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                }
+            }
         }
 
         Column {
@@ -176,7 +196,7 @@ Item {
                     readonly property bool chosen: root.selected === cell.index
                     readonly property bool worn: root.worn === cell.index
 
-                    readonly property real lead: cell.index > 0 && cell.modelData.apart ? root.split : 0
+                    readonly property real lead: root.apart(cell.index) ? root.split : 0
 
                     width: root.rowWidth
                     height: root.rowHeight + cell.lead
@@ -207,7 +227,7 @@ Item {
                             FollowColour {
                                 id: markTone
 
-                                target: cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                                target: cell.modelData.alarm ? Appearance.colour.alarm : cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
                                 speed: Appearance.animation.trackSpeed
                             }
                         }
@@ -235,7 +255,7 @@ Item {
                             FollowColour {
                                 id: labelTone
 
-                                target: cell.worn || cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                                target: cell.modelData.alarm ? Appearance.colour.alarm : cell.worn || cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
                                 speed: Appearance.animation.trackSpeed
                             }
                         }

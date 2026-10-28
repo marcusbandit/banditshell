@@ -12,9 +12,30 @@ Item {
     property var row: ({})
 
     readonly property bool fromWall: SettingsState.v("fromWall")
-    readonly property int columns: SettingsView.tiny ? 2 : 3
     readonly property real gap: Appearance.padding.small
-    readonly property real cell: (root.width - Appearance.padding.normal * 2 - (root.columns - 1) * root.gap) / root.columns
+    readonly property string offNames: {
+        const names = Themes.catalogue.map(t => t.name);
+        return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+    }
+    readonly property real cardNeed: Math.max(names.implicitWidth, 18 * 4 + 4 * 3) + Appearance.padding.normal * 2
+    readonly property bool squeezed: SettingsView.tiny || root.cellAt(3) < root.cardNeed
+    readonly property int columns: root.squeezed ? 2 : 3
+    readonly property real cell: root.squeezed ? Math.min(root.cellAt(2), root.cardNeed) : root.cellAt(3)
+    readonly property var shown: {
+        const list = root.cards.slice();
+        const last = list.length - 1;
+        if (root.squeezed && list.length % 2 === 1 && last > 0 && root.picked(list[last]))
+            [list[last - 1], list[last]] = [list[last], list[last - 1]];
+        return list;
+    }
+
+    function picked(card: var): bool {
+        return card.wall ? root.fromWall : !root.fromWall && Config.values.theme === card.name;
+    }
+
+    function cellAt(columns: int): real {
+        return (root.width - Appearance.padding.normal * 2 - (columns - 1) * root.gap) / columns;
+    }
 
     readonly property var cards: Themes.catalogue.map(t => Appearance.lightCard({
                 name: t.name,
@@ -37,30 +58,51 @@ Item {
                 }])
 
     width: parent ? parent.width : 0
-    implicitHeight: grid.height + Appearance.padding.small + Appearance.padding.normal
+    implicitHeight: grid.childrenRect.height + Appearance.padding.small + Appearance.padding.normal + reason.height + Appearance.padding.small
 
     HoverHandler {
         onHoveredChanged: if (hovered)
             SettingsView.hovered = root.row
     }
 
-    Grid {
-        id: grid
+    Column {
+        id: names
 
-        x: Appearance.padding.normal
-        y: Appearance.padding.small
-        columns: root.columns
-        spacing: root.gap
+        visible: false
 
         Repeater {
             model: root.cards
+
+            delegate: StyledText {
+                required property var modelData
+
+                text: modelData.name
+            }
+        }
+    }
+
+    Item {
+        id: grid
+
+        y: Appearance.padding.small
+        width: root.width
+
+        Repeater {
+            model: root.shown
 
             delegate: Item {
                 id: card
 
                 required property var modelData
+                required property int index
 
-                readonly property bool on: card.modelData.wall ? root.fromWall : !root.fromWall && Config.values.theme === card.modelData.name
+                readonly property int line: Math.floor(card.index / root.columns)
+                readonly property int across: Math.min(root.columns, root.shown.length - card.line * root.columns)
+
+                x: (root.width - card.across * root.cell - (card.across - 1) * root.gap) / 2 + (card.index % root.columns) * (root.cell + root.gap)
+                y: card.line * (card.height + root.gap)
+
+                readonly property bool on: root.picked(card.modelData)
                 readonly property bool usable: !card.modelData.wall && !root.fromWall
 
                 width: root.cell
@@ -69,23 +111,23 @@ Item {
 
                 SquircleRect {
                     anchors.fill: parent
-                    anchors.margins: -4
                     visible: card.on
-                    radius: Appearance.rounding.normal + 4
+                    radius: Appearance.rounding.normal
                     color: Appearance.colour.accent
                 }
 
                 SquircleRect {
                     anchors.fill: parent
-                    anchors.margins: -2
+                    anchors.margins: 2
                     visible: card.on
-                    radius: Appearance.rounding.normal + 2
+                    radius: Appearance.rounding.normal - 2
                     color: Appearance.colour.surfaceSolid
                 }
 
                 SquircleRect {
                     anchors.fill: parent
-                    radius: Appearance.rounding.normal
+                    anchors.margins: card.on ? 4 : 0
+                    radius: Appearance.rounding.normal - (card.on ? 4 : 0)
                     color: card.modelData.background
                 }
 
@@ -130,5 +172,16 @@ Item {
                 }
             }
         }
+    }
+
+    StyledText {
+        id: reason
+
+        y: grid.y + grid.childrenRect.height + Appearance.padding.small
+        width: root.width
+        text: root.fromWall ? `${root.offNames} ${Themes.catalogue.length === 1 ? "is" : "are"} off while “Take it from the wallpaper” is on` : "wallpaper is off until “Take it from the wallpaper” is on"
+        color: Appearance.colour.textDim
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WordWrap
     }
 }

@@ -348,7 +348,7 @@ Item {
         acts.push({
             icon: "delete_forever",
             label: "Delete permanently…",
-            apart: true,
+            alarm: true,
             run: () => root.confirmDelete()
         });
 
@@ -410,7 +410,7 @@ Item {
             acts.push({
                 icon: "delete_forever",
                 label: "Empty Trash…",
-                apart: true,
+                alarm: true,
                 run: () => root.confirmEmpty()
             });
 
@@ -628,7 +628,16 @@ Item {
         anchors.top: rule.bottom
         anchors.bottom: failure.top
 
-        readonly property real previewRoom: Math.min(Files.previewWidth, width * 0.45)
+        readonly property real listNeed: Appearance.padding.small * 5 + Appearance.padding.hair * 2 + Files.zoomed(Appearance.font.iconSize) + listDigit.advanceWidth * Files.nameLeast + Appearance.padding.normal * 3 + previewEdge.implicitWidth
+        readonly property real previewRoom: Math.min(Files.previewWidth, width * 0.45, Files.listed ? Math.max(200, width - listNeed) : Infinity)
+
+        TextMetrics {
+            id: listDigit
+
+            font.family: Appearance.font.family
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
+            text: "0"
+        }
         readonly property bool roomForBoth: previewRoom >= 200
 
         FileGrid {

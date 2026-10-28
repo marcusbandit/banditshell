@@ -188,6 +188,13 @@ PanelWindow {
         islandLayer.task = "";
     }
 
+    function takeKeyboard(): void {
+        if (body.Window.active)
+            return;
+        win.claiming = true;
+        claim.restart();
+    }
+
     function openMenu(key: string, pin = true): bool {
         if (win.underFullscreen)
             return false;
@@ -821,7 +828,7 @@ PanelWindow {
             panel: SettingsPanel {
                 originX: chassis.barWidth
                 band: win.border
-                yielded: win.panelOpen || menuLayer.open || Settings.away || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
+                yielded: win.panelOpen || menuLayer.open || Prompts.awayIn(settingsLayer.QsWindow.window) || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
             }
         }
 

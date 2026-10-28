@@ -118,7 +118,7 @@ Item {
                 height: parent.height - Appearance.padding.hair * 2
                 visible: root.isImage && status !== Image.Error
 
-                source: root.isImage ? Urls.fileUrl(root.path) : ""
+                source: root.isImage ? Urls.freshUrl(root.path, root.entry.mtime, root.entry.size) : ""
                 radius: Appearance.rounding.small
                 decodeWidth: Appearance.sizes.filesThumbnail
                 decodeHeight: Appearance.sizes.filesThumbnail
@@ -192,6 +192,14 @@ Item {
         readonly property bool stacked: FilesFind.active && !root.entry.trash
         readonly property real dateWidth: rowLayout.stacked ? digit.advanceWidth * 13 : Files.zoomed(Appearance.font.size.small) * 7
         readonly property real sizeWidth: Files.zoomed(Appearance.font.size.small) * 5
+        readonly property real gap: Appearance.padding.normal
+        readonly property real nameLeast: rowMark.width + Appearance.padding.small + digit.advanceWidth * Files.nameLeast
+        readonly property bool showsDate: rowLayout.width - rowLayout.nameLeast >= (rowLayout.stacked ? Math.max(rowLayout.dateWidth, rowLayout.sizeWidth) + rowLayout.gap : rowLayout.dateWidth + rowLayout.sizeWidth + rowLayout.gap * 2)
+        readonly property bool showsSize: rowLayout.stacked ? rowLayout.showsDate : rowLayout.width - rowLayout.nameLeast >= rowLayout.sizeWidth + rowLayout.gap
+
+        function textStart(item: Item): real {
+            return item.x + item.width - item.contentWidth;
+        }
 
         FileMark {
             id: rowMark
@@ -219,13 +227,29 @@ Item {
             anchors.leftMargin: Appearance.padding.small
             anchors.verticalCenter: parent.stacked ? undefined : parent.verticalCenter
             anchors.bottom: parent.stacked ? parent.verticalCenter : undefined
-            readonly property real room: (parent.stacked ? rowDate.x : rowSize.x) - rowName.x - Appearance.padding.normal * (parent.stacked ? 1 : 2)
-            width: Math.min(rowName.implicitWidth, rowName.room)
+            readonly property real limit: {
+                if (parent.stacked)
+                    return parent.showsDate ? parent.textStart(rowDate) : parent.width + parent.gap;
+                if (root.place !== "")
+                    return (parent.showsSize ? rowSize.x : parent.width) - parent.gap;
+                if (rowSize.contentWidth > 0)
+                    return parent.textStart(rowSize);
+                return parent.showsDate ? parent.textStart(rowDate) : parent.width + parent.gap;
+            }
+            readonly property real room: rowName.limit - rowName.x - parent.gap
+            visible: rowName.room > 0
+            width: Math.max(0, Math.min(rowName.implicitWidth, rowName.room))
 
-            text: root.entry.name
+            text: rowName.room > 0 ? TileNames.lines(root.entry.name, 1, line => rowInk.advanceWidth(line) <= rowName.room)[0] : ""
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
-            elide: Text.ElideMiddle
+            elide: Text.ElideRight
             color: root.picked ? Appearance.colour.accent : root.focused || parent.stacked ? Appearance.colour.text : Appearance.colour.textDim
+
+            FontMetrics {
+                id: rowInk
+
+                font: rowName.font
+            }
         }
 
         StyledText {
@@ -248,14 +272,15 @@ Item {
             id: rowSize
 
             anchors.right: parent.stacked ? parent.right : rowDate.left
-            anchors.rightMargin: parent.stacked ? 0 : Appearance.padding.normal
+            anchors.rightMargin: parent.stacked || !parent.showsDate ? 0 : parent.gap
             anchors.verticalCenter: parent.stacked ? undefined : parent.verticalCenter
             anchors.top: parent.stacked ? parent.verticalCenter : undefined
-            width: parent.sizeWidth
+            width: parent.showsSize ? parent.sizeWidth : 0
+            visible: parent.showsSize
 
             horizontalAlignment: Text.AlignRight
 
-            text: root.entry.kind === "dir" ? "" : Files.humanSize(root.entry.size)
+            text: !parent.showsSize || root.entry.kind === "dir" ? "" : Files.humanSize(root.entry.size)
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
         }
@@ -266,10 +291,11 @@ Item {
             anchors.right: parent.right
             anchors.verticalCenter: parent.stacked ? undefined : parent.verticalCenter
             anchors.bottom: parent.stacked ? parent.verticalCenter : undefined
-            width: parent.dateWidth
+            width: parent.showsDate ? parent.dateWidth : 0
+            visible: parent.showsDate
 
             horizontalAlignment: Text.AlignRight
-            text: parent.stacked ? Files.changedTime(root.entry.mtime) : Files.humanTime(root.entry.trashed ?? root.entry.mtime)
+            text: !parent.showsDate ? "" : parent.stacked ? Files.changedTime(root.entry.mtime) : Files.humanTime(root.entry.trashed ?? root.entry.mtime)
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: parent.stacked ? Appearance.colour.textDim : Appearance.colour.textFaint
         }

@@ -40,10 +40,10 @@ Column {
         const parts = [root.combos.length > 0 ? shortcut.width : -1, root.row.extra ? extra.width : -1, root.hasLayer ? more.width : -1].filter(w => w >= 0);
         return parts.reduce((a, b) => a + b + Appearance.padding.normal, 0);
     }
-    readonly property bool slotted: !!Catalogue.PAGE_BY_ID[root.row.page]?.resets
+    readonly property bool slotted: root.resettable
     readonly property real slotRoom: root.slotted ? resetSlot.width + Appearance.padding.normal : 0
     readonly property real afterControls: (root.row.extra ? extra.width + Appearance.padding.normal : 0) + (root.hasLayer ? more.width + Appearance.padding.normal : 0)
-    readonly property string groupKey: root.row.group?.rows?.[0]?.uid ?? ""
+    readonly property string groupKey: root.row.groupKey ?? ""
     property real segNatural: 0
     property real segCompact: 0
     readonly property real lineRoom: frame.inner - root.besideControls - root.slotRoom
@@ -54,6 +54,9 @@ Column {
     readonly property bool flashing: !!SettingsView.flash && !!root.row.uid && SettingsView.flash.uid === root.row.uid
 
     width: parent ? parent.width : 0
+
+    onGroupKeyChanged: if (root.kind === "slider" && controls.item)
+        root.noteTail(controls.item.tail)
 
     onCrampedChanged: if (!root.cramped && root.unrolled)
         SettingsView.setOpen(root.row.uid, false)
@@ -89,13 +92,46 @@ Column {
         label: Catalogue.labelOf(root.row)
         detail: root.stateText
         detailColour: root.bad ? Appearance.colour.alarm : Appearance.colour.textFaint
-        detailLines: root.bad ? 3 : root.row.lines ?? 1
+        detailLines: root.row.lines ?? 3
         pending: root.pendingText
         off: root.off
         flashStamp: root.flashing ? SettingsView.flash.at : 0
         interactive: !root.held && (root.kind === "toggle" || root.shape === "choice" || root.hasLayer)
         onActivated: root.activate()
         onPointed: SettingsView.hovered = root.row
+
+        Item {
+            id: resetSlot
+
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.slotted
+            width: reset.implicitWidth
+            height: 1
+
+            SettingsTool {
+                id: reset
+
+                anchors.centerIn: parent
+                visible: root.resettable && !root.held && (root.changed || shown.value > 0)
+                enabled: root.changed
+                opacity: shown.value
+                icon: "restart_alt"
+                tip: `reset to default, ${root.fallbackText || "empty"}`
+                onClicked: {
+                    frame.pulse();
+                    SettingsState.reset(root.key);
+                }
+
+                Follow {
+                    id: shown
+
+                    target: root.changed ? 1 : 0
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
+                }
+            }
+        }
 
         Row {
             id: shortcut
@@ -184,46 +220,13 @@ Column {
             tip: root.unrolled ? "fold" : "more"
             onClicked: root.toggleOpen()
         }
-
-        Item {
-            id: resetSlot
-
-            anchors.verticalCenter: parent.verticalCenter
-            visible: root.slotted
-            width: reset.implicitWidth
-            height: 1
-
-            SettingsTool {
-                id: reset
-
-                anchors.centerIn: parent
-                visible: root.resettable && !root.held && (root.changed || shown.value > 0)
-                enabled: root.changed
-                opacity: shown.value
-                icon: "restart_alt"
-                tip: `reset to default, ${root.fallbackText || "empty"}`
-                onClicked: {
-                    frame.pulse();
-                    SettingsState.reset(root.key);
-                }
-
-                Follow {
-                    id: shown
-
-                    target: root.changed ? 1 : 0
-                    speed: Appearance.animation.revealSpeed
-                    epsilon: Appearance.animation.fadeEpsilon
-                    startsAtTarget: true
-                }
-            }
-        }
     }
 
     Item {
         parent: frame
-        x: (controls.parent?.x ?? 0) + controls.x
+        x: (controls.parent?.x ?? 0) + controls.x + controls.width - width
         y: frame.height - Appearance.padding.small
-        width: controls.width
+        width: Math.min(Math.max(controls.width, 200), frame.inner - frame.leadWidth)
         height: 0
         visible: places.active
         z: 1
@@ -410,12 +413,13 @@ Column {
 
             tailWidth: (SettingsView.tailColumns[root.groupKey] ?? 0) - root.afterControls
             room: root.lineRoom
+            trackWidth: SettingsView.tiny ? 120 : 180
             onTailChanged: root.noteTail(slider.tail)
             Component.onCompleted: root.noteTail(slider.tail)
             Component.onDestruction: root.noteTail(-1)
             value: Number(root.value ?? 0)
-            from: root.row.min
-            to: root.row.max
+            from: Catalogue.val(root.row.min, SettingsState)
+            to: Catalogue.val(root.row.max, SettingsState)
             step: root.row.step ?? 1
             ends: root.row.ends ?? []
             text: Catalogue.format(root.row, Number(root.value ?? 0), SettingsState)
@@ -429,8 +433,8 @@ Column {
 
         SettingsStepper {
             value: Number(root.value ?? 0)
-            from: root.row.min
-            to: root.row.max
+            from: Catalogue.val(root.row.min, SettingsState)
+            to: Catalogue.val(root.row.max, SettingsState)
             step: root.row.step ?? 1
             text: Catalogue.format(root.row, Number(root.value ?? 0), SettingsState)
             enabled: !root.off
@@ -467,6 +471,11 @@ Column {
         id: textControl
 
         SettingsField {
+            id: textField
+
+            implicitWidth: Math.max(120, Math.min(frame.inner - frame.leadWidth, Math.ceil(Math.max(valueWidth.advanceWidth, placeholderWidth.advanceWidth)) + Appearance.padding.normal * 2 + 2))
+            framed: true
+            placeholderColour: Appearance.colour.text
             text: String(root.value ?? "")
             placeholder: root.row.placeholder ?? ""
             mono: !!root.row.mono
@@ -476,6 +485,22 @@ Column {
             pick: places.item?.chosen ?? ""
             onStepped: by => places.item.step(by)
             onCommitted: t => root.set(t)
+
+            TextMetrics {
+                id: valueWidth
+
+                font.family: textField.mono ? Appearance.sizes.filesTerminalFont : Appearance.font.family
+                font.pixelSize: Appearance.font.size.small
+                text: textField.draft
+            }
+
+            TextMetrics {
+                id: placeholderWidth
+
+                font.family: Appearance.font.family
+                font.pixelSize: Appearance.font.size.small
+                text: textField.placeholder
+            }
         }
     }
 

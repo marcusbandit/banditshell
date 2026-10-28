@@ -249,6 +249,7 @@ Item {
                     icon: root.icon
                     text: root.verb
                     alarm: true
+                    paint: Appearance.colour.alarmFill
 
                     onClicked: root.answer(root.verb.toLowerCase())
 

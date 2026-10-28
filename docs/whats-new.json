@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-28-22",
+      "id": "2026-10-28-28",
       "date": "2026-10-28",
       "changes": [
         {
@@ -38,6 +38,217 @@
           "type": "issues",
           "severity": "minor",
           "text": "Rail marks no longer write binding loop warnings to the log"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-27",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The update menu lists your own changes that GitHub lacks"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Update menu actions look pressable; only the main one is filled"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A paused timer in the clock menu shows a pause mark"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Pair new device's arrow lines up with the other Bluetooth arrows"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Battery, Nearly empty offers do nothing"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings says why some theme cards are off"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings text fields fit their value and grow as you type"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-26",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A Files thumbnail updates when its picture changes on disk"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files list rows drop the time, then the size, instead of overlapping"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Shortened Files names keep their extension and use the free room"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "In Files list view the preview narrows so names stay readable"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files zoom goes from 70% to 250% in Settings as well as with keys"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files settings grow with the zoom and fade where more rows follow"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Empty states, the preview title and details grow with the zoom"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Delete button in Files confirm prompts sits on an alarm tint"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-25",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "School Wi-Fi root certificates show issuer, expiry and server match"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The picked certificate is marked; a bundled key hides the key field"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Browse shows only when a file chooser exists; else type the path"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A missing server name shows its field and a warning outside More"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The closed More line keeps the sign-in method and the server name"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Without NetworkManager, Settings offers Start or the install command"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-24",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings labels, sliders and theme cards fit a narrow panel"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Long Settings pages and search lists fade where more follows"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Delete and other harmful menu actions show in the alarm colour"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Lid rows offer do nothing"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-23",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "An update restarts the shell when its reload makes the shell quit"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Going back on stable names the release you went back to"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Unread lines in the update menu are marked; Mark as read clears them"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A copy with changes of its own still names the version that is ready"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Updates no longer ask for install steps your machine already has"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-28-22",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Arrow keys and Enter work in every menu, and Tab jumps between groups"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A menu opened by its shortcut starts with focus on its first row"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Arrows move a day cursor in the calendar; Page keys change month"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Wi-Fi list holds still while the keyboard is in it"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Tray switches show their own state, without a grey row behind them"
         }
       ]
     },
