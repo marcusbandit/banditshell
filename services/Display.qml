@@ -18,6 +18,8 @@ Singleton {
 
     property int lastWarm: 3000
 
+    property bool adopted: false
+
     property var displays: []
 
     readonly property bool brightnessReady: root.displays.length > 0
@@ -85,7 +87,7 @@ Singleton {
     }
 
     Component.onCompleted: {
-        if (Config.writable)
+        if (Config.writable && !root.adopted)
             root.adoptConfig();
         root.detect();
         root.ensureGamma();
@@ -96,7 +98,7 @@ Singleton {
         target: Config
 
         function onWritableChanged(): void {
-            if (Config.writable)
+            if (Config.writable && !root.adopted)
                 root.adoptConfig();
         }
     }
@@ -129,6 +131,7 @@ Singleton {
     }
 
     function adoptConfig(): void {
+        root.adopted = true;
         root.followWarmth(true);
 
         const saved = Number(Config.values.screen.level);
