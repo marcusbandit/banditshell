@@ -26,6 +26,32 @@ Column {
         root.shownYear = now.getFullYear();
         root.shownMonth = now.getMonth();
         root.slide = 0;
+        root.cursor = now;
+    }
+
+    property date cursor: new Date()
+
+    function aim(): void {
+        if (root.cursor.getFullYear() === root.shownYear && root.cursor.getMonth() === root.shownMonth)
+            return;
+        const last = new Date(root.shownYear, root.shownMonth + 1, 0).getDate();
+        root.cursor = new Date(root.shownYear, root.shownMonth, Math.min(root.cursor.getDate(), last));
+    }
+
+    function steer(key: int): bool {
+        const step = key === Qt.Key_Left ? -1 : key === Qt.Key_Right ? 1 : key === Qt.Key_Up ? -root.columns : key === Qt.Key_Down ? root.columns : 0;
+        if (key === Qt.Key_PageUp || key === Qt.Key_PageDown) {
+            root.page(key === Qt.Key_PageDown ? 1 : -1);
+            root.glide();
+            return true;
+        }
+        if (step === 0)
+            return false;
+        const to = new Date(root.cursor.getFullYear(), root.cursor.getMonth(), root.cursor.getDate() + step);
+        if (to.getMonth() !== root.shownMonth)
+            return false;
+        root.cursor = to;
+        return true;
     }
 
     readonly property bool showingToday: root.shownYear === root.today.getFullYear() && root.shownMonth === root.today.getMonth()
@@ -53,6 +79,7 @@ Column {
         root.shownYear = to.getFullYear();
         root.shownMonth = to.getMonth();
         root.slide += delta * months.width;
+        root.aim();
     }
 
     function glide(): void {
@@ -60,6 +87,7 @@ Column {
     }
 
     function home(): void {
+        root.cursor = root.today;
 
         const delta = (root.today.getFullYear() * 12 + root.today.getMonth()) - (root.shownYear * 12 + root.shownMonth);
         if (delta === 0)
@@ -179,6 +207,14 @@ Column {
 
     Item {
         id: months
+
+        readonly property bool keyable: true
+
+        function steer(key: int): bool {
+            return root.steer(key);
+        }
+
+        readonly property int cursorIndex: (new Date(root.shownYear, root.shownMonth, 1).getDay() + 6) % 7 + root.cursor.getDate() - 1
 
         width: parent.width
         height: root.cell * root.rows
@@ -311,6 +347,18 @@ Column {
 
             anchors.fill: parent
             clip: true
+
+            Item {
+                z: 1
+                x: (months.cursorIndex % root.columns) * root.cell + root.slide + Appearance.padding.small / 2
+                y: Math.floor(months.cursorIndex / root.columns) * root.cell + Appearance.padding.small / 2
+                width: root.cell - Appearance.padding.small
+                height: width
+
+                FocusMark {
+                    shown: months.activeFocus
+                }
+            }
 
             Repeater {
                 model: [-1, 0, 1]

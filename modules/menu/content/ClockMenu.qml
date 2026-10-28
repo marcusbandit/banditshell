@@ -153,6 +153,8 @@ Column {
 
         readonly property double due: Clock.ringingSince - Clock.ringingLate
 
+        readonly property string focusGroup: "ringing"
+
         visible: !!ringing.alarm
         width: parent.width
         height: visible ? answers.y + answers.height + Appearance.padding.normal : 0
@@ -273,6 +275,8 @@ Column {
     Item {
         id: elsewhere
 
+        readonly property string focusGroup: "places"
+
         visible: Clock.zones.length > 0
         width: parent.width
         height: zoneRows.implicitHeight
@@ -361,6 +365,8 @@ Column {
     }
 
     Button {
+        readonly property string focusGroup: "places"
+
         width: parent.width
         text: root.picking ? "Never mind" : "Add a place"
         onClicked: {
@@ -372,6 +378,8 @@ Column {
 
     Item {
         id: picker
+
+        readonly property string focusGroup: "places"
 
         visible: root.picking
         width: parent.width
@@ -426,6 +434,8 @@ Column {
             id: timerCard
 
             required property var modelData
+
+            readonly property string focusGroup: "timer"
 
             readonly property double remainingMs: Clock.remainingOf(timerCard.modelData, root.beat)
             readonly property real fraction: timerCard.modelData.total > 0 ? Math.max(0, Math.min(1, timerCard.remainingMs / timerCard.modelData.total)) : 0
@@ -494,6 +504,8 @@ Column {
     Item {
         id: setter
 
+        readonly property string focusGroup: "timer"
+
         width: parent.width
         height: fields.height
 
@@ -551,6 +563,8 @@ Column {
     Item {
         id: presets
 
+        readonly property string focusGroup: "timer"
+
         width: parent.width
         height: childrenRect.height
 
@@ -587,6 +601,8 @@ Column {
             id: alarmCard
 
             required property var modelData
+
+            readonly property string focusGroup: "alarm"
 
             readonly property bool open: root.editing === alarmCard.modelData.id
 
@@ -746,6 +762,8 @@ Column {
     }
 
     Button {
+        readonly property string focusGroup: "alarm"
+
         width: parent.width
         text: "Add an alarm"
         onClicked: {

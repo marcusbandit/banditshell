@@ -68,7 +68,7 @@ An entry may carry an `impact` object. Every key is optional:
 
 `banditshell update check` reads the diff first (a changed qmldir or `shell.qml` means restart, a
 changed `cli/`, `api/` or `lua/` means commands, new `add_step` lines in `install.sh` mean
-packages) and uses `impact` to add to it. With no `impact` the diff alone decides. `impact` can
+packages, unless this machine already passes their check) and uses `impact` to add to it. With no `impact` the diff alone decides. `impact` can
 turn a restart or a warning on; it cannot turn off what the diff found, so leave it out unless
 the diff cannot see the effect (a bind that now does something else, a package the code calls
 by name).
