@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-9",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "An update that fails to reload restarts the shell before going back"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The update with the new Wi-Fi sign-in installs without going back"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-8",
       "date": "2026-10-28",
       "changes": [

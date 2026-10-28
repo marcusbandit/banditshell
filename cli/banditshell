@@ -3621,6 +3621,7 @@ update_plan() {
         say_dry "restart the shell, then wait for shell status and scan the log"
     else
         say_dry "leave the running shell to reload, then wait for shell status and scan the log"
+        say_dry "if the reload fails that check, restart the shell on the new version and check again"
     fi
     say_dry "on a failed health check: git reset --keep ${U_HEAD:0:7}, relaunch, write result.json, skip ${U_TARGET:0:7}"
 }
@@ -3798,24 +3799,30 @@ update_finish_work() {
         return 0
     fi
     if [ "$restart" = 1 ]; then
-        update_phase restart "Restarting..."
-        stop_shell || true
-        ensure_built || true
-        if ! launch "$SHELL_DIR"; then
-            update_roll_back "the new version did not start: ${HEALTH_WHY:-it failed to load}" 1
-            return 1
-        fi
-        refresh_backup || true
-        remember_checkout
+        update_restart "Restarting..." || return 1
     else
         update_phase health "Checking it started..."
-        if pid=$(instance_of "$SHELL_DIR") && ! health_check "$pid" "$mark"; then
-            update_roll_back "the new version did not start: $HEALTH_WHY" 1
-            return 1
+        if pid=$(instance_of "$SHELL_DIR"); then
+            if health_check "$pid" "$mark"; then
+                refresh_backup || true
+            else
+                update_restart "The reload did not take, restarting..." "the reload failed, $HEALTH_WHY. A restart failed as well: " || return 1
+            fi
         fi
-        [ -z "$pid" ] || refresh_backup || true
     fi
     update_conclude "Updated to $(update_label "$(cat "$UPDATE_STATE/target")")"
+}
+
+update_restart() {
+    update_phase restart "$1"
+    stop_shell || true
+    ensure_built || true
+    if ! launch "$SHELL_DIR"; then
+        update_roll_back "${2:-}the new version did not start: $HEALTH_WHY" 1
+        return 1
+    fi
+    refresh_backup || true
+    remember_checkout
 }
 
 update_conclude() {

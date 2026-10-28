@@ -1,5 +1,8 @@
 module qs.modules.controls
 Expander 1.0 Expander.qml
+FileChips 1.0 FileChips.qml
+FormChoice 1.0 FormChoice.qml
+FormLine 1.0 FormLine.qml
 HoverTip 1.0 HoverTip.qml
 IdentityField 1.0 IdentityField.qml
 MenuRow 1.0 MenuRow.qml

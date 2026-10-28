@@ -743,16 +743,34 @@ test("errors in the log after a restart roll back too", () => {
     assert.match(JSON.parse(readState(world, "result.json")).why, /ReferenceError/);
 });
 
-test("a reload that breaks the running shell rolls back as well", () => {
+test("a reload that breaks the shell, and a restart that breaks it too, rolls back", () => {
     const world = makeWorld();
     const before = liveHead(world);
     startShell(world);
     const target = advance(world, "throws", { REFERROR: "x\n", "services/Foo.qml": "// foo version two\n" });
     const got = applyTo(world, target);
     assert.strictEqual(got.status, 1, got.err + got.out);
+    assert.match(got.out, /reload did not take, restarting/);
     assert.strictEqual(liveHead(world), before);
-    assert.match(JSON.parse(readState(world, "result.json")).why, /ReferenceError/);
+    assert.match(JSON.parse(readState(world, "result.json")).why, /^the reload failed, the log shows errors: .*ReferenceError.*\. A restart failed as well: the new version did not start: .*ReferenceError/);
     assert.strictEqual(pids(world).length, 1);
+});
+
+test("a reload that fails but starts clean on a restart keeps the new version", () => {
+    const world = makeWorld();
+    const pid = startShell(world);
+    const target = advance(world, "inline", { RELOADFAIL: "x\n", "services/Foo.qml": "// foo version two\n" });
+    const got = applyTo(world, target, ["--json"]);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    const phases = got.out.trim().split("\n").map(l => JSON.parse(l).phase);
+    assert.deepStrictEqual(phases, ["stage", "verify", "apply", "health", "restart", "done"]);
+    assert.strictEqual(liveHead(world), target);
+    const now = pids(world);
+    assert.strictEqual(now.length, 1);
+    assert.notStrictEqual(now[0], pid);
+    assert.strictEqual(JSON.parse(readState(world, "result.json")).ok, true);
+    assert.strictEqual(fs.existsSync(stateFile(world, "skip")), false);
+    assert.ok(fs.existsSync(backupFile(world, "RELOADFAIL")));
 });
 
 test("errors that were already in the log before a reload are not the update's fault", () => {

@@ -44,7 +44,10 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    took before the merge. `BANDITSHELL_HEALTH_WAIT` and `BANDITSHELL_HEALTH_SCAN` set the
    seconds, and the tests set them small. When it passes, `~/.cache/banditshell/lastgood` is
    refreshed with rsync, or `cp -a` if rsync is missing, and `update/result.json` records `ok`.
-6. **Roll back on failure.** If the health check fails, `git reset --keep <previous>` puts the
+   A hot reload can fail where a cold start of the same tree works. An inline component added to
+   a file the running shell already loaded is one way. So when a reload fails its check, the
+   shell is restarted once on the new version and that start is checked the same way.
+6. **Roll back on failure.** If the health check of a start fails, `git reset --keep <previous>` puts the
    checkout back, the commit that failed goes into `update/skip` (it is not offered again until a
    newer one arrives) and the shell is relaunched. If even that launch fails, the last known
    good copy is started. `result.json` records `ok: false` with the reason, and the menu shows it
