@@ -15,8 +15,8 @@ Singleton {
     property var drawn: ({})
     property var waiting: []
     property string revealed: ""
-    property bool sensitiveCopy: false
-    property bool sensitiveProbed: false
+    readonly property bool sensitiveCopy: Clipboard.sensitiveCopy
+    readonly property bool sensitiveProbed: Clipboard.sensitiveProbed
     property bool clipboardSecret: false
     property string pasted: ""
     property bool pasting: false
@@ -89,7 +89,7 @@ Singleton {
 
     function copySecret(text: string): void {
         if (root.sensitiveCopy)
-            Clipboard.offer(["wl-copy", "--sensitive", "-n"], text);
+            Clipboard.offer(["wl-copy", "--sensitive", "-n"], text, true);
     }
 
     Process {
@@ -131,19 +131,6 @@ Singleton {
             }
         }
         onExited: root.pasting = false
-    }
-
-    Process {
-        id: prober
-
-        command: ["sh", "-c", "wl-copy --help 2>&1 | grep -q -- --sensitive && echo sensitive; true"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                root.sensitiveCopy = text.trim() === "sensitive";
-                root.sensitiveProbed = true;
-            }
-        }
     }
 
     Component.onCompleted: root.refill()

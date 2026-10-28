@@ -8,6 +8,7 @@ import "ranking.js" as Ranking
 import "clipboard-sweep.js" as Sweep
 import "clipboard-shelf.js" as Shelf
 import "clipboard-secret.js" as Secret
+import "clipboard-age.js" as Age
 
 Singleton {
     id: root
@@ -26,7 +27,10 @@ Singleton {
 
     property bool keep: true
 
-    property bool unreadable: false
+    property var recovery: null
+    property int salvaged: 0
+    property int started: 0
+    property string backupPath: ""
 
     property bool reaped: false
 
@@ -190,27 +194,7 @@ Singleton {
     }
 
     function age(recorded: real): string {
-        if (!recorded)
-            return "some time ago";
-
-        const secs = Math.max(0, (Date.now() - recorded) / 1000);
-        if (secs < 45)
-            return "just now";
-
-        const mins = secs / 60;
-        if (mins < 60)
-            return `${Math.round(mins)}m ago`;
-
-        const hours = mins / 60;
-        if (hours < 24)
-            return `${Math.round(hours)}h ago`;
-
-        const days = hours / 24;
-        if (days < 7)
-            return Math.round(days) === 1 ? "yesterday" : `${Math.round(days)}d ago`;
-
-        const weeks = days / 7;
-        return weeks < 5 ? `${Math.round(weeks)}w ago` : `${Math.round(days / 30)}mo ago`;
+        return Age.age(recorded, Date.now());
     }
 
     function identity(e: var): string {
@@ -299,20 +283,23 @@ Singleton {
 
         if (entry.file) {
             const ext = entry.file.slice(entry.file.lastIndexOf(".") + 1).toLowerCase();
-            root.offer(["sh", "-c", 'exec wl-copy -t "$1" < "$2"', "sh", `image/${ext === "jpg" ? "jpeg" : ext}`, entry.file], "");
+            root.offer(["sh", "-c", 'exec wl-copy -t "$1" < "$2"', "sh", `image/${ext === "jpg" ? "jpeg" : ext}`, entry.file], "", false);
         } else if ((entry.paths ?? []).length) {
-            root.offer(["wl-copy", "-t", "text/uri-list"], entry.paths.map(p => `file://${String(p).split("/").map(encodeURIComponent).join("/")}`).join("\r\n"));
+            root.offer(["wl-copy", "-t", "text/uri-list"], entry.paths.map(p => `file://${String(p).split("/").map(encodeURIComponent).join("/")}`).join("\r\n"), false);
         } else {
-            root.offer(["wl-copy", "-n"], entry.text ?? "");
+            root.offer(Secret.copyCommand(entry, root.sensitiveCopy), entry.text ?? "", Secret.sensitive(entry));
         }
     }
 
     property var offered: null
 
-    signal copied(var command, string input)
+    property bool sensitiveCopy: false
+    property bool sensitiveProbed: false
 
-    function offer(command: var, input: string): void {
-        root.copied(command, input);
+    signal copied(var command, string input, bool secret)
+
+    function offer(command: var, input: string, secret: bool): void {
+        root.copied(command, input, secret);
         root.offered = {
             command: command,
             input: input
@@ -345,7 +332,7 @@ Singleton {
         if (!paths.length)
             return;
 
-        root.offer(["wl-copy", "-n"], paths.join("\n"));
+        root.offer(["wl-copy", "-n"], paths.join("\n"), false);
     }
 
     function noteAspect(id: string, ratio: real): void {
@@ -430,17 +417,14 @@ Singleton {
         if (root.current === entry.id)
             root.current = "";
         root.save();
-        root.sweep();
+        root.sweep(false);
     }
 
     function clear(): void {
         if (!root.entries.some(e => !e.pinned))
             return;
         root.letGo();
-        const unseen = !root.keep && !root.unreadable ? root.readable(Shelf.salvage(store.text())).filter(e => !e.pinned && !root.entries.some(m => root.identity(m) === root.identity(e))).length : 0;
-        root.shelf = Object.assign(Shelf.shelve(root.entries), {
-            unseen: unseen
-        });
+        root.shelf = Shelf.shelve(root.entries);
         root.shelfElapsed = 0;
         root.entries = Shelf.kept(root.entries);
         root.current = "";
@@ -465,9 +449,9 @@ Singleton {
         root.shelfHolders = root.shelfHolders.filter(w => w && w !== who);
     }
 
-    readonly property int shelved: root.shelf ? root.shelf.entries.length + (root.shelf.unseen ?? 0) : 0
+    readonly property int shelved: root.shelf ? root.shelf.entries.length : 0
     readonly property int shelfKept: root.shelf ? root.shelf.before.length - root.shelf.entries.length : 0
-    readonly property bool clearSaves: root.keep || !root.unreadable
+    readonly property bool clearSaves: root.keep
 
     property bool wasCleared: false
 
@@ -487,16 +471,15 @@ Singleton {
         if (!root.shelf)
             return;
         root.shelf = null;
-        if (!root.keep && !root.unreadable && root.loaded)
-            root.repair();
-        root.sweep();
+        root.recovery = null;
+        root.sweep(true);
     }
 
-    function repair(): void {
-        root.entries = Shelf.survivors(root.entries, root.readable(Shelf.salvage(store.text())));
-        root.keep = true;
-        console.log(`Clipboard: cleared while ${root.path} could not be read; it now holds the ${root.entries.length} entries that were kept.`);
-        root.write();
+    function recoverySeen(): void {
+        if (!root.recovery)
+            return;
+        root.recovery = null;
+        root.save();
     }
 
     Timer {
@@ -511,7 +494,11 @@ Singleton {
         }
     }
 
-    function sweep(): void {
+    property bool purgeOwed: false
+
+    function sweep(purge: bool): void {
+        if (purge === true)
+            root.purgeOwed = true;
 
         if (reaper.running) {
             root.sweepOwed = true;
@@ -519,9 +506,10 @@ Singleton {
         }
         root.sweepOwed = false;
 
-        const command = Sweep.command(root.blobs, root.shelf ? root.entries.concat(root.shelf.entries) : root.entries, root.keep && root.loaded);
+        const command = Sweep.command(root.blobs, root.path, root.shelf ? root.entries.concat(root.shelf.entries) : root.entries, root.keep && root.loaded, root.purgeOwed);
         if (!command)
             return;
+        root.purgeOwed = false;
         reaper.command = command;
         reaper.running = true;
     }
@@ -619,6 +607,17 @@ Singleton {
     }
 
     Process {
+        command: ["sh", "-c", "wl-copy --help 2>&1 | grep -q -- --sensitive && echo sensitive; true"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.sensitiveCopy = text.trim() === "sensitive";
+                root.sensitiveProbed = true;
+            }
+        }
+    }
+
+    Process {
         id: paste
 
         stderr: SplitParser {
@@ -635,7 +634,40 @@ Singleton {
         id: reaper
 
         onExited: if (root.sweepOwed)
-            root.sweep()
+            root.sweep(false)
+    }
+
+    Process {
+        id: backup
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.backupPath = text.trim();
+                if (!root.backupPath)
+                    return;
+                console.log(`Clipboard: the damaged history is kept as ${root.backupPath}.`);
+                if (root.recovery && !root.recovery.copy) {
+                    root.recovery = Object.assign({}, root.recovery, {
+                        copy: root.backupPath
+                    });
+                    root.save();
+                }
+            }
+        }
+
+        onExited: code => {
+            if (code !== 0) {
+                console.warn(`Clipboard: could not keep a copy of ${root.path}; running from memory and leaving the file alone.`);
+                return;
+            }
+            root.keep = true;
+            root.recovery = {
+                kept: root.salvaged,
+                of: Math.max(root.salvaged, root.started),
+                copy: root.backupPath
+            };
+            root.write();
+        }
     }
 
     Process {
@@ -678,15 +710,26 @@ Singleton {
 
             let disk = [];
             try {
-                const data = JSON.parse(raw);
+                const data = raw.trim() === "" && !root.loaded ? {} : JSON.parse(raw);
                 disk = Array.isArray(data?.entries) ? data.entries : [];
+                if (!root.loaded)
+                    root.recovery = data?.recovered?.kept >= 0 ? {
+                        kept: data.recovered.kept,
+                        of: data.recovered.of > 0 ? data.recovered.of : 0,
+                        copy: String(data.recovered.copy ?? "")
+                    } : null;
             } catch (err) {
 
                 if (root.loaded)
                     return;
 
-                console.warn(`Clipboard: ${root.path} is not valid JSON; running from memory and leaving the file alone.`, err);
+                disk = Shelf.salvage(raw);
+                root.salvaged = root.readable(disk.slice()).length;
+                root.started = Shelf.seen(raw);
+                console.warn(`Clipboard: ${root.path} is not valid JSON; keeping a copy of it and going on with the ${disk.length} entries it still holds.`, err);
                 root.keep = false;
+                backup.command = Shelf.backupCommand(root.path, new Date());
+                backup.running = true;
             }
 
             disk = root.readable(disk);
@@ -702,7 +745,7 @@ Singleton {
             if (Config.values.clipboard.importClipse)
                 clipse.reload();
             else if (root.keep)
-                root.sweep();
+                root.sweep(false);
         }
 
         onLoadFailed: err => {
@@ -719,7 +762,6 @@ Singleton {
 
             console.warn(`Clipboard: could not read ${root.path} (${err}); running from memory.`);
             root.keep = false;
-            root.unreadable = true;
             root.loaded = true;
         }
     }
@@ -764,10 +806,12 @@ Singleton {
         saveDelay.stop();
         if (!root.keep || !root.loaded)
             return;
-        const text = JSON.stringify({
+        const text = JSON.stringify(Object.assign({
             version: 1,
             entries: root.entries
-        });
+        }, root.recovery ? {
+            recovered: root.recovery
+        } : {}));
         if (text === root.lastWritten)
             return;
         root.lastWritten = text;
@@ -781,11 +825,6 @@ Singleton {
     Component.onCompleted: mkdir.running = true
 
     Component.onDestruction: {
-        if (root.shelf && !root.keep && !root.unreadable && root.loaded) {
-            store.blockWrites = true;
-            root.repair();
-            return;
-        }
         if (!saveDelay.running)
             return;
         store.blockWrites = true;

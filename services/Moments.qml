@@ -50,11 +50,11 @@ Singleton {
         default:
             Quickshell.execDetached(["xdg-open", path]);
         }
-        Activities.end(entry.id, "done", 500);
+        Activities.end(entry.id, "done", 500, "");
     }
 
-    function copied(command: var, input: string): void {
-        const spec = root.wants("copied") ? Logic.copiedSpec(command, input) : null;
+    function copied(command: var, input: string, secret: bool): void {
+        const spec = root.wants("copied") ? Logic.copiedSpec(command, input, secret) : null;
         if (spec)
             Activities.push(spec);
     }
@@ -125,8 +125,8 @@ Singleton {
     Connections {
         target: Clipboard
 
-        function onCopied(command: var, input: string): void {
-            root.copied(command, input);
+        function onCopied(command: var, input: string, secret: bool): void {
+            root.copied(command, input, secret);
         }
     }
 
