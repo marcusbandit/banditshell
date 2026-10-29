@@ -140,7 +140,7 @@ QtObject {
                     icon: "play_arrow",
                     label: "Start docker.service",
                     short: "Start",
-                    run: () => SystemdUnits.control(SystemdUnits.systemUnit("docker.service"), "start", () => Containers.relist())
+                    run: () => root.search.leave(() => SystemdUnits.control(SystemdUnits.systemUnit("docker.service"), "start", () => Containers.relist()))
                 }
             ];
         if (row.waiting)

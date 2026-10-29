@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-29",
+      "date": "2026-10-29",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Starting Docker from the launcher closes it before the password asks"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-30",
       "date": "2026-10-28",
       "changes": [
