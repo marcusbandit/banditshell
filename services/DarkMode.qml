@@ -27,7 +27,7 @@ Singleton {
 
     readonly property bool wantsDark: !Appearance.light
 
-    readonly property bool settled: Config.loaded && root.available
+    readonly property bool settled: Config.ready && root.available
 
     readonly property bool appsDisagree: root.available && root.dark !== root.wantsDark
 

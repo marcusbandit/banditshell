@@ -49,9 +49,35 @@ Singleton {
         return art ? `image:${art}` : `symbol:${Apps.iconFor(base)}`;
     }
 
+    property var pieces: []
+    property int nextPiece: 0
+    property var parsed: []
+
     function read(text: string): void {
-        root.entries = Entries.indexEntries(Entries.parseBundle(text));
+        root.pieces = Entries.splitBundle(text, 100);
+        root.nextPiece = 0;
+        root.parsed = [];
+        parser.restart();
+    }
+
+    function parseNext(): void {
+        if (root.nextPiece < root.pieces.length)
+            root.parsed.push(...Entries.parseBundle(root.pieces[root.nextPiece++]));
+        if (root.nextPiece < root.pieces.length)
+            return;
+        parser.stop();
+        root.entries = Entries.indexEntries(root.parsed);
+        root.pieces = [];
+        root.parsed = [];
         root.loaded = true;
+    }
+
+    Timer {
+        id: parser
+
+        interval: 1
+        repeat: true
+        onTriggered: root.parseNext()
     }
 
     Process {

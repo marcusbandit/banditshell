@@ -17,7 +17,7 @@ Singleton {
     readonly property bool hold: Config.values.battery.holdCharge
     readonly property int wanted: Logic.wanted(root.hold, Config.values.battery.holdAt)
     readonly property string setting: `${root.hold}:${root.wanted}`
-    readonly property bool ready: Config.loaded && root.probed
+    readonly property bool ready: Config.ready && root.probed
 
     property bool probed: false
     property bool supported: false

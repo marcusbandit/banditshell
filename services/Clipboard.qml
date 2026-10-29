@@ -547,7 +547,7 @@ Singleton {
         onExited: root.reaped = true
     }
 
-    readonly property bool wantsRecorder: root.loaded && root.reaped && Config.values.clipboard.record
+    readonly property bool wantsRecorder: root.loaded && root.reaped && Config.ready && Config.values.clipboard.record
 
     readonly property int recorderPatience: 60000
     property int recorderFailures: 0
@@ -742,7 +742,7 @@ Singleton {
             root.entries = disk;
             root.loaded = true;
 
-            if (Config.values.clipboard.importClipse)
+            if (root.clipseOwed)
                 clipse.reload();
             else if (root.keep)
                 root.sweep(false);
@@ -755,7 +755,7 @@ Singleton {
             if (err === FileViewError.FileNotFound) {
 
                 root.loaded = true;
-                if (Config.values.clipboard.importClipse)
+                if (root.clipseOwed)
                     clipse.reload();
                 return;
             }
@@ -850,7 +850,7 @@ Singleton {
 
             root.clipseHistory = Array.isArray(old) ? old : [];
 
-            if (!Config.values.clipboard.importClipse)
+            if (!root.clipseOwed)
                 return;
 
             root.adopt(root.clipseHistory);
@@ -864,9 +864,23 @@ Singleton {
 
     property var clipseHistory: []
 
+    property bool clipseAsked: false
+
+    readonly property bool clipseOwed: (Config.ready || root.clipseAsked) && Config.values.clipboard.importClipse
+
+    Connections {
+        target: Config
+
+        function onReadyChanged(): void {
+            if (root.loaded && root.clipseOwed)
+                clipse.reload();
+        }
+    }
+
     readonly property int clipseWaiting: root.fresh(root.clipseHistory).length
 
     function importFromClipse(): void {
+        root.clipseAsked = true;
         Config.set("clipboard.importClipse", true);
         clipse.reload();
     }
@@ -953,7 +967,7 @@ Singleton {
     }
 
     function settleImport(): void {
-        if (Config.values.clipboard.importClipse)
+        if (root.clipseOwed)
             Config.set("clipboard.importClipse", false);
     }
 }

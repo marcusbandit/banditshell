@@ -44,7 +44,7 @@ Singleton {
         return root.activeByMonitor[screen] || root.bandFor(screen);
     }
 
-    readonly property bool settled: HyprConfig.ready && Config.loaded
+    readonly property bool settled: HyprConfig.ready && Config.ready
 
     onSettledChanged: root.home()
 

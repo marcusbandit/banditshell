@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-28-30",
+      "date": "2026-10-28",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The shell no longer stalls each time it rereads your apps"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Startup reads your apps in small steps instead of one long pause"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "With config.json broken at start, the shell waits until it's fixed"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28-29",
       "date": "2026-10-28",
       "changes": [

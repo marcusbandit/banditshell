@@ -9,7 +9,7 @@ import "events.js" as Logic
 Singleton {
     id: root
 
-    readonly property bool ready: Config.loaded && Modes.loaded && Notifications.restored
+    readonly property bool ready: Config.ready && Modes.loaded && Notifications.restored
 
     readonly property var snapshot: Logic.snapshotOf({
         workspace: Hypr.activeId,

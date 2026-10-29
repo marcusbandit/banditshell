@@ -1066,6 +1066,8 @@ Singleton {
 
     property bool fresh: false
 
+    readonly property bool ready: root.loaded && root.everRead
+
     readonly property bool writable: root.loaded && !root.unreadable
 
     function problemSnippet(width: int): string {
@@ -1207,13 +1209,13 @@ Singleton {
             root.problemColumn = got.at?.column ?? 0;
             root.problemReason = got.at?.reason ?? "";
             root.brokenText = got.at ? raw : "";
-            if (!got.unreadable)
-                root.everRead = true;
             root.unreadable = got.unreadable;
             const next = saver.running ? Configuration.reapply(got.values, root.unsaved, root.literals) : got.values;
             if (next !== root.tree)
                 root.adopt(Configuration.reuse(root.tree, next));
             root.loaded = got.loaded;
+            if (!got.unreadable)
+                root.everRead = true;
 
             if (got.unreadable)
                 return console.warn(`Config: ${root.path} is not valid (${got.problem}), so it is left untouched and the shell runs on ${kept} until it is fixed.`);
@@ -1232,11 +1234,11 @@ Singleton {
             root.problemColumn = 0;
             root.problemReason = "";
             root.brokenText = "";
-            if (!got.unreadable)
-                root.everRead = true;
             root.unreadable = got.unreadable;
             root.fresh = got.fresh;
             root.loaded = got.loaded;
+            if (!got.unreadable)
+                root.everRead = true;
 
             if (got.unreadable)
                 console.warn(`Config: could not read ${root.path} (${FileViewError.toString(err)}), so it is left untouched and the shell runs on ${kept}.`);

@@ -12,7 +12,7 @@ Singleton {
 
     readonly property int ms: Appearance.lessMotion ? 0 : Math.max(0, Math.min(root.longest, Number(Config.values.anim.workspaceSlide ?? 200) || 0))
 
-    readonly property bool ready: Config.loaded && Compositor.isHyprland
+    readonly property bool ready: Config.ready && Compositor.isHyprland
 
     property string bezier: ""
     property string style: ""

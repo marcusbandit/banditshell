@@ -2164,7 +2164,7 @@ Singleton {
 
     function adopt(): void {
         root.adoptMode();
-        if (!root.loaded || !Config.loaded)
+        if (!root.loaded || !Config.ready)
             return;
         const moved = Object.keys(root.planned).filter(k => root.configBacked[k] && !root.plannedKey(k));
         if (!moved.length)
@@ -2235,7 +2235,7 @@ Singleton {
     Connections {
         target: Config
 
-        function onLoadedChanged(): void {
+        function onReadyChanged(): void {
             root.adopt();
         }
     }

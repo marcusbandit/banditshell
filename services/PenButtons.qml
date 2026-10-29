@@ -13,7 +13,7 @@ Singleton {
     readonly property string upper: String(Config.values.pen.upperButton ?? Config.defaults.pen.upperButton)
 
     readonly property bool remapped: root.lower !== Config.defaults.pen.lowerButton || root.upper !== Config.defaults.pen.upperButton
-    readonly property bool wanted: Config.loaded && Config.values.pen.enabled === true && root.remapped && root.device !== ""
+    readonly property bool wanted: Config.ready && Config.values.pen.enabled === true && root.remapped && root.device !== ""
     readonly property string signature: `${root.device}|${root.lower}|${root.upper}`
 
     property string state: ""

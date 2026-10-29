@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/nightlight.js"), "utf8");
-const Night = new Function(src + "\nreturn { sunEvents, sunWindow, minutesOf, clockOf, timesWindow, windowFor, fractionAt, nextEdge, warmKelvin, nightAt };")();
+const Night = new Function(src + "\nreturn { sunEvents, sunWindow, minutesOf, clockOf, timesWindow, windowFor, fractionAt, nextEdge, warmKelvin, warmthOf, nightAt };")();
 
 const MINUTE = 60000;
 const COPENHAGEN = { lat: 55.676, lon: 12.568 };
@@ -182,4 +182,12 @@ test.describe("auto light and dark follow the schedule", () => {
         const polar = Night.nightAt("sunset", local(2026, 6, 21, 12, 0), { place: TROMSO });
         assert.deepStrictEqual([polar.known, polar.night], [true, false]);
     });
+});
+
+test("the warmth file reads back as the kelvin the screen shows, clamped to neutral", () => {
+    assert.strictEqual(Night.warmthOf("4200\n", 6500), 4200);
+    assert.strictEqual(Night.warmthOf("0\n", 6500), 0);
+    assert.strictEqual(Night.warmthOf("9000", 6500), 6500);
+    assert.strictEqual(Night.warmthOf("", 6500), -1);
+    assert.strictEqual(Night.warmthOf("warm", 6500), -1);
 });

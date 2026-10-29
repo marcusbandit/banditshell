@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const FIXTURES = path.join(__dirname, "fixtures/apps");
 const src = fs.readFileSync(path.join(ROOT, "services/desktop-entries.js"), "utf8");
-const Entries = new Function(src + "\nreturn { unescapeValue, escapeValue, parseEntry, parseBundle, indexEntries, indexPrograms, programOf, stripFieldCodes, shownIn, setHidden, autostartText, autostartName, sessionLaunches, splitList, idOf, sameEntries };")();
+const Entries = new Function(src + "\nreturn { unescapeValue, escapeValue, parseEntry, parseBundle, indexEntries, indexPrograms, programOf, stripFieldCodes, shownIn, setHidden, autostartText, autostartName, sessionLaunches, splitList, splitBundle, idOf, sameEntries, sameIds };")();
 
 function bundleOf(dir) {
     return fs.readdirSync(dir).filter(f => f.endsWith(".desktop")).sort().map(f => `@@@${f}\n${fs.readFileSync(path.join(dir, f), "utf8")}`).join("");
@@ -37,6 +37,15 @@ test("a bundle of files turns into an index keyed by file name, first one winnin
     assert.strictEqual(index.find(e => e.id === "firefox.desktop").name, "Mine");
     assert.ok(!index.some(e => e.id === "hidden.desktop"));
     assert.ok(index.some(e => e.id === "feh.desktop" && e.noDisplay));
+});
+
+test("a bundle split into pieces parses to the same files as the whole", () => {
+    const bundle = "noise\n" + bundleOf(path.join(FIXTURES, "applications")) + "@@@empty.desktop";
+    const pieces = Entries.splitBundle(bundle, 2);
+    assert.ok(pieces.length > 1);
+    assert.ok(pieces.every(p => p.startsWith("@@@")));
+    assert.deepStrictEqual(pieces.flatMap(p => Entries.parseBundle(p)), Entries.parseBundle(bundle));
+    assert.deepStrictEqual(Entries.splitBundle("no files here", 2), []);
 });
 
 test("the program of a command skips env, assignments and absolute paths", () => {
@@ -152,4 +161,11 @@ test("sameEntries holds for the same entries in any order and fails on any swap"
     assert.strictEqual(Entries.sameEntries([zen, kitty], [zen, { id: "kitty" }]), false);
     assert.strictEqual(Entries.sameEntries([zen], [zen, kitty]), false);
     assert.strictEqual(Entries.sameEntries([], []), true);
+});
+
+test("sameIds ignores new objects for the same apps and catches an install or a removal", () => {
+    const old = [{ id: "zen.desktop" }, { id: "kitty.desktop" }];
+    assert.strictEqual(Entries.sameIds(old, [{ id: "kitty.desktop" }, { id: "zen.desktop" }]), true);
+    assert.strictEqual(Entries.sameIds(old, [{ id: "zen.desktop" }, { id: "foot.desktop" }]), false);
+    assert.strictEqual(Entries.sameIds(old, [{ id: "zen.desktop" }]), false);
 });

@@ -861,7 +861,7 @@ Singleton {
     }
 
     function syncPad(): void {
-        if (Config.loaded && Config.values.pen.enabled === true)
+        if (Config.ready && Config.values.pen.enabled === true)
             root.startPad();
         else if (pad.running)
             pad.running = false;
@@ -870,7 +870,7 @@ Singleton {
     Connections {
         target: Config
 
-        function onLoadedChanged(): void {
+        function onReadyChanged(): void {
             root.syncPad();
         }
     }

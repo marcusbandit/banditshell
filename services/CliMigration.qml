@@ -108,15 +108,15 @@ Singleton {
     }
 
     Component.onCompleted: {
-        if (Config.loaded)
+        if (Config.ready)
             probe.running = true;
     }
 
     Connections {
         target: Config
 
-        function onLoadedChanged(): void {
-            if (Config.loaded && !root.nodeAvailable)
+        function onReadyChanged(): void {
+            if (Config.ready && !root.nodeAvailable)
                 probe.running = true;
         }
     }

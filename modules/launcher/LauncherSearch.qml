@@ -840,7 +840,7 @@ QtObject {
             label: entry.name ?? "",
             detail: arming ? Uninstaller.detailFor(entry.id) : entry.genericName || (entry.comment ?? "").replace(/^play this game on steam\.?$/i, ""),
             armed: arming,
-            iconSource: entry.icon ? Quickshell.iconPath(entry.icon, true) : "",
+            iconSource: Apps.iconPath(entry.icon),
             icon: "apps",
             score: root.appScore(entry)
         };

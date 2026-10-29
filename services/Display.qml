@@ -87,7 +87,7 @@ Singleton {
     }
 
     Component.onCompleted: {
-        if (Config.writable && !root.adopted)
+        if (Config.ready && !root.adopted)
             root.adoptConfig();
         root.detect();
         root.ensureGamma();
@@ -97,8 +97,8 @@ Singleton {
     Connections {
         target: Config
 
-        function onWritableChanged(): void {
-            if (Config.writable && !root.adopted)
+        function onReadyChanged(): void {
+            if (Config.ready && !root.adopted)
                 root.adoptConfig();
         }
     }
@@ -107,7 +107,7 @@ Singleton {
         target: Config.values
 
         function onScreenChanged(): void {
-            if (Config.loaded && !gammaDebounce.running)
+            if (Config.ready && !gammaDebounce.running)
                 root.followWarmth(false);
         }
     }
@@ -137,6 +137,15 @@ Singleton {
         const saved = Number(Config.values.screen.level);
         if (!root.levelKnown && isFinite(saved))
             root.level = Math.max(0, Math.min(1, saved / 100));
+    }
+
+    function showScreenWarmth(text: string): void {
+        const k = Nightlight.warmthOf(text, root.neutral);
+        if (root.adopted || k < 0)
+            return;
+        root.kelvin = k;
+        if (root.warm)
+            root.lastWarm = k;
     }
 
     function followWarmth(always: bool): void {
@@ -536,6 +545,14 @@ Singleton {
         watchChanges: false
 
         onSaveFailed: err => console.warn(`Display: could not write ${root.warmthPath} (${FileViewError.toString(err)})`)
+    }
+
+    FileView {
+        path: root.warmthPath
+        watchChanges: false
+        printErrors: false
+
+        onLoaded: root.showScreenWarmth(text())
     }
 
     onScheduleModeChanged: root.restartSchedule()
