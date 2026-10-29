@@ -80,7 +80,7 @@ const WIDGET_WHY = {
 
 const PAGES_SOURCE = {
     wifi: {
-        id: "wifi", name: "Wi-Fi", icon: "wifi", preview: "network",
+        id: "wifi", name: "Wi-Fi", icon: "wifi", preview: "network", closed: s => !!s.networkMissing,
         status: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"),
         groups: [
             { notice: true, away: s => !s.networkMissing, rows: [
@@ -118,7 +118,7 @@ const PAGES_SOURCE = {
         ]
     },
     wired: {
-        id: "wired", name: "Ethernet", icon: "lan", preview: "network",
+        id: "wired", name: "Ethernet", icon: "lan", preview: "network", closed: s => !!s.networkMissing,
         status: s => s.networkMissing || (s.v("wired") ? s.wiredDetail : "off"),
         groups: [
             { notice: true, away: s => !s.networkMissing, rows: [
@@ -134,7 +134,7 @@ const PAGES_SOURCE = {
         ]
     },
     vpn: {
-        id: "vpn", name: "Hotspot and VPN", icon: "vpn_lock", preview: "network",
+        id: "vpn", name: "Hotspot and VPN", icon: "vpn_lock", preview: "network", closed: s => !!s.networkMissing,
         status: s => s.networkMissing || [s.v("hotspot") ? "sharing" : "not sharing", s.vpnOn ? `vpn ${s.vpnOn}` : "no vpn"].join(" · "),
         groups: [
             { notice: true, away: s => !s.networkMissing, rows: [
@@ -707,21 +707,21 @@ const PAGES_SOURCE = {
                 { n: 106, icon: "battery_charging_80", label: "Hold the charge", k: "chargeLimit", kind: "toggle", cfg: "battery.holdCharge", state: s => s.chargeTrouble, why: "Stops charging short of full, which is kinder to the cells.", dis: s => !s.chargeSupported, kw: "charge limit" },
                 { n: 106, icon: "battery_full", label: "Stop at", k: "chargeMax", kind: "slider", cfg: "battery.holdAt", min: 60, max: 100, step: 5, fmt: v => `${v}%`, dis: s => !s.v("chargeLimit") || !s.chargeSupported, kw: "charge limit" },
                 { n: 107, icon: "battery_alert", label: "Warn at", k: "lowWarn", kind: "slider", cfg: "battery.warnAt", min: 5, max: 30, fmt: v => `${v}%`, kw: "low battery warning" },
-                { n: 107, icon: "battery_0_bar", label: "Nearly empty", k: "lowAction", kind: "choice", cfg: "battery.nearlyEmpty", o: s => [`sleep at ${s.nearlyEmptyPercent}%`, `hibernate at ${s.nearlyEmptyPercent}%`, "nothing"], unavailable: s => s.hibernatePossible ? [] : [`hibernate at ${s.nearlyEmptyPercent}%`], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", why: "What happens when the battery is nearly empty. It warns first, then acts.", kw: "low battery" }
+                { n: 107, icon: "battery_0_bar", label: "Nearly empty", k: "lowAction", kind: "choice", cfg: "battery.nearlyEmpty", o: s => [`sleep at ${s.nearlyEmptyPercent}%`, `hibernate at ${s.nearlyEmptyPercent}%`, ["nothing", "do nothing"]], unavailable: s => s.hibernatePossible ? [] : [`hibernate at ${s.nearlyEmptyPercent}%`], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", why: "What happens when the battery is nearly empty. It warns first, then acts.", kw: "low battery" }
             ] }
         ]
     },
     powermode: {
         id: "powermode", name: "Power and lid", lidless: "Power", icon: "bolt", preview: "battery",
-        status: s => s.hasLid ? `${s.v("profile")} · lid ${optionLabel(ROW_BY_KEY.lidBattery, s, s.v("lidBattery"))}` : s.v("profile"),
+        status: s => s.hasLid ? `${s.v("profile")} · lid ${s.v("lidBattery") === "nothing" ? "does nothing" : optionLabel(ROW_BY_KEY.lidBattery, s, s.v("lidBattery"))}` : s.v("profile"),
         groups: [
             { rows: [
                 { n: 105, icon: "bolt", label: "Power mode", k: "profile", kind: "seg", o: s => s.profileChoices, state: s => s.profileTrouble, dis: s => s.profileChoices.length === 0, kw: "power profile performance" }
             ] },
             { t: "Lid", away: s => !s.hasLid, rows: [
-                { n: 108, icon: "laptop", label: "On battery", k: "lidBattery", kind: "choice", cfg: "power.lid.onBattery", o: [["suspend", "sleep"], "hibernate", "lock", "nothing"], unavailable: s => s.hibernatePossible ? [] : ["hibernate"], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", kw: "lid close action sleep suspend" },
-                { n: 108, icon: "power", label: "Plugged in", k: "lidPlugged", kind: "choice", cfg: "power.lid.pluggedIn", o: [["suspend", "sleep"], "lock", "nothing"], kw: "lid close action sleep suspend" },
-                { n: 108, icon: "monitor", label: "With screens attached", k: "lidDocked", kind: "choice", cfg: "power.lid.docked", o: ["nothing", "lock", ["suspend", "sleep"]], kw: "lid close action docked sleep suspend" }
+                { n: 108, icon: "laptop", label: "On battery", k: "lidBattery", kind: "choice", cfg: "power.lid.onBattery", o: [["suspend", "sleep"], "hibernate", "lock", ["nothing", "do nothing"]], unavailable: s => s.hibernatePossible ? [] : ["hibernate"], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", kw: "lid close action sleep suspend" },
+                { n: 108, icon: "power", label: "Plugged in", k: "lidPlugged", kind: "choice", cfg: "power.lid.pluggedIn", o: [["suspend", "sleep"], "lock", ["nothing", "do nothing"]], kw: "lid close action sleep suspend" },
+                { n: 108, icon: "monitor", label: "With screens attached", k: "lidDocked", kind: "choice", cfg: "power.lid.docked", o: [["nothing", "do nothing"], "lock", ["suspend", "sleep"]], kw: "lid close action docked sleep suspend" }
             ] }
         ]
     },
@@ -776,7 +776,7 @@ const PAGES_SOURCE = {
                 { n: 92, icon: "swap_vert", label: "Order", k: "filesReversed", kind: "seg", o: s => filesOrders(s.v("filesSort")), cfg: "files.reversed", kw: "files sort order direction reverse oldest smallest z to a" },
                 { n: 92, icon: "visibility_off", label: "Hidden files", k: "filesHidden", kind: "toggle", cfg: "files.hidden", keys: "files:hidden", kw: "files hidden" },
                 { n: 92, icon: "markdown", label: "Markdown", k: "filesMarkdown", kind: "seg", o: [["rendered", "rendered"], ["raw", "source"]], cfg: "files.markdown", kw: "files previews" },
-                { n: 92, icon: "zoom_in", label: "Zoom", k: "filesZoom", kind: "slider", min: 0.6, max: 2, step: 0.1, fmt: v => `${v.toFixed(1)}×`, cfg: "files.zoom", kw: "files previews" }
+                { n: 92, icon: "zoom_in", label: "Zoom", k: "filesZoom", kind: "slider", min: s => s.filesZoomRange[0], max: s => s.filesZoomRange[1], step: 0.1, fmt: v => `${v.toFixed(1)}×`, cfg: "files.zoom", kw: "files previews" }
             ] }
         ]
     },
@@ -907,13 +907,14 @@ const PAGES_SOURCE = {
 
 const CATS = [
     { id: "connections", name: "Connections", icon: "wifi",
-        blurb: s => [s.networkMissing || (s.v("wifi") && s.wifiNet ? s.wifiNet : s.v("hotspot") ? "hotspot on" : "wi-fi off"), s.v("bt") ? `${s.btConnected.length} devices` : "bluetooth off", s.vpnOn ? "vpn on" : ""].filter(Boolean).join(" · "),
+        blurb: s => [s.networkTile || (s.v("wifi") && s.wifiNet ? s.wifiNet : s.v("hotspot") ? "hotspot on" : "wi-fi off"), s.v("bt") ? `${s.btConnected.length} devices` : "bluetooth off", s.vpnOn ? "vpn on" : ""].filter(Boolean).join(" · "),
         tiles: [
-            { k: "wifi", icon: "wifi", label: "Wi-Fi", explains: true, det: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "" },
+            { k: "wifi", icon: "wifi", label: "Wi-Fi", explains: true, det: s => s.networkTile || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "" },
             { k: "bt", icon: "bluetooth", label: "Bluetooth", det: s => s.v("bt") ? "on" : "off" },
-            { k: "hotspot", icon: "wifi_tethering", label: "Hotspot", explains: true, det: s => s.hotspotStatus || "off", dis: s => s.hotspotBlocked },
-            { k: "vpnFirst", icon: "vpn_lock", label: "VPN", explains: true, det: s => s.vpnOn || (s.networkMissing ? "needs NetworkManager" : s.tunnelCount ? "off" : "no tunnels"), dis: s => !s.tunnelCount }
+            { k: "hotspot", icon: "wifi_tethering", label: "Hotspot", explains: true, det: s => s.networkTile || s.hotspotStatus || "off", dis: s => s.hotspotBlocked },
+            { k: "vpnFirst", icon: "vpn_lock", label: "VPN", explains: true, det: s => s.vpnOn || s.networkTile || (s.tunnelCount ? "off" : "no tunnels"), dis: s => !s.tunnelCount }
         ],
+        notice: s => s.managerStarting === "started" || s.managerStarting === "failed" ? { kind: "w", w: "networkManager", page: "connections" } : null,
         suggest: s => s.v("bt") && s.btNear > 0 ? { icon: "bluetooth_searching", label: `${s.btNear} devices nearby`, detail: "ready to pair", go: "bluetooth" } : null,
         subs: ["wifi", "bluetooth", "wired", "vpn"] },
     { id: "sound", name: "Sound", icon: "volume_up",
@@ -1036,6 +1037,7 @@ function walk(rows, page, group, parent, out) {
         r.group = group;
         r.parent = parent;
         r.uid = `${page.id}.${out.length}`;
+        r.groupKey = group.rows[0].uid;
         out.push(r);
         if (r.k && !ROW_BY_KEY[r.k])
             ROW_BY_KEY[r.k] = r;
@@ -1226,12 +1228,21 @@ function inSentence(label) {
     return /^[A-Z][a-z’'-]*$/.test(first) && PROPER_WORDS.indexOf(first) < 0 ? label.charAt(0).toLowerCase() + label.slice(1) : label;
 }
 
-function hitTitle(hit, s) {
+function hitContext(hit, s) {
     const g = hit.group;
     const context = (hit.row.parent && labelOf(hit.row.parent)) || (typeof g.t === "string" && g.t) || g.topic || nameOf(hit.page, s);
-    if (!context || ` ${hit.label.toLowerCase()} `.indexOf(` ${context.toLowerCase()} `) >= 0)
-        return hit.label;
-    return `${context}: ${inSentence(hit.label)}`;
+    return !context || ` ${hit.label.toLowerCase()} `.indexOf(` ${context.toLowerCase()} `) >= 0 ? "" : context;
+}
+
+function hitTitle(hit, s) {
+    const context = hitContext(hit, s);
+    return context ? `${context}: ${inSentence(hit.label)}` : hit.label;
+}
+
+function hitPath(hit, s) {
+    const title = hit.label.toLowerCase();
+    const parts = [CAT_BY_ID[hit.page.cat]?.name, nameOf(hit.page, s), hitContext(hit, s)].map(p => String(p || "").toLowerCase());
+    return parts.filter((p, i) => p && p !== title && parts.indexOf(p) === i).join(" › ");
 }
 
 function queryWords(query) {
@@ -1280,6 +1291,12 @@ function marked(text, query, colour) {
         i = j;
     }
     return out;
+}
+
+function pathCuts(path, why) {
+    const parts = String(path).split(" › ");
+    const tail = why ? ` · ${why}` : "";
+    return parts.map((p, i) => (i ? "… › " : "") + parts.slice(i).join(" › ") + tail);
 }
 
 function hitIndexOf(hits, openUid) {
@@ -1353,15 +1370,16 @@ function rowCount(cat) {
     return n;
 }
 
-function step(row, v, delta) {
+function step(row, v, delta, state) {
     const s = row.step === undefined ? 1 : row.step;
-    return Math.min(row.max, Math.max(row.min, +(v + s * delta).toFixed(4)));
+    return Math.min(val(row.max, state), Math.max(val(row.min, state), +(v + s * delta).toFixed(4)));
 }
 
-function nearest(row, v) {
+function nearest(row, v, state) {
     const s = row.step === undefined ? 1 : row.step;
-    const n = Math.round((v - row.min) / s) * s + row.min;
-    return Math.min(row.max, Math.max(row.min, +n.toFixed(4)));
+    const low = val(row.min, state);
+    const n = Math.round((v - low) / s) * s + low;
+    return Math.min(val(row.max, state), Math.max(low, +n.toFixed(4)));
 }
 
 function dwindleRects(n) {

@@ -13,6 +13,8 @@ Item {
     property bool alarm: false
     property bool steps: false
     property string pick: ""
+    property bool framed: false
+    property color placeholderColour: Appearance.colour.textFaint
 
     signal committed(string text)
     signal stepped(int by)
@@ -44,8 +46,8 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.small
         color: Appearance.colour.fillStrong
-        stroke: root.alarm ? Appearance.colour.alarm : input.activeFocus ? Appearance.colour.accent : "transparent"
-        strokeWidth: root.alarm || input.activeFocus ? Appearance.stroke.ring : 0
+        stroke: root.alarm ? Appearance.colour.alarm : input.activeFocus ? Appearance.colour.accent : root.framed ? Appearance.colour.textFaint : "transparent"
+        strokeWidth: root.alarm || input.activeFocus || root.framed ? Appearance.stroke.ring : 0
     }
 
     TextInput {
@@ -100,7 +102,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             visible: !input.text
             text: root.placeholder
-            color: Appearance.colour.textFaint
+            color: root.placeholderColour
             elide: Text.ElideRight
             width: parent.width
         }

@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import "scheme.js" as Scheme
+import "files-zoom.js" as FilesZoom
 
 Singleton {
     id: root
@@ -166,6 +167,13 @@ Singleton {
         readonly property color warning: root.theme.brass
 
         readonly property color warningFill: Qt.rgba(warning.r, warning.g, warning.b, root.config.material.accentFill)
+        readonly property color alarmFill: Qt.rgba(alarm.r, alarm.g, alarm.b, root.config.material.accentFill)
+
+        readonly property color error: root.theme.error ?? root.theme.alarm
+
+        readonly property color failed: error
+
+        readonly property color failedFill: Qt.rgba(failed.r, failed.g, failed.b, root.config.material.accentFill)
 
         readonly property color accentText: root.rampAt(1, 1)
 
@@ -431,7 +439,7 @@ Singleton {
         readonly property int filesWidth: root.config.files.width
         readonly property int filesHeight: root.config.files.height
 
-        readonly property real filesZoom: root.config.files.zoom
+        readonly property real filesZoom: FilesZoom.clamp(root.config.files.zoom)
         readonly property int filesTile: Math.round(root.config.files.tile * filesZoom)
         readonly property int filesPreview: root.config.files.preview
 

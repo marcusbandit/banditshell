@@ -7,11 +7,14 @@ Column {
 
     property var files: []
     property string lead: ""
+    property string picked: ""
+    property bool canBrowse: true
     property bool browsing: false
     property bool choosing: false
 
-    signal picked(string path)
+    signal pick(string path)
     signal browse
+    signal cancel
 
     width: parent.width
     leftPadding: Appearance.padding.normal
@@ -20,6 +23,23 @@ Column {
     bottomPadding: Appearance.padding.small
     spacing: Appearance.padding.small
 
+    Button {
+        visible: root.canBrowse && root.browsing
+        style: "plate"
+        icon: "close"
+        text: "Close file picker"
+        onClicked: root.cancel()
+    }
+
+    StyledText {
+        width: root.width - root.leftPadding - root.rightPadding
+        visible: root.canBrowse && root.browsing
+        text: "Pick the file in the file picker window. It may be behind this menu."
+        wrapMode: Text.Wrap
+        color: Appearance.colour.textDim
+        font.pixelSize: Appearance.font.size.small
+    }
+
     StyledText {
         visible: !!root.lead && root.files.length > 0
         text: root.lead
@@ -27,32 +47,33 @@ Column {
         font.pixelSize: Appearance.font.size.small
     }
 
-    Flow {
+    Column {
         width: root.width - root.leftPadding - root.rightPadding
         visible: root.files.length > 0
-        spacing: Appearance.padding.small
 
         Repeater {
             model: root.files
 
-            Button {
-                required property string modelData
+            FileChoiceRow {
+                required property var modelData
 
-                size: 0
-                style: "bare"
-                icon: "description"
-                text: modelData.slice(modelData.lastIndexOf("/") + 1)
-                onClicked: root.picked(modelData)
+                width: parent.width
+                path: modelData.path
+                detail: modelData.detail ?? ""
+                warn: !!modelData.warn
+                picked: modelData.path === root.picked
+                onChosen: root.pick(modelData.path)
             }
         }
     }
 
     Button {
+        visible: root.canBrowse && !root.browsing
         size: 0
         style: "plate"
         icon: "folder_open"
         interactive: !root.choosing
-        text: root.browsing ? "Choosing…" : "Browse…"
+        text: "Browse…"
         onClicked: root.browse()
     }
 }

@@ -59,7 +59,7 @@ Item {
 
                 width: parent.width
                 icon: root.blank || root.outdated ? root.look.icon : Weather.icon
-                tone: root.outdated ? Appearance.colour.textDim : !root.blank ? Appearance.colour.accent : Weather.failure === "place" ? Appearance.colour.alarm : Appearance.colour.textDim
+                tone: root.outdated ? Appearance.colour.textDim : !root.blank ? Appearance.colour.accent : Weather.failure === "place" ? Appearance.colour.warning : Appearance.colour.textDim
                 title: root.outdated ? (Weather.failed ? root.look.title : "Old reading") : Weather.ready ? `${Weather.temperature} ${Weather.summary.trim()}` : root.blank ? root.look.title : "Weather"
                 subtitle: root.outdated ? `${Weather.place}, last reading ${Forecast.ago(Weather.fetchedAt, age.date.getTime())}` : !root.blank ? Weather.place : Weather.failure !== "place" ? root.look.detail : Weather.failedFor ? `No place called "${Weather.failedFor}"` : "The weather service does not know this place"
                 onClosed: root.hide()

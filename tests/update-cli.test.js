@@ -309,6 +309,30 @@ test("check reports a copy on another branch and a diverged copy without offerin
     assert.strictEqual(paused.behind, 0);
 });
 
+test("an up to date copy names commits that are on no GitHub branch, on main and on stable", () => {
+    const world = makeWorld();
+    write(world.live, "extra.txt", "mine\n");
+    git(world.live, "add", "-A");
+    git(world.live, "commit", "-q", "-m", "Keep my own clock face");
+    const main = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(main.state, "current");
+    assert.strictEqual(main.unpushed, 1);
+    assert.deepStrictEqual(main.own, ["Keep my own clock face"]);
+
+    git(world.work, "push", "-q", "origin", "main:stable");
+    useChannel(world, "stable");
+    const stable = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(stable.state, "current");
+    assert.strictEqual(stable.unpushed, 1);
+    assert.deepStrictEqual(stable.own, ["Keep my own clock face"]);
+
+    git(world.live, "push", "-q", "origin", "HEAD:refs/heads/side");
+    git(world.live, "fetch", "-q", "origin");
+    const pushed = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(pushed.unpushed, 0);
+    assert.strictEqual(pushed.own, undefined);
+});
+
 test("check fails with exit 1 and git's own words when the remote is unreachable", () => {
     const world = makeWorld();
     git(world.live, "remote", "set-url", "origin", path.join(world.root, "nowhere.git"));

@@ -112,7 +112,11 @@ Item {
             Keys.onPressed: event => {
                 const n = root.listingRecent ? root.recent.length : root.hits.length;
                 if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
-                    root.point(Math.max(0, Math.min(n - 1, root.hitIndex + (event.key === Qt.Key_Down ? 1 : -1))));
+                    const next = Math.max(0, Math.min(n - 1, root.hitIndex + (event.key === Qt.Key_Down ? 1 : -1)));
+                    if (root.listingRecent)
+                        root.point(next);
+                    else
+                        root.openHit(next);
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                     if (root.listingRecent)
@@ -177,6 +181,15 @@ Item {
         contentHeight: SettingsView.searching ? found.implicitHeight : tree.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+
+        readonly property real fade: Appearance.font.line.normal * 1.5
+
+        layer.enabled: list.contentHeight > list.height
+        layer.effect: ShaderEffect {
+            readonly property vector4d fades: Qt.vector4d(list.atYBeginning ? 0 : list.fade, list.atYEnd ? 0 : list.fade, height, 1)
+
+            fragmentShader: Qt.resolvedUrl("../../components/edgefade.frag.qsb")
+        }
 
         WheelStep {
             flick: list
@@ -387,13 +400,15 @@ Item {
 
                     width: found.width
                     icon: root.listingRecent ? "history" : hit.modelData.page.icon
-                    readonly property string place: root.listingRecent ? "" : Catalogue.nameOf(hit.modelData.page, SettingsState).toLowerCase()
+                    readonly property string place: root.listingRecent ? "" : Catalogue.hitPath(hit.modelData, SettingsState)
                     readonly property string why: root.listingRecent ? "" : Catalogue.hitWhy(hit.modelData, SettingsView.query, `${hit.label} ${hit.place}`)
 
-                    label: root.listingRecent ? hit.modelData.label : Catalogue.hitTitle(hit.modelData, SettingsState)
-                    detail: root.listingRecent ? `${hit.modelData.from} → ${hit.modelData.to}` : hit.why ? `${hit.place} · ${hit.why}` : hit.place
+                    label: hit.modelData.label
+                    detail: root.listingRecent ? `${hit.modelData.from} → ${hit.modelData.to}` : ""
+                    cuts: root.listingRecent ? [] : Catalogue.pathCuts(hit.place, hit.why)
                     query: root.listingRecent ? "" : SettingsView.query
-                    active: hit.index === root.hitIndex
+                    pointed: hit.index === root.hitIndex
+                    active: hit.pointed && (root.listingRecent || root.hitOpen)
                     onPicked: root.pick(hit.index)
                 }
             }
@@ -485,6 +500,9 @@ Item {
         property string detail: ""
         property string query: ""
         property bool active: false
+        property bool pointed: false
+        property var cuts: []
+        readonly property string crumbs: hr.cuts.length ? hr.cuts.find(c => ink.advanceWidth(c) <= words.width) ?? hr.cuts[hr.cuts.length - 1] : hr.detail
 
         signal picked
 
@@ -517,18 +535,24 @@ Item {
                 width: parent.width
                 textFormat: Text.StyledText
                 text: Catalogue.marked(hr.label, hr.query, Appearance.colour.accent)
-                wrapMode: Text.WordWrap
-                maximumLineCount: 2
                 elide: Text.ElideRight
             }
 
             StyledText {
+                id: crumb
+
                 width: parent.width
                 textFormat: Text.StyledText
-                text: Catalogue.marked(hr.detail, hr.query, Appearance.colour.accent)
+                text: Catalogue.marked(hr.crumbs, hr.query, Appearance.colour.accent)
                 elide: Text.ElideRight
                 color: Appearance.colour.textFaint
             }
+        }
+
+        FontMetrics {
+            id: ink
+
+            font: crumb.font
         }
 
         HoverHandler {

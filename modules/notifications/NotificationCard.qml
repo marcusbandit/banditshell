@@ -69,14 +69,16 @@ Item {
     readonly property real topRound: root.seamRadius + (Appearance.rounding.normal - root.seamRadius) * topOpen.value
     readonly property real bottomRound: root.seamRadius + (Appearance.rounding.normal - root.seamRadius) * bottomOpen.value
     readonly property real pad: root.tiled ? Appearance.padding.normal : root.roomy ? Appearance.padding.card : root.row ? Appearance.padding.small : 0
+    property real contentLead: -1
+    readonly property real side: root.contentLead >= 0 ? Math.max(0, root.contentLead - root.tileInset) : root.pad
     readonly property real gap: Appearance.padding.normal
     readonly property real closeSize: Appearance.font.line.small + Appearance.padding.small
     readonly property real closeRoom: root.roomy ? root.closeSize + Appearance.padding.small : 0
     readonly property real markSize: root.line ? Appearance.font.line.small : root.row ? Appearance.font.line.small + Appearance.padding.small * 2 : Appearance.sizes.notificationBadge * (root.page && (root.entry?.picture ?? "") !== "" ? 2 : 1)
     readonly property real radius: Math.max(Appearance.rounding.small, Appearance.rounding.large - Appearance.padding.normal)
 
-    readonly property real textX: root.tileInset + root.pad + root.markSize + root.gap
-    readonly property real textWidth: root.width - root.textX - root.pad - root.tileInset - root.closeRoom
+    readonly property real textX: root.tileInset + root.side + root.markSize + root.gap
+    readonly property real textWidth: root.width - root.textX - root.side - root.tileInset - root.closeRoom
 
     readonly property bool hovered: swipe.hovered
     readonly property bool handling: swipe.handling
@@ -261,9 +263,9 @@ Item {
         Item {
             id: slim
 
-            x: root.pad
+            x: root.side
             y: root.pad
-            width: root.width - root.pad * 2
+            width: root.width - root.side * 2
             height: root.markSize
             visible: root.compact
 
@@ -305,9 +307,9 @@ Item {
         Item {
             id: full
 
-            x: root.tileInset + root.pad
+            x: root.tileInset + root.side
             y: root.tileGap + root.pad
-            width: root.width - (root.tileInset + root.pad) * 2
+            width: root.width - (root.tileInset + root.side) * 2
             implicitHeight: Math.max(mark.height + (fold.visible ? Appearance.padding.small + fold.height : 0), words.implicitHeight)
             visible: root.roomy
 
@@ -765,7 +767,7 @@ Item {
     CornerButton {
         id: close
 
-        x: root.drift + root.width - root.tileInset - root.pad - width + Appearance.padding.small / 2
+        x: root.drift + root.width - root.tileInset - root.side - width + Appearance.padding.small / 2
         y: root.tileGap + root.pad - Appearance.padding.small / 2
         width: root.closeSize
         height: root.closeSize

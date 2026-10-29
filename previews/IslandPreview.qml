@@ -161,7 +161,7 @@ ShellRoot {
             expect: "hidden"
         },
         {
-            name: "two US layouts, on the plain one: US and its whole name",
+            name: "two US layouts, on the plain one: English and US, the code said once",
             run: () => {
                 Keymap.name = "English (US)";
                 Keymap.layouts = ["us", "us"];
@@ -170,17 +170,17 @@ ShellRoot {
             },
             wait: 400,
             expect: "level",
-            holds: () => Notices.passing.some(p => p.key === "level:layout" && p.text === "English (US)" && p.readout === "US")
+            holds: () => Notices.passing.some(p => p.key === "level:layout" && p.text === "English" && p.readout === "US")
         },
         {
-            name: "then the international one: US-I, not a second US",
+            name: "then the international one: what sets it apart, and US-I",
             run: () => {
                 Keymap.name = "English (US, intl., with dead keys)";
                 Keymap.index = 1;
             },
             wait: 400,
             expect: "level",
-            holds: () => Notices.passing.some(p => p.key === "level:layout" && p.text === "English (US, intl., with dead keys)" && p.readout === "US-I")
+            holds: () => Notices.passing.some(p => p.key === "level:layout" && p.text === "intl., with dead keys" && p.readout === "US-I")
         },
         {
             name: "the second layout row is gone",

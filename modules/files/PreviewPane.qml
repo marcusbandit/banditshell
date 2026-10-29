@@ -7,6 +7,7 @@ import qs.components
 import qs.services
 import "urls.js" as Urls
 import "markdown.js" as Markdown
+import "tile-names.js" as TileNames
 import "../../services/files-order.js" as FilesOrder
 import "../../services/files-find.js" as Find
 import "../../services/files-listing.js" as Listing
@@ -59,6 +60,18 @@ Item {
     property var seen: null
     property real readAt: 0
     readonly property string version: root.seen && Files.pathOf(root.seen) === root.path ? `?v=${root.seen.mtime}-${root.seen.size}` : ""
+
+    function spread(parts: var, width: real): string {
+        const line = parts.join("  ·  ");
+        return detailInk.advanceWidth(line) <= width ? line : parts.join("\n");
+    }
+
+    FontMetrics {
+        id: detailInk
+
+        font.family: Appearance.font.family
+        font.pixelSize: Files.zoomed(Appearance.font.size.small)
+    }
 
     readonly property var folderRows: FilesOrder.ordered(root.contents, Files.sort, Files.reversed)
     property string folderShown: ""
@@ -199,21 +212,33 @@ Item {
             spacing: Appearance.padding.normal
 
             FileMark {
+                id: titleMark
+
                 anchors.verticalCenter: parent.verticalCenter
 
                 fileClass: root.entry ? root.entry.class : "unknown"
                 link: root.entry ? root.entry.link : false
                 broken: root.entry ? root.entry.broken : false
+                size: Files.zoomed(Appearance.font.iconSize)
             }
 
             StyledText {
+                id: title
+
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - Appearance.font.iconSize - Appearance.padding.normal - (root.isMarkdown ? toggle.width + Appearance.padding.normal : 0)
+                width: Math.max(0, parent.width - titleMark.width - Appearance.padding.normal - (root.isMarkdown ? toggle.width + Appearance.padding.normal : 0))
 
-                text: root.entry ? root.entry.name : ""
+                text: root.entry && title.width > 0 ? TileNames.heading(root.entry.name, line => titleInk.advanceWidth(line) <= title.width).join("\n") : ""
 
-                font.pixelSize: Appearance.font.size.normal
-                elide: Text.ElideMiddle
+                font.pixelSize: Files.zoomed(Appearance.font.size.normal)
+                maximumLineCount: 2
+                elide: Text.ElideRight
+
+                FontMetrics {
+                    id: titleInk
+
+                    font: title.font
+                }
             }
 
             Item {
@@ -258,6 +283,8 @@ Item {
         }
 
         StyledText {
+            id: facts
+
             width: parent.width
 
             text: {
@@ -266,20 +293,22 @@ Item {
 
                 const size = root.isFolder ? `${root.contents.length} item${root.contents.length === 1 ? "" : "s"}` : Files.humanSize(root.entry.size);
                 if (root.entry.trash)
-                    return [size, `Trashed ${TimeFormat.dateText(new Date(root.entry.trashed * 1000), "year")} ${TimeFormat.time(new Date(root.entry.trashed * 1000), false)}`].join("  ·  ");
-                return [size, FilesFind.active ? Files.changedTime(root.entry.mtime) : Files.humanTime(root.entry.mtime)].join("  ·  ");
+                    return root.spread([size, `Trashed ${TimeFormat.dateText(new Date(root.entry.trashed * 1000), "year")} ${TimeFormat.time(new Date(root.entry.trashed * 1000), false)}`], facts.width);
+                return root.spread([size, FilesFind.active ? Files.changedTime(root.entry.mtime) : Files.humanTime(root.entry.mtime)], facts.width);
             }
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
 
-            elide: Text.ElideRight
+            wrapMode: Text.Wrap
         }
 
         StyledText {
+            id: owner
+
             width: parent.width
             visible: !!root.entry && !root.entry.trash && !!root.stat && !!root.stat.owner
 
-            text: root.stat && root.stat.owner ? `${root.stat.owner}  ·  ${Files.humanMode(root.stat.mode)}` : ""
+            text: root.stat && root.stat.owner ? root.spread([root.stat.owner, Files.humanMode(root.stat.mode)], owner.width) : ""
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
 
@@ -541,19 +570,22 @@ Item {
 
         Column {
             anchors.centerIn: parent
-            spacing: Appearance.padding.normal
+            width: parent.width - Appearance.padding.large * 2
+            spacing: Files.zoomed(Appearance.padding.normal)
             visible: !root.isImage && !root.isAudio && !root.isText && !(root.isFolder && root.contents.length > 0)
 
             Icon {
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 name: root.stat && !root.stat.readable || root.contentsError ? "lock" : root.isFolder ? "folder_open" : "visibility_off"
-                size: Appearance.icon.huge
+                size: Files.zoomed(Appearance.icon.huge)
                 color: Appearance.colour.textFaint
             }
 
             StyledText {
-                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
 
                 text: {
                     if (!root.entry)
@@ -566,6 +598,7 @@ Item {
                         return "too large to preview";
                     return "no preview";
                 }
+                font.pixelSize: Files.zoomed(Appearance.font.size.small)
                 color: Appearance.colour.textFaint
             }
         }

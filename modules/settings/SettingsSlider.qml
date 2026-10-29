@@ -16,10 +16,14 @@ Row {
     property real tailWidth: 0
     property real room: Infinity
 
-    readonly property real lead: (root.ends.length > 0 ? firstEnd.implicitWidth + root.spacing : 0) + root.spacing
-    readonly property real endRoom: root.ends.length > 1 ? lastEnd.implicitWidth + root.spacing : 0
-    readonly property real tail: root.endRoom + Math.max(64, reading.implicitWidth)
-    readonly property real track: Math.max(80, Math.min(root.trackWidth, root.room - root.lead - root.tail))
+    readonly property real firstRoom: root.ends.length > 0 ? firstEnd.implicitWidth + root.spacing : 0
+    readonly property real lastRoom: root.ends.length > 1 ? lastEnd.implicitWidth + root.spacing : 0
+    readonly property real readingRoom: Math.max(64, reading.implicitWidth)
+    readonly property bool endsShown: root.ends.length > 0 && root.room - root.firstRoom - root.spacing - Math.max(root.lastRoom + root.readingRoom, root.tailWidth) >= 80
+    readonly property real lead: (root.endsShown ? root.firstRoom : 0) + root.spacing
+    readonly property real endRoom: root.endsShown ? root.lastRoom : 0
+    readonly property real tail: root.endRoom + root.readingRoom
+    readonly property real track: Math.max(40, Math.min(root.trackWidth, root.room - root.lead - Math.max(root.tail, root.tailWidth)))
 
     signal moved(real value)
 
@@ -29,7 +33,7 @@ Row {
         id: firstEnd
 
         anchors.verticalCenter: parent.verticalCenter
-        visible: root.ends.length > 0
+        visible: root.endsShown
         text: root.ends[0] ?? ""
         font.pixelSize: Appearance.font.size.small
         color: Appearance.colour.textFaint
@@ -55,7 +59,7 @@ Row {
         id: lastEnd
 
         anchors.verticalCenter: parent.verticalCenter
-        visible: root.ends.length > 1
+        visible: root.endsShown && root.ends.length > 1
         text: root.ends[1] ?? ""
         rightPadding: Appearance.padding.large
         font.pixelSize: Appearance.font.size.small

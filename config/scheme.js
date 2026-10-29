@@ -85,7 +85,8 @@ function lightTheme(theme) {
         mid: lightAccent(String(theme.mid)),
         bright: lightAccent(String(theme.bright)),
         alarm: lightAccent(String(theme.alarm)),
-        brass: theme.brass ? lightAccent(String(theme.brass), WARNING_FLOOR) : undefined
+        brass: theme.brass ? lightAccent(String(theme.brass), WARNING_FLOOR) : undefined,
+        error: theme.error ? lightAccent(String(theme.error), WARNING_FLOOR) : undefined
     };
 }
 

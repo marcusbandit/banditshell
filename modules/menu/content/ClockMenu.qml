@@ -458,7 +458,18 @@ Column {
                 text: root.clockText(timerCard.remainingMs)
                 font.pixelSize: Appearance.font.size.large
 
-                color: timerCard.modelData.finished ? Appearance.colour.accent : timerCard.modelData.paused ? Appearance.colour.textFaint : Appearance.colour.text
+                color: timerCard.modelData.finished ? Appearance.colour.accent : timerCard.modelData.paused ? Appearance.colour.textDim : Appearance.colour.text
+            }
+
+            Icon {
+                anchors.left: remaining.right
+                anchors.leftMargin: Appearance.padding.small
+                anchors.verticalCenter: remaining.verticalCenter
+                visible: timerCard.modelData.paused && !timerCard.modelData.finished
+                name: "pause"
+                fill: 1
+                size: Appearance.icon.large
+                color: Appearance.colour.textDim
             }
 
             StyledText {

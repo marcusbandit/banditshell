@@ -46,16 +46,62 @@ Item {
     readonly property var innerChoices: root.innerOf(root.methodName)
     readonly property string innerName: root.innerChoices.includes(root.inner[root.methodName]) ? root.inner[root.methodName] : root.innerChoices[0] ?? ""
     readonly property string outerDefault: root.outerOf(root.methodName, identity.text)
-    readonly property bool filled: !!identity.text && (root.tls ? !!certificate.text.trim() : !!password.text)
-    readonly property bool authorityMissing: root.trustKey === "file" && !authority.text.trim()
-    readonly property bool keyMissing: root.tls && !key.text.trim() && CertificateFiles.needsKey(root.found, certificate.text.trim())
-    readonly property bool started: !!identity.text || !!password.text || !!certificate.text.trim()
-    readonly property bool certificateMissing: root.tls && !certificate.text.trim()
+    readonly property bool filled: !!identity.text && (root.tls ? !!root.pathOf(certificate) : !!password.text)
+    readonly property bool authorityMissing: root.trustKey === "file" && !root.pathOf(authority)
+    readonly property bool keyMissing: root.tls && !root.pathOf(key) && CertificateFiles.needsKey(root.found, root.pathOf(certificate))
+    readonly property bool started: !!identity.text || !!password.text || !!root.pathOf(certificate)
+    readonly property bool certificateMissing: root.tls && !root.pathOf(certificate)
     readonly property bool passwordMissing: !root.tls && !password.text && !root.looksUp
+    readonly property bool keyPasswordMissing: root.keyLocked && !keyPassword.text
+    readonly property string keyPath: !root.tls ? "" : root.keyCarried ? root.pathOf(certificate) : root.pathOf(key)
+    readonly property bool keyKnown: root.found.some(f => f.path === root.keyPath)
+    readonly property bool asksKeyPassword: !!root.keyPath && (root.keyLocked || !root.keyKnown)
     readonly property bool serverMissing: root.needsServer && !root.looksUp
     readonly property bool outerSpaced: !root.tls && /\s/.test(outer.text.trim())
-    readonly property bool blocked: root.authorityMissing || root.outerSpaced || (!root.looksUp && (!identity.text || root.certificateMissing || root.keyMissing || root.passwordMissing || root.serverMissing))
-    readonly property bool moreNeeded: root.started && (root.serverMissing || root.authorityMissing || root.outerSpaced)
+    readonly property real now: Date.now()
+    readonly property string authorityProblem: root.trustKey === "file" ? CertificateFiles.problem(root.found, root.pathOf(authority), "authority", root.now) : ""
+    readonly property string certificateProblem: root.tls ? CertificateFiles.problem(root.found, root.pathOf(certificate), "client", root.now) : ""
+    readonly property string keyProblem: root.tls && !root.keyCarried && !!root.pathOf(key) ? CertificateFiles.problem(root.found, root.pathOf(key), "key", root.now) : ""
+    readonly property string fileProblem: root.authorityProblem || root.certificateProblem || root.keyProblem
+    readonly property bool blocked: root.authorityMissing || root.outerSpaced || !!root.fileProblem || (!root.looksUp && (!identity.text || root.certificateMissing || root.keyMissing || root.passwordMissing || root.serverMissing)) || chooser.running
+    readonly property string blockReason: {
+        if (!root.blocked)
+            return "";
+        if (chooser.running)
+            return "the file picker is open.";
+        if (root.authorityMissing)
+            return "pick your school's root certificate, or set Trust back to system.";
+        if (root.fileProblem)
+            return root.fileProblem;
+        if (root.looksUp)
+            return root.outerSpaced ? root.outerFix : "";
+        if (!identity.text)
+            return root.tls ? "fill in the name on your certificate." : "fill in your username.";
+        if (root.certificateMissing)
+            return "pick your certificate file.";
+        if (root.keyMissing)
+            return "pick the certificate's key file.";
+        if (root.passwordMissing)
+            return "fill in your password.";
+        if (root.serverMissing)
+            return "enter the server name.";
+        return root.outerSpaced ? root.outerFix : "";
+    }
+    readonly property string outerFix: `take out the space in the anonymous identity, as in ${root.outerDefault.includes("@") ? root.outerDefault : "anonymous@school.edu"}.`
+    readonly property bool moreNeeded: root.started && (root.authorityMissing || root.outerSpaced)
+    property bool serverUp: false
+
+    onNeedsServerChanged: if (root.needsServer && !server.input.activeFocus)
+        root.serverUp = true
+
+    Connections {
+        target: server.input
+
+        function onActiveFocusChanged(): void {
+            if (!server.input.activeFocus && root.needsServer)
+                root.serverUp = true;
+        }
+    }
 
     onMoreNeededChanged: if (root.moreNeeded)
         root.more = true
@@ -69,15 +115,58 @@ Item {
     readonly property string trustKey: root.trustKeys.includes(root.trust) ? root.trust : root.school ? "school" : "system"
 
     property var found: []
-    readonly property var authorities: CertificateFiles.fitting(root.found, "authority", 4)
-    readonly property var clients: CertificateFiles.fitting(root.found, "client", 4)
-    readonly property var keys: CertificateFiles.fitting(root.found, "key", 4)
+    readonly property var authorities: CertificateFiles.roots(root.found, root.readServer(server.text), Date.now(), 4)
+    readonly property var clients: CertificateFiles.clients(root.found, Date.now(), 4)
+    readonly property var keys: CertificateFiles.keys(root.found, 4)
+    readonly property bool keyCarried: root.tls && CertificateFiles.carriesKey(root.found, root.pathOf(certificate))
+    readonly property bool keyLocked: root.tls && CertificateFiles.locked(root.found, root.keyCarried ? root.pathOf(certificate) : root.pathOf(key))
+    property Item browsingInto: null
+    property string autoKey: ""
+    property bool keyPasswordWarned: false
+    property bool keyPasswordVisited: false
+
+    onFoundChanged: root.matchKey()
+
+    function matchKey(): void {
+        if (!root.tls)
+            return;
+        const current = root.pathOf(key);
+        if (current && current !== root.autoKey)
+            return;
+        const want = CertificateFiles.keyFor(root.found, root.pathOf(certificate));
+        root.autoKey = want;
+        key.text = want ? CertificateFiles.shortPath(want, System.home) : "";
+    }
+
+    readonly property string autoKeyNote: {
+        const path = root.pathOf(key);
+        if (!root.autoKey || path !== root.autoKey)
+            return "";
+        const name = path.slice(path.lastIndexOf("/") + 1);
+        const cert = root.pathOf(certificate);
+        return path.slice(0, path.lastIndexOf("/")) === cert.slice(0, cert.lastIndexOf("/")) ? `${name}, found next to your certificate.` : `${name} fits your certificate.`;
+    }
+
+    Connections {
+        target: keyPassword.input
+
+        function onActiveFocusChanged(): void {
+            if (keyPassword.input.activeFocus)
+                root.keyPasswordVisited = true;
+            else if (root.keyPasswordVisited && root.keyPasswordMissing)
+                root.keyPasswordWarned = true;
+        }
+    }
     property string local: ""
     property string localField: ""
     property string autoServer: ""
 
+    function pathOf(entry: Item): string {
+        return CertificateFiles.fullPath(entry.text, System.home);
+    }
+
     function pickFile(entry: Item, path: string): void {
-        entry.text = path;
+        entry.text = CertificateFiles.shortPath(path, System.home);
         if (root.localField === entry.field) {
             root.local = "";
             root.localField = "";
@@ -92,11 +181,12 @@ Item {
     function browse(entry: Item, title: string, pattern: string): void {
         if (chooser.running)
             return;
-        chooser.into = entry;
-        chooser.title = title;
-        chooser.pattern = pattern;
-        Prompts.leave(root);
-        chooser.running = true;
+        root.browsingInto = entry;
+        chooser.open(title, pattern);
+    }
+
+    function hintFor(listed: var): string {
+        return listed.length || chooser.available ? "pick one below or type its path" : "type its full path";
     }
 
     function realmServer(): void {
@@ -110,16 +200,13 @@ Item {
     }
 
     function summary(room: real): string {
-        if (root.needsServer)
-            return "no server name";
-        const inner = root.innerChoices.length && root.innerName !== root.innerChoices[0] ? `/${root.innerLabel(root.innerName)}` : "";
-        const parts = [root.methodName.toUpperCase() + inner, root.trustNames[root.trustKeys.indexOf(root.trustKey)], server.text.trim()];
-        for (let i = 0; i < parts.length; i++) {
-            const text = parts.slice(i).join(" · ");
-            if (i === parts.length - 1 || summaryInk.advanceWidth(text) <= room)
-                return text;
-        }
-        return "";
+        const inner = root.innerChoices.length ? `/${root.innerLabel(root.innerName)}` : "";
+        const method = root.methodName.toUpperCase() + inner;
+        const name = server.text.trim();
+        const full = [method, root.trustNames[root.trustKeys.indexOf(root.trustKey)], name].filter(p => p).join(" · ");
+        if (!name || summaryInk.advanceWidth(full) <= room)
+            return full;
+        return `${method} · ${root.trustNames[root.trustKeys.indexOf(root.trustKey)]}\n${name}`;
     }
 
     implicitHeight: visible ? stack.implicitHeight : 0
@@ -130,10 +217,10 @@ Item {
             identity: identity.text,
             domain: server.text,
             trust: root.trustKey,
-            authority: root.trustKey === "file" ? authority.text.trim() : "",
-            certificate: root.tls ? certificate.text.trim() : "",
-            key: root.tls ? (key.text.trim() || certificate.text.trim()) : "",
-            locked: root.tls && !!keyPassword.text,
+            authority: root.trustKey === "file" ? root.pathOf(authority) : "",
+            certificate: root.tls ? root.pathOf(certificate) : "",
+            key: !root.tls ? "" : root.keyCarried ? root.pathOf(certificate) : (root.pathOf(key) || root.pathOf(certificate)),
+            locked: root.asksKeyPassword && !!keyPassword.text,
             inner: root.innerName,
             outer: root.tls ? "" : outer.text.trim()
         };
@@ -142,7 +229,8 @@ Item {
     function fault(entry: Item, field: string, text: string): void {
         root.local = text;
         root.localField = field;
-        root.more = true;
+        if (entry !== server || !root.serverUp)
+            root.more = true;
         entry.input.forceActiveFocus();
     }
 
@@ -151,7 +239,7 @@ Item {
             return;
         root.local = "";
         root.localField = "";
-        if (root.trustKey === "file" && !authority.text.trim())
+        if (root.trustKey === "file" && !root.pathOf(authority))
             return root.fault(authority, "authority", "Pick your school's root certificate file, or set trust back.");
         if (root.looksUp)
             return root.check(root.form());
@@ -159,9 +247,14 @@ Item {
             return root.fault(server, "server", "That server name needs a dot, such as school.edu.");
         if (!root.filled || root.blocked)
             return;
+        if (root.keyPasswordMissing) {
+            root.keyPasswordWarned = true;
+            keyPassword.input.forceActiveFocus();
+            return;
+        }
         if (root.needsServer)
             return root.fault(server, "server", "Fill in the server name your school's Wi-Fi guide gives.");
-        root.accepted(root.form(), root.tls ? keyPassword.text : password.text);
+        root.accepted(root.form(), root.tls ? (root.asksKeyPassword ? keyPassword.text : "") : password.text);
     }
 
     onFillChanged: if (root.fill)
@@ -179,16 +272,20 @@ Item {
         password.shown = false;
         server.text = root.fill || root.domain;
         root.autoServer = "";
+        root.autoKey = "";
+        root.keyPasswordWarned = false;
+        root.keyPasswordVisited = false;
         root.local = "";
         root.localField = "";
+        root.serverUp = root.needsServer;
         if (root.visible && !root.refusal) {
             Prompts.request(root);
             identity.input.forceActiveFocus();
             if (root.wantsFiles)
                 files.running = true;
         } else {
-            chooser.into = null;
-            chooser.running = false;
+            root.browsingInto = null;
+            chooser.stop();
             Prompts.release(root);
         }
     }
@@ -207,30 +304,16 @@ Item {
         }
     }
 
-    Process {
+    FileChooser {
         id: chooser
 
-        property Item into: null
-        property string title: ""
-        property string pattern: "*"
-
-        command: ["python3", Quickshell.shellPath("scripts/pick-file.py"), chooser.title, chooser.pattern, "~/Downloads"]
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const path = text.trim();
-                if (path && chooser.into)
-                    root.pickFile(chooser.into, path);
-            }
+        holder: root
+        onPicked: path => {
+            if (root.browsingInto)
+                root.pickFile(root.browsingInto, path);
         }
-
-        onRunningChanged: if (!chooser.running)
-            Prompts.back(root)
-
-        onExited: code => {
-            if (code === 2 && chooser.into)
-                root.fault(chooser.into, chooser.into.field, "No file browser here. Install xdg-desktop-portal-gtk or zenity, or type the path.");
-        }
+        onMissing: if (root.browsingInto)
+            root.fault(root.browsingInto, root.browsingInto.field, "No file chooser here. Type the file's full path.")
     }
 
     component Entry: Item {
@@ -242,6 +325,8 @@ Item {
         property string hint: ""
         property bool secret: false
         property bool shown: false
+        property bool warn: false
+        property bool path: false
         property string field: ""
 
         property Item next: null
@@ -274,7 +359,9 @@ Item {
                 anchors.topMargin: Appearance.padding.small
                 anchors.bottomMargin: Appearance.padding.small
                 radius: Appearance.rounding.small
-                color: Appearance.colour.fillStrong
+                color: entry.warn ? Appearance.colour.warningFill : Appearance.colour.fillStrong
+                stroke: entry.warn ? Appearance.colour.warning : entry.path ? Appearance.colour.textFaint : "transparent"
+                strokeWidth: entry.warn || entry.path ? Appearance.stroke.ring : 0
             }
 
             TextInput {
@@ -400,36 +487,38 @@ Item {
                     onTextChanged: root.realmServer()
                 }
 
-                FormLine {
-                    visible: root.started && !identity.text
-                    text: root.tls ? "Fill in the name on your certificate." : "Fill in your username."
-                    color: Appearance.colour.textDim
-                }
-
                 Entry {
                     id: certificate
 
                     width: parent.width
                     visible: root.tls
                     label: "Certificate file"
-                    hint: "pick one below or type its path"
+                    hint: root.hintFor(root.clients)
+                    path: true
                     field: "certificate"
-                    next: key.input
+                    next: root.keyCarried ? keyPassword.input : key.input
+                    onTextChanged: {
+                        root.keyPasswordWarned = false;
+                        root.keyPasswordVisited = false;
+                        root.matchKey();
+                    }
                 }
 
                 FormLine {
-                    visible: root.started && root.certificateMissing
-                    text: "Pick your certificate file."
-                    color: Appearance.colour.textDim
+                    visible: !chooser.available && certificate.visible
+                    text: "Type the path, or install a file chooser such as zenity to browse."
                 }
 
                 FileChips {
                     visible: root.tls
                     files: root.clients
                     lead: "Certificates found:"
+                    picked: root.pathOf(certificate)
+                    canBrowse: chooser.available
                     choosing: chooser.running
-                    browsing: chooser.running && chooser.into === certificate
-                    onPicked: path => root.pickFile(certificate, path)
+                    browsing: chooser.running && root.browsingInto === certificate
+                    onPick: path => root.pickFile(certificate, path)
+                    onCancel: chooser.stop()
                     onBrowse: root.browse(certificate, "Pick your certificate", "*.p12 *.pfx *.pem *.crt *.cer")
                 }
 
@@ -443,25 +532,39 @@ Item {
                     id: key
 
                     width: parent.width
-                    visible: root.tls
+                    visible: root.tls && !root.keyCarried
                     label: "Key file, if separate"
+                    hint: root.hintFor(root.keys)
+                    path: true
                     field: "key"
-                    next: identity.input
+                    next: keyPassword.input
+                    onTextChanged: {
+                        root.keyPasswordWarned = false;
+                        root.keyPasswordVisited = false;
+                    }
                 }
 
                 FormLine {
-                    visible: root.keyMissing
-                    text: "This certificate holds no key. Pick its key file."
+                    visible: !chooser.available && key.visible
+                    text: "Type the path, or install a file chooser such as zenity to browse."
+                }
+
+                FormLine {
+                    visible: key.visible && !!root.autoKeyNote
+                    text: root.autoKeyNote
                     color: Appearance.colour.textDim
                 }
 
                 FileChips {
-                    visible: root.tls
+                    visible: root.tls && !root.keyCarried
                     files: root.keys
                     lead: "Keys found:"
+                    picked: root.pathOf(key)
+                    canBrowse: chooser.available
                     choosing: chooser.running
-                    browsing: chooser.running && chooser.into === key
-                    onPicked: path => root.pickFile(key, path)
+                    browsing: chooser.running && root.browsingInto === key
+                    onPick: path => root.pickFile(key, path)
+                    onCancel: chooser.stop()
                     onBrowse: root.browse(key, "Pick your key file", "*.key *.pem")
                 }
 
@@ -469,6 +572,28 @@ Item {
                     visible: root.localField === "key"
                     text: root.local
                     color: Appearance.colour.warning
+                }
+
+                Entry {
+                    id: keyPassword
+
+                    width: parent.width
+                    visible: root.asksKeyPassword
+                    label: `Password for ${root.keyPath.slice(root.keyPath.lastIndexOf("/") + 1)}`
+                    hint: root.keyLocked ? "" : "if it has one"
+                    secret: true
+                    next: identity.input
+                }
+
+                FormLine {
+                    visible: root.keyPasswordMissing && !root.keyPasswordWarned
+                    text: "This key is locked. Enter its password."
+                    color: Appearance.colour.textDim
+                }
+
+                FormWarning {
+                    visible: root.keyPasswordMissing && root.keyPasswordWarned
+                    text: "This key is locked. Enter its password."
                 }
 
                 Entry {
@@ -481,54 +606,11 @@ Item {
                     next: identity.input
                 }
 
-                FormLine {
-                    visible: root.started && root.passwordMissing
-                    text: "Fill in your password."
-                    color: Appearance.colour.textDim
-                }
-
                 Item {
+                    id: upSlot
+
                     width: parent.width
-                    implicitHeight: act.implicitHeight + Appearance.padding.small * 2
-
-                    Button {
-                        id: act
-
-                        anchors.left: parent.left
-                        anchors.leftMargin: Appearance.padding.normal
-                        anchors.right: parent.right
-                        anchors.rightMargin: Appearance.padding.normal
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        style: "accent"
-                        interactive: !root.busy && !root.blocked && (root.looksUp || root.filled)
-                        text: root.busy ? (root.checking ? "Looking…" : "Connecting…") : root.looksUp ? (root.suggestion ? "Look up again" : "Look up the server") : "Connect"
-                        onClicked: root.submit()
-                    }
-                }
-
-                FormLine {
-                    visible: root.looksUp && !root.busy && !root.blocked
-                    text: "Looking up sends nothing secret, but your Wi-Fi drops for a moment."
-                }
-
-                Item {
-                    width: parent.width
-                    visible: !!root.suggestion && server.text.trim() !== root.suggestion
-                    implicitHeight: visible ? use.implicitHeight + Appearance.padding.small * 2 : 0
-
-                    Button {
-                        id: use
-
-                        anchors.left: parent.left
-                        anchors.leftMargin: Appearance.padding.normal
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        size: 0
-                        style: "bare"
-                        text: `Use ${root.suggestion} anyway`
-                        onClicked: server.text = root.suggestion
-                    }
+                    implicitHeight: root.serverUp ? serverBlock.implicitHeight : 0
                 }
 
                 Item {
@@ -564,7 +646,8 @@ Item {
 
                         visible: !root.more
                         text: root.summary(moreLabel.width)
-                        color: root.needsServer ? Appearance.colour.warning : Appearance.colour.textDim
+                        wrapMode: Text.Wrap
+                        color: Appearance.colour.textDim
                         font.pixelSize: Appearance.font.size.small
                     }
 
@@ -595,30 +678,45 @@ Item {
                     visible: root.more
                     spacing: 0
 
-                    Entry {
-                        id: server
+                    Item {
+                        id: moreSlot
 
                         width: parent.width
-                        label: "Server name"
-                        hint: "such as school.edu"
-                        next: root.trustKey === "file" ? authority.input : identity.input
-                    }
+                        implicitHeight: root.serverUp ? 0 : serverBlock.implicitHeight
 
-                    FormLine {
-                        visible: root.serverMissing && root.localField !== "server"
-                        text: "Fill in the server name your school's Wi-Fi guide gives."
-                        color: Appearance.colour.textDim
-                    }
+                        Column {
+                            id: serverBlock
 
-                    FormLine {
-                        visible: root.localField === "server"
-                        text: root.local
-                        color: Appearance.colour.warning
-                    }
+                            parent: root.serverUp ? upSlot : moreSlot
+                            width: parent.width
+                            spacing: 0
 
-                    FormLine {
-                        visible: root.serverChecked
-                        text: root.tls ? "Your certificate only goes to a server with this name." : "Your password only goes to a server with this name."
+                            Entry {
+                                id: server
+
+                                width: parent.width
+                                warn: root.needsServer
+                                label: "Server name"
+                                hint: "such as school.edu"
+                                next: root.trustKey === "file" ? authority.input : identity.input
+                            }
+
+                            FormWarning {
+                                visible: root.needsServer && root.localField !== "server"
+                                text: root.looksUp ? "Enter the server name to connect, or look it up. It stops a look-alike network posing as this one." : "A server name stops a look-alike network posing as this one. Your school's Wi-Fi guide gives it."
+                            }
+
+                            FormLine {
+                                visible: root.localField === "server"
+                                text: root.local
+                                color: Appearance.colour.warning
+                            }
+
+                            FormLine {
+                                visible: root.serverChecked
+                                text: root.tls ? "Your certificate only goes to a server with this name." : "Your password only goes to a server with this name."
+                            }
+                        }
                     }
 
                     FormLine {
@@ -628,7 +726,7 @@ Item {
 
                     FormChoice {
                         width: parent.width
-                        label: "trust"
+                        label: "Trust"
                         options: root.trustNames
                         current: root.trustKeys.indexOf(root.trustKey)
                         onPicked: i => {
@@ -644,24 +742,27 @@ Item {
                         width: parent.width
                         visible: root.trustKey === "file"
                         label: "Your school's root certificate file"
-                        hint: "pick one below or type its path"
+                        hint: root.hintFor(root.authorities)
+                        path: true
                         field: "authority"
                         next: identity.input
                     }
 
                     FormLine {
-                        visible: root.authorityMissing && root.localField !== "authority"
-                        text: "Pick your school's root certificate below, or set trust back to system."
-                        color: Appearance.colour.textDim
+                        visible: !chooser.available && authority.visible
+                        text: "Type the path, or install a file chooser such as zenity to browse."
                     }
 
                     FileChips {
                         visible: root.trustKey === "file"
                         files: root.authorities
                         lead: "Root certificates found:"
+                        picked: root.pathOf(authority)
+                        canBrowse: chooser.available
                         choosing: chooser.running
-                    browsing: chooser.running && chooser.into === authority
-                        onPicked: path => root.pickFile(authority, path)
+                        browsing: chooser.running && root.browsingInto === authority
+                        onPick: path => root.pickFile(authority, path)
+                        onCancel: chooser.stop()
                         onBrowse: root.browse(authority, "Pick your school's root certificate", "*.pem *.crt *.cer *.der")
                     }
 
@@ -671,20 +772,10 @@ Item {
                         color: Appearance.colour.warning
                     }
 
-                    Entry {
-                        id: keyPassword
-
-                        width: parent.width
-                        visible: root.tls
-                        label: "Key password, if it has one"
-                        secret: true
-                        next: identity.input
-                    }
-
                     FormChoice {
                         width: parent.width
                         visible: root.methods.length > 1
-                        label: "sign-in method"
+                        label: "Sign-in method"
                         options: root.methods.map(m => m.toUpperCase())
                         current: root.method
                         onPicked: i => root.method = i
@@ -693,7 +784,7 @@ Item {
                     FormChoice {
                         width: parent.width
                         visible: root.innerChoices.length > 1
-                        label: "phase 2"
+                        label: "Phase 2"
                         options: root.innerChoices.map(i => root.innerLabel(i))
                         current: root.innerChoices.indexOf(root.innerName)
                         onPicked: i => root.inner = Object.assign({}, root.inner, {
@@ -713,15 +804,60 @@ Item {
                     }
 
                     FormLine {
-                        visible: root.outerSpaced
-                        text: `Take out the space in the middle, as in ${root.outerDefault.includes("@") ? root.outerDefault : "anonymous@school.edu"}.`
-                        color: Appearance.colour.warning
-                    }
-
-                    FormLine {
                         visible: !root.tls
                         text: "Sent before the tunnel opens, so anyone nearby can read it."
                     }
+                }
+
+                Item {
+                    width: parent.width
+                    visible: !!root.suggestion && server.text.trim() !== root.suggestion
+                    implicitHeight: visible ? use.implicitHeight + Appearance.padding.small * 2 : 0
+
+                    Button {
+                        id: use
+
+                        anchors.left: parent.left
+                        anchors.leftMargin: Appearance.padding.normal
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        size: 0
+                        style: "bare"
+                        text: `Use ${root.suggestion} anyway`
+                        onClicked: server.text = root.suggestion
+                    }
+                }
+
+                Item {
+                    width: parent.width
+                    implicitHeight: act.implicitHeight + Appearance.padding.small * 2
+
+                    Button {
+                        id: act
+
+                        anchors.left: parent.left
+                        anchors.leftMargin: Appearance.padding.normal
+                        anchors.right: parent.right
+                        anchors.rightMargin: Appearance.padding.normal
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        style: act.interactive ? "accent" : "ring"
+                        opacity: act.interactive ? 1 : 0.75
+                        interactive: !root.busy && !root.blocked && (root.looksUp || root.filled)
+                        text: root.busy ? (root.checking ? "Looking…" : "Connecting…") : root.looksUp ? (root.suggestion ? "Look up again" : "Look up the server") : "Connect"
+                        onClicked: root.submit()
+                    }
+                }
+
+                FormLine {
+                    visible: !root.busy && !!root.blockReason && (root.started || !!root.fileProblem)
+                    text: `Connect is off: ${root.blockReason}`
+                    color: Appearance.colour.textDim
+                }
+
+                FormLine {
+                    visible: root.looksUp && !root.busy && !root.blocked
+                    text: "Looking up sends nothing secret, but your Wi-Fi drops for a moment."
                 }
             }
         }
