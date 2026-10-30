@@ -61,6 +61,11 @@ Item {
     property real readAt: 0
     readonly property string version: root.seen && Files.pathOf(root.seen) === root.path ? `?v=${root.seen.mtime}-${root.seen.size}` : ""
 
+    function modeText(mode: int, width: real): string {
+        const letters = Files.humanMode(mode);
+        return detailInk.advanceWidth(letters) <= width ? letters : (mode & 511).toString(8).padStart(3, "0");
+    }
+
     function spread(parts: var, width: real): string {
         const line = parts.join("  ·  ");
         return detailInk.advanceWidth(line) <= width ? line : parts.join("\n");
@@ -308,7 +313,7 @@ Item {
             width: parent.width
             visible: !!root.entry && !root.entry.trash && !!root.stat && !!root.stat.owner
 
-            text: root.stat && root.stat.owner ? root.spread([root.stat.owner, Files.humanMode(root.stat.mode)], owner.width) : ""
+            text: root.stat && root.stat.owner ? root.spread([root.stat.owner, root.modeText(root.stat.mode, owner.width)], owner.width) : ""
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
 
@@ -569,7 +574,9 @@ Item {
         }
 
         Column {
-            anchors.centerIn: parent
+            anchors.top: parent.top
+            anchors.topMargin: Math.max(0, (parent.height - height) / 2)
+            anchors.horizontalCenter: parent.horizontalCenter
             width: parent.width - Appearance.padding.large * 2
             spacing: Files.zoomed(Appearance.padding.normal)
             visible: !root.isImage && !root.isAudio && !root.isText && !(root.isFolder && root.contents.length > 0)

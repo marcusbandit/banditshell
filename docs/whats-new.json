@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-15",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files sidebar narrows at large zoom"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files menu, Empty Trash and search scope grow with the zoom"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files icon view wraps its sort headers instead of hiding them"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The preview's no-preview mark stays below the file details"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30-14",
       "date": "2026-10-30",
       "changes": [
