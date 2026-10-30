@@ -199,7 +199,7 @@ PanelWindow {
         if (win.underFullscreen)
             return false;
         const entry = sidebar.entryFor(key);
-        const beside = streamPanel.anchorFor(key);
+        const beside = streamPanel.item?.anchorFor(key) ?? null;
         const source = beside ?? sidebar.iconFor(key);
         if (!entry || !source)
             return false;
@@ -564,19 +564,23 @@ PanelWindow {
             yielded: win.underFullscreen || fullscreenBorder.yielded
         }
 
-        StreamPanel {
+        Loader {
             id: streamPanel
 
             anchors.fill: parent
-            reach: chassis.streamReach
+            active: chassis.streamed || chassis.streamReach > 0 || streamPanel.status === Loader.Ready
 
-            openKey: menuLayer.fromTop ? menuLayer.currentKey : ""
+            sourceComponent: StreamPanel {
+                reach: chassis.streamReach
 
-            onMenuRequested: key => {
-                if (menuLayer.pinned && menuLayer.currentKey === key)
-                    menuLayer.hide();
-                else
-                    win.openMenu(key, true);
+                openKey: menuLayer.fromTop ? menuLayer.currentKey : ""
+
+                onMenuRequested: key => {
+                    if (menuLayer.pinned && menuLayer.currentKey === key)
+                        menuLayer.hide();
+                    else
+                        win.openMenu(key, true);
+                }
             }
         }
 

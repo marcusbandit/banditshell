@@ -59,7 +59,7 @@ PanelWindow {
     WlrLayershell.namespace: "banditshell-tour"
 
     mask: Region {
-        item: shown.value > 0.5 ? card : null
+        item: shown.value > 0.5 ? win.card : null
     }
 
     readonly property real band: Appearance.sizes.border
@@ -154,8 +154,8 @@ PanelWindow {
     }
 
     readonly property var cardSize: ({
-            w: card.width,
-            h: card.height
+            w: win.card?.width ?? 0,
+            h: win.card?.height ?? 0
         })
 
     readonly property var spot: Logic.place(win.cardSize, win.aim.target, win.bounds, win.aim.sides, win.aim.avoid, win.gap)
@@ -230,36 +230,47 @@ PanelWindow {
             Tour.pass();
     }
 
+    readonly property Item card: cardLoader.item
+
     Item {
         anchors.fill: parent
 
-        TourCard {
-            id: card
+        Loader {
+            id: cardLoader
 
-            x: glideX.value
-            y: glideY.value + (1 - shown.value) * Appearance.padding.large
-            width: Math.min(implicitWidth, win.bounds.w, Math.max(win.islandWidth, win.aim.room ?? Infinity))
-            height: implicitHeight
-            opacity: shown.value
-            visible: shown.value > 0.001
+            active: win.mine && (Tour.running || Tour.parting) || shown.value > 0.001
 
-            mode: win.face
-            title: win.face === "finished" ? win.closing.title : win.face === "parting" ? "Tour put away" : Tour.words.title ?? ""
-            intro: win.face === "ask" || win.face === "seen" ? Tour.words.payoff ?? "" : ""
-            line: win.face === "finished" ? win.closing.now : win.face === "parting" ? win.closing.again : win.face === "seen" ? Tour.words.away ?? "" : Tour.words.ask ?? ""
-            after: win.face === "finished" ? win.closing.again : win.face === "ask" ? Tour.words.note ?? "" : ""
-            chord: win.face === "finished" ? Tour.chords.launcher ?? "" : Tour.step?.chord ?? ""
-            primary: win.face === "ask" ? Tour.words.open ?? "" : win.face === "seen" ? "Next" : win.face === "finished" ? win.closing.open : ""
-            secondary: win.face === "ask" ? "Skip this step" : win.face === "finished" ? "Close" : ""
-            tailEdge: win.tail.edge
-            tailAt: win.tail.at
-            number: Tour.number
-            count: Tour.steps.length
+            onLoaded: if (shown.value < 0.05) {
+                glideX.snap();
+                glideY.snap();
+            }
 
-            onPrimaryPressed: win.primary()
-            onSecondaryPressed: win.secondary()
-            onQuit: Tour.quit()
-            onClosed: Tour.parting = false
+            sourceComponent: TourCard {
+                x: glideX.value
+                y: glideY.value + (1 - shown.value) * Appearance.padding.large
+                width: Math.min(implicitWidth, win.bounds.w, Math.max(win.islandWidth, win.aim.room ?? Infinity))
+                height: implicitHeight
+                opacity: shown.value
+                visible: shown.value > 0.001
+
+                mode: win.face
+                title: win.face === "finished" ? win.closing.title : win.face === "parting" ? "Tour put away" : Tour.words.title ?? ""
+                intro: win.face === "ask" || win.face === "seen" ? Tour.words.payoff ?? "" : ""
+                line: win.face === "finished" ? win.closing.now : win.face === "parting" ? win.closing.again : win.face === "seen" ? Tour.words.away ?? "" : Tour.words.ask ?? ""
+                after: win.face === "finished" ? win.closing.again : win.face === "ask" ? Tour.words.note ?? "" : ""
+                chord: win.face === "finished" ? Tour.chords.launcher ?? "" : Tour.step?.chord ?? ""
+                primary: win.face === "ask" ? Tour.words.open ?? "" : win.face === "seen" ? "Next" : win.face === "finished" ? win.closing.open : ""
+                secondary: win.face === "ask" ? "Skip this step" : win.face === "finished" ? "Close" : ""
+                tailEdge: win.tail.edge
+                tailAt: win.tail.at
+                number: Tour.number
+                count: Tour.steps.length
+
+                onPrimaryPressed: win.primary()
+                onSecondaryPressed: win.secondary()
+                onQuit: Tour.quit()
+                onClosed: Tour.parting = false
+            }
         }
     }
 }

@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-13",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The shell starts with less work while the tour and streaming are off"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30-12",
       "date": "2026-10-30",
       "changes": [
