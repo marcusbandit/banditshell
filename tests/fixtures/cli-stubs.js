@@ -20,7 +20,7 @@ function stubs() {
     const log = path.join(dir, "calls.log");
     fs.writeFileSync(log, "");
     const refuse = '#!/bin/sh\necho "$(basename "$0") $*" >>"$STUB_LOG"\nexit 99\n';
-    for (const name of ["qs", "hyprctl", "grim", "slurp", "notify-send", "wl-copy", "jq", "python3", "gcc", "git"])
+    for (const name of ["qs", "hyprctl", "grim", "slurp", "notify-send", "wl-copy", "jq", "python3", "gcc", "git", "loginctl"])
         fs.writeFileSync(path.join(dir, name), refuse, { mode: 0o755 });
     return { dir, log };
 }

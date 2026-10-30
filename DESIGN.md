@@ -2288,7 +2288,9 @@ the media keys playerctl's, and locking is logind's (`loginctl lock-session`; th
 answers logind's Lock and sets LockedHint itself). The shell shows all three, in the sound
 menu, the media panel and the lock screen, but a second CLI for them was a second thing to
 maintain with nothing to add, so `set volume`, `toggle volume mute` and `dispatch lock` are
-gone, with the IPC handlers behind them. What stays is what only the shell knows. `output`
+gone, with the IPC handlers behind them. Locking has one exception: a machine without logind
+has no standard tool, so `banditshell lock` runs `loginctl lock-session` and falls back to the
+shell's own `shell lock` IPC call when that fails. What stays is what only the shell knows. `output`
 switches between "the speakers" and "the headphones", roles set in `audio.speakers` and
 `audio.headphones` that wpctl's node ids cannot name. `screen brightness` sets every DDC
 display at once through the shell's own queue, and `screen temperature` moves a gamma ramp

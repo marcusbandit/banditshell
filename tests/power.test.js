@@ -79,14 +79,16 @@ test("the warning moves with the key", () => {
 });
 
 test("nearly empty reads sleep in Settings and still stores suspend", () => {
-    assert.strictEqual(Battery.nearlyEmptyChoice("suspend", 5), "sleep at 5%");
-    assert.strictEqual(Battery.nearlyEmptyChoice("hibernate", 5), "hibernate at 5%");
-    assert.strictEqual(Battery.nearlyEmptyChoice("nothing", 5), "nothing");
+    assert.strictEqual(Battery.nearlyEmptyChoice("suspend"), "sleep");
+    assert.strictEqual(Battery.nearlyEmptyChoice("hibernate"), "hibernate");
+    assert.strictEqual(Battery.nearlyEmptyChoice("nothing"), "nothing");
+    assert.strictEqual(Battery.nearlyEmptyAction("sleep"), "suspend");
     assert.strictEqual(Battery.nearlyEmptyAction("sleep at 5%"), "suspend");
     assert.strictEqual(Battery.nearlyEmptyAction("suspend at 5%"), "suspend");
     assert.strictEqual(Battery.nearlyEmptyAction("hibernate at 5%"), "hibernate");
     assert.strictEqual(Battery.nearlyEmptyAction("nothing"), "nothing");
 });
+
 
 test("hibernate needs the disk state and a yes from logind, or swap when logind is silent", () => {
     const yes = '{"type":"s","data":["yes"]}';

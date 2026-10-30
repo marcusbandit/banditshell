@@ -116,6 +116,14 @@ function upgradeSidebarClock(values) {
     return Object.assign({}, values, { sidebar });
 }
 
+function upgradeClipboard(values) {
+    if (!isPlainObject(values.clipboard) || !owns(values.clipboard, "preview"))
+        return values;
+    const clipboard = Object.assign({}, values.clipboard);
+    delete clipboard.preview;
+    return Object.assign({}, values, { clipboard });
+}
+
 function upgradeChannel(values, keepChannel) {
     const updates = values.updates;
     if (!isPlainObject(updates) || updates.channelUpgraded === true)
@@ -129,7 +137,7 @@ function upgradeChannel(values, keepChannel) {
 function upgrade(values, keepChannel) {
     if (!isPlainObject(values))
         return values;
-    return upgradeUpdateColours(upgradeChannel(upgradeFilesGrid(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values)))), keepChannel === true));
+    return upgradeClipboard(upgradeUpdateColours(upgradeChannel(upgradeFilesGrid(upgradeFiles(upgradeSidebarClock(upgradeLauncher(values)))), keepChannel === true)));
 }
 
 function holds(node, segment) {

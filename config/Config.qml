@@ -472,8 +472,6 @@ Singleton {
 
                 width: 980,
 
-                preview: 132,
-
                 previewLines: 4,
 
                 iconScale: 1.4,
