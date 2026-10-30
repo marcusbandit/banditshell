@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-30-14",
+      "id": "2026-10-30-15",
       "date": "2026-10-30",
       "changes": [
         {
@@ -23,6 +23,17 @@
           "type": "issues",
           "severity": "minor",
           "text": "The preview's no-preview mark stays below the file details"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-30-14",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "banditshell dev perf boots with your Qt theme, like the real shell"
         }
       ]
     },
