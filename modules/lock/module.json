@@ -5,7 +5,9 @@
   "owns": {
     "qml": ["modules/lock", "previews/LockPreview.qml"],
     "services": ["Lock"],
-    "assets": ["assets/pam.d"]
+    "assets": ["assets/pam.d"],
+    "js": ["services/lock-hint.js"],
+    "tests": ["tests/lock-hint.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor", "media", "wallpaper", "clock", "power", "notifications"],
