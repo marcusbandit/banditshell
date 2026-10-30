@@ -11,6 +11,7 @@ Column {
     property bool canBrowse: true
     property bool browsing: false
     property bool choosing: false
+    property var opened: ({})
 
     signal pick(string path)
     signal browse
@@ -54,15 +55,17 @@ Column {
         Repeater {
             model: root.files
 
-            FileChoiceRow {
+            FileChoiceGroup {
                 required property var modelData
 
                 width: parent.width
-                path: modelData.path
-                detail: modelData.detail ?? ""
-                warn: !!modelData.warn
-                picked: modelData.path === root.picked
-                onChosen: root.pick(modelData.path)
+                row: modelData
+                picked: root.picked
+                opened: !!root.opened[modelData.path]
+                onChosen: path => root.pick(path)
+                onToggled: root.opened = Object.assign({}, root.opened, {
+                    [modelData.path]: !root.opened[modelData.path]
+                })
             }
         }
     }
