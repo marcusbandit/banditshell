@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-2",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The docs now describe launcher plugins and their JSON protocol"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30",
       "date": "2026-10-30",
       "changes": [

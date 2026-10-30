@@ -31,7 +31,7 @@ QtObject {
 
     property bool presents: false
 
-    readonly property list<QtObject> sources: [
+    readonly property list<QtObject> builtIn: [
         PrefixSource {
             search: root
         },
@@ -162,6 +162,43 @@ QtObject {
             search: root
         }
     ]
+
+    property var addedSources: []
+
+    readonly property var sources: Array.prototype.slice.call(root.builtIn).concat(root.addedSources.map(a => a.object))
+
+    function syncAdded(): void {
+        const wanted = LauncherSources.added;
+        const kept = [];
+        for (const had of root.addedSources) {
+            if (wanted.some(w => w.id === had.id && w.stamp === had.stamp))
+                kept.push(had);
+            else
+                had.object.destroy();
+        }
+        for (const w of wanted) {
+            if (kept.some(k => k.id === w.id))
+                continue;
+            const object = w.component.createObject(root, Object.assign({
+                search: root
+            }, w.properties));
+            if (object)
+                kept.push({
+                    id: w.id,
+                    stamp: w.stamp,
+                    object: object
+                });
+        }
+        root.addedSources = kept;
+    }
+
+    property Connections addedWatch: Connections {
+        target: LauncherSources
+
+        function onAddedChanged(): void {
+            root.syncAdded();
+        }
+    }
 
     readonly property var sourceGroupLists: root.sources.map(s => s.groups ?? [])
 
@@ -1450,6 +1487,7 @@ QtObject {
     }
 
     Component.onCompleted: {
+        root.syncAdded();
         root.arrangePending = true;
         root.arrangeNow();
     }
