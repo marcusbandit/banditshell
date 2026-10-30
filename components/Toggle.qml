@@ -10,12 +10,14 @@ Item {
 
     property bool keyable: true
 
+    property real zoom: 1
+
     function press(): void {
         root.toggled();
     }
 
-    implicitWidth: Appearance.sizes.toggleWidth
-    implicitHeight: Appearance.sizes.toggleHeight
+    implicitWidth: Math.round(Appearance.sizes.toggleWidth * root.zoom)
+    implicitHeight: Math.round(Appearance.sizes.toggleHeight * root.zoom)
 
     Follow {
         id: lit
