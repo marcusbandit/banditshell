@@ -212,6 +212,12 @@ test("a recorded apt upgrade asks once, downloads, then unpacks and sets up", ()
     assert.strictEqual(Upgrade.outcome(state, 0), "done");
 });
 
+test("apt-get update before the upgrade reads as refreshing the lists", () => {
+    const state = run("Hit:1 http://deb.debian.org/debian stable InRelease\r\nGet:2 http://deb.debian.org/debian stable-updates InRelease [47.3 kB]\r\nFetched 47.3 kB in 0s (98.1 kB/s)\r\n", 0, "apt");
+    assert.strictEqual(state.phase, "sync");
+    assert.strictEqual(Upgrade.describe(state), "Refreshing the package lists");
+});
+
 test("apt stopped during the download is a cancel, and nothing to upgrade is up to date", () => {
     const cancelled = run(fixture("apt-cancel.log"), 0, "apt");
     assert.strictEqual(cancelled.committing, false);
@@ -247,6 +253,35 @@ test("dnf answered no is a cancel, and nothing to do is up to date", () => {
     assert.strictEqual(Upgrade.outcome(declined, 1), "cancelled");
     assert.strictEqual(Upgrade.explain(declined, 1), "You answered no, so dnf stopped before changing anything.");
     assert.strictEqual(Upgrade.outcome(run(fixture("dnf-nothing.log"), 0, "dnf"), 0), "current");
+});
+
+test("dnf stopped mid-download says nothing changed, even though dnf exits 1", () => {
+    const state = run(fixture("dnf-cancel.log"), 0, "dnf");
+    assert.strictEqual(state.committing, false);
+    assert.strictEqual(Upgrade.outcome(state, 1), "cancelled");
+    assert.strictEqual(Upgrade.explain(state, 1), "Stopped before anything was installed. Nothing changed.");
+});
+
+test("a recorded zypper upgrade preloads, retrieves, checks conflicts, installs, then runs scripts", () => {
+    const log = fixture("zypper-upgrade.log");
+    const asked = run(log.slice(0, log.indexOf("(y\x1b[1;39;49m)\x1b[0m\x1b[1;39;49m: ") + 30), 0, "zypper");
+    assert.strictEqual(asked.question.text, "Continue?");
+    assert.ok(Upgrade.proceeds(asked.question));
+    const { state, seen } = replay("zypper", "zypper-upgrade.log");
+    assert.deepStrictEqual(seen, ["auth", "sync", "resolve", "download", "check", "install", "hooks"]);
+    assert.strictEqual(state.total, 12);
+    assert.strictEqual(state.packages.length, 12);
+    assert.strictEqual(state.sizes.download, "2.0 MiB");
+    assert.strictEqual(state.install.name, "openSUSE-build-key");
+    assert.strictEqual(Upgrade.outcome(state, 0), "done");
+});
+
+test("zypper answered no is a cancel, and nothing to do is up to date", () => {
+    const declined = run(fixture("zypper-declined.log"), 0, "zypper");
+    declined.declined = true;
+    assert.strictEqual(Upgrade.outcome(declined, 4), "cancelled");
+    assert.strictEqual(Upgrade.outcome(run(fixture("zypper-nothing.log"), 0, "zypper"), 0), "current");
+    assert.strictEqual(run("Trying to exit gracefully...\r\n", 0, "zypper").interrupted, true);
 });
 
 test("failures from apt and dnf are put in plain words naming the tool", () => {
@@ -328,7 +363,7 @@ test.describe("the runner", () => {
     }
 
     test.it("stops a download with Ctrl-C and refuses once any tool starts changing packages", () => {
-        for (const [name, before, start] of [["apt-upgrade.log", "Fetched", "Preconfiguring packages"], ["dnf-upgrade.log", "[5/5] Total", "Running transaction"], ["upgrade.log", "Retrieving packages", "checking keys in keyring"]]) {
+        for (const [name, before, start] of [["apt-upgrade.log", "Fetched", "Preconfiguring packages"], ["dnf-upgrade.log", "[5/5] Total", "Running transaction"], ["upgrade.log", "Retrieving packages", "checking keys in keyring"], ["zypper-upgrade.log", "Retrieving: openSUSE-build-key", "Checking for file conflicts"]]) {
             const log = fixture(name);
             assert.deepStrictEqual(cancel(log.slice(0, log.indexOf(before))), { code: 0, sent: "\x03" }, `${name} before ${before}`);
             assert.deepStrictEqual(cancel(log.slice(0, log.indexOf(start) + start.length + 2)), { code: 5, sent: "" }, `${name} from ${start}`);

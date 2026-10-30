@@ -113,7 +113,7 @@ function percent(text) {
     return m ? Math.min(100, Number(m[1])) / 100 : -1;
 }
 
-const readers = { pacman: takePacman, apt: takeApt, dnf: takeDnf };
+const readers = { pacman: takePacman, apt: takeApt, dnf: takeDnf, zypper: takeZypper };
 
 function take(state, raw) {
     const line = clean(raw).replace(/\s+$/, "");
@@ -315,6 +315,10 @@ function takeDnf(state, line, t) {
         };
         return;
     }
+    if (/^>>> Interrupted|Interrupted by a SIGINT/.test(t)) {
+        state.interrupted = true;
+        return;
+    }
     if ((m = /^>>> (Running .+?)(?::\s.*)?$/.exec(t))) {
         state.detail = m[1];
         return;
@@ -339,6 +343,124 @@ function takeDnf(state, line, t) {
         return;
     }
     if ((m = /^Warning:\s*(.+)$/.exec(t))) {
+        keep(state.warnings, m[1].trim());
+        return;
+    }
+}
+
+function bytes(text) {
+    const m = /^([\d.,]+)\s*([KMGT]?i?B)$/.exec(String(text ?? "").trim());
+    if (!m)
+        return 0;
+    const scale = { B: 1, KiB: 1024, MiB: 1048576, GiB: 1073741824, TiB: 1099511627776, KB: 1000, MB: 1e6, GB: 1e9, TB: 1e12 };
+    return Number(m[1].replace(",", ".")) * (scale[m[2]] ?? 1);
+}
+
+function takeZypper(state, line, t) {
+    let m;
+
+    if (state.listing && /^\s/.test(line)) {
+        if (state.listing === "add")
+            for (const name of t.split(/\s+/))
+                state.packages.push(name);
+        return;
+    }
+    state.listing = false;
+
+    if ((m = /^The following (?:\d+ )?(NEW )?(?:packages? (?:is|are) going to be (upgraded|installed|downgraded)|.*):$/.exec(t))) {
+        state.listing = m[2] ? "add" : "skip";
+        return;
+    }
+    if (/^(Loading repository data|Retrieving repository|Refreshing|Building repository)/.test(t)) {
+        reach(state, "sync");
+        return;
+    }
+    if (/^(Reading installed packages|Computing distribution upgrade|Resolving package dependencies)/.test(t)) {
+        reach(state, "resolve");
+        return;
+    }
+    if (/^\d+ (packages? to (upgrade|downgrade|remove|install)|new|NEW)/.test(t)) {
+        let total = 0;
+        const re = /(\d+) (?:packages? to (?:upgrade|downgrade|install)|new\b|to downgrade)/g;
+        while ((m = re.exec(t)) !== null)
+            total += Number(m[1]);
+        state.total = total;
+        return;
+    }
+    if (/^Nothing to do\.?$/.test(t)) {
+        state.nothing = true;
+        return;
+    }
+    if ((m = /^(?:Package|Overall) download size:\s*(.+)$/.exec(t))) {
+        state.sizes.download = m[1].trim();
+        return;
+    }
+    if (/^Trying to exit gracefully/.test(t)) {
+        state.interrupted = true;
+        return;
+    }
+    if (/^Checking for file conflicts/.test(t)) {
+        reach(state, "check");
+        state.committing = true;
+        state.check = { step: 3, index: 0, total: 0 };
+        state.detail = "checking for file conflicts";
+        return;
+    }
+    if ((m = /^\(\s*(\d+)\/(\d+)\)\s+(Installing|Removing|Upgrading|Downgrading):\s+(\S+)/.exec(t))) {
+        reach(state, "install");
+        state.committing = true;
+        state.install = {
+            index: Number(m[1]),
+            total: Number(m[2]),
+            verb: m[3].toLowerCase(),
+            name: m[4].replace(/\.(x86_64|noarch|aarch64|i586|i686|ppc64le|s390x|riscv64)$/, "").replace(/-[^-]+-[^-]+$/, ""),
+            fraction: /\[done\]$/.test(t) ? 1 : 0,
+            share: -1
+        };
+        return;
+    }
+    if (/^(Running post-transaction scripts|Executing %posttrans)/.test(t)) {
+        reach(state, "hooks");
+        state.committing = true;
+        state.detail = "running post-transaction scripts";
+        return;
+    }
+    if (!state.committing && (m = /^Preloading Packages:.*?\(\s*([\d.,]+\s*\S+)\s*\/\s*([\d.,]+\s*\S+)\s*\)\s*\(([^)]+)\)/.exec(t))) {
+        reach(state, "download");
+        const done = bytes(m[1]);
+        const all = bytes(m[2]);
+        if (all > 0)
+            state.download.fraction = Math.min(1, done / all);
+        state.download.rate = m[3].trim();
+        return;
+    }
+    if (!state.committing && (m = /^Preloading: (\S+?)(?:\.rpm)? \[done\]$/.exec(t))) {
+        reach(state, "download");
+        state.download.done += 1;
+        state.download.total = state.total;
+        state.download.file = m[1];
+        return;
+    }
+    if (!state.committing && /^Preload finished/.test(t)) {
+        state.download.fraction = 1;
+        return;
+    }
+    if (!state.committing && (m = /^Retrieving: (\S+)/.exec(t))) {
+        reach(state, "download");
+        state.download.file = m[1];
+        return;
+    }
+    if (!state.committing && (m = /^\((\d+)\/(\d+)\),/.exec(t))) {
+        reach(state, "download");
+        state.download.done = Math.max(state.download.done, Number(m[1]));
+        state.download.total = Number(m[2]);
+        return;
+    }
+    if ((m = /^(?:Error|ERROR|Problem(?: \d+)?):\s*(.+)$/.exec(t))) {
+        keep(state.errors, /^Problem/.test(t) ? t : m[1].trim());
+        return;
+    }
+    if ((m = /^Warning:\s*(.+)$/.exec(t)) && !/distribution upgrade with all enabled repositories/.test(t)) {
         keep(state.warnings, m[1].trim());
         return;
     }
