@@ -676,3 +676,23 @@ esac
         } catch (e) {}
     }
 });
+
+test("without logind, the lock record says whether the session is locked", () => {
+    const fn = /\nsession_locked\(\) \{[\s\S]*?\n\}\n/.exec(fs.readFileSync(path.join(ROOT, "cli/banditshell"), "utf8"))[0];
+    const stub = stubs();
+    fs.writeFileSync(path.join(stub.dir, "loginctl"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+    const runtime = directory("runtime");
+    const record = path.join(runtime, "banditshell-lock-hint-auto.json");
+    const ask = text => {
+        fs.rmSync(record, { force: true });
+        if (text !== null)
+            fs.writeFileSync(record, `${text}\n`);
+        return spawnSync("bash", ["--norc", "--noprofile", "-c", `${fn}\nsession_locked`], {
+            env: { PATH: `${stub.dir}:/usr/bin:/bin`, XDG_RUNTIME_DIR: runtime, STUB_LOG: stub.log }
+        }).status;
+    };
+    assert.strictEqual(ask('{"session":"","told":true}'), 0);
+    assert.notStrictEqual(ask('{"session":"","told":false}'), 0);
+    assert.notStrictEqual(ask('{"session":"/org/freedesktop/login1/session/_32","told":true}'), 0);
+    assert.notStrictEqual(ask(null), 0);
+});
