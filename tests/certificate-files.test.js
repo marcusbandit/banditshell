@@ -80,15 +80,18 @@ test.describe("certificate files", () => {
             ["laptop-17-open.p12", "holds its key"],
             ["laptop-17-old-export.p12", "holds its key"]
         ]);
-        assert.match(Files.clients(Files.read(FIXTURE), Date.UTC(2028, 0, 1), 10)[1].detail, /expired Oct 2027/);
+        const later = Files.clients(Files.read(FIXTURE), Date.UTC(2028, 0, 1), 10)[1];
+        assert.match(later.detail, /expired Oct 2027/);
+        assert.ok(later.others.every(o => o.warn && /expired Oct 2027/.test(o.detail)));
     });
 
     test.it("preselects a certificate only when one alone is ready to use, and reads the name on it", () => {
         const files = Files.read(FIXTURE);
-        assert.strictEqual(Files.easiest(files, Date.UTC(2026, 9, 28)), "/home/me/Documents/wifi/laptop-17-with-key.pem");
-        assert.strictEqual(Files.easiest(files, Date.UTC(2028, 0, 1)), "");
+        assert.strictEqual(Files.easiest(files, Date.UTC(2026, 9, 28), 4), "/home/me/Documents/wifi/laptop-17-with-key.pem");
+        assert.strictEqual(Files.easiest(files, Date.UTC(2028, 0, 1), 4), "");
+        assert.strictEqual(Files.easiest(files, Date.UTC(2026, 9, 28), 1), "");
         const twice = Files.read(FIXTURE.replace(/(laptop-17-open\.p12\n(?:.*\n)*?sha256 Fingerprint=)../, "$100"));
-        assert.strictEqual(Files.easiest(twice, Date.UTC(2026, 9, 28)), "");
+        assert.strictEqual(Files.easiest(twice, Date.UTC(2026, 9, 28), 4), "");
         assert.strictEqual(Files.holderAt(files, "/home/me/Downloads/laptop-17.crt"), "laptop-17");
         assert.strictEqual(Files.holderAt(files, "/home/me/Downloads/laptop-17.p12"), "");
         assert.strictEqual(Files.holderAt(files, "/home/me/Downloads/uni-root.der"), "");
@@ -164,6 +167,8 @@ test.describe("certificate files", () => {
         assert.strictEqual(Files.compare(print, `SHA256 Fingerprint=${print.toLowerCase()}`), "match");
         assert.strictEqual(Files.compare(print, print.replace(/:/g, " ")), "match");
         assert.strictEqual(Files.compare(print, print.replace(/^74/, "75")), "differs");
+        assert.strictEqual(Files.compare(print, `SHA-256 Hash: ${print.replace(/^74/, "75")}`), "differs");
+        assert.strictEqual(Files.compare(print, `Fingerprint (SHA256) ${print.replace(/:/g, "")}`), "match");
         assert.strictEqual(Files.compare(print, "AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01"), "sha1");
         assert.strictEqual(Files.compare(print, "74:68:5F"), "short");
         assert.strictEqual(Files.compare(print, ""), "");

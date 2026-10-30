@@ -49,7 +49,7 @@ Item {
     readonly property bool filled: !!identity.text && (root.tls ? !!root.pathOf(certificate) : !!password.text)
     readonly property bool authorityMissing: root.trustKey === "file" && !root.pathOf(authority)
     readonly property bool keyMissing: root.tls && !root.pathOf(key) && CertificateFiles.needsKey(root.found, root.pathOf(certificate))
-    readonly property bool started: !!identity.text || !!password.text || !!root.pathOf(certificate)
+    readonly property bool started: (!!identity.text && identity.text !== root.autoIdentity) || !!password.text || (!!root.pathOf(certificate) && root.pathOf(certificate) !== root.autoCertificate)
     readonly property bool certificateMissing: root.tls && !root.pathOf(certificate)
     readonly property bool passwordMissing: !root.tls && !password.text && !root.looksUp
     readonly property bool keyPasswordMissing: root.keyLocked && !keyPassword.text
@@ -157,7 +157,9 @@ Item {
         const current = root.pathOf(certificate);
         if (current && current !== root.autoCertificate)
             return;
-        const want = CertificateFiles.easiest(root.found, Date.now());
+        const want = CertificateFiles.easiest(root.found, Date.now(), 4);
+        if (!want && current)
+            return;
         root.autoCertificate = want;
         certificate.text = want ? CertificateFiles.shortPath(want, System.home) : "";
     }
@@ -343,6 +345,7 @@ Item {
             if (root.wantsFiles)
                 files.running = true;
         } else {
+            root.pickedFiles = [];
             root.browsingInto = null;
             chooser.stop();
             Prompts.release(root);

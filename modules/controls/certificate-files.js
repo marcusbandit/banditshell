@@ -192,7 +192,6 @@ function roots(files, server, now, most) {
         var match = fits(f, host);
         out.push({
             file: f,
-            match: match,
             parts: [nameOf(f.issuer) || nameOf(f.subject), untilOf(f, now), match ? "named like " + host : "", unmarked ? "not marked as a root" : ""],
             warn: expired || unmarked,
             rank: (match ? 0 : 1) + (expired || unmarked ? 2 : 0),
@@ -207,17 +206,17 @@ function roots(files, server, now, most) {
         var twin = r.file.fingerprint ? find(shown, function (o) {
             return o !== r && o.file.fingerprint === r.file.fingerprint;
         }) : null;
-        return { path: r.file.path, detail: joined(r.parts.concat([twin ? "same as " + baseName(twin.file.path) : ""])), warn: r.warn, match: r.match };
+        return { path: r.file.path, detail: joined(r.parts.concat([twin ? "same as " + baseName(twin.file.path) : ""])), warn: r.warn };
     });
 }
 
 function unrelated(files, server) {
-    var label = schoolLabel(server);
+    var host = String(server || "").trim().toLowerCase();
     var listed = files.filter(function (f) {
         return f.kind === "authority";
     });
-    return !!label && listed.length > 0 && !listed.some(function (f) {
-        return fits(f, String(server || "").trim().toLowerCase());
+    return !!schoolLabel(host) && listed.length > 0 && !listed.some(function (f) {
+        return fits(f, host);
     });
 }
 
@@ -263,25 +262,30 @@ function groups(files) {
     });
 }
 
+function expired(file, now) {
+    return file.until > 0 && file.until <= now;
+}
+
 function clients(files, now, most) {
     return groups(files).slice(0, most).map(function (g) {
         var f = g.lead;
+        var warn = expired(f, now);
         return {
             path: f.path,
             detail: joined([holderOf(f.subject), untilOf(f, now), packaging(files, f), g.members.length > 1 ? "in " + g.members.length + " files" : ""]),
-            warn: f.until > 0 && f.until <= now,
+            warn: warn,
             others: g.members.filter(function (m) {
                 return m !== f;
             }).map(function (m) {
-                return { path: m.path, detail: packaging(files, m), warn: false };
+                return { path: m.path, detail: joined([packaging(files, m), warn ? untilOf(m, now) : ""]), warn: warn };
             })
         };
     });
 }
 
-function easiest(files, now) {
-    var ready = groups(files).filter(function (g) {
-        return easeOf(files, g.lead) <= 1 && !(g.lead.until > 0 && g.lead.until <= now);
+function easiest(files, now, most) {
+    var ready = groups(files).slice(0, most).filter(function (g) {
+        return easeOf(files, g.lead) <= 1 && !expired(g.lead, now);
     });
     return ready.length === 1 ? ready[0].lead.path : "";
 }
@@ -304,10 +308,18 @@ function printLines(fingerprint) {
     return lines.join("\n");
 }
 
+function hexOf(text) {
+    var runs = String(text || "").match(/(?:[0-9a-f]{2}[:\s-]?){20,}/gi) || [];
+    var longest = runs.reduce(function (a, b) {
+        return b.length > a.length ? b : a;
+    }, "");
+    return (longest || String(text || "")).replace(/[^0-9a-f]/gi, "").toUpperCase();
+}
+
 function compare(fingerprint, pasted) {
-    var want = String(pasted || "").replace(/sha-?\s*(1|256)|fingerprint/gi, "").replace(/[^0-9a-f]/gi, "").toUpperCase();
-    var have = String(fingerprint || "").replace(/[^0-9a-f]/gi, "").toUpperCase();
-    if (!want || !have)
+    var want = hexOf(pasted);
+    var have = hexOf(fingerprint);
+    if (!String(pasted || "").trim() || !have)
         return "";
     if (want === have)
         return "match";
@@ -340,11 +352,7 @@ function keys(files, most) {
 
 function keyFor(files, path) {
     var cert = fileAt(files, path);
-    if (!cert || cert.kind !== "client" || cert.key || !cert.publicKey)
-        return "";
-    var file = find(files, function (f) {
-        return f.kind === "key" && f.ownKey === cert.publicKey;
-    });
+    var file = cert && cert.kind === "client" ? keyFileOf(files, cert) : null;
     return file ? file.path : "";
 }
 

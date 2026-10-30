@@ -11,6 +11,7 @@ Column {
     property bool canBrowse: true
     property bool browsing: false
     property bool choosing: false
+    property var opened: ({})
 
     signal pick(string path)
     signal browse
@@ -60,7 +61,11 @@ Column {
                 width: parent.width
                 row: modelData
                 picked: root.picked
+                opened: !!root.opened[modelData.path]
                 onChosen: path => root.pick(path)
+                onToggled: root.opened = Object.assign({}, root.opened, {
+                    [modelData.path]: !root.opened[modelData.path]
+                })
             }
         }
     }

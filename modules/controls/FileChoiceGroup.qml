@@ -13,13 +13,10 @@ Column {
 
     readonly property var others: root.row.others ?? []
     readonly property bool holdsPicked: root.others.some(o => o.path === root.picked)
-    readonly property bool showing: root.opened
+    readonly property bool showing: root.opened || root.holdsPicked
 
     signal chosen(string path)
-
-    onHoldsPickedChanged: if (root.holdsPicked)
-        root.opened = true
-    Component.onCompleted: root.opened = root.holdsPicked
+    signal toggled
 
     FileChoiceRow {
         width: root.width
@@ -37,7 +34,8 @@ Column {
         style: "bare"
         icon: root.showing ? "expand_less" : "expand_more"
         text: root.others.length === 1 ? "1 other copy" : `${root.others.length} other copies`
-        onClicked: root.opened = !root.opened
+        interactive: !root.holdsPicked
+        onClicked: root.toggled()
     }
 
     Column {

@@ -3,9 +3,7 @@ body() {
     sed -n '/-----BEGIN PUBLIC KEY-----/,/-----END PUBLIC KEY-----/{/-----/d;p;}' | tr -d '\n'
 }
 {
-    for file in "$@"; do
-        [ -f "$file" ] && printf '%s\n' "$file"
-    done
+    [ $# -gt 0 ] && find "$@" -maxdepth 0 -type f -size -256k 2>/dev/null
     find "$HOME/Downloads" "$HOME/Documents" -maxdepth 2 -type f \( -iname '*.pem' -o -iname '*.crt' -o -iname '*.cer' -o -iname '*.der' -o -iname '*.p12' -o -iname '*.pfx' -o -iname '*.key' \) -size -256k -printf '%T@\t%p\n' 2>/dev/null | sort -rn | head -n 60 | cut -f2-
 } | while IFS= read -r file; do
     printf '\036%s\n' "$file"
