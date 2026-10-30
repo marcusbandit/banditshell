@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pam
 import qs.config
+import "lock-hint.js" as LockHint
 
 Singleton {
     id: root
@@ -16,6 +17,10 @@ Singleton {
     property bool secure: false
 
     property bool hinted: false
+
+    property bool toldLogind: false
+
+    readonly property string recordPath: Quickshell.env("XDG_RUNTIME_DIR") ? `${Quickshell.env("XDG_RUNTIME_DIR")}/banditshell-lock-hint.json` : ""
 
     readonly property bool busy: pam.active
 
@@ -388,12 +393,15 @@ Singleton {
 
     function tellLogind(on: bool): void {
         root.hinted = on;
+        root.toldLogind = true;
         root.sendHint();
     }
 
     function sendHint(): void {
         if (!root.sessionPath)
             return;
+        if (root.recordPath)
+            record.setText(LockHint.recordText(root.sessionPath, root.hinted));
         if (hint.running) {
             hint.stale = true;
             return;
@@ -416,7 +424,7 @@ Singleton {
             return;
         root.sessionPath = path;
         probe.running = true;
-        if (root.hinted)
+        if (root.toldLogind)
             root.sendHint();
     }
 
@@ -506,9 +514,26 @@ Singleton {
         }
 
         onExited: code => {
-            if (code === 0 && root.reply(probeReply.text) === true)
+            if (code !== 0)
+                return;
+            if (root.recordPath)
+                record.reload();
+            const told = root.recordPath ? LockHint.readRecord(record.text(), root.sessionPath) : null;
+            const action = LockHint.onStart(root.reply(probeReply.text), told, root.active || root.arming);
+            if (action === "relock")
                 root.relock();
+            else if (action === "clear")
+                root.tellLogind(false);
         }
+    }
+
+    FileView {
+        id: record
+
+        path: root.recordPath
+        blockLoading: true
+        blockWrites: true
+        printErrors: false
     }
 
     Process {
