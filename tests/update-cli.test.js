@@ -677,6 +677,31 @@ test("a restart class update restarts the shell into the new tree and refreshes 
     assert.ok(fs.existsSync(backupFile(world, "services/Thing.qml")));
 });
 
+test("a restarted shell gets a systemd scope of its own, so stopping what ran the update leaves it running", () => {
+    const world = makeWorld();
+    const runs = path.join(world.root, "systemd-run.calls");
+    fs.writeFileSync(path.join(world.fakebin, "systemctl"), "#!/bin/sh\n", { mode: 0o755 });
+    fs.writeFileSync(path.join(world.fakebin, "systemd-run"), `#!/bin/sh
+[ "$1" = --version ] && { echo "systemd 262 (262-1-arch)"; exit 0; }
+echo "$*" >>"${runs}"
+while [ "$1" != -- ]; do shift; done
+shift
+exec "$@"
+`, { mode: 0o755 });
+    startShell(world);
+    const target = advance(world, "singleton", {
+        "services/qmldir": "module qs.services\nsingleton Thing 1.0 Thing.qml\n",
+        "services/Thing.qml": "pragma Singleton\n"
+    });
+    const got = applyTo(world, target);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    assert.strictEqual(pids(world).length, 1);
+    const calls = fs.readFileSync(runs, "utf8").trim().split("\n");
+    assert.strictEqual(calls.length, 2);
+    for (const call of calls)
+        assert.match(call, new RegExp(`^--user --scope --quiet --collect --unit=banditshell-shell-\\d+ --expand-environment=no -- qs -d -p ${world.live}$`));
+});
+
 const progress = world => {
     try {
         return readState(world, "progress.log").split("\n").filter(Boolean).map(l => JSON.parse(l));

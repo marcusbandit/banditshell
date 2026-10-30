@@ -758,11 +758,26 @@ cached_pid() {
     esac
 }
 
+own_scope() {
+    local -a scope=(systemd-run --user --scope --quiet --collect "--unit=banditshell-$1-$(date +%s%N)")
+    local version
+    shift
+    if ! command -v systemd-run >/dev/null 2>&1 || ! systemctl --user show-environment >/dev/null 2>&1; then
+        "$@"
+        return
+    fi
+    version=$(systemd-run --version 2>/dev/null | awk 'NR == 1 { print $2 + 0 }')
+    [ "${version:-0}" -lt 254 ] || scope+=(--expand-environment=no)
+    "${scope[@]}" -- "$@"
+}
+
 detach() {
+    local name="$1"
+    shift
     if setsid --help 2>&1 | grep -q -- --fork; then
-        setsid -f "$@"
+        own_scope "$name" setsid -f "$@"
     else
-        setsid "$@" &
+        own_scope "$name" setsid "$@" &
     fi
 }
 
@@ -974,7 +989,7 @@ launch() {
         return 0
     fi
     out=$(mktemp)
-    if ! (cd "$HOME" && qs -d -p "$1") 8>&- >"$out" 2>&1 || grep -q "Failed to load configuration" "$out"; then
+    if ! (cd "$HOME" && own_scope shell qs -d -p "$1") 8>&- >"$out" 2>&1 || grep -q "Failed to load configuration" "$out"; then
         launch_failed "$1" "$out" "did not load"
         return 1
     fi
@@ -1070,7 +1085,7 @@ try_worktree() {
     stop_shell || true
     if launch "$target"; then
         echo "${green}trying $name$plain$dim - back to the checkout on its own once merged, or banditshell dev back$plain"
-        (cd "$HOME" && detach "$(readlink -f "${BASH_SOURCE[0]}")" dev watch </dev/null >/dev/null 2>&1) || true
+        (cd "$HOME" && detach watch "$(readlink -f "${BASH_SOURCE[0]}")" dev watch </dev/null >/dev/null 2>&1) || true
         return 0
     fi
     complain "$name failed to load - back on the checkout (errors: $FAILED_LOG)"
@@ -4171,7 +4186,7 @@ update_apply() {
     if [ "$detach" = 1 ] && ! dry; then
         mkdir -p "$UPDATE_STATE"
         : >"$UPDATE_STATE/progress.log"
-        (cd "$HOME" && detach "$(readlink -f "${BASH_SOURCE[0]}")" update apply --json ${to:+--to "$to"} 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log")
+        (cd "$HOME" && detach update "$(readlink -f "${BASH_SOURCE[0]}")" update apply --json ${to:+--to "$to"} 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log")
         return 0
     fi
     update_prepare
@@ -4341,7 +4356,7 @@ update_rollback() {
     if [ "$detach" = 1 ] && ! dry; then
         mkdir -p "$UPDATE_STATE"
         : >"$UPDATE_STATE/progress.log"
-        (cd "$HOME" && detach "$(readlink -f "${BASH_SOURCE[0]}")" update rollback --json 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log")
+        (cd "$HOME" && detach rollback "$(readlink -f "${BASH_SOURCE[0]}")" update rollback --json 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log")
         return 0
     fi
     update_prepare
