@@ -676,3 +676,39 @@ esac
         } catch (e) {}
     }
 });
+
+test("without logind, the lock record says whether the session is locked", () => {
+    const fn = /\nsession_locked\(\) \{[\s\S]*?\n\}\n/.exec(fs.readFileSync(path.join(ROOT, "cli/banditshell"), "utf8"))[0];
+    const stub = stubs();
+    fs.writeFileSync(path.join(stub.dir, "loginctl"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+    const runtime = directory("runtime");
+    const record = path.join(runtime, "banditshell-lock-hint-auto.json");
+    const ask = text => {
+        fs.rmSync(record, { force: true });
+        if (text !== null)
+            fs.writeFileSync(record, `${text}\n`);
+        return spawnSync("bash", ["--norc", "--noprofile", "-c", `${fn}\nsession_locked`], {
+            env: { PATH: `${stub.dir}:/usr/bin:/bin`, XDG_RUNTIME_DIR: runtime, STUB_LOG: stub.log }
+        }).status;
+    };
+    assert.strictEqual(ask('{"session":"","told":true}'), 0);
+    assert.notStrictEqual(ask('{"session":"","told":false}'), 0);
+    assert.notStrictEqual(ask('{"session":"/org/freedesktop/login1/session/_32","told":true}'), 0);
+    assert.notStrictEqual(ask(null), 0);
+});
+
+test("perf boots take the live session's Qt theme from the caller, else from the user's systemd environment", () => {
+    const fn = /\nlive_theme_env\(\) \{[\s\S]*?\n\}\n/.exec(fs.readFileSync(path.join(ROOT, "cli/banditshell"), "utf8"))[0];
+    const stub = stubs();
+    fs.writeFileSync(path.join(stub.dir, "systemctl"), "#!/bin/sh\nprintf 'QT_QPA_PLATFORMTHEME=qt6ct\\nXDG_CURRENT_DESKTOP=Hyprland\\nWEIRD=$\\\\x27a b\\\\x27\\n'\n", { mode: 0o755 });
+    const run = (env, dir = stub.dir) => spawnSync("bash", ["--norc", "--noprofile", "-c", `set -euo pipefail\n${fn}\nlive_theme_env`], {
+        encoding: "utf8",
+        env: Object.assign({ PATH: `${dir}:/usr/bin:/bin` }, env)
+    }).stdout.split("\n").filter(Boolean);
+    assert.deepStrictEqual(run({ QT_QPA_PLATFORMTHEME: "kde" }), ["QT_QPA_PLATFORMTHEME=kde", "XDG_CURRENT_DESKTOP=Hyprland"]);
+    assert.deepStrictEqual(run({}), ["QT_QPA_PLATFORMTHEME=qt6ct", "XDG_CURRENT_DESKTOP=Hyprland"]);
+    const bare = stubs();
+    fs.writeFileSync(path.join(bare.dir, "systemctl"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+    assert.deepStrictEqual(run({}, bare.dir), []);
+    assert.deepStrictEqual(run({ XDG_CURRENT_DESKTOP: "Hyprland" }, bare.dir), ["XDG_CURRENT_DESKTOP=Hyprland"]);
+});

@@ -74,7 +74,7 @@ Item {
         return out;
     }
 
-    readonly property bool asking: root.running && SystemUpgrade.asking && SystemUpgrade.question?.text !== "Proceed with installation?"
+    readonly property bool asking: root.running && SystemUpgrade.needsAnswer
 
     implicitHeight: root.topInset + column.implicitHeight + root.pad
 

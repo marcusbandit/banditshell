@@ -56,10 +56,25 @@ Item {
             action.run();
     }
 
-    readonly property real gap: Appearance.padding.small
-    readonly property real inset: Appearance.padding.normal
+    property real zoom: 1
 
-    readonly property real rowHeight: Math.max(Appearance.sizes.rowHeight, Appearance.font.iconSize + root.inset * 2)
+    readonly property int breaks: {
+        let count = 0;
+        for (let i = 1; i < root.actions.length; i++)
+            if (root.apart(i))
+                count += 1;
+        return count;
+    }
+    readonly property real plainRow: Math.max(Appearance.sizes.rowHeight, Appearance.font.iconSize + Appearance.padding.normal * 2)
+    readonly property real plainHeight: root.actions.length * (root.plainRow + Appearance.padding.small) + root.breaks * (Appearance.padding.small * 2 + 1) + Appearance.padding.small
+    readonly property real sized: Math.min(root.zoom, Math.max(1, (root.height - root.edge * 2) / Math.max(1, root.plainHeight)))
+
+    readonly property real gap: Math.round(Appearance.padding.small * root.sized)
+    readonly property real inset: Math.round(Appearance.padding.normal * root.sized)
+    readonly property int iconSize: Math.round(Appearance.font.iconSize * root.sized)
+    readonly property int textSize: Math.round(Appearance.font.size.small * root.sized)
+
+    readonly property real rowHeight: Math.max(Math.round(Appearance.sizes.rowHeight * root.sized), root.iconSize + root.inset * 2)
     readonly property real step: root.rowHeight + root.gap
     readonly property real split: root.gap * 2 + 1
 
@@ -76,9 +91,9 @@ Item {
         return index * root.step + breaks * root.split;
     }
 
-    readonly property real rowWidth: Math.min(root.width - root.edge * 2 - root.gap * 2, root.inset * 3 + Appearance.font.iconSize + measure.childrenRect.width)
+    readonly property real rowWidth: Math.min(root.width - root.edge * 2 - root.gap * 2, root.inset * 3 + root.iconSize + measure.childrenRect.width)
 
-    readonly property real cellRadius: Appearance.rounding.normal
+    readonly property real cellRadius: Math.round(Appearance.rounding.normal * root.sized)
     readonly property real groupRadius: root.cellRadius + root.gap
 
     readonly property real edge: Appearance.padding.normal
@@ -132,6 +147,7 @@ Item {
                 required property var modelData
 
                 text: modelData.label
+                font.pixelSize: root.textSize
             }
         }
     }
@@ -221,7 +237,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
 
                             name: cell.modelData.icon
-                            size: Appearance.font.iconSize
+                            size: root.iconSize
                             color: markTone.value
 
                             FollowColour {
@@ -249,6 +265,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
 
                             text: cell.modelData.label
+                            font.pixelSize: root.textSize
 
                             color: labelTone.value
 

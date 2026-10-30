@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/lock-hint.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Hint = new Function(src + "\nreturn { recordText, readRecord, onStart };")();
+const Hint = new Function(src + "\nreturn { recordText, readRecord, onStart, heldWithoutLogind };")();
 
 const SESSION = "/org/freedesktop/login1/session/_32";
 const told = (text, session = SESSION) => Hint.readRecord(text, session);
@@ -35,5 +35,18 @@ test.describe("locked hint at start", () => {
         assert.strictEqual(Hint.onStart(false, told(Hint.recordText(SESSION, true)), false), "leave");
         assert.strictEqual(Hint.onStart(undefined, null, false), "leave");
         assert.strictEqual(Hint.onStart(true, false, true), "leave");
+    });
+});
+
+test.describe("a lock without logind", () => {
+    test.it("is held again when the shell's record says it was locked", () => {
+        assert.strictEqual(Hint.heldWithoutLogind(Hint.recordText("", true)), true);
+    });
+
+    test.it("is not held after an unlock, for a logind session, or without a record", () => {
+        assert.strictEqual(Hint.heldWithoutLogind(Hint.recordText("", false)), false);
+        assert.strictEqual(Hint.heldWithoutLogind(Hint.recordText(SESSION, true)), false);
+        assert.strictEqual(Hint.heldWithoutLogind(""), false);
+        assert.strictEqual(Hint.heldWithoutLogind("{not json"), false);
     });
 });

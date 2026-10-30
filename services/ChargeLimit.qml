@@ -10,8 +10,8 @@ import "chargelimit.js" as Logic
 Singleton {
     id: root
 
-    readonly property string helperPath: "/usr/local/libexec/banditshell-charge-limit"
-    readonly property string policyPath: "/usr/share/polkit-1/actions/org.banditshell.charge-limit.policy"
+    readonly property var places: ["/usr/local/libexec/banditshell-charge-limit:/usr/share/polkit-1/actions/org.banditshell.charge-limit.policy", "/run/current-system/sw/bin/banditshell-charge-limit:/run/current-system/sw/share/polkit-1/actions/org.banditshell.charge-limit.policy"]
+    property string helperPath: "/usr/local/libexec/banditshell-charge-limit"
     readonly property string installCommand: `bash ${Quickshell.shellPath("install.sh")} --charge-limit`
 
     readonly property bool hold: Config.values.battery.holdCharge
@@ -22,6 +22,7 @@ Singleton {
     property bool probed: false
     property bool supported: false
     property bool helper: false
+    property bool nixos: false
     property int current: -1
     property var refused: null
     property bool settling: false
@@ -31,6 +32,7 @@ Singleton {
             probed: root.probed,
             supported: root.supported,
             helper: root.helper,
+            nixos: root.nixos,
             current: root.current,
             wanted: root.wanted,
             hold: root.hold,
@@ -117,8 +119,16 @@ for battery in /sys/class/power_supply/BAT*; do
     break
   fi
 done
-if [ -x ${root.helperPath} ] && [ -f ${root.policyPath} ] && command -v pkexec >/dev/null 2>&1; then
-  echo helper
+if command -v pkexec >/dev/null 2>&1; then
+  for place in ${root.places.join(" ")}; do
+    if [ -x "\${place%%:*}" ] && [ -f "\${place#*:}" ]; then
+      echo "helper \${place%%:*}"
+      break
+    fi
+  done
+fi
+if [ -e /etc/NIXOS ]; then
+  echo nixos
 fi
 `]
 
@@ -131,6 +141,9 @@ fi
                     recheck.reset();
                 root.supported = found.supported;
                 root.helper = found.helper;
+                root.nixos = found.nixos;
+                if (found.helperPath)
+                    root.helperPath = found.helperPath;
                 root.current = found.current;
                 root.probed = true;
                 if (judged >= 0 && found.current !== judged)

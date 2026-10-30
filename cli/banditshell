@@ -39,6 +39,20 @@
 #            keyboard|settings|notifications|island|hotkeys|files|wallpaper
 #                                and every menu; banditshell panel lists them all
 #
+# launcher                       rows any tool adds to the launcher, no plugin needed
+#   banditshell launcher list [<tool>]
+#                                the rows tools have added, as JSON
+#   banditshell launcher add <tool> <row> <title> [--subtitle <text>] [--icon <icon>] [--keywords <words>] [--until <span>] [--open <target>|--copy <text>|--run <command>]
+#                                add a row, or replace the tool's row of that
+#                                name; Enter opens a link or path, copies text or
+#                                runs the rest of the line as a command;
+#                                --until 10m makes it go away by itself
+#   banditshell launcher add <json>
+#                                the same row written as JSON, see
+#                                docs/plugins/push.md
+#   banditshell launcher remove <tool> [<row>]
+#                                take one row away, or every row of the tool
+#
 # output                         which device plays: the speakers or the headphones
 #   banditshell output           what plays, and which device is which
 #   banditshell output [speakers|headphones|toggle]
@@ -218,6 +232,10 @@
 #   banditshell doctor binds     the binds still in an old form, and where
 #   banditshell doctor binds rewrite
 #                                rewrite them, a dated .bak beside each file
+#
+# lock                           lock the screen
+#   banditshell lock             through logind when it runs, straight to the
+#                                shell when it does not
 #
 # unstick|watchdog               a frozen or crashed shell, lock screen included
 #   banditshell unstick          keep a trace of a frozen shell, stop it and
@@ -976,6 +994,19 @@ start_backup() {
     launch "$BACKUP"
 }
 
+flush_shells() {
+    local pid
+    for pid in "$@"; do
+        (cd "$HOME" && timeout 2 qs ipc --pid "$pid" call shell flush) >/dev/null 2>&1 || true
+    done
+}
+
+flush_running() {
+    local -a pids
+    mapfile -t pids < <(shell_pids)
+    flush_shells "${pids[@]}"
+}
+
 stop_shell() {
     local -a pids
     local pid alive tries=0
@@ -985,9 +1016,7 @@ stop_shell() {
         say_dry "stop the running shell (${pids[*]})"
         return 0
     fi
-    for pid in "${pids[@]}"; do
-        (cd "$HOME" && timeout 2 qs ipc --pid "$pid" call shell flush) >/dev/null 2>&1 || true
-    done
+    flush_shells "${pids[@]}"
     kill "${pids[@]}" 2>/dev/null || true
     while [ "$tries" -lt 40 ]; do
         alive=0
@@ -1050,13 +1079,18 @@ reach_hyprland() {
 }
 
 session_locked() {
-    local pid session
+    local pid session hint record
     pid=$(hyprctl instances 2>/dev/null | awk -v sig="$HYPRLAND_INSTANCE_SIGNATURE" '
         /^instance / { here = index($0, sig) > 0 }
         here && /pid:/ { print $NF; exit }
     ')
-    [ -n "$pid" ] && session=$(cat "/proc/$pid/sessionid" 2>/dev/null) || return 1
-    [ "$(loginctl show-session "$session" -p LockedHint --value 2>/dev/null)" = yes ]
+    if [ -n "$pid" ] && session=$(cat "/proc/$pid/sessionid" 2>/dev/null) &&
+        hint=$(loginctl show-session "$session" -p LockedHint --value 2>/dev/null); then
+        [ "$hint" = yes ]
+        return
+    fi
+    record="${XDG_RUNTIME_DIR:-}/banditshell-lock-hint-$(printf '%s' "${XDG_SESSION_ID:-auto}" | tr -cd 'A-Za-z0-9_-').json"
+    [ -n "${XDG_RUNTIME_DIR:-}" ] && grep -q '"session":"","told":true' "$record" 2>/dev/null
 }
 
 frozen_pid() {
@@ -1127,6 +1161,11 @@ unstick() {
     if session_locked; then
         loginctl lock-session >/dev/null 2>&1 || true
     fi
+}
+
+lock_screen() {
+    loginctl lock-session 2>/dev/null && return 0
+    ipc shell lock
 }
 
 answers() {
@@ -1533,6 +1572,45 @@ route_island() {
         ;;
     list) activity_call list ;;
     *) nope island "$verb" ;;
+    esac
+}
+
+route_launcher() {
+    local usage="launcher add <tool> <row> <title> [--subtitle <text>] [--icon <icon>] [--keywords <words>] [--until <span>] [--open <target>|--copy <text>|--run <command>]"
+    local row
+    case "${1:-}" in
+    "" | list)
+        [ $# -le 2 ] || say_usage "launcher list [<tool>]"
+        ipc launcher list "${2:-}" ;;
+    remove)
+        [ $# -ge 2 ] && [ $# -le 3 ] || say_usage "launcher remove <tool> [<row>]"
+        ipc launcher remove "$2" "${3:-}" ;;
+    add)
+        shift
+        if [ $# -eq 1 ] && [[ $1 == "{"* ]]; then
+            ipc launcher add "$1"
+            return
+        fi
+        [ $# -ge 3 ] || say_usage "$usage"
+        row="\"tool\":$(json_quote "$1"),\"id\":$(json_quote "$2"),\"title\":$(json_quote "$3")"
+        shift 3
+        while [ $# -gt 0 ]; do
+            if [ "$1" = --run ]; then
+                [ $# -ge 2 ] || { echo "banditshell: --run needs a command" >&2; exit 2; }
+                shift
+                row+=",\"run\":$(json_list "$@")"
+                break
+            fi
+            [ $# -ge 2 ] || { echo "banditshell: $1 needs a value" >&2; exit 2; }
+            case "$1" in
+            --subtitle | --icon | --open | --copy | --keywords) row+=",$(json_quote "${1#--}"):$(json_quote "$2")" ;;
+            --until) row+=",\"ttl\":$(json_quote "$2")" ;;
+            *) echo "banditshell: unknown option: $1" >&2; exit 2 ;;
+            esac
+            shift 2
+        done
+        ipc launcher add "{$row}" ;;
+    *) nope launcher "$1" ;;
     esac
 }
 
@@ -2842,6 +2920,17 @@ IpcHandler {
 EOF
 }
 
+live_theme_env() {
+    local name value session=""
+    [ -n "${QT_QPA_PLATFORMTHEME:-}" ] && [ -n "${XDG_CURRENT_DESKTOP:-}" ] ||
+        session=$(systemctl --user show-environment 2>/dev/null || true)
+    for name in QT_QPA_PLATFORMTHEME XDG_CURRENT_DESKTOP; do
+        value="${!name:-}"
+        [ -n "$value" ] || value=$(printf '%s\n' "$session" | sed -n "s/^$name=\([A-Za-z0-9_.:;-]*\)$/\1/p" | head -n 1)
+        [ -z "$value" ] || printf '%s=%s\n' "$name" "$value"
+    done
+}
+
 boot_root() {
     local work="$1" src="$2" shots="$3" source link
     mkdir -p "$src"
@@ -2856,8 +2945,10 @@ boot_root() {
     else
         cp "$SHELL_DIR/shell.qml" "$src/shell.qml"
     fi
-    mkdir -p "$work/home/.local/share" "$work/home/.config" "$work/home/Pictures"
+    mkdir -p "$work/home/.local/share" "$work/home/.config" "$work/home/Pictures" "$work/config"
+    [ ! -d "${XDG_CONFIG_HOME:-$HOME/.config}/qt6ct" ] || ln -s "${XDG_CONFIG_HOME:-$HOME/.config}/qt6ct" "$work/config/qt6ct"
     [ ! -d "${XDG_DATA_HOME:-$HOME/.local/share}/fonts" ] || ln -s "${XDG_DATA_HOME:-$HOME/.local/share}/fonts" "$work/home/.local/share/fonts"
+    [ ! -d "${XDG_DATA_HOME:-$HOME/.local/share}/icons" ] || ln -s "${XDG_DATA_HOME:-$HOME/.local/share}/icons" "$work/home/.local/share/icons"
     [ ! -d "${XDG_CONFIG_HOME:-$HOME/.config}/theme" ] || ln -s "${XDG_CONFIG_HOME:-$HOME/.config}/theme" "$work/home/.config/theme"
     [ ! -d "$HOME/Pictures/Wallpapers" ] || ln -s "$HOME/Pictures/Wallpapers" "$work/home/Pictures/Wallpapers"
 }
@@ -2966,7 +3057,7 @@ perf_usage() {
 
 perf_command() {
     local out="" runs=5 boots=5 only="" raw="" live="" work src config overrides tool pid link target limit=1800
-    local -a extra=()
+    local -a extra=() theme=()
     if [ "${1:-}" = live ]; then
         live=1
         boots=0
@@ -3041,11 +3132,12 @@ EOF
         [ ${#extra[@]} -eq 0 ] || printf ' %q' "${extra[@]}"
         printf ' >%q 2>%q\n' "$out/report.txt" "$out/progress.log"
     } >"$work/run.sh"
+    mapfile -t theme < <(live_theme_env)
     : >"$out/progress.log"
     echo "booting the real shell.qml headless $boots times, then opening every panel, menu and settings page $runs times; a few minutes, ctrl-c stops"
     (cd "$work/home" && exec setsid env -i PATH="$PATH" HOME="$work/home" LANG=C.UTF-8 \
         XDG_CONFIG_HOME="$work/config" XDG_STATE_HOME="$work/state" XDG_CACHE_HOME="$work/cache" XDG_RUNTIME_DIR="$work/runtime" \
-        timeout -s KILL "$limit" dbus-run-session --config-file="$work/bus.conf" -- \
+        "${theme[@]}" timeout -s KILL "$limit" dbus-run-session --config-file="$work/bus.conf" -- \
         bash "$work/run.sh") </dev/null >"$out/session.log" 2>&1 &
     pid=$!
     trap 'kill -KILL -- -"$pid" "$pid" 2>/dev/null || true; pkill -KILL -f "$src/shell.qml" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; rm -rf "$work"; echo "stopped" >&2; exit 130' INT TERM
@@ -3328,6 +3420,9 @@ U_DIR="" U_REMOTE="" U_CHANNEL="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET
 A_RESTART=0 A_HELPERS=0 A_DEPS="" A_DIRTY="" A_BLOCKED="" A_BUTTON="" A_SUMMARY=""
 U_WARNINGS=()
 HEALTH_WHY=""
+U_SETTINGS=null U_SETTINGS_NEXT="" U_SETTINGS_COPY="" U_SETTINGS_WHY=""
+U_SETTINGS_KEPT=()
+SETTINGS_STAY="config.json could not be put back as it was, so it stays as it is"
 
 ugit() { GIT_TERMINAL_PROMPT=0 LC_ALL=C git -C "$U_DIR" "$@"; }
 
@@ -3500,16 +3595,18 @@ update_meta() {
     printf '%s\n' "state=$U_STATE" "head=$U_HEAD" "target=$U_TARGET" "channel=$U_CHANNEL" "branch=$U_BRANCH" "headBranch=$U_BRANCH_NOW" \
         "remote=$U_REMOTE" "behind=$U_BEHIND" "ahead=$U_AHEAD" "skipped=$([ "$U_STATE" = skipped ] && echo 1 || echo 0)" \
         "checkedAt=$(update_fetched_at)" "version=$(update_label "$U_HEAD")" "targetVersion=$(update_label "$U_TARGET")" \
-        "previous=$U_PREVIOUS" "previousVersion=$(update_label "$U_PREVIOUS")"
+        "previous=$U_PREVIOUS" "previousVersion=$(update_label "$U_PREVIOUS")" \
+        "previousSettings=$(update_settings_back_to "$U_PREVIOUS" && echo 1 || echo 0)"
 }
 
 update_meta_json() {
-    printf '{"state":%s,"head":%s,"target":%s,"channel":%s,"branch":%s,"headBranch":%s,"remote":%s,"behind":%s,"ahead":%s,"skipped":%s,"checkedAt":%s,"version":%s,"targetVersion":%s,"previous":%s,"previousVersion":%s,"unpushed":%s' \
+    printf '{"state":%s,"head":%s,"target":%s,"channel":%s,"branch":%s,"headBranch":%s,"remote":%s,"behind":%s,"ahead":%s,"skipped":%s,"checkedAt":%s,"version":%s,"targetVersion":%s,"previous":%s,"previousVersion":%s,"previousSettings":%s,"unpushed":%s' \
         "$(json_quote "$U_STATE")" "$(json_quote "$U_HEAD")" "$(json_quote "$U_TARGET")" "$(json_quote "$U_CHANNEL")" "$(json_quote "$U_BRANCH")" \
         "$(json_quote "$U_BRANCH_NOW")" "$(json_quote "$U_REMOTE")" "$U_BEHIND" "$U_AHEAD" \
         "$([ "$U_STATE" = skipped ] && echo true || echo false)" "$(update_fetched_at)" \
         "$(json_quote "$(update_label "$U_HEAD")")" "$(json_quote "$(update_label "$U_TARGET")")" \
-        "$(json_quote "$U_PREVIOUS")" "$(json_quote "$(update_label "$U_PREVIOUS")")" "${U_UNPUSHED:-0}"
+        "$(json_quote "$U_PREVIOUS")" "$(json_quote "$(update_label "$U_PREVIOUS")")" \
+        "$(update_settings_back_to "$U_PREVIOUS" && echo true || echo false)" "${U_UNPUSHED:-0}"
 }
 
 update_facts() {
@@ -3670,9 +3767,9 @@ update_result() {
     while IFS= read -r line; do
         [ -z "$line" ] || aside_items+=("$line")
     done 2>/dev/null <"$UPDATE_STATE/aside" || true
-    printf '{"ok":%s,"hand":%s,"from":%s,"to":%s,"fromLabel":%s,"toLabel":%s,"why":%s,"aside":%s,"log":%s,"at":%s,"shown":false}\n' \
+    printf '{"ok":%s,"hand":%s,"from":%s,"to":%s,"fromLabel":%s,"toLabel":%s,"why":%s,"aside":%s,"settings":%s,"log":%s,"at":%s,"shown":false}\n' \
         "$ok" "$hand" "$(json_quote "$from")" "$(json_quote "$to")" "$(json_quote "$(update_label "$from")")" \
-        "$(json_quote "$(update_label "$to")")" "$(json_quote "$why")" "$(json_list "${aside_items[@]}")" \
+        "$(json_quote "$(update_label "$to")")" "$(json_quote "$why")" "$(json_list "${aside_items[@]}")" "$U_SETTINGS" \
         "$(json_quote "$FAILED_LOG")" "$(date +%s)" >"$UPDATE_STATE/result.json.next"
     mv -f "$UPDATE_STATE/result.json.next" "$UPDATE_STATE/result.json"
 }
@@ -3690,6 +3787,7 @@ update_plan() {
     say_dry "check that scripts/qmldirs.sh leaves the staged qmldir files alone"
     [ "$A_HELPERS" != 1 ] || say_dry "build the helpers in the staged tree"
     say_dry "record ${U_HEAD:0:7} in $UPDATE_STATE/previous"
+    [ ! -f "$CONFIG_FILE" ] || say_dry "keep a copy of config.json in $UPDATE_STATE/settings for going back"
     [ -z "$A_DIRTY" ] || say_dry "set aside ${A_DIRTY//$'\t'/, } with git stash"
     say_dry "git merge --ff-only ${U_TARGET:0:7}"
     [ "$A_HELPERS" != 1 ] || say_dry "copy the staged helpers into bin/"
@@ -3737,6 +3835,80 @@ update_verify() {
             update_fail "fatal: the helpers in the new version did not build, so nothing was changed (details: $UPDATE_STATE/build.log)"
         fi
     fi
+}
+
+update_settings_keep() {
+    local dir="$UPDATE_STATE/settings" name old i
+    local -a copies=()
+    [ -f "$CONFIG_FILE" ] && [[ $2 =~ ^[0-9a-f]{40,64}$ ]] || return 0
+    mkdir -p "$dir" || return 0
+    name="$dir/$(date +%s)-$1-$2.json"
+    if ! { cp -- "$CONFIG_FILE" "$name.next" && mv -f "$name.next" "$name"; } 2>/dev/null; then
+        rm -f "$name.next"
+        return 0
+    fi
+    for old in "$dir/"[0-9]*-"$1"-*.json; do
+        [ ! -f "$old" ] || copies+=("$old")
+    done
+    for ((i = 0; i < ${#copies[@]} - 10; i++)); do
+        rm -f "${copies[i]}"
+    done
+    printf '%s' "$name"
+}
+
+update_settings_find() {
+    local found="" file
+    [[ $2 =~ ^[0-9a-f]{40,64}$ ]] || return 0
+    for file in "$UPDATE_STATE/settings/"*-"$1-$2.json"; do
+        [ ! -f "$file" ] || found="$file"
+    done
+    printf '%s' "$found"
+}
+
+update_settings_back_to() {
+    [ -n "$1" ] && update_has_node && [ -n "$(update_settings_find before "$1")" ]
+}
+
+update_settings_plan() {
+    local before after kept line
+    U_SETTINGS=null U_SETTINGS_NEXT="" U_SETTINGS_COPY="" U_SETTINGS_KEPT=()
+    update_settings_back_to "$1" || return 0
+    before=$(update_settings_find before "$1")
+    after="$CONFIG_FILE"
+    [ "$3" != true ] || after=$(update_settings_find after "$2")
+    flush_running
+    U_SETTINGS_NEXT=$(mktemp "$UPDATE_STATE/settings/.next.XXXXXX") || { U_SETTINGS_NEXT=""; return 0; }
+    if ! kept=$(node "$U_DIR/services/update.js" settings "$before" "$after" "$CONFIG_FILE" "$U_SETTINGS_NEXT" 2>/dev/null); then
+        rm -f "$U_SETTINGS_NEXT"
+        U_SETTINGS_NEXT=""
+        U_SETTINGS_WHY="$SETTINGS_STAY"
+        return 0
+    fi
+    U_SETTINGS_COPY=$(update_settings_keep rollback "$2")
+    while IFS= read -r line; do
+        [ -z "$line" ] || U_SETTINGS_KEPT+=("$line")
+    done <<<"$kept"
+}
+
+update_settings_drop() {
+    rm -f "$U_SETTINGS_NEXT" "$U_SETTINGS_COPY"
+    U_SETTINGS_NEXT="" U_SETTINGS_COPY=""
+}
+
+update_settings_put() {
+    local real tmp
+    [ -n "$U_SETTINGS_NEXT" ] || return 0
+    real=$(readlink -f -- "$CONFIG_FILE" 2>/dev/null) || real="$CONFIG_FILE"
+    mkdir -p "$(dirname "$real")"
+    tmp=$(mktemp "$(dirname "$real")/.config.json.XXXXXX") || tmp=""
+    if [ -n "$tmp" ] && cat -- "$U_SETTINGS_NEXT" >"$tmp" && { [ ! -e "$real" ] || chmod --reference="$real" "$tmp"; } && mv -f "$tmp" "$real"; then
+        U_SETTINGS=$(printf '{"back":true,"kept":%s,"copy":%s}' "$(json_list "${U_SETTINGS_KEPT[@]}")" "$(json_quote "$U_SETTINGS_COPY")")
+    else
+        [ -z "$tmp" ] || rm -f "$tmp"
+        U_SETTINGS_WHY="$SETTINGS_STAY"
+    fi
+    rm -f "$U_SETTINGS_NEXT"
+    U_SETTINGS_NEXT=""
 }
 
 update_set_aside() {
@@ -3896,6 +4068,8 @@ update_apply() {
     printf '%s\n' "$U_HEAD" >"$UPDATE_STATE/previous"
     printf '%s\n' "$U_TARGET" >"$UPDATE_STATE/target"
     rm -f "$UPDATE_STATE/result.json"
+    flush_running
+    update_settings_keep before "$U_HEAD" >/dev/null
     update_log_mark
     update_set_aside
     update_merge
@@ -3909,7 +4083,7 @@ update_apply() {
 }
 
 update_finish_work() {
-    local mark="$1" ran="$2" restart="$A_RESTART" pid=""
+    local mark="$1" ran="$2" restart="$A_RESTART" pid="" loaded=1
     if [ -z "$ran" ] && ! running; then
         update_conclude "Updated to $(update_label "$(cat "$UPDATE_STATE/target")"). The shell is not running; start it with banditshell start."
         return 0
@@ -3926,7 +4100,13 @@ update_finish_work() {
             fi
         elif [ -n "$ran" ] && ! running; then
             update_restart "The reload did not take, restarting..." "the reload failed, the shell exited. A restart failed as well: " || return 1
+        else
+            loaded=0
         fi
+    fi
+    if [ "$loaded" = 1 ]; then
+        flush_running
+        update_settings_keep after "$(cat "$UPDATE_STATE/target")" >/dev/null
     fi
     update_conclude "Updated to $(update_label "$(cat "$UPDATE_STATE/target")")"
 }
@@ -3956,9 +4136,12 @@ update_roll_back() {
     target=$(cat "$UPDATE_STATE/target" 2>/dev/null || true)
     if dry; then
         say_dry "git reset --keep ${previous:0:7}, relaunch, write result.json, skip ${target:0:7}"
+        ! update_settings_back_to "$previous" || say_dry "put config.json back as it was on ${previous:0:7}, keeping settings changed since, and keep a copy of it as it is now"
         return 0
     fi
+    update_settings_plan "$previous" "$target" "$hand"
     if ! out=$(ugit reset --keep --quiet "$previous" 2>&1); then
+        update_settings_drop
         [ "$hand" = true ] && update_fail "$out"
         update_result false "$why. Going back failed too: $(printf '%s' "$out" | tail -1)"
         update_phase failed "$why. Going back failed too."
@@ -3969,11 +4152,19 @@ update_roll_back() {
     if [ "$relaunch" = 1 ]; then
         update_phase restart "Going back..."
         stop_shell || true
+        update_settings_put
         if launch "$SHELL_DIR"; then
             refresh_backup || true
         else
             start_backup || true
         fi
+    else
+        update_settings_put
+    fi
+    [ -z "$U_SETTINGS_WHY" ] || update_phase warning "$U_SETTINGS_WHY"
+    if [ "$U_SETTINGS" != null ] && [ "$UPDATE_JSON" = 0 ]; then
+        update_phase settings "config.json is back as it was on $(update_label "$previous")${U_SETTINGS_KEPT[0]:+, keeping ${U_SETTINGS_KEPT[*]}}"
+        [ -z "$U_SETTINGS_COPY" ] || update_phase settings "it was kept as it stood before going back in $U_SETTINGS_COPY"
     fi
     update_result false "$why" "$hand" "$previous"
     [ "$hand" = true ] || complain "update $(update_label "$target") did not start, back on $(update_label "$previous")"
@@ -4206,6 +4397,9 @@ notifications)
 island)
     route_island "$@"
     ;;
+launcher)
+    route_launcher "$@"
+    ;;
 output)
     route_output "$@"
     ;;
@@ -4255,6 +4449,10 @@ restart)
 unstick)
     [ $# -eq 0 ] || nope unstick "$1"
     unstick
+    ;;
+lock)
+    [ $# -eq 0 ] || nope lock "$1"
+    lock_screen
     ;;
 watchdog)
     [ $# -eq 0 ] || nope watchdog "$1"

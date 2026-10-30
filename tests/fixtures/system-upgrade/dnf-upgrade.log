@@ -1,0 +1,79 @@
+Script started on 2026-10-30 18:20:22+00:00 [COMMAND="stty cols 80 rows 24 2>/dev/null; exec dnf upgrade --refresh" <not executed on terminal>]
+Updating and loading repositories:
+[?25l Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m00s[0J Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 openh264 (From Cisco) - x86_ ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 - x86_64                     ???% |   0.0   B/s |   0.0   B |  00m00s[2A[0J Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 openh264 (From Cisco) - x86_ ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 - x86_64                     ???% |   0.0   B/s |   0.0   B |  00m00s[2A[0J Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 openh264 (From Cisco) - x86_ ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 - x86_64                     ???% |   0.0   B/s |   0.0   B |  00m00s[2A[0J Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m01s
+ Fedora 44 openh264 (From Cisco) - x86_ 100% |   3.0   B/s | 986.0   B |  00m00s
+ Fedora 44 - x86_64                     ???% |   0.0   B/s |   0.0   B |  00m01s[2A[0J Fedora 44 - x86_64 - Updates           100% |  26.9 KiB/s |  16.7 KiB |  00m01s
+ Fedora 44 openh264 (From Cisco) - x86_ 100% |   3.0   B/s | 986.0   B |  00m00s
+ Fedora 44 - x86_64                     100% |   2.0   B/s |  20.5 KiB |  00m00s[1A[0J Fedora 44 openh264 (From Cisco) - x86_ 100% |   1.5 KiB/s | 986.0   B |  00m01s
+ Fedora 44 - x86_64                     100% |   2.0   B/s |  20.5 KiB |  00m00s[0J Fedora 44 - x86_64                     100% |  32.9 KiB/s |  20.5 KiB |  00m01s
+]9;4;0;0\[?25hRepositories loaded.
+[1mPackage                 [0m [1mArch  [0m [1mVersion                [0m [1mRepository    [0m [1m     Size[0m
+Upgrading:
+[32m curl                   [0m x86_64 0:8.18.0-14.fc44        updates        480.0 KiB
+[2m   replacing curl       [0m [2mx86_64[0m [2m0:8.18.0-4.fc44        [0m [2mfedora        [0m [2m480.0 KiB[0m
+[32m libcurl                [0m x86_64 0:8.18.0-14.fc44        updates          1.0 MiB
+[2m   replacing libcurl    [0m [2mx86_64[0m [2m0:8.18.0-4.fc44        [0m [2mfedora        [0m [2m  1.0 MiB[0m
+[32m libsolv                [0m x86_64 [1m0:0.7.41-1.fc44        [0m updates        985.8 KiB
+[2m   replacing libsolv    [0m [2mx86_64[0m [2m0:0.7.40-2.fc44        [0m [2m89b2365028094e[0m [2m977.2 KiB[0m
+[32m sqlite-libs            [0m x86_64 0:3.51.2-2.fc44         updates          1.6 MiB
+[2m   replacing sqlite-libs[0m [2mx86_64[0m [2m0:3.51.2-1.fc44        [0m [2mfedora        [0m [2m  1.6 MiB[0m
+[32m tzdata                 [0m noarch [1m0:2026e-1.fc44         [0m updates          1.3 MiB
+[2m   replacing tzdata     [0m [2mnoarch[0m [2m0:2026a-1.fc44         [0m [2mfedora        [0m [2m  1.2 MiB[0m
+
+Transaction Summary:
+ Upgrading:          5 packages
+ Replacing:          5 packages
+
+Total size of inbound packages is 3 MiB. Need to download 3 MiB.
+After this operation, 25 KiB extra will be used (install 5 MiB, remove 5 MiB).
+Is this ok [y/N]: y
+[?25l[1/5] curl-0:8.18.0-14.fc44.x86_64        0% |   3.0   B/s |   0.0   B |  22h48m
+--------------------------------------------------------------------------------
+[0/5] Total                               0% |   3.0   B/s |   0.0   B |  10d12h]9;4;1;0\[2A[0J[1/5] libcurl-0:8.18.0-14.fc44.x86_64   100% |   2.4 MiB/s | 456.5 KiB |  00m00s
+[2/5] curl-0:8.18.0-14.fc44.x86_64       86% |   3.0   B/s | 208.0 KiB |  03h05m
+[3/5] libsolv-0:0.7.41-1.fc44.x86_64     46% | 447.3 KiB/s | 208.0 KiB |  00m00s
+--------------------------------------------------------------------------------
+[1/5] Total                              32% |   3.0   B/s | 872.5 KiB |  07d01h]9;4;1;32\[3A[0J[2/5] curl-0:8.18.0-14.fc44.x86_64       93% |   3.0   B/s | 224.0 KiB |  01h34m
+[3/5] libsolv-0:0.7.41-1.fc44.x86_64     46% | 447.3 KiB/s | 208.0 KiB |  00m00s
+--------------------------------------------------------------------------------
+[1/5] Total                              33% |   3.0   B/s | 888.5 KiB |  06d23h]9;4;1;33\[3A[0J[2/5] curl-0:8.18.0-14.fc44.x86_64      100% |   1.3 MiB/s | 240.5 KiB |  00m00s
+[3/5] libsolv-0:0.7.41-1.fc44.x86_64     53% | 447.3 KiB/s | 239.9 KiB |  00m00s
+[4/5] sqlite-libs-0:3.51.2-2.fc44.x86_6   0% |   2.0   B/s |   0.0   B |  04d17h
+--------------------------------------------------------------------------------
+[2/5] Total                              35% |   3.0   B/s | 937.0 KiB |  06d19h]9;4;1;35\[3A[0J[3/5] libsolv-0:0.7.41-1.fc44.x86_64    100% |   2.4 MiB/s | 451.9 KiB |  00m00s
+[4/5] sqlite-libs-0:3.51.2-2.fc44.x86_6   0% |   2.0   B/s |   0.0   B |  04d17h
+[5/5] tzdata-0:2026e-1.fc44.noarch        0% |   2.0   B/s |   0.0   B |  04d05h
+--------------------------------------------------------------------------------
+[3/5] Total                              43% |   3.0   B/s |   1.1 MiB |  05d23h]9;4;1;43\[3A[0J[4/5] sqlite-libs-0:3.51.2-2.fc44.x86_6 100% |   2.5 MiB/s | 796.6 KiB |  00m00s
+[5/5] tzdata-0:2026e-1.fc44.noarch       31% |   2.0   B/s | 224.0 KiB |  02d21h
+--------------------------------------------------------------------------------
+[4/5] Total                              81% |   3.0   B/s |   2.1 MiB |  01d22h]9;4;1;81\[2A[0J[5/5] tzdata-0:2026e-1.fc44.noarch       33% |   2.0   B/s | 239.9 KiB |  02d19h
+--------------------------------------------------------------------------------
+[4/5] Total                              82% |   3.0   B/s |   2.1 MiB |  01d20h]9;4;1;82\[2A[0J[5/5] tzdata-0:2026e-1.fc44.noarch      100% |   1.9 MiB/s | 713.6 KiB |  00m00s
+--------------------------------------------------------------------------------
+[5/5] Total                             100% |   3.1 MiB/s |   2.6 MiB |  00m01s]9;4;0;0\
+Running transaction
+[?25l[ 1/12] Verify package files              0% |   0.0   B/s |   0.0   B |  00m00s[0J[ 1/12] Verify package files            100% | 352.0   B/s |   5.0   B |  00m00s[0J[ 1/12] Verify package files            100% | 277.0   B/s |   5.0   B |  00m00s
+[ 2/12] Prepare transaction             100% | 305.0   B/s |  10.0   B |  00m00s[0J[ 2/12] Prepare transaction             100% | 238.0   B/s |  10.0   B |  00m00s
+[ 3/12] Upgrading libcurl-0:8.18.0-14.f   0% |   9.7 KiB/s | 478.0   B |  01m44s[0J[ 3/12] Upgrading libcurl-0:8.18.0-14.f 100% |   9.7 KiB/s |   1.0 MiB |  00m00s[0J[ 3/12] Upgrading libcurl-0:8.18.0-14.f 100% |   9.7 KiB/s |   1.0 MiB |  00m00s[0J[ 3/12] Upgrading libcurl-0:8.18.0-14.f 100% |   1.5 MiB/s |   1.0 MiB |  00m01s
+[ 4/12] Upgrading curl-0:8.18.0-14.fc44 100% |   1.2 MiB/s | 482.7 KiB |  00m00s[0J[ 4/12] Upgrading curl-0:8.18.0-14.fc44 100% |   1.2 MiB/s | 482.7 KiB |  00m00s[0J[ 4/12] Upgrading curl-0:8.18.0-14.fc44 100% |   1.2 MiB/s | 482.7 KiB |  00m00s
+>>> Running %triggerin scriptlet: filesystem-0:3.18-52.fc44.x86_64[1A[0J[ 4/12] Upgrading curl-0:8.18.0-14.fc44 100% |   1.2 MiB/s | 482.7 KiB |  00m00s[0J[ 4/12] Upgrading curl-0:8.18.0-14.fc44 100% |   1.1 MiB/s | 482.7 KiB |  00m00s
+[ 5/12] Upgrading tzdata-0:2026e-1.fc44  10% |   1.8 MiB/s | 158.1 KiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  10% |   1.8 MiB/s | 170.9 KiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  12% |   1.8 MiB/s | 200.1 KiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  18% |   1.8 MiB/s | 290.8 KiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  30% |   1.8 MiB/s | 482.9 KiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  34% |   1.8 MiB/s | 536.6 KiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  51% |   1.8 MiB/s | 804.1 KiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  56% | 878.3 KiB/s | 879.2 KiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  59% | 878.3 KiB/s | 924.0 KiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  61% | 878.3 KiB/s | 954.1 KiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  63% | 878.3 KiB/s | 985.5 KiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  66% | 878.3 KiB/s |   1.0 MiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  66% | 878.3 KiB/s |   1.0 MiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  67% | 878.3 KiB/s |   1.0 MiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  67% | 878.3 KiB/s |   1.0 MiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  67% | 171.7 KiB/s |   1.0 MiB |  00m02s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  70% | 171.7 KiB/s |   1.1 MiB |  00m02s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  70% | 171.7 KiB/s |   1.1 MiB |  00m02s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  71% | 171.7 KiB/s |   1.1 MiB |  00m02s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  72% | 171.7 KiB/s |   1.1 MiB |  00m02s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  72% | 171.7 KiB/s |   1.1 MiB |  00m02s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  72% |  88.4 KiB/s |   1.1 MiB |  00m04s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  72% |  88.4 KiB/s |   1.1 MiB |  00m04s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  73% |  88.4 KiB/s |   1.1 MiB |  00m04s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  74% |  88.4 KiB/s |   1.1 MiB |  00m04s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  75% |  88.4 KiB/s |   1.2 MiB |  00m04s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  82% |  88.4 KiB/s |   1.3 MiB |  00m03s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  83% |  88.4 KiB/s |   1.3 MiB |  00m02s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  90% |  88.4 KiB/s |   1.4 MiB |  00m01s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44  93% | 323.7 KiB/s |   1.4 MiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44 100% |  66.6 KiB/s |   1.5 MiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44 100% |  66.6 KiB/s |   1.5 MiB |  00m00s[0J[ 5/12] Upgrading tzdata-0:2026e-1.fc44 100% | 276.0 KiB/s |   1.5 MiB |  00m06s
+[ 6/12] Upgrading sqlite-libs-0:3.51.2- 100% |  11.0 MiB/s |   1.6 MiB |  00m00s[0J[ 6/12] Upgrading sqlite-libs-0:3.51.2- 100% |  11.0 MiB/s |   1.6 MiB |  00m00s[0J[ 6/12] Upgrading sqlite-libs-0:3.51.2- 100% |   7.0 MiB/s |   1.6 MiB |  00m00s
+[ 7/12] Upgrading libsolv-0:0.7.41-1.fc   0% |  13.1 KiB/s | 268.0   B |  01m15s[0J[ 7/12] Upgrading libsolv-0:0.7.41-1.fc 100% |  13.1 KiB/s | 987.7 KiB |  00m00s[0J[ 7/12] Upgrading libsolv-0:0.7.41-1.fc 100% |  15.1 MiB/s | 987.7 KiB |  00m00s
+[ 8/12] Removing curl-0:8.18.0-4.fc44.x  83% | 170.0   B/s |  15.0   B |  00m00s[0J[ 8/12] Removing curl-0:8.18.0-4.fc44.x 100% | 170.0   B/s |  18.0   B |  00m00s[0J[ 8/12] Removing curl-0:8.18.0-4.fc44.x 100% | 142.0   B/s |  18.0   B |  00m00s
+[ 9/12] Removing tzdata-0:2026a-1.fc44. 100% |   0.0   B/s |   1.8 KiB |  00m00s[0J[ 9/12] Removing tzdata-0:2026a-1.fc44. 100% |  18.5 KiB/s |   1.8 KiB |  00m00s
+[10/12] Removing libcurl-0:8.18.0-4.fc4   0% |   0.0   B/s |   0.0   B |  00m00s[0J[10/12] Removing libcurl-0:8.18.0-4.fc4 100% | 307.0   B/s |   7.0   B |  00m00s[0J[10/12] Removing libcurl-0:8.18.0-4.fc4 100% |  92.0   B/s |   7.0   B |  00m00s
+[11/12] Removing sqlite-libs-0:3.51.2-1 100% |   9.8 KiB/s |   9.0   B |  00m00s[0J[11/12] Removing sqlite-libs-0:3.51.2-1 100% |   2.9 KiB/s |   9.0   B |  00m00s
+[12/12] Removing libsolv-0:0.7.40-2.fc4 100% |   0.0   B/s |  13.0   B |  00m00s[0J[12/12] Removing libsolv-0:0.7.40-2.fc4 100% |   1.7 KiB/s |  13.0   B |  00m00s
+>>> Running %triggerin scriptlet: glibc-common-0:2.43-9.fc44.x86_64[1A[0J[12/12] Removing libsolv-0:0.7.40-2.fc4 100% |   1.7 KiB/s |  13.0   B |  00m00s[0J[12/12] Removing libsolv-0:0.7.40-2.fc4 100% |   1.7 KiB/s |  13.0   B |  00m00s
+>>> Running %triggerpostun scriptlet: glibc-common-0:2.43-9.fc44.x86_64[1A[0J[12/12] Removing libsolv-0:0.7.40-2.fc4 100% |   1.7 KiB/s |  13.0   B |  00m00s[0J[12/12] Removing libsolv-0:0.7.40-2.fc4 100% |  46.0   B/s |  13.0   B |  00m00s
+]9;4;0;0\[?25hComplete!
+]9;4;0;0\[?25h
+Script done on 2026-10-30 18:20:37+00:00 [COMMAND_EXIT_CODE="0"]

@@ -62,7 +62,7 @@ ShellRoot {
                     width: modelData.w
                     height: modelData.h
                     radius: modelData.radius ?? Appearance.rounding.large
-                    color: Appearance.colour.surface
+                    color: Appearance.colour.readableSurface
                 }
             }
 

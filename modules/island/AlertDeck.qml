@@ -6,6 +6,7 @@ import qs.config
 import qs.components
 import qs.modules.notifications
 import qs.services
+import "deck-fit.js" as DeckFit
 
 Item {
     id: root
@@ -37,6 +38,8 @@ Item {
     property real maxHeight: 100000
 
     property bool footed: true
+
+    property bool wholeCards: false
 
     property real contentLead: -1
 
@@ -303,7 +306,17 @@ Item {
         return slots.itemAt(0)?.lead ?? null;
     }
 
-    readonly property real viewMax: Math.max(root.foldedHeight, root.maxHeight - root.footerHeight)
+    readonly property var settledTops: {
+        root.reshaped;
+        const out = [0];
+        for (let i = 0; i < slots.count; i++)
+            out.push(out[i] + (slots.itemAt(i)?.settledRoom ?? 0));
+        return out;
+    }
+    readonly property bool trimmed: root.wholeCards && root.unfolded.length === 0
+    readonly property int fits: DeckFit.wholeCards(root.settledTops, root.maxHeight - (root.footed ? root.footerHeight : 0), root.cards.length)
+    readonly property var hiddenCards: root.trimmed ? root.cards.slice(root.fits) : []
+    readonly property real viewMax: Math.max(root.foldedHeight, root.trimmed ? root.settledTops[root.fits] : root.maxHeight - root.footerHeight)
     readonly property real settledFull: {
         root.reshaped;
         return root.sumOf("settledRoom");
@@ -335,7 +348,7 @@ Item {
     readonly property real settledView: Math.min(root.settledFull, root.viewMax)
     readonly property real spreadProgress: Math.abs(root.settledReach - root.lockedList) < 0.5 ? 1 : Math.max(0, Math.min(1, (root.reachList - root.lockedList) / (root.settledReach - root.lockedList)))
     readonly property real spreadHeight: Math.min(root.listHeight, root.lockedView + (root.settledView - root.lockedView) * root.spreadProgress)
-    readonly property real scrollMax: Math.max(0, root.listHeight - root.spreadHeight)
+    readonly property real scrollMax: root.trimmed ? 0 : Math.max(0, root.listHeight - root.spreadHeight)
     readonly property real scrolled: Math.min(scroll.value, root.scrollMax)
 
     readonly property real fullHeight: {
@@ -346,7 +359,7 @@ Item {
             if (slot && !slot.leaving)
                 sum += slot.cardHeight + Math.max(slot.gapTarget, slot.gapShown);
         }
-        return Math.min(sum, Math.max(0, root.maxHeight - root.footerHeight)) + (root.footed && root.behind.length > 0 ? root.footerHeight : 0);
+        return Math.min(sum, root.trimmed ? root.viewMax : Math.max(0, root.maxHeight - root.footerHeight)) + (root.footed && root.behind.length > 0 ? root.footerHeight : 0);
     }
 
     readonly property bool handling: {

@@ -19,3 +19,12 @@ function onStart(hint, told, lockUp) {
         return "leave";
     return told === false ? "clear" : "relock";
 }
+
+function heldWithoutLogind(text) {
+    try {
+        const data = JSON.parse(text);
+        return data?.session === "" && data.told === true;
+    } catch (e) {
+    }
+    return false;
+}

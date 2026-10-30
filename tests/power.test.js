@@ -201,10 +201,11 @@ test("the active profile is read from either daemon's output", () => {
 });
 
 test("the charge probe tells whether the firmware has a limit, where it sits and whether the helper is in", () => {
-    assert.deepStrictEqual(Charge.parseProbe("threshold 80\nhelper\n"), { supported: true, current: 80, helper: true });
-    assert.deepStrictEqual(Charge.parseProbe("threshold 100\n"), { supported: true, current: 100, helper: false });
-    assert.deepStrictEqual(Charge.parseProbe("threshold \n"), { supported: true, current: -1, helper: false });
-    assert.deepStrictEqual(Charge.parseProbe("helper\n"), { supported: false, current: -1, helper: true });
+    assert.deepStrictEqual(Charge.parseProbe("threshold 80\nhelper /usr/local/libexec/banditshell-charge-limit\n"), { supported: true, current: 80, helper: true, helperPath: "/usr/local/libexec/banditshell-charge-limit", nixos: false });
+    assert.deepStrictEqual(Charge.parseProbe("threshold 100\n"), { supported: true, current: 100, helper: false, helperPath: "", nixos: false });
+    assert.deepStrictEqual(Charge.parseProbe("threshold \n"), { supported: true, current: -1, helper: false, helperPath: "", nixos: false });
+    assert.deepStrictEqual(Charge.parseProbe("helper\n"), { supported: false, current: -1, helper: true, helperPath: "", nixos: false });
+    assert.deepStrictEqual(Charge.parseProbe("threshold 60\nhelper /run/current-system/sw/bin/banditshell-charge-limit\nnixos\n"), { supported: true, current: 60, helper: true, helperPath: "/run/current-system/sw/bin/banditshell-charge-limit", nixos: true });
 });
 
 test("holding off the charge writes 100, and the hold stays inside what the helper takes", () => {
@@ -246,6 +247,7 @@ test("the row says why the limit is not holding and what to run", () => {
     assert.strictEqual(Charge.trouble(Object.assign({}, base, { probed: false }), command), "");
     assert.match(Charge.trouble(Object.assign({}, base, { supported: false }), command), /no charge limit/);
     assert.strictEqual(Charge.trouble(Object.assign({}, base, { helper: false }), command), "needs the helper · run bash install.sh --charge-limit");
+    assert.strictEqual(Charge.trouble(Object.assign({}, base, { helper: false, nixos: true }), command), "needs the helper · import nix/charge-limit.nix in your NixOS config");
     assert.strictEqual(Charge.trouble(base, command), "");
     assert.match(Charge.trouble(Object.assign({}, base, { refused: { wanted: 80, got: 100, failed: false } }), command), /kept it at 100%/);
     assert.match(Charge.trouble(Object.assign({}, base, { refused: { wanted: 80, got: 100, failed: true } }), command), /refused/);
