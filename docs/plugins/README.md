@@ -10,6 +10,9 @@ ranking, the actions menu, learned usage, aliases, hotkeys, Tab completion,
 the `?` page and `banditshell panel launcher run <id>` like any built-in row.
 `docs/architecture/launcher-sources.md` describes that contract.
 
+A tool that only wants to show a row or two needs no plugin:
+`banditshell launcher add` pins one, see [push.md](push.md).
+
 A plugin runs as you, with your permissions, like a script command. There is
 no sandbox, so only install plugins you would run yourself.
 

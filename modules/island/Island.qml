@@ -1318,14 +1318,20 @@ Item {
                         clip: true
                         visible: layer.ghostness > 0.01
 
-                        NotificationCard {
-                            y: -uncovered.y
-                            width: root.largeWidth
-                            entry: root.ghost
-                            enabled: false
-                            scale: layer.width / Math.max(1, root.largeWidth)
-                            transformOrigin: Item.TopLeft
-                            opacity: 1 - roll.value
+                        Loader {
+                            id: ghostCard
+
+                            active: layer.index === 0 && (!!root.ghost || ghostCard.status === Loader.Ready)
+
+                            sourceComponent: NotificationCard {
+                                y: -uncovered.y
+                                width: root.largeWidth
+                                entry: root.ghost
+                                enabled: false
+                                scale: layer.width / Math.max(1, root.largeWidth)
+                                transformOrigin: Item.TopLeft
+                                opacity: 1 - roll.value
+                            }
                         }
                     }
                 }

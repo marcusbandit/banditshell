@@ -81,4 +81,6 @@ Singleton {
                 flag.reload();
         }
     }
+
+    Component.onCompleted: Obs.reach()
 }
