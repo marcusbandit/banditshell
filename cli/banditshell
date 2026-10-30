@@ -1594,6 +1594,7 @@ plugin_dir() {
 }
 
 plugin_manifest() {
+    command -v node >/dev/null || { echo "banditshell: plugin needs node (nodejs), which install.sh puts in place" >&2; exit 1; }
     node "$SHELL_DIR/scripts/plugin-manifest.js" "$@"
 }
 
