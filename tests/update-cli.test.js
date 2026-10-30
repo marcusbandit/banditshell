@@ -677,13 +677,12 @@ test("a restart class update restarts the shell into the new tree and refreshes 
     assert.ok(fs.existsSync(backupFile(world, "services/Thing.qml")));
 });
 
-test("a restarted shell gets a systemd scope of its own, so stopping what ran the update leaves it running", () => {
+function restartUnder(systemdRun) {
     const world = makeWorld();
     const runs = path.join(world.root, "systemd-run.calls");
-    fs.writeFileSync(path.join(world.fakebin, "systemctl"), "#!/bin/sh\n", { mode: 0o755 });
     fs.writeFileSync(path.join(world.fakebin, "systemd-run"), `#!/bin/sh
-[ "$1" = --version ] && { echo "systemd 262 (262-1-arch)"; exit 0; }
 echo "$*" >>"${runs}"
+${systemdRun}
 while [ "$1" != -- ]; do shift; done
 shift
 exec "$@"
@@ -696,10 +695,18 @@ exec "$@"
     const got = applyTo(world, target);
     assert.strictEqual(got.status, 0, got.err + got.out);
     assert.strictEqual(pids(world).length, 1);
-    const calls = fs.readFileSync(runs, "utf8").trim().split("\n");
+    return fs.readFileSync(runs, "utf8").trim().split("\n").filter(call => !call.endsWith("-- true"));
+}
+
+test("a restarted shell gets a systemd scope of its own, so stopping what ran the update leaves it running", () => {
+    const calls = restartUnder("");
     assert.strictEqual(calls.length, 2);
     for (const call of calls)
-        assert.match(call, new RegExp(`^--user --scope --quiet --collect --unit=banditshell-shell-\\d+ --expand-environment=no -- qs -d -p ${world.live}$`));
+        assert.match(call, /^--user --scope --quiet --collect --expand-environment=no --unit=banditshell-shell-\d+ -- qs -d -p \S+\/live$/);
+});
+
+test("a shell that cannot get a scope of its own still starts and restarts", () => {
+    assert.deepStrictEqual(restartUnder("exit 1"), []);
 });
 
 const progress = world => {

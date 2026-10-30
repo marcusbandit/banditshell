@@ -759,16 +759,19 @@ cached_pid() {
 }
 
 own_scope() {
-    local -a scope=(systemd-run --user --scope --quiet --collect "--unit=banditshell-$1-$(date +%s%N)")
-    local version
+    local -a scope=(systemd-run --user --scope --quiet --collect)
+    local unit
+    unit="--unit=banditshell-$1-$(date +%s%N)"
     shift
-    if ! command -v systemd-run >/dev/null 2>&1 || ! systemctl --user show-environment >/dev/null 2>&1; then
+    if ! command -v systemd-run >/dev/null 2>&1; then
         "$@"
-        return
+    elif "${scope[@]}" --expand-environment=no -- true >/dev/null 2>&1; then
+        "${scope[@]}" --expand-environment=no "$unit" -- "$@"
+    elif "${scope[@]}" -- true >/dev/null 2>&1; then
+        "${scope[@]}" "$unit" -- "$@"
+    else
+        "$@"
     fi
-    version=$(systemd-run --version 2>/dev/null | awk 'NR == 1 { print $2 + 0 }')
-    [ "${version:-0}" -lt 254 ] || scope+=(--expand-environment=no)
-    "${scope[@]}" -- "$@"
 }
 
 detach() {
