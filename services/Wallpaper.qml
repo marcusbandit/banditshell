@@ -38,14 +38,15 @@ Singleton {
     property string verified: ""
     property string missing: ""
 
-    readonly property string current: {
-        if (!Config.ready)
-            return "";
-        const want = root.configured;
-        if (!want || want === root.missing)
-            return root.fallback;
-        return want === root.verified || root.available.indexOf(want) >= 0 ? want : "";
-    }
+    readonly property string current: Library.shown({
+        ready: Config.ready,
+        loaded: Config.loaded,
+        want: root.configured,
+        missing: root.missing,
+        verified: root.verified,
+        available: root.available,
+        fallback: root.fallback
+    })
 
     onConfiguredChanged: root.verify()
 

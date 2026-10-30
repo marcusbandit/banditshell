@@ -79,3 +79,12 @@ function merged(map, updates) {
     }
     return out;
 }
+
+function shown(state) {
+    if (!state.ready)
+        return state.loaded ? state.fallback : "";
+    const want = state.want;
+    if (!want || want === state.missing)
+        return state.fallback;
+    return want === state.verified || state.available.indexOf(want) >= 0 ? want : "";
+}

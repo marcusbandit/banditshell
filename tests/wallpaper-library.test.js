@@ -9,7 +9,7 @@ const ROOT = path.resolve(__dirname, "..");
 const SCRIPT = path.join(ROOT, "scripts/wallpaper-library.py");
 const PYTHON = spawnSync("sh", ["-c", "command -v python3"], { encoding: "utf8" }).stdout.trim();
 const src = fs.readFileSync(path.join(ROOT, "services/wallpaper-library.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Library = new Function(src + "\nreturn { read, kept, merged };")();
+const Library = new Function(src + "\nreturn { read, kept, merged, shown };")();
 
 function rig() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "wallpaper-library-"));
@@ -130,4 +130,13 @@ test.describe("library lines", () => {
         assert.deepStrictEqual(Library.merged(map, { "/a": null, "/c": 3 }), { "/b": 2, "/c": 3 });
         assert.deepStrictEqual(map, { "/a": 1, "/b": 2 });
     });
+});
+
+test("the shown wallpaper waits for the first read, falls back while config.json is unreadable, then follows the file", () => {
+    const base = { want: "/w/sea.png", missing: "", verified: "", available: ["/w/sea.png"], fallback: "/s/moonrise.png" };
+    assert.strictEqual(Library.shown({ ...base, ready: false, loaded: false }), "");
+    assert.strictEqual(Library.shown({ ...base, ready: false, loaded: true, want: "" }), "/s/moonrise.png");
+    assert.strictEqual(Library.shown({ ...base, ready: true, loaded: true }), "/w/sea.png");
+    assert.strictEqual(Library.shown({ ...base, ready: true, loaded: true, missing: "/w/sea.png" }), "/s/moonrise.png");
+    assert.strictEqual(Library.shown({ ...base, ready: true, loaded: true, want: "/w/new.png" }), "");
 });
