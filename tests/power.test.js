@@ -9,6 +9,7 @@ const ROOT = path.resolve(__dirname, "..");
 const load = (file, names) => new Function(fs.readFileSync(path.join(ROOT, "services", file), "utf8") + `\nreturn { ${names.join(", ")} };`)();
 
 const Battery = load("battery.js", ["lowStep", "countdownMessage", "nearlyEmptyChoice", "nearlyEmptyAction", "afterResume", "nearlyEmptyFraction", "rearmMargin", "graceSeconds"]);
+const Catalogue = new Function(fs.readFileSync(path.join(ROOT, "modules/settings/catalogue.js"), "utf8").replace(/^\.pragma .*$/m, "") + "\nreturn { PAGE_BY_ID };")();
 const Suspension = load("suspension.js", ["parseHibernate", "resolve", "commandFor", "logindCommand", "logoutCommand"]);
 const Lid = load("lid.js", ["internalOutput", "hasLid", "externalScreens", "differsFromLogind", "chooseAction", "closedFrom", "closedFromProperty"]);
 const Profile = load("powerprofile.js", ["nameFor", "profileFor", "parseProbe", "parseActive", "choices"]);
@@ -79,13 +80,20 @@ test("the warning moves with the key", () => {
 });
 
 test("nearly empty reads sleep in Settings and still stores suspend", () => {
-    assert.strictEqual(Battery.nearlyEmptyChoice("suspend", 5), "sleep at 5%");
-    assert.strictEqual(Battery.nearlyEmptyChoice("hibernate", 5), "hibernate at 5%");
-    assert.strictEqual(Battery.nearlyEmptyChoice("nothing", 5), "nothing");
+    assert.strictEqual(Battery.nearlyEmptyChoice("suspend"), "sleep");
+    assert.strictEqual(Battery.nearlyEmptyChoice("hibernate"), "hibernate");
+    assert.strictEqual(Battery.nearlyEmptyChoice("nothing"), "nothing");
+    assert.strictEqual(Battery.nearlyEmptyAction("sleep"), "suspend");
     assert.strictEqual(Battery.nearlyEmptyAction("sleep at 5%"), "suspend");
     assert.strictEqual(Battery.nearlyEmptyAction("suspend at 5%"), "suspend");
     assert.strictEqual(Battery.nearlyEmptyAction("hibernate at 5%"), "hibernate");
     assert.strictEqual(Battery.nearlyEmptyAction("nothing"), "nothing");
+});
+
+test("the nearly empty row names the level the shell acts at", () => {
+    const rows = Catalogue.PAGE_BY_ID.battery.groups.flatMap(g => g.rows);
+    const row = rows.find(r => r.k === "lowAction");
+    assert.strictEqual(row.label, `At ${Math.round(Battery.nearlyEmptyFraction * 100)}%`);
 });
 
 test("hibernate needs the disk state and a yes from logind, or swap when logind is silent", () => {

@@ -245,6 +245,8 @@ Column {
     }
 
     MenuLayer {
+        id: pairLayer
+
         readonly property string focusGroup: "pair"
 
         width: root.width
@@ -266,6 +268,7 @@ Column {
 
         Fact {
             visible: !Bluetooth.strangers.length
+            leftPadding: Appearance.padding.normal * 2 + Appearance.font.iconSize - pairLayer.indent
             text: "put the device in pairing mode"
         }
     }

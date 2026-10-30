@@ -70,7 +70,7 @@ Singleton {
     }
 
     function nearlyEmptyChoice(action: string): string {
-        return LowBattery.nearlyEmptyChoice(action, root.nearlyEmptyPercent);
+        return LowBattery.nearlyEmptyChoice(action);
     }
 
     function nearlyEmptyAction(choice: string): string {

@@ -613,8 +613,8 @@ test("the power rows are served by config or by the system", () => {
 });
 
 test("hibernate is greyed where the machine cannot do it", () => {
-    const can = { hibernatePossible: true, nearlyEmptyPercent: 5 };
-    const cannot = { hibernatePossible: false, nearlyEmptyPercent: 5 };
+    const can = { hibernatePossible: true };
+    const cannot = { hibernatePossible: false };
     for (const k of ["lidBattery", "lowAction"]) {
         const row = Catalogue.ROW_BY_KEY[k];
         assert.deepStrictEqual(Catalogue.val(row.unavailable, can), [], k);
@@ -622,8 +622,8 @@ test("hibernate is greyed where the machine cannot do it", () => {
         assert.strictEqual(off.length, 1, k);
         assert.ok(Catalogue.options(row, cannot).some(o => o[0] === off[0] && /^hibernate/.test(o[0])), k);
     }
-    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[1]), ["sleep at 5%", "hibernate at 5%", "do nothing"]);
-    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[0]), ["sleep at 5%", "hibernate at 5%", "nothing"]);
+    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[1]), ["sleep", "hibernate", "do nothing"]);
+    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[0]), ["sleep", "hibernate", "nothing"]);
     assert.strictEqual(Catalogue.show(Catalogue.ROW_BY_KEY.lowAction, "nothing", can), "do nothing");
 });
 

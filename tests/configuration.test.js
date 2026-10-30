@@ -324,6 +324,11 @@ test.describe("upgrade", () => {
         assert.strictEqual(Configuration.upgradeValue("sidebar.clock.style", "small"), "stacked");
     });
 
+    test.it("drops the clipboard preview size that no row reads any more", () => {
+        const old = { clipboard: { preview: 132, previewLines: 4 } };
+        assert.deepStrictEqual(Configuration.upgrade(old), { clipboard: { previewLines: 4 } });
+    });
+
     test.it("keeps an open clock that was already chosen when it upgrades the small one", () => {
         const old = { sidebar: { clock: { style: "small", wideStyle: "one line" } } };
         assert.deepStrictEqual(Configuration.upgrade(old).sidebar.clock, { style: "stacked", size: "small", wideStyle: "one line" });
