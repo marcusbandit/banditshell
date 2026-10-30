@@ -1319,7 +1319,9 @@ Item {
                         visible: layer.ghostness > 0.01
 
                         Loader {
-                            active: layer.index === 0 && !!root.ghost
+                            id: ghostCard
+
+                            active: layer.index === 0 && (!!root.ghost || ghostCard.status === Loader.Ready)
 
                             sourceComponent: NotificationCard {
                                 y: -uncovered.y

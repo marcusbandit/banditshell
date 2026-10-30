@@ -568,7 +568,7 @@ PanelWindow {
             id: streamPanel
 
             anchors.fill: parent
-            active: chassis.streamed || chassis.streamReach > 0
+            active: chassis.streamed || chassis.streamReach > 0 || streamPanel.status === Loader.Ready
 
             sourceComponent: StreamPanel {
                 reach: chassis.streamReach

@@ -82,5 +82,5 @@ Singleton {
         }
     }
 
-    Component.onCompleted: Obs.migrate()
+    Component.onCompleted: Obs.reach()
 }

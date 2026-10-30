@@ -7,7 +7,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "Startup builds the tour card and stream panel only when they show"
+          "text": "The shell starts with less work while the tour and streaming are off"
         }
       ]
     },

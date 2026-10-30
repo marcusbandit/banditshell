@@ -238,7 +238,7 @@ PanelWindow {
         Loader {
             id: cardLoader
 
-            active: Tour.running || Tour.parting || shown.value > 0.001
+            active: win.mine && (Tour.running || Tour.parting) || shown.value > 0.001
 
             onLoaded: if (shown.value < 0.05) {
                 glideX.snap();
