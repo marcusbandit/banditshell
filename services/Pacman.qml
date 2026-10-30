@@ -74,15 +74,10 @@ Singleton {
         root.fetching = fetch;
         prober.command = ["sh", "-c", `
             export LC_ALL=C
-            tool=
-            for name in pacman apt-get dnf zypper; do
-                if command -v "$name" >/dev/null 2>&1; then
-                    tool=\${name%-get}
-                    break
-                fi
-            done
-            [ -n "$tool" ] || { echo present=0; exit 0; }
+            found=$("$3" tool) || { echo present=0; exit 0; }
+            tool=$(printf '%s\\n' "$found" | head -n 1)
             echo present=1
+            case "$found" in *rolling*) echo rolling=1 ;; esac
             printf 'tool=%s\\n' "$tool"
             running=$(uname -r)
             printf 'running=%s\\n' "$running"
@@ -113,7 +108,6 @@ Singleton {
                 else
                     echo stale=0
                 fi
-                grep -qE '^ID="?opensuse-(tumbleweed|slowroll|microos)"?$' /etc/os-release 2>/dev/null && echo rolling=1
             fi
             [ "$2" = fetch ] || exit 0
             case "$tool" in
@@ -130,7 +124,7 @@ Singleton {
             esac
             printf 'code=%s\\n' "$?"
             printf '%s\\n' "$out" | sed 's/^/|/'
-        `, "sh", root.kernel, fetch ? "fetch" : "local"];
+        `, "sh", root.kernel, fetch ? "fetch" : "local", `${Quickshell.shellDir}/scripts/system-upgrade.sh`];
         prober.running = true;
     }
 

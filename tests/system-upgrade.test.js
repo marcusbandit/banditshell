@@ -265,8 +265,8 @@ test("dnf stopped mid-download says nothing changed, even though dnf exits 1", (
 test("a recorded zypper upgrade preloads, retrieves, checks conflicts, installs, then runs scripts", () => {
     const log = fixture("zypper-upgrade.log");
     const asked = run(log.slice(0, log.indexOf("(y\x1b[1;39;49m)\x1b[0m\x1b[1;39;49m: ") + 30), 0, "zypper");
-    assert.strictEqual(asked.question.text, "Continue?");
-    assert.ok(Upgrade.proceeds(asked.question));
+    assert.strictEqual(asked.question.text, "This also removes 1 package. Go on?");
+    assert.strictEqual(Upgrade.proceeds(asked.question), false);
     const { state, seen } = replay("zypper", "zypper-upgrade.log");
     assert.deepStrictEqual(seen, ["auth", "sync", "resolve", "download", "check", "install", "hooks"]);
     assert.strictEqual(state.total, 12);
@@ -285,6 +285,39 @@ test("zypper answered no is a cancel, and nothing to do is up to date", () => {
     assert.strictEqual(Upgrade.outcome(declined, 4), "cancelled");
     assert.strictEqual(Upgrade.outcome(run(fixture("zypper-nothing.log"), 0, "zypper"), 0), "current");
     assert.strictEqual(run("Trying to exit gracefully...\r\n", 0, "zypper").interrupted, true);
+});
+
+test("a new signing key or a removal waits for an answer instead of going ahead", () => {
+    const key = run("Importing OpenPGP key 0x105EF944:\r\n UserID     : \"RPM Fusion free repository for Fedora (2020)\"\r\nIs this ok [y/N]: ", 0, "dnf");
+    assert.strictEqual(key.question.text, "Trust this new package signing key?");
+    assert.strictEqual(Upgrade.proceeds(key.question), false);
+    const removes = run("2 upgraded, 0 newly installed, 1 to remove and 0 not upgraded.\r\nDo you want to continue? [Y/n] ", 0, "apt");
+    assert.strictEqual(removes.question.text, "This also removes 1 package. Go on?");
+    assert.strictEqual(Upgrade.proceeds(removes.question), false);
+    const dnf = run("Transaction Summary:\r\n Upgrading:          2 packages\r\n Removing:           2 packages\r\nIs this ok [y/N]: ", 0, "dnf");
+    assert.strictEqual(dnf.question.text, "This also removes 2 packages. Go on?");
+});
+
+test("zypper's reboot-needed and repo-skipped codes still mean updated", () => {
+    const state = run(fixture("zypper-upgrade.log"), 0, "zypper");
+    for (const code of [0, 102, 103, 106])
+        assert.strictEqual(Upgrade.outcome(state, code), "done", `code ${code}`);
+    assert.strictEqual(Upgrade.outcome(state, 4), "failed");
+    assert.strictEqual(Upgrade.outcome(run("", 0, "dnf"), 102), "failed");
+});
+
+test("a refused password reads the same for every tool", () => {
+    for (const tool of ["apt", "dnf", "zypper"])
+        assert.match(Upgrade.explain(run("Error executing command as another user: Not authorized\r\n", 0, tool), 127), /refused/, tool);
+});
+
+test("dnf4 download and transaction lines read like dnf5", () => {
+    const state = run("Total download size: 3.0 M\r\nIs this ok [y/N]: y\r\nDownloading Packages:\r\n(2/5): libcurl-8.2.1-4.fc39.x86_64.rpm   1.0 MB/s | 200 kB     00:00\r\n", 0, "dnf");
+    assert.strictEqual(state.phase, "download");
+    assert.strictEqual(Upgrade.describe(state), "Downloading 3 of 5");
+    Upgrade.feed(state, "Running transaction\r\n  Upgrading        : libcurl-8.2.1-4.fc39.x86_64                 3/10 \r\n");
+    assert.strictEqual(Upgrade.describe(state), "Upgrading libcurl · 3 of 10");
+    assert.strictEqual(Upgrade.cancellable(state), false);
 });
 
 test("failures from apt and dnf are put in plain words naming the tool", () => {
@@ -319,7 +352,7 @@ test.describe("the runner", () => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), "system-upgrade-"));
         const bin = path.join(dir, "bin");
         fs.mkdirSync(bin);
-        for (const tool of ["grep", "head"])
+        for (const tool of ["grep", "head", "sed"])
             fs.symlinkSync(spawnSync("sh", ["-c", `command -v ${tool}`], { encoding: "utf8" }).stdout.trim(), path.join(bin, tool));
         for (const tool of tools) {
             fs.writeFileSync(path.join(bin, tool), "#!/bin/sh\nexit 0\n");
@@ -331,24 +364,45 @@ test.describe("the runner", () => {
 
     function command(tools, args, release) {
         const { dir, bin } = system(tools, release);
-        const out = spawnSync(process.env.BASH ?? "/bin/bash", [RUNNER, "command", path.join(dir, "run"), ...args], { encoding: "utf8", env: { PATH: bin, BANDITSHELL_OS_RELEASE: path.join(dir, "os-release") } });
+        const out = spawnSync(process.env.BASH ?? "/bin/bash", [RUNNER, "command", path.join(dir, "run"), ...args], { encoding: "utf8", env: { PATH: bin, BANDITSHELL_OS_RELEASE: path.join(dir, "os-release"), BANDITSHELL_PACMAN_CONF: path.join(dir, "pacman.conf") } });
         fs.rmSync(dir, { recursive: true, force: true });
         return { code: out.status, text: out.stdout.replaceAll(bin, "BIN") };
     }
 
     test.it("builds each tool's full upgrade under pkexec", () => {
-        assert.deepStrictEqual(command(["pkexec", "pacman"], []), { code: 0, text: "pacman\npkexec BIN/pacman -Syu --color always\n" });
-        assert.deepStrictEqual(command(["pkexec", "pacman"], ["--noconfirm"]), { code: 0, text: "pacman\npkexec BIN/pacman -Syu --color always --noconfirm\n" });
-        assert.deepStrictEqual(command(["pkexec", "apt-get"], []), { code: 0, text: "apt\npkexec /bin/sh -c 'BIN/apt-get update && exec env DEBIAN_FRONTEND=noninteractive BIN/apt-get -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade'\n" });
-        assert.deepStrictEqual(command(["pkexec", "dnf"], ["--noconfirm"]), { code: 0, text: "dnf\npkexec BIN/dnf upgrade --refresh -y\n" });
-        assert.deepStrictEqual(command(["pkexec", "zypper"], [], 'ID="opensuse-tumbleweed"\n'), { code: 0, text: "zypper\npkexec BIN/zypper dist-upgrade --download-in-advance\n" });
-        assert.deepStrictEqual(command(["pkexec", "zypper"], [], 'ID="opensuse-leap"\n'), { code: 0, text: "zypper\npkexec BIN/zypper update --download-in-advance\n" });
+        assert.deepStrictEqual(command(["pkexec", "pacman"], [], "ID=arch\n"), { code: 0, text: "pacman\npkexec BIN/pacman -Syu --color always\n" });
+        assert.deepStrictEqual(command(["pkexec", "pacman"], ["--noconfirm"], "ID=endeavouros\nID_LIKE=arch\n"), { code: 0, text: "pacman\npkexec BIN/pacman -Syu --color always --noconfirm\n" });
+        assert.deepStrictEqual(command(["pkexec", "apt-get"], [], "ID=debian\n"), { code: 0, text: "apt\npkexec /bin/sh -c 'BIN/apt-get update && exec env DEBIAN_FRONTEND=noninteractive BIN/apt-get -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade'\n" });
+        assert.deepStrictEqual(command(["pkexec", "dnf"], ["--noconfirm"], "ID=fedora\n"), { code: 0, text: "dnf\npkexec BIN/dnf upgrade --refresh -y\n" });
+        assert.deepStrictEqual(command(["pkexec", "zypper"], [], 'ID="opensuse-tumbleweed"\nID_LIKE="opensuse suse"\n'), { code: 0, text: "zypper\npkexec BIN/zypper dist-upgrade --download-in-advance\n" });
+        assert.deepStrictEqual(command(["pkexec", "zypper"], [], 'ID="opensuse-leap"\nID_LIKE="suse opensuse"\n'), { code: 0, text: "zypper\npkexec BIN/zypper update --download-in-advance\n" });
+    });
+
+    test.it("follows the distro, not whichever tool is on PATH", () => {
+        assert.strictEqual(command(["pkexec", "pacman", "apt-get"], [], "ID=debian\n").text.split("\n")[0], "apt");
+        assert.strictEqual(command(["pkexec", "dnf", "zypper"], [], 'ID="opensuse-tumbleweed"\nID_LIKE="opensuse suse"\n').text.split("\n")[0], "zypper");
     });
 
     test.it("hands back to the terminal where it has no pkexec or knows no tool", () => {
-        assert.strictEqual(command(["pacman"], []).code, 4);
-        assert.strictEqual(command(["pkexec", "xbps-install"], []).code, 4);
-        assert.strictEqual(command(["pkexec", "apk"], []).code, 4);
+        assert.strictEqual(command(["pacman"], [], "ID=arch\n").code, 4);
+        assert.strictEqual(command(["pkexec", "pacman"], [], "ID=debian\n").code, 4);
+        assert.strictEqual(command(["pkexec", "xbps-install"], [], "ID=void\n").code, 4);
+        assert.strictEqual(command(["pkexec", "apk"], [], "ID=alpine\n").code, 4);
+    });
+
+    test.it("the terminal log calls a stopped dnf download cancelled and zypper's reboot code finished", () => {
+        const watch = (name, tool, code) => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "system-upgrade-"));
+            fs.writeFileSync(path.join(dir, "log"), fixture(name), "latin1");
+            fs.writeFileSync(path.join(dir, "status"), `${code}\n`);
+            fs.writeFileSync(path.join(dir, "tool"), `${tool}\n`);
+            const out = spawnSync(process.env.BASH ?? "/bin/bash", [RUNNER, "watch", dir], { encoding: "latin1", input: "\n" });
+            fs.rmSync(dir, { recursive: true, force: true });
+            return out.stdout;
+        };
+        assert.match(watch("dnf-cancel.log", "dnf", 1), /The update was cancelled\./);
+        assert.match(watch("zypper-upgrade.log", "zypper", 102), /The update finished\./);
+        assert.match(watch("zypper-upgrade.log", "zypper", 4), /The update stopped \(code 4\)\./);
     });
 
     function cancel(log) {

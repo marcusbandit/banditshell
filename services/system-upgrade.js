@@ -53,6 +53,8 @@ function create(tool) {
         install: { index: 0, total: 0, verb: "", name: "", fraction: 0, share: -1 },
         unpacked: 0,
         configured: 0,
+        removing: 0,
+        signing: false,
         hooks: { index: 0, total: 0, text: "" },
         committing: false,
         question: null,
@@ -130,6 +132,20 @@ function take(state, raw) {
         return;
     }
 
+    let m;
+    if (/Interrupt signal received/.test(t)) {
+        state.interrupted = true;
+        return;
+    }
+    if ((m = /^Error executing command as another user:\s*(.+)$/.exec(t))) {
+        state.refusal = m[1].trim();
+        return;
+    }
+    if (/^Importing (OpenPGP|GPG|PGP) key/.test(t)) {
+        state.signing = true;
+        return;
+    }
+
     (readers[state.tool] ?? takePacman)(state, line, t);
 }
 
@@ -166,6 +182,7 @@ function takeApt(state, line, t) {
     if ((m = /^(\d+) upgraded, (\d+) newly installed, (\d+) to remove and (\d+) not upgraded\.$/.exec(t))) {
         reach(state, "resolve");
         state.total = Number(m[1]) + Number(m[2]);
+        state.removing = Number(m[3]);
         if (state.total === 0 && Number(m[3]) === 0)
             state.nothing = true;
         return;
@@ -262,8 +279,37 @@ function takeDnf(state, line, t) {
         return;
     }
     state.listing = false;
-    if ((m = /^(Upgrading|Installing|Downgrading|Reinstalling):\s+(\d+) packages?$/.exec(t))) {
+    if ((m = /^(Upgrade|Upgrading|Install|Installing|Downgrade|Downgrading|Reinstall|Reinstalling)\s*:?\s+(\d+) [Pp]ackages?$/.exec(t))) {
         state.total += Number(m[2]);
+        return;
+    }
+    if ((m = /^(Remove|Removing)\s*:?\s+(\d+) [Pp]ackages?$/.exec(t))) {
+        state.removing += Number(m[2]);
+        return;
+    }
+    if ((m = /^(Installing|Upgrading|Downgrading|Reinstalling|Erasing|Removing|Cleanup|Verifying|Preparing|Running scriptlet)\s*:\s+(\S+)\s+(\d+)\/(\d+)$/.exec(t))) {
+        const verify = m[1] === "Verifying";
+        reach(state, verify ? "hooks" : m[1] === "Preparing" ? "check" : "install");
+        state.committing = true;
+        if (m[1] === "Preparing" || m[1] === "Running scriptlet" || verify) {
+            state.detail = `${m[1].toLowerCase()} ${m[2].replace(/-\d[^-]*-[^-]*$/, "")}`;
+            return;
+        }
+        state.install = {
+            index: Number(m[3]),
+            total: Number(m[4]),
+            verb: m[1] === "Cleanup" ? "cleaning up" : m[1].toLowerCase(),
+            name: m[2].replace(/-\d[^-]*-[^-]*$/, ""),
+            fraction: 1,
+            share: -1
+        };
+        return;
+    }
+    if (!state.committing && (m = /^\((\d+)\/(\d+)\):\s+(\S+)/.exec(t))) {
+        reach(state, "download");
+        state.download.done = Number(m[1]);
+        state.download.total = Number(m[2]);
+        state.download.file = m[3].replace(/-\d[^-]*-[^-]*\.rpm$/, "");
         return;
     }
     if ((m = /^Total size of inbound packages is (.+?)\. Need to download (.+?)\.$/.exec(t))) {
@@ -385,6 +431,8 @@ function takeZypper(state, line, t) {
         while ((m = re.exec(t)) !== null)
             total += Number(m[1]);
         state.total = total;
+        const removes = /(\d+) to remove/.exec(t);
+        state.removing = removes ? Number(removes[1]) : 0;
         return;
     }
     if (/^Nothing to do\.?$/.test(t)) {
@@ -537,14 +585,6 @@ function takePacman(state, line, t) {
         state.detail = `Choose what provides ${m[2]}`;
         return;
     }
-    if (/Interrupt signal received/.test(t)) {
-        state.interrupted = true;
-        return;
-    }
-    if ((m = /^Error executing command as another user:\s*(.+)$/.exec(t))) {
-        state.refusal = m[1].trim();
-        return;
-    }
     if ((m = /^error:\s*(.+)$/.exec(t))) {
         keep(state.errors, m[1].trim());
         return;
@@ -637,10 +677,16 @@ function ask(state) {
     const t = text.trim();
     let m;
     if ((m = /^(?::: )?(.*?)\s*\[(Y\/n|y\/N)\]:?$/.exec(t)) || (m = /^(.*?)\s*\[y\/n(?:\/[^\]]*)?\]\s*\((y|n)\):$/.exec(t))) {
-        if (!state.question || state.question.text !== m[1]) {
+        let text = m[1];
+        if (state.signing)
+            text = "Trust this new package signing key?";
+        else if (state.removing > 0 && proceedQuestions.indexOf(text) >= 0)
+            text = `This also removes ${state.removing} package${state.removing === 1 ? "" : "s"}. Go on?`;
+        if (!state.question || state.question.text !== text) {
             state.questions += 1;
-            state.question = { id: state.questions, kind: "yesno", text: m[1], yes: m[2] === "Y/n" || m[2] === "y", choices: [], fallback: 0 };
+            state.question = { id: state.questions, kind: "yesno", text: text, yes: m[2] === "Y/n" || m[2] === "y", choices: [], fallback: 0 };
             state.asked = t;
+            state.signing = false;
         }
         return;
     }
@@ -794,14 +840,18 @@ function cancellable(state) {
     return !state.committing && order.indexOf(state.phase) <= order.indexOf("download");
 }
 
+function succeeded(state, code) {
+    return code === 0 || (state.tool === "zypper" && [100, 101, 102, 103, 106].indexOf(code) >= 0);
+}
+
 function outcome(state, code) {
     if (state.interrupted && state.committing)
         return "failed";
     if (state.interrupted || code === 130 || code === 126)
         return "cancelled";
-    if (state.declined && !state.committing && code !== 0)
+    if (state.declined && !state.committing && !succeeded(state, code))
         return "cancelled";
-    if (code === 0)
+    if (succeeded(state, code))
         return state.nothing ? "current" : "done";
     return "failed";
 }

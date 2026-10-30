@@ -5,6 +5,7 @@ umask 077
 usage() {
     echo "usage: system-upgrade.sh start DIR [--noconfirm]" >&2
     echo "       system-upgrade.sh command DIR [--noconfirm]" >&2
+    echo "       system-upgrade.sh tool" >&2
     echo "       system-upgrade.sh state DIR" >&2
     echo "       system-upgrade.sh seen DIR" >&2
     echo "       system-upgrade.sh answer DIR TEXT" >&2
@@ -13,9 +14,9 @@ usage() {
     exit 2
 }
 
-[ $# -ge 2 ] || usage
+[ $# -ge 2 ] || [ "${1:-}" = tool ] || usage
 verb=$1
-dir=$2
+dir=${2:-}
 
 started_at() {
     local stat
@@ -49,14 +50,16 @@ committed() {
 }
 
 tool() {
-    local name
-    for name in pacman apt-get dnf zypper; do
-        if command -v "$name" >/dev/null 2>&1; then
-            printf '%s\n' "${name%-get}"
-            return 0
-        fi
+    local word
+    for word in $(sed -n 's/^\(ID\|ID_LIKE\)="\{0,1\}\([^"]*\)"\{0,1\}$/\2/p' -- "${BANDITSHELL_OS_RELEASE:-/etc/os-release}" 2>/dev/null); do
+        case "$word" in
+        arch) command -v pacman >/dev/null 2>&1 && echo pacman && return 0 ;;
+        debian | ubuntu) command -v apt-get >/dev/null 2>&1 && echo apt && return 0 ;;
+        fedora | rhel | centos) command -v dnf >/dev/null 2>&1 && echo dnf && return 0 ;;
+        suse | opensuse | opensuse-tumbleweed | opensuse-leap | opensuse-slowroll) command -v zypper >/dev/null 2>&1 && echo zypper && return 0 ;;
+        esac
     done
-    return 1
+    command -v pacman >/dev/null 2>&1 && [ -e "${BANDITSHELL_PACMAN_CONF:-/etc/pacman.conf}" ] && echo pacman
 }
 
 rolling() {
@@ -105,6 +108,11 @@ send() {
 }
 
 case "$verb" in
+tool)
+    tool || exit 4
+    rolling && echo rolling
+    exit 0
+    ;;
 command)
     planned "${3:-}"
     exit
@@ -168,6 +176,12 @@ watch)
         tail -n +2 -- "$dir/log" 2>/dev/null
     fi
     code=$(cat "$dir/status" 2>/dev/null)
+    if [ "$(head -n 1 -- "$dir/tool" 2>/dev/null)" = zypper ]; then
+        case "$code" in 100 | 101 | 102 | 103 | 106) code=0 ;; esac
+    fi
+    if [ -n "$code" ] && [ "$code" != 0 ] && ! committed && grep -aqE 'Interrupt signal received|Interrupted by a SIGINT|Trying to exit gracefully|\^C' -- "$dir/log"; then
+        code=130
+    fi
     case "$code" in
     0) said="The update finished." ;;
     130 | 126) said="The update was cancelled." ;;
