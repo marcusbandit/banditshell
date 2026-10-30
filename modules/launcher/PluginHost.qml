@@ -313,6 +313,20 @@ Singleton {
         proc.destroy();
     }
 
+    function reload(id: string): string {
+        root.stop(id);
+        const answers = Object.assign({}, root.answers);
+        delete answers[id];
+        root.answers = answers;
+        root.revive(id);
+        root.registered = Object.assign({}, root.registered, {
+            [id]: ""
+        });
+        root.scannedAt = 0;
+        root.refresh();
+        return `reloading ${id}`;
+    }
+
     function revive(id: string): void {
         root.setState(id, {
             crashes: [],

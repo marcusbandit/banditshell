@@ -1,0 +1,9 @@
+{
+  "api": 1,
+  "id": "__ID__",
+  "name": "__ID__",
+  "about": "A plugin made with banditshell plugin new",
+  "icon": "extension",
+  "exec": ["./plugin.sh"],
+  "prefix": ["__ID__"]
+}

@@ -85,6 +85,10 @@ Scope {
             return PushedRows.list(tool);
         }
 
+        function reloadPlugin(id: string): string {
+            return PluginHost.reload(id);
+        }
+
         function scrub(fraction: string): string {
             const win = Shell.showing(w => w.launcher.open);
             if (!win)

@@ -85,6 +85,7 @@
     "list(tool: string): string",
     "open(query: string): string",
     "query(): string",
+    "reloadPlugin(id: string): string",
     "remove(tool: string, id: string): string",
     "run(id: string): string",
     "scrub(fraction: string): string",

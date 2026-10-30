@@ -7,6 +7,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.settings
+import qs.modules.controls
 
 Column {
     id: root
@@ -15,6 +16,10 @@ Column {
 
     property var listed: []
     property var secrets: ({})
+    property bool introSeen: false
+    property bool introAgain: false
+
+    readonly property bool introShown: !root.introSeen || root.introAgain
 
     readonly property string folder: `${Config.dir}/plugins`
     readonly property var off: Config.values.launcher.plugins.off
@@ -90,6 +95,117 @@ Column {
         }
     }
 
+    FileView {
+        id: introFile
+
+        path: `${Config.stateDir}/plugins-intro-seen`
+        printErrors: false
+        onLoaded: root.introSeen = true
+    }
+
+    function dismissIntro(): void {
+        introFile.setText("seen\n");
+        root.introSeen = true;
+        root.introAgain = false;
+    }
+
+    function openFolder(): void {
+        Quickshell.execDetached(["sh", "-c", 'mkdir -p "$1" && exec xdg-open "$1"', "sh", root.folder]);
+    }
+
+    Column {
+        visible: root.introShown
+        x: Appearance.padding.normal
+        width: root.width - Appearance.padding.normal * 2
+        spacing: Appearance.padding.normal
+        topPadding: Appearance.padding.normal
+        bottomPadding: Appearance.padding.large
+
+        StyledText {
+            width: parent.width
+            text: "Add your own tools to the launcher"
+            font.pixelSize: Appearance.font.size.normal
+            wrapMode: Text.Wrap
+        }
+
+        StyledText {
+            width: parent.width
+            text: "A plugin is a small program, in any language, that answers what you type. Its rows look and rank like every other row:"
+            font.pixelSize: Appearance.font.size.small
+            color: Appearance.colour.textDim
+            wrapMode: Text.Wrap
+        }
+
+        SquircleRect {
+            width: parent.width
+            height: sample.height
+            radius: Appearance.rounding.normal
+            color: Appearance.colour.fill
+
+            MenuRow {
+                id: sample
+
+                width: parent.width
+                labelSize: Appearance.font.size.small
+                inlineDetail: true
+                interactive: false
+                icon: "waving_hand"
+                label: "Hello, ada"
+                detail: "a row from a plugin · Enter copies it"
+            }
+        }
+
+        StyledText {
+            width: parent.width
+            text: "It runs as you, so it can read your files and use the network like any program you start. Only add plugins you trust: installing one shows what it runs first."
+            font.pixelSize: Appearance.font.size.small
+            color: Appearance.colour.textDim
+            wrapMode: Text.Wrap
+        }
+
+        StyledText {
+            width: parent.width
+            text: "Start one with banditshell plugin new <name>, or try a folder with banditshell plugin dev <folder>."
+            font.pixelSize: Appearance.font.size.small
+            color: Appearance.colour.textFaint
+            wrapMode: Text.Wrap
+        }
+
+        Row {
+            spacing: Appearance.padding.small
+
+            Button {
+                size: 0
+                style: "accent"
+                text: "Got it"
+                onClicked: root.dismissIntro()
+            }
+
+            Button {
+                size: 0
+                text: "Open plugins folder"
+                onClicked: root.openFolder()
+            }
+        }
+    }
+
+    SettingsRowFrame {
+        width: root.width
+        visible: !root.introShown
+        interactive: false
+        icon: "help"
+        label: "What plugins can do"
+        detail: "the introduction again"
+        onPointed: SettingsView.hovered = root.row
+
+        Button {
+            anchors.verticalCenter: parent.verticalCenter
+            size: 0
+            text: "Show"
+            onClicked: root.introAgain = true
+        }
+    }
+
     SettingsRowFrame {
         width: root.width
         visible: root.listed.length === 0
@@ -103,7 +219,7 @@ Column {
             anchors.verticalCenter: parent.verticalCenter
             size: 0
             text: "Open folder"
-            onClicked: Quickshell.execDetached(["sh", "-c", 'mkdir -p "$1" && exec xdg-open "$1"', "sh", root.folder])
+            onClicked: root.openFolder()
         }
     }
 

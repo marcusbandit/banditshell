@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-20",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell plugin new, dev and install make and share plugins"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The Plugins settings explain what a plugin can reach, once"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30-19",
       "date": "2026-10-30",
       "changes": [

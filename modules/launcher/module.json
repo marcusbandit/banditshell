@@ -42,6 +42,7 @@
       "tests/launcher-calculator.test.js",
       "tests/launcher-phrases.test.js",
       "tests/launcher-placement.test.js",
+      "tests/launcher-plugin-cli.test.js",
       "tests/launcher-plugin-protocol.test.js",
       "tests/launcher-prefixes.test.js",
       "tests/launcher-push-cli.test.js",
@@ -55,6 +56,9 @@
     "js": [
       "services/pushed-rows.js",
       "services/plugin-protocol.js"
+    ],
+    "scripts": [
+      "scripts/plugin-manifest.js"
     ]
   },
   "requires": {
