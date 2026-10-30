@@ -58,6 +58,9 @@ jobs:
           - name: opensuse
             image: registry.opensuse.org/opensuse/tumbleweed:latest
             install: zypper -n --gpg-auto-import-keys refresh && zypper -n install --no-recommends nodejs bash git python3 lua54 luajit jq coreutils findutils grep sed gawk diffutils file procps util-linux shadow
+          - name: alpine
+            image: docker.io/library/alpine:latest
+            install: apk add nodejs bash git python3 lua5.4 luajit jq coreutils findutils grep sed gawk diffutils file procps-ng util-linux tzdata shadow runuser
     steps:
       - uses: actions/checkout@v4
       - run: >-
