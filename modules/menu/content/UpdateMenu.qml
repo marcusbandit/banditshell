@@ -379,13 +379,11 @@ Column {
                     color: Appearance.colour.textDim
                 }
 
-                SquircleRect {
+                Item {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: root.unreadCount > 0
-                    width: newCount.implicitWidth + newMark.width + Appearance.padding.small * 3
+                    width: newCount.x + newCount.implicitWidth
                     height: Appearance.font.line.small
-                    pill: "object"
-                    color: Appearance.withAlpha(Appearance.colour.accent, 0.14)
 
                     SquircleRect {
                         id: newMark
@@ -459,20 +457,13 @@ Column {
                     color: Appearance.colour.accent
                 }
 
-                SquircleRect {
+                StyledText {
                     id: tagChip
 
                     x: root.unreadCount > 0 ? root.unreadBar + Appearance.padding.small : 0
-                    width: Math.ceil(tagWidth.advanceWidth) + Appearance.padding.small * 2
-                    height: Appearance.font.line.small
-                    pill: "object"
-                    color: Appearance.withAlpha(tagged.hue, 0.14)
-
-                    StyledText {
-                        anchors.centerIn: parent
-                        text: tagged.modelData.tag
-                        color: Appearance.blend(Appearance.colour.text, tagged.hue, 0.55)
-                    }
+                    width: Math.ceil(tagWidth.advanceWidth) + Appearance.padding.small
+                    text: tagged.modelData.tag
+                    color: tagged.hue
                 }
 
                 StyledText {

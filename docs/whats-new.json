@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-41",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "After going back, the menu says it won't offer that version itself"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Update tags and the unread count read as labels, not buttons"
+        }
+      ]
+    },
+    {
       "id": "2026-10-29",
       "date": "2026-10-29",
       "changes": [
