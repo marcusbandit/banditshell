@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-30-6",
+      "id": "2026-10-30-7",
       "date": "2026-10-30",
       "changes": [
         {
@@ -18,6 +18,17 @@
           "type": "issues",
           "severity": "minor",
           "text": "The more notifications arrow lines up with the times and the date"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-30-6",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings stays readable at any See-through value and wallpaper"
         }
       ]
     },
