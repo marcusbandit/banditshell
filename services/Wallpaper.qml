@@ -40,7 +40,7 @@ Singleton {
 
     readonly property string current: Library.shown({
         ready: Config.ready,
-        loaded: Config.loaded,
+        unreadable: Config.unreadable,
         want: root.configured,
         missing: root.missing,
         verified: root.verified,

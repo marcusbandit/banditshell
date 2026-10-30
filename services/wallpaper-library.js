@@ -82,7 +82,7 @@ function merged(map, updates) {
 
 function shown(state) {
     if (!state.ready)
-        return state.loaded ? state.fallback : "";
+        return state.unreadable ? state.fallback : "";
     const want = state.want;
     if (!want || want === state.missing)
         return state.fallback;

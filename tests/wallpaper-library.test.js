@@ -134,9 +134,10 @@ test.describe("library lines", () => {
 
 test("the shown wallpaper waits for the first read, falls back while config.json is unreadable, then follows the file", () => {
     const base = { want: "/w/sea.png", missing: "", verified: "", available: ["/w/sea.png"], fallback: "/s/moonrise.png" };
-    assert.strictEqual(Library.shown({ ...base, ready: false, loaded: false }), "");
-    assert.strictEqual(Library.shown({ ...base, ready: false, loaded: true, want: "" }), "/s/moonrise.png");
-    assert.strictEqual(Library.shown({ ...base, ready: true, loaded: true }), "/w/sea.png");
-    assert.strictEqual(Library.shown({ ...base, ready: true, loaded: true, missing: "/w/sea.png" }), "/s/moonrise.png");
-    assert.strictEqual(Library.shown({ ...base, ready: true, loaded: true, want: "/w/new.png" }), "");
+    assert.strictEqual(Library.shown({ ...base, ready: false, unreadable: false }), "");
+    assert.strictEqual(Library.shown({ ...base, ready: false, unreadable: true }), "/s/moonrise.png");
+    assert.strictEqual(Library.shown({ ...base, ready: true, unreadable: false }), "/w/sea.png");
+    assert.strictEqual(Library.shown({ ...base, ready: true, unreadable: true }), "/w/sea.png");
+    assert.strictEqual(Library.shown({ ...base, ready: true, unreadable: false, missing: "/w/sea.png" }), "/s/moonrise.png");
+    assert.strictEqual(Library.shown({ ...base, ready: true, unreadable: false, want: "/w/new.png" }), "");
 });
