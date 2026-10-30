@@ -365,7 +365,7 @@ test("the outcome tells where the person stands in plain words", () => {
 test("a rollback by hand says where it went back to, not that something failed", () => {
     const back = { ok: false, hand: true, fromLabel: "2026-10-24", toLabel: "2026-10-25", why: "rolled back by hand" };
     assert.strictEqual(Update.outcomeText(back, "2026-10-24"),
-        "Because you went back, 2026-10-25 is not offered again. The next version after 2026-10-25 is offered as usual.");
+        "Because you went back, 2026-10-25 won't be offered automatically. The next version after 2026-10-25 is offered as usual.");
     assert.match(Update.outcomeText(back, "2026-10-25"), /still runs 2026-10-25\. Run banditshell restart to start 2026-10-24\./);
     assert.strictEqual(Update.byHand({ ok: false, why: "rolled back by hand" }), false);
 });

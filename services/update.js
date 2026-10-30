@@ -452,7 +452,7 @@ function outcomeText(result, running) {
     if (result.ok)
         return `Updated to ${to}.`;
     if (byHand(result)) {
-        const skipped = `Because you went back, ${to} is not offered again. The next version after ${to} is offered as usual.`;
+        const skipped = `Because you went back, ${to} won't be offered automatically. The next version after ${to} is offered as usual.`;
         if (!running || running === from)
             return skipped;
         return `Went back to ${from}, but the shell still runs ${running}. Run banditshell restart to start ${from}. ${skipped}`;
