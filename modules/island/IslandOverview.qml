@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import "deck-fit.js" as DeckFit
 
 Item {
     id: root
@@ -67,13 +68,7 @@ Item {
 
     readonly property var live: root.activities.filter(a => a.kind !== "notifications")
     readonly property var listed: root.activities.find(a => a.kind === "notifications") ?? null
-    readonly property int clipped: {
-        const hidden = notices.hiddenCards;
-        let sum = 0;
-        for (const group of root.notifications)
-            sum += hidden.includes(group.entries[0]) ? group.entries.filter(e => !e.leaving).length : group.entries.filter(e => hidden.includes(e) && !e.leaving).length;
-        return sum;
-    }
+    readonly property int clipped: DeckFit.clippedEntries(root.notifications, notices.hiddenCards)
     readonly property var summary: root.listed && root.clipped > 0 ? Object.assign({}, root.listed, {
         count: root.listed.count + root.clipped
     }) : root.listed

@@ -216,7 +216,7 @@ Item {
 
         InkIcon {
             anchors.centerIn: parent
-            anchors.horizontalCenterOffset: root.look.trailingIcon === "chevron_right" ? (parent.width + width) / 2 - inkRight : 0
+            anchors.horizontalCenterOffset: root.look.trailingInk ? (parent.width + width) / 2 - inkRight : 0
             visible: root.look.trailing === "icon"
             name: root.look.trailingIcon ?? ""
             size: Math.round(root.slot * 0.85)

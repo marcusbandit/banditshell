@@ -98,6 +98,7 @@ QtObject {
                 text: "Config broken",
                 trailing: "icon",
                 trailingIcon: "chevron_right",
+                trailingInk: true,
                 trailingTone: Appearance.colour.warning
             };
         case "configRead":
@@ -241,14 +242,16 @@ QtObject {
                 icon: "notifications",
                 text: `${a.count}${a.more ? " more" : ""} notification${a.count === 1 ? "" : "s"}`,
                 trailing: "icon",
-                trailingIcon: "chevron_right"
+                trailingIcon: "chevron_right",
+                trailingInk: true
             };
         case "held":
             return {
                 icon: "notifications_paused",
                 text: `${a.count} held while quiet`,
                 trailing: "icon",
-                trailingIcon: "chevron_right"
+                trailingIcon: "chevron_right",
+                trailingInk: true
             };
         case "quiet":
             return {
