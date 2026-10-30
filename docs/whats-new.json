@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-30-3",
+      "id": "2026-10-30-4",
       "date": "2026-10-30",
       "changes": [
         {
@@ -23,6 +23,17 @@
           "type": "issues",
           "severity": "minor",
           "text": "The Wi-Fi sign-in sheet has a close button"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-30-3",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The shell no longer locks the screen by itself when it starts"
         }
       ]
     },
