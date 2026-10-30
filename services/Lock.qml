@@ -97,7 +97,20 @@ Singleton {
         function onLockRequested(): void {
             root.lock();
         }
+
+        function onLogindChanged(): void {
+            root.relockWithoutLogind();
+        }
     }
+
+    function relockWithoutLogind(): void {
+        if (SessionControl.logind || !root.recordPath || root.active || root.arming)
+            return;
+        if (LockHint.heldWithoutLogind(record.text()))
+            root.relock();
+    }
+
+    Component.onCompleted: root.relockWithoutLogind()
 
     Binding {
         target: SessionControl

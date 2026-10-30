@@ -1050,13 +1050,18 @@ reach_hyprland() {
 }
 
 session_locked() {
-    local pid session
+    local pid session hint record
     pid=$(hyprctl instances 2>/dev/null | awk -v sig="$HYPRLAND_INSTANCE_SIGNATURE" '
         /^instance / { here = index($0, sig) > 0 }
         here && /pid:/ { print $NF; exit }
     ')
-    [ -n "$pid" ] && session=$(cat "/proc/$pid/sessionid" 2>/dev/null) || return 1
-    [ "$(loginctl show-session "$session" -p LockedHint --value 2>/dev/null)" = yes ]
+    if [ -n "$pid" ] && session=$(cat "/proc/$pid/sessionid" 2>/dev/null) &&
+        hint=$(loginctl show-session "$session" -p LockedHint --value 2>/dev/null); then
+        [ "$hint" = yes ]
+        return
+    fi
+    record="${XDG_RUNTIME_DIR:-}/banditshell-lock-hint-$(printf '%s' "${XDG_SESSION_ID:-auto}" | tr -cd 'A-Za-z0-9_-').json"
+    [ -n "${XDG_RUNTIME_DIR:-}" ] && grep -q '"session":"","told":true' "$record" 2>/dev/null
 }
 
 frozen_pid() {

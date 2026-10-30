@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-8",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Without logind, a shell restarted while locked comes back locked"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30-7",
       "date": "2026-10-30",
       "changes": [
