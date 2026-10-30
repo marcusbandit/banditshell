@@ -50,6 +50,14 @@ Item {
     }
 
     Follow {
+        id: settingsShown
+
+        target: Settings.open && Settings.screenName === root.screen ? 1 : 0
+        speed: Appearance.animation.revealSpeed
+        epsilon: 0.002
+    }
+
+    Follow {
         id: reach
 
         target: root.streamed ? Appearance.sizes.streamHeight : 0
@@ -60,6 +68,8 @@ Item {
         anchors.fill: parent
 
         panels: root.panels
+
+        colour: Appearance.blend(Appearance.colour.surface, Appearance.colour.readableSurface, settingsShown.value)
 
         content: Qt.vector4d(root.holeX, root.holeY, root.holeWidth, root.holeHeight)
 

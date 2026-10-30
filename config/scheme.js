@@ -6,6 +6,7 @@ const CURVE = 1.6;
 const PIVOT = 0.62;
 const WARNING_FLOOR = 0.52;
 const READABLE = 4.5;
+const KEEP = 0.85;
 
 function channel(hex, shift) {
     return (parseInt(hex.slice(1), 16) >> shift & 255) / 255;
@@ -131,17 +132,28 @@ function contrast(a, b) {
     return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 
-function worstContrast(surface, ink, label, alpha) {
+function worstContrast(surface, ink, label, plate, alpha) {
     return Math.min(...[[0, 0, 0], [1, 1, 1]].map(behind => {
-        const ground = over(surface, alpha, behind);
+        const ground = over(ink, plate, over(surface, alpha, behind));
         return contrast(over(ink, label, ground), ground);
     }));
 }
 
-function readableAlpha(surface, ink, label, alpha) {
-    const want = Math.min(READABLE, worstContrast(surface, ink, label, 1));
-    let a = Math.max(0, Math.min(1, alpha));
-    while (a < 1 && worstContrast(surface, ink, label, a) < want)
-        a = Math.min(1, Math.round((a + 0.01) * 100) / 100);
-    return a;
+function reads(surface, ink, labels, plates, alpha) {
+    return labels.every(label => plates.every(plate => worstContrast(surface, ink, label, plate, alpha) >= Math.min(READABLE, KEEP * worstContrast(surface, ink, label, plate, 1))));
+}
+
+function readableAlpha(surface, ink, labels, plates, alpha) {
+    let low = Math.max(0, Math.min(1, alpha));
+    if (reads(surface, ink, labels, plates, low))
+        return low;
+    let high = 1;
+    for (let i = 0; i < 12; i++) {
+        const middle = (low + high) / 2;
+        if (reads(surface, ink, labels, plates, middle))
+            high = middle;
+        else
+            low = middle;
+    }
+    return Math.min(1, Math.ceil(high * 1000) / 1000);
 }

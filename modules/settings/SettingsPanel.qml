@@ -195,16 +195,6 @@ FocusScope {
         visible: width > 0.5
         clip: true
 
-        SquircleRect {
-            readonly property real glass: Appearance.colour.surface.a
-            readonly property real floor: Appearance.readableAlpha
-
-            anchors.fill: parent
-            radius: Appearance.rounding.large
-            visible: floor > glass
-            color: Appearance.withAlpha(Appearance.colour.surfaceSolid, glass < 1 ? 1 - (1 - floor) / (1 - glass) : 0)
-        }
-
         MouseArea {
             anchors.fill: parent
         }
