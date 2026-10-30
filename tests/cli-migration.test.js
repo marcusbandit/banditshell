@@ -117,7 +117,7 @@ test("the output keeps its speakers and headphones", () => {
     ]);
 });
 
-test("volume goes to wpctl, the lock to loginctl", () => {
+test("volume goes to wpctl, the lock to the lock verb", () => {
     const sink = "@DEFAULT_AUDIO_SINK@";
     table([
         ["set volume +", `!wpctl set-volume -l 1 ${sink} 5%+`],
@@ -131,8 +131,7 @@ test("volume goes to wpctl, the lock to loginctl", () => {
         ["set volume mute on", `!wpctl set-mute ${sink} 1`],
         ["set volume mute off", `!wpctl set-mute ${sink} 0`],
         ["status volume", `!wpctl get-volume ${sink}`],
-        ["dispatch lock", "!loginctl lock-session"],
-        ["lock", "!loginctl lock-session"],
+        ["dispatch lock", "lock"],
         ["status lock", "!loginctl show-session auto -p LockedHint"]
     ]);
     for (const bad of ["set volume loud", "set volume .", "set volume +.", "set volume 1.2.3"])
@@ -245,7 +244,7 @@ test("a bind that now belongs to another program names that program", () => {
     const { text } = Migration.rewriteText(
         "{ \"XF86AudioRaiseVolume\", \"banditshell set volume +\", true },\nhl.bind(\"SUPER + L\", hl.dsp.exec_cmd(\"banditshell dispatch lock\"))");
     assert.strictEqual(text,
-        "{ \"XF86AudioRaiseVolume\", \"wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+\", true },\nhl.bind(\"SUPER + L\", hl.dsp.exec_cmd(\"loginctl lock-session\"))");
+        "{ \"XF86AudioRaiseVolume\", \"wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+\", true },\nhl.bind(\"SUPER + L\", hl.dsp.exec_cmd(\"banditshell lock\"))");
 });
 
 test("a redirection or a pipe ends the command", () => {

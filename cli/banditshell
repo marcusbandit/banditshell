@@ -233,6 +233,10 @@
 #   banditshell doctor binds rewrite
 #                                rewrite them, a dated .bak beside each file
 #
+# lock                           lock the screen
+#   banditshell lock             through logind when it runs, straight to the
+#                                shell when it does not
+#
 # unstick|watchdog               a frozen or crashed shell, lock screen included
 #   banditshell unstick          keep a trace of a frozen shell, stop it and
 #                                start it again; a locked session gets its lock
@@ -1157,6 +1161,11 @@ unstick() {
     if session_locked; then
         loginctl lock-session >/dev/null 2>&1 || true
     fi
+}
+
+lock_screen() {
+    loginctl lock-session 2>/dev/null && return 0
+    ipc shell lock
 }
 
 answers() {
@@ -4440,6 +4449,10 @@ restart)
 unstick)
     [ $# -eq 0 ] || nope unstick "$1"
     unstick
+    ;;
+lock)
+    [ $# -eq 0 ] || nope lock "$1"
+    lock_screen
     ;;
 watchdog)
     [ $# -eq 0 ] || nope watchdog "$1"
