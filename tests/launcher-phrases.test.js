@@ -24,7 +24,25 @@ function systemZones() {
                 out.push(parts[2]);
         }
     } catch (error) {
+        return zoneFiles("/usr/share/zoneinfo", "");
+    }
+    return out;
+}
+
+function zoneFiles(dir, prefix) {
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (error) {
         return Intl.supportedValuesOf("timeZone");
+    }
+    const out = [];
+    for (const e of entries) {
+        const id = prefix + e.name;
+        if (e.isDirectory() && !["posix", "right"].includes(id))
+            out.push(...zoneFiles(path.join(dir, e.name), id + "/"));
+        else if (e.isFile() && /^[A-Z]/.test(e.name) && e.name !== "Factory")
+            out.push(id);
     }
     return out;
 }
@@ -312,6 +330,15 @@ test.describe("time zone places", () => {
         assert.deepStrictEqual(match("australia").length, 4);
         assert.deepStrictEqual(match("utc"), ["UTC"]);
         assert.deepStrictEqual(match("tokyo"), ["Asia/Tokyo"]);
+    });
+
+    test.it("finds a renamed zone under the name an older tzdata or ICU lists", () => {
+        const old = ["Asia/Calcutta", "Europe/Kiev", "America/Indianapolis", "America/Indiana/Indianapolis", "Europe/Berlin"];
+        const match = place => Search.zoneMatches(old, place, cityOf, "Europe/Copenhagen");
+        assert.deepStrictEqual(match("india"), ["Asia/Calcutta"]);
+        assert.deepStrictEqual(match("ukraine"), ["Europe/Kiev"]);
+        assert.deepStrictEqual(match("indiana"), ["America/Indiana/Indianapolis"]);
+        assert.deepStrictEqual(match("nepal"), []);
     });
 
     test.it("every zone in the tables is a real zone", () => {

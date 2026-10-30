@@ -956,6 +956,15 @@ var ZONE_ABBREVIATIONS = {
     "nzdt": "Pacific/Auckland"
 };
 
+var ZONE_RENAMES = {
+    "Asia/Kolkata": "Asia/Calcutta",
+    "Europe/Kyiv": "Europe/Kiev",
+    "Asia/Kathmandu": "Asia/Katmandu",
+    "Asia/Ho_Chi_Minh": "Asia/Saigon",
+    "America/Argentina/Buenos_Aires": "America/Buenos_Aires",
+    "America/Indiana/Indianapolis": "America/Indianapolis"
+};
+
 var ZONE_TIME = "(\\d{1,2}(?:[:.]\\d{2})?\\s*(?:am|pm)?|noon|midnight)";
 var ZONE_NOT_MERIDIEM = "(?!(?:am|pm|a\\.m\\.|p\\.m\\.)(?: |$))";
 var ZONE_BETWEEN = new RegExp(`^${ZONE_TIME} ${ZONE_NOT_MERIDIEM}(?:in )?(.+?) (?:in|to|->|→) (.+)$`);
@@ -1048,9 +1057,10 @@ function placeLabel(place, zone, cityOf) {
 
 function zoneMatches(zones, place, cityOf, localZone) {
     const want = String(place || "").toLowerCase();
-    const named = namedZones(want, localZone).filter(id => !(zones || []).length || zones.indexOf(id) >= 0);
+    const listed = id => !(zones || []).length || zones.indexOf(id) >= 0;
+    const named = namedZones(want, localZone);
     if (named.length)
-        return named;
+        return named.map(id => listed(id) ? id : ZONE_RENAMES[id] && listed(ZONE_RENAMES[id]) ? ZONE_RENAMES[id] : "").filter(id => id);
     const rank = id => {
         const city = cityOf(id).toLowerCase();
         return city === want ? 3 : city.indexOf(want) === 0 ? 2 : want.length >= 3 && city.indexOf(want) > 0 ? 1 : 0;
