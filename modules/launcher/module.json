@@ -28,7 +28,8 @@
       "modules/launcher/system-asks.js"
     ],
     "services": [
-      "LauncherHotkeys"
+      "LauncherHotkeys",
+      "LauncherSources"
     ],
     "tests": [
       "tests/launcher-actions.test.js",
@@ -39,6 +40,7 @@
       "tests/launcher-search-bar.test.js",
       "tests/launcher-search.test.js",
       "tests/launcher-shellcli.test.js",
+      "tests/launcher-source-contract.test.js",
       "tests/launcher-windows.test.js"
     ]
   },
@@ -51,7 +53,9 @@
     "optional": []
   },
   "provides": {
-    "singletons": [],
+    "singletons": [
+      "LauncherSources"
+    ],
     "ipc": [
       "launcher"
     ]
