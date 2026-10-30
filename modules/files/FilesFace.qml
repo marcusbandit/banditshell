@@ -346,7 +346,7 @@ Item {
             });
 
         acts.push({
-            icon: "delete_forever",
+            icon: "local_fire_department",
             label: "Delete permanently…",
             alarm: true,
             run: () => root.confirmDelete()
@@ -408,7 +408,7 @@ Item {
 
         if (Files.trashItems.length > 0)
             acts.push({
-                icon: "delete_forever",
+                icon: "local_fire_department",
                 label: "Empty Trash…",
                 alarm: true,
                 run: () => root.confirmEmpty()
@@ -447,7 +447,7 @@ Item {
                     name: e.name,
                     origin: Files.originPlace(e)
                 }));
-        confirm.ask(Deletion.what(items), Deletion.REST, "Delete", "delete_forever", answer => Files.deleteForever(Deletion.approved(answer, paths)));
+        confirm.ask(Deletion.what(items), Deletion.REST, "Delete", "local_fire_department", answer => Files.deleteForever(Deletion.approved(answer, paths)));
     }
 
     function confirmEmpty(): void {
@@ -467,7 +467,7 @@ Item {
                     size: sizes && e.key in sizes ? Files.humanSize(sizes[e.key]) : ""
                 }, Files.trashFrom(e)));
 
-        confirm.ask("Empty Trash", Deletion.emptying(items.length, ""), "Empty", "delete_forever", answer => Files.emptyTrash(Deletion.emptied(answer, items)), rows(null));
+        confirm.ask("Empty Trash", Deletion.emptying(items.length, ""), "Empty", "local_fire_department", answer => Files.emptyTrash(Deletion.emptied(answer, items)), rows(null));
         const asked = confirm.accepted;
         Files.measureTrash(items, sizes => {
             if (!confirm.up || confirm.accepted !== asked)
@@ -640,14 +640,28 @@ Item {
         }
         readonly property bool roomForBoth: previewRoom >= 200
 
+        SortHeader {
+            id: sortHeader
+
+            anchors.left: grid.left
+            anchors.right: grid.right
+            anchors.top: parent.top
+            anchors.topMargin: Appearance.padding.small
+
+            visible: Files.visible.length > 0
+            height: visible ? implicitHeight : 0
+        }
+
         FileGrid {
             id: grid
 
             anchors.left: parent.left
-            anchors.top: parent.top
+            anchors.top: sortHeader.bottom
             anchors.bottom: parent.bottom
             anchors.right: preview.visible ? previewEdge.left : parent.right
-            anchors.margins: Appearance.padding.small
+            anchors.leftMargin: Appearance.padding.small
+            anchors.rightMargin: Appearance.padding.small
+            anchors.bottomMargin: Appearance.padding.small
 
             entries: Files.visible
             dragging: root.dragging

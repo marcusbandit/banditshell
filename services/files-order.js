@@ -59,3 +59,32 @@ function ordered(entries, key, reversed) {
         return sign * primary(a, b) || byName(a, b);
     });
 }
+
+const HEADER_LABELS = { name: "Name", kind: "Type", size: "Size", mtime: "Modified", trashed: "Trashed" };
+
+function headers(key, reversed, trash) {
+    const how = trash ? trashOrder(key, reversed) : {key: SORTS.indexOf(key) >= 0 ? key : "name", reversed: reversed};
+    const dated = trash ? "trashed" : "mtime";
+    return ["name", "kind", "size", dated].map(id => {
+        const active = how.key === id;
+        const words = id === "trashed" ? ORDER_WORDS.mtime : orderWords(id);
+        return {
+            id: id,
+            label: HEADER_LABELS[id],
+            active: active,
+            words: active ? words[how.reversed ? 1 : 0] : "",
+            sortable: !(trash && id === "name")
+        };
+    });
+}
+
+function chosen(id, key, reversed, trash) {
+    const sort = id === "trashed" ? "mtime" : id;
+    const now = headers(key, reversed, trash).find(h => h.id === id);
+    if (!now || !now.sortable)
+        return {sort: key, reversed: reversed};
+    if (!now.active)
+        return {sort: sort, reversed: false};
+    const how = trash ? trashOrder(key, reversed) : {reversed: reversed};
+    return {sort: sort, reversed: !how.reversed};
+}
