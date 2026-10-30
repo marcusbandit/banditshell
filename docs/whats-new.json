@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-7",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A failed island task ends in an error mark and keeps its app mark"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The island overview shows whole cards, the rest go in the more count"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The more notifications arrow lines up with the times and the date"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30-6",
       "date": "2026-10-30",
       "changes": [
