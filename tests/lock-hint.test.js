@@ -11,7 +11,7 @@ const SESSION = "/org/freedesktop/login1/session/_32";
 const told = (text, session = SESSION) => Hint.readRecord(text, session);
 
 test.describe("locked hint at start", () => {
-    test.it("clears a hint the shell already took back", () => {
+    test.it("clears a hint left true after the shell unlocked", () => {
         assert.strictEqual(Hint.onStart(true, told(Hint.recordText(SESSION, false)), false), "clear");
     });
 
@@ -27,6 +27,7 @@ test.describe("locked hint at start", () => {
 
     test.it("trusts only a record for a known session", () => {
         assert.strictEqual(told(Hint.recordText("", false), ""), null);
+        assert.strictEqual(told(Hint.recordText("", true)), null);
         assert.strictEqual(told('{"session":"' + SESSION + '","told":"false"}'), null);
     });
 
@@ -34,13 +35,5 @@ test.describe("locked hint at start", () => {
         assert.strictEqual(Hint.onStart(false, told(Hint.recordText(SESSION, true)), false), "leave");
         assert.strictEqual(Hint.onStart(undefined, null, false), "leave");
         assert.strictEqual(Hint.onStart(true, false, true), "leave");
-    });
-
-    test.it("an unlock whose hint never reached logind is cleared on the next start", () => {
-        const afterLock = Hint.recordText(SESSION, true);
-        assert.strictEqual(Hint.onStart(true, told(afterLock), false), "relock");
-        const afterUnlock = Hint.recordText(SESSION, false);
-        assert.strictEqual(Hint.onStart(true, told(afterUnlock), false), "clear");
-        assert.strictEqual(Hint.onStart(false, told(afterUnlock), false), "leave");
     });
 });
