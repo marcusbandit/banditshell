@@ -496,7 +496,7 @@ Item {
         }
     }
 
-    readonly property real sidebarMost: Math.min(root.width * 0.4, Math.max(sidebar.natural, root.width - sidebarEdge.implicitWidth - middle.listNeed - Files.previewWidth))
+    readonly property real sidebarMost: Math.min(root.width * 0.4, Math.max(sidebar.natural, root.width - sidebarEdge.implicitWidth - middle.listNeed - (Files.previewOpen && !!Files.current ? Files.previewWidth : 0)))
 
     ActionSheet {
         id: sheet

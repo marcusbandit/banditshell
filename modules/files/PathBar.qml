@@ -16,7 +16,7 @@ Item {
     signal dismissed
     signal emptyAsked
 
-    implicitHeight: Math.max(buttons.implicitHeight, crumbs.implicitHeight, field.implicitHeight + Appearance.padding.small * 2, emptying.visible ? emptying.implicitHeight : 0, search.implicitHeight)
+    implicitHeight: Math.max(buttons.implicitHeight, crumbs.implicitHeight, emptying.visible ? emptying.implicitHeight : 0, search.implicitHeight)
 
     function edit(): void {
         root.editing = true;
@@ -458,6 +458,7 @@ Item {
             id: scope
 
             zoom: Files.magnification
+            width: Math.min(implicitWidth, search.width - Files.zoomed(120))
 
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter

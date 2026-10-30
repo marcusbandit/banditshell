@@ -63,7 +63,7 @@ Item {
 
     function modeText(mode: int, width: real): string {
         const letters = Files.humanMode(mode);
-        return detailInk.advanceWidth(letters) <= width ? letters : (mode & 511).toString(8);
+        return detailInk.advanceWidth(letters) <= width ? letters : (mode & 511).toString(8).padStart(3, "0");
     }
 
     function spread(parts: var, width: real): string {

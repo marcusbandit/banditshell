@@ -9,7 +9,7 @@ function flow(widths, start, end, spacing) {
     let x = start;
     let line = 0;
     for (const width of widths) {
-        if (x > start && x + width > end) {
+        if (end > start && x > start && x + width > end) {
             x = start;
             line++;
         }

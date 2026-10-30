@@ -10,6 +10,8 @@ import "../../services/files-order.js" as FilesOrder
 Item {
     id: root
 
+    clip: true
+
     readonly property bool list: Files.listed
     readonly property var heads: FilesOrder.headers(Files.sort, Files.reversed, Files.trashTop)
     readonly property real inset: RowColumns.inset(Appearance.padding.small, Appearance.padding.hair)

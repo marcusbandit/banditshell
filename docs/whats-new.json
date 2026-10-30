@@ -7,7 +7,7 @@
         {
           "type": "issues",
           "severity": "minor",
-          "text": "The Files sidebar gives way at large zoom so names keep their room"
+          "text": "The Files sidebar narrows at large zoom"
         },
         {
           "type": "issues",

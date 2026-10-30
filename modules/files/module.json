@@ -7,6 +7,7 @@
     "services": ["Downloads", "Files", "FilesFind", "FilesPaste", "FilesUndo"],
     "js": ["services/files-conflicts.js", "services/files-find.js", "services/files-listing.js", "services/files-order.js", "services/files-trash.js", "services/files-undo.js"],
     "tests": [
+      "tests/files-columns.test.js",
       "tests/files-conflicts.test.js",
       "tests/files-delete.test.js",
       "tests/files-find.test.js",
