@@ -18,7 +18,10 @@ Singleton {
     readonly property bool shown: root.state !== "idle"
     readonly property bool good: root.state === "done" || root.state === "current"
 
-    property var work: Upgrade.create()
+    property string tool: Pacman.tool || "pacman"
+    readonly property string program: root.tool === "apt" ? "apt-get" : root.tool
+
+    property var work: Upgrade.create(root.tool)
     property bool dirty: false
 
     property string phase: "auth"
@@ -44,12 +47,12 @@ Singleton {
     readonly property int expected: Pacman.updates.length
     readonly property string headline: Upgrade.headline(root.work, root.state)
     readonly property bool asking: !!root.question && root.question.id !== root.answered
-    readonly property bool needsAnswer: root.asking && root.question.text !== "Proceed with installation?"
+    readonly property bool needsAnswer: root.asking && !Upgrade.proceeds(root.question)
 
     property bool glanced: false
     readonly property bool quiet: root.running && root.glanced && root.phase !== "auth" && !root.needsAnswer
 
-    readonly property var plan: Upgrade.plan(Config.values.packages.upgrade)
+    readonly property var plan: Upgrade.plan(Config.values.packages.upgrade, Pacman.tool || "pacman")
 
     property int watchers: 0
     readonly property bool watched: root.watchers > 0
@@ -60,11 +63,12 @@ Singleton {
             return true;
         if (!Quickshell.env("BANDITSHELL_UPGRADE_COMMAND") && (!Polkit.serving || !root.plan.plain))
             return false;
+        root.tool = Pacman.tool || "pacman";
         root.reset();
         root.state = "running";
         root.startedAt = Date.now();
         root.kernelTo = Pacman.kernelUpdate ? Pacman.pretty(Pacman.kernelUpdate.to) : "";
-        Polkit.expect("Update the system", "pacman");
+        Polkit.expect("Update the system", root.program);
         starter.command = [root.runner, "start", root.dir, ...(root.plan.noconfirm ? ["--noconfirm"] : [])];
         starter.running = true;
         return true;
@@ -73,6 +77,7 @@ Singleton {
     property bool mocked: false
 
     function mock(text: string, code: int, kernel: string): void {
+        root.tool = "pacman";
         root.reset();
         root.mocked = true;
         root.state = "running";
@@ -102,7 +107,7 @@ Singleton {
         root.followed = false;
         proceed.stop();
         proceed.id = 0;
-        root.work = Upgrade.create();
+        root.work = Upgrade.create(root.tool);
         root.answered = 0;
         root.glanced = false;
         root.cancelling = false;
@@ -163,7 +168,7 @@ Singleton {
 
     function follow(pid: int): void {
         root.followed = true;
-        root.work = Upgrade.create();
+        root.work = Upgrade.create(root.tool);
         follower.command = pid > 0 ? ["tail", "-c", "+1", "-f", `--pid=${pid}`, "-s", "0.5", "--", `${root.dir}/log`] : ["cat", "--", `${root.dir}/log`];
         follower.running = true;
     }
@@ -184,7 +189,7 @@ Singleton {
     }
 
     function release(): void {
-        if (Polkit.expected?.program === "pacman")
+        if (Polkit.expected?.program === root.program)
             Polkit.forget();
     }
 
@@ -215,7 +220,7 @@ Singleton {
             root.errors = w.errors.slice();
         if (w.phase !== "auth")
             root.release();
-        if (root.running && !root.mocked && root.asking && root.question.text === "Proceed with installation?" && proceed.id !== root.question.id) {
+        if (root.running && !root.mocked && root.asking && Upgrade.proceeds(root.question) && proceed.id !== root.question.id) {
             proceed.id = root.question.id;
             proceed.restart();
         }
@@ -294,11 +299,13 @@ Singleton {
                         got[line.slice(0, at)] = line.slice(at + 1);
                 }
                 const pid = Number(got.pid) || 0;
+                if (got.tool)
+                    root.tool = got.tool;
                 if (pid > 0) {
                     if (root.state !== "running") {
                         root.reset();
                         root.state = "running";
-                        Polkit.expect("Update the system", "pacman");
+                        Polkit.expect("Update the system", root.program);
                     }
                     if (!follower.running)
                         root.follow(pid);

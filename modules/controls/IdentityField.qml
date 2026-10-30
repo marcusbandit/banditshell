@@ -49,7 +49,7 @@ Item {
     readonly property bool filled: !!identity.text && (root.tls ? !!root.pathOf(certificate) : !!password.text)
     readonly property bool authorityMissing: root.trustKey === "file" && !root.pathOf(authority)
     readonly property bool keyMissing: root.tls && !root.pathOf(key) && CertificateFiles.needsKey(root.found, root.pathOf(certificate))
-    readonly property bool started: !!identity.text || !!password.text || !!root.pathOf(certificate)
+    readonly property bool started: (!!identity.text && identity.text !== root.autoIdentity) || !!password.text || (!!root.pathOf(certificate) && root.pathOf(certificate) !== root.autoCertificate)
     readonly property bool certificateMissing: root.tls && !root.pathOf(certificate)
     readonly property bool passwordMissing: !root.tls && !password.text && !root.looksUp
     readonly property bool keyPasswordMissing: root.keyLocked && !keyPassword.text
@@ -63,7 +63,11 @@ Item {
     readonly property string certificateProblem: root.tls ? CertificateFiles.problem(root.found, root.pathOf(certificate), "client", root.now) : ""
     readonly property string keyProblem: root.tls && !root.keyCarried && !!root.pathOf(key) ? CertificateFiles.problem(root.found, root.pathOf(key), "key", root.now) : ""
     readonly property string fileProblem: root.authorityProblem || root.certificateProblem || root.keyProblem
-    readonly property bool blocked: root.authorityMissing || root.outerSpaced || !!root.fileProblem || (!root.looksUp && (!identity.text || root.certificateMissing || root.keyMissing || root.passwordMissing || root.serverMissing)) || chooser.running
+    readonly property string authorityPrint: root.trustKey === "file" ? CertificateFiles.fingerprintAt(root.found, root.pathOf(authority)) : ""
+    readonly property string printVerdict: root.authorityPrint ? CertificateFiles.compare(root.authorityPrint, published.text) : ""
+    readonly property bool printDiffers: root.printVerdict === "differs"
+    readonly property bool rootsUnrelated: root.trustKey === "file" && CertificateFiles.unrelated(root.found, root.readServer(server.text))
+    readonly property bool blocked: root.authorityMissing || root.printDiffers || root.outerSpaced || !!root.fileProblem || (!root.looksUp && (!identity.text || root.certificateMissing || root.keyMissing || root.passwordMissing || root.serverMissing)) || chooser.running
     readonly property string blockReason: {
         if (!root.blocked)
             return "";
@@ -73,6 +77,8 @@ Item {
             return "pick your school's root certificate, or set Trust back to system.";
         if (root.fileProblem)
             return root.fileProblem;
+        if (root.printDiffers)
+            return "the root certificate's fingerprint is not the one you pasted.";
         if (root.looksUp)
             return root.outerSpaced ? root.outerFix : "";
         if (!identity.text)
@@ -88,7 +94,7 @@ Item {
         return root.outerSpaced ? root.outerFix : "";
     }
     readonly property string outerFix: `take out the space in the anonymous identity, as in ${root.outerDefault.includes("@") ? root.outerDefault : "anonymous@school.edu"}.`
-    readonly property bool moreNeeded: root.started && (root.authorityMissing || root.outerSpaced)
+    readonly property bool moreNeeded: root.started && (root.authorityMissing || root.printDiffers || root.outerSpaced)
     property bool serverUp: false
 
     onNeedsServerChanged: if (root.needsServer && !server.input.activeFocus)
@@ -121,11 +127,59 @@ Item {
     readonly property bool keyCarried: root.tls && CertificateFiles.carriesKey(root.found, root.pathOf(certificate))
     readonly property bool keyLocked: root.tls && CertificateFiles.locked(root.found, root.keyCarried ? root.pathOf(certificate) : root.pathOf(key))
     property Item browsingInto: null
+    property var pickedFiles: []
+    property bool rescan: false
     property string autoKey: ""
+    property string autoCertificate: ""
+    property string autoIdentity: ""
     property bool keyPasswordWarned: false
     property bool keyPasswordVisited: false
 
-    onFoundChanged: root.matchKey()
+    onFoundChanged: {
+        root.matchCertificate();
+        root.matchKey();
+        root.matchName();
+    }
+
+    onTlsChanged: {
+        if (root.tls) {
+            root.matchCertificate();
+            root.matchName();
+        } else if (identity.text && identity.text === root.autoIdentity) {
+            identity.text = "";
+            root.autoIdentity = "";
+        }
+    }
+
+    function matchCertificate(): void {
+        if (!root.tls)
+            return;
+        const current = root.pathOf(certificate);
+        if (current && current !== root.autoCertificate)
+            return;
+        const want = CertificateFiles.easiest(root.found, Date.now(), 4);
+        if (!want && current)
+            return;
+        root.autoCertificate = want;
+        certificate.text = want ? CertificateFiles.shortPath(want, System.home) : "";
+    }
+
+    function matchName(): void {
+        if (!root.tls)
+            return;
+        if (identity.text && identity.text !== root.autoIdentity)
+            return;
+        const want = CertificateFiles.holderAt(root.found, root.pathOf(certificate));
+        root.autoIdentity = want;
+        identity.text = want;
+    }
+
+    function scan(): void {
+        if (files.running)
+            root.rescan = true;
+        else
+            files.running = true;
+    }
 
     function matchKey(): void {
         if (!root.tls)
@@ -167,6 +221,10 @@ Item {
 
     function pickFile(entry: Item, path: string): void {
         entry.text = CertificateFiles.shortPath(path, System.home);
+        if (!root.found.some(f => f.path === path) && !root.pickedFiles.includes(path)) {
+            root.pickedFiles = root.pickedFiles.concat([path]);
+            root.scan();
+        }
         if (root.localField === entry.field) {
             root.local = "";
             root.localField = "";
@@ -270,9 +328,12 @@ Item {
         keyPassword.text = "";
         outer.text = "";
         password.shown = false;
+        published.text = "";
         server.text = root.fill || root.domain;
         root.autoServer = "";
         root.autoKey = "";
+        root.autoCertificate = "";
+        root.autoIdentity = "";
         root.keyPasswordWarned = false;
         root.keyPasswordVisited = false;
         root.local = "";
@@ -284,6 +345,7 @@ Item {
             if (root.wantsFiles)
                 files.running = true;
         } else {
+            root.pickedFiles = [];
             root.browsingInto = null;
             chooser.stop();
             Prompts.release(root);
@@ -297,10 +359,15 @@ Item {
     Process {
         id: files
 
-        command: ["sh", Quickshell.shellPath("scripts/certificate-files.sh")]
+        command: ["sh", Quickshell.shellPath("scripts/certificate-files.sh")].concat(root.pickedFiles)
 
         stdout: StdioCollector {
             onStreamFinished: root.found = CertificateFiles.read(text)
+        }
+
+        onExited: if (root.rescan) {
+            root.rescan = false;
+            files.running = true;
         }
     }
 
@@ -466,9 +533,34 @@ Item {
                 width: parent.width
                 spacing: 0
 
-                FormLine {
-                    text: root.tls ? `Sign in to ${root.placeholder} with a certificate from your school or work.` : `Sign in to ${root.placeholder} with your ${root.school ? root.school.school : "school or work"} account.`
-                    color: Appearance.colour.textDim
+                Item {
+                    width: parent.width
+                    implicitHeight: Math.max(intro.implicitHeight, shut.implicitHeight)
+
+                    FormLine {
+                        id: intro
+
+                        width: parent.width
+                        rightPadding: shut.width + Appearance.padding.normal
+                        text: root.tls ? `Sign in to ${root.placeholder} with a certificate from your school or work.` : `Sign in to ${root.placeholder} with your ${root.school ? root.school.school : "school or work"} account.`
+                        color: Appearance.colour.textDim
+                    }
+
+                    Button {
+                        id: shut
+
+                        anchors.right: parent.right
+                        anchors.rightMargin: Appearance.padding.small
+                        y: Appearance.padding.small / 2
+                        size: 0
+                        style: "bare"
+                        icon: "close"
+                        onClicked: root.cancelled()
+
+                        HoverTip {
+                            text: "close"
+                        }
+                    }
                 }
 
                 FormLine {
@@ -487,6 +579,11 @@ Item {
                     onTextChanged: root.realmServer()
                 }
 
+                FormLine {
+                    visible: root.tls && !!identity.text && identity.text === root.autoIdentity
+                    text: "Read from your certificate. Change it if your school's guide gives another name."
+                }
+
                 Entry {
                     id: certificate
 
@@ -501,6 +598,7 @@ Item {
                         root.keyPasswordWarned = false;
                         root.keyPasswordVisited = false;
                         root.matchKey();
+                        root.matchName();
                     }
                 }
 
@@ -745,7 +843,7 @@ Item {
                         hint: root.hintFor(root.authorities)
                         path: true
                         field: "authority"
-                        next: identity.input
+                        next: published.visible ? published.input : identity.input
                     }
 
                     FormLine {
@@ -767,9 +865,50 @@ Item {
                     }
 
                     FormLine {
+                        visible: root.rootsUnrelated
+                        text: `None of these look like the root for ${root.readServer(server.text)}. Your school's Wi-Fi guide says which file to use.`
+                        color: Appearance.colour.textDim
+                    }
+
+                    FormLine {
                         visible: root.localField === "authority"
                         text: root.local
                         color: Appearance.colour.warning
+                    }
+
+                    FormLine {
+                        visible: !!root.authorityPrint
+                        text: `SHA-256 fingerprint\n${CertificateFiles.printLines(root.authorityPrint)}`
+                        color: Appearance.colour.textDim
+                    }
+
+                    Entry {
+                        id: published
+
+                        width: parent.width
+                        visible: !!root.authorityPrint
+                        warn: root.printDiffers
+                        label: "Fingerprint from your school"
+                        hint: "optional, paste it to compare"
+                        field: "published"
+                        next: identity.input
+                    }
+
+                    FormLine {
+                        visible: root.printVerdict === "match"
+                        text: "Matches exactly. This is the root your school published."
+                        color: Appearance.colour.text
+                    }
+
+                    FormWarning {
+                        visible: root.printDiffers
+                        text: "Does not match. This file is not the root your school published."
+                    }
+
+                    FormLine {
+                        visible: root.printVerdict === "sha1" || root.printVerdict === "short"
+                        text: root.printVerdict === "sha1" ? "That is a SHA-1 fingerprint. Ask for the SHA-256 one, 64 characters long." : "A SHA-256 fingerprint is 64 characters long. Paste all of it."
+                        color: Appearance.colour.textDim
                     }
 
                     FormChoice {

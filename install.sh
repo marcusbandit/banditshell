@@ -176,11 +176,17 @@ quickshell_present() {
 CHARGE_HELPER="/usr/local/libexec/banditshell-charge-limit"
 CHARGE_POLICY="/usr/share/polkit-1/actions/org.banditshell.charge-limit.policy"
 NIXOS_MARK=/etc/NIXOS
+NIXOS_PROFILE=/run/current-system/sw
+POWER_SUPPLY=/sys/class/power_supply
 
 charge_limit_present() {
-    if ! ls /sys/class/power_supply/BAT*/charge_control_end_threshold >/dev/null 2>&1; then
+    if ! ls "$POWER_SUPPLY"/BAT*/charge_control_end_threshold >/dev/null 2>&1; then
         PROBE_NOTE="no battery here has a charge limit; nothing to install"
         return 0
+    fi
+    if [ -e "$NIXOS_MARK" ]; then
+        [ -x "$NIXOS_PROFILE/bin/banditshell-charge-limit" ] && [ -f "$NIXOS_PROFILE/share/polkit-1/actions/org.banditshell.charge-limit.policy" ]
+        return
     fi
     cmp -s "$REPO/scripts/charge-limit.sh" "$CHARGE_HELPER" || return 1
     cmp -s "$REPO/assets/polkit/org.banditshell.charge-limit.policy" "$CHARGE_POLICY"
@@ -188,7 +194,7 @@ charge_limit_present() {
 
 install_charge_limit() {
     if [ -e "$NIXOS_MARK" ]; then
-        STEP_OUTPUT="NixOS reads neither /usr/local/libexec nor /usr/share/polkit-1/actions, so the charge limit cannot be installed from here"
+        STEP_OUTPUT="NixOS installs it from its own config: add $REPO/nix/charge-limit.nix to imports in /etc/nixos/configuration.nix, then run nixos-rebuild switch"
         return 1
     fi
     if ! need_root; then

@@ -1349,15 +1349,15 @@ Item {
                         bubbles.count;
                         return bubbles.itemAt(under.index);
                     }
-                    readonly property real fade: (under.twin?.grown ?? 0) * (1 - (under.twin?.travel ?? 0)) * presence.value
+                    readonly property real fade: (under?.twin?.grown ?? 0) * (1 - (under?.twin?.travel ?? 0)) * presence.value
 
                     DropShadow {
-                        x: under.twin?.x ?? 0
-                        y: under.twin?.y ?? 0
-                        width: under.twin?.width ?? 0
-                        height: under.twin?.height ?? 0
+                        x: under?.twin?.x ?? 0
+                        y: under?.twin?.y ?? 0
+                        width: under?.twin?.width ?? 0
+                        height: under?.twin?.height ?? 0
                         pill: "object"
-                        opacity: settle.value * Appearance.opacity.glow * under.fade
+                        opacity: settle.value * Appearance.opacity.glow * (under?.fade ?? 0)
                         visible: opacity > 0.01
                     }
 
@@ -1376,19 +1376,19 @@ Item {
 
                                 speed: Appearance.animation.revealSpeed
                                 epsilon: 0.004
-                                target: (under.twin?.depth ?? 0) >= behind.d ? 1 : 0
+                                target: (under?.twin?.depth ?? 0) >= behind.d ? 1 : 0
                             }
 
                             z: -behind.d
-                            x: under.twin?.x ?? 0
-                            y: (under.twin?.y ?? 0) + root.stackStep * behind.d * behindShown.value
-                            width: under.twin?.width ?? 0
+                            x: under?.twin?.x ?? 0
+                            y: (under?.twin?.y ?? 0) + root.stackStep * behind.d * behindShown.value
+                            width: under?.twin?.width ?? 0
                             height: width
                             pill: "object"
                             color: Appearance.blend(Appearance.colour.island, Appearance.colour.paper, 0.06 * behind.d)
                             stroke: Appearance.colour.seam
                             strokeWidth: Appearance.stroke.line
-                            opacity: under.fade * behindShown.value
+                            opacity: (under?.fade ?? 0) * behindShown.value
                             visible: opacity > 0.01
                         }
                     }

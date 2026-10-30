@@ -506,6 +506,7 @@ PanelWindow {
             anchors.fill: parent
 
             railWanted: sidebar.railWanted
+            readable: settingsLayer.open
 
             panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs, ...keyringLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs), ...body.lowered(glance.blobs)]
         }

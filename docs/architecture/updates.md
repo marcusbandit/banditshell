@@ -36,7 +36,8 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    staged tree, and a failed build stops the update. The new install steps are run through the
    staged `install.sh`'s own checks, pointed at the checkout, and only the ones that fail here
    are named after the merge in "this version needs ...; run install.sh" (#339).
-4. **Apply.** The old head goes into `update/previous` and the target into `update/target`. Edits
+4. **Apply.** The old head goes into `update/previous` and the target into `update/target`, and
+   `config.json` is copied into `update/settings` as `<time>-before-<old head>.json`. Edits
    here that the update also touches are set aside with `git stash` under a fixed identity and the
    names go into `update/aside`; edits the update does not touch ride along. Then
    `git merge --ff-only`. Helpers are copied from the staged tree, `bin/` is ensured and
@@ -54,7 +55,8 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    that makes the checkout's shell exit counts as a failed one: the instance is looked up before
    the merge, and when it is gone after it with no other shell in its place, the same restart and
    check follow. A shell run from the last known good copy or a tried worktree was never the
-   checkout's, so it is left alone (#307).
+   checkout's, so it is left alone (#307). Once the new version has started, `config.json` as it
+   wrote it is copied as `<time>-after-<target>.json`.
 6. **Roll back on failure.** If the health check of a start fails, `git reset --keep <previous>` puts the
    checkout back, the commit that failed goes into `update/skip` (it is not offered again until a
    newer one arrives) and the shell is relaunched. If even that launch fails, the last known
@@ -65,9 +67,9 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    of its own, and when the recorded commit is not behind HEAD; a reset git refuses changes and
    skips nothing. The check reports that commit as `previous`, with its id as `previousVersion`,
    under the same rules, and the menu then offers a quiet "Go back to <id>" below the what's-new
-   list, asks "Go back to <id>?" as its headline with that list as what is left behind, and runs `rollback --detach`, whose first progress line is `goback`. Only the
-   checkout moves: `config.json`, files the newer version wrote elsewhere and stashed edits stay
-   as they are, and the confirm says so (#171). `result.json` names the commit it went back to as
+   list, asks "Go back to <id>?" as its headline with that list as what is left behind, and runs `rollback --detach`, whose first progress line is `goback`. `config.json` goes back too
+   (#171), by the rule in "Settings on the way back" below. Files the newer version wrote elsewhere
+   and stashed edits stay as they are, and the confirm says so. `result.json` names the commit it went back to as
    `from`, which on stable is the release before, not `update/previous` (#328). After a go-back the outcome offers
    "Update to <id> again", asked once, which runs `update apply --detach --to <sha>` on the commit it left. Once an
    applied commit starts, it leaves `update/skip`, and the shell clears `updates.skip` when
@@ -80,13 +82,40 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    version before the last update. What's new shows nothing pending when the seen mark is a
    newer id than the whole log, which is where a rollback leaves it.
 
+### Settings on the way back
+
+Both kinds of rollback, a failed start and going back by hand, put `config.json` back when
+`update/settings` holds a `before` copy for the commit they go to. Every version writes the
+whole tree of keys it knows and drops the rest, so without this an older version runs on
+defaults for every key a newer one removed or renamed. The rule, per setting (`settingsBack` in
+`services/update.js`):
+
+- missing now: back as it was before, so the keys the newer version dropped return
+- changed since the newer version first wrote it: kept as it is now, and named in the outcome
+- untouched since: back as it was before, which undoes the newer version's own rewrites
+- only in the newer version: kept; the older version drops it on its next save
+- the `updates` section: kept as it is now, since it records the updater's own state (skip,
+  seen mark, channel), not a version's settings
+
+A failed start reads the config as it is now as the one the newer version wrote, since nobody
+had time to change anything, so every setting goes back. Going back by hand with no `after`
+copy (the newer version never started, or the update predates this) leaves every setting
+present now as it is and only brings missing ones back. Before writing, the config as
+it stands is kept as `<time>-rollback-<left>.json`, so going back can itself be undone by
+copying that file over `config.json`. The file is written next to its real path and moved into
+place, so a symlinked config stays a symlink. With no `before` copy for that commit, as on a
+stable copy that never updated from the release before, `config.json` is left alone and the
+confirm keeps saying so. The check carries `previousSettings` to tell the menu which. The
+folder keeps the newest 10 copies of each kind. `result.json` gains `settings`: `null`, or `back`, `kept`
+(the dotted keys kept as they are now) and `copy`.
+
 `--detach` runs the whole of apply, or of rollback, in a session of its own and writes JSON phase lines to
 `update/progress.log`, which `Update.qml` reads back. A restart or a hot reload cannot kill the
 update that way. A second update at the same time is turned away by a lock on `update/lock`.
 `BANDITSHELL_DRY=1` makes apply print what it would do.
 
 State lives in `~/.local/state/banditshell/update/` (`previous`, `target`, `skip`, `aside`,
-`result.json`, `progress.log`, `lock`, `verify.log`, `build.log`) and `~/.cache/banditshell/`
+`result.json`, `progress.log`, `lock`, `verify.log`, `build.log`, `settings/`) and `~/.cache/banditshell/`
 (`staged`, `lastgood`, `failed.log`). `~/.local/state/banditshell/root` remembers the checkout so
 a shell run from `lastgood` can still update the real one.
 

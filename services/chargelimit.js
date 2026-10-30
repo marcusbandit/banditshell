@@ -2,10 +2,13 @@ function parseProbe(text) {
     const body = String(text ?? "");
     const threshold = /^threshold (\d*)$/m.exec(body);
     const current = threshold && threshold[1] !== "" ? Number(threshold[1]) : -1;
+    const helper = /^helper(?: (\S+))?$/m.exec(body);
     return {
         supported: !!threshold,
         current,
-        helper: /^helper$/m.test(body)
+        helper: !!helper,
+        helperPath: helper && helper[1] ? helper[1] : "",
+        nixos: /^nixos$/m.test(body)
     };
 }
 
@@ -34,6 +37,8 @@ function trouble(state, installCommand) {
         return "";
     if (!state.supported)
         return "this battery has no charge limit in its firmware";
+    if (!state.helper && state.nixos)
+        return "needs the helper · import nix/charge-limit.nix in your NixOS config";
     if (!state.helper)
         return `needs the helper · run ${installCommand}`;
     if (held(state) && state.refused.failed)

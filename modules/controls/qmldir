@@ -1,6 +1,7 @@
 module qs.modules.controls
 Expander 1.0 Expander.qml
 FileChips 1.0 FileChips.qml
+FileChoiceGroup 1.0 FileChoiceGroup.qml
 FileChoiceRow 1.0 FileChoiceRow.qml
 FileChooser 1.0 FileChooser.qml
 FormChoice 1.0 FormChoice.qml

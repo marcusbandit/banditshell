@@ -40,12 +40,21 @@ Item {
     readonly property real streamFlare: Math.min(Appearance.sizes.gap, root.streamReach)
 
     property var panels: []
+    property bool readable: false
 
     Follow {
         id: railGrowth
 
         target: root.rail && root.railWanted ? 1 : 0
         speed: Appearance.animation.resizeSpeed
+        epsilon: 0.002
+    }
+
+    Follow {
+        id: readableShown
+
+        target: root.readable ? 1 : 0
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.002
     }
 
@@ -60,6 +69,8 @@ Item {
         anchors.fill: parent
 
         panels: root.panels
+
+        colour: Appearance.blend(Appearance.colour.surface, Appearance.colour.readableSurface, readableShown.value)
 
         content: Qt.vector4d(root.holeX, root.holeY, root.holeWidth, root.holeHeight)
 
