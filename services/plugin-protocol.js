@@ -80,7 +80,7 @@ function local(doing) {
     return !!(doing.open || doing.copy || doing.run.length);
 }
 
-function readManifest(text, folder) {
+function readManifest(text, folder, loose) {
     var name = folder.slice(folder.lastIndexOf("/") + 1);
     var raw;
     try {
@@ -90,7 +90,12 @@ function readManifest(text, folder) {
     }
     if (!raw || typeof raw !== "object" || Array.isArray(raw))
         return { error: "plugin.json is not an object", id: name };
-    if (raw.id !== name || !ID.test(name))
+    if (loose) {
+        if (typeof raw.id !== "string" || !ID.test(raw.id))
+            return { error: "the id must be lowercase letters, digits and -", id: name };
+        name = raw.id;
+        folder = `${folder.slice(0, folder.lastIndexOf("/") + 1)}${name}`;
+    } else if (raw.id !== name || !ID.test(name))
         return { error: `the id must be the folder's name, ${name}, in lowercase letters, digits and -`, id: name };
     var title = textOf(raw.name).trim();
     if (!title)

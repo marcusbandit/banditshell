@@ -16,10 +16,11 @@ Column {
 
     property var listed: []
     property var secrets: ({})
+    property bool introKnown: false
     property bool introSeen: false
     property bool introAgain: false
 
-    readonly property bool introShown: !root.introSeen || root.introAgain
+    readonly property bool introShown: root.introKnown && (!root.introSeen || root.introAgain)
 
     readonly property string folder: `${Config.dir}/plugins`
     readonly property var off: Config.values.launcher.plugins.off
@@ -100,7 +101,11 @@ Column {
 
         path: `${Config.stateDir}/plugins-intro-seen`
         printErrors: false
-        onLoaded: root.introSeen = true
+        onLoaded: {
+            root.introSeen = true;
+            root.introKnown = true;
+        }
+        onLoadFailed: root.introKnown = true
     }
 
     function dismissIntro(): void {
@@ -191,7 +196,7 @@ Column {
 
     SettingsRowFrame {
         width: root.width
-        visible: !root.introShown
+        visible: root.introKnown && !root.introShown
         interactive: false
         icon: "help"
         label: "What plugins can do"

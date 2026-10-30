@@ -1600,13 +1600,14 @@ plugin_manifest() {
 plugin_list() {
     local dir folder found=0
     dir=$(plugin_dir)
+    local problem
     for folder in "$dir"/*/; do
         [ -f "$folder/plugin.json" ] || continue
         found=1
-        if plugin_manifest id "$folder" "$(basename "$folder")" >/dev/null 2>&1; then
+        if problem=$(plugin_manifest id "$folder" 2>&1 >/dev/null); then
             printf '%s\n' "$(basename "$folder")"
         else
-            printf '%s  %s\n' "$(basename "$folder")" "$(plugin_manifest id "$folder" "$(basename "$folder")" 2>&1 >/dev/null)"
+            printf '%s  %s\n' "$(basename "$folder")" "$problem"
         fi
     done
     [ "$found" = 1 ] || echo "no plugins yet in ${dir/#$HOME/\~} (try: banditshell plugin new <name>)"
@@ -1636,7 +1637,7 @@ plugin_new() {
 
 plugin_dev() {
     [ $# -eq 1 ] || say_usage "plugin dev <dir>"
-    local source id link log stamp tailer
+    local source id link log stamp tailer made=""
     source=$(absolute_path "$1")
     [ -f "$source/plugin.json" ] || { echo "banditshell: no plugin.json in $1" >&2; exit 1; }
     id=$(plugin_manifest id "$source") || exit 1
@@ -1649,6 +1650,7 @@ plugin_dev() {
     else
         mkdir -p "$(plugin_dir)"
         ln -s "$source" "$link"
+        made=1
     fi
     log="$STATE_DIR/plugins/$id.log"
     mkdir -p "${log%/*}"
@@ -1656,11 +1658,11 @@ plugin_dev() {
     stamp=$(mktemp)
     tail -n 0 -F "$log" 2>/dev/null &
     tailer=$!
-    trap 'kill "$tailer" 2>/dev/null; rm -f "$stamp"; [ ! -L "$link" ] || rm -f "$link"; echo; echo "took ${link/#$HOME/\~} away"; exit 0' INT TERM
+    trap 'trap - EXIT; kill "$tailer" 2>/dev/null; rm -f "$stamp"; if [ -n "$made" ] && [ -L "$link" ]; then rm -f "$link"; echo; echo "took ${link/#$HOME/\~} away"; fi; ipc_quiet launcher reloadPlugin "$id" >/dev/null 2>&1 || true; exit 0' INT TERM HUP EXIT
     echo "linked ${link/#$HOME/\~}; type $id in the launcher, ctrl-c to stop"
     ipc_quiet launcher reloadPlugin "$id" >/dev/null || true
     while sleep 1; do
-        if [ -n "$(find "$source" -newer "$stamp" -type f -not -path '*/.git/*' -print -quit 2>/dev/null)" ]; then
+        if [ -n "$(find "$source" \( -name .git -o -name node_modules -o -name .venv -o -name __pycache__ -o -name target \) -prune -o -type f -newer "$stamp" -print -quit 2>/dev/null)" ]; then
             touch "$stamp"
             echo "${dim}saved, restarting $id${plain}"
             ipc_quiet launcher reloadPlugin "$id" >/dev/null || true
@@ -1669,7 +1671,7 @@ plugin_dev() {
 }
 
 plugin_install() {
-    local from="" yes="" source id target commit answer
+    local from="" yes="" source id target commit answer leaves
     while [ $# -gt 0 ]; do
         case "$1" in
         --yes) yes=1 ;;
@@ -1694,6 +1696,11 @@ plugin_install() {
     fi
     id=$(plugin_manifest id "$source") || exit 1
     plugin_manifest show "$source" || exit 1
+    if ! leaves=$(plugin_manifest links "$source"); then
+        echo "banditshell: refused, these links point outside the plugin:" >&2
+        printf '  %s\n' "$leaves" >&2
+        exit 1
+    fi
     target="$(plugin_dir)/$id"
     [ ! -e "$target" ] && [ ! -L "$target" ] || { echo "banditshell: ${target/#$HOME/\~} already exists; remove it first" >&2; exit 1; }
     echo

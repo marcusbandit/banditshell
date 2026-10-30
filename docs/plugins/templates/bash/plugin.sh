@@ -20,7 +20,7 @@ while IFS= read -r line; do
         ;;
     complete)
         id=$(field id "$line")
-        printf '{"type":"fill","text":"%s %s "}\n' "$word" "${id#echo:}"
+        [[ $id == echo:* ]] && printf '{"type":"fill","text":"%s %s "}\n' "$word" "${id#echo:}"
         ;;
     esac
 done

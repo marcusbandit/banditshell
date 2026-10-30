@@ -82,6 +82,35 @@ test("plugin install refuses a folder whose manifest the shell would refuse", ()
     assert.match(run.err, /api 2/);
 });
 
+test("plugin install lists links, survives a dangling one and refuses one that leaves the plugin", () => {
+    const folder = directory("linked");
+    fs.cpSync(path.join(ROOT, "docs/plugins/examples/hello-bash"), folder, { recursive: true });
+    fs.symlinkSync("plugin.sh", path.join(folder, "alias.sh"));
+    fs.symlinkSync("missing", path.join(folder, "dangling"));
+    const fine = cli(["plugin", "install", folder, "--yes"], dry);
+    assert.strictEqual(fine.code, 0, fine.err);
+    assert.match(fine.out, /alias\.sh -> plugin\.sh/);
+    assert.match(fine.out, /dangling -> missing/);
+    fs.symlinkSync("/etc", path.join(folder, "escape"));
+    const refused = cli(["plugin", "install", folder, "--yes"], dry);
+    assert.strictEqual(refused.code, 1);
+    assert.match(refused.err, /escape -> \/etc/);
+    assert.ok(!fs.existsSync(path.join(pluginsOf(refused.home), "hello-bash")));
+});
+
+test("plugin install names a bad id plainly, whatever the folder is called", () => {
+    const folder = directory("src");
+    fs.writeFileSync(path.join(folder, "plugin.json"), '{"api":1,"id":"Bad","name":"B","exec":["x"],"prefix":["b"]}');
+    assert.match(cli(["plugin", "install", folder, "--yes"], dry).err, /the id must be lowercase letters, digits and -/);
+});
+
+test("the bash template fills only rows it made, never its hint", () => {
+    const run = cli(["plugin", "new", "yy", "--bash"], dry);
+    const script = path.join(pluginsOf(run.home), "yy", "plugin.sh");
+    const out = require("node:child_process").execFileSync("bash", [script], { input: '{"type":"complete","id":"hint"}\n{"type":"complete","id":"echo:hi"}\n', env: { PATH: process.env.PATH, BANDITSHELL_PLUGIN_ID: "yy" }, encoding: "utf8" });
+    assert.deepStrictEqual(out.trim().split("\n").map(l => JSON.parse(l).text), ["yy hi "]);
+});
+
 test("the plugin template answers a query and a Tab", async () => {
     const run = cli(["plugin", "new", "echo"], dry);
     const folder = path.join(pluginsOf(run.home), "echo");
