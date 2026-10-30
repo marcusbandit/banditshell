@@ -94,15 +94,19 @@ defaults for every key a newer one removed or renamed. The rule, per setting (`s
 - changed since the newer version first wrote it: kept as it is now, and named in the outcome
 - untouched since: back as it was before, which undoes the newer version's own rewrites
 - only in the newer version: kept; the older version drops it on its next save
+- the `updates` section: kept as it is now, since it records the updater's own state (skip,
+  seen mark, channel), not a version's settings
 
-With no `after` copy (the newer version never started, or the update predates this), every
-setting present now stays as it is and only missing ones return. Before writing, the config as
+A failed start reads the config as it is now as the one the newer version wrote, since nobody
+had time to change anything, so every setting goes back. Going back by hand with no `after`
+copy (the newer version never started, or the update predates this) leaves every setting
+present now as it is and only brings missing ones back. Before writing, the config as
 it stands is kept as `<time>-rollback-<left>.json`, so going back can itself be undone by
 copying that file over `config.json`. The file is written next to its real path and moved into
 place, so a symlinked config stays a symlink. With no `before` copy for that commit, as on a
 stable copy that never updated from the release before, `config.json` is left alone and the
 confirm keeps saying so. The check carries `previousSettings` to tell the menu which. The
-folder keeps the newest 30 copies. `result.json` gains `settings`: `null`, or `back`, `kept`
+folder keeps the newest 10 copies of each kind. `result.json` gains `settings`: `null`, or `back`, `kept`
 (the dotted keys kept as they are now) and `copy`.
 
 `--detach` runs the whole of apply, or of rollback, in a session of its own and writes JSON phase lines to

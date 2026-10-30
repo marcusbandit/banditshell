@@ -3335,6 +3335,7 @@ U_WARNINGS=()
 HEALTH_WHY=""
 U_SETTINGS=null U_SETTINGS_NEXT="" U_SETTINGS_COPY="" U_SETTINGS_WHY=""
 U_SETTINGS_KEPT=()
+SETTINGS_STAY="config.json could not be put back as it was, so it stays as it is"
 
 ugit() { GIT_TERMINAL_PROMPT=0 LC_ALL=C git -C "$U_DIR" "$@"; }
 
@@ -3758,7 +3759,7 @@ update_settings_keep() {
         rm -f "$name.next"
         return 0
     fi
-    for old in $(cd "$dir" && ls -1 | grep -E '^[0-9]+-[a-z]+-[0-9a-f]+\.json$' | sort -r | tail -n +31); do
+    for old in $(cd "$dir" && ls -1 | grep -E "^[0-9]+-$1-[0-9a-f]+\.json$" | sort -r | tail -n +11); do
         rm -f "$dir/$old"
     done
     printf '%s' "$name"
@@ -3782,13 +3783,14 @@ update_settings_plan() {
     U_SETTINGS=null U_SETTINGS_NEXT="" U_SETTINGS_COPY="" U_SETTINGS_KEPT=()
     update_settings_back_to "$1" || return 0
     before=$(update_settings_find before "$1")
-    after=$(update_settings_find after "$2")
+    after="$CONFIG_FILE"
+    [ "$3" != true ] || after=$(update_settings_find after "$2")
     flush_shells $(shell_pids)
     U_SETTINGS_NEXT=$(mktemp "$UPDATE_STATE/settings/.next.XXXXXX") || { U_SETTINGS_NEXT=""; return 0; }
     if ! kept=$(node "$U_DIR/services/update.js" settings "$before" "$after" "$CONFIG_FILE" "$U_SETTINGS_NEXT" 2>/dev/null); then
         rm -f "$U_SETTINGS_NEXT"
         U_SETTINGS_NEXT=""
-        U_SETTINGS_WHY="config.json could not be put back as it was, so it stays as it is"
+        U_SETTINGS_WHY="$SETTINGS_STAY"
         return 0
     fi
     U_SETTINGS_COPY=$(update_settings_keep rollback "$2")
@@ -3812,7 +3814,7 @@ update_settings_put() {
         U_SETTINGS=$(printf '{"back":true,"kept":%s,"copy":%s}' "$(json_list "${U_SETTINGS_KEPT[@]}")" "$(json_quote "$U_SETTINGS_COPY")")
     else
         [ -z "$tmp" ] || rm -f "$tmp"
-        U_SETTINGS_WHY="config.json could not be put back as it was, so it stays as it is"
+        U_SETTINGS_WHY="$SETTINGS_STAY"
     fi
     rm -f "$U_SETTINGS_NEXT"
     U_SETTINGS_NEXT=""
@@ -4046,7 +4048,7 @@ update_roll_back() {
         ! update_settings_back_to "$previous" || say_dry "put config.json back as it was on ${previous:0:7}, keeping settings changed since, and keep a copy of it as it is now"
         return 0
     fi
-    update_settings_plan "$previous" "$target"
+    update_settings_plan "$previous" "$target" "$hand"
     if ! out=$(ugit reset --keep --quiet "$previous" 2>&1); then
         update_settings_drop
         [ "$hand" = true ] && update_fail "$out"

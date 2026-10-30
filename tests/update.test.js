@@ -392,6 +392,14 @@ test("an unreadable config now goes back to the copy from before, and an unreada
     assert.strictEqual(Update.settingsBack([1], {}, { bar: 1 }), null);
 });
 
+test("the updater's own section always stays as it is now", () => {
+    const before = { updates: { skip: "aaa", seen: "2026-10-01", channel: "main" }, bar: { size: 30 } };
+    const after = { updates: { skip: "aaa", seen: "2026-10-01", channel: "main", fresh: 1 }, bar: { size: 20 } };
+    const now = { updates: { skip: "", seen: "2026-10-01", channel: "main", fresh: 1 }, bar: { size: 20 } };
+    assert.deepStrictEqual(Update.settingsBack(before, after, now), { values: { updates: now.updates, bar: { size: 30 } }, kept: [] });
+    assert.deepStrictEqual(Update.settingsBack(before, after, { bar: { size: 20 } }).values.updates, before.updates);
+});
+
 test("a setting that changed shape since the update is kept as it is now", () => {
     const got = Update.settingsBack({ clock: "small" }, { clock: { style: "stacked" } }, { clock: { style: "big" } });
     assert.deepStrictEqual(got, { values: { clock: { style: "big" } }, kept: ["clock"] });

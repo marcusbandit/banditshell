@@ -951,16 +951,23 @@ test("going back by hand puts config.json back as it was, keeps settings changed
     assert.ok(!settingsFiles(world).some(name => name.startsWith(".")));
 });
 
-test("an update that does not start puts back the settings it dropped", () => {
+test("an update that does not start puts every setting back, and old copies are pruned per kind", () => {
     const world = settingsWorld();
     const before = liveHead(world);
+    for (let i = 0; i < 11; i++)
+        write(world.state, `banditshell/update/settings/${1000000000 + i}-before-${"a".repeat(39)}${i % 10}.json`, "{}");
+    write(world.state, `banditshell/update/settings/1000000000-after-${"b".repeat(40)}.json`, "{}");
     startShell(world);
     const target = advance(world, "throws", { REFERROR: "x\n", CONFIGWRITE: NEWER_WRITES, "services/Foo.qml": "// foo version two\n" });
     const got = applyTo(world, target);
     assert.strictEqual(got.status, 1, got.err + got.out);
     assert.strictEqual(liveHead(world), before);
-    assert.deepStrictEqual(readConfig(world), { updates: UPDATES, media: { waveLength: 7, size: "huge" }, bar: { size: 30 }, fresh: { thing: true } });
-    assert.deepStrictEqual(JSON.parse(readState(world, "result.json")).settings.kept, ["media.size"]);
+    assert.deepStrictEqual(readConfig(world), { updates: UPDATES, media: { waveLength: 7, size: "big" }, bar: { size: 30 }, fresh: { thing: true } });
+    assert.deepStrictEqual(JSON.parse(readState(world, "result.json")).settings.kept, []);
+    const files = settingsFiles(world);
+    assert.strictEqual(files.filter(name => name.includes("-before-")).length, 10);
+    assert.ok(files.includes(`1000000000-after-${"b".repeat(40)}.json`));
+    assert.ok(files.some(name => name.endsWith(`-before-${before}.json`)));
 });
 
 test("a version left by hand is reported as gone back from, not as one that did not start", () => {

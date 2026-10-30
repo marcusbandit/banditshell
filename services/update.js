@@ -488,6 +488,8 @@ function settingsBack(before, after, now) {
     function walk(s, p, c, path) {
         if (c === undefined)
             return s;
+        if (path === "updates")
+            return c;
         if (plain(s) && plain(c)) {
             const out = {};
             const keys = Object.keys(s).concat(Object.keys(c).filter(key => !has(s, key)));
