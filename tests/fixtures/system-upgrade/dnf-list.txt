@@ -1,0 +1,8 @@
+Updating and loading repositories:
+Repositories loaded.
+Upgrades
+curl.x86_64        8.18.0-14.fc44 updates
+libcurl.x86_64     8.18.0-14.fc44 updates
+libsolv.x86_64     0.7.41-1.fc44  updates
+sqlite-libs.x86_64 3.51.2-2.fc44  updates
+tzdata.noarch      2026e-1.fc44   updates

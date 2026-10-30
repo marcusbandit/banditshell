@@ -1,0 +1,5 @@
+
+WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+
+Listing...
+tzdata/stable-updates 2026f-0+deb13u1 all [upgradable from: 2026e-0+deb13u1]

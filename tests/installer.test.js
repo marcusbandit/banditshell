@@ -231,7 +231,21 @@ test.describe("the charge limit", () => {
         const dir = world({ sudo: 'echo "$*" >>"$HOME/sudo.log"' });
         fs.writeFileSync(path.join(dir, "NIXOS"), "");
         const out = installer(dir, `NIXOS_MARK="${dir}/NIXOS"; install_charge_limit; echo "$? $STEP_OUTPUT"`);
-        assert.match(out.stdout, /^1 NixOS reads neither \/usr\/local\/libexec nor \/usr\/share\/polkit-1\/actions/);
+        assert.strictEqual(out.stdout, `1 NixOS installs it from its own config: add ${dir}/nix/charge-limit.nix to imports in /etc/nixos/configuration.nix, then run nixos-rebuild switch\n`);
         assert.ok(!fs.existsSync(path.join(dir, "home/sudo.log")));
+    });
+
+    test.it("on NixOS it counts as installed once the module put the helper and policy in the system profile", () => {
+        const dir = world();
+        fs.writeFileSync(path.join(dir, "NIXOS"), "");
+        fs.mkdirSync(path.join(dir, "power/BAT0"), { recursive: true });
+        fs.writeFileSync(path.join(dir, "power/BAT0/charge_control_end_threshold"), "100\n");
+        const check = `NIXOS_MARK="${dir}/NIXOS"; NIXOS_PROFILE="${dir}/sw"; POWER_SUPPLY="${dir}/power"; charge_limit_present; echo $?`;
+        assert.strictEqual(installer(dir, check).stdout, "1\n");
+        fs.mkdirSync(path.join(dir, "sw/bin"), { recursive: true });
+        fs.mkdirSync(path.join(dir, "sw/share/polkit-1/actions"), { recursive: true });
+        fs.writeFileSync(path.join(dir, "sw/bin/banditshell-charge-limit"), "", { mode: 0o755 });
+        fs.writeFileSync(path.join(dir, "sw/share/polkit-1/actions/org.banditshell.charge-limit.policy"), "");
+        assert.strictEqual(installer(dir, check).stdout, "0\n");
     });
 });

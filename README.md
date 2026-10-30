@@ -111,6 +111,17 @@ On NixOS, Gentoo or anything else, `./install.sh --list` names every package
 the shell needs, by its Arch name, for you to install your own way. The
 installer then still sets up the fonts, the helpers and the rest.
 
+On a laptop, `./install.sh --charge-limit` adds the helper that holds the
+battery short of full. NixOS keeps that in its own config instead: import the
+module in `/etc/nixos/configuration.nix`, then run `nixos-rebuild switch`.
+
+```nix
+imports = [ /path/to/banditshell/nix/charge-limit.nix ];
+```
+
+With flakes, add the repo as an input with `flake = false` and import
+`"${inputs.banditshell}/nix/charge-limit.nix"`.
+
 ```sh
 git clone https://github.com/marcusbandit/banditshell.git
 cd banditshell

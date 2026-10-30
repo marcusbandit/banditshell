@@ -1,0 +1,18 @@
+Script started on 2026-10-30 18:20:40+00:00 [COMMAND="stty cols 80 rows 24 2>/dev/null; exec dnf upgrade --refresh" <not executed on terminal>]
+Updating and loading repositories:
+[?25l Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m00s[0J Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 openh264 (From Cisco) - x86_ ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 - x86_64                     ???% |   0.0   B/s |   0.0   B |  00m00s[2A[0J Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 openh264 (From Cisco) - x86_ ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 - x86_64                     ???% |   0.0   B/s |   0.0   B |  00m00s[2A[0J Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 openh264 (From Cisco) - x86_ ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 - x86_64                     ???% |   0.0   B/s |   0.0   B |  00m00s[2A[0J Fedora 44 - x86_64 - Updates            94% | 200.0   B/s |  15.7 KiB |  00m04s
+ Fedora 44 openh264 (From Cisco) - x86_ 100% |   6.0   B/s | 986.0   B |  00m00s
+ Fedora 44 - x86_64                     ???% |   0.0   B/s |   0.0   B |  00m01s[2A[0J Fedora 44 - x86_64 - Updates           100% |  26.3 KiB/s |  16.7 KiB |  00m01s
+ Fedora 44 openh264 (From Cisco) - x86_ 100% |   6.0   B/s | 986.0   B |  00m00s
+ Fedora 44 - x86_64                     100% |   6.0   B/s |  20.5 KiB |  00m00s[1A[0J Fedora 44 openh264 (From Cisco) - x86_ 100% |   1.5 KiB/s | 986.0   B |  00m01s
+ Fedora 44 - x86_64                     100% |   6.0   B/s |  20.5 KiB |  00m00s[0J Fedora 44 - x86_64                     100% |  32.2 KiB/s |  20.5 KiB |  00m01s
+]9;4;0;0\[?25hRepositories loaded.
+Nothing to do.
+
+Script done on 2026-10-30 18:20:45+00:00 [COMMAND_EXIT_CODE="0"]
