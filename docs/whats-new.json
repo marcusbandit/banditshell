@@ -1,13 +1,35 @@
 {
   "entries": [
     {
-      "id": "2026-10-30-11",
+      "id": "2026-10-30-13",
       "date": "2026-10-30",
       "changes": [
         {
           "type": "issues",
           "severity": "minor",
           "text": "The shell starts with less work while the tour and streaming are off"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-30-12",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Tools can add their own launcher rows with banditshell launcher add"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-30-11",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Without logind, a shell restarted while locked comes back locked"
         }
       ]
     },
