@@ -1060,11 +1060,13 @@ function zoneMatches(zones, place, cityOf, localZone) {
     const listed = id => !(zones || []).length || zones.indexOf(id) >= 0;
     const named = namedZones(want, localZone);
     if (named.length)
-        return named.map(id => listed(id) ? id : ZONE_RENAMES[id] && listed(ZONE_RENAMES[id]) ? ZONE_RENAMES[id] : "").filter(id => id);
-    const rank = id => {
+        return named.map(id => listed(id) ? id : listed(ZONE_RENAMES[id]) ? ZONE_RENAMES[id] : "").filter(id => id);
+    const rankCity = id => {
         const city = cityOf(id).toLowerCase();
         return city === want ? 3 : city.indexOf(want) === 0 ? 2 : want.length >= 3 && city.indexOf(want) > 0 ? 1 : 0;
     };
+    const renamedFrom = id => Object.keys(ZONE_RENAMES).filter(now => ZONE_RENAMES[now] === id && !listed(now))[0];
+    const rank = id => Math.max(rankCity(id), renamedFrom(id) ? rankCity(renamedFrom(id)) : 0);
     return (zones || []).filter(id => id.indexOf("/") > 0 && id.indexOf("Etc/") !== 0).map(id => ({
                 id: id,
                 rank: rank(id)

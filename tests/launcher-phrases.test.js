@@ -24,7 +24,8 @@ function systemZones() {
                 out.push(parts[2]);
         }
     } catch (error) {
-        return zoneFiles("/usr/share/zoneinfo", "");
+        const files = zoneFiles("/usr/share/zoneinfo", "");
+        return files.length ? files : Intl.supportedValuesOf("timeZone");
     }
     return out;
 }
@@ -34,7 +35,7 @@ function zoneFiles(dir, prefix) {
     try {
         entries = fs.readdirSync(dir, { withFileTypes: true });
     } catch (error) {
-        return Intl.supportedValuesOf("timeZone");
+        return [];
     }
     const out = [];
     for (const e of entries) {
@@ -339,6 +340,9 @@ test.describe("time zone places", () => {
         assert.deepStrictEqual(match("ukraine"), ["Europe/Kiev"]);
         assert.deepStrictEqual(match("indiana"), ["America/Indiana/Indianapolis"]);
         assert.deepStrictEqual(match("nepal"), []);
+        assert.deepStrictEqual(match("kolkata"), ["Asia/Calcutta"]);
+        assert.deepStrictEqual(match("kyiv"), ["Europe/Kiev"]);
+        assert.deepStrictEqual(Search.zoneMatches(["Asia/Kolkata", "Asia/Calcutta"], "kolkata", cityOf, "Europe/Copenhagen"), ["Asia/Kolkata"]);
     });
 
     test.it("every zone in the tables is a real zone", () => {
