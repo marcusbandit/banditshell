@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-30-2",
+      "id": "2026-10-30-4",
       "date": "2026-10-30",
       "changes": [
         {
@@ -13,6 +13,28 @@
           "type": "issues",
           "severity": "minor",
           "text": "Update tags and the unread count read as labels, not buttons"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-30-3",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The shell no longer locks the screen by itself when it starts"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-30-2",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "With config.json broken at start, the shipped wallpaper shows"
         }
       ]
     },
