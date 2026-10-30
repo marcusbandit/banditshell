@@ -184,14 +184,14 @@ QtObject {
             const tone = !ended ? Appearance.colour.accent : a.outcome === "failed" ? Appearance.colour.failed : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent;
             const failed = ended && a.outcome === "failed";
             return {
-                app: failed ? "" : a.mark,
-                icon: failed ? "error" : a.icon || "bolt",
+                app: a.mark,
+                icon: a.icon || "bolt",
                 tone: tone,
                 text: a.text,
                 detail: a.detail,
                 dim: ended && a.outcome === "cancelled",
-                trailing: failed ? "" : ended ? "icon" : a.progress < 0 ? "spin" : "ring",
-                trailingIcon: a.outcome === "cancelled" ? "cancel" : "check_circle",
+                trailing: ended ? "icon" : a.progress < 0 ? "spin" : "ring",
+                trailingIcon: failed ? "error" : a.outcome === "cancelled" ? "cancel" : "check_circle",
                 trailingTone: tone,
                 ringValue: Math.max(0, a.progress)
             };

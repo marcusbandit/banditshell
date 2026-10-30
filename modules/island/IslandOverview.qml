@@ -56,7 +56,7 @@ Item {
     }
     readonly property real topInset: Appearance.padding.large
     readonly property bool hasNotices: root.notifications.length > 0
-    readonly property bool hasSummary: !!root.summary
+    readonly property bool hasSummary: !!root.listed
     readonly property real bottomInset: root.hasNotices && !root.hasSummary ? Appearance.padding.small - Appearance.stroke.line : root.pad
     readonly property real deckHeight: root.hasNotices ? notices.height : 0
     property real laidDeckHeight: 0
@@ -66,7 +66,17 @@ Item {
     readonly property real rowPitch: Appearance.font.line.small + Appearance.padding.small * 2 + rows.spacing
 
     readonly property var live: root.activities.filter(a => a.kind !== "notifications")
-    readonly property var summary: root.activities.find(a => a.kind === "notifications") ?? null
+    readonly property var listed: root.activities.find(a => a.kind === "notifications") ?? null
+    readonly property int clipped: {
+        const hidden = notices.hiddenCards;
+        let sum = 0;
+        for (const group of root.notifications)
+            sum += hidden.includes(group.entries[0]) ? group.entries.filter(e => !e.leaving).length : group.entries.filter(e => hidden.includes(e) && !e.leaving).length;
+        return sum;
+    }
+    readonly property var summary: root.listed && root.clipped > 0 ? Object.assign({}, root.listed, {
+        count: root.listed.count + root.clipped
+    }) : root.listed
 
     readonly property bool mediaHovered: media.visible && media.hovered
 
@@ -314,6 +324,7 @@ Item {
             groups: root.notifications
             fanned: 1
             footed: false
+            wholeCards: root.hasSummary
             contentLead: root.pad
             liftsAway: false
             warm: root.watched

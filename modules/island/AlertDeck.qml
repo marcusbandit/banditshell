@@ -38,6 +38,8 @@ Item {
 
     property bool footed: true
 
+    property bool wholeCards: false
+
     property real contentLead: -1
 
     property bool liftsAway: true
@@ -303,7 +305,22 @@ Item {
         return slots.itemAt(0)?.lead ?? null;
     }
 
-    readonly property real viewMax: Math.max(root.foldedHeight, root.maxHeight - root.footerHeight)
+    readonly property var settledTops: {
+        root.reshaped;
+        const out = [0];
+        for (let i = 0; i < slots.count; i++)
+            out.push(out[i] + (slots.itemAt(i)?.settledRoom ?? 0));
+        return out;
+    }
+    readonly property int fits: {
+        const limit = root.maxHeight - root.footerHeight + 0.5;
+        let k = 1;
+        while (k + 1 < root.settledTops.length && root.settledTops[k + 1] <= limit)
+            k++;
+        return Math.min(k, root.cards.length);
+    }
+    readonly property var hiddenCards: root.wholeCards ? root.cards.slice(root.fits) : []
+    readonly property real viewMax: Math.max(root.foldedHeight, root.wholeCards ? root.settledTops[root.fits] : root.maxHeight - root.footerHeight)
     readonly property real settledFull: {
         root.reshaped;
         return root.sumOf("settledRoom");
@@ -335,7 +352,7 @@ Item {
     readonly property real settledView: Math.min(root.settledFull, root.viewMax)
     readonly property real spreadProgress: Math.abs(root.settledReach - root.lockedList) < 0.5 ? 1 : Math.max(0, Math.min(1, (root.reachList - root.lockedList) / (root.settledReach - root.lockedList)))
     readonly property real spreadHeight: Math.min(root.listHeight, root.lockedView + (root.settledView - root.lockedView) * root.spreadProgress)
-    readonly property real scrollMax: Math.max(0, root.listHeight - root.spreadHeight)
+    readonly property real scrollMax: root.wholeCards ? 0 : Math.max(0, root.listHeight - root.spreadHeight)
     readonly property real scrolled: Math.min(scroll.value, root.scrollMax)
 
     readonly property real fullHeight: {

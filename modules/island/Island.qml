@@ -1353,7 +1353,7 @@ Item {
                         width: under.twin?.width ?? 0
                         height: under.twin?.height ?? 0
                         pill: "object"
-                        opacity: settle.value * Appearance.opacity.glow * under.fade
+                        opacity: settle.value * Appearance.opacity.glow * (under?.fade ?? 0)
                         visible: opacity > 0.01
                     }
 
@@ -1384,7 +1384,7 @@ Item {
                             color: Appearance.blend(Appearance.colour.island, Appearance.colour.paper, 0.06 * behind.d)
                             stroke: Appearance.colour.seam
                             strokeWidth: Appearance.stroke.line
-                            opacity: under.fade * behindShown.value
+                            opacity: (under?.fade ?? 0) * behindShown.value
                             visible: opacity > 0.01
                         }
                     }
