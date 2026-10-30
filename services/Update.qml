@@ -71,6 +71,9 @@ Singleton {
     property string targetVersion: ""
     property string previous: ""
     property string previousVersion: ""
+    property bool previousSettings: false
+    readonly property string goBackText: Words.goBackText(root.previousSettings, root.previousVersion)
+    readonly property string settingsText: Words.settingsText(root.result)
     readonly property bool canGoBack: root.commit(root.previous) && !root.busy && !root.paused
     property bool goingBack: false
     property string aimedAt: ""
@@ -293,6 +296,7 @@ Singleton {
             Qt.callLater(root.inspect, false);
         } else if (last.phase === "rolledback") {
             root.previous = "";
+            root.previousSettings = false;
             root.notes = [];
             root.state = root.rolledback;
             resultFile.reload();
@@ -466,6 +470,7 @@ Singleton {
                 root.targetVersion = got.targetVersion ?? "";
                 root.previous = root.commit(got.previous ?? "") ? got.previous : "";
                 root.previousVersion = got.previousVersion ?? "";
+                root.previousSettings = got.previousSettings === true;
                 root.behind = counts ? Number(got.behind) || 0 : 0;
                 root.ahead = Words.aheadKept(got.state, got.ahead, got.unpushed);
                 root.entries = got.entries ?? [];

@@ -595,6 +595,7 @@ test("rollback on stable goes to the release before, even with nothing recorded,
     const before = JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out);
     assert.strictEqual(before.previous, first);
     assert.strictEqual(before.previousVersion, "v0.1.0");
+    assert.strictEqual(before.previousSettings, false);
     const back = run(world, ["update", "rollback"]);
     assert.strictEqual(back.status, 0, back.err + back.out);
     assert.match(back.out, /Went back to v0\.1\.0/);
@@ -605,6 +606,7 @@ test("rollback on stable goes to the release before, even with nothing recorded,
     assert.strictEqual(result.fromLabel, "v0.1.0");
     assert.strictEqual(result.to, second);
     assert.strictEqual(result.toLabel, "v0.2.0");
+    assert.strictEqual(result.settings, null);
     const after = JSON.parse(run(world, ["update", "check", "--json"]).out);
     assert.strictEqual(after.state, "skipped");
     assert.strictEqual(after.previous, "");
@@ -912,6 +914,55 @@ test("rollback by hand returns to the recorded version and skips the one it left
     assert.match(again.err, /no earlier version/);
 });
 
+const configFile = world => path.join(world.config, "banditshell/config.json");
+const readConfig = world => JSON.parse(fs.readFileSync(configFile(world), "utf8"));
+const settingsFiles = world => fs.existsSync(stateFile(world, "settings")) ? fs.readdirSync(stateFile(world, "settings")).sort() : [];
+const UPDATES = { remote: "origin", channel: "main", channelUpgraded: true, branch: "main", seen: "" };
+
+function settingsWorld() {
+    const world = makeWorld();
+    write(world.config, "banditshell/config.json", JSON.stringify({ updates: UPDATES, media: { waveLength: 7, size: "big" }, bar: { size: 30 } }, null, 4));
+    return world;
+}
+
+const NEWER_WRITES = JSON.stringify({ updates: UPDATES, media: { size: "huge" }, bar: { size: 30 }, fresh: { thing: true } }, null, 4);
+
+test("going back by hand puts config.json back as it was, keeps settings changed since, and keeps a copy", () => {
+    const world = settingsWorld();
+    const before = liveHead(world);
+    startShell(world);
+    const target = advance(world, "v2", { "shell.qml": "// v2\n", CONFIGWRITE: NEWER_WRITES });
+    assert.strictEqual(applyTo(world, target).status, 0);
+    assert.deepStrictEqual(settingsFiles(world).map(name => name.replace(/^\d+-/, "")), [`after-${target}.json`, `before-${before}.json`]);
+    assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out).previousSettings, true);
+    const changed = readConfig(world);
+    changed.bar.size = 40;
+    fs.writeFileSync(configFile(world), JSON.stringify(changed, null, 4));
+    const got = run(world, ["update", "rollback"]);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    assert.match(got.out, /config\.json is back as it was on v1, keeping bar\.size/);
+    assert.deepStrictEqual(readConfig(world), { updates: UPDATES, media: { waveLength: 7, size: "big" }, bar: { size: 40 }, fresh: { thing: true } });
+    const result = JSON.parse(readState(world, "result.json"));
+    assert.deepStrictEqual(result.settings.kept, ["bar.size"]);
+    assert.strictEqual(result.settings.back, true);
+    assert.match(path.basename(result.settings.copy), new RegExp(`^\\d+-rollback-${target}\\.json$`));
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(result.settings.copy, "utf8")), changed);
+    assert.ok(settingsFiles(world).some(name => name.endsWith(`before-${before}.json`)));
+    assert.ok(!settingsFiles(world).some(name => name.startsWith(".")));
+});
+
+test("an update that does not start puts back the settings it dropped", () => {
+    const world = settingsWorld();
+    const before = liveHead(world);
+    startShell(world);
+    const target = advance(world, "throws", { REFERROR: "x\n", CONFIGWRITE: NEWER_WRITES, "services/Foo.qml": "// foo version two\n" });
+    const got = applyTo(world, target);
+    assert.strictEqual(got.status, 1, got.err + got.out);
+    assert.strictEqual(liveHead(world), before);
+    assert.deepStrictEqual(readConfig(world), { updates: UPDATES, media: { waveLength: 7, size: "huge" }, bar: { size: 30 }, fresh: { thing: true } });
+    assert.deepStrictEqual(JSON.parse(readState(world, "result.json")).settings.kept, ["media.size"]);
+});
+
 test("a version left by hand is reported as gone back from, not as one that did not start", () => {
     const world = makeWorld();
     startShell(world);
@@ -1051,6 +1102,7 @@ test("a rollback by hand that git refuses changes nothing and skips nothing", ()
     assert.strictEqual(liveHead(world), target);
     assert.strictEqual(JSON.parse(readState(world, "result.json")).ok, true);
     assert.ok(!fs.existsSync(stateFile(world, "skip")));
+    assert.deepStrictEqual(settingsFiles(world).map(name => name.replace(/^\d+-/, "")), [`before-${git(world.live, "rev-parse", "HEAD~1")}.json`]);
 });
 
 test("a detached rollback with nothing recorded fails in progress.log with a time", () => {
@@ -1159,6 +1211,7 @@ test("the dry run of restart and rollback touches no shell", () => {
     const rollback = run(world, ["update", "rollback"], { BANDITSHELL_DRY: "1" });
     assert.strictEqual(rollback.status, 0, rollback.err + rollback.out);
     assert.match(rollback.out, /dry: git reset --keep/);
+    assert.match(rollback.out, /dry: put config\.json back as it was on/);
     assert.strictEqual(liveHead(world), target);
 });
 

@@ -461,6 +461,53 @@ function outcomeText(result, running) {
     return `Update ${to} did not start, so you are back on ${from}.${why} It will be tried again when a newer version arrives.`;
 }
 
+function settingsText(result) {
+    const settings = result?.settings;
+    if (!settings || settings.back !== true)
+        return "";
+    const from = result.fromLabel || String(result.from ?? "").slice(0, 7);
+    const kept = Array.isArray(settings.kept) ? settings.kept.length : 0;
+    const back = `Your settings are back as they were on ${from}`;
+    return kept > 0 ? `${back}, apart from ${plural(kept, "setting", "settings")} changed since, which stayed.` : `${back}.`;
+}
+
+function goBackText(previousSettings, previousVersion) {
+    if (previousSettings === true)
+        return `Your settings go back to how they were on ${previousVersion}, apart from ones you changed since. Files this update added elsewhere stay.`;
+    return "Only the shell's own files go back. Your settings and anything else this update changed stay changed.";
+}
+
+function settingsBack(before, after, now) {
+    const plain = value => value !== null && typeof value === "object" && !Array.isArray(value);
+    const has = (node, key) => plain(node) && Object.prototype.hasOwnProperty.call(node, key);
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    if (!plain(before))
+        return null;
+    const known = plain(after);
+    const kept = [];
+    function walk(s, p, c, path) {
+        if (c === undefined)
+            return s;
+        if (plain(s) && plain(c)) {
+            const out = {};
+            const keys = Object.keys(s).concat(Object.keys(c).filter(key => !has(s, key)));
+            for (const key of keys) {
+                const value = walk(s[key], has(p, key) ? p[key] : undefined, has(c, key) ? c[key] : undefined, path ? `${path}.${key}` : key);
+                if (value !== undefined)
+                    out[key] = value;
+            }
+            return out;
+        }
+        if (s === undefined || same(s, c))
+            return c;
+        if (known && p !== undefined && same(p, c))
+            return s;
+        kept.push(path);
+        return c;
+    }
+    return { values: walk(before, known ? after : undefined, plain(now) ? now : {}, ""), kept };
+}
+
 function reportContext(result, running) {
     const clipped = sha => String(sha ?? "").slice(0, 7);
     const named = (label, sha) => !label || label === clipped(sha) ? clipped(sha) : `${label} (${clipped(sha)})`;
@@ -508,6 +555,7 @@ function assess(facts, has) {
         behind: Number(meta.behind) || 0,
         ahead: Number(meta.ahead) || 0,
         skipped: meta.skipped === "1",
+        previousSettings: meta.previousSettings === "1",
         checkedAt: Number(meta.checkedAt) || 0,
         class: c,
         summary: summary(c),
@@ -610,12 +658,28 @@ function main(argv) {
         process.stdout.write(JSON.stringify(logEntries(before).length > 0 ? incomingEntries(before, read(argv[2])) : []) + "\n");
         return 0;
     }
+    if (mode === "settings") {
+        const fs = require("node:fs");
+        const parse = file => {
+            try {
+                return JSON.parse(fs.readFileSync(file, "utf8"));
+            } catch (e) {
+                return null;
+            }
+        };
+        const back = settingsBack(parse(argv[1]), argv[2] ? parse(argv[2]) : null, parse(argv[3]));
+        if (!back || !argv[4])
+            return 1;
+        fs.writeFileSync(argv[4], JSON.stringify(back.values, null, 4) + "\n");
+        process.stdout.write(back.kept.map(key => key + "\n").join(""));
+        return 0;
+    }
     if (mode === "explain") {
         const input = require("node:fs").readFileSync(0, "utf8");
         process.stdout.write(explain(input.split("\n"), argv[1] ?? "main") + "\n");
         return 0;
     }
-    process.stderr.write("usage: node update.js report <facts-dir> [--json|--lines|--text] | notes <before> <after> | explain <branch>\n");
+    process.stderr.write("usage: node update.js report <facts-dir> [--json|--lines|--text] | notes <before> <after> | settings <before> <after> <now> <out> | explain <branch>\n");
     return 2;
 }
 

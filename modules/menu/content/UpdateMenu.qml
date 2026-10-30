@@ -113,7 +113,7 @@ Column {
     StyledText {
         width: parent.width
         visible: root.leaving
-        text: "Only the shell's own files go back. Your settings and anything else this update changed stay changed."
+        text: Update.goBackText
         color: Appearance.colour.textDim
         wrapMode: Text.WordWrap
     }
@@ -149,6 +149,14 @@ Column {
             alignInk: true
             text: Update.resultText
             color: Update.result !== null && (Update.result.ok || Update.wentBackByHand) ? Appearance.colour.text : Appearance.colour.updateFailed
+            wrapMode: Text.WordWrap
+        }
+
+        StyledText {
+            width: parent.width
+            visible: text !== ""
+            text: Update.settingsText
+            color: Appearance.colour.textFaint
             wrapMode: Text.WordWrap
         }
 

@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, details, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, divergedHeadline, aheadKept, currentHeadline, withOwn, ownTitle, unpushedTitle, wentBackHeadline, buttonNote, pullCommand, plainProbe, presentSteps, reportWords, reportContext, reportScript };")();
+const Update = new Function(src + "\nreturn { byHand, report, explain, setAside, ago, nameStatus, classify, summary, details, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, haveText, following, waitingHeadline, divergedHeadline, aheadKept, currentHeadline, withOwn, ownTitle, unpushedTitle, wentBackHeadline, buttonNote, pullCommand, plainProbe, presentSteps, reportWords, reportContext, reportScript, settingsBack, settingsText, goBackText };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -368,6 +368,44 @@ test("a rollback by hand says where it went back to, not that something failed",
         "Because you went back, 2026-10-25 is not offered again. The next version after 2026-10-25 is offered as usual.");
     assert.match(Update.outcomeText(back, "2026-10-25"), /still runs 2026-10-25\. Run banditshell restart to start 2026-10-24\./);
     assert.strictEqual(Update.byHand({ ok: false, why: "rolled back by hand" }), false);
+});
+
+test("going back restores the settings the newer version dropped or changed, and keeps ones changed since", () => {
+    const before = { media: { waveLength: 7, size: "big" }, bar: { size: 30, edge: "left" }, list: [1, 2] };
+    const after = { media: { size: "huge" }, bar: { size: 30, edge: "left" }, list: [1, 2], fresh: { on: true } };
+    const now = { media: { size: "huge" }, bar: { size: 40, edge: "left" }, list: [3], fresh: { on: false } };
+    assert.deepStrictEqual(Update.settingsBack(before, after, now), {
+        values: { media: { waveLength: 7, size: "big" }, bar: { size: 40, edge: "left" }, list: [3], fresh: { on: false } },
+        kept: ["bar.size", "list"]
+    });
+});
+
+test("with no record of what the newer version wrote, every value as it is now stays", () => {
+    const before = { media: { waveLength: 7, size: "big" }, bar: { size: 30 } };
+    const now = { media: { size: "huge" }, bar: { size: 30 } };
+    assert.deepStrictEqual(Update.settingsBack(before, null, now), { values: { media: { waveLength: 7, size: "huge" }, bar: { size: 30 } }, kept: ["media.size"] });
+});
+
+test("an unreadable config now goes back to the copy from before, and an unreadable copy changes nothing", () => {
+    assert.deepStrictEqual(Update.settingsBack({ bar: { size: 30 } }, null, null), { values: { bar: { size: 30 } }, kept: [] });
+    assert.strictEqual(Update.settingsBack(null, {}, { bar: { size: 30 } }), null);
+    assert.strictEqual(Update.settingsBack([1], {}, { bar: 1 }), null);
+});
+
+test("a setting that changed shape since the update is kept as it is now", () => {
+    const got = Update.settingsBack({ clock: "small" }, { clock: { style: "stacked" } }, { clock: { style: "big" } });
+    assert.deepStrictEqual(got, { values: { clock: { style: "big" } }, kept: ["clock"] });
+    assert.deepStrictEqual(Update.settingsBack({ clock: "small" }, { clock: { style: "stacked" } }, { clock: { style: "stacked" } }).values, { clock: "small" });
+});
+
+test("the go-back confirm and outcome say what happens to settings", () => {
+    assert.match(Update.goBackText(true, "v0.1.0"), /^Your settings go back to how they were on v0\.1\.0, apart from ones you changed since\./);
+    assert.match(Update.goBackText(false, "v0.1.0"), /Your settings and anything else this update changed stay changed/);
+    assert.strictEqual(Update.settingsText(null), "");
+    assert.strictEqual(Update.settingsText({ fromLabel: "v0.1.0", settings: null }), "");
+    assert.strictEqual(Update.settingsText({ fromLabel: "v0.1.0", settings: { back: true, kept: [] } }), "Your settings are back as they were on v0.1.0.");
+    assert.strictEqual(Update.settingsText({ fromLabel: "v0.1.0", settings: { back: true, kept: ["bar.size", "list"] } }),
+        "Your settings are back as they were on v0.1.0, apart from 2 settings changed since, which stayed.");
 });
 
 const quotingSrc = fs.readFileSync(path.join(ROOT, "services/quoting.js"), "utf8").replace(/^\.pragma .*$/m, "");
