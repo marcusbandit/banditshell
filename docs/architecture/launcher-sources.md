@@ -1,7 +1,8 @@
 # Launcher sources
 
-Every row the launcher shows beyond apps, commands and settings comes from a
-source. A source is a `QtObject` that reads what was typed and answers with
+The launcher builds a few groups itself: apps, commands, settings, windows,
+devices, processes, files, the clock and the `bandit` command line. Every
+other row comes from a source. A source is a `QtObject` that reads what was typed and answers with
 groups of rows. `LauncherSearch` merges the groups of every source, ranks them
 and carries out what the person picks. Ranking, the actions menu, learned
 usage, aliases, hotkeys, Tab completion, the `?` page and
@@ -27,10 +28,14 @@ LauncherSources.add("plugin:jira", pluginSource, { plugin: manifest })
 LauncherSources.remove("plugin:jira")
 ```
 
-Every `LauncherSearch` makes its own object from the component, passing
-`search` and the given properties, and destroys it on `remove`. Adding under
-an id that is already there replaces the old source. The launcher itself never
-learns where a source came from.
+Every `LauncherSearch` makes its own object from the component, passing the
+given properties and its own `search`, and destroys it on `remove`. There is
+more than one `LauncherSearch`, so anything that must exist once, such as a
+plugin's process, lives in a singleton the source reads. Adding under an id
+that is already there replaces the old source. A source added this way cannot
+take a kind another source owns, and its `caps` only fill in group keys
+nobody else capped; the launcher refuses it with a warning in the log
+instead. The launcher itself never learns where a source came from.
 
 ## Members
 

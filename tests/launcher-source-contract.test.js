@@ -79,7 +79,16 @@ test.describe("launcher source contract", () => {
     });
 
     test.it("reads nothing from a source that the contract leaves out", () => {
-        const read = new Set([...SEARCH.matchAll(/\b(?:owner|aloneSource|s)\??\.(\w+)/g)].map(m => m[1]));
+        const bound = new Set(["aloneSource"]);
+        for (const m of SEARCH.matchAll(/const (\w+) = root\.sourceOf\(|for \(const (\w+) of root\.(?:sources|builtIn)\)|root\.(?:sources|builtIn)\.\w+\((?:\(out, )?(\w+)\)? =>|\.call\(root\.builtIn, (?:\(out, )?(\w+)\)? =>/g))
+            bound.add(m[1] || m[2] || m[3] || m[4]);
+        const read = new Set();
+        for (const name of bound)
+            for (const m of SEARCH.matchAll(new RegExp(`\\b${name}\\??\\.(\\w+)`, "g")))
+                read.add(m[1]);
+        for (const m of SEARCH.matchAll(/sourceOf\([^)]*\)\??\.(\w+)/g))
+            read.add(m[1]);
+        assert.ok(read.has("activate") && read.has("rowById") && read.has("groups"), "finds the members LauncherSearch reads");
         for (const m of read)
             assert.ok(CONTRACT.includes(m), `LauncherSearch reads ${m} from a source`);
     });

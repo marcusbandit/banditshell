@@ -26,8 +26,4 @@ Singleton {
         if (root.added.some(a => a.id === id))
             root.added = root.added.filter(a => a.id !== id);
     }
-
-    function has(id: string): bool {
-        return root.added.some(a => a.id === id);
-    }
 }
