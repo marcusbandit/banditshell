@@ -31,7 +31,7 @@ QtObject {
 
     property bool presents: false
 
-    readonly property list<QtObject> sources: [
+    readonly property list<QtObject> builtIn: [
         PrefixSource {
             search: root
         },
@@ -63,6 +63,9 @@ QtObject {
             search: root
         },
         ScriptSource {
+            search: root
+        },
+        PushSource {
             search: root
         },
         ColourSource {
@@ -163,6 +166,49 @@ QtObject {
         }
     ]
 
+    property var addedSources: []
+
+    readonly property var sources: Array.prototype.slice.call(root.builtIn).concat(root.addedSources.filter(a => a.object).map(a => a.object))
+
+    function syncAdded(): void {
+        const wanted = LauncherSources.added;
+        const kept = [];
+        for (const had of root.addedSources) {
+            if (wanted.some(w => w.id === had.id && w.stamp === had.stamp))
+                kept.push(had);
+            else
+                had.object.destroy();
+        }
+        for (const w of wanted) {
+            if (kept.some(k => k.id === w.id))
+                continue;
+            const object = w.component.createObject(root, Object.assign({}, w.properties, {
+                search: root
+            }));
+            const taken = object ? (object.kinds ?? []).filter(k => Array.prototype.some.call(root.builtIn, source => (source.kinds ?? []).includes(k)) || kept.some(o => o.object && (o.object.kinds ?? []).includes(k))) : [];
+            if (!object)
+                console.warn(`launcher: the source ${w.id} could not be made`);
+            else if (taken.length) {
+                console.warn(`launcher: the source ${w.id} wants kinds another source owns: ${taken.join(", ")}`);
+                object.destroy();
+            }
+            kept.push({
+                id: w.id,
+                stamp: w.stamp,
+                object: object && !taken.length ? object : null
+            });
+        }
+        root.addedSources = kept;
+    }
+
+    property Connections addedWatch: Connections {
+        target: LauncherSources
+
+        function onAddedChanged(): void {
+            root.syncAdded();
+        }
+    }
+
     readonly property var sourceGroupLists: root.sources.map(s => s.groups ?? [])
 
     readonly property var sourceCommands: root.sources.reduce((out, s) => out.concat(s.commands ?? []), [])
@@ -171,7 +217,14 @@ QtObject {
 
     readonly property QtObject aloneSource: root.sources.find(s => !!s.alone) ?? null
 
-    readonly property var limits: root.sources.reduce((out, s) => Object.assign(out, s.caps ?? {}), Object.assign({}, root.caps))
+    readonly property var limits: {
+        const out = Array.prototype.reduce.call(root.builtIn, (out, s) => Object.assign(out, s.caps ?? {}), Object.assign({}, root.caps));
+        for (const added of root.addedSources)
+            for (const [key, cap] of Object.entries(added.object?.caps ?? {}))
+                if (out[key] === undefined)
+                    out[key] = cap;
+        return out;
+    }
 
     readonly property var sourceByKind: root.sources.reduce((out, s) => {
         for (const kind of s.kinds ?? [])
@@ -1450,6 +1503,7 @@ QtObject {
     }
 
     Component.onCompleted: {
+        root.syncAdded();
         root.arrangePending = true;
         root.arrangeNow();
     }

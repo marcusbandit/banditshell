@@ -73,6 +73,18 @@ Scope {
             return `launched ${entry.name}`;
         }
 
+        function add(row: string): string {
+            return PushedRows.add(row);
+        }
+
+        function remove(tool: string, id: string): string {
+            return PushedRows.remove(tool, id);
+        }
+
+        function list(tool: string): string {
+            return PushedRows.list(tool);
+        }
+
         function scrub(fraction: string): string {
             const win = Shell.showing(w => w.launcher.open);
             if (!win)

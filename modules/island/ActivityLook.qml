@@ -98,6 +98,7 @@ QtObject {
                 text: "Config broken",
                 trailing: "icon",
                 trailingIcon: "chevron_right",
+                trailingInk: true,
                 trailingTone: Appearance.colour.warning
             };
         case "configRead":
@@ -184,14 +185,14 @@ QtObject {
             const tone = !ended ? Appearance.colour.accent : a.outcome === "failed" ? Appearance.colour.failed : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent;
             const failed = ended && a.outcome === "failed";
             return {
-                app: failed ? "" : a.mark,
-                icon: failed ? "error" : a.icon || "bolt",
+                app: a.mark,
+                icon: a.icon || "bolt",
                 tone: tone,
                 text: a.text,
                 detail: a.detail,
                 dim: ended && a.outcome === "cancelled",
-                trailing: failed ? "" : ended ? "icon" : a.progress < 0 ? "spin" : "ring",
-                trailingIcon: a.outcome === "cancelled" ? "cancel" : "check_circle",
+                trailing: ended ? "icon" : a.progress < 0 ? "spin" : "ring",
+                trailingIcon: failed ? "error" : a.outcome === "cancelled" ? "cancel" : "check_circle",
                 trailingTone: tone,
                 ringValue: Math.max(0, a.progress)
             };
@@ -241,14 +242,16 @@ QtObject {
                 icon: "notifications",
                 text: `${a.count}${a.more ? " more" : ""} notification${a.count === 1 ? "" : "s"}`,
                 trailing: "icon",
-                trailingIcon: "chevron_right"
+                trailingIcon: "chevron_right",
+                trailingInk: true
             };
         case "held":
             return {
                 icon: "notifications_paused",
                 text: `${a.count} held while quiet`,
                 trailing: "icon",
-                trailingIcon: "chevron_right"
+                trailingIcon: "chevron_right",
+                trailingInk: true
             };
         case "quiet":
             return {

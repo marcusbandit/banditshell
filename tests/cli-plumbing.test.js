@@ -90,8 +90,8 @@ test("a refusal that used to be sniffed by three verbs now comes out of one plac
 test("the pid is cached, validated with kill -0, and rescanned when it goes stale", async () => {
     const stub = stubs();
     const fake = directory("instance");
-    fs.symlinkSync(spawnSync("sh", ["-c", "command -v sleep"], { encoding: "utf8" }).stdout.trim(), path.join(fake, "qs"));
-    const child = spawn(path.join(fake, "qs"), ["60"], { stdio: "ignore" });
+    fs.writeFileSync(path.join(fake, "qs"), "#!/bin/sh\nread -r line\n", { mode: 0o755 });
+    const child = spawn(path.join(fake, "qs"), [], { stdio: ["pipe", "ignore", "ignore"] });
     try {
         await new Promise(resolve => setTimeout(resolve, 100));
         const home = directory("home");
@@ -675,4 +675,24 @@ esac
             process.kill(pid);
         } catch (e) {}
     }
+});
+
+test("without logind, the lock record says whether the session is locked", () => {
+    const fn = /\nsession_locked\(\) \{[\s\S]*?\n\}\n/.exec(fs.readFileSync(path.join(ROOT, "cli/banditshell"), "utf8"))[0];
+    const stub = stubs();
+    fs.writeFileSync(path.join(stub.dir, "loginctl"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+    const runtime = directory("runtime");
+    const record = path.join(runtime, "banditshell-lock-hint-auto.json");
+    const ask = text => {
+        fs.rmSync(record, { force: true });
+        if (text !== null)
+            fs.writeFileSync(record, `${text}\n`);
+        return spawnSync("bash", ["--norc", "--noprofile", "-c", `${fn}\nsession_locked`], {
+            env: { PATH: `${stub.dir}:/usr/bin:/bin`, XDG_RUNTIME_DIR: runtime, STUB_LOG: stub.log }
+        }).status;
+    };
+    assert.strictEqual(ask('{"session":"","told":true}'), 0);
+    assert.notStrictEqual(ask('{"session":"","told":false}'), 0);
+    assert.notStrictEqual(ask('{"session":"/org/freedesktop/login1/session/_32","told":true}'), 0);
+    assert.notStrictEqual(ask(null), 0);
 });

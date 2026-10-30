@@ -80,9 +80,12 @@
     "status(): string"
   ],
   "launcher": [
+    "add(row: string): string",
     "close(): string",
+    "list(tool: string): string",
     "open(query: string): string",
     "query(): string",
+    "remove(tool: string, id: string): string",
     "run(id: string): string",
     "scrub(fraction: string): string",
     "status(): string",
