@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-30-2",
+      "id": "2026-10-30-3",
       "date": "2026-10-30",
       "changes": [
         {
@@ -13,6 +13,17 @@
       "impact": {
         "cli": true
       }
+    },
+    {
+      "id": "2026-10-30-2",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "With config.json broken at start, the shipped wallpaper shows"
+        }
+      ]
     },
     {
       "id": "2026-10-30",
