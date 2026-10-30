@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-9",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Going back a version puts your settings back as they were too"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30-8",
       "date": "2026-10-30",
       "changes": [
