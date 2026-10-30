@@ -10,6 +10,8 @@ import "../../services/files-order.js" as FilesOrder
 Item {
     id: root
 
+    clip: true
+
     readonly property bool list: Files.listed
     readonly property var heads: FilesOrder.headers(Files.sort, Files.reversed, Files.trashTop)
     readonly property real inset: RowColumns.inset(Appearance.padding.small, Appearance.padding.hair)
@@ -21,10 +23,12 @@ Item {
     readonly property bool datedLeft: root.list && dated.head.active && !root.columns.showsDate && root.columns.showsSize
     readonly property real leftLimit: (size.visible ? size.x : dated.visible && !root.datedLeft ? dated.x : root.end) - (root.datedLeft ? dated.width + root.spacing : 0)
 
-    readonly property bool fitsAll: root.inset + name.implicitWidth + kind.implicitWidth + size.implicitWidth + dated.implicitWidth + root.spacing * 3 <= root.end
+    readonly property real lineHeight: Files.zoomed(Appearance.font.line.small)
+    readonly property var placed: RowColumns.flow([name.implicitWidth, kind.implicitWidth, size.implicitWidth, dated.implicitWidth], root.inset, root.end, root.spacing)
+    readonly property int lines: root.list ? 1 : root.placed[root.placed.length - 1].line + 1
 
-    function shown(head: Item): bool {
-        return root.fitsAll || head.head.active;
+    function lineY(index: int): real {
+        return Appearance.padding.small / 2 + (root.list ? 0 : root.placed[index].line * root.lineHeight);
     }
 
     function after(head: Item): real {
@@ -36,7 +40,7 @@ Item {
         Config.setMany([["files.sort", next.sort], ["files.reversed", next.reversed]]);
     }
 
-    implicitHeight: Files.zoomed(Appearance.font.line.small) + Appearance.padding.small
+    implicitHeight: root.lineHeight * root.lines + Appearance.padding.small
 
     TextMetrics {
         id: digit
@@ -49,9 +53,9 @@ Item {
     SortHead {
         id: name
 
-        anchors.verticalCenter: parent.verticalCenter
-        x: root.list ? root.inset + Files.zoomed(Appearance.font.iconSize) + Appearance.padding.small : root.inset
-        visible: root.list ? name.head.active || name.x + name.width + root.spacing <= root.leftLimit : root.shown(name)
+        y: root.lineY(0)
+        x: root.list ? root.inset + Files.zoomed(Appearance.font.iconSize) + Appearance.padding.small : root.placed[0].x
+        visible: !root.list || name.head.active || name.x + name.width + root.spacing <= root.leftLimit
         head: root.heads[0]
         onChose: id => root.pick(id)
     }
@@ -59,9 +63,9 @@ Item {
     SortHead {
         id: kind
 
-        anchors.verticalCenter: parent.verticalCenter
-        x: root.after(name)
-        visible: root.list ? kind.x + kind.width + root.spacing <= root.leftLimit : root.shown(kind)
+        y: root.lineY(1)
+        x: root.list ? root.after(name) : root.placed[1].x
+        visible: !root.list || kind.x + kind.width + root.spacing <= root.leftLimit
         head: root.heads[1]
         onChose: id => root.pick(id)
     }
@@ -77,9 +81,9 @@ Item {
             return Math.min(root.end - root.columns.dateWidth - root.gap, dated.x - root.spacing);
         }
 
-        anchors.verticalCenter: parent.verticalCenter
-        x: root.list ? size.edge - size.width : root.after(kind)
-        visible: root.list ? size.head.active || root.columns.showsSize && (!FilesFind.active || size.x >= root.end - root.columns.dateWidth) : root.shown(size)
+        y: root.lineY(2)
+        x: root.list ? size.edge - size.width : root.placed[2].x
+        visible: !root.list || size.head.active || root.columns.showsSize && (!FilesFind.active || size.x >= root.end - root.columns.dateWidth)
         head: root.heads[2]
         onChose: id => root.pick(id)
     }
@@ -87,9 +91,9 @@ Item {
     SortHead {
         id: dated
 
-        anchors.verticalCenter: parent.verticalCenter
-        x: root.list ? (root.datedLeft ? root.after(kind) : root.end - dated.width) : root.after(size)
-        visible: root.list ? root.columns.showsDate || dated.head.active : root.shown(dated)
+        y: root.lineY(3)
+        x: root.list ? (root.datedLeft ? root.after(kind) : root.end - dated.width) : root.placed[3].x
+        visible: !root.list || root.columns.showsDate || dated.head.active
         head: root.heads[3]
         onChose: id => root.pick(id)
     }
