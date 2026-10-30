@@ -117,6 +117,7 @@ config.set	stable	1	config set	Write a setting (arguments: dotted key, value)
 config.theme.get	stable	1	config get theme	Say the theme in use
 config.theme.set	stable	1	config theme	Switch theme (argument: theme name)
 config.theme.list	stable	1	config theme list	List the themes
+session.lock	stable	1	lock	Lock the screen, through logind when it runs
 shell.start	stable	1	start	Start the shell
 shell.stop	stable	1	stop	Stop the shell
 shell.restart	stable	1	restart	Restart the shell
