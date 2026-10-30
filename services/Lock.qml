@@ -232,7 +232,7 @@ Singleton {
         root.opening = false;
         root.releasing = false;
         root.active = false;
-        if (root.hinted)
+        if (root.hinted || !SessionControl.logind)
             root.tellLogind(false);
         root.letSleep();
         if (root.seeingThrough)
