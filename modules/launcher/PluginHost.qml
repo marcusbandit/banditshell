@@ -29,6 +29,7 @@ Singleton {
     property var page: null
     property real scannedAt: 0
     property int seq: 0
+    property bool scanAgain: false
     property string listingText: ""
     property string secretsText: ""
 
@@ -79,7 +80,12 @@ Singleton {
     }
 
     function refresh(): void {
-        if (scanner.running || Date.now() - root.scannedAt < 2000)
+        if (scanner.running) {
+            if (!root.scannedAt)
+                root.scanAgain = true;
+            return;
+        }
+        if (Date.now() - root.scannedAt < 2000)
             return;
         secretsFile.reload();
         scanner.running = true;
@@ -313,6 +319,20 @@ Singleton {
         proc.destroy();
     }
 
+    function reload(id: string): string {
+        root.stop(id);
+        const answers = Object.assign({}, root.answers);
+        delete answers[id];
+        root.answers = answers;
+        root.revive(id);
+        root.registered = Object.assign({}, root.registered, {
+            [id]: ""
+        });
+        root.scannedAt = 0;
+        root.refresh();
+        return `reloading ${id}`;
+    }
+
     function revive(id: string): void {
         root.setState(id, {
             crashes: [],
@@ -374,6 +394,10 @@ Singleton {
         command: ["sh", "-c", 'for d in "$1"/*/; do f="${d}plugin.json"; [ -f "$f" ] || continue; printf "\\036%s\\n" "${d%/}"; head -c 65536 "$f"; done', "sh", root.folder]
         stdout: StdioCollector {
             onStreamFinished: {
+                if (root.scanAgain) {
+                    root.scanAgain = false;
+                    Qt.callLater(() => scanner.running = true);
+                }
                 const found = root.readScan(text);
                 const first = !root.scannedAt;
                 root.scannedAt = Date.now();

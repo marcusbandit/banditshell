@@ -31,6 +31,29 @@ copy either folder into the plugins folder, open the launcher and type
 `hello world` or `greet ada`. The Python one opens all three kinds of page
 from its actions menu.
 
+## Making and sharing plugins
+
+    banditshell plugin                       every plugin in the folder
+    banditshell plugin new <name> [--bash]   a working plugin to start from
+    banditshell plugin dev <folder>          run one from any folder
+    banditshell plugin install <folder|git url> [--yes]
+
+`plugin new` writes a small plugin in Python, or bash with `--bash`, that
+answers under its own name: `plugin new notes`, then type `notes hello`.
+
+`plugin dev` links a folder you are working in into the plugins folder,
+restarts the plugin every time a file in it is saved, and shows its log
+until you press Ctrl-C, which takes the link away again.
+
+`plugin install` copies a plugin in from a folder or a git url. Before it
+copies anything it shows where the plugin comes from, the commit for a git
+url, what program it runs, when it answers, what it asks for and its
+files, then asks. It never runs the plugin to find out, and it will not
+replace a plugin that is already there.
+
+The first time you open Settings, Launcher, Plugins, it explains what a
+plugin can reach before it lists any.
+
 ## The manifest
 
 `plugin.json`:

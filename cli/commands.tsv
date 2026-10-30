@@ -22,6 +22,11 @@ rule	launcher list *
 rule	launcher add * * * --subtitle,--icon,--keywords,--until,--open,--copy,--run
 rule	launcher add *
 rule	launcher remove * *
+verb	plugin	launcher plugins: start one, try one, install one
+rule	plugin
+rule	plugin new * --bash
+rule	plugin dev @dir
+rule	plugin install @dir --yes
 verb	output	which device plays: the speakers or the headphones
 rule	output
 rule	output speakers,headphones,toggle
