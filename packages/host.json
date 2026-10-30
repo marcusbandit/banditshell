@@ -38,6 +38,7 @@
       "tests/bind-shortcuts.test.js",
       "tests/boot-check.test.js",
       "tests/cli-plumbing.test.js",
+      "tests/lock-command.test.js",
       "tests/completion.test.js",
       "tests/fixtures/cli-stubs.js",
       "tests/fixtures/ipc-targets.json",
