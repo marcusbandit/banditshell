@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-14",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "banditshell dev perf boots with your Qt theme, like the real shell"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30-13",
       "date": "2026-10-30",
       "changes": [

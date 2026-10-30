@@ -2911,6 +2911,15 @@ IpcHandler {
 EOF
 }
 
+live_theme_env() {
+    local name value
+    for name in QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE XDG_CURRENT_DESKTOP; do
+        value="${!name:-}"
+        [ -n "$value" ] || value=$(systemctl --user show-environment 2>/dev/null | sed -n "s/^$name=//p" | head -n 1)
+        [ -z "$value" ] || printf '%s=%s\n' "$name" "$value"
+    done
+}
+
 boot_root() {
     local work="$1" src="$2" shots="$3" source link
     mkdir -p "$src"
@@ -2925,7 +2934,8 @@ boot_root() {
     else
         cp "$SHELL_DIR/shell.qml" "$src/shell.qml"
     fi
-    mkdir -p "$work/home/.local/share" "$work/home/.config" "$work/home/Pictures"
+    mkdir -p "$work/home/.local/share" "$work/home/.config" "$work/home/Pictures" "$work/config"
+    [ ! -d "${XDG_CONFIG_HOME:-$HOME/.config}/qt6ct" ] || ln -s "${XDG_CONFIG_HOME:-$HOME/.config}/qt6ct" "$work/config/qt6ct"
     [ ! -d "${XDG_DATA_HOME:-$HOME/.local/share}/fonts" ] || ln -s "${XDG_DATA_HOME:-$HOME/.local/share}/fonts" "$work/home/.local/share/fonts"
     [ ! -d "${XDG_CONFIG_HOME:-$HOME/.config}/theme" ] || ln -s "${XDG_CONFIG_HOME:-$HOME/.config}/theme" "$work/home/.config/theme"
     [ ! -d "$HOME/Pictures/Wallpapers" ] || ln -s "$HOME/Pictures/Wallpapers" "$work/home/Pictures/Wallpapers"
@@ -3034,7 +3044,7 @@ perf_usage() {
 }
 
 perf_command() {
-    local out="" runs=5 boots=5 only="" raw="" live="" work src config overrides tool pid link target limit=1800
+    local out="" runs=5 boots=5 only="" raw="" live="" work src config overrides tool pid link target limit=1800 theme=()
     local -a extra=()
     if [ "${1:-}" = live ]; then
         live=1
@@ -3110,11 +3120,12 @@ EOF
         [ ${#extra[@]} -eq 0 ] || printf ' %q' "${extra[@]}"
         printf ' >%q 2>%q\n' "$out/report.txt" "$out/progress.log"
     } >"$work/run.sh"
+    mapfile -t theme < <(live_theme_env)
     : >"$out/progress.log"
     echo "booting the real shell.qml headless $boots times, then opening every panel, menu and settings page $runs times; a few minutes, ctrl-c stops"
     (cd "$work/home" && exec setsid env -i PATH="$PATH" HOME="$work/home" LANG=C.UTF-8 \
         XDG_CONFIG_HOME="$work/config" XDG_STATE_HOME="$work/state" XDG_CACHE_HOME="$work/cache" XDG_RUNTIME_DIR="$work/runtime" \
-        timeout -s KILL "$limit" dbus-run-session --config-file="$work/bus.conf" -- \
+        "${theme[@]}" timeout -s KILL "$limit" dbus-run-session --config-file="$work/bus.conf" -- \
         bash "$work/run.sh") </dev/null >"$out/session.log" 2>&1 &
     pid=$!
     trap 'kill -KILL -- -"$pid" "$pid" 2>/dev/null || true; pkill -KILL -f "$src/shell.qml" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; rm -rf "$work"; echo "stopped" >&2; exit 130' INT TERM
