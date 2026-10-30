@@ -17,6 +17,11 @@ rule	panel calculator answer *
 rule	panel notifications clear
 rule	panel notifications open,toggle,close
 values	panel	launcher session clipboard media calculator quickcontrols keyboard settings notifications island hotkeys files wallpaper
+verb	launcher	rows any tool adds to the launcher, no plugin needed
+rule	launcher list *
+rule	launcher add * * * --subtitle,--icon,--keywords,--for,--open,--copy,--run
+rule	launcher add *
+rule	launcher remove * *
 verb	output	which device plays: the speakers or the headphones
 rule	output
 rule	output speakers,headphones,toggle

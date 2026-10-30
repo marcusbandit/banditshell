@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-3",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Tools can add their own launcher rows with banditshell launcher add"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30-2",
       "date": "2026-10-30",
       "changes": [

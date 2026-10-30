@@ -26,6 +26,7 @@ PomodoroSource 1.0 PomodoroSource.qml
 PortSource 1.0 PortSource.qml
 PrefixSource 1.0 PrefixSource.qml
 ProjectSource 1.0 ProjectSource.qml
+PushSource 1.0 PushSource.qml
 QuicklinkSource 1.0 QuicklinkSource.qml
 RecentSource 1.0 RecentSource.qml
 RecordSource 1.0 RecordSource.qml

@@ -65,6 +65,9 @@ QtObject {
         ScriptSource {
             search: root
         },
+        PushSource {
+            search: root
+        },
         ColourSource {
             search: root
         },
