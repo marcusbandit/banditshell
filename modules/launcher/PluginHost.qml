@@ -27,7 +27,6 @@ Singleton {
     property var registered: ({})
     property var expecting: ({})
     property var page: null
-    property bool pageOpen: false
     property real scannedAt: 0
     property int seq: 0
     property string listingText: ""
@@ -113,6 +112,8 @@ Singleton {
         if (gone.length) {
             const answers = Object.assign({}, root.answers);
             for (const id of gone) {
+                if (root.page?.pluginId === id)
+                    root.page = null;
                 LauncherSources.remove(`plugin:${id}`);
                 root.stop(id);
                 delete answers[id];
@@ -242,8 +243,8 @@ Singleton {
         root.ensure(id).send(Protocol.submitLine(view, values));
     }
 
-    function show(id: string, view: var, asker: var): bool {
-        const same = root.pageOpen && root.page?.pluginId === id && root.page?.view.id === view.id;
+    function show(id: string, view: var, asker: var, open: bool): bool {
+        const same = open && root.page?.pluginId === id && root.page?.view.id === view.id;
         root.page = {
             pluginId: id,
             view: view,

@@ -103,6 +103,7 @@ LauncherConcept {
         active: root.open
         target: root.restoreTo
         presents: true
+        presenting: !!root.shownView
 
         onLaunch: what => root.launch(what)
         onLeave: what => {
@@ -1065,6 +1066,10 @@ LauncherConcept {
 
                             function onBack(): void {
                                 root.closeView();
+                            }
+
+                            function onRetitle(text: string): void {
+                                root.viewWord = text;
                             }
                         }
                     }

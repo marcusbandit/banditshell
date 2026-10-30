@@ -184,7 +184,10 @@ back to the results. There is one level: a new `view` replaces the page, and a
 does not answer something the person did is skipped.
 
 Every page has `kind`, `id` and `title`, and may have `actions`, shown as
-buttons along its foot with the same fields as an item's actions.
+buttons along its foot with the same fields as an item's actions. Tab steps
+through them and Enter runs the one picked. An action without its own
+`open`, `copy` or `run` is sent as an `activate` whose `id` is the page's id,
+or on a list page the selected row's id, with `"view"` set to the page.
 
 `detail` shows text and facts. Enter is its first action, or an `activate`
 with the page's id when it has none.

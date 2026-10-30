@@ -15,6 +15,7 @@ Item {
     signal leave(var what)
     signal launch(var what)
     signal back
+    signal retitle(string text)
 
     readonly property var view: PluginHost.page?.view ?? null
     readonly property var source: PluginHost.page?.source ?? null
@@ -24,31 +25,37 @@ Item {
     property string filter: ""
     property int selected: 0
     property int field: 0
+    property int actionAt: -1
     property var values: ({})
     property var missing: []
+    property string shownId: ""
 
     readonly property var shown: root.kind === "list" ? Protocol.listed(root.view, root.filter, (label, typed) => Ranking.place(label, typed)) : []
     readonly property var actions: root.view?.actions ?? []
     readonly property real rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
 
-    onViewIdChanged: {
+    onViewChanged: {
+        if (!root.view)
+            return;
+        root.retitle(root.view.title);
+        root.values = root.kind === "form" ? Protocol.formValues(root.view, {}) : {};
+        root.missing = [];
+        if (root.viewId === root.shownId) {
+            root.selected = Math.max(0, Math.min(root.selected, root.shown.length - 1));
+            root.actionAt = Math.min(root.actionAt, root.actions.length - 1);
+            return;
+        }
+        root.shownId = root.viewId;
         root.filter = "";
         root.selected = 0;
         root.field = 0;
-        root.missing = [];
-        root.values = root.kind === "form" ? Protocol.formValues(root.view, {}) : {};
+        root.actionAt = -1;
         wheel.stop();
         scroller.contentY = 0;
         focusSoon.restart();
     }
 
-    Component.onCompleted: {
-        PluginHost.pageOpen = true;
-        root.values = root.kind === "form" ? Protocol.formValues(root.view, {}) : {};
-        focusSoon.restart();
-    }
-
-    Component.onDestruction: PluginHost.pageOpen = false
+    Component.onCompleted: root.viewChanged()
 
     function setValue(key: string, value: var): void {
         root.values = Object.assign({}, root.values, {
@@ -57,31 +64,31 @@ Item {
         root.missing = root.missing.filter(k => k !== key);
     }
 
+    function targetId(): string {
+        return root.kind === "list" ? root.shown[root.selected]?.id ?? root.viewId : root.viewId;
+    }
+
+    function run(doing: var, action: string, item: string): void {
+        if (Protocol.local(doing) || doing.refusal)
+            root.source?.doLocal(doing);
+        else
+            root.source?.activateIn(item, action, root.viewId);
+    }
+
     function runAction(index: int): void {
         const action = root.actions[index];
         if (action)
-            root.source?.runInPage(action, action.id, root.viewId);
+            root.run(action, action.id, root.targetId());
         else if (root.kind === "detail")
-            root.source?.runInPage({
-                id: root.viewId,
-                open: "",
-                copy: "",
-                run: [],
-                refusal: ""
-            }, "", root.viewId);
+            root.source?.activateIn(root.viewId, "", root.viewId);
     }
 
     function runItem(item: var): void {
         const enter = Protocol.enterOf(item);
         if (enter.local)
-            root.source?.runInPage(enter.local, "", root.viewId);
+            root.run(enter.local, "", item.id);
         else
-            root.source?.runInPage(Object.assign({}, item, {
-                open: "",
-                copy: "",
-                run: [],
-                refusal: ""
-            }), enter.action, root.viewId);
+            root.source?.activateIn(item.id, enter.action, root.viewId);
     }
 
     function submit(): void {
@@ -90,20 +97,40 @@ Item {
             root.source?.submit(root.viewId, Protocol.formValues(root.view, root.values));
     }
 
+    function reveal(item: var): void {
+        if (!item)
+            return;
+        const top = item.y + body.y;
+        if (top < wheel.goal)
+            wheel.scrollTo(top);
+        else if (top + item.height > wheel.goal + scroller.height)
+            wheel.scrollTo(top + item.height - scroller.height);
+    }
+
     function move(delta: int): void {
-        if (root.kind === "list")
+        if (root.kind === "list") {
             root.selected = Math.max(0, Math.min(root.shown.length - 1, root.selected + delta));
-        else if (root.kind === "form")
+            root.reveal(listRepeater.itemAt(root.selected));
+        } else if (root.kind === "form")
             root.focusField(Math.max(0, Math.min(root.view.fields.length, root.field + delta)));
     }
 
     function focusField(index: int): void {
         root.field = index;
         const item = fieldRepeater.itemAt(index);
-        if (item)
+        if (item) {
             item.takeFocus();
-        else
+            root.reveal(item);
+        } else
             submitButton.forceActiveFocus();
+    }
+
+    function cycleAction(delta: int): void {
+        const count = root.actions.length;
+        if (!count)
+            return;
+        const next = root.actionAt + delta;
+        root.actionAt = next >= count ? -1 : next < -1 ? count - 1 : next;
     }
 
     function claimKey(event: var): bool {
@@ -129,9 +156,12 @@ Item {
             return true;
         case Qt.Key_Return:
         case Qt.Key_Enter:
-            if (root.kind === "list" && root.shown[root.selected])
-                root.runItem(root.shown[root.selected]);
-            else if (root.kind === "form")
+            if (root.actionAt >= 0)
+                root.runAction(root.actionAt);
+            else if (root.kind === "list") {
+                if (root.shown[root.selected])
+                    root.runItem(root.shown[root.selected]);
+            } else if (root.kind === "form")
                 root.submit();
             else
                 root.runAction(0);
@@ -140,6 +170,8 @@ Item {
         case Qt.Key_Backtab:
             if (root.kind === "form")
                 root.move(event.key === Qt.Key_Tab ? 1 : -1);
+            else
+                root.cycleAction(event.key === Qt.Key_Tab ? 1 : -1);
             return true;
         }
         return false;
@@ -283,6 +315,8 @@ Item {
             }
 
             Repeater {
+                id: listRepeater
+
                 model: root.kind === "list" ? root.shown : []
 
                 delegate: MenuRow {
@@ -411,29 +445,14 @@ Item {
                             onToggled: root.setValue(entry.modelData.key, !entry.value)
                         }
 
-                        Row {
+                        Segments {
                             visible: entry.modelData.type === "choice"
                             anchors.left: parent.left
                             anchors.leftMargin: Appearance.padding.small
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: Appearance.padding.small
-
-                            Repeater {
-                                model: entry.modelData.choices
-
-                                delegate: Button {
-                                    id: pick
-
-                                    required property var modelData
-
-                                    size: 0
-                                    style: "plate"
-                                    text: pick.modelData.title
-                                    checkable: true
-                                    checked: pick.modelData.value === entry.value
-                                    onClicked: root.setValue(entry.modelData.key, pick.modelData.value)
-                                }
-                            }
+                            options: entry.modelData.choices.map(c => c.title)
+                            current: Math.max(0, entry.modelData.choices.findIndex(c => c.value === entry.value))
+                            onPicked: index => root.setValue(entry.modelData.key, entry.modelData.choices[index].value)
                         }
                     }
                 }
@@ -478,7 +497,10 @@ Item {
                 size: 0
                 icon: act.modelData.icon
                 text: act.modelData.title
+                checkable: true
+                checked: act.index === root.actionAt
                 onClicked: root.runAction(act.index)
+                onToggled: root.runAction(act.index)
             }
         }
     }

@@ -31,6 +31,8 @@ QtObject {
 
     property bool presents: false
 
+    property bool presenting: false
+
     readonly property list<QtObject> builtIn: [
         PrefixSource {
             search: root

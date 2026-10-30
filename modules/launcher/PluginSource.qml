@@ -161,7 +161,7 @@ QtObject {
                 PluginHost.note(root.pluginId, "skipped a view this launcher cannot show");
                 return;
             }
-            if (PluginHost.show(root.pluginId, message.view, root))
+            if (PluginHost.show(root.pluginId, message.view, root, root.search.presenting))
                 root.search.present({
                     component: root.pageView,
                     text: message.view.title
@@ -202,11 +202,8 @@ QtObject {
         }
     }
 
-    function runInPage(target: var, action: string, view: string): void {
-        if (Protocol.local(target) || target.refusal)
-            root.doLocal(target);
-        else
-            PluginHost.activate(root.pluginId, target.id, action, root, view);
+    function activateIn(item: string, action: string, view: string): void {
+        PluginHost.activate(root.pluginId, item, action, root, view);
     }
 
     function submit(view: string, values: var): void {
