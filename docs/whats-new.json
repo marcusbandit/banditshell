@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-31",
+      "date": "2026-10-31",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The shell stays up when the app that restarted it is closed"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30-20",
       "date": "2026-10-30",
       "changes": [
