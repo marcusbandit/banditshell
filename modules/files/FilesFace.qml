@@ -496,10 +496,13 @@ Item {
         }
     }
 
+    readonly property real sidebarMost: Math.min(root.width * 0.4, Math.max(sidebar.natural, root.width - sidebarEdge.implicitWidth - middle.listNeed - Files.previewWidth))
+
     ActionSheet {
         id: sheet
 
         anchors.fill: parent
+        zoom: Files.magnification
         z: 200
 
         Connections {
@@ -589,7 +592,7 @@ Item {
         anchors.top: rule.bottom
         anchors.bottom: failure.top
 
-        width: Files.sidebarOpen ? Math.min(Math.max(Files.zoomed(Files.sidebarWidth), sidebar.natural), root.width * 0.4) : 0
+        width: Files.sidebarOpen ? Math.min(Math.max(Files.zoomed(Files.sidebarWidth), sidebar.natural), root.sidebarMost) : 0
         visible: width > 0
         clip: true
 
@@ -605,7 +608,7 @@ Item {
 
         visible: Files.sidebarOpen
 
-        onMoved: delta => Files.sidebarWidth = Math.round(Math.max(120, Math.min(root.width * 0.4, sidebarEdge.from + delta)) / Files.magnification)
+        onMoved: delta => Files.sidebarWidth = Math.round(Math.max(120, Math.min(root.sidebarMost, sidebarEdge.from + delta)) / Files.magnification)
         onCommitted: Files.commitWidths()
 
         property int from: 0

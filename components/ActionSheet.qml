@@ -56,10 +56,14 @@ Item {
             action.run();
     }
 
-    readonly property real gap: Appearance.padding.small
-    readonly property real inset: Appearance.padding.normal
+    property real zoom: 1
 
-    readonly property real rowHeight: Math.max(Appearance.sizes.rowHeight, Appearance.font.iconSize + root.inset * 2)
+    readonly property real gap: Math.round(Appearance.padding.small * root.zoom)
+    readonly property real inset: Math.round(Appearance.padding.normal * root.zoom)
+    readonly property int iconSize: Math.round(Appearance.font.iconSize * root.zoom)
+    readonly property int textSize: Math.round(Appearance.font.size.small * root.zoom)
+
+    readonly property real rowHeight: Math.max(Math.round(Appearance.sizes.rowHeight * root.zoom), root.iconSize + root.inset * 2)
     readonly property real step: root.rowHeight + root.gap
     readonly property real split: root.gap * 2 + 1
 
@@ -76,9 +80,9 @@ Item {
         return index * root.step + breaks * root.split;
     }
 
-    readonly property real rowWidth: Math.min(root.width - root.edge * 2 - root.gap * 2, root.inset * 3 + Appearance.font.iconSize + measure.childrenRect.width)
+    readonly property real rowWidth: Math.min(root.width - root.edge * 2 - root.gap * 2, root.inset * 3 + root.iconSize + measure.childrenRect.width)
 
-    readonly property real cellRadius: Appearance.rounding.normal
+    readonly property real cellRadius: Math.round(Appearance.rounding.normal * root.zoom)
     readonly property real groupRadius: root.cellRadius + root.gap
 
     readonly property real edge: Appearance.padding.normal
@@ -132,6 +136,7 @@ Item {
                 required property var modelData
 
                 text: modelData.label
+                font.pixelSize: root.textSize
             }
         }
     }
@@ -221,7 +226,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
 
                             name: cell.modelData.icon
-                            size: Appearance.font.iconSize
+                            size: root.iconSize
                             color: markTone.value
 
                             FollowColour {
@@ -249,6 +254,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
 
                             text: cell.modelData.label
+                            font.pixelSize: root.textSize
 
                             color: labelTone.value
 
