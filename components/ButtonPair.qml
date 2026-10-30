@@ -12,6 +12,8 @@ Row {
 
     property string rest: "plate"
 
+    property real zoom: 1
+
     signal triggered(int index)
 
     spacing: Appearance.button.seam
@@ -29,6 +31,7 @@ Row {
             icon: member.modelData.icon ?? ""
             style: member.index === root.primary ? "accent" : root.rest
             interactive: member.modelData.enabled ?? true
+            zoom: root.zoom
             radiusLeft: member.index > 0 ? Appearance.button.seamRadius : -1
             radiusRight: member.index < root.actions.length - 1 ? Appearance.button.seamRadius : -1
 

@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
 import "../../services/files-find.js" as Find
 
 Item {
@@ -77,7 +78,7 @@ Item {
     SquircleRect {
         anchors.centerIn: parent
 
-        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, root.rows.length > 0 ? 760 : 420)
+        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, Files.zoomed(root.rows.length > 0 ? 760 : 420))
         implicitHeight: body.implicitHeight + Appearance.padding.large * 2
 
         radius: Appearance.rounding.large
@@ -103,7 +104,7 @@ Item {
                     width: parent.width
 
                     text: root.name
-                    font.pixelSize: Appearance.font.size.normal
+                    font.pixelSize: Files.zoomed(Appearance.font.size.normal)
                     elide: Text.ElideMiddle
                 }
 
@@ -115,13 +116,13 @@ Item {
                     visible: root.rows.length > 0
 
                     readonly property real sizeWidth: digit.advanceWidth * 9
-                    readonly property real nameWidth: (width - sizeWidth) * 0.42
+                    readonly property real nameWidth: (width - sizeWidth) * 0.55
 
                     TextMetrics {
                         id: digit
 
                         font.family: Appearance.font.family
-                        font.pixelSize: Appearance.font.size.small
+                        font.pixelSize: Files.zoomed(Appearance.font.size.small)
                         text: "0"
                     }
 
@@ -146,7 +147,7 @@ Item {
                             required property var modelData
 
                             width: table.width
-                            height: Appearance.font.line.small + Appearance.padding.small * 2
+                            height: Files.zoomed(Appearance.font.line.small) + Appearance.padding.small * 2
 
                             Row {
                                 id: named
@@ -160,6 +161,7 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     width: Math.min(implicitWidth, named.width - (hiddenMark.visible ? hiddenMark.width + named.spacing : 0))
                                     text: line.modelData.name
+                                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
                                     elide: Text.ElideMiddle
                                 }
 
@@ -200,6 +202,7 @@ Item {
 
                                     width: room
                                     text: Find.fitTail(line.modelData.origin, Math.max(1, Math.floor(room / Math.max(1, digit.advanceWidth))))
+                                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
                                     color: Appearance.colour.textDim
                                 }
                             }
@@ -213,6 +216,7 @@ Item {
 
                                 horizontalAlignment: Text.AlignRight
                                 text: line.modelData.size
+                                font.pixelSize: Files.zoomed(Appearance.font.size.small)
                                 color: Appearance.colour.textDim
                             }
                         }
@@ -223,7 +227,7 @@ Item {
                     width: parent.width
 
                     text: root.sentence
-                    font.pixelSize: Appearance.font.size.small
+                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
                     color: Appearance.colour.textDim
                     wrapMode: Text.WordWrap
                 }
@@ -236,6 +240,7 @@ Item {
                 Button {
                     style: "ring"
                     text: "Cancel"
+                    zoom: Files.magnification
 
                     onClicked: root.close()
 
@@ -250,6 +255,7 @@ Item {
                     text: root.verb
                     alarm: true
                     paint: Appearance.colour.alarmFill
+                    zoom: Files.magnification
 
                     onClicked: root.answer(root.verb.toLowerCase())
 

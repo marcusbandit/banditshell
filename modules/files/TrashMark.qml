@@ -1,6 +1,7 @@
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
 
 Item {
     id: root
@@ -27,13 +28,14 @@ Item {
         Icon {
             anchors.verticalCenter: parent.verticalCenter
             name: root.icon
-            size: Appearance.icon.small
+            size: Files.zoomed(Appearance.icon.small)
             color: Appearance.colour.textDim
         }
 
         StyledText {
             anchors.verticalCenter: parent.verticalCenter
             text: root.text
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.text
         }
     }

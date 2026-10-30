@@ -12,6 +12,7 @@
       "tests/files-find.test.js",
       "tests/files-listing.test.js",
       "tests/files-order.test.js",
+      "tests/files-sniff.test.js",
       "tests/files-trash.test.js",
       "tests/files-undo.test.js",
       "tests/files-watch.test.js",
