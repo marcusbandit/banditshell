@@ -57,10 +57,8 @@ function countdownMessage(action, seconds) {
     return `${verb} in ${seconds} seconds unless you plug in.`;
 }
 
-function nearlyEmptyChoice(action, percent) {
-    if (action === "nothing")
-        return action;
-    return `${action === "suspend" ? "sleep" : action} at ${percent}%`;
+function nearlyEmptyChoice(action) {
+    return action === "suspend" ? "sleep" : action;
 }
 
 function nearlyEmptyAction(choice) {

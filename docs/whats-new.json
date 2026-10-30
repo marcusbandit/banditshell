@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-17",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Battery's nearly empty row says 5% once: sleep, hibernate or nothing"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Bluetooth's pairing hint lines up with the row titles"
+        },
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "clipboard.preview is gone from config.json, it no longer did anything"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30-16",
       "date": "2026-10-30",
       "changes": [

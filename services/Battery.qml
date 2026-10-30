@@ -41,7 +41,6 @@ Singleton {
 
     readonly property real lowThreshold: Config.values.battery.warnAt / 100
     readonly property real rearmThreshold: root.lowThreshold + LowBattery.rearmMargin
-    readonly property int nearlyEmptyPercent: Math.round(LowBattery.nearlyEmptyFraction * 100)
     readonly property string nearlyEmpty: Config.values.battery.nearlyEmpty
 
     readonly property bool low: available && onBattery && percentage <= lowThreshold
@@ -70,7 +69,7 @@ Singleton {
     }
 
     function nearlyEmptyChoice(action: string): string {
-        return LowBattery.nearlyEmptyChoice(action, root.nearlyEmptyPercent);
+        return LowBattery.nearlyEmptyChoice(action);
     }
 
     function nearlyEmptyAction(choice: string): string {
