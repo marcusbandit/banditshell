@@ -16,7 +16,7 @@ Item {
     signal dismissed
     signal emptyAsked
 
-    implicitHeight: Math.max(buttons.implicitHeight, crumbs.implicitHeight, field.implicitHeight + Appearance.padding.small * 2, emptying.visible ? emptying.implicitHeight : 0)
+    implicitHeight: Math.max(buttons.implicitHeight, crumbs.implicitHeight, emptying.visible ? emptying.implicitHeight : 0, search.implicitHeight)
 
     function edit(): void {
         root.editing = true;
@@ -319,6 +319,7 @@ Item {
         style: "ring"
         icon: "local_fire_department"
         text: "Empty Trash"
+        zoom: Files.magnification
         interactive: Files.trashItems.length > 0
 
         onClicked: root.emptyAsked()
@@ -351,7 +352,7 @@ Item {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
 
-        implicitWidth: Files.searching ? root.width * 0.5 : search.shown ? root.width * 0.3 : glass.implicitWidth + Appearance.padding.normal
+        implicitWidth: Files.searching ? Math.min(root.width - buttons.width - Appearance.padding.normal, Math.max(root.width * 0.5, scope.implicitWidth + Files.zoomed(160))) : search.shown ? root.width * 0.3 : glass.implicitWidth + Appearance.padding.normal
         implicitHeight: Math.max(field.implicitHeight + Appearance.padding.small * 2, scope.visible ? scope.height : 0)
 
         SquircleRect {
@@ -455,6 +456,9 @@ Item {
 
         SettingChoice {
             id: scope
+
+            zoom: Files.magnification
+            width: Math.min(implicitWidth, search.width - Files.zoomed(120))
 
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
