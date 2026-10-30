@@ -24,6 +24,10 @@ var CRASH_LIMIT = 3;
 
 var EFFECTS = ["copy", "open", "notify", "close"];
 
+var VIEW_KINDS = ["detail", "list", "form"];
+
+var FIELD_TYPES = ["text", "secret", "toggle", "choice"];
+
 function textOf(value, limit) {
     if (typeof value === "number" && isFinite(value))
         return String(value);
@@ -177,8 +181,15 @@ function queryLine(seq, text, prefixed) {
     return JSON.stringify({ type: "query", seq: seq, text: text, prefixed: prefixed });
 }
 
-function activateLine(seq, id, action) {
-    return JSON.stringify({ type: "activate", seq: seq, id: id, action: action || "" });
+function activateLine(seq, id, action, view) {
+    var out = { type: "activate", seq: seq, id: id, action: action || "" };
+    if (view)
+        out.view = view;
+    return JSON.stringify(out);
+}
+
+function submitLine(view, values) {
+    return JSON.stringify({ type: "submit", view: view, values: values });
 }
 
 function completeLine(id) {
@@ -233,6 +244,80 @@ function readItems(list, folder) {
     return out;
 }
 
+function readField(raw) {
+    if (!raw || typeof raw !== "object" || !PREF_KEY.test(raw.key) || FIELD_TYPES.indexOf(raw.type) < 0)
+        return null;
+    var choices = raw.type === "choice" ? (Array.isArray(raw.choices) ? raw.choices : []).map(c => c && typeof c === "object" ? { value: textOf(c.value, 200), title: textOf(c.title).trim() || textOf(c.value, 200) } : { value: textOf(c, 200), title: textOf(c, 200) }).filter(c => c.value).slice(0, 20) : [];
+    if (raw.type === "choice" && !choices.length)
+        return null;
+    var value = raw.type === "toggle" ? raw.value === true : raw.type === "choice" ? (choices.some(c => c.value === raw.value) ? raw.value : choices[0].value) : textOf(raw.value, 4096);
+    return {
+        key: raw.key,
+        type: raw.type,
+        title: textOf(raw.title).trim() || raw.key,
+        placeholder: textOf(raw.placeholder),
+        required: raw.required === true,
+        choices: choices,
+        value: value
+    };
+}
+
+function readView(raw, folder) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+        return { error: "a view that is not an object" };
+    if (VIEW_KINDS.indexOf(raw.kind) < 0)
+        return { error: `a view of a kind the shell does not know: ${textOf(raw.kind, 40)}` };
+    var id = textOf(raw.id, 200);
+    var title = textOf(raw.title).trim();
+    if (!id || !title)
+        return { error: "a view needs an id and a title" };
+    var view = {
+        kind: raw.kind,
+        id: id,
+        title: title,
+        actions: (Array.isArray(raw.actions) ? raw.actions : []).map(readAction).filter(Boolean).slice(0, 8)
+    };
+    if (raw.kind === "detail") {
+        view.text = textOf(raw.text, 20000);
+        view.facts = (Array.isArray(raw.facts) ? raw.facts : []).filter(f => f && typeof f === "object").map(f => ({ label: textOf(f.label, 80).trim(), value: textOf(f.value, 500) })).filter(f => f.label).slice(0, 30);
+    } else if (raw.kind === "list") {
+        view.placeholder = textOf(raw.placeholder) || "Filter";
+        view.items = readItems(raw.items, folder);
+    } else {
+        var fields = [];
+        for (var f of Array.isArray(raw.fields) ? raw.fields : []) {
+            var field = readField(f);
+            if (!field || fields.some(g => g.key === field.key))
+                return { error: "a form field needs a key of letters, digits and _, and a type of text, secret, toggle or choice with choices" };
+            fields.push(field);
+        }
+        if (!fields.length)
+            return { error: "a form with no fields" };
+        view.fields = fields.slice(0, 20);
+        view.submit = textOf(raw.submit, 40).trim() || "Submit";
+    }
+    return { view: view };
+}
+
+function formValues(view, values) {
+    var out = {};
+    for (var f of view.fields)
+        out[f.key] = values && Object.prototype.hasOwnProperty.call(values, f.key) ? values[f.key] : f.value;
+    return out;
+}
+
+function formMissing(view, values) {
+    var out = formValues(view, values);
+    return view.fields.filter(f => f.required && f.type !== "toggle" && !out[f.key]).map(f => f.key);
+}
+
+function listed(view, typed, place) {
+    var t = typed.trim();
+    if (!t)
+        return view.items;
+    return view.items.map((item, i) => ({ item: item, i: i, score: plainScore(item, t, place) })).filter(m => m.score > 0).sort((a, b) => b.score - a.score || a.i - b.i).map(m => m.item);
+}
+
 function readMessage(line, folder) {
     if (line.length > LINE_LIMIT)
         return { error: "a line longer than 1 MB" };
@@ -252,7 +337,8 @@ function readMessage(line, folder) {
     case "fill":
         return typeof raw.text === "string" ? { type: "fill", text: raw.text.slice(0, 1000) } : { error: "fill without text" };
     case "view":
-        return { error: "a view, which api 1 does not show yet" };
+        var read = readView(raw.view, folder);
+        return read.error ? { error: read.error } : { type: "view", view: read.view };
     case "effect":
         if (EFFECTS.indexOf(raw.do) < 0)
             return { error: `an effect the shell does not know: ${textOf(raw.do, 40)}` };

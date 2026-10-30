@@ -18,6 +18,7 @@
       "modules/launcher/PluginHost.qml",
       "modules/launcher/PluginProcess.qml",
       "modules/launcher/PluginSource.qml",
+      "modules/launcher/PluginView.qml",
       "modules/launcher/module.json",
       "modules/launcher/placement.js",
       "modules/launcher/prefixes.js",

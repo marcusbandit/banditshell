@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-19",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Launcher plugins can open detail, list and form pages"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30-18",
       "date": "2026-10-30",
       "changes": [

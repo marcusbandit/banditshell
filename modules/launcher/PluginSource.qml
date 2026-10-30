@@ -147,9 +147,25 @@ QtObject {
             root.search.launch(() => Quickshell.execDetached(doing.run));
     }
 
+    property Component pageView: Component {
+        PluginView {}
+    }
+
     function handle(message: var): void {
         if (message.type === "fill") {
             root.search.retype(message.text);
+            return;
+        }
+        if (message.type === "view") {
+            if (!root.search.presents) {
+                PluginHost.note(root.pluginId, "skipped a view this launcher cannot show");
+                return;
+            }
+            if (PluginHost.show(root.pluginId, message.view, root, root.search.presenting))
+                root.search.present({
+                    component: root.pageView,
+                    text: message.view.title
+                });
             return;
         }
         switch (message.do) {
@@ -186,11 +202,19 @@ QtObject {
         }
     }
 
+    function activateIn(item: string, action: string, view: string): void {
+        PluginHost.activate(root.pluginId, item, action, root, view);
+    }
+
+    function submit(view: string, values: var): void {
+        PluginHost.submit(root.pluginId, view, values, root);
+    }
+
     function choiceOf(row: var, doing: var, action: string, title: string, icon: string): var {
         return {
             icon: icon || (doing?.open ? "open_in_new" : doing?.copy ? "content_copy" : doing?.run.length ? "play_arrow" : "chevron_right"),
             label: title,
-            run: () => doing ? root.doLocal(doing) : PluginHost.activate(root.pluginId, row.item.id, action, root)
+            run: () => doing ? root.doLocal(doing) : PluginHost.activate(root.pluginId, row.item.id, action, root, "")
         };
     }
 
@@ -203,7 +227,7 @@ QtObject {
         if (enter.local)
             root.doLocal(enter.local);
         else
-            PluginHost.activate(root.pluginId, row.item.id, enter.action, root);
+            PluginHost.activate(root.pluginId, row.item.id, enter.action, root, "");
     }
 
     function actionsFor(row: var): var {

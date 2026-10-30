@@ -14,3 +14,4 @@ Peek 1.0 Peek.qml
 singleton PluginHost 1.0 PluginHost.qml
 PluginProcess 1.0 PluginProcess.qml
 PluginSource 1.0 PluginSource.qml
+PluginView 1.0 PluginView.qml

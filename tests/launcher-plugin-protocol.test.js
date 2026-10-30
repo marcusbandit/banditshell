@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const P = lib("services/plugin-protocol.js", ["readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "readMessage", "readItems", "enterOf", "plainScore", "crashes"]);
+const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "readMessage", "readItems", "enterOf", "plainScore", "crashes"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 const JIRA = {
@@ -111,11 +111,44 @@ test.describe("plugin answers", () => {
         assert.deepStrictEqual(read.items.map(i => i.icon), [{ file: "/p/jira/icons/star.png" }, { glyph: "⭐" }]);
     });
 
+    test.it("reads the three page kinds and refuses one it does not know", () => {
+        const detail = P.readMessage(JSON.stringify({ type: "view", view: { kind: "detail", id: "d", title: "PROJ-41", text: "Login fails", facts: [{ label: "Status", value: "Open" }, { value: "no label" }], actions: [{ id: "assign", title: "Assign" }] } })).view;
+        assert.deepStrictEqual([detail.kind, detail.text, detail.facts, detail.actions.map(a => a.id)], ["detail", "Login fails", [{ label: "Status", value: "Open" }], ["assign"]]);
+        const list = P.readMessage(JSON.stringify({ type: "view", view: { kind: "list", id: "l", title: "Comments", items: [{ id: "1", title: "First" }, { title: "no id" }] } }), "/p/x").view;
+        assert.deepStrictEqual([list.placeholder, list.items.map(i => i.id)], ["Filter", ["1"]]);
+        assert.match(P.readMessage('{"type":"view","view":{"kind":"grid","id":"g","title":"G"}}').error, /kind/);
+        assert.match(P.readMessage('{"type":"view","view":{"kind":"detail","title":"no id"}}').error, /id and a title/);
+    });
+
+    test.it("reads form fields with their starting values, and refuses broken ones", () => {
+        const form = P.readMessage(JSON.stringify({ type: "view", view: { kind: "form", id: "new", title: "New issue", fields: [
+            { key: "summary", type: "text", title: "Summary", required: true },
+            { key: "kind", type: "choice", choices: [{ value: "bug", title: "Bug" }, "task"], value: "task" },
+            { key: "urgent", type: "toggle", value: true },
+            { key: "token", type: "secret" }
+        ] } })).view;
+        assert.strictEqual(form.submit, "Submit");
+        assert.deepStrictEqual(form.fields[1].choices, [{ value: "bug", title: "Bug" }, { value: "task", title: "task" }]);
+        assert.deepStrictEqual(P.formValues(form, { summary: "Crash" }), { summary: "Crash", kind: "task", urgent: true, token: "" });
+        assert.deepStrictEqual(P.formMissing(form, {}), ["summary"]);
+        assert.match(P.readMessage('{"type":"view","view":{"kind":"form","id":"f","title":"F","fields":[{"key":"a","type":"choice"}]}}').error, /field/);
+        assert.match(P.readMessage('{"type":"view","view":{"kind":"form","id":"f","title":"F","fields":[]}}').error, /no fields/);
+        assert.strictEqual(P.submitLine("new", { summary: "Crash" }), '{"type":"submit","view":"new","values":{"summary":"Crash"}}');
+        assert.strictEqual(P.activateLine(3, "1", "", "comments"), '{"type":"activate","seq":3,"id":"1","action":"","view":"comments"}');
+    });
+
+    test.it("filters a list page with the shell's matcher, keeping the plugin's order when nothing is typed", () => {
+        const view = P.readMessage(JSON.stringify({ type: "view", view: { kind: "list", id: "l", title: "L", items: [{ id: "a", title: "Zebra" }, { id: "b", title: "Apple" }, { id: "c", title: "Grape", keywords: ["apple"] }] } })).view;
+        const place = (label, typed) => Ranking.place(label, typed);
+        assert.deepStrictEqual(P.listed(view, "", place).map(i => i.id), ["a", "b", "c"]);
+        assert.deepStrictEqual(P.listed(view, "apple", place).map(i => i.id), ["b", "c"]);
+    });
+
     test.it("skips lines that are not JSON, unknown types and views it cannot show", () => {
         assert.match(P.readMessage("hello from print()").error, /not JSON/);
         assert.match(P.readMessage('{"type":"append"}').error, /does not know: append/);
         assert.match(P.readMessage('{"type":"results","items":[]}').error, /seq/);
-        assert.match(P.readMessage('{"type":"view","view":{}}').error, /view/);
+        assert.match(P.readMessage('{"type":"view","view":{}}').error, /kind/);
     });
 
     test.it("carries out only the effects it knows, with links it can open safely", () => {
@@ -201,3 +234,16 @@ for (const name of ["hello-bash", "hello-python"]) {
         assert.deepStrictEqual(fill, { type: "fill", text: `${plugin.prefix[0]} world ` });
     });
 }
+
+test("the Python example opens a detail, a list and a form page, and answers the form", async () => {
+    const folder = path.join(ROOT, "docs/plugins/examples/hello-python");
+    const { answers } = await talk(folder, [
+        P.activateLine(1, "greet:ada", "details"),
+        P.activateLine(1, "greet:ada", "letters"),
+        P.activateLine(1, "greet:ada", "write"),
+        P.submitLine("write", { name: "ada", style: "loud", sign: false })
+    ]);
+    assert.deepStrictEqual(answers.map(a => a.type === "view" ? a.view.kind : a.error || a.do), ["detail", "list", "form", "copy"]);
+    assert.deepStrictEqual(answers[1].view.items.map(i => i.title), ["a", "d", "a"]);
+    assert.strictEqual(answers[3].text, "HELLO, ADA!");
+});
