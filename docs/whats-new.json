@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-30-4",
+      "id": "2026-10-30-5",
       "date": "2026-10-30",
       "changes": [
         {
@@ -13,6 +13,32 @@
           "type": "issues",
           "severity": "minor",
           "text": "Update tags and the unread count read as labels, not buttons"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-30-4",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Wi-Fi sign-in shows copies of one certificate as one, ready picked"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The name on your certificate fills in from the certificate you pick"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A picked root shows its fingerprint and checks one you paste"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Wi-Fi sign-in sheet has a close button"
         }
       ]
     },

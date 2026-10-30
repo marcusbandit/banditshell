@@ -99,12 +99,14 @@ function markedOf(lines) {
 
 function read(text) {
     var out = [];
+    var seen = {};
     var records = String(text || "").split("\x1e");
     for (var i = 0; i < records.length; i++) {
         var lines = records[i].split("\n");
         var path = lines[0];
-        if (path.charAt(0) !== "/")
+        if (path.charAt(0) !== "/" || seen[path])
             continue;
+        seen[path] = true;
         var rest = lines.slice(1);
         var kind = kindOf(path, rest);
         if (kind)
@@ -208,22 +210,124 @@ function roots(files, server, now, most) {
     });
 }
 
-function clients(files, now, most) {
+function unrelated(files, server) {
+    var host = String(server || "").trim().toLowerCase();
+    var listed = files.filter(function (f) {
+        return f.kind === "authority";
+    });
+    return !!schoolLabel(host) && listed.length > 0 && !listed.some(function (f) {
+        return fits(f, host);
+    });
+}
+
+function keyFileOf(files, f) {
+    return f.key || !f.publicKey ? null : find(files, function (g) {
+        return g.kind === "key" && g.ownKey === f.publicKey;
+    });
+}
+
+function easeOf(files, f) {
+    var keyFile = keyFileOf(files, f);
+    if (f.key)
+        return f.locked ? 2 : 0;
+    return keyFile ? (keyFile.locked ? 2 : 1) : 3;
+}
+
+function packaging(files, f) {
+    var keyFile = keyFileOf(files, f);
+    return joined([f.key ? "holds its key" : keyFile ? "key in " + baseName(keyFile.path) : "needs its key file", f.locked ? "locked with a password" : ""]);
+}
+
+function groups(files) {
     var out = [];
-    for (var i = 0; i < files.length && out.length < most; i++) {
+    var at = {};
+    for (var i = 0; i < files.length; i++) {
         var f = files[i];
         if (f.kind !== "client")
             continue;
-        var keyFile = f.key || !f.publicKey ? null : find(files, function (g) {
-            return g.kind === "key" && g.ownKey === f.publicKey;
-        });
-        out.push({
-            path: f.path,
-            detail: joined([holderOf(f.subject), untilOf(f, now), f.key ? "holds its key" : keyFile ? "key in " + baseName(keyFile.path) : "needs its key file", f.locked ? "locked with a password" : ""]),
-            warn: f.until > 0 && f.until <= now
-        });
+        var id = f.fingerprint ? "#" + f.fingerprint.toUpperCase() : "/" + f.path;
+        if (!(id in at)) {
+            at[id] = out.length;
+            out.push([]);
+        }
+        out[at[id]].push(f);
     }
-    return out;
+    return out.map(function (members) {
+        var lead = members[0];
+        for (var j = 1; j < members.length; j++) {
+            if (easeOf(files, members[j]) < easeOf(files, lead))
+                lead = members[j];
+        }
+        return { lead: lead, members: members };
+    });
+}
+
+function expired(file, now) {
+    return file.until > 0 && file.until <= now;
+}
+
+function clients(files, now, most) {
+    return groups(files).slice(0, most).map(function (g) {
+        var f = g.lead;
+        var warn = expired(f, now);
+        return {
+            path: f.path,
+            detail: joined([holderOf(f.subject), untilOf(f, now), packaging(files, f), g.members.length > 1 ? "in " + g.members.length + " files" : ""]),
+            warn: warn,
+            others: g.members.filter(function (m) {
+                return m !== f;
+            }).map(function (m) {
+                return { path: m.path, detail: joined([packaging(files, m), warn ? untilOf(m, now) : ""]), warn: warn };
+            })
+        };
+    });
+}
+
+function easiest(files, now, most) {
+    var ready = groups(files).slice(0, most).filter(function (g) {
+        return easeOf(files, g.lead) <= 1 && !expired(g.lead, now);
+    });
+    return ready.length === 1 ? ready[0].lead.path : "";
+}
+
+function holderAt(files, path) {
+    var file = fileAt(files, path);
+    return file && file.kind === "client" ? holderOf(file.subject) : "";
+}
+
+function fingerprintAt(files, path) {
+    var file = fileAt(files, path);
+    return file && file.kind === "authority" ? file.fingerprint : "";
+}
+
+function printLines(fingerprint) {
+    var pairs = String(fingerprint || "").split(":");
+    var lines = [];
+    for (var i = 0; i < pairs.length; i += 8)
+        lines.push(pairs.slice(i, i + 8).join(":"));
+    return lines.join("\n");
+}
+
+function hexOf(text) {
+    var runs = String(text || "").match(/(?:[0-9a-f]{2}[:\s-]?){20,}/gi) || [];
+    var longest = runs.reduce(function (a, b) {
+        return b.length > a.length ? b : a;
+    }, "");
+    return (longest || String(text || "")).replace(/[^0-9a-f]/gi, "").toUpperCase();
+}
+
+function compare(fingerprint, pasted) {
+    var want = hexOf(pasted);
+    var have = hexOf(fingerprint);
+    if (!String(pasted || "").trim() || !have)
+        return "";
+    if (want === have)
+        return "match";
+    if (want.length === 40)
+        return "sha1";
+    if (want.length !== 64)
+        return "short";
+    return "differs";
 }
 
 function keys(files, most) {
@@ -248,11 +352,7 @@ function keys(files, most) {
 
 function keyFor(files, path) {
     var cert = fileAt(files, path);
-    if (!cert || cert.kind !== "client" || cert.key || !cert.publicKey)
-        return "";
-    var file = find(files, function (f) {
-        return f.kind === "key" && f.ownKey === cert.publicKey;
-    });
+    var file = cert && cert.kind === "client" ? keyFileOf(files, cert) : null;
     return file ? file.path : "";
 }
 
