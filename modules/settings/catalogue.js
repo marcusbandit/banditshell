@@ -858,9 +858,9 @@ const PAGES_SOURCE = {
                 { n: 114, icon: "update", label: "Look every", k: "updEvery", kind: "step", min: 5, max: 240, step: 5, unit: " min", cfg: "updates.interval", kw: "updates interval" }
             ] },
             { t: "The system", rows: [
-                { n: [], icon: "memory", label: "New kernel", k: "kernelEvery", kind: "step", min: 0, max: 1440, step: 60, unit: " min", cfg: "packages.interval", state: s => s.v("kernelEvery") ? "the island says when Linux updates" : "never looks", kw: "kernel linux update pacman checkupdates system",
-                    why: "Asks pacman what is waiting (checkupdates, from pacman-contrib) and tells you in the island when the kernel is in the list. Pressing it runs the command below in a terminal, and once the kernel is replaced the island says it wants a restart." },
-                { n: [], icon: "terminal", label: "Update with", k: "upgradeCmd", kind: "text", mono: true, cfg: "packages.upgrade", kw: "system update command pacman yay paru" }
+                { n: [], icon: "memory", label: "New kernel", k: "kernelEvery", kind: "step", min: 0, max: 1440, step: 60, unit: " min", cfg: "packages.interval", state: s => s.v("kernelEvery") ? "the island says when Linux updates" : "never looks", kw: "kernel linux update pacman checkupdates apt dnf zypper system",
+                    why: "Asks pacman, apt, dnf or zypper what is waiting and tells you in the island when the kernel is in the list. Pressing it updates the system in the island, and once the new kernel is in place the island says it wants a restart. Any other distro updates from its own tool." },
+                { n: [], icon: "terminal", label: "Update with", k: "upgradeCmd", kind: "text", mono: true, cfg: "packages.upgrade", why: "Runs in a terminal when it is anything but a plain full upgrade. On Debian, Fedora and openSUSE the pacman line stands for apt, dnf or zypper.", kw: "system update command pacman yay paru apt dnf zypper" }
             ] }
         ]
     },
