@@ -1,0 +1,81 @@
+Script started on 2026-10-30 18:32:31+00:00 [COMMAND="stty cols 80 rows 24 2>/dev/null; exec zypper dup --download-in-advance" <not executed on terminal>]
+[22;27;39;49mLoading repository data...[0m
+[22;27;39;49mReading installed packages...[0m
+[22;27;35;49mWarning: [0mYou are about to do a distribution upgrade with all enabled repositories. Make sure these repositories are compatible before you continue. See 'man zypper' for more information about this command.
+[22;27;39;49mComputing distribution upgrade...[0m
+
+[22;27;32;49mThe following package is going to be upgraded:[0m
+  [22;27;32;49mo[0mpenSUSE-build-key
+
+[22;27;32;49mThe following 11 NEW packages are going to be installed:[0m
+  [22;27;32;49mk[0mrb5 [22;27;32;49ml[0mibbrotlicommon1 [22;27;32;49ml[0mibbrotlidec1 [22;27;32;49ml[0mibcom_err2 [22;27;32;49ml[0mibcurl4 [22;27;32;49ml[0mibkeyutils1 [22;27;32;49ml[0mibldap2
+  [22;27;32;49ml[0mibsasl2-3 [22;27;32;49ml[0mibssh-config [22;27;32;49ml[0mibssh4 [22;27;32;49ml[0mibverto1
+
+[22;27;31;49mThe following package is going to be REMOVED:[0m
+  [22;27;31;49ml[0mibcurl-mini4
+
+[22;27;32;49m1[0m package to upgrade, [22;27;32;49m11[0m new, [22;27;31;49m1[0m to remove.
+
+Package download size:     2.0 MiB
+
+Package install size change:
+[22;27;39;49m[0m              [22;27;39;49m|[0m  [22;27;39;49m     5.0 MiB[0m  [22;27;39;49mrequired by packages that will be installed[0m
+[22;27;39;49m     4.1 MiB[0m  [22;27;39;49m|[0m  [22;27;39;49m-  960.8 KiB[0m  [22;27;39;49mreleased by packages that will be removed[0m
+
+[2K[1;39;49mBackend:  classic_rpmtrans
+Continue? [1;39;49m[y[1;39;49m/n[1;39;49m/v[1;39;49m/...?[1;39;49m shows all options] (y[1;39;49m)[0m[1;39;49m: [0m[0m[0m[0m[0m[0m[0my
+[2KPreloading Packages ---------------------------------------------------------[\][2KPreloading Packages: [ (15.5 KiB / 2.0 MiB) (15.5 KiB/s)] -------------------[\][2K[22;27;39;49m[22;27;39;49mPreloading: libbrotlicommon1-1.2.1-1.1.x86_64.rpm [done][22;27;39;49m[0m
+[2KPreloading Packages: [ (15.5 KiB / 2.0 MiB) (15.5 KiB/s)] -------------------[|][2K[22;27;39;49m[22;27;39;49mPreloading: openSUSE-build-key-1.0-69.1.x86_64.rpm [done][22;27;39;49m[0m
+[2KPreloading Packages: [ (15.5 KiB / 2.0 MiB) (15.5 KiB/s)] -------------------[/][2K[22;27;39;49m[22;27;39;49mPreloading: libssh-config-0.11.5-3.1.noarch.rpm [done][22;27;39;49m[0m
+[2KPreloading Packages: [ (15.5 KiB / 2.0 MiB) (15.5 KiB/s)] -------------------[-][2K[22;27;39;49m[22;27;39;49mPreloading: libbrotlidec1-1.2.1-1.1.x86_64.rpm [done][22;27;39;49m[0m
+[2KPreloading Packages: [ (15.5 KiB / 2.0 MiB) (15.5 KiB/s)] -------------------[\][2K[22;27;39;49m[22;27;39;49mPreloading: libcom_err2-1.47.4-1.1.x86_64.rpm [done][22;27;39;49m[0m
+[2KPreloading Packages: [ (15.5 KiB / 2.0 MiB) (15.5 KiB/s)] -------------------[|][2K[22;27;39;49m[22;27;39;49mPreloading: libverto1-0.3.2-3.9.x86_64.rpm [done][22;27;39;49m[0m
+[2KPreloading Packages: [ (15.5 KiB / 2.0 MiB) (15.5 KiB/s)] -------------------[/][2K[22;27;39;49m[22;27;39;49mPreloading: libkeyutils1-1.6.3-7.9.x86_64.rpm [done][22;27;39;49m[0m
+[2KPreloading Packages: [ (15.5 KiB / 2.0 MiB) (15.5 KiB/s)] -------------------[-][2K[22;27;39;49m[22;27;39;49mPreloading: krb5-1.22.2-5.1.x86_64.rpm [done][22;27;39;49m[0m
+[2KPreloading Packages: [ (15.5 KiB / 2.0 MiB) (15.5 KiB/s)] -------------------[\][2K[22;27;39;49m[22;27;39;49mPreloading: libssh4-0.11.5-3.1.x86_64.rpm [done][22;27;39;49m[0m
+[2KPreloading Packages: [ (15.5 KiB / 2.0 MiB) (15.5 KiB/s)] -------------------[|][2K[22;27;39;49m[22;27;39;49mPreloading: libsasl2-3-2.1.28-13.1.x86_64.rpm [done][22;27;39;49m[0m
+[2KPreloading Packages: [ (15.5 KiB / 2.0 MiB) (15.5 KiB/s)] -------------------[/][2K[22;27;39;49m[22;27;39;49mPreloading: libldap2-2.6.13-1.6.x86_64.rpm [done][22;27;39;49m[0m
+[2KPreloading Packages: [ (15.5 KiB / 2.0 MiB) (15.5 KiB/s)] -------------------[-][2K[22;27;39;49m[22;27;39;49mPreloading: libcurl4-8.23.0-2.1.x86_64.rpm [done][22;27;39;49m[0m
+[2KPreloading Packages: [ (15.5 KiB / 2.0 MiB) (15.5 KiB/s)] -------------------[\][22;27;39;49m[2KPreload finished. [success (15.5 KiB/s) ] ................................[done]
+[22;27;39;49m[22;27;39;49mRetrieving: libbrotlicommon1-1.2.1-1.1.x86_64 (openSUSE-Tumbleweed-Oss)
+                                                           (1/12),  66.2 KiB    [0m
+[22;27;39;49mRetrieving: libcom_err2-1.47.4-1.1.x86_64 (openSUSE-Tumbleweed-Oss)
+                                                           (2/12),  28.5 KiB    [0m
+[22;27;39;49mRetrieving: libkeyutils1-1.6.3-7.9.x86_64 (openSUSE-Tumbleweed-Oss)
+                                                           (3/12),  26.4 KiB    [0m
+[22;27;39;49mRetrieving: libsasl2-3-2.1.28-13.1.x86_64 (openSUSE-Tumbleweed-Oss)
+                                                           (4/12),  63.4 KiB    [0m
+[22;27;39;49mRetrieving: libssh-config-0.11.5-3.1.noarch (openSUSE-Tumbleweed-Oss)
+                                                           (5/12),  16.3 KiB    [0m
+[22;27;39;49mRetrieving: libverto1-0.3.2-3.9.x86_64 (openSUSE-Tumbleweed-Oss)
+                                                           (6/12),  19.8 KiB    [0m
+[22;27;39;49mRetrieving: libbrotlidec1-1.2.1-1.1.x86_64 (openSUSE-Tumbleweed-Oss)
+                                                           (7/12),  32.1 KiB    [0m
+[22;27;39;49mRetrieving: libldap2-2.6.13-1.6.x86_64 (openSUSE-Tumbleweed-Oss)
+                                                           (8/12), 200.0 KiB    [0m
+[22;27;39;49mRetrieving: krb5-1.22.2-5.1.x86_64 (openSUSE-Tumbleweed-Oss)
+                                                           (9/12), 747.0 KiB    [0m
+[22;27;39;49mRetrieving: libssh4-0.11.5-3.1.x86_64 (openSUSE-Tumbleweed-Oss)
+                                                          (10/12), 243.4 KiB    [0m
+[22;27;39;49mRetrieving: libcurl4-8.23.0-2.1.x86_64 (openSUSE-Tumbleweed-Oss)
+                                                          (11/12), 586.2 KiB    [0m
+[22;27;39;49mRetrieving: openSUSE-build-key-1.0-69.1.x86_64 (openSUSE-Tumbleweed-Update)
+                                                          (12/12),  43.7 KiB    [0m
+
+[2KChecking for file conflicts: ------------------------------------------------[|][2KChecking for file conflicts: ------------------------------------------------[|][22;27;39;49m[2KChecking for file conflicts: .............................................[done]
+[22;27;39;49m[2K( 1/12) Installing: libbrotlicommon1-1.2.1-1.1.x86_64 -----------------------[/][2K( 1/12) Installing: libbrotlicommon1-1.2.1-1.1.x86_64 -----------------------[/][22;27;39;49m[2K( 1/12) Installing: libbrotlicommon1-1.2.1-1.1.x86_64 ....................[done]
+[22;27;39;49m[2K( 2/12) Installing: libcom_err2-1.47.4-1.1.x86_64 ---------------------------[-][2K( 2/12) Installing: libcom_err2-1.47.4-1.1.x86_64 ---------------------------[-][22;27;39;49m[2K( 2/12) Installing: libcom_err2-1.47.4-1.1.x86_64 ........................[done]
+[22;27;39;49m[2K( 3/12) Installing: libkeyutils1-1.6.3-7.9.x86_64 ---------------------------[\][2K( 3/12) Installing: libkeyutils1-1.6.3-7.9.x86_64 ---------------------------[\][22;27;39;49m[2K( 3/12) Installing: libkeyutils1-1.6.3-7.9.x86_64 ........................[done]
+[22;27;39;49m[2K( 4/12) Installing: libsasl2-3-2.1.28-13.1.x86_64 ---------------------------[|][2K( 4/12) Installing: libsasl2-3-2.1.28-13.1.x86_64 ---------------------------[|][22;27;39;49m[2K( 4/12) Installing: libsasl2-3-2.1.28-13.1.x86_64 ........................[done]
+[22;27;39;49m[2K( 5/12) Installing: libssh-config-0.11.5-3.1.noarch -------------------------[/][2K( 5/12) Installing: libssh-config-0.11.5-3.1.noarch -------------------------[/][22;27;39;49m[2K( 5/12) Installing: libssh-config-0.11.5-3.1.noarch ......................[done]
+[22;27;39;49m[2K( 6/12) Installing: libverto1-0.3.2-3.9.x86_64 ------------------------------[-][2K( 6/12) Installing: libverto1-0.3.2-3.9.x86_64 ------------------------------[-][22;27;39;49m[2K( 6/12) Installing: libverto1-0.3.2-3.9.x86_64 ...........................[done]
+[22;27;39;49m[2K( 7/12) Installing: libbrotlidec1-1.2.1-1.1.x86_64 --------------------------[\][2K( 7/12) Installing: libbrotlidec1-1.2.1-1.1.x86_64 --------------------------[\][22;27;39;49m[2K( 7/12) Installing: libbrotlidec1-1.2.1-1.1.x86_64 .......................[done]
+[22;27;39;49m[2K( 8/12) Installing: libldap2-2.6.13-1.6.x86_64 ------------------------------[|][2K( 8/12) Installing: libldap2-2.6.13-1.6.x86_64 ------------------------------[|][22;27;39;49m[2K( 8/12) Installing: libldap2-2.6.13-1.6.x86_64 ...........................[done]
+[22;27;39;49m[2K( 9/12) Installing: krb5-1.22.2-5.1.x86_64 ----------------------------------[/][2K( 9/12) Installing: krb5-1.22.2-5.1.x86_64 ----------------------------------[/][22;27;39;49m[2K( 9/12) Installing: krb5-1.22.2-5.1.x86_64 ...............................[done]
+[22;27;39;49m[2K(10/12) Installing: libssh4-0.11.5-3.1.x86_64 -------------------------------[-][2K(10/12) Installing: libssh4-0.11.5-3.1.x86_64 -------------------------------[-][22;27;39;49m[2K(10/12) Installing: libssh4-0.11.5-3.1.x86_64 ............................[done]
+[22;27;39;49m[2K(11/12) Installing: libcurl4-8.23.0-2.1.x86_64 ------------------------------[\][2K(11/12) Installing: libcurl4-8.23.0-2.1.x86_64 ------------------------------[\][22;27;39;49m[2K(11/12) Installing: libcurl4-8.23.0-2.1.x86_64 ...........................[done]
+[22;27;39;49m[2K(12/12) Installing: openSUSE-build-key-1.0-69.1.x86_64 ----------------------[|][2K(12/12) Installing: openSUSE-build-key-1.0-69.1.x86_64 ----------------------[|][22;27;39;49m[2K(12/12) Installing: openSUSE-build-key-1.0-69.1.x86_64 ...................[done]
+[22;27;39;49m[2KRunning post-transaction scripts --------------------------------------------[/][2KRunning post-transaction scripts --------------------------------------------[/][2KRunning post-transaction scripts ......................................<100%>[-][22;27;39;49m[2KRunning post-transaction scripts .........................................[done]
+[22;27;39;49m[22;27;39;49m [0m
+
+Script done on 2026-10-30 18:32:37+00:00 [COMMAND_EXIT_CODE="0"]

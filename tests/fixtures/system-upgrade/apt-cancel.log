@@ -1,0 +1,13 @@
+Script started on 2026-10-30 18:18:26+00:00 [COMMAND="stty cols 80 rows 24 2>/dev/null; exec env DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::http::Dl-Limit=30 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" <not executed on terminal>]
+Reading package lists... 0%Reading package lists... 0%Reading package lists... 0%Reading package lists... 66%Reading package lists... 96%Reading package lists... 96%Reading package lists... 96%Reading package lists... 96%Reading package lists... 99%Reading package lists... 99%Reading package lists... Done
+Building dependency tree... 0%Building dependency tree... 0%Building dependency tree... 50%Building dependency tree... 50%Building dependency tree... 82%Building dependency tree... Done
+Reading state information... 0% Reading state information... 1%Reading state information... Done
+Calculating upgrade... 0%Calculating upgrade... 10%Calculating upgrade... Done
+The following packages will be upgraded:
+  tzdata
+1 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+Need to get 268 kB of archives.
+After this operation, 1024 B of additional disk space will be used.
+Do you want to continue? [Y/n] y
+0% [Working]^C
+Script done on 2026-10-30 18:18:29+00:00 [COMMAND_EXIT_CODE="130"]
