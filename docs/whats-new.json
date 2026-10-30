@@ -1,13 +1,29 @@
 {
   "entries": [
     {
-      "id": "2026-10-30-5",
+      "id": "2026-10-30-6",
       "date": "2026-10-30",
       "changes": [
         {
           "type": "issues",
           "severity": "minor",
           "text": "Settings stays readable at any See-through value and wallpaper"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-30-5",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "After going back, the menu says it won't offer that version itself"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Update tags and the unread count read as labels, not buttons"
         }
       ]
     },

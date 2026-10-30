@@ -379,18 +379,15 @@ Column {
                     color: Appearance.colour.textDim
                 }
 
-                SquircleRect {
+                Item {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: root.unreadCount > 0
-                    width: newCount.implicitWidth + newMark.width + Appearance.padding.small * 3
+                    width: newCount.x + newCount.implicitWidth
                     height: Appearance.font.line.small
-                    pill: "object"
-                    color: Appearance.withAlpha(Appearance.colour.accent, 0.14)
 
                     SquircleRect {
                         id: newMark
 
-                        x: Appearance.padding.small
                         anchors.verticalCenter: parent.verticalCenter
                         width: root.unreadBar
                         height: Math.round(parent.height * 0.6)
@@ -459,26 +456,19 @@ Column {
                     color: Appearance.colour.accent
                 }
 
-                SquircleRect {
+                StyledText {
                     id: tagChip
 
                     x: root.unreadCount > 0 ? root.unreadBar + Appearance.padding.small : 0
-                    width: Math.ceil(tagWidth.advanceWidth) + Appearance.padding.small * 2
-                    height: Appearance.font.line.small
-                    pill: "object"
-                    color: Appearance.withAlpha(tagged.hue, 0.14)
-
-                    StyledText {
-                        anchors.centerIn: parent
-                        text: tagged.modelData.tag
-                        color: Appearance.blend(Appearance.colour.text, tagged.hue, 0.55)
-                    }
+                    width: Math.ceil(tagWidth.advanceWidth)
+                    text: tagged.modelData.tag
+                    color: Appearance.blend(Appearance.colour.text, tagged.hue, 0.55)
                 }
 
                 StyledText {
                     id: taggedText
 
-                    x: tagChip.x + tagChip.width + Appearance.padding.small
+                    x: tagChip.x + tagChip.width + Appearance.padding.normal
                     width: tagged.width - x
                     text: tagged.modelData.text
                     color: root.unreadCount > 0 && tagged.modelData.unread !== true ? Appearance.colour.textDim : Appearance.colour.text
