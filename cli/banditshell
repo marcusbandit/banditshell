@@ -42,11 +42,11 @@
 # launcher                       rows any tool adds to the launcher, no plugin needed
 #   banditshell launcher list [<tool>]
 #                                the rows tools have added, as JSON
-#   banditshell launcher add <tool> <row> <title> [--subtitle <text>] [--icon <icon>] [--keywords <words>] [--for <duration>] [--open <target>|--copy <text>|--run <command>]
+#   banditshell launcher add <tool> <row> <title> [--subtitle <text>] [--icon <icon>] [--keywords <words>] [--until <span>] [--open <target>|--copy <text>|--run <command>]
 #                                add a row, or replace the tool's row of that
 #                                name; Enter opens a link or path, copies text or
 #                                runs the rest of the line as a command;
-#                                --for 10m makes it go away by itself
+#                                --until 10m makes it go away by itself
 #   banditshell launcher add <json>
 #                                the same row written as JSON, see
 #                                docs/plugins/push.md
@@ -1550,20 +1550,9 @@ route_island() {
     esac
 }
 
-launcher_seconds() {
-    case "$1" in
-    *[!0-9smhd]* | "" | [smhd]*) return 1 ;;
-    *s) printf '%s' "${1%s}" ;;
-    *m) printf '%s' "$((${1%m} * 60))" ;;
-    *h) printf '%s' "$((${1%h} * 3600))" ;;
-    *d) printf '%s' "$((${1%d} * 86400))" ;;
-    *) printf '%s' "$1" ;;
-    esac
-}
-
 route_launcher() {
-    local usage="launcher add <tool> <row> <title> [--subtitle <text>] [--icon <icon>] [--keywords <words>] [--for <duration>] [--open <target>|--copy <text>|--run <command>]"
-    local row ttl keywords
+    local usage="launcher add <tool> <row> <title> [--subtitle <text>] [--icon <icon>] [--keywords <words>] [--until <span>] [--open <target>|--copy <text>|--run <command>]"
+    local row
     case "${1:-}" in
     "" | list)
         [ $# -le 2 ] || say_usage "launcher list [<tool>]"
@@ -1589,13 +1578,8 @@ route_launcher() {
             fi
             [ $# -ge 2 ] || { echo "banditshell: $1 needs a value" >&2; exit 2; }
             case "$1" in
-            --subtitle | --icon | --open | --copy) row+=",$(json_quote "${1#--}"):$(json_quote "$2")" ;;
-            --keywords)
-                read -ra keywords <<<"$2"
-                row+=",\"keywords\":$(json_list "${keywords[@]}")" ;;
-            --for)
-                ttl=$(launcher_seconds "$2") || { echo "banditshell: --for takes a duration like 90s, 10m, 2h or 1d" >&2; exit 2; }
-                row+=",\"ttl\":$ttl" ;;
+            --subtitle | --icon | --open | --copy | --keywords) row+=",$(json_quote "${1#--}"):$(json_quote "$2")" ;;
+            --until) row+=",\"ttl\":$(json_quote "$2")" ;;
             *) echo "banditshell: unknown option: $1" >&2; exit 2 ;;
             esac
             shift 2

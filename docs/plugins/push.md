@@ -10,7 +10,7 @@ with one command and takes it away with another:
 
 The row shows when someone types words from its title, its keywords or the
 tool's name, in a group named after the tool. It stays until the tool removes
-it, or until `--for` runs out.
+it, or until `--until` runs out.
 
 ## The command
 
@@ -28,9 +28,9 @@ by adding it again. `remove` without a row takes away every row of the tool.
 | option | what it does |
 |---|---|
 | `--subtitle <text>` | The row's second line. |
-| `--icon <icon>` | A Material Symbols name such as `rocket_launch`, an emoji, or an absolute image path. Without one the row gets an icon for what Enter does. |
+| `--icon <icon>` | A Material Symbols name such as `rocket_launch`, an emoji, or an absolute path to a picture. Without one, or with a name it cannot draw, the row gets an icon for what Enter does. |
 | `--keywords <words>` | More words the row is found by, separated by spaces. |
-| `--for <duration>` | Takes the row away after `90s`, `10m`, `2h` or `1d`. Plain seconds work too. |
+| `--until <span>` | Takes the row away after a span such as `90s`, `10m`, `1h30m` or `2d`. Plain seconds work too. |
 | `--open <target>` | Enter opens a link (`https://`, `http://`, `mailto:`, `file:///`) or an absolute path. |
 | `--copy <text>` | Enter copies the text. |
 | `--run <command>` | Enter runs a command. Everything after `--run` is the command and its arguments, so it comes last. It runs as you, without a shell. |
@@ -46,7 +46,7 @@ Each tool keeps at most 50 rows; adding more drops its oldest.
 `banditshell launcher add` also takes the whole row as one JSON object, and
 the shell's IPC takes the same text, so a tool can skip the CLI:
 
-    qs ipc call launcher add '{"tool":"deploy","id":"failed","title":"Deploy failed on main","open":"https://ci.example.org/run/41","ttl":600}'
+    qs ipc call launcher add '{"tool":"deploy","id":"failed","title":"Deploy failed on main","open":"https://ci.example.org/run/41","ttl":"10m"}'
     qs ipc call launcher remove deploy failed
     qs ipc call launcher list deploy
 
@@ -56,7 +56,7 @@ the shell's IPC takes the same text, so a tool can skip the CLI:
 | `subtitle`, `icon`, `keywords` | As the options. `keywords` is a list of strings or one string of words. |
 | `open`, `copy` | A string each. |
 | `run` | A list of strings, the program first. |
-| `ttl` | Seconds until the row goes away. |
+| `ttl` | Seconds, or a span like `"10m"`, until the row goes away. |
 
 A refused row answers `refused:` and the reason, and the CLI exits with 4.
 

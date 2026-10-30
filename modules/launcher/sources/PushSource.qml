@@ -23,7 +23,7 @@ QtObject {
             detail: pushed.subtitle,
             icon: icon.name ?? "push_pin",
             glyph: icon.glyph ?? "",
-            iconSource: icon.file ? `file://${icon.file}` : "",
+            iconSource: icon.file ? Pushed.fileUrl(icon.file) : "",
             score: score
         };
     }
@@ -31,8 +31,11 @@ QtObject {
     readonly property var groups: {
         if (root.text.length < 2)
             return [];
-        const byTool = {};
+        const byTool = Object.create(null);
+        const now = Date.now();
         for (const pushed of PushedRows.rows) {
+            if (pushed.expires && pushed.expires <= now)
+                continue;
             const score = Pushed.scoreOf(pushed, root.text, Ranking.place);
             if (score <= 0)
                 continue;

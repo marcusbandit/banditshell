@@ -14,8 +14,37 @@ var ROWS_PER_TOOL = 50;
 
 var LONGEST_TTL = 366 * 24 * 3600;
 
+var SPAN_PIECE = /(\d+(?:\.\d+)?)(d|h|m|s)/g;
+
+var SPAN_UNITS = { s: 1, m: 60, h: 3600, d: 86400 };
+
+var IMAGE = /\.(?:png|svg|jpe?g|webp|gif|ico)$/i;
+
 function empty() {
     return { version: 1, tools: {} };
+}
+
+function own(tools, tool) {
+    return Object.prototype.hasOwnProperty.call(tools, tool) ? tools[tool] : [];
+}
+
+function spanSeconds(value) {
+    if (value === undefined || value === null || value === "")
+        return 0;
+    if (typeof value === "number")
+        return isFinite(value) && value >= 0 ? value : -1;
+    var raw = String(value).trim().toLowerCase();
+    if (/^\d+(?:\.\d+)?$/.test(raw))
+        return Number(raw);
+    SPAN_PIECE.lastIndex = 0;
+    var total = 0;
+    var covered = 0;
+    var piece;
+    while ((piece = SPAN_PIECE.exec(raw))) {
+        total += Number(piece[1]) * SPAN_UNITS[piece[2]];
+        covered += piece[0].length;
+    }
+    return raw && covered === raw.length ? total : -1;
 }
 
 function textOf(value, limit) {
@@ -80,9 +109,9 @@ function readRow(raw, now) {
     var title = textOf(raw.title).trim();
     if (!title)
         return { error: "a row needs a title" };
-    var ttl = raw.ttl === undefined || raw.ttl === null ? 0 : Number(raw.ttl);
+    var ttl = spanSeconds(raw.ttl);
     if (!(ttl >= 0) || ttl > LONGEST_TTL)
-        return { error: "ttl is a number of seconds, at most a year" };
+        return { error: "ttl is seconds or a span like 90s, 10m, 1h30m or 2d, at most a year" };
     var doing = readDoing(raw);
     if (doing.error)
         return { error: doing.error };
@@ -115,13 +144,13 @@ function parseRow(text, now) {
 
 function added(store, row) {
     var tools = Object.assign({}, store.tools);
-    var kept = (tools[row.tool] || []).filter(r => r.id !== row.id);
+    var kept = own(tools, row.tool).filter(r => r.id !== row.id);
     tools[row.tool] = kept.concat([row]).slice(-ROWS_PER_TOOL);
     return { version: 1, tools: tools };
 }
 
 function removed(store, tool, id) {
-    var had = store.tools[tool] || [];
+    var had = own(store.tools, tool);
     var left = id ? had.filter(r => r.id !== id) : [];
     var tools = Object.assign({}, store.tools);
     if (left.length)
@@ -169,17 +198,21 @@ function readStore(text, now) {
     }
     if (!data || typeof data !== "object" || !data.tools || typeof data.tools !== "object")
         return empty();
-    var store = empty();
-    for (var tool in data.tools) {
+    var tools = {};
+    for (var tool of Object.keys(data.tools)) {
         if (!Array.isArray(data.tools[tool]))
             continue;
+        var byId = {};
         for (var raw of data.tools[tool]) {
             var read = readRow(Object.assign({}, raw, { tool: tool, ttl: 0 }), raw && raw.added || now);
             if (read.row)
-                store = added(store, Object.assign(read.row, { expires: Number(raw.expires) || 0 }));
+                byId[read.row.id] = Object.assign(read.row, { expires: Number(raw.expires) || 0 });
         }
+        var rows = Object.keys(byId).map(id => byId[id]).sort((a, b) => a.added - b.added).slice(-ROWS_PER_TOOL);
+        if (rows.length)
+            tools[tool] = rows;
     }
-    return live(store, now);
+    return live({ version: 1, tools: tools }, now);
 }
 
 function scoreOf(row, typed, place) {
@@ -190,9 +223,15 @@ function iconOf(row) {
     var icon = row.icon;
     if (!icon)
         return { name: row.open ? "open_in_new" : row.copy ? "content_copy" : row.run.length ? "play_arrow" : "push_pin" };
-    if (icon.charAt(0) === "/")
+    if (icon.charAt(0) === "/" && IMAGE.test(icon))
         return { file: icon };
-    return ICON_NAME.test(icon) ? { name: icon } : { glyph: icon };
+    if (ICON_NAME.test(icon))
+        return { name: icon };
+    return Array.from(icon).length <= 4 ? { glyph: icon } : { name: "push_pin" };
+}
+
+function fileUrl(path) {
+    return "file://" + path.split("/").map(encodeURIComponent).join("/");
 }
 
 function titleOfTool(tool) {

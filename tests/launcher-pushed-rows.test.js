@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Pushed = lib("services/pushed-rows.js", ["empty", "readRow", "parseRow", "added", "removed", "live", "nextExpiry", "rowsOf", "readStore", "scoreOf", "iconOf", "titleOfTool"]);
+const Pushed = lib("services/pushed-rows.js", ["fileUrl", "empty", "readRow", "parseRow", "added", "removed", "live", "nextExpiry", "rowsOf", "readStore", "scoreOf", "iconOf", "titleOfTool"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 const NOW = 1_800_000_000_000;
@@ -59,6 +59,22 @@ test.describe("pushed launcher rows", () => {
         assert.strictEqual(row({ ttl: 600 }).expires, NOW + 600_000);
         assert.strictEqual(row({}).expires, 0);
         assert.match(Pushed.readRow({ tool: "a", id: "b", title: "T", ttl: -1 }, NOW).error, /ttl/);
+    });
+
+    test.it("reads a ttl written as a span, as the island does", () => {
+        assert.strictEqual(row({ ttl: "1h30m" }).expires, NOW + 5_400_000);
+        assert.strictEqual(row({ ttl: "2d" }).expires, NOW + 172_800_000);
+        assert.strictEqual(row({ ttl: "08m" }).expires, NOW + 480_000);
+        for (const bad of ["1m5", "soon", "10x", "-5"])
+            assert.match(Pushed.readRow({ tool: "a", id: "b", title: "T", ttl: bad }, NOW).error, /span/, bad);
+    });
+
+    test.it("keeps tools named like object members apart from the members", () => {
+        let store = Pushed.added(Pushed.empty(), row({ tool: "constructor", id: "x" }));
+        store = Pushed.added(store, row({ tool: "constructor", id: "y" }));
+        assert.deepStrictEqual(Pushed.rowsOf(store).map(r => r.id), ["x", "y"]);
+        assert.strictEqual(Pushed.removed(Pushed.empty(), "constructor", "").count, 0);
+        assert.strictEqual(Pushed.removed(Pushed.empty(), "tostring", "").count, 0);
     });
 
     test.it("replaces a row with the same tool and id, and keeps other tools apart", () => {
@@ -121,6 +137,8 @@ test.describe("pushed launcher rows", () => {
         assert.deepStrictEqual(Pushed.iconOf(row({ icon: "rocket_launch" })), { name: "rocket_launch" });
         assert.deepStrictEqual(Pushed.iconOf(row({ icon: "🚀" })), { glyph: "🚀" });
         assert.deepStrictEqual(Pushed.iconOf(row({ icon: "/usr/share/icons/x.png" })), { file: "/usr/share/icons/x.png" });
+        assert.deepStrictEqual(Pushed.iconOf(row({ icon: "dialog-warning" })), { name: "push_pin" });
+        assert.strictEqual(Pushed.fileUrl("/home/me/c#?%.png"), "file:///home/me/c%23%3F%25.png");
         assert.deepStrictEqual(Pushed.iconOf(row({ copy: "x" })), { name: "content_copy" });
         assert.deepStrictEqual(Pushed.iconOf(row({})), { name: "push_pin" });
     });

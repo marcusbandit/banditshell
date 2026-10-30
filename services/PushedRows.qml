@@ -13,9 +13,12 @@ Singleton {
 
     property var store: Pushed.empty()
 
-    readonly property var rows: Pushed.rowsOf(root.store, "")
+    property real now: Date.now()
+
+    readonly property var rows: Pushed.rowsOf(Pushed.live(root.store, root.now), "")
 
     function keep(next: var): void {
+        root.now = Date.now();
         root.store = next;
         file.setText(JSON.stringify(next, null, 2) + "\n");
         root.schedule();
@@ -30,7 +33,7 @@ Singleton {
     }
 
     function remove(tool: string, id: string): string {
-        const out = Pushed.removed(root.store, tool, id);
+        const out = Pushed.removed(Pushed.live(root.store, Date.now()), tool, id);
         if (!out.count)
             return id ? `no such row: ${tool}/${id}` : `no such tool: ${tool}`;
         root.keep(out.store);
@@ -42,14 +45,14 @@ Singleton {
     }
 
     function rowFor(tool: string, id: string): var {
-        return root.rows.find(r => r.tool === tool && r.id === id) ?? null;
+        return Pushed.rowsOf(Pushed.live(root.store, Date.now()), tool).find(r => r.id === id) ?? null;
     }
 
     function schedule(): void {
         const next = Pushed.nextExpiry(root.store);
         expiry.stop();
         if (next) {
-            expiry.interval = Math.max(1000, Math.min(next - Date.now() + 50, 3600000));
+            expiry.interval = Math.max(1000, Math.min(next - Date.now() + 50, 60000));
             expiry.start();
         }
     }
@@ -58,7 +61,8 @@ Singleton {
         id: expiry
 
         onTriggered: {
-            const next = Pushed.live(root.store, Date.now());
+            root.now = Date.now();
+            const next = Pushed.live(root.store, root.now);
             if (next !== root.store)
                 root.keep(next);
             else
