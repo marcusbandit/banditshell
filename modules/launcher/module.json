@@ -24,12 +24,14 @@
       "modules/launcher/sources/FallbackSource.qml",
       "modules/launcher/sources/MediaSource.qml",
       "modules/launcher/sources/PrefixSource.qml",
+      "modules/launcher/sources/PushSource.qml",
       "modules/launcher/sources/qmldir",
       "modules/launcher/system-asks.js"
     ],
     "services": [
       "LauncherHotkeys",
-      "LauncherSources"
+      "LauncherSources",
+      "PushedRows"
     ],
     "tests": [
       "tests/launcher-actions.test.js",
@@ -37,11 +39,16 @@
       "tests/launcher-phrases.test.js",
       "tests/launcher-placement.test.js",
       "tests/launcher-prefixes.test.js",
+      "tests/launcher-push-cli.test.js",
+      "tests/launcher-pushed-rows.test.js",
       "tests/launcher-search-bar.test.js",
       "tests/launcher-search.test.js",
       "tests/launcher-shellcli.test.js",
       "tests/launcher-source-contract.test.js",
       "tests/launcher-windows.test.js"
+    ],
+    "js": [
+      "services/pushed-rows.js"
     ]
   },
   "requires": {

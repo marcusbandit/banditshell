@@ -39,6 +39,20 @@
 #            keyboard|settings|notifications|island|hotkeys|files|wallpaper
 #                                and every menu; banditshell panel lists them all
 #
+# launcher                       rows any tool adds to the launcher, no plugin needed
+#   banditshell launcher list [<tool>]
+#                                the rows tools have added, as JSON
+#   banditshell launcher add <tool> <row> <title> [--subtitle <text>] [--icon <icon>] [--keywords <words>] [--until <span>] [--open <target>|--copy <text>|--run <command>]
+#                                add a row, or replace the tool's row of that
+#                                name; Enter opens a link or path, copies text or
+#                                runs the rest of the line as a command;
+#                                --until 10m makes it go away by itself
+#   banditshell launcher add <json>
+#                                the same row written as JSON, see
+#                                docs/plugins/push.md
+#   banditshell launcher remove <tool> [<row>]
+#                                take one row away, or every row of the tool
+#
 # output                         which device plays: the speakers or the headphones
 #   banditshell output           what plays, and which device is which
 #   banditshell output [speakers|headphones|toggle]
@@ -1549,6 +1563,45 @@ route_island() {
         ;;
     list) activity_call list ;;
     *) nope island "$verb" ;;
+    esac
+}
+
+route_launcher() {
+    local usage="launcher add <tool> <row> <title> [--subtitle <text>] [--icon <icon>] [--keywords <words>] [--until <span>] [--open <target>|--copy <text>|--run <command>]"
+    local row
+    case "${1:-}" in
+    "" | list)
+        [ $# -le 2 ] || say_usage "launcher list [<tool>]"
+        ipc launcher list "${2:-}" ;;
+    remove)
+        [ $# -ge 2 ] && [ $# -le 3 ] || say_usage "launcher remove <tool> [<row>]"
+        ipc launcher remove "$2" "${3:-}" ;;
+    add)
+        shift
+        if [ $# -eq 1 ] && [[ $1 == "{"* ]]; then
+            ipc launcher add "$1"
+            return
+        fi
+        [ $# -ge 3 ] || say_usage "$usage"
+        row="\"tool\":$(json_quote "$1"),\"id\":$(json_quote "$2"),\"title\":$(json_quote "$3")"
+        shift 3
+        while [ $# -gt 0 ]; do
+            if [ "$1" = --run ]; then
+                [ $# -ge 2 ] || { echo "banditshell: --run needs a command" >&2; exit 2; }
+                shift
+                row+=",\"run\":$(json_list "$@")"
+                break
+            fi
+            [ $# -ge 2 ] || { echo "banditshell: $1 needs a value" >&2; exit 2; }
+            case "$1" in
+            --subtitle | --icon | --open | --copy | --keywords) row+=",$(json_quote "${1#--}"):$(json_quote "$2")" ;;
+            --until) row+=",\"ttl\":$(json_quote "$2")" ;;
+            *) echo "banditshell: unknown option: $1" >&2; exit 2 ;;
+            esac
+            shift 2
+        done
+        ipc launcher add "{$row}" ;;
+    *) nope launcher "$1" ;;
     esac
 }
 
@@ -4320,6 +4373,9 @@ notifications)
     ;;
 island)
     route_island "$@"
+    ;;
+launcher)
+    route_launcher "$@"
     ;;
 output)
     route_output "$@"
