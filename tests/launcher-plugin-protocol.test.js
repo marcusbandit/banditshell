@@ -106,6 +106,11 @@ test.describe("plugin answers", () => {
         assert.deepStrictEqual(read.items.slice(0, 2).map(i => i.id), ["a", "n0"]);
     });
 
+    test.it("finds an item's relative picture in the plugin's folder", () => {
+        const read = P.readMessage('{"type":"results","seq":1,"items":[{"id":"a","title":"A","icon":"icons/star.png"},{"id":"b","title":"B","icon":"⭐"}]}', "/p/jira");
+        assert.deepStrictEqual(read.items.map(i => i.icon), [{ file: "/p/jira/icons/star.png" }, { glyph: "⭐" }]);
+    });
+
     test.it("skips lines that are not JSON, unknown types and views it cannot show", () => {
         assert.match(P.readMessage("hello from print()").error, /not JSON/);
         assert.match(P.readMessage('{"type":"append"}').error, /does not know: append/);

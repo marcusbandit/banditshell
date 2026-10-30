@@ -25,7 +25,11 @@ Singleton {
     property var processes: ({})
     property var askers: ({})
     property var registered: ({})
+    property var expecting: ({})
     property real scannedAt: 0
+    property int seq: 0
+    property string listingText: ""
+    property string secretsText: ""
 
     function logOf(id: string): string {
         return `${root.logDir}/${id}.log`;
@@ -103,14 +107,16 @@ Singleton {
             if (entry.plugin && !root.off.includes(entry.id))
                 wanted[entry.id] = JSON.stringify([entry.plugin, root.valuesOf(entry.id), root.secretsOf(entry.id)]);
         const next = {};
-        const answers = Object.assign({}, root.answers);
-        for (const id of Object.keys(root.registered))
-            if (wanted[id] !== root.registered[id]) {
+        const gone = Object.keys(root.registered).filter(id => wanted[id] !== root.registered[id]);
+        if (gone.length) {
+            const answers = Object.assign({}, root.answers);
+            for (const id of gone) {
                 LauncherSources.remove(`plugin:${id}`);
                 root.stop(id);
                 delete answers[id];
             }
-        root.answers = answers;
+            root.answers = answers;
+        }
         for (const id of Object.keys(wanted)) {
             if (root.registered[id] === undefined && root.stateOf(id).off)
                 root.revive(id);
@@ -127,7 +133,7 @@ Singleton {
     function writeListing(): void {
         if (!root.scannedAt)
             return;
-        listingFile.setText(JSON.stringify(root.found.map(e => ({
+        const text = JSON.stringify(root.found.map(e => ({
                         id: e.id,
                         name: e.name,
                         about: e.plugin?.about ?? "",
@@ -138,7 +144,11 @@ Singleton {
                         error: e.error ?? "",
                         crashed: root.stateOf(e.id).off,
                         log: root.logOf(e.id)
-                    })), null, 2) + "\n");
+                    })), null, 2) + "\n";
+        if (text === root.listingText)
+            return;
+        root.listingText = text;
+        listingFile.setText(text);
     }
 
     function ensure(id: string): var {
@@ -164,8 +174,12 @@ Singleton {
 
     function stop(id: string): void {
         const proc = root.processes[id];
-        if (proc)
-            proc.stop();
+        if (!proc)
+            return;
+        const next = Object.assign({}, root.processes);
+        delete next[id];
+        root.processes = next;
+        proc.stop();
     }
 
     function usable(id: string): bool {
@@ -173,16 +187,19 @@ Singleton {
         return !!root.pluginOf(id) && !state.off && Date.now() >= state.until && !root.missingOf(id).length;
     }
 
-    function ask(id: string, text: string, prefixed: bool, asker: var): void {
+    function ask(id: string, text: string, prefixed: bool, asker: var): int {
+        const state = root.stateOf(id);
+        if (!state.off && state.until > Date.now())
+            return state.until - Date.now() + 50;
         if (!root.usable(id))
-            return;
+            return 0;
         const had = root.answers[id];
         if (had && had.text === text && had.prefixed === prefixed && (had.waiting || had.answered))
-            return;
+            return 0;
         const proc = root.ensure(id);
         if (had?.waiting)
             proc.send(Protocol.cancelLine(had.seq));
-        const seq = (had?.seq ?? 0) + 1;
+        const seq = ++root.seq;
         root.askers = Object.assign({}, root.askers, {
             [id]: asker
         });
@@ -197,30 +214,36 @@ Singleton {
         });
         proc.send(Protocol.queryLine(seq, text, prefixed));
         patience.restart();
+        return 0;
+    }
+
+    function expect(id: string, asker: var): void {
+        root.askers = Object.assign({}, root.askers, {
+            [id]: asker
+        });
+        root.expecting = Object.assign({}, root.expecting, {
+            [id]: Date.now()
+        });
     }
 
     function activate(id: string, item: string, action: string, asker: var): void {
         if (!root.usable(id))
             return;
-        root.askers = Object.assign({}, root.askers, {
-            [id]: asker
-        });
+        root.expect(id, asker);
         root.ensure(id).send(Protocol.activateLine(root.answers[id]?.seq ?? 0, item, action));
     }
 
     function complete(id: string, item: string, asker: var): void {
         if (!root.usable(id))
             return;
-        root.askers = Object.assign({}, root.askers, {
-            [id]: asker
-        });
+        root.expect(id, asker);
         root.ensure(id).send(Protocol.completeLine(item));
     }
 
     function heard(id: string, proc: var, line: string): void {
         if (root.processes[id] !== proc || !line.trim())
             return;
-        const message = Protocol.readMessage(line);
+        const message = Protocol.readMessage(line, root.pluginOf(id)?.folder ?? "");
         if (message.error) {
             root.note(id, `skipped ${message.error}`);
             return;
@@ -231,11 +254,21 @@ Singleton {
                 root.setAnswer(id, Object.assign({}, had, {
                     items: message.items,
                     waiting: false,
-                    answered: true
+                    answered: true,
+                    late: false
                 }));
             return;
         }
-        root.askers[id]?.handle?.(message);
+        const asked = root.expecting[id] ?? 0;
+        const asker = root.askers[id];
+        if (!asked || Date.now() - asked > 10000 || !asker?.search?.active) {
+            root.note(id, `skipped a ${message.type} nobody asked for`);
+            return;
+        }
+        const next = Object.assign({}, root.expecting);
+        delete next[id];
+        root.expecting = next;
+        asker.handle(message);
     }
 
     function ended(id: string, proc: var, wanted: bool): void {
@@ -243,12 +276,9 @@ Singleton {
             const next = Object.assign({}, root.processes);
             delete next[id];
             root.processes = next;
-            const had = root.answers[id];
-            if (had?.waiting)
-                root.setAnswer(id, Object.assign({}, had, {
-                    waiting: false,
-                    answered: false
-                }));
+            const answers = Object.assign({}, root.answers);
+            delete answers[id];
+            root.answers = answers;
             if (!wanted) {
                 const now = Date.now();
                 const crashed = Protocol.crashes(root.stateOf(id).crashes.concat([now]), now);
@@ -324,8 +354,12 @@ Singleton {
         command: ["sh", "-c", 'for d in "$1"/*/; do f="${d}plugin.json"; [ -f "$f" ] || continue; printf "\\036%s\\n" "${d%/}"; head -c 65536 "$f"; done', "sh", root.folder]
         stdout: StdioCollector {
             onStreamFinished: {
-                root.found = root.readScan(text);
+                const found = root.readScan(text);
+                const first = !root.scannedAt;
                 root.scannedAt = Date.now();
+                if (!first && JSON.stringify(found) === JSON.stringify(root.found))
+                    return;
+                root.found = found;
                 root.sync();
             }
         }
@@ -342,6 +376,9 @@ Singleton {
         printErrors: false
         onFileChanged: reload()
         onLoaded: {
+            if (text() === root.secretsText)
+                return;
+            root.secretsText = text();
             try {
                 const data = JSON.parse(text());
                 root.secrets = data && typeof data === "object" && !Array.isArray(data) ? data : {};

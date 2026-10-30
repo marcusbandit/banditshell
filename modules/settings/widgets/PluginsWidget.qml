@@ -159,7 +159,7 @@ Column {
                     width: root.width
                     icon: pref.modelData.type === "secret" ? "key" : pref.modelData.type === "toggle" ? "toggle_on" : "edit"
                     label: pref.modelData.title
-                    detail: pref.modelData.type === "secret" ? "kept where only you can read it" : pref.modelData.required && !root.valueOf(plugin.modelData.id, pref.modelData) ? "needed" : ""
+                    detail: pref.modelData.type === "secret" ? (pref.modelData.required && !root.secrets[plugin.modelData.id]?.[pref.modelData.key] ? "needed, kept where only you can read it" : "kept where only you can read it") : pref.modelData.required && !root.valueOf(plugin.modelData.id, pref.modelData) ? "needed" : ""
                     interactive: pref.modelData.type === "toggle"
                     onActivated: root.setValue(plugin.modelData.id, pref.modelData.key, !root.valueOf(plugin.modelData.id, pref.modelData))
                     onPointed: SettingsView.hovered = root.row

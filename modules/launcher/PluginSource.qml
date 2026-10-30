@@ -31,8 +31,14 @@ QtObject {
     property Timer pause: Timer {
         interval: 120
         onTriggered: {
-            if (root.asked)
-                PluginHost.ask(root.pluginId, root.asked.text, root.asked.prefixed, root);
+            pause.interval = 120;
+            if (!root.asked)
+                return;
+            const wait = PluginHost.ask(root.pluginId, root.asked.text, root.asked.prefixed, root);
+            if (wait > 0) {
+                pause.interval = wait;
+                pause.restart();
+            }
         }
     }
 
@@ -41,6 +47,11 @@ QtObject {
     readonly property var answer: PluginHost.answers[root.pluginId] ?? null
 
     readonly property var state: PluginHost.stateOf(root.pluginId)
+
+    onStateChanged: {
+        if (root.askKey && !root.state.off)
+            pause.restart();
+    }
 
     readonly property var missing: PluginHost.missingOf(root.pluginId)
 
@@ -51,7 +62,7 @@ QtObject {
         return {
             icon: own.name ?? (own.glyph || own.file ? "" : "extension"),
             glyph: own.glyph ?? "",
-            iconSource: own.file ? `file://${own.file.split("/").map(encodeURIComponent).join("/")}` : ""
+            iconSource: own.file ? Protocol.fileUrl(own.file) : ""
         };
     }
 
@@ -91,7 +102,7 @@ QtObject {
             return asked.prefixed ? [root.problemRow(`${plugin.name} needs its ${named}`, "Enter opens its settings", "settings", "settings")] : [];
         }
         if (!root.current)
-            return asked.prefixed ? [root.problemRow(`Asking ${plugin.name}`, "", "hourglass_empty", "waiting")] : [];
+            return asked.prefixed ? [root.problemRow(root.state.until > Date.now() ? `${plugin.name} is starting again` : `Asking ${plugin.name}`, "", "hourglass_empty", "waiting")] : [];
         if (root.answer.late)
             return asked.prefixed ? [root.problemRow(`${plugin.name} did not answer in time`, "Enter opens its log", "timer_off", "late")] : [];
         if (asked.prefixed)

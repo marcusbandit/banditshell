@@ -199,7 +199,7 @@ function readAction(raw) {
     return Object.assign(readDoing(raw), { id: id, title: title, icon: textOf(raw.icon, 64) });
 }
 
-function readItem(raw) {
+function readItem(raw, folder) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw))
         return null;
     var id = textOf(raw.id, 200);
@@ -212,17 +212,17 @@ function readItem(raw) {
         id: id,
         title: title,
         subtitle: textOf(raw.subtitle).trim(),
-        icon: iconOf(raw.icon, ""),
+        icon: iconOf(raw.icon, folder || ""),
         keywords: keywords,
         actions: actions
     });
 }
 
-function readItems(list) {
+function readItems(list, folder) {
     var out = [];
     var seen = {};
     for (var raw of Array.isArray(list) ? list : []) {
-        var item = readItem(raw);
+        var item = readItem(raw, folder);
         if (!item || seen[item.id])
             continue;
         seen[item.id] = true;
@@ -233,7 +233,7 @@ function readItems(list) {
     return out;
 }
 
-function readMessage(line) {
+function readMessage(line, folder) {
     if (line.length > LINE_LIMIT)
         return { error: "a line longer than 1 MB" };
     var raw;
@@ -248,7 +248,7 @@ function readMessage(line) {
     case "results":
         if (!Number.isInteger(raw.seq))
             return { error: "results without a seq" };
-        return { type: "results", seq: raw.seq, items: readItems(raw.items) };
+        return { type: "results", seq: raw.seq, items: readItems(raw.items, folder) };
     case "fill":
         return typeof raw.text === "string" ? { type: "fill", text: raw.text.slice(0, 1000) } : { error: "fill without text" };
     case "view":
@@ -277,6 +277,10 @@ function enterOf(item) {
     if (!first)
         return { action: "" };
     return local(first) || first.refusal ? { local: first } : { action: first.id };
+}
+
+function fileUrl(path) {
+    return "file://" + path.split("/").map(encodeURIComponent).join("/");
 }
 
 function plainScore(item, typed, place) {
