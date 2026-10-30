@@ -41,7 +41,7 @@ Singleton {
     property bool searching: false
 
     readonly property var visible: {
-        const all = root.entries.filter(e => root.showHidden || !e.hidden);
+        const all = root.entries.filter(e => Trash.listed(e, root.showHidden, root.trashTop));
         const query = root.search.trim().toLowerCase();
         const matched = query === "" ? all : all.filter(e => e.name.toLowerCase().includes(query));
 

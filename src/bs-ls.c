@@ -285,12 +285,33 @@ static int sniffs_text(const char *path, long long *bytes) {
     if (n == 0)
         return 1;
 
+    if (n >= 5 && memcmp(buf, "%PDF-", 5) == 0)
+        return 0;
+
     size_t odd = 0;
     for (size_t i = 0; i < n; i++) {
-        if (buf[i] == 0)
+        unsigned char c = buf[i];
+        if (c == 0)
             return 0;
-        if (buf[i] < 0x20 && buf[i] != '\t' && buf[i] != '\n' && buf[i] != '\r' && buf[i] != '\f' && buf[i] != 0x1b)
+        if (c < 0x20 && c != '\t' && c != '\n' && c != '\r' && c != '\f' && c != 0x1b)
             odd++;
+        if (c < 0x80)
+            continue;
+        size_t follow = c >= 0xc2 && c <= 0xdf ? 1 : c >= 0xe0 && c <= 0xef ? 2 : c >= 0xf0 && c <= 0xf4 ? 3 : 0;
+        if (follow == 0) {
+            odd++;
+            continue;
+        }
+        unsigned char low = c == 0xe0 ? 0xa0 : c == 0xf0 ? 0x90 : 0x80;
+        unsigned char high = c == 0xed ? 0x9f : c == 0xf4 ? 0x8f : 0xbf;
+        size_t k = 1;
+        while (k <= follow && i + k < n && (k == 1 ? buf[i + k] >= low && buf[i + k] <= high : (buf[i + k] & 0xc0) == 0x80))
+            k++;
+        if (k <= follow && i + k < n) {
+            odd++;
+            continue;
+        }
+        i += k - 1;
     }
     return odd * 100 < n * 5;
 }
@@ -323,7 +344,7 @@ static void stat_one(const char *path) {
         cls = "program";
 
     long long sniffed = 0;
-    int text = S_ISREG(st.st_mode) && !broken && sniffs_text(path, &sniffed);
+    int text = S_ISREG(st.st_mode) && !broken && strcmp(cls, "pdf") != 0 && sniffs_text(path, &sniffed);
 
     if (text && (strcmp(cls, "unknown") == 0 || strcmp(cls, "program") == 0))
         cls = "text";
