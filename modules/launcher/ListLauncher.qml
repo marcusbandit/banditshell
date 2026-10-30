@@ -1062,6 +1062,10 @@ LauncherConcept {
                             function onLaunch(what: var): void {
                                 root.launch(what);
                             }
+
+                            function onBack(): void {
+                                root.closeView();
+                            }
                         }
                     }
 

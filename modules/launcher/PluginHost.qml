@@ -26,6 +26,8 @@ Singleton {
     property var askers: ({})
     property var registered: ({})
     property var expecting: ({})
+    property var page: null
+    property bool pageOpen: false
     property real scannedAt: 0
     property int seq: 0
     property string listingText: ""
@@ -226,11 +228,28 @@ Singleton {
         });
     }
 
-    function activate(id: string, item: string, action: string, asker: var): void {
+    function activate(id: string, item: string, action: string, asker: var, view: string): void {
         if (!root.usable(id))
             return;
         root.expect(id, asker);
-        root.ensure(id).send(Protocol.activateLine(root.answers[id]?.seq ?? 0, item, action));
+        root.ensure(id).send(Protocol.activateLine(root.answers[id]?.seq ?? 0, item, action, view));
+    }
+
+    function submit(id: string, view: string, values: var, asker: var): void {
+        if (!root.usable(id))
+            return;
+        root.expect(id, asker);
+        root.ensure(id).send(Protocol.submitLine(view, values));
+    }
+
+    function show(id: string, view: var, asker: var): bool {
+        const same = root.pageOpen && root.page?.pluginId === id && root.page?.view.id === view.id;
+        root.page = {
+            pluginId: id,
+            view: view,
+            source: asker
+        };
+        return !same;
     }
 
     function complete(id: string, item: string, asker: var): void {

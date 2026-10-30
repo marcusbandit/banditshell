@@ -28,7 +28,8 @@ shell looks for new plugins each time the launcher opens.
 
 `examples/hello-bash` and `examples/hello-python` are two complete plugins:
 copy either folder into the plugins folder, open the launcher and type
-`hello world` or `greet ada`.
+`hello world` or `greet ada`. The Python one opens all three kinds of page
+from its actions menu.
 
 ## The manifest
 
@@ -102,9 +103,11 @@ skipped, so a stray `print` cannot break anything.
 | `{"type":"activate","seq":12,"id":"PROJ-41","action":"open"}` | Enter on a row, or a pick in its actions menu. `id` is the item's id, `action` the id of the chosen action, empty when the item has no actions. |
 | `{"type":"complete","id":"PROJ-41"}` | Tab on a row. |
 | `{"type":"cancel","seq":12}` | The query moved on before the answer to `seq` came. The plugin can stop working on it. |
+| `{"type":"submit","view":"new-issue","values":{...}}` | The person submitted a form page. `values` has every field's key. |
 
 `seq` grows with every query. An `activate` carries the `seq` of the results
-its row came from.
+its row came from. An `activate` from inside a page also carries `"view"`, the
+page's id.
 
 ### The plugin answers
 
@@ -112,7 +115,7 @@ its row came from.
 |---|---|
 | `{"type":"results","seq":12,"items":[...]}` | Shows these rows in place of the plugin's last ones. An answer for any `seq` but the newest is dropped. |
 | `{"type":"fill","text":"jira PROJ-41 "}` | Replaces the query, the usual answer to `complete`. |
-| `{"type":"view","view":{...}}` | Opens a full page. Not in api 1 yet; the shell logs and skips it. |
+| `{"type":"view","view":{...}}` | Opens a full page in place of the list. See Pages. |
 | `{"type":"effect","do":"copy","text":"..."}` | Does one thing for the plugin, so it needs neither `wl-copy` nor `xdg-open`. See Effects. |
 
 The plugin answers every `query` with one `results`, even an empty one, so
@@ -171,6 +174,52 @@ refused and the row says so, as for list scripts.
 | `{"type":"effect","do":"open","target":"https://..."}` | Opens a link or an absolute path, as for `open` on an item, and closes the launcher. |
 | `{"type":"effect","do":"notify","title":"Assigned","body":"PROJ-41 is yours"}` | Posts a notification. The launcher stays open. |
 | `{"type":"effect","do":"close"}` | Closes the launcher. |
+
+## Pages
+
+A plugin opens a page by answering an `activate` or a `submit` with a `view`.
+A page fills the launcher the way the dictionary's word page does; Escape goes
+back to the results. There is one level: a new `view` replaces the page, and a
+`view` with the id of the page on screen updates it in place. A `view` that
+does not answer something the person did is skipped.
+
+Every page has `kind`, `id` and `title`, and may have `actions`, shown as
+buttons along its foot with the same fields as an item's actions.
+
+`detail` shows text and facts. Enter is its first action, or an `activate`
+with the page's id when it has none.
+
+```json
+{"kind": "detail", "id": "PROJ-41", "title": "PROJ-41", "text": "Login fails after a reset.",
+ "facts": [{"label": "Status", "value": "In progress"}]}
+```
+
+`list` is a nested list with its own filter field. The shell filters it with
+its own matcher, so typing never waits on the plugin. Enter on a row works as
+for results, with the page's id added to the `activate`.
+
+```json
+{"kind": "list", "id": "comments", "title": "Comments on PROJ-41", "placeholder": "Filter comments",
+ "items": [{"id": "c1", "title": "Seen it on staging too", "copy": "Seen it on staging too"}]}
+```
+
+`form` has fields and a submit button. Tab moves between fields, Space flips a
+toggle, Left and Right pick a choice, and Enter submits. A field marked
+`required` that is empty stops the submit and says so.
+
+```json
+{"kind": "form", "id": "new-issue", "title": "New issue", "submit": "Create",
+ "fields": [
+   {"key": "summary", "type": "text", "title": "Summary", "required": true},
+   {"key": "kind", "type": "choice", "title": "Type", "choices": [{"value": "bug", "title": "Bug"}, {"value": "task", "title": "Task"}]},
+   {"key": "urgent", "type": "toggle", "title": "Urgent"},
+   {"key": "token", "type": "secret", "title": "One-time code"}
+ ]}
+```
+
+A field's `value` sets where it starts. The plugin then gets
+`{"type":"submit","view":"new-issue","values":{"summary":"...","kind":"bug","urgent":false,"token":"..."}}`
+and usually answers with an effect or another page.
 
 ## Ranking
 
