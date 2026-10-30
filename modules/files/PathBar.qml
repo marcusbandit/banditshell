@@ -317,7 +317,7 @@ Item {
         visible: Files.trashTop && !Files.searching && !root.editing
 
         style: "ring"
-        icon: "delete_forever"
+        icon: "local_fire_department"
         text: "Empty Trash"
         interactive: Files.trashItems.length > 0
 

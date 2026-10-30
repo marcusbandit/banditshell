@@ -33,13 +33,15 @@ Item {
 
     property bool alarm: false
 
+    property real zoom: 1
+
     readonly property bool hovered: root.interactive && !root.keyed && pointer.containsMouse
     readonly property bool pressed: root.interactive && pointer.pressed
 
-    readonly property real labelSize: root.size < 2 ? Appearance.font.size.small : root.size < 3 ? Appearance.font.size.normal : Appearance.font.size.large
-    readonly property real padX: Appearance.button.padX(root.size)
-    readonly property real markSize: Appearance.button.iconSize(root.size)
-    readonly property real markGap: Appearance.button.iconGap(root.size)
+    readonly property real labelSize: Math.round((root.size < 2 ? Appearance.font.size.small : root.size < 3 ? Appearance.font.size.normal : Appearance.font.size.large) * root.zoom)
+    readonly property real padX: Math.round(Appearance.button.padX(root.size) * root.zoom)
+    readonly property real markSize: Math.round(Appearance.button.iconSize(root.size) * root.zoom)
+    readonly property real markGap: Math.round(Appearance.button.iconGap(root.size) * root.zoom)
 
     readonly property bool hasText: root.text !== ""
     readonly property bool hasIcon: root.icon !== ""
@@ -110,7 +112,7 @@ Item {
     readonly property real pillRadius: height / 2
 
     implicitWidth: root.hasText ? label.implicitWidth + markSpan + detailSpan + padX * 2 : implicitHeight
-    implicitHeight: Math.max(Appearance.sizes.minTarget, Appearance.button.height(root.size))
+    implicitHeight: Math.max(Appearance.sizes.minTarget, Math.round(Appearance.button.height(root.size) * root.zoom))
     width: implicitWidth
     height: implicitHeight
 

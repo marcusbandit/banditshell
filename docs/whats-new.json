@@ -22,6 +22,64 @@
       ]
     },
     {
+      "id": "2026-10-30-3",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The shell no longer locks the screen by itself when it starts"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-30-2",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "With config.json broken at start, the shipped wallpaper shows"
+        }
+      ]
+    },
+    {
+      "id": "2026-10-30",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Files lists say how they are sorted; click a header to change it"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Files preview never shows a PDF's raw bytes as text"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The Trash lists hidden items, dimmed, before Empty Trash names them"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Delete permanently has a flame icon, apart from Move to trash's bin"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Delete and Empty Trash prompts grow with the Files zoom"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "File browser settings controls and captions grow with the zoom"
+        }
+      ]
+    },
+    {
       "id": "2026-10-29",
       "date": "2026-10-29",
       "changes": [

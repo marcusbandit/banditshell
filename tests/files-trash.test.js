@@ -14,7 +14,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Trash = lib("services/files-trash.js", ["within", "trashed", "topdirs", "readCommand", "parse", "entries", "infoPath", "restoreCommand", "emptyCommands", "sizeCommand", "sizeInput", "sizes"]);
+const Trash = lib("services/files-trash.js", ["within", "listed", "trashed", "topdirs", "readCommand", "parse", "entries", "infoPath", "restoreCommand", "emptyCommands", "sizeCommand", "sizeInput", "sizes"]);
 
 const UID = process.getuid();
 
@@ -50,6 +50,14 @@ exec ${JSON.stringify(process.execPath)} -e 'const fs = require("fs"); const d =
 const info = (where, when = "2026-10-25T22:34:34") => `[Trash Info]\nPath=${where}\nDeletionDate=${when}\n`;
 
 test.describe("files trash", () => {
+    test.it("lists hidden items in the Trash even with hidden files off, so the list and Empty Trash agree", () => {
+        const secret = {name: ".secretnote", hidden: true};
+        assert.strictEqual(Trash.listed(secret, false, true), true);
+        assert.strictEqual(Trash.listed(secret, false, false), false);
+        assert.strictEqual(Trash.listed(secret, true, false), true);
+        assert.strictEqual(Trash.listed({name: "draft.txt", hidden: false}, false, false), true);
+    });
+
     test.it("knows what is inside the trash and which folders could hold a drive's trash", () => {
         assert.ok(Trash.within("/h/.local/share/Trash/files", "/h/.local/share/Trash/files"));
         assert.ok(Trash.within("/h/.local/share/Trash/files/old folder", "/h/.local/share/Trash/files"));
