@@ -16,7 +16,7 @@
         },
         {
           "type": "config",
-          "severity": "minor",
+          "severity": "major",
           "text": "clipboard.preview is gone from config.json, it no longer did anything"
         }
       ]

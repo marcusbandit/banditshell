@@ -9,7 +9,6 @@ const ROOT = path.resolve(__dirname, "..");
 const load = (file, names) => new Function(fs.readFileSync(path.join(ROOT, "services", file), "utf8") + `\nreturn { ${names.join(", ")} };`)();
 
 const Battery = load("battery.js", ["lowStep", "countdownMessage", "nearlyEmptyChoice", "nearlyEmptyAction", "afterResume", "nearlyEmptyFraction", "rearmMargin", "graceSeconds"]);
-const Catalogue = new Function(fs.readFileSync(path.join(ROOT, "modules/settings/catalogue.js"), "utf8").replace(/^\.pragma .*$/m, "") + "\nreturn { PAGE_BY_ID };")();
 const Suspension = load("suspension.js", ["parseHibernate", "resolve", "commandFor", "logindCommand", "logoutCommand"]);
 const Lid = load("lid.js", ["internalOutput", "hasLid", "externalScreens", "differsFromLogind", "chooseAction", "closedFrom", "closedFromProperty"]);
 const Profile = load("powerprofile.js", ["nameFor", "profileFor", "parseProbe", "parseActive", "choices"]);
@@ -90,11 +89,6 @@ test("nearly empty reads sleep in Settings and still stores suspend", () => {
     assert.strictEqual(Battery.nearlyEmptyAction("nothing"), "nothing");
 });
 
-test("the nearly empty row names the level the shell acts at", () => {
-    const rows = Catalogue.PAGE_BY_ID.battery.groups.flatMap(g => g.rows);
-    const row = rows.find(r => r.k === "lowAction");
-    assert.strictEqual(row.label, `At ${Math.round(Battery.nearlyEmptyFraction * 100)}%`);
-});
 
 test("hibernate needs the disk state and a yes from logind, or swap when logind is silent", () => {
     const yes = '{"type":"s","data":["yes"]}';

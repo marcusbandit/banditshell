@@ -624,6 +624,8 @@ test("hibernate is greyed where the machine cannot do it", () => {
     }
     assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[1]), ["sleep", "hibernate", "do nothing"]);
     assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[0]), ["sleep", "hibernate", "nothing"]);
+    const { nearlyEmptyFraction } = lib(path.join(ROOT, "services/battery.js"), ["nearlyEmptyFraction"]);
+    assert.strictEqual(Catalogue.ROW_BY_KEY.lowAction.label, `Nearly empty at ${Math.round(nearlyEmptyFraction * 100)}%`);
     assert.strictEqual(Catalogue.show(Catalogue.ROW_BY_KEY.lowAction, "nothing", can), "do nothing");
 });
 

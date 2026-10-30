@@ -1338,7 +1338,6 @@ Singleton {
     readonly property bool hasBattery: Battery.available
     readonly property bool hasLid: Lid.present
     readonly property bool hibernatePossible: Suspension.hibernatePossible
-    readonly property int nearlyEmptyPercent: Battery.nearlyEmptyPercent
     readonly property var profileChoices: PowerProfile.choices
     readonly property string profileTrouble: PowerProfile.trouble
     readonly property bool chargeSupported: !ChargeLimit.probed || ChargeLimit.supported
