@@ -15,6 +15,9 @@ Singleton {
     readonly property bool live: !Quickshell.env("BANDITSHELL_PREVIEW")
 
     property bool present: false
+    property string tool: ""
+    property bool rolling: false
+    readonly property string program: root.tool === "apt" ? "apt-get" : root.tool || "pacman"
 
     property string kernel: ""
     property string running: ""
@@ -31,8 +34,12 @@ Singleton {
     property bool remembered: false
 
     readonly property var kernelUpdate: {
-        const found = Packages.pending(root.updates, root.kernel);
-        if (!found || root.stale || found.to === root.installed)
+        const found = Packages.kernelUpdate(root.updates, root.tool, root.kernel);
+        if (!found || root.stale)
+            return null;
+        if (root.tool !== "pacman")
+            return found;
+        if (found.to === root.installed)
             return null;
         return root.installed && found.from !== root.installed ? null : found;
     }
@@ -67,29 +74,60 @@ Singleton {
         root.fetching = fetch;
         prober.command = ["sh", "-c", `
             export LC_ALL=C
-            command -v pacman >/dev/null 2>&1 || { echo present=0; exit 0; }
+            tool=
+            for name in pacman apt-get dnf zypper; do
+                if command -v "$name" >/dev/null 2>&1; then
+                    tool=\${name%-get}
+                    break
+                fi
+            done
+            [ -n "$tool" ] || { echo present=0; exit 0; }
             echo present=1
+            printf 'tool=%s\\n' "$tool"
             running=$(uname -r)
             printf 'running=%s\\n' "$running"
-            kernel=
-            if [ -e "/usr/lib/modules/$running/vmlinuz" ]; then
-                echo stale=0
-                kernel=$(pacman -Qqo "/usr/lib/modules/$running/vmlinuz" 2>/dev/null)
-            elif ls /usr/lib/modules/*/vmlinuz >/dev/null 2>&1; then
-                echo stale=1
-                kernel=$1
+            if [ "$tool" = pacman ]; then
+                kernel=
+                if [ -e "/usr/lib/modules/$running/vmlinuz" ]; then
+                    echo stale=0
+                    kernel=$(pacman -Qqo "/usr/lib/modules/$running/vmlinuz" 2>/dev/null)
+                elif ls /usr/lib/modules/*/vmlinuz >/dev/null 2>&1; then
+                    echo stale=1
+                    kernel=$1
+                else
+                    echo stale=0
+                fi
+                [ -n "$kernel" ] || kernel=linux
+                printf 'kernel=%s\\n' "$kernel"
+                printf 'installed=%s\\n' "$(pacman -Q -- "$kernel" 2>/dev/null | cut -d' ' -f2)"
             else
-                echo stale=0
+                newest=$(for dir in /usr/lib/modules/*/; do
+                    version=$(basename "$dir")
+                    if [ -e "$dir/vmlinuz" ] || [ -e "/boot/vmlinuz-$version" ]; then
+                        printf '%s\\n' "$version"
+                    fi
+                done | sort -V | tail -n 1)
+                if [ -n "$newest" ] && [ "$newest" != "$running" ]; then
+                    echo stale=1
+                    printf 'installed=%s\\n' "$newest"
+                else
+                    echo stale=0
+                fi
+                grep -qE '^ID="?opensuse-(tumbleweed|slowroll|microos)"?$' /etc/os-release 2>/dev/null && echo rolling=1
             fi
-            [ -n "$kernel" ] || kernel=linux
-            printf 'kernel=%s\\n' "$kernel"
-            printf 'installed=%s\\n' "$(pacman -Q -- "$kernel" 2>/dev/null | cut -d' ' -f2)"
             [ "$2" = fetch ] || exit 0
-            if ! command -v checkupdates >/dev/null 2>&1; then
-                echo code=missing
-                exit 0
-            fi
-            out=$(timeout -k 10 120 checkupdates 2>&1)
+            case "$tool" in
+            pacman)
+                if ! command -v checkupdates >/dev/null 2>&1; then
+                    echo code=missing
+                    exit 0
+                fi
+                out=$(timeout -k 10 120 checkupdates 2>&1)
+                ;;
+            apt) out=$(apt list --upgradable 2>/dev/null) ;;
+            dnf) out=$(timeout -k 10 300 dnf -q check-update 2>&1) ;;
+            zypper) out=$(timeout -k 10 120 zypper --non-interactive list-updates 2>&1) ;;
+            esac
             printf 'code=%s\\n' "$?"
             printf '%s\\n' "$out" | sed 's/^/|/'
         `, "sh", root.kernel, fetch ? "fetch" : "local"];
@@ -103,6 +141,8 @@ Singleton {
         root.present = v.present === "1";
         if (!root.present)
             return;
+        root.tool = v.tool ?? "pacman";
+        root.rolling = v.rolling === "1";
 
         root.running = v.running ?? "";
         root.stale = v.stale === "1";
@@ -121,13 +161,14 @@ Singleton {
             return;
         }
 
-        if (v.code !== "0" && v.code !== "2") {
-            console.warn(`Pacman: checkupdates failed (${v.code}): ${got.lines.filter(l => l).join(" / ")}`);
+        const verdict = Packages.verdict(root.tool, v.code);
+        if (verdict === "error") {
+            console.warn(`Pacman: looking for ${root.tool} updates failed (${v.code}): ${got.lines.filter(l => l).join(" / ")}`);
             retry.restart();
             return;
         }
 
-        root.updates = v.code === "0" ? Packages.updates(got.lines) : [];
+        root.updates = verdict === "updates" ? Packages.listed(root.tool, got.lines) : [];
         root.checkedAt = Date.now();
         memory.setText(JSON.stringify({
             checkedAt: root.checkedAt,
@@ -140,7 +181,7 @@ Singleton {
         if (!root.present)
             return;
         kept.upgradingSince = Date.now();
-        Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `${root.upgradeCommand}; status=$?; echo; if [ "$status" -eq 0 ]; then echo "Done. Press Enter to close."; else echo "pacman stopped with an error ($status). Press Enter to close."; fi; read -r _`]);
+        Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `${Packages.terminalCommand(root.tool, root.upgradeCommand, root.rolling)}; status=$?; echo; if [ "$status" -eq 0 ]; then echo "Done. Press Enter to close."; else echo "${root.program} stopped with an error ($status). Press Enter to close."; fi; read -r _`]);
     }
 
     PersistentProperties {

@@ -4,6 +4,7 @@ umask 077
 
 usage() {
     echo "usage: system-upgrade.sh start DIR [--noconfirm]" >&2
+    echo "       system-upgrade.sh command DIR [--noconfirm]" >&2
     echo "       system-upgrade.sh state DIR" >&2
     echo "       system-upgrade.sh seen DIR" >&2
     echo "       system-upgrade.sh answer DIR TEXT" >&2
@@ -34,7 +35,7 @@ runner_pid() {
 }
 
 committed() {
-    grep -aqE 'checking (keys in keyring|keyring|package integrity)|loading package files|checking for file conflicts|checking available disk space|:: Running pre-transaction hooks|:: Processing package changes|:: Running post-transaction hooks' -- "$dir/log" 2>/dev/null && return 0
+    grep -aqE 'checking (keys in keyring|keyring|package integrity)|loading package files|checking for file conflicts|checking available disk space|:: Running pre-transaction hooks|:: Processing package changes|:: Running post-transaction hooks|Preconfiguring packages|\(Reading database|Preparing to unpack|Unpacking [^ ]+ \(|Setting up [^ ]+ \(|Removing [^ ]+ \(|Running transaction|Transaction check|\[ *[0-9]+/[0-9]+\] (Verify package|Prepare transaction|Installing|Upgrading|Downgrading|Reinstalling|Removing|Erasing)|Checking for file conflicts|\( *[0-9]+/[0-9]+\) (Installing|Removing):' -- "$dir/log" 2>/dev/null && return 0
     awk '{
         rest = $0
         while (match(rest, /Total \( *[0-9]+\/[0-9]+\)/)) {
@@ -47,29 +48,77 @@ committed() {
     } END { exit !found }' "$dir/log" 2>/dev/null
 }
 
+tool() {
+    local name
+    for name in pacman apt-get dnf zypper; do
+        if command -v "$name" >/dev/null 2>&1; then
+            printf '%s\n' "${name%-get}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+rolling() {
+    grep -qE '^ID="?opensuse-(tumbleweed|slowroll|microos)"?$' -- "${BANDITSHELL_OS_RELEASE:-/etc/os-release}" 2>/dev/null
+}
+
+upgrade_command() {
+    local yes=$2 binary
+    binary=$(command -v "$([ "$1" = apt ] && echo apt-get || echo "$1")") || return 1
+    case "$binary" in /*) ;; *) return 1 ;; esac
+    case "$1" in
+    pacman) echo "pkexec $binary -Syu --color always${yes:+ --noconfirm}" ;;
+    apt) echo "pkexec /bin/sh -c '$binary update && exec env DEBIAN_FRONTEND=noninteractive $binary -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade${yes:+ -y}'" ;;
+    dnf) echo "pkexec $binary upgrade --refresh${yes:+ -y}" ;;
+    zypper)
+        if rolling; then
+            echo "pkexec $binary${yes:+ --non-interactive} dist-upgrade --download-in-advance"
+        else
+            echo "pkexec $binary${yes:+ --non-interactive} update --download-in-advance"
+        fi
+        ;;
+    *) return 1 ;;
+    esac
+}
+
+planned() {
+    local yes=
+    case "${1:-}" in
+    "") ;;
+    --noconfirm) yes=1 ;;
+    *) usage ;;
+    esac
+    if [ -n "${BANDITSHELL_UPGRADE_COMMAND:-}" ]; then
+        printf '%s\n%s\n' "${BANDITSHELL_UPGRADE_TOOL:-pacman}" "$BANDITSHELL_UPGRADE_COMMAND"
+        return 0
+    fi
+    command -v pkexec >/dev/null 2>&1 || return 4
+    local name
+    name=$(tool) || return 4
+    printf '%s\n' "$name"
+    upgrade_command "$name" "$yes" || return 4
+}
+
 send() {
     timeout 2 sh -c 'printf "%b" "$2" >"$1"' sh "$dir/input" "$1"
 }
 
 case "$verb" in
+command)
+    planned "${3:-}"
+    exit
+    ;;
 start)
     runner_pid >/dev/null && exit 3
-    if [ -n "${BANDITSHELL_UPGRADE_COMMAND:-}" ]; then
-        command=$BANDITSHELL_UPGRADE_COMMAND
-    else
-        command -v pkexec >/dev/null 2>&1 || exit 4
-        [ -x /usr/bin/pacman ] || exit 4
-        command="pkexec /usr/bin/pacman -Syu --color always"
-        case "${3:-}" in
-        "") ;;
-        --noconfirm) command="$command --noconfirm" ;;
-        *) usage ;;
-        esac
-    fi
+    plan=$(planned "${3:-}") || exit
+    name=${plan%%$'\n'*}
+    command=${plan#*$'\n'}
     rm -rf -- "$dir"
     mkdir -p -- "$dir" || exit 1
     mkfifo -- "$dir/input" || exit 1
     : >"$dir/log"
+    printf '%s\n' "$name" >"$dir/tool"
     setsid -f bash -c '
         dir=$1 command=$2
         stat=$(cat /proc/$$/stat)
@@ -94,6 +143,7 @@ state)
         printf 'status=%s\n' "$(head -n 1 -- "$dir/status" 2>/dev/null)"
     fi
     [ -e "$dir/seen" ] && echo seen=1
+    [ -s "$dir/tool" ] && printf 'tool=%s\n' "$(head -n 1 -- "$dir/tool")"
     exit 0
     ;;
 seen)

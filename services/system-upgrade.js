@@ -5,7 +5,17 @@ const checks = ["checking keys in keyring", "checking package integrity", "loadi
 const stageNames = ["Download", "Verify", "Install", "Finish"];
 const stageWeights = [0.45, 0.1, 0.35, 0.1];
 
-function plan(command) {
+const stock = "sudo pacman -Syu";
+
+const proceedQuestions = ["Proceed with installation?", "Do you want to continue?", "Is this ok", "Continue?"];
+
+const toolNames = { pacman: "pacman", apt: "apt", dnf: "dnf", zypper: "zypper" };
+
+function plan(command, tool) {
+    if (tool && tool !== "pacman") {
+        const text = String(command ?? "").trim().replace(/\s+/g, " ");
+        return { plain: text === "" || text === stock, noconfirm: false };
+    }
     const words = String(command ?? "").trim().split(/\s+/).filter(w => w);
     const longs = { "--sync": "S", "--refresh": "y", "--sysupgrade": "u" };
     while (words.length > 0 && /^(sudo|doas)$/.test(words[0]))
@@ -28,8 +38,9 @@ function plan(command) {
     return { plain: letters.indexOf("S") >= 0 && letters.indexOf("u") >= 0, noconfirm: noconfirm };
 }
 
-function create() {
+function create(tool) {
     return {
+        tool: toolNames[tool] ? tool : "pacman",
         phase: "auth",
         carry: "",
         total: 0,
@@ -39,7 +50,9 @@ function create() {
         sizes: { download: "", installed: "", net: "" },
         download: { done: 0, total: 0, fraction: -1, file: "", fileFraction: 0, rate: "", eta: "" },
         check: { step: 0, index: 0, total: 0 },
-        install: { index: 0, total: 0, verb: "", name: "", fraction: 0 },
+        install: { index: 0, total: 0, verb: "", name: "", fraction: 0, share: -1 },
+        unpacked: 0,
+        configured: 0,
         hooks: { index: 0, total: 0, text: "" },
         committing: false,
         question: null,
@@ -100,6 +113,8 @@ function percent(text) {
     return m ? Math.min(100, Number(m[1])) / 100 : -1;
 }
 
+const readers = { pacman: takePacman, apt: takeApt, dnf: takeDnf };
+
 function take(state, raw) {
     const line = clean(raw).replace(/\s+$/, "");
     const t = line.trim();
@@ -115,6 +130,221 @@ function take(state, raw) {
         return;
     }
 
+    (readers[state.tool] ?? takePacman)(state, line, t);
+}
+
+function proceeds(question) {
+    return !!question && question.kind === "yesno" && proceedQuestions.some(text => question.text === text || question.text.indexOf(`${text} `) === 0);
+}
+
+function takeApt(state, line, t) {
+    let m;
+
+    if (state.listing && /^\s/.test(line)) {
+        if (state.listing === "add")
+            for (const name of t.split(/\s+/))
+                state.packages.push(name);
+        return;
+    }
+    state.listing = false;
+
+    if ((m = /^The following (?:(NEW )?packages will be (upgraded|installed)|.*)/.exec(t)) && /:$/.test(t)) {
+        state.listing = m[2] ? "add" : "skip";
+        return;
+    }
+    if (/^(Hit|Get|Ign|Err):\d+\s/.test(t) && state.total === 0) {
+        reach(state, "sync");
+        if (/^Err:/.test(t))
+            keep(state.errors, t);
+        return;
+    }
+    if (/^(Reading package lists|Building dependency tree|Reading state information|Calculating upgrade)/.test(t)) {
+        if (state.phase !== "auth" || /^Calculating/.test(t))
+            reach(state, "resolve");
+        return;
+    }
+    if ((m = /^(\d+) upgraded, (\d+) newly installed, (\d+) to remove and (\d+) not upgraded\.$/.exec(t))) {
+        reach(state, "resolve");
+        state.total = Number(m[1]) + Number(m[2]);
+        if (state.total === 0 && Number(m[3]) === 0)
+            state.nothing = true;
+        return;
+    }
+    if ((m = /^Need to get (.+?) of archives\.$/.exec(t))) {
+        state.sizes.download = m[1].replace(/^.*\//, "").trim();
+        return;
+    }
+    if ((m = /^After this operation, (.+?) of additional disk space will be used\.$/.exec(t))) {
+        state.sizes.net = m[1].trim();
+        return;
+    }
+    if ((m = /^After this operation, (.+?) disk space will be freed\.$/.exec(t))) {
+        state.sizes.net = `-${m[1].trim()}`;
+        return;
+    }
+    if (/^(Preconfiguring packages|\(Reading database|Preparing to unpack|Selecting previously unselected)/.test(t)) {
+        reach(state, "install");
+        state.committing = true;
+        return;
+    }
+    if ((m = /^(Unpacking|Setting up|Removing) (\S+) \(/.exec(t))) {
+        reach(state, "install");
+        state.committing = true;
+        if (m[1] === "Setting up")
+            state.configured += 1;
+        else
+            state.unpacked += 1;
+        const total = Math.max(state.total, state.unpacked, state.configured);
+        state.install = {
+            index: Math.min(total, m[1] === "Setting up" ? state.configured : state.unpacked),
+            total: total,
+            verb: m[1].toLowerCase(),
+            name: m[2].replace(/:[a-z0-9]+$/, ""),
+            fraction: 1,
+            share: total > 0 ? Math.min(1, (state.unpacked + state.configured) / (2 * total)) : -1
+        };
+        return;
+    }
+    if (/^Processing triggers for /.test(t))
+        return;
+    if ((m = /^E:\s*(.+)$/.exec(t)) || (m = /^dpkg: error.*$/.exec(t))) {
+        keep(state.errors, (m[1] ?? m[0]).trim());
+        return;
+    }
+    if ((m = /^W:\s*(.+)$/.exec(t))) {
+        keep(state.warnings, m[1].trim());
+        return;
+    }
+    if (state.total > 0 && !state.committing) {
+        if ((m = /^Get:(\d+)\s+\S+\s+.*?\s(\S+)\s+\S+\s+\S+\s+\[[^\]]+\]$/.exec(t))) {
+            reach(state, "download");
+            state.download.done = Math.max(state.download.done, Number(m[1]) - 1);
+            state.download.total = state.total;
+            state.download.file = m[2];
+            return;
+        }
+        if ((m = /^(\d{1,3})% \[/.exec(t))) {
+            if (state.phase === "download" || state.questions > 0 || Number(m[1]) > 0)
+                reach(state, "download");
+            if (state.phase === "download")
+                state.download.fraction = Math.min(100, Number(m[1])) / 100;
+            return;
+        }
+        if ((m = /^Fetched (.+?) in .*?(?:\((.+)\))?$/.exec(t))) {
+            reach(state, "download");
+            state.download.fraction = 1;
+            state.download.done = state.download.total;
+            if (m[2])
+                state.download.rate = m[2];
+            return;
+        }
+    }
+}
+
+function takeDnf(state, line, t) {
+    let m;
+
+    if (/^Updating and loading repositories:/.test(t)) {
+        reach(state, "sync");
+        return;
+    }
+    if (/^Repositories loaded\./.test(t) || /^(Dependencies resolved|Last metadata expiration check)/.test(t)) {
+        reach(state, "resolve");
+        return;
+    }
+    if ((m = /^(Upgrading|Installing|Installing dependencies|Installing weak dependencies|Downgrading|Reinstalling|Removing|Removing dependent packages|Removing unused dependencies):$/.exec(t))) {
+        state.listing = /^(Upgrading|Installing|Downgrading|Reinstalling)/.test(m[1]) ? "add" : "skip";
+        return;
+    }
+    if (state.listing && /^\s/.test(line) && !/^Transaction Summary/.test(t)) {
+        if (state.listing === "add" && !/^replacing\s/.test(t) && (m = /^(\S+)\s+\S+\s+\S+\s+\S+/.exec(t)))
+            state.packages.push(m[1]);
+        return;
+    }
+    state.listing = false;
+    if ((m = /^(Upgrading|Installing|Downgrading|Reinstalling):\s+(\d+) packages?$/.exec(t))) {
+        state.total += Number(m[2]);
+        return;
+    }
+    if ((m = /^Total size of inbound packages is (.+?)\. Need to download (.+?)\.$/.exec(t))) {
+        state.sizes.download = m[2];
+        return;
+    }
+    if ((m = /^Total download size:\s*(.+)$/.exec(t))) {
+        state.sizes.download = m[1].trim();
+        return;
+    }
+    if ((m = /^After this operation, (.+?) extra will be used/.exec(t))) {
+        state.sizes.net = m[1];
+        return;
+    }
+    if ((m = /^After this operation, (.+?) will be freed/.exec(t))) {
+        state.sizes.net = `-${m[1]}`;
+        return;
+    }
+    if (/^Nothing to do\.?$/.test(t)) {
+        state.nothing = true;
+        return;
+    }
+    if (/^(Running transaction|Transaction check)/.test(t)) {
+        reach(state, "check");
+        state.committing = true;
+        state.check = { step: 0, index: 0, total: 0 };
+        state.detail = "checking the transaction";
+        return;
+    }
+    if ((m = /^\[\s*(\d+)\/(\d+)\]\s+(Verify package files|Prepare transaction)/.exec(t))) {
+        reach(state, "check");
+        state.committing = true;
+        const verify = m[3] === "Verify package files";
+        state.check = { step: verify ? 2 : 4, index: 0, total: 0 };
+        state.detail = verify ? "verifying the packages" : "preparing the transaction";
+        return;
+    }
+    if ((m = /^\[\s*(\d+)\/(\d+)\]\s+(Installing|Upgrading|Downgrading|Reinstalling|Removing|Erasing)\s+(\S+)/.exec(t))) {
+        reach(state, "install");
+        state.committing = true;
+        const f = /(\d{1,3})%\s*\|/.exec(t);
+        state.install = {
+            index: Number(m[1]),
+            total: Number(m[2]),
+            verb: m[3].toLowerCase(),
+            name: m[4].replace(/-\d+:.*$/, ""),
+            fraction: f ? Math.min(100, Number(f[1])) / 100 : 0,
+            share: -1
+        };
+        return;
+    }
+    if ((m = /^>>> (Running .+?)(?::\s.*)?$/.exec(t))) {
+        state.detail = m[1];
+        return;
+    }
+    if (!state.committing && (m = /^\[\s*(\d+)\/(\d+)\]\s+Total\s+(\d{1,3})%/.exec(t))) {
+        reach(state, "download");
+        state.download.done = Number(m[1]);
+        state.download.total = Number(m[2]);
+        state.download.fraction = Math.min(100, Number(m[3])) / 100;
+        const rate = /(\d+(?:[.,]\d+)?\s*[KMGT]?i?B\/s)/.exec(t);
+        state.download.rate = rate ? rate[1].replace(/\s+/, " ") : "";
+        return;
+    }
+    if (!state.committing && (m = /^\[\s*(\d+)\/(\d+)\]\s+(\S+)\s+(\d{1,3})%/.exec(t))) {
+        reach(state, "download");
+        state.download.file = m[3].replace(/-\d+:.*$/, "");
+        state.download.fileFraction = Math.min(100, Number(m[4])) / 100;
+        return;
+    }
+    if ((m = /^(?:Error|Problem(?: \d+)?|Failed to [^:]+):\s*(.+)$/.exec(t))) {
+        keep(state.errors, /^Problem/.test(t) ? t : m[1].trim());
+        return;
+    }
+    if ((m = /^Warning:\s*(.+)$/.exec(t))) {
+        keep(state.warnings, m[1].trim());
+        return;
+    }
+}
+
+function takePacman(state, line, t) {
     let m;
 
     if (state.listing && /^\s/.test(line)) {
@@ -282,10 +512,10 @@ function ask(state) {
     const text = clean(state.carry).replace(/\s+$/, "");
     const t = text.trim();
     let m;
-    if ((m = /^(?::: )?(.*?)\s*\[(Y\/n|y\/N)\]$/.exec(t))) {
+    if ((m = /^(?::: )?(.*?)\s*\[(Y\/n|y\/N)\]:?$/.exec(t)) || (m = /^(.*?)\s*\[y\/n(?:\/[^\]]*)?\]\s*\((y|n)\):$/.exec(t))) {
         if (!state.question || state.question.text !== m[1]) {
             state.questions += 1;
-            state.question = { id: state.questions, kind: "yesno", text: m[1], yes: m[2] === "Y/n", choices: [], fallback: 0 };
+            state.question = { id: state.questions, kind: "yesno", text: m[1], yes: m[2] === "Y/n" || m[2] === "y", choices: [], fallback: 0 };
             state.asked = t;
         }
         return;
@@ -345,6 +575,8 @@ function checked(state) {
 
 function installed(state) {
     const i = state.install;
+    if (i.share >= 0)
+        return i.share;
     if (i.total <= 0)
         return 0;
     return Math.min(1, (i.index - 1 + i.fraction) / i.total);
@@ -400,6 +632,8 @@ function describe(state) {
         return parts.join(" · ");
     }
     case "check":
+        if (state.tool !== "pacman")
+            return state.detail ? capital(state.detail) : "Checking the packages";
         return capital(checks[Math.max(0, state.check.step)] ?? "checking packages");
     case "install":
         if (state.install.index > 0)
@@ -450,35 +684,38 @@ function outcome(state, code) {
 
 function explain(state, code) {
     const all = state.errors.join("\n");
+    const name = toolNames[state.tool] ?? "pacman";
     if (state.interrupted && state.committing)
         return "The update was stopped partway through installing. Run it again to finish it.";
     if (outcome(state, code) === "cancelled") {
         if (state.refusal || code === 126)
             return "The password prompt was closed, so nothing changed.";
         if (state.declined && !state.interrupted)
-            return "You answered no, so pacman stopped before changing anything.";
+            return `You answered no, so ${name} stopped before changing anything.`;
         return "Stopped before anything was installed. Nothing changed.";
     }
     if (state.refusal)
         return "Permission to update was refused, so nothing changed.";
-    if (/unable to lock database|could not lock database/.test(all))
+    if (/dpkg was interrupted/.test(all))
+        return "An earlier update was cut short. Run sudo dpkg --configure -a in a terminal, then try again.";
+    if (/unable to lock database|could not lock database|Could not get lock|Unable to acquire the dpkg|transaction lock|System management is locked/i.test(all))
         return "Another package manager is busy. Try again once it has finished.";
-    if (/failed to synchroni[sz]e|failed retrieving file|Could not resolve host|Couldn't resolve host|Failed to connect|Connection timed out|Operation too slow/i.test(all))
+    if (/failed to synchroni[sz]e|failed retrieving file|Could not resolve host|Couldn't resolve host|Failed to connect|Connection timed out|Operation too slow|Temporary failure resolving|Failed to fetch|Curl error|Cannot download|Failed to download|Download \(curl\) error|Valid metadata not found/i.test(all))
         return "Could not reach the package mirrors. Check the internet connection, then try again.";
-    if (/not enough free disk space|too full/i.test(all))
+    if (/not enough free disk space|too full|enough free space|Disk Requirements|more space needed|Not enough disk space/i.test(all))
         return "There is not enough free disk space for the update.";
-    if (/signature|unknown trust|PGP|keyring|could not be looked up remotely/i.test(all))
-        return "A package signature did not check out. Updating archlinux-keyring first usually fixes this.";
-    if (/conflicting files/.test(all))
+    if (/signature|unknown trust|PGP|keyring|could not be looked up remotely|NO_PUBKEY|GPG/i.test(all))
+        return name === "pacman" ? "A package signature did not check out. Updating archlinux-keyring first usually fixes this." : "A package signature did not check out. The log names the package.";
+    if (/conflicting files|conflicts with file from package|File conflicts/i.test(all))
         return "The update brings files that already exist on this system. The log names them.";
-    if (/conflicting dependencies|unresolvable package conflicts|could not satisfy dependencies|breaks dependency/.test(all))
-        return "Two packages need a choice pacman will not make on its own. Run it in a terminal to answer.";
+    if (/conflicting dependencies|unresolvable package conflicts|could not satisfy dependencies|breaks dependency|Unmet dependencies|^Problem:|conflicting requests/m.test(all))
+        return `Two packages need a choice ${name} will not make on its own. Run it in a terminal to answer.`;
     const last = state.errors[state.errors.length - 1];
     if (last)
         return capital(last.replace(/\.$/, "")) + ".";
     if (code < 0)
         return "The update stopped without saying why.";
-    return code === 127 ? "The update could not start." : `pacman stopped with code ${code}.`;
+    return code === 127 ? "The update could not start." : `${name} stopped with code ${code}.`;
 }
 
 function headline(state, result) {

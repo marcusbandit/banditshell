@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-65",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Debian, Fedora and openSUSE update the system in the island too"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "NixOS gets the battery charge limit from a module in its config"
+        }
+      ]
+    },
+    {
       "id": "2026-10-29",
       "date": "2026-10-29",
       "changes": [

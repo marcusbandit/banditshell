@@ -1,0 +1,26 @@
+Script started on 2026-10-30 18:18:29+00:00 [COMMAND="stty cols 80 rows 24 2>/dev/null; exec env DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" <not executed on terminal>]
+Reading package lists... 0%Reading package lists... 0%Reading package lists... 0%Reading package lists... 81%Reading package lists... 96%Reading package lists... 96%Reading package lists... 96%Reading package lists... 96%Reading package lists... 99%Reading package lists... 99%Reading package lists... Done
+Building dependency tree... 0%Building dependency tree... 0%Building dependency tree... 50%Building dependency tree... 50%Building dependency tree... Done
+Reading state information... 0% Reading state information... 1%Reading state information... Done
+Calculating upgrade... 0%Calculating upgrade... 10%Calculating upgrade... Done
+The following packages will be upgraded:
+  tzdata
+1 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+Need to get 268 kB of archives.
+After this operation, 1024 B of additional disk space will be used.
+Do you want to continue? [Y/n] y
+0% [Working]            Get:1 http://deb.debian.org/debian stable-updates/main amd64 tzdata all 2026f-0+deb13u1 [268 kB]
+20% [1 tzdata 65.7 kB/268 kB 25%]                                 100% [Working]              Fetched 268 kB in 0s (683 kB/s)
+Preconfiguring packages ...
+(Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 4951 files and directories currently installed.)
+Preparing to unpack .../tzdata_2026f-0+deb13u1_all.deb ...
+Unpacking tzdata (2026f-0+deb13u1) over (2026e-0+deb13u1) ...
+Setting up tzdata (2026f-0+deb13u1) ...
+
+Current default time zone: 'Etc/UTC'
+Local time is now:      Fri Oct 30 18:18:34 UTC 2026.
+Universal Time is now:  Fri Oct 30 18:18:34 UTC 2026.
+Run 'dpkg-reconfigure tzdata' if you wish to change it.
+
+
+Script done on 2026-10-30 18:18:34+00:00 [COMMAND_EXIT_CODE="0"]
