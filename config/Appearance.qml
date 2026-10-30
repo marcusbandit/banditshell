@@ -119,6 +119,8 @@ Singleton {
         return root.light ? Scheme.lightAccent(String(c)) : c;
     }
 
+    readonly property real readableAlpha: Scheme.readableAlpha([root.colour.surfaceSolid.r, root.colour.surfaceSolid.g, root.colour.surfaceSolid.b], [root.tint.r, root.tint.g, root.tint.b], root.labelAlphas[1], root.config.material.surfaceAlpha)
+
     function veil(alpha: real): color {
         return root.mix(root.tint, root.tint, 0, alpha);
     }

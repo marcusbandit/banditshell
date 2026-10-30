@@ -5,6 +5,7 @@ const INK = 0.16;
 const CURVE = 1.6;
 const PIVOT = 0.62;
 const WARNING_FLOOR = 0.52;
+const READABLE = 4.5;
 
 function channel(hex, shift) {
     return (parseInt(hex.slice(1), 16) >> shift & 255) / 255;
@@ -114,4 +115,33 @@ function lightCard(card) {
         bright: lightAccent(String(card.bright)),
         alarm: lightAccent(String(card.alarm))
     });
+}
+
+function luminance(rgb) {
+    return 0.2126 * linear(rgb[0]) + 0.7152 * linear(rgb[1]) + 0.0722 * linear(rgb[2]);
+}
+
+function over(top, alpha, under) {
+    return top.map((t, i) => alpha * t + (1 - alpha) * under[i]);
+}
+
+function contrast(a, b) {
+    const x = luminance(a);
+    const y = luminance(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+function worstContrast(surface, ink, label, alpha) {
+    return Math.min(...[[0, 0, 0], [1, 1, 1]].map(behind => {
+        const ground = over(surface, alpha, behind);
+        return contrast(over(ink, label, ground), ground);
+    }));
+}
+
+function readableAlpha(surface, ink, label, alpha) {
+    const want = Math.min(READABLE, worstContrast(surface, ink, label, 1));
+    let a = Math.max(0, Math.min(1, alpha));
+    while (a < 1 && worstContrast(surface, ink, label, a) < want)
+        a = Math.min(1, Math.round((a + 0.01) * 100) / 100);
+    return a;
 }

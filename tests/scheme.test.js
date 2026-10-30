@@ -24,7 +24,7 @@ function block(opener) {
     throw new Error(`unclosed ${opener}`);
 }
 
-const Scheme = lib(path.join(ROOT, "config/scheme.js"), ["modeOf", "isLight"]);
+const Scheme = lib(path.join(ROOT, "config/scheme.js"), ["modeOf", "isLight", "readableAlpha", "worstContrast"]);
 const Configuration = lib(path.join(ROOT, "config/configuration.js"), ["merge", "upgrade", "assign"]);
 const DEFAULTS = new Function("UserFolders", `return (${block("readonly property var defaults:")});`)({ picturesAtStart: "~/Pictures" });
 const OPAQUE = new Function(`return ${fs.readFileSync(CONFIG, "utf8").match(/readonly property var opaque: (\[.*\])/)[1]};`)();
@@ -56,3 +56,29 @@ test("auto is light only while the schedule says it is day", () => {
     assert.deepStrictEqual([true, false].map(day => Scheme.isLight("light", day)), [true, true]);
     assert.deepStrictEqual([true, false].map(day => Scheme.isLight("dark", day)), [false, false]);
 });
+
+test.describe("readable surface", () => {
+    const slate = [0x1d / 255, 0x21 / 255, 0x26 / 255];
+    const ink = [0xee / 255, 0xf2 / 255, 0xf5 / 255];
+    const paper = [0.96, 0.97, 0.98];
+    const dark = [0.12, 0.13, 0.15];
+
+    test.it("raises a see-through panel until dim text reads over white behind it", () => {
+        const floor = Scheme.readableAlpha(slate, ink, 0.58, 0.5);
+        assert.ok(floor > 0.5 && floor < 1, String(floor));
+        assert.ok(Scheme.worstContrast(slate, ink, 0.58, floor) >= 4.5);
+        assert.ok(Scheme.worstContrast(slate, ink, 0.58, floor - 0.01) < 4.5);
+    });
+
+    test.it("leaves a panel that already reads as it is", () => {
+        assert.strictEqual(Scheme.readableAlpha(slate, ink, 0.58, 0.95), 0.95);
+        assert.strictEqual(Scheme.readableAlpha(slate, ink, 0.58, 1), 1);
+    });
+
+    test.it("guards a light look against black behind it, and settles for solid when even solid falls short", () => {
+        const floor = Scheme.readableAlpha(paper, dark, 0.7, 0.5);
+        assert.ok(floor > 0.5 && Scheme.worstContrast(paper, dark, 0.7, floor) >= 4.5, String(floor));
+        assert.strictEqual(Scheme.readableAlpha(slate, ink, 0.2, 0.5), 1);
+    });
+});
+

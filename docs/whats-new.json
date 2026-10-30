@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-2",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Settings stays readable at any See-through value and wallpaper"
+        }
+      ]
+    },
+    {
       "id": "2026-10-29",
       "date": "2026-10-29",
       "changes": [
