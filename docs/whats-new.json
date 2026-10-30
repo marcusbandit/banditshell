@@ -1,6 +1,20 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-2",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "banditshell lock locks the screen, with or without logind"
+        }
+      ],
+      "impact": {
+        "cli": true
+      }
+    },
+    {
       "id": "2026-10-30",
       "date": "2026-10-30",
       "changes": [

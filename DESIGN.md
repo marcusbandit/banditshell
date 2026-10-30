@@ -2285,7 +2285,8 @@ Five rules hold it together, said plainly.
 
 **The shell does not own what a standard tool already does.** Volume and mute are wpctl's,
 the media keys playerctl's, and locking is logind's (`loginctl lock-session`; the lock screen
-answers logind's Lock and sets LockedHint itself). The shell shows all three, in the sound
+answers logind's Lock and sets LockedHint itself). `banditshell lock` only exists for machines
+without logind: it runs `loginctl lock-session` and falls back to the shell's own lock. The shell shows all three, in the sound
 menu, the media panel and the lock screen, but a second CLI for them was a second thing to
 maintain with nothing to add, so `set volume`, `toggle volume mute` and `dispatch lock` are
 gone, with the IPC handlers behind them. What stays is what only the shell knows. `output`

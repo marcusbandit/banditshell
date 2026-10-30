@@ -47,7 +47,7 @@ const RULES = [
     { re: /^set volume ([+-]?)((?:\d+(?:\.\d*)?|\.\d+)?)$/, to: volumeTo, run: true, note: "volume is wpctl's" },
     { re: /^status volume$/, to: `wpctl get-volume ${SINK}`, run: true, note: "volume is wpctl's" },
 
-    { re: /^(dispatch lock|lock)$/, to: "loginctl lock-session", run: true, note: "locking is logind's; the shell's lock answers it" },
+    { re: /^dispatch lock$/, to: "lock", note: "lock goes through logind when it runs, straight to the shell when it does not" },
     { re: /^status lock$/, to: "loginctl show-session auto -p LockedHint", run: true, note: "locking is logind's; the shell's lock answers it" },
 
     { re: /^toggle tablet lid( .*)?$/, to: "tablet lid toggle$1", note: "everything about the tablet starts with tablet" },

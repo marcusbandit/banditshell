@@ -32,6 +32,11 @@ IpcHandler {
         return `${key} = ${JSON.stringify(parsed)}`;
     }
 
+    function lock(): string {
+        SessionControl.requestLock();
+        return "locking";
+    }
+
     function flush(): string {
         return Config.flush() ? "saved" : "nothing waiting to be saved";
     }

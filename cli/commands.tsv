@@ -105,6 +105,8 @@ rule	doctor api
 rule	doctor --report
 rule	doctor binds
 rule	doctor binds rewrite
+verb	lock	lock the screen
+rule	lock
 verb	unstick	keep a trace of a frozen shell, stop it and start it again; a locked session gets its lock screen back
 rule	unstick
 verb	watchdog	check on the shell every 10 seconds and unstick it on its own: frozen for 30 seconds, or gone while the session is locked
