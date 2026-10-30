@@ -468,7 +468,7 @@ Column {
                 StyledText {
                     id: taggedText
 
-                    x: tagChip.x + tagChip.width + Appearance.padding.small
+                    x: tagChip.x + tagChip.width + Appearance.padding.normal
                     width: tagged.width - x
                     text: tagged.modelData.text
                     color: root.unreadCount > 0 && tagged.modelData.unread !== true ? Appearance.colour.textDim : Appearance.colour.text
