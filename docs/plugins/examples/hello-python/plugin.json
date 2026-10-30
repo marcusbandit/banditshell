@@ -1,0 +1,13 @@
+{
+  "api": 1,
+  "id": "hello-python",
+  "name": "Hello from Python",
+  "about": "Greets whatever you type, and counts its letters",
+  "icon": "waving_hand",
+  "exec": ["python3", "-I", "plugin.py"],
+  "prefix": ["greet"],
+  "global": { "minLength": 3, "cap": 1 },
+  "preferences": [
+    { "key": "greeting", "type": "text", "title": "Greeting", "placeholder": "Hello", "default": "Hello" }
+  ]
+}

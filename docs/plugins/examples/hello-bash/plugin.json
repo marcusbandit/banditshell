@@ -1,0 +1,10 @@
+{
+  "api": 1,
+  "id": "hello-bash",
+  "name": "Hello from bash",
+  "about": "Greets whatever you type, in plain bash",
+  "icon": "waving_hand",
+  "exec": ["./plugin.sh"],
+  "prefix": ["hello"],
+  "global": { "minLength": 3, "cap": 1 }
+}

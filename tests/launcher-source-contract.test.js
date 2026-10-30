@@ -40,7 +40,23 @@ function kindsOf(text) {
     return m ? [...m[1].matchAll(/"([^"]+)"/g)].map(k => k[1]) : null;
 }
 
+const BRIDGES = ["modules/launcher/PluginSource.qml"];
+
 test.describe("launcher source contract", () => {
+    test.it("holds for the sources that bridge to programs outside the shell", () => {
+        for (const file of BRIDGES) {
+            const text = fs.readFileSync(path.join(ROOT, file), "utf8");
+            const has = members(text);
+            for (const m of ROWS)
+                assert.ok(has[m], `${file} declares ${m}`);
+            for (const m of CONTRACT.filter(c => has[c]))
+                assert.strictEqual(has[m], FUNCTIONS.includes(m) ? "function" : "property", `${file}: ${m}`);
+            assert.match(text, /^    required property var search$/m, file);
+            assert.match(fs.readFileSync(path.join(ROOT, "modules/launcher/PluginHost.qml"), "utf8"), new RegExp(`${path.basename(file, ".qml")} \\{\\}`), `${file} is registered`);
+        }
+    });
+
+
     test.it("lists every built-in source that has a file, and nothing else", () => {
         const files = sourceFiles().map(f => f.name).sort();
         assert.deepStrictEqual(builtIn().slice().sort(), files);

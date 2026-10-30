@@ -166,6 +166,8 @@ QtObject {
         }
     ]
 
+    readonly property var pluginHost: PluginHost
+
     property var addedSources: []
 
     readonly property var sources: Array.prototype.slice.call(root.builtIn).concat(root.addedSources.filter(a => a.object).map(a => a.object))
@@ -324,6 +326,7 @@ QtObject {
             root.started = false;
         else if (!root.started) {
             root.started = true;
+            PluginHost.refresh();
             Files.refreshPlaces();
             Hyprland.refreshToplevels();
         }

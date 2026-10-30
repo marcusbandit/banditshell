@@ -302,6 +302,12 @@ Singleton {
 
                 hotkeys: ({}),
 
+                plugins: {
+                    off: [],
+
+                    values: ({})
+                },
+
                 hiddenFiles: ".config",
 
                 animatePreview: true,

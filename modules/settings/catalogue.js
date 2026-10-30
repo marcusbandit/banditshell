@@ -49,7 +49,7 @@ const WIDGET_TITLES = {
     devices: "Devices", volume: "Volume", apps: "Volume by app", walls: "Wallpapers", themes: "Theme", wsStyles: "Workspace style",
     chips: "Apps", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "Other time zones",
     obs: "OBS", keys: "Keys", kbLayouts: "Layouts", battery: "Battery", update: "Updates", changes: "What’s new", about: "About",
-    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys", snippets: "Snippets", quicklinks: "Quicklinks"
+    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys", snippets: "Snippets", quicklinks: "Quicklinks", plugins: "Plugins"
 };
 
 const SEARCH_TITLES = {
@@ -57,7 +57,7 @@ const SEARCH_TITLES = {
     devices: "Devices", volume: "Volume", apps: "Volume by app", walls: "Pick a wallpaper", themes: "Theme", wsStyles: "Workspace style",
     chips: "", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "World clocks",
     obs: "OBS", keys: "Keys", winLayouts: "Layouts", battery: "Battery", update: "Updates", changes: "What’s new", about: "About",
-    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys", snippets: "Snippets", quicklinks: "Quicklinks"
+    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys", snippets: "Snippets", quicklinks: "Quicklinks", plugins: "Launcher plugins"
 };
 
 const WIDGET_WHY = {
@@ -75,7 +75,8 @@ const WIDGET_WHY = {
     battery: "Charge over the last day. The dashed lines are the hold point and the warning.",
     keys: "Click a key to change it in the pane.",
     snippets: "Type a snippet's keyword or name in the launcher and press Enter to type it into the app you were in. {date}, {time} and {clipboard} fill in as it is typed; {cursor} is where the caret ends up.",
-    quicklinks: "Type a keyword, a space and what to look for. {query} in the address is where it goes."
+    quicklinks: "Type a keyword, a space and what to look for. {query} in the address is where it goes.",
+    plugins: "A plugin is a folder in ~/.config/banditshell/plugins with a plugin.json and a program in any language. It adds rows to the launcher under its own word, and some to plain searches. It runs as you, so only add plugins you would run yourself."
 };
 
 const PAGES_SOURCE = {
@@ -516,6 +517,9 @@ const PAGES_SOURCE = {
                 { n: [], icon: "screen_record", label: "Screen recording", k: "systemRecording", kind: "toggle", cfg: "launcher.systemControls.recording", kw: "record screen recording video capture wf-recorder",
                     why: "Type record screen, record area or record window. Sound is only recorded when you say record screen with sound." },
                 { n: [], icon: "movie", label: "Recordings folder", k: "systemRecordingFolder", kind: "text", mono: true, cfg: "launcher.systemControls.recordingFolder", placeholder: "~/Videos/Recordings", dis: s => !s.v("systemRecording"), kw: "recordings folder videos save location" }
+            ] },
+            { t: "Plugins", rows: [
+                { n: [], kind: "w", w: "plugins", kw: "launcher plugins extensions add ons tools results programs" }
             ] },
             { t: "Aliases and hotkeys", rows: [
                 { n: [], kind: "w", w: "shortcuts", list: "aliases", kw: "launcher aliases short names" },
