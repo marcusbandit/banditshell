@@ -7,7 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/controls/certificate-files.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Files = new Function(src + "\nreturn { read, needsKey, roots, clients, keys, keyFor, locked, carriesKey, shortPath, fullPath, problem };")();
+const Files = new Function(src + "\nreturn { read, needsKey, roots, clients, keys, keyFor, locked, carriesKey, shortPath, fullPath, problem, easiest, holderAt, fingerprintAt, compare, unrelated, printLines };")();
 const SCAN = path.join(ROOT, "scripts/certificate-files.sh");
 const FIXTURE = fs.readFileSync(path.join(ROOT, "tests/fixtures/certificate-files.txt"), "utf8");
 
@@ -53,7 +53,7 @@ test.describe("certificate files", () => {
 
     test.it("keeps the newest first and stops at the limit", () => {
         const now = Date.UTC(2026, 9, 28);
-        assert.deepStrictEqual(Files.clients(Files.read(FIXTURE), now, 2).map(r => path.basename(r.path)), ["laptop-17.p12", "laptop-17.crt"]);
+        assert.deepStrictEqual(Files.clients(Files.read(FIXTURE), now, 1).map(r => path.basename(r.path)), ["laptop-17.p12"]);
     });
 
     test.it("shows each root's issuer and expiry, puts the ones named like the server first and doubtful ones last", () => {
@@ -68,16 +68,30 @@ test.describe("certificate files", () => {
         ]);
     });
 
-    test.it("says what each client certificate holds and which file carries its key", () => {
+    test.it("lists files holding one certificate as one row, led by the one that needs nothing else", () => {
         const now = Date.UTC(2026, 9, 28);
-        assert.deepStrictEqual(Files.clients(Files.read(FIXTURE), now, 10).map(r => [path.basename(r.path), r.detail, r.warn]), [
+        const rows = Files.clients(Files.read(FIXTURE), now, 10);
+        assert.deepStrictEqual(rows.map(r => [path.basename(r.path), r.detail, r.warn]), [
             ["laptop-17.p12", "holds its key · locked with a password", false],
-            ["laptop-17.crt", "laptop-17 · until Oct 2027 · key in laptop-17.key", false],
-            ["laptop-17-with-key.pem", "laptop-17 · until Oct 2027 · holds its key", false],
-            ["laptop-17-open.p12", "laptop-17 · until Oct 2027 · holds its key", false],
-            ["laptop-17-old-export.p12", "laptop-17 · until Oct 2027 · holds its key", false]
+            ["laptop-17-with-key.pem", "laptop-17 · until Oct 2027 · holds its key · in 4 files", false]
+        ]);
+        assert.deepStrictEqual(rows[1].others.map(r => [path.basename(r.path), r.detail]), [
+            ["laptop-17.crt", "key in laptop-17.key"],
+            ["laptop-17-open.p12", "holds its key"],
+            ["laptop-17-old-export.p12", "holds its key"]
         ]);
         assert.match(Files.clients(Files.read(FIXTURE), Date.UTC(2028, 0, 1), 10)[1].detail, /expired Oct 2027/);
+    });
+
+    test.it("preselects a certificate only when one alone is ready to use, and reads the name on it", () => {
+        const files = Files.read(FIXTURE);
+        assert.strictEqual(Files.easiest(files, Date.UTC(2026, 9, 28)), "/home/me/Documents/wifi/laptop-17-with-key.pem");
+        assert.strictEqual(Files.easiest(files, Date.UTC(2028, 0, 1)), "");
+        const twice = Files.read(FIXTURE.replace(/(laptop-17-open\.p12\n(?:.*\n)*?sha256 Fingerprint=)../, "$100"));
+        assert.strictEqual(Files.easiest(twice, Date.UTC(2026, 9, 28)), "");
+        assert.strictEqual(Files.holderAt(files, "/home/me/Downloads/laptop-17.crt"), "laptop-17");
+        assert.strictEqual(Files.holderAt(files, "/home/me/Downloads/laptop-17.p12"), "");
+        assert.strictEqual(Files.holderAt(files, "/home/me/Downloads/uni-root.der"), "");
     });
 
     test.it("names the certificate a key belongs to, or says it is locked", () => {
@@ -144,6 +158,26 @@ test.describe("certificate files", () => {
         assert.ok(!Files.roots(files, "wifi.it.dk", now, 10).some(r => r.detail.includes("named like")));
     });
 
+    test.it("compares a pasted fingerprint whatever its separators and label", () => {
+        const print = Files.fingerprintAt(Files.read(FIXTURE), "/home/me/Downloads/uni-root.der");
+        assert.match(print, /^74:68:5F/);
+        assert.strictEqual(Files.compare(print, `SHA256 Fingerprint=${print.toLowerCase()}`), "match");
+        assert.strictEqual(Files.compare(print, print.replace(/:/g, " ")), "match");
+        assert.strictEqual(Files.compare(print, print.replace(/^74/, "75")), "differs");
+        assert.strictEqual(Files.compare(print, "AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01"), "sha1");
+        assert.strictEqual(Files.compare(print, "74:68:5F"), "short");
+        assert.strictEqual(Files.compare(print, ""), "");
+        assert.deepStrictEqual(Files.printLines(print).split("\n").map(l => l.length), [23, 23, 23, 23]);
+    });
+
+    test.it("says when no listed root looks like the server's", () => {
+        const files = Files.read(FIXTURE);
+        assert.strictEqual(Files.unrelated(files, "radius.corp.example"), true);
+        assert.strictEqual(Files.unrelated(files, "radius.uni.edu"), false);
+        assert.strictEqual(Files.unrelated(files, ""), false);
+        assert.strictEqual(Files.unrelated([], "radius.corp.example"), false);
+    });
+
     test.it("shows a picked file under home with a tilde and expands it back", () => {
         assert.strictEqual(Files.shortPath("/home/me/Downloads/uni-root.der", "/home/me"), "~/Downloads/uni-root.der");
         assert.strictEqual(Files.shortPath("/home/meg/x.pem", "/home/me"), "/home/meg/x.pem");
@@ -187,10 +221,12 @@ test.describe("certificate files", () => {
         fs.writeFileSync(path.join(bin, "openssl"), "#!/bin/sh\ncat >/dev/null\nexit 1\n", { mode: 0o755 });
         for (const name of ["a.p12", "b.pem", "c.crt", "d key.key"])
             fs.writeFileSync(path.join(downloads, name), "x");
-        const out = spawnSync("/bin/sh", [SCAN], { env: { PATH: `${bin}:/usr/bin:/bin`, HOME: path.join(dir, "home") }, encoding: "utf8", input: "" });
+        fs.writeFileSync(path.join(dir, "picked.pem"), "x");
+        const out = spawnSync("/bin/sh", [SCAN, path.join(dir, "picked.pem"), path.join(dir, "gone.pem")], { env: { PATH: `${bin}:/usr/bin:/bin`, HOME: path.join(dir, "home") }, encoding: "utf8", input: "" });
         fs.rmSync(dir, { recursive: true, force: true });
         assert.strictEqual(out.status, 0);
         const listed = out.stdout.split("\x1e").map(r => r.split("\n")[0]).filter(Boolean).map(p => path.basename(p)).sort();
-        assert.deepStrictEqual(listed, ["a.p12", "b.pem", "c.crt", "d key.key"]);
+        assert.deepStrictEqual(listed, ["a.p12", "b.pem", "c.crt", "d key.key", "picked.pem"]);
+        assert.strictEqual(Files.read("\x1e/a.pem\nsubject=CN=x\n\x1e/a.pem\nsubject=CN=x\n").length, 1);
     });
 });

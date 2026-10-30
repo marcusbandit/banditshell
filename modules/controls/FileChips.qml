@@ -54,15 +54,13 @@ Column {
         Repeater {
             model: root.files
 
-            FileChoiceRow {
+            FileChoiceGroup {
                 required property var modelData
 
                 width: parent.width
-                path: modelData.path
-                detail: modelData.detail ?? ""
-                warn: !!modelData.warn
-                picked: modelData.path === root.picked
-                onChosen: root.pick(modelData.path)
+                row: modelData
+                picked: root.picked
+                onChosen: path => root.pick(path)
             }
         }
     }
