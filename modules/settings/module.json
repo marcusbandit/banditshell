@@ -25,6 +25,7 @@
       "control",
       "edge",
       "font",
+      "launcher.plugins",
       "material",
       "polkit",
       "region",

@@ -11,3 +11,6 @@ LauncherIpc 1.0 LauncherIpc.qml
 LauncherSearch 1.0 LauncherSearch.qml
 ListLauncher 1.0 ListLauncher.qml
 Peek 1.0 Peek.qml
+singleton PluginHost 1.0 PluginHost.qml
+PluginProcess 1.0 PluginProcess.qml
+PluginSource 1.0 PluginSource.qml

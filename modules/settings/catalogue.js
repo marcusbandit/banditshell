@@ -517,6 +517,9 @@ const PAGES_SOURCE = {
                     why: "Type record screen, record area or record window. Sound is only recorded when you say record screen with sound." },
                 { n: [], icon: "movie", label: "Recordings folder", k: "systemRecordingFolder", kind: "text", mono: true, cfg: "launcher.systemControls.recordingFolder", placeholder: "~/Videos/Recordings", dis: s => !s.v("systemRecording"), kw: "recordings folder videos save location" }
             ] },
+            { t: "Plugins", rows: [
+                { n: [], kind: "w", w: "plugins", kw: "launcher plugins extensions add ons tools results programs" }
+            ] },
             { t: "Aliases and hotkeys", rows: [
                 { n: [], kind: "w", w: "shortcuts", list: "aliases", kw: "launcher aliases short names" },
                 { n: [], kind: "w", w: "shortcuts", list: "hotkeys", kw: "launcher hotkeys global keys" }

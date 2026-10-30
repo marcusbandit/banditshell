@@ -23,7 +23,12 @@ no sandbox, so only install plugins you would run yourself.
         the program, and anything else it needs
 
 The folder name is the plugin's id. Settings, Launcher, Plugins lists every
-plugin found there, switches each on and off, and shows its preferences.
+plugin found there, switches each on and off, and shows its preferences. The
+shell looks for new plugins each time the launcher opens.
+
+`examples/hello-bash` and `examples/hello-python` are two complete plugins:
+copy either folder into the plugins folder, open the launcher and type
+`hello world` or `greet ada`.
 
 ## The manifest
 
@@ -74,10 +79,11 @@ reach the plugin.
 
 The values reach the program as environment variables named
 `BANDITSHELL_PREF_` followed by the key in capitals, so `site` arrives as
-`BANDITSHELL_PREF_SITE`. A toggle is `1` or `0`. Text values live in
-`config.json`. A `secret` is never written there: it is stored the way the
-shell's API keys are, in a file only you can read. Changing a preference
-restarts the program.
+`BANDITSHELL_PREF_SITE`. A toggle is `1` or `0`. Text values and toggles
+live in `config.json` under `launcher.plugins.values`, and the plugins you
+switched off under `launcher.plugins.off`. A `secret` is never written there:
+it is kept in `~/.local/state/banditshell/plugin-secrets.json`, a file only
+you can read. Changing a preference restarts the program.
 
 The program also gets `BANDITSHELL_PLUGIN_ID`, `BANDITSHELL_PLUGIN_DIR` and
 `BANDITSHELL_API`.
@@ -171,7 +177,8 @@ refused and the row says so, as for list scripts.
 - After its prefix, the plugin's own order stands.
 - In a plain search the shell ranks plugin rows itself, on `title` and
   `keywords`, with the same matcher as apps, and shows at most `global.cap` of
-  them. A plugin cannot push itself to the top.
+  them. Like file search results, they rank below the launcher's own best
+  matches, so a plugin cannot push itself to the top.
 - Rows that arrive after the built-in ones join below the selected row. A late
   answer never moves the selection.
 
@@ -184,6 +191,7 @@ A broken plugin costs one row, never the shell.
 - A program that exits is started again on the next query, waiting a little
   longer after each crash. After three crashes in a minute the plugin is
   switched off, and one row says so with a button that opens its log.
+  Switching it off and on again in Settings gives it a fresh start.
 - Standard error goes to `~/.local/state/banditshell/plugins/<id>.log`.
 - After 10 minutes without a query the program is stopped. The next query
   starts it again.

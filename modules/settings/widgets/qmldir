@@ -14,6 +14,7 @@ NetsWidget 1.0 NetsWidget.qml
 NetworkManagerWidget 1.0 NetworkManagerWidget.qml
 ObsWidget 1.0 ObsWidget.qml
 OverridesWidget 1.0 OverridesWidget.qml
+PluginsWidget 1.0 PluginsWidget.qml
 QuicklinksWidget 1.0 QuicklinksWidget.qml
 RecentWidget 1.0 RecentWidget.qml
 RulesWidget 1.0 RulesWidget.qml

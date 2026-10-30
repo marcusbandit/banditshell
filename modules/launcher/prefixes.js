@@ -1,6 +1,6 @@
 .pragma library
 
-var SECTIONS = ["Files and clipboard", "Ask and look up", "Desktop", "System", "Text and numbers", "Quicklinks"];
+var SECTIONS = ["Files and clipboard", "Ask and look up", "Desktop", "System", "Text and numbers", "Plugins", "Quicklinks"];
 
 var OWN = [
     { section: "Files and clipboard", word: "~", example: "~/Downloads", about: "Browse your folders", icon: "folder_open", also: ["/"] },

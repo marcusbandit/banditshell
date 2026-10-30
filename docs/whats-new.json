@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-4",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugins in any language add their own results to the launcher"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings, Launcher lists your plugins with a switch and their settings"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30-3",
       "date": "2026-10-30",
       "changes": [
