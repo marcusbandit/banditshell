@@ -388,7 +388,6 @@ Column {
                     SquircleRect {
                         id: newMark
 
-                        x: Appearance.padding.small
                         anchors.verticalCenter: parent.verticalCenter
                         width: root.unreadBar
                         height: Math.round(parent.height * 0.6)
@@ -461,9 +460,9 @@ Column {
                     id: tagChip
 
                     x: root.unreadCount > 0 ? root.unreadBar + Appearance.padding.small : 0
-                    width: Math.ceil(tagWidth.advanceWidth) + Appearance.padding.small
+                    width: Math.ceil(tagWidth.advanceWidth)
                     text: tagged.modelData.tag
-                    color: tagged.hue
+                    color: Appearance.blend(Appearance.colour.text, tagged.hue, 0.55)
                 }
 
                 StyledText {
