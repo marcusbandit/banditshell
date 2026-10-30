@@ -6,6 +6,7 @@ import qs.components
 import qs.services
 import "urls.js" as Urls
 import "tile-names.js" as TileNames
+import "row-columns.js" as RowColumns
 import "../../services/files-find.js" as Find
 
 Item {
@@ -38,6 +39,7 @@ Item {
 
     property bool receiving: false
 
+    readonly property real ink: root.entry.hidden && !Files.showHidden ? Appearance.opacity.trail : 1
     readonly property bool droppable: root.entry.kind === "dir" && root.entry.open
     readonly property bool isImage: root.entry.class === "image" && !root.entry.broken
 
@@ -103,6 +105,7 @@ Item {
         width: parent.width - mark.reach * 2 - Appearance.padding.small
         spacing: Appearance.padding.hair
         visible: !root.row
+        opacity: root.ink
 
         Item {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -185,17 +188,18 @@ Item {
         id: rowLayout
 
         anchors.fill: parent
-        anchors.leftMargin: Appearance.padding.small + Appearance.padding.hair * 2
+        anchors.leftMargin: RowColumns.inset(Appearance.padding.small, Appearance.padding.hair)
         anchors.rightMargin: Appearance.padding.small
         visible: root.row
+        opacity: root.ink
 
         readonly property bool stacked: FilesFind.active && !root.entry.trash
-        readonly property real dateWidth: rowLayout.stacked ? digit.advanceWidth * 13 : Files.zoomed(Appearance.font.size.small) * 7
-        readonly property real sizeWidth: Files.zoomed(Appearance.font.size.small) * 5
         readonly property real gap: Appearance.padding.normal
-        readonly property real nameLeast: rowMark.width + Appearance.padding.small + digit.advanceWidth * Files.nameLeast
-        readonly property bool showsDate: rowLayout.width - rowLayout.nameLeast >= (rowLayout.stacked ? Math.max(rowLayout.dateWidth, rowLayout.sizeWidth) + rowLayout.gap : rowLayout.dateWidth + rowLayout.sizeWidth + rowLayout.gap * 2)
-        readonly property bool showsSize: rowLayout.stacked ? rowLayout.showsDate : rowLayout.width - rowLayout.nameLeast >= rowLayout.sizeWidth + rowLayout.gap
+        readonly property var columns: RowColumns.fit(rowLayout.width, digit.advanceWidth, Files.zoomed(Appearance.font.size.small), rowMark.width, Appearance.padding.small, rowLayout.gap, Files.nameLeast, rowLayout.stacked)
+        readonly property real dateWidth: rowLayout.columns.dateWidth
+        readonly property real sizeWidth: rowLayout.columns.sizeWidth
+        readonly property bool showsDate: rowLayout.columns.showsDate
+        readonly property bool showsSize: rowLayout.columns.showsSize
 
         function textStart(item: Item): real {
             return item.x + item.width - item.contentWidth;

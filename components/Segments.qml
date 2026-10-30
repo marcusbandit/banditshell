@@ -14,6 +14,11 @@ Item {
 
     property bool fit: false
 
+    property real zoom: 1
+
+    readonly property int textSize: Math.round(Appearance.font.size.small * root.zoom)
+    readonly property real pad: Math.round(Appearance.padding.normal * root.zoom)
+
     signal picked(int index)
 
     readonly property bool keyable: root.count > 1
@@ -33,7 +38,7 @@ Item {
 
     readonly property var widths: {
         ink.font;
-        return root.options.map(o => Math.ceil(ink.advanceWidth(o)) + root.swatchRoom + Appearance.padding.normal * 2);
+        return root.options.map(o => Math.ceil(ink.advanceWidth(o)) + root.swatchRoom + root.pad * 2);
     }
     readonly property real natural: root.count * root.widths.reduce((a, b) => Math.max(a, b), 0)
     readonly property real compact: root.widths.reduce((a, b) => a + b, 0)
@@ -47,7 +52,7 @@ Item {
     }
 
     implicitWidth: root.fit ? root.compact : root.natural
-    implicitHeight: Math.max(Appearance.sizes.minTarget, Appearance.font.line.small + Appearance.padding.small * 2)
+    implicitHeight: Math.max(Appearance.sizes.minTarget, Math.round((Appearance.font.line.small + Appearance.padding.small * 2) * root.zoom))
     width: implicitWidth
     height: implicitHeight
 
@@ -55,7 +60,7 @@ Item {
         id: ink
 
         font.family: Appearance.font.family
-        font.pixelSize: Appearance.font.size.small
+        font.pixelSize: root.textSize
     }
 
     Follow {
@@ -128,6 +133,7 @@ Item {
                 verticalAlignment: Text.AlignVCenter
 
                 text: seg.modelData
+                font.pixelSize: root.textSize
 
                 color: seg.covered > 0.5 ? Appearance.colour.accentText : Appearance.colour.text
             }

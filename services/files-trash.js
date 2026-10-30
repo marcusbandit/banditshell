@@ -51,6 +51,10 @@ function trashed(path, files) {
     return within(path, files) || /\/\.Trash(-\d+|\/\d+)\/files\//.test(path);
 }
 
+function listed(entry, showHidden, trashTop) {
+    return showHidden || !entry.hidden || trashTop;
+}
+
 function topdirs(paths) {
     var out = [];
     for (var i = 0; i < paths.length; i++) {

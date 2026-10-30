@@ -90,8 +90,8 @@ test("a refusal that used to be sniffed by three verbs now comes out of one plac
 test("the pid is cached, validated with kill -0, and rescanned when it goes stale", async () => {
     const stub = stubs();
     const fake = directory("instance");
-    fs.symlinkSync(spawnSync("sh", ["-c", "command -v sleep"], { encoding: "utf8" }).stdout.trim(), path.join(fake, "qs"));
-    const child = spawn(path.join(fake, "qs"), ["60"], { stdio: "ignore" });
+    fs.writeFileSync(path.join(fake, "qs"), "#!/bin/sh\nread -r line\n", { mode: 0o755 });
+    const child = spawn(path.join(fake, "qs"), [], { stdio: ["pipe", "ignore", "ignore"] });
     try {
         await new Promise(resolve => setTimeout(resolve, 100));
         const home = directory("home");
