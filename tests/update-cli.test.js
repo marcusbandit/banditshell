@@ -933,7 +933,7 @@ test("going back by hand puts config.json back as it was, keeps settings changed
     startShell(world);
     const target = advance(world, "v2", { "shell.qml": "// v2\n", CONFIGWRITE: NEWER_WRITES });
     assert.strictEqual(applyTo(world, target).status, 0);
-    assert.deepStrictEqual(settingsFiles(world).map(name => name.replace(/^\d+-/, "")), [`after-${target}.json`, `before-${before}.json`]);
+    assert.deepStrictEqual(settingsFiles(world).map(name => name.replace(/^\d+-/, "")).sort(), [`after-${target}.json`, `before-${before}.json`]);
     assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json", "--no-fetch"]).out).previousSettings, true);
     const changed = readConfig(world);
     changed.bar.size = 40;
@@ -1109,7 +1109,7 @@ test("a rollback by hand that git refuses changes nothing and skips nothing", ()
     assert.strictEqual(liveHead(world), target);
     assert.strictEqual(JSON.parse(readState(world, "result.json")).ok, true);
     assert.ok(!fs.existsSync(stateFile(world, "skip")));
-    assert.deepStrictEqual(settingsFiles(world).map(name => name.replace(/^\d+-/, "")), [`before-${git(world.live, "rev-parse", "HEAD~1")}.json`]);
+    assert.deepStrictEqual(settingsFiles(world).map(name => name.replace(/^\d+-/, "")).sort(), [`before-${git(world.live, "rev-parse", "HEAD~1")}.json`]);
 });
 
 test("a detached rollback with nothing recorded fails in progress.log with a time", () => {

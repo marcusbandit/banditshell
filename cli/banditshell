@@ -983,6 +983,12 @@ flush_shells() {
     done
 }
 
+flush_running() {
+    local -a pids
+    mapfile -t pids < <(shell_pids)
+    flush_shells "${pids[@]}"
+}
+
 stop_shell() {
     local -a pids
     local pid alive tries=0
@@ -3751,7 +3757,8 @@ update_verify() {
 }
 
 update_settings_keep() {
-    local dir="$UPDATE_STATE/settings" name old
+    local dir="$UPDATE_STATE/settings" name old i
+    local -a copies=()
     [ -f "$CONFIG_FILE" ] && [[ $2 =~ ^[0-9a-f]{40,64}$ ]] || return 0
     mkdir -p "$dir" || return 0
     name="$dir/$(date +%s)-$1-$2.json"
@@ -3759,8 +3766,11 @@ update_settings_keep() {
         rm -f "$name.next"
         return 0
     fi
-    for old in $(cd "$dir" && ls -1 | grep -E "^[0-9]+-$1-[0-9a-f]+\.json$" | sort -r | tail -n +11); do
-        rm -f "$dir/$old"
+    for old in "$dir/"[0-9]*-"$1"-*.json; do
+        [ ! -f "$old" ] || copies+=("$old")
+    done
+    for ((i = 0; i < ${#copies[@]} - 10; i++)); do
+        rm -f "${copies[i]}"
     done
     printf '%s' "$name"
 }
@@ -3785,7 +3795,7 @@ update_settings_plan() {
     before=$(update_settings_find before "$1")
     after="$CONFIG_FILE"
     [ "$3" != true ] || after=$(update_settings_find after "$2")
-    flush_shells $(shell_pids)
+    flush_running
     U_SETTINGS_NEXT=$(mktemp "$UPDATE_STATE/settings/.next.XXXXXX") || { U_SETTINGS_NEXT=""; return 0; }
     if ! kept=$(node "$U_DIR/services/update.js" settings "$before" "$after" "$CONFIG_FILE" "$U_SETTINGS_NEXT" 2>/dev/null); then
         rm -f "$U_SETTINGS_NEXT"
@@ -3977,7 +3987,7 @@ update_apply() {
     printf '%s\n' "$U_HEAD" >"$UPDATE_STATE/previous"
     printf '%s\n' "$U_TARGET" >"$UPDATE_STATE/target"
     rm -f "$UPDATE_STATE/result.json"
-    flush_shells $(shell_pids)
+    flush_running
     update_settings_keep before "$U_HEAD" >/dev/null
     update_log_mark
     update_set_aside
@@ -4014,7 +4024,7 @@ update_finish_work() {
         fi
     fi
     if [ "$loaded" = 1 ]; then
-        flush_shells $(shell_pids)
+        flush_running
         update_settings_keep after "$(cat "$UPDATE_STATE/target")" >/dev/null
     fi
     update_conclude "Updated to $(update_label "$(cat "$UPDATE_STATE/target")")"
