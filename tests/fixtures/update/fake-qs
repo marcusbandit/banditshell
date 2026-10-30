@@ -60,6 +60,11 @@ ipc)
     else
         exit 1
     fi
+    if [ -e "$where/CONFIGWRITE" ] && [ ! -e "$dir/wrote/$2" ]; then
+        mkdir -p "$dir/wrote"
+        : >"$dir/wrote/$2"
+        cp "$where/CONFIGWRITE" "${XDG_CONFIG_HOME:?}/banditshell/config.json"
+    fi
     [ ! -e "$where/NOANSWER" ] || exit 1
     echo "ok"
     ;;
