@@ -33,7 +33,9 @@ Singleton {
 
     property QtObject socket: null
 
-    readonly property string phase: !root.wanted ? "idle" : !root.socket && (root.installed || root.endpoint.remote) ? "missing" : !root.canConnect ? "unset" : root.link
+    property bool linkTried: false
+
+    readonly property string phase: !root.wanted ? "idle" : !root.socket && root.linkTried && (root.installed || root.endpoint.remote) ? "missing" : !root.canConnect ? "unset" : root.link
 
     property bool identifying: false
 
@@ -319,9 +321,10 @@ Singleton {
             root.keep(root.legacyPassword, true);
     }
 
-    onLegacyPasswordChanged: root.migrate()
-    Component.onCompleted: {
-        root.migrate();
+    function reach(): void {
+        if (root.socket || root.linkTried || !root.wanted)
+            return;
+        root.linkTried = true;
         const link = Qt.createComponent(Qt.resolvedUrl("ObsLink.qml"));
         if (link.status !== Component.Ready) {
             console.warn("OBS stays out of reach until qt6-websockets is installed:", link.errorString().trim());
@@ -330,6 +333,13 @@ Singleton {
         root.socket = link.createObject(root);
         root.socket.url = Qt.binding(() => root.url);
         root.sync();
+    }
+
+    onWantedChanged: root.reach()
+    onLegacyPasswordChanged: root.migrate()
+    Component.onCompleted: {
+        root.migrate();
+        root.reach();
     }
 
     Process {

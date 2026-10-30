@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-30-4",
+      "date": "2026-10-30",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Startup builds the tour card and stream panel only when they show"
+        }
+      ]
+    },
+    {
       "id": "2026-10-30-3",
       "date": "2026-10-30",
       "changes": [
