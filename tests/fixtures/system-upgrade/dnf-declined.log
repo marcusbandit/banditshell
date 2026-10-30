@@ -1,0 +1,38 @@
+Script started on 2026-10-30 18:20:22+00:00 [COMMAND="stty cols 80 rows 24 2>/dev/null; exec dnf upgrade --refresh" <not executed on terminal>]
+Updating and loading repositories:
+[?25l Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m00s[0J Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 openh264 (From Cisco) - x86_ ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 - x86_64                     ???% |   0.0   B/s |   0.0   B |  00m00s[2A[0J Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 openh264 (From Cisco) - x86_ ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 - x86_64                     ???% |   0.0   B/s |   0.0   B |  00m00s[2A[0J Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 openh264 (From Cisco) - x86_ ???% |   0.0   B/s |   0.0   B |  00m00s
+ Fedora 44 - x86_64                     ???% |   0.0   B/s |   0.0   B |  00m00s[2A[0J Fedora 44 - x86_64 - Updates           ???% |   0.0   B/s |   0.0   B |  00m01s
+ Fedora 44 openh264 (From Cisco) - x86_ 100% |   5.0   B/s | 986.0   B |  00m00s
+ Fedora 44 - x86_64                     ???% |   0.0   B/s |   0.0   B |  00m01s[2A[0J Fedora 44 - x86_64 - Updates           100% |  24.0 KiB/s |  16.7 KiB |  00m01s
+ Fedora 44 openh264 (From Cisco) - x86_ 100% |   5.0   B/s | 986.0   B |  00m00s
+ Fedora 44 - x86_64                     100% |   5.0   B/s |  20.5 KiB |  00m00s[1A[0J Fedora 44 openh264 (From Cisco) - x86_ 100% |   1.4 KiB/s | 986.0   B |  00m01s
+ Fedora 44 - x86_64                     100% |   5.0   B/s |  20.5 KiB |  00m00s[0J Fedora 44 - x86_64                     100% |  29.0 KiB/s |  20.5 KiB |  00m01s
+]9;4;0;0\[?25hRepositories loaded.
+[1mPackage                 [0m [1mArch  [0m [1mVersion                [0m [1mRepository    [0m [1m     Size[0m
+Upgrading:
+[32m curl                   [0m x86_64 0:8.18.0-14.fc44        updates        480.0 KiB
+[2m   replacing curl       [0m [2mx86_64[0m [2m0:8.18.0-4.fc44        [0m [2mfedora        [0m [2m480.0 KiB[0m
+[32m libcurl                [0m x86_64 0:8.18.0-14.fc44        updates          1.0 MiB
+[2m   replacing libcurl    [0m [2mx86_64[0m [2m0:8.18.0-4.fc44        [0m [2mfedora        [0m [2m  1.0 MiB[0m
+[32m libsolv                [0m x86_64 [1m0:0.7.41-1.fc44        [0m updates        985.8 KiB
+[2m   replacing libsolv    [0m [2mx86_64[0m [2m0:0.7.40-2.fc44        [0m [2m89b2365028094e[0m [2m977.2 KiB[0m
+[32m sqlite-libs            [0m x86_64 0:3.51.2-2.fc44         updates          1.6 MiB
+[2m   replacing sqlite-libs[0m [2mx86_64[0m [2m0:3.51.2-1.fc44        [0m [2mfedora        [0m [2m  1.6 MiB[0m
+[32m tzdata                 [0m noarch [1m0:2026e-1.fc44         [0m updates          1.3 MiB
+[2m   replacing tzdata     [0m [2mnoarch[0m [2m0:2026a-1.fc44         [0m [2mfedora        [0m [2m  1.2 MiB[0m
+
+Transaction Summary:
+ Upgrading:          5 packages
+ Replacing:          5 packages
+
+Total size of inbound packages is 3 MiB. Need to download 3 MiB.
+After this operation, 25 KiB extra will be used (install 5 MiB, remove 5 MiB).
+Is this ok [y/N]: n
+Operation aborted by the user.
+
+Script done on 2026-10-30 18:20:27+00:00 [COMMAND_EXIT_CODE="1"]

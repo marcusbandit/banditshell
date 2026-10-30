@@ -1,0 +1,28 @@
+Script started on 2026-10-30 18:31:24+00:00 [COMMAND="stty cols 80 rows 24 2>/dev/null; exec zypper dup --download-in-advance" <not executed on terminal>]
+[22;27;39;49mLoading repository data...[0m
+[22;27;39;49mReading installed packages...[0m
+[22;27;35;49mWarning: [0mYou are about to do a distribution upgrade with all enabled repositories. Make sure these repositories are compatible before you continue. See 'man zypper' for more information about this command.
+[22;27;39;49mComputing distribution upgrade...[0m
+
+[22;27;32;49mThe following package is going to be upgraded:[0m
+  [22;27;32;49mo[0mpenSUSE-build-key
+
+[22;27;32;49mThe following 11 NEW packages are going to be installed:[0m
+  [22;27;32;49mk[0mrb5 [22;27;32;49ml[0mibbrotlicommon1 [22;27;32;49ml[0mibbrotlidec1 [22;27;32;49ml[0mibcom_err2 [22;27;32;49ml[0mibcurl4 [22;27;32;49ml[0mibkeyutils1 [22;27;32;49ml[0mibldap2
+  [22;27;32;49ml[0mibsasl2-3 [22;27;32;49ml[0mibssh-config [22;27;32;49ml[0mibssh4 [22;27;32;49ml[0mibverto1
+
+[22;27;31;49mThe following package is going to be REMOVED:[0m
+  [22;27;31;49ml[0mibcurl-mini4
+
+[22;27;32;49m1[0m package to upgrade, [22;27;32;49m11[0m new, [22;27;31;49m1[0m to remove.
+
+Package download size:     2.0 MiB
+
+Package install size change:
+[22;27;39;49m[0m              [22;27;39;49m|[0m  [22;27;39;49m     5.0 MiB[0m  [22;27;39;49mrequired by packages that will be installed[0m
+[22;27;39;49m     4.1 MiB[0m  [22;27;39;49m|[0m  [22;27;39;49m-  960.8 KiB[0m  [22;27;39;49mreleased by packages that will be removed[0m
+
+[2K[1;39;49mBackend:  classic_rpmtrans
+Continue? [1;39;49m[y[1;39;49m/n[1;39;49m/v[1;39;49m/...?[1;39;49m shows all options] (y[1;39;49m)[0m[1;39;49m: [0m[0m[0m[0m[0m[0m[0mn
+
+Script done on 2026-10-30 18:31:27+00:00 [COMMAND_EXIT_CODE="4"]
