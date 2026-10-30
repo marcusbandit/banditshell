@@ -430,7 +430,7 @@ function takeZypper(state, line, t) {
         const done = bytes(m[1]);
         const all = bytes(m[2]);
         if (all > 0)
-            state.download.fraction = Math.min(1, done / all);
+            state.download.fraction = Math.max(state.download.fraction, Math.min(1, done / all));
         state.download.rate = m[3].trim();
         return;
     }
@@ -439,6 +439,8 @@ function takeZypper(state, line, t) {
         state.download.done += 1;
         state.download.total = state.total;
         state.download.file = m[1];
+        if (state.total > 0)
+            state.download.fraction = Math.max(state.download.fraction, Math.min(1, state.download.done / state.total));
         return;
     }
     if (!state.committing && /^Preload finished/.test(t)) {

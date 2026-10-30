@@ -273,6 +273,9 @@ test("a recorded zypper upgrade preloads, retrieves, checks conflicts, installs,
     assert.strictEqual(state.packages.length, 12);
     assert.strictEqual(state.sizes.download, "2.0 MiB");
     assert.strictEqual(state.install.name, "openSUSE-build-key");
+    const preloading = run(log.slice(0, log.indexOf("Preloading: krb5")), 0, "zypper");
+    assert.strictEqual(Upgrade.describe(preloading), "Downloading 8 of 12 · 15.5 KiB/s");
+    assert.strictEqual(preloading.download.fraction, 7 / 12);
     assert.strictEqual(Upgrade.outcome(state, 0), "done");
 });
 
