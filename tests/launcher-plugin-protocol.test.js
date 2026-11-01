@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "readMessage", "readItems", "enterOf", "plainScore", "crashes"]);
+const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "readMessage", "readItems", "enterOf", "plainScore", "crashes", "plainRows", "spanOf", "kept", "updated"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 const JIRA = {
@@ -47,7 +47,8 @@ test.describe("plugin manifest", () => {
         assert.match(P.readManifest("{", "/p/jira").error, /not JSON/);
         assert.match(manifest({ id: "other" }).error, /folder's name/);
         assert.match(manifest({}, "/p/Jira").error, /folder's name/);
-        assert.match(manifest({ api: 2 }).error, /api 2/);
+        assert.match(manifest({ api: 3 }).error, /api 3, the shell speaks 1 and 2/);
+        assert.strictEqual(manifest({ api: 2 }).plugin.api, 2);
         assert.match(manifest({ exec: "./jira-plugin" }).error, /exec/);
         assert.match(manifest({ prefix: [], global: undefined }).error, /prefix, global/);
         assert.match(manifest({ preferences: [{ key: "a b", type: "text" }] }).error, /preference/);
@@ -59,7 +60,7 @@ test.describe("plugin manifest", () => {
         assert.deepStrictEqual(P.environment(plugin, { site: "acme.atlassian.net" }, { token: "s3cret" }), {
             BANDITSHELL_PLUGIN_ID: "jira",
             BANDITSHELL_PLUGIN_DIR: "/p/jira",
-            BANDITSHELL_API: "1",
+            BANDITSHELL_API: "2",
             BANDITSHELL_PREF_SITE: "acme.atlassian.net",
             BANDITSHELL_PREF_TOKEN: "s3cret",
             BANDITSHELL_PREF_MINE: "1"
@@ -183,6 +184,39 @@ test.describe("plugin answers", () => {
         assert.ok(P.plainScore(byTitle, "zebra", place) <= 0);
     });
 
+    test.it("reads tall rows, pictures, tags, props and previews, and keeps QML inside the plugin's folder", () => {
+        const [card, drawn, outside] = P.readItems([
+            { id: "a", title: "A", height: 9, image: "art/a.png", tags: ["new", 3, ""], text: "Two lines", preview: "Some text", props: { n: 1 } },
+            { id: "b", title: "B", qml: "./rows/Row.qml", preview: { qml: "Preview.qml" } },
+            { id: "c", title: "C", qml: "../elsewhere/Row.qml", preview: { qml: "/tmp/Row.qml" }, image: "javascript:x", props: [1] }
+        ], "/p/jira");
+        assert.deepStrictEqual([card.height, card.image, card.tags, card.preview, card.props], [6, "file:///p/jira/art/a.png", ["new", "3"], { text: "Some text" }, { n: 1 }]);
+        assert.deepStrictEqual([drawn.qml, drawn.preview, drawn.height], ["/p/jira/rows/Row.qml", { qml: "/p/jira/Preview.qml" }, 1]);
+        assert.deepStrictEqual([outside.qml, outside.preview, outside.image, outside.props, outside.notes.length], ["", null, "", {}, 2]);
+        assert.deepStrictEqual([P.spanOf(card, true), P.spanOf(card, false)], [6, 3]);
+    });
+
+    test.it("leads plain searches with plugin rows unless told to mix them in or keep them last", () => {
+        const items = P.readItems([{ id: "a", title: "Notes app" }, { id: "b", title: "Weather", answer: true }, { id: "c", title: "Zebra" }]);
+        const place = (label, typed) => Ranking.place(label, typed);
+        const scores = rank => Object.fromEntries(P.plainRows(items, "notes", rank, place).map(m => [m.item.id, m.score]));
+        assert.deepStrictEqual(scores("first"), { a: 13, b: 14 });
+        assert.deepStrictEqual(scores("mixed"), { a: 3.5, b: 4.5 });
+        assert.deepStrictEqual(scores("last"), { a: -1, b: 0 });
+        assert.deepStrictEqual(scores("nonsense"), scores("first"));
+    });
+
+    test.it("keeps the last rows on screen until the next answer, and updates one row in place", () => {
+        const items = P.readItems([{ id: "a", title: "A" }, { id: "b", title: "B" }]);
+        assert.strictEqual(P.kept({ items, prefixed: true }, { prefixed: true }), items);
+        assert.deepStrictEqual(P.kept({ items, prefixed: true, late: true }, { prefixed: true }), []);
+        assert.deepStrictEqual(P.kept({ items, prefixed: false }, { prefixed: true }), []);
+        const update = P.readMessage('{"type":"update","item":{"id":"b","title":"B done"}}');
+        assert.deepStrictEqual(P.updated(items, update.item).map(i => i.title), ["A", "B done"]);
+        assert.strictEqual(P.updated(items, P.readItems([{ id: "z", title: "Z" }])[0]), null);
+        assert.match(P.readMessage('{"type":"update","item":{"title":"no id"}}').error, /update/);
+    });
+
     test.it("waits longer after each crash and switches off after three in a minute", () => {
         assert.deepStrictEqual(P.crashes([], 100000), { recent: [], off: false, delay: 0 });
         assert.deepStrictEqual(P.crashes([1000, 50000], 100000), { recent: [50000], off: false, delay: 1000 });
@@ -191,11 +225,11 @@ test.describe("plugin answers", () => {
     });
 });
 
-function talk(folder, lines) {
+function talk(folder, lines, env = {}) {
     const { plugin, error } = P.readManifest(fs.readFileSync(path.join(folder, "plugin.json"), "utf8"), folder);
     assert.ok(plugin, error);
     return new Promise((resolve, reject) => {
-        const child = spawn(plugin.exec[0], plugin.exec.slice(1), { cwd: folder, env: Object.assign({ PATH: process.env.PATH }, P.environment(plugin, {}, {})) });
+        const child = spawn(plugin.exec[0], plugin.exec.slice(1), { cwd: folder, env: Object.assign({ PATH: process.env.PATH }, env, P.environment(plugin, {}, {})) });
         const answers = [];
         let buffer = "";
         const timer = setTimeout(() => {
@@ -206,7 +240,7 @@ function talk(folder, lines) {
             buffer += chunk;
             let at;
             while ((at = buffer.indexOf("\n")) >= 0) {
-                answers.push(P.readMessage(buffer.slice(0, at)));
+                answers.push(P.readMessage(buffer.slice(0, at), folder));
                 buffer = buffer.slice(at + 1);
             }
             if (answers.length >= lines.length) {
@@ -246,4 +280,14 @@ test("the Python example opens a detail, a list and a form page, and answers the
     assert.deepStrictEqual(answers.map(a => a.type === "view" ? a.view.kind : a.error || a.do), ["detail", "list", "form", "copy"]);
     assert.deepStrictEqual(answers[1].view.items.map(i => i.title), ["a", "d", "a"]);
     assert.strictEqual(answers[3].text, "HELLO, ADA!");
+});
+
+test("the streaks example draws its rows in QML and updates a row in place when it is ticked off", async () => {
+    const folder = path.join(ROOT, "docs/plugins/examples/streaks");
+    const state = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "streaks-"));
+    const { answers } = await talk(folder, [P.queryLine(1, "", true), P.activateLine(1, "read", "toggle")], { XDG_STATE_HOME: state });
+    fs.rmSync(state, { recursive: true, force: true });
+    const [results, update] = answers;
+    assert.deepStrictEqual(results.items.map(i => [i.id, i.height, path.basename(i.qml), i.preview && path.basename(i.preview.qml)]), [["today", 2, "", null], ["read", 1, "StreakRow.qml", "StreakPreview.qml"], ["stretch", 1, "StreakRow.qml", "StreakPreview.qml"], ["drink-water", 1, "StreakRow.qml", "StreakPreview.qml"]]);
+    assert.deepStrictEqual([update.type, update.item.id, update.item.props.done, update.item.props.streak], ["update", "read", true, 1]);
 });

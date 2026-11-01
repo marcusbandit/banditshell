@@ -1177,7 +1177,7 @@ LauncherConcept {
                     GlideList {
                         id: list
 
-                        readonly property real needed: Math.max(root.rowPitch, root.results.reduce((sum, r) => sum + (r.header ? root.headerPitch : root.rowPitch), 0))
+                        readonly property real needed: Math.max(root.rowPitch, root.results.reduce((sum, r) => sum + (r.header ? root.headerPitch : root.rowPitch * (r.span ?? 1)), 0))
 
                         y: (quickLaunch.full + Appearance.padding.large) * gridIn.value
                         width: parent.width
@@ -1212,7 +1212,7 @@ LauncherConcept {
                             required property int index
 
                             width: list.width
-                            height: line.modelData.header ? root.headerPitch : root.rowPitch
+                            height: line.modelData.header ? root.headerPitch : root.rowPitch * (line.modelData.span ?? 1)
 
                             StyledText {
                                 visible: !!line.modelData.header
@@ -1249,12 +1249,12 @@ LauncherConcept {
                                 labelSize: Appearance.font.size.normal
                                 inlineDetail: true
 
-                                iconSource: line.modelData.iconSource ?? ""
-                                glyph: line.modelData.glyph ?? ""
-                                icon: line.modelData.icon ?? "apps"
+                                iconSource: line.carded ? "" : line.modelData.iconSource ?? ""
+                                glyph: line.carded ? "" : line.modelData.glyph ?? ""
+                                icon: line.carded ? "" : line.modelData.icon ?? "apps"
                                 mark: line.modelData.swatch ? swatch : null
-                                label: row.hovered && line.modelData.revealLabel ? line.modelData.revealLabel : line.modelData.label ?? ""
-                                detail: line.modelData.detail ?? ""
+                                label: line.carded ? "" : row.hovered && line.modelData.revealLabel ? line.modelData.revealLabel : line.modelData.label ?? ""
+                                detail: line.carded ? "" : line.modelData.detail ?? ""
                                 detailShared: root.detailStarts[line.index] ?? 0
                                 columns: line.modelData.columns ?? []
                                 trailingRoom: line.modelData.columns ? root.switchWidth + Appearance.padding.normal * 2 : 0
@@ -1270,11 +1270,13 @@ LauncherConcept {
                                 }
 
                                 Row {
+                                    id: trail
+
                                     spacing: Appearance.padding.small
                                     rightPadding: line.modelData.toggle !== undefined ? Appearance.padding.normal : 0
 
                                     Repeater {
-                                        model: line.modelData.armed ? [] : [line.modelData.alias, Chords.chordText(line.modelData.hotkey ?? "")].filter(Boolean)
+                                        model: line.modelData.armed ? [] : (line.modelData.tags ?? []).concat([line.modelData.alias, Chords.chordText(line.modelData.hotkey ?? "")]).filter(Boolean)
 
                                         delegate: Item {
                                             id: tag
@@ -1377,6 +1379,33 @@ LauncherConcept {
                                 }
                             }
 
+                            readonly property bool carded: !line.modelData.header && !!line.modelData.card
+
+                            Loader {
+                                id: card
+
+                                anchors.fill: row
+                                anchors.leftMargin: Appearance.padding.normal
+                                anchors.rightMargin: Appearance.padding.normal + (trail.width > 0 ? trail.width + Appearance.padding.normal : 0)
+                                active: line.carded
+                                opacity: row.opacity
+                                sourceComponent: line.modelData.card ?? null
+                            }
+
+                            Binding {
+                                target: card.item
+                                property: "row"
+                                value: line.modelData
+                                when: card.item !== null
+                            }
+
+                            Binding {
+                                target: card.item
+                                property: "selected"
+                                value: row.selected
+                                when: card.item !== null
+                            }
+
                             Component {
                                 id: swatch
 
@@ -1419,7 +1448,7 @@ LauncherConcept {
                             Component.onCompleted: line.showButtons()
 
                             readonly property var buttons: {
-                                if (!line.opened)
+                                if (!line.opened || line.carded && !line.modelData.armed)
                                     return [];
                                 if (line.modelData.armed)
                                     return search.confirmActions(line.modelData);

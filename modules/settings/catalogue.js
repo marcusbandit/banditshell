@@ -521,6 +521,8 @@ const PAGES_SOURCE = {
                 { n: [], icon: "movie", label: "Recordings folder", k: "systemRecordingFolder", kind: "text", mono: true, cfg: "launcher.systemControls.recordingFolder", placeholder: "~/Videos/Recordings", dis: s => !s.v("systemRecording"), kw: "recordings folder videos save location" }
             ] },
             { t: "Plugins", rows: [
+                { n: [], icon: "low_priority", label: "Plugin results", k: "pluginRank", kind: "seg", o: [["first", "first"], ["mixed", "mixed"], ["last", "last"]], cfg: "launcher.plugins.rank", kw: "plugin results order rank first top priority above apps",
+                    why: "First puts every matching plugin row above apps, commands and settings. Mixed ranks them by how well they match, ahead of built-in rows that match as well. Last keeps them below the launcher's own rows." },
                 { n: [], kind: "w", w: "plugins", kw: "launcher plugins extensions add ons tools results programs" }
             ] },
             { t: "Aliases and hotkeys", rows: [
