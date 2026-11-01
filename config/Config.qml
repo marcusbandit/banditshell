@@ -628,6 +628,22 @@ Singleton {
                 minutes: 30
             },
 
+            widgets: {
+
+                enabled: true,
+
+                side: "right",
+
+                shown: "always",
+
+                clock: true,
+                calendar: true,
+                media: true,
+                weather: true,
+                system: true,
+                timers: true
+            },
+
             packages: {
 
                 interval: 360,

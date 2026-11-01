@@ -9,15 +9,15 @@ import "catalogue.js" as Catalogue
 Singleton {
     id: root
 
-    property string current: "connections"
+    property string current: "home"
 
+    readonly property bool home: root.current === "home"
     readonly property bool hub: !!Catalogue.CAT_BY_ID[root.current]
     readonly property var page: root.hub ? null : Catalogue.PAGE_BY_ID[root.current] ?? null
-    readonly property var cat: root.hub ? Catalogue.CAT_BY_ID[root.current] : Catalogue.CAT_BY_ID[root.page?.cat ?? "connections"]
-    readonly property string title: root.hub ? root.cat.name : Catalogue.nameOf(root.page, SettingsState)
+    readonly property var cat: root.hub ? Catalogue.CAT_BY_ID[root.current] : root.home ? null : Catalogue.CAT_BY_ID[root.page?.cat ?? "connections"]
+    readonly property string title: root.home ? "Home" : root.hub ? root.cat.name : Catalogue.nameOf(root.page, SettingsState)
     readonly property var hoveredGroup: !root.hub && root.hovered?.page === root.current && root.hovered?.group?.preview ? root.hovered.group : null
     readonly property string preview: root.hub ? root.cat.preview : root.hoveredGroup?.preview ?? root.page?.preview ?? ""
-    readonly property string paneTitle: root.hoveredGroup ? String(Catalogue.val(root.hoveredGroup.t, SettingsState) ?? root.title) : root.title
 
     property var hovered: null
     property string lifted: ""
@@ -27,11 +27,8 @@ Singleton {
         root.replays++
     property var pin: null
 
-    property bool paneOut: false
-
     property bool compact: false
     property bool tiny: false
-    property bool spread: false
     property bool fold: false
     property real foldHeight: 360
 
@@ -60,14 +57,12 @@ Singleton {
         Relaunch.keep("settingsView", {
             rows: Object.keys(root.openRows),
             pin: root.pin,
-            paneOut: root.paneOut,
             scroll: root.scroll
         });
     }
 
     onOpenRowsChanged: root.remember()
     onPinChanged: root.remember()
-    onPaneOutChanged: root.remember()
     onScrollChanged: root.remember()
 
     function takeReveal(): void {
@@ -97,19 +92,17 @@ Singleton {
         root.openRows = rows;
         if (Settings.open) {
             root.pin = was.pin ?? null;
-            root.paneOut = !!was.paneOut;
             root.scroll = was.scroll ?? 0;
             root.resumeScroll = root.scroll;
         }
     }
 
     function go(id: string): void {
-        const target = Catalogue.CAT_BY_ID[id] || Catalogue.PAGE_BY_ID[id] ? id : "connections";
+        const target = id === "home" || Catalogue.CAT_BY_ID[id] || Catalogue.PAGE_BY_ID[id] ? id : "home";
         const span = Settings.open && root.current !== target ? Trace.begin(`settings page ${target}`, "", 150, 1500) : null;
         root.current = target;
         root.hovered = null;
         root.pin = null;
-        root.paneOut = false;
         root.turn++;
         Settings.page = root.current;
         Trace.step("switched", span);
@@ -167,7 +160,6 @@ Singleton {
             id,
             title: title ?? ""
         };
-        root.paneOut = true;
     }
 
     function pinTitle(p: var): string {

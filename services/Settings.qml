@@ -8,7 +8,7 @@ Singleton {
 
     property bool open: false
     property string screenName: ""
-    property string page: "connections"
+    property string page: "home"
     property string reveal: ""
 
     function show(screen: string, which: string): void {

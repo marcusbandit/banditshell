@@ -68,6 +68,11 @@ there. Nothing is served before I ask for it.
 This is the opposite of caelestia's always-present bar. The whole thesis: **information
 appears in response to intent, not preemptively.**
 
+**AMENDED 2026-11-01: widgets on the desktop.** The owner asked for on-screen widgets after
+seeing them on two other desktops. They live on the desktop layer, under every window, so a
+workspace with windows on it still shows nothing; only the bare desktop carries the time, the
+month and the rest. Settings can turn the column off, or keep it to an empty desktop only.
+
 The thin border caelestia always draws around the screen: I'm not a fan. I keep an
 **invisible interaction region** (a hit-target ring / edge zones) for summoning things, but
 it is **never drawn**. The border exists as a mechanism; it must not exist as decoration.
@@ -1605,11 +1610,14 @@ banditshell/
 │   │                            finished picture raises `Screenshots.captured`;
 │   │                            `picker taken <path>` does the same for
 │   │                            `screenshot full`, which never reaches the shell
-│   ├── settings/                the settings panel: a blob that melts out of the
-│   │   │                        sidebar's edge like the menus do, ported from the
-│   │   │                        settings-demo mockup. Rail, content and pane side
-│   │   │                        by side; the pane slides over the content when
-│   │   │                        narrow and the rail goes to icons when tiny. It
+│   ├── settings/                the settings panel: a blob of the chassis's own
+│   │   │                        material floating free in the middle of the
+│   │   │                        screen, apart from the sidebar (2026-11-01, laid
+│   │   │                        out after a reference the owner liked). It grows
+│   │   │                        out of its own centre, moves by its top strip and
+│   │   │                        remembers where it was left; a double click there
+│   │   │                        brings it back to the middle. Rail and page side
+│   │   │                        by side, the rail going to icons when tiny. It
 │   │   │                        has no catcher: the desktop stays usable, the X
 │   │   │                        or the corner closes it, and it steps aside while
 │   │   │                        another panel or a menu is up on its screen
@@ -1633,28 +1641,41 @@ banditshell/
 │   │   │                        the pinned detail, search, the toast
 │   │   ├── SettingsActions.qml  what the buttons do
 │   │   ├── SettingsKeys.qml     shell binds and Files keys as rows, and rebinding
-│   │   ├── SettingsPanel.qml    the blob, its reveal, the layout modes; the body
-│   │   │                        unloads once closed so nothing scans behind it.
-│   │   │                        On Screens it widens for the canvas, or, with no
-│   │   │                        room, grows tall and folds the canvas into the page
+│   │   ├── SettingsPanel.qml    the blob, its reveal, the drag, the layout modes;
+│   │   │                        the body unloads once closed so nothing scans
+│   │   │                        behind it. On Screens it grows tall and folds the
+│   │   │                        canvas into the page
+│   │   ├── floating.js          where the floating panel sits: the middle of the
+│   │   │                        room plus the spot it was dragged to, held inside
 │   │   ├── ScreenCanvas.qml     the screens to drag: guides, nudges, the ghost of
 │   │   │                        where a screen is now, Reset and Apply
-│   │   ├── SettingsRail.qml     search, categories unrolling their pages, the plate
-│   │   ├── SettingsContent.qml  head, hub or sections of rows
-│   │   ├── SettingsPane.qml     preview stage, what the hovered row does, or a pin
+│   │   ├── SettingsRail.qml     the profile card, search, Home, categories
+│   │   │                        unrolling their pages, the plate with its bar
+│   │   ├── SettingsContent.qml  head, the page's preview across the top, then the
+│   │   │                        hub or sections of rows
+│   │   ├── SettingsHome.qml     the landing page: greeting, chips, a hint, tiles
+│   │   ├── SettingsPane.qml     a pin, sliding in over the page
 │   │   ├── SettingsEntry.qml    a row driven by a catalogue row; SettingsRowFrame
-│   │   │                        is the row itself, wrapping its control when tight
+│   │   │                        is the row itself, a card with what the setting
+│   │   │                        does under its name, wrapping its control when
+│   │   │                        tight
 │   │   ├── widgets/             rows that need more than one control
-│   │   ├── pins/                details that take over the pane: network, scan,
+│   │   ├── pins/                details that slide over the page: network, scan,
 │   │   │                        device, key (with a recorder)
 │   │   ├── SidebarReplica.qml   the sidebar drawn for the pane at its natural
 │   │   │                        height, wearing the sidebar settings (planned ones
 │   │   │                        included); a tap names the setting it shows
-│   │   └── scenes/              the preview in the pane, one per page. Each loop is
+│   │   └── scenes/              the preview across the top of a page. Each loop is
 │   │                            one clock over keyframes copied from the mockup's
 │   │                            CSS (keyframes.js). It plays twice, then rests on
 │   │                            its still frame until a row or the scene itself is
 │   │                            pointed at (owner's call, 2026-10-28)
+│   ├── desktop/                 widgets on the desktop layer, under the windows: a
+│   │   │                        large clock, the month, now playing, the weather,
+│   │   │                        system load and timers, one column per screen that
+│   │   │                        wraps into a second when it runs out of height.
+│   │   │                        Plain cards, not blobs; they read the services
+│   │   │                        that already exist and sample only while seen
 │   ├── notifications/           discrete cards; none of it is part of the blob
 │   │   │                        field, and the history is not here: it is a
 │   │   │                        launcher mode (NotificationSource)

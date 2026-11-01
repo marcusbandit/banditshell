@@ -54,6 +54,7 @@
     "packages": [
       "core",
       "compositor",
+      "desktop",
       "tour"
     ],
     "optional": []

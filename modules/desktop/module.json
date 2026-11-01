@@ -1,0 +1,21 @@
+{
+  "name": "desktop",
+  "summary": "widgets on the desktop, under the windows",
+  "layer": 3,
+  "owns": {
+    "qml": ["modules/desktop"],
+    "tests": ["tests/desktop-load.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "clock", "media", "wallpaper"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["widgets"],
+    "reads": []
+  }
+}

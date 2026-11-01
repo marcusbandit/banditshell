@@ -12,6 +12,9 @@ Item {
     property string detail: ""
     property color detailColour: Appearance.colour.textFaint
     property int detailLines: 1
+    property string note: ""
+    property int noteLines: 4
+    property bool card: false
     property string pending: ""
     property bool selected: false
     property bool off: false
@@ -33,8 +36,8 @@ Item {
 
     readonly property real gapX: Appearance.padding.normal
     readonly property real gapY: Appearance.padding.small
-    readonly property real padX: Appearance.padding.normal
-    readonly property real padY: Appearance.padding.small
+    readonly property real padX: root.card ? Appearance.padding.card : Appearance.padding.normal
+    readonly property real padY: root.card ? Appearance.padding.normal : Appearance.padding.small
 
     readonly property real leadWidth: leadSlot.visible ? leadSlot.width + root.gapX : 0
     readonly property real inner: root.width - root.padX * 2
@@ -62,6 +65,13 @@ Item {
 
         font: detailText.font
         text: root.trailWidth > 0 ? root.detail : ""
+    }
+
+    SquircleRect {
+        anchors.fill: parent
+        visible: root.card
+        radius: Appearance.rounding.normal
+        color: Appearance.colour.fill
     }
 
     SquircleRect {
@@ -174,7 +184,7 @@ Item {
             text: root.label
             elide: Text.ElideRight
             wrapMode: root.wrapped ? Text.Wrap : Text.NoWrap
-            color: root.notice ? Appearance.colour.accent : root.hot || root.selected ? Appearance.colour.text : Appearance.colour.textDim
+            color: root.notice ? Appearance.colour.accent : root.card || root.hot || root.selected ? Appearance.colour.text : Appearance.colour.textDim
             visible: root.label !== ""
         }
 
@@ -188,6 +198,19 @@ Item {
             maximumLineCount: root.detailLines
             color: root.notice ? Appearance.colour.textDim : root.detailColour
             visible: root.detail !== ""
+        }
+
+        StyledText {
+            id: noteText
+
+            width: parent.width
+            topPadding: detailText.visible ? 2 : 0
+            text: root.note
+            elide: Text.ElideRight
+            wrapMode: Text.Wrap
+            maximumLineCount: root.noteLines
+            color: Appearance.colour.textFaint
+            visible: root.note !== ""
         }
 
         Row {

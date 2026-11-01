@@ -17,12 +17,14 @@ Singleton {
 
     readonly property var uiDefaults: ({
             wallTarget: "everywhere",
-            railFolded: false
+            railFolded: false,
+            spot: null
         })
 
     readonly property var filesZoomRange: [FilesZoom.SMALLEST, FilesZoom.LARGEST]
 
     readonly property bool railFolded: root.ui.railFolded ?? root.uiDefaults.railFolded
+    readonly property var spot: root.ui.spot ?? root.uiDefaults.spot
 
     property var planned: ({})
     property var ui: ({})
@@ -163,6 +165,15 @@ Singleton {
             sbStyle: "sidebar.style",
             sbGlance: "sidebar.glance",
             sbBright: "sidebar.status.brightness",
+            widgetsOn: "widgets.enabled",
+            widgetsSide: "widgets.side",
+            widgetsShown: "widgets.shown",
+            widgetClock: "widgets.clock",
+            widgetCalendar: "widgets.calendar",
+            widgetMedia: "widgets.media",
+            widgetWeather: "widgets.weather",
+            widgetSystem: "widgets.system",
+            widgetTimers: "widgets.timers",
             wsStyle: "sidebar.workspaces.style",
             iconMode: "sidebar.workspaces.iconMode",
             persistent: "sidebar.workspaces.persistent",
@@ -1326,6 +1337,7 @@ Singleton {
     readonly property int appsPlaying: Audio.playing.length
 
     readonly property string wallName: Wallpaper.name || "nothing"
+    readonly property string wallFace: Wallpaper.faceOf(Wallpaper.currentOn(Settings.screenName))
 
     property var fonts: [Config.values.font.family]
     property var monoFonts: [Config.values.files.terminal.font]
@@ -2004,6 +2016,7 @@ Singleton {
     }
 
     readonly property string version: Update.version || Device.version || "dev"
+    readonly property string os: Device.os || "Linux"
 
     readonly property string followedBranch: Update.branch
 
@@ -2063,6 +2076,17 @@ Singleton {
         onExited: code => root.completionsInstalled = code < 2
     }
 
+    property string face: ""
+
+    Process {
+        id: faceProbe
+
+        command: ["sh", "-c", "for f in \"$HOME/.face\" \"$HOME/.face.icon\" \"/var/lib/AccountsService/icons/$USER\"; do [ -r \"$f\" ] && { printf %s \"$f\"; exit 0; }; done"]
+        stdout: StdioCollector {
+            onStreamFinished: root.face = text.trim()
+        }
+    }
+
     Process {
         id: fontProbe
 
@@ -2097,6 +2121,7 @@ Singleton {
             return;
         root.woken = true;
         fontProbe.running = true;
+        faceProbe.running = true;
         root.probeCompletions();
         root.probeHypr();
     }
@@ -2132,6 +2157,16 @@ Singleton {
     function save(): void {
         if (root.loaded)
             saver.restart();
+    }
+
+    function place(spot: var): void {
+        root.ui = Object.assign({}, root.ui, {
+            spot: spot ? {
+                x: Math.round(spot.x),
+                y: Math.round(spot.y)
+            } : null
+        });
+        root.save();
     }
 
     function foldRail(folded: bool): void {

@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.services
 import qs.modules
+import qs.modules.desktop
 import qs.modules.files
 import qs.modules.island
 import qs.modules.lock
@@ -68,6 +69,11 @@ ShellRoot {
                 screen: scope.modelData
             }
 
+            DesktopWidgets {
+                screen: scope.modelData
+                reserve: frames.reserve
+            }
+
             ShellWindow {
                 id: shellWindow
 
@@ -80,6 +86,8 @@ ShellRoot {
             }
 
             FrameExclusions {
+                id: frames
+
                 screen: scope.modelData
             }
 

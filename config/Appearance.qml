@@ -246,6 +246,7 @@ Singleton {
             readonly property int normal: Math.round(root.tier(root.fontBase, root.config.font.scale, 1))
             readonly property int large: Math.round(root.tier(root.fontBase, root.config.font.scale, 2))
             readonly property int display: Math.round(large * 1.5)
+            readonly property int hero: Math.round(large * 5)
         }
 
         readonly property real leading: 4 / 3

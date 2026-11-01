@@ -203,7 +203,7 @@ package_names() {
 
 bake() {
     printf 'values\ttheme\t%s\n' "$(sed -n 's/^\s*readonly property Theme \([A-Za-z0-9_]*\):.*/\1/p' "$REPO/config/Themes.qml" | paste -sd' ' -)"
-    printf 'values\tpage\t%s\n' "$(sed -n -e 's/^    { id: "\([a-z]*\)", name: "[^"]*", icon: "[^"]*",\( preview: "[^"]*",\)\{0,1\}$/\1/p' -e 's/^        id: "\([a-z]*\)", name: .*/\1/p' "$REPO/modules/settings/catalogue.js" | paste -sd' ' -)"
+    printf 'values\tpage\thome %s\n' "$(sed -n -e 's/^    { id: "\([a-z]*\)", name: "[^"]*", icon: "[^"]*",\( preview: "[^"]*",\)\{0,1\}$/\1/p' -e 's/^        id: "\([a-z]*\)", name: .*/\1/p' "$REPO/modules/settings/catalogue.js" | paste -sd' ' -)"
     printf 'values\tlayer\t%s\n' "$(sed -n 's/^ \{12\}\([a-zA-Z]*\): \[$/\1/p' "$REPO/modules/keyboard/Layouts.qml" | paste -sd' ' -)"
     printf 'values\tpackage\t%s\n' "$(package_names | sort | paste -sd' ' -)"
     printf 'values\trule\t%s\n' "$(sed -n 's/^    { id: "\(L[0-9]*\)".*/\1/p' "$REPO/scripts/lint-rules.js" | paste -sd' ' -)"

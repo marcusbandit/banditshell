@@ -15,7 +15,7 @@ Scope {
     }
 
     function unknownSetting(page: string): string {
-        return page && !SettingsCatalogue.resolve(page) ? `no such page: ${page} (have: ${SettingsCatalogue.CATS.map(c => c.id).concat(SettingsCatalogue.PAGES.map(p => p.id)).join(", ")}, or any setting's key)` : "";
+        return page && !SettingsCatalogue.resolve(page) ? `no such page: ${page} (have: home, ${SettingsCatalogue.CATS.map(c => c.id).concat(SettingsCatalogue.PAGES.map(p => p.id)).join(", ")}, or any setting's key)` : "";
     }
 
     IpcHandler {
