@@ -9,6 +9,8 @@ import "countdown.js" as Countdown
 WidgetCard {
     id: root
 
+    property bool running: true
+
     readonly property var live: Clock.timers.filter(t => !t.finished)
 
 
@@ -16,7 +18,7 @@ WidgetCard {
         id: tick
 
         precision: WallClock.Seconds
-        enabled: root.visible && root.live.some(t => !t.paused)
+        enabled: root.running && root.visible && root.live.some(t => !t.paused)
     }
 
     Repeater {

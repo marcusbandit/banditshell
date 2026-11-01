@@ -6,6 +6,7 @@ Flow {
     id: root
 
     property bool running: true
+    property bool seen: true
     property bool fromRight: false
     property real room: 0
     property color clockInk: Appearance.colour.text
@@ -41,7 +42,7 @@ Flow {
     MediaWidget {
         width: root.cardWidth
         visible: root.cfg.media && Media.hasTrack
-        running: root.running
+        running: root.seen
     }
 
     WeatherWidget {
@@ -52,11 +53,12 @@ Flow {
     SystemWidget {
         width: root.cardWidth
         visible: root.cfg.system
-        running: root.running && root.cfg.system
+        running: root.seen && root.cfg.system
     }
 
     TimersWidget {
         width: root.cardWidth
         visible: root.cfg.timers
+        running: root.seen
     }
 }

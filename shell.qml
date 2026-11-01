@@ -71,6 +71,7 @@ ShellRoot {
 
             DesktopWidgets {
                 screen: scope.modelData
+                reserve: frames.reserve
             }
 
             ShellWindow {
@@ -85,6 +86,8 @@ ShellRoot {
             }
 
             FrameExclusions {
+                id: frames
+
                 screen: scope.modelData
             }
 

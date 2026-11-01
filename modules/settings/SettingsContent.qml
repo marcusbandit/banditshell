@@ -45,10 +45,31 @@ Item {
     readonly property real fade: SettingsView.reduceMotion ? 1 : 1 - arrive.value
     readonly property real slide: SettingsView.reduceMotion ? 0 : arrive.value * 8
 
+    function tone(c: color, t: string): string {
+        return `<font color="${c}">${String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</font>`;
+    }
+
+    function defaultText(r: var): string {
+        if (!r?.k || !r.cfg)
+            return "";
+        const d = SettingsState.defaultOf(r.k);
+        if (d === undefined)
+            return "";
+        if (r.kind === "toggle")
+            return d ? "on" : "off";
+        if (r.o) {
+            const hit = Catalogue.options(r, root.s).find(o => Catalogue.same(o[0], d));
+            if (hit)
+                return String(hit[1]);
+        }
+        return Catalogue.format(r, d, root.s);
+    }
+
     Flickable {
         id: view
 
-        anchors.fill: parent
+        width: parent.width
+        height: parent.height - status.height
         contentHeight: body.implicitHeight + Appearance.padding.large
         clip: true
         boundsBehavior: Flickable.StopAtBounds
@@ -171,7 +192,7 @@ Item {
 
                 visible: root.sceneName !== ""
                 width: parent.width
-                height: stage.visible ? Math.min(320, Math.max(200, stage.wanted)) + Appearance.padding.card : 0
+                height: stage.visible ? Math.max(200, stage.wanted) + Appearance.padding.card : 0
                 opacity: root.fade
                 transform: Translate {
                     y: root.slide
@@ -357,6 +378,37 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    StyledText {
+        id: status
+
+        readonly property var r: SettingsView.hovered && SettingsView.hovered.page === SettingsView.current ? SettingsView.hovered : null
+        readonly property var w: SettingsState.wrote
+        readonly property string fallback: root.defaultText(status.r)
+
+        x: Appearance.padding.small
+        y: parent.height - height
+        width: parent.width - Appearance.padding.small * 2
+        height: Appearance.font.line.small + Appearance.padding.small
+        verticalAlignment: Text.AlignBottom
+        textFormat: Text.StyledText
+        elide: Text.ElideRight
+        color: Appearance.colour.textFaint
+        text: {
+            const r = status.r;
+            const w = status.w;
+            if (!r)
+                return w ? `last wrote ${root.tone(Appearance.colour.accent, `${w.key} = ${w.value}`)}` : "";
+            const parts = [];
+            if (r.cfg)
+                parts.push(`config ${root.tone(Appearance.colour.textDim, r.cfg)}`);
+            if (status.fallback)
+                parts.push(`default ${root.tone(Appearance.colour.textDim, status.fallback)}`);
+            if (w && r.cfg === w.key)
+                parts.push(`wrote ${root.tone(Appearance.colour.accent, `${w.key} = ${w.value}`)}`);
+            return parts.join("&nbsp;&nbsp;&nbsp;");
         }
     }
 

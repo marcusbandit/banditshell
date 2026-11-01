@@ -11,6 +11,7 @@ WidgetCard {
 
     property bool running: true
     property var lastTimes: null
+    property double lastAt: 0
     property real cpu: 0
     property var memory: ({
             share: 0,
@@ -23,10 +24,8 @@ WidgetCard {
         meminfo.reload();
     }
 
-    onRunningChanged: if (root.running) {
-        root.lastTimes = null;
-        root.sample();
-    }
+    onRunningChanged: if (root.running)
+        root.lastTimes = null
 
     Timer {
         interval: 2000
@@ -42,10 +41,14 @@ WidgetCard {
         path: "/proc/stat"
         printErrors: false
         onLoaded: {
+            const at = Date.now();
+            if (root.lastTimes && at - root.lastAt < 1000)
+                return;
             const now = Load.cpuTimes(text());
             if (root.lastTimes && now)
                 root.cpu = Load.cpuShare(root.lastTimes, now);
             root.lastTimes = now;
+            root.lastAt = at;
         }
     }
 

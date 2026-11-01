@@ -1397,14 +1397,6 @@ function pagesCovered(page) {
     return { settings: nums.size };
 }
 
-function rowCount(cat) {
-    let n = 0;
-    for (const p of cat.pages)
-        for (const g of p.groups)
-            n += g.notice ? 0 : g.rows.length;
-    return n;
-}
-
 function step(row, v, delta, state) {
     const s = row.step === undefined ? 1 : row.step;
     return Math.min(val(row.max, state), Math.max(val(row.min, state), +(v + s * delta).toFixed(4)));

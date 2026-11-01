@@ -13,7 +13,7 @@ WidgetCard {
     property int shownYear: clock.date.getFullYear()
     property int shownMonth: clock.date.getMonth()
     readonly property int todayKey: Month.keyOf(clock.date)
-    readonly property real cell: Math.floor(root.width - root.pad * 2) / 7
+    readonly property real cell: Math.floor((root.width - root.pad * 2) / 7)
 
     function page(by: int): void {
         const to = Month.shifted(root.shownYear, root.shownMonth, by);

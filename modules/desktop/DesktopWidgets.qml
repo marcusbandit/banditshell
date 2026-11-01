@@ -16,10 +16,13 @@ PanelWindow {
     readonly property bool live: win.showing || shown.value > 0.002
 
     readonly property real margin: Math.max(Compositor.gapsOut, Appearance.padding.large)
-    readonly property real reserveLeft: Appearance.bare ? 0 : Appearance.sizes.border + Appearance.sizes.sidebarReserve
-    readonly property real reserveRight: Appearance.bare ? 0 : Appearance.sizes.border
-    readonly property real reserveTop: Appearance.bare ? 0 : Appearance.sizes.border
-    readonly property real originX: column.fromRight ? (win.screen?.width ?? 0) - win.reserveRight - win.width : win.reserveLeft
+    property var reserve: ({
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0
+        })
+    readonly property real originX: column.fromRight ? (win.screen?.width ?? 0) - win.reserve.right - win.width : win.reserve.left
 
     anchors {
         top: true
@@ -56,7 +59,7 @@ PanelWindow {
 
         source: Wallpaper.enabled ? Wallpaper.faceOf(Wallpaper.shownOn(win.output)) : ""
         screen: Qt.size(win.screen?.width ?? 0, win.screen?.height ?? 0)
-        region: Qt.rect(win.originX + column.x + column.clockRect.x, win.reserveTop + column.y + column.clockRect.y, column.clockRect.width, column.clockRect.height)
+        region: Qt.rect(win.originX + column.x + column.clockRect.x, win.reserve.top + column.y + column.clockRect.y, column.clockRect.width, column.clockRect.height)
     }
 
     WidgetColumn {
@@ -68,6 +71,7 @@ PanelWindow {
         fromRight: win.cfg.side === "right"
         opacity: shown.value
         running: win.live
+        seen: win.live && win.bare
         clockInk: backdrop.lightInk ? Appearance.colour.paper : Appearance.colour.ink
         clockBacked: backdrop.busy
     }

@@ -68,7 +68,7 @@ test("a countdown rounds up to the next whole second", () => {
     assert.strictEqual(Countdown.text(-5), "0:00");
 });
 
-const Backdrop = lib("modules/desktop/backdrop.js", ["cover", "luminance", "contrast", "judge"]);
+const Backdrop = lib("modules/desktop/backdrop.js", ["placement", "shrunk", "luminance", "contrast", "judge"]);
 
 function patch(pixels) {
     return pixels.flatMap(([r, g, b]) => [r, g, b, 255]);
@@ -77,12 +77,16 @@ function patch(pixels) {
 const WHITE_INK = Backdrop.luminance(240, 240, 240);
 const BLACK_INK = Backdrop.luminance(20, 20, 20);
 
-test("the clock's spot is found in a picture cropped to fill the screen", () => {
-    const wide = Backdrop.cover(1000, 1000, 2000, 1000, { x: 0, y: 0, width: 200, height: 100 });
-    assert.deepStrictEqual(wide, { x: 0, y: 250, width: 100, height: 50 });
-    const tall = Backdrop.cover(2000, 500, 1000, 1000, { x: 500, y: 0, width: 100, height: 100 });
-    assert.deepStrictEqual(tall, { x: 1000, y: 0, width: 50, height: 50 });
-    assert.strictEqual(Backdrop.cover(0, 0, 100, 100, { x: 0, y: 0, width: 1, height: 1 }), null);
+test("a picture is placed the way the wallpaper crops it to fill the screen", () => {
+    assert.deepStrictEqual(Backdrop.placement(1, 320, 90), { x: 0, y: -115, width: 320, height: 320 });
+    assert.deepStrictEqual(Backdrop.placement(16, 320, 90), { x: -560, y: 0, width: 1440, height: 90 });
+    assert.strictEqual(Backdrop.placement(0, 320, 90), null);
+});
+
+test("the clock's spot shrinks with the canvas and stays inside it", () => {
+    assert.deepStrictEqual(Backdrop.shrunk({ x: 3600, y: 24, width: 468, height: 400 }, 320 / 5120, 320, 90), { x: 225, y: 1, width: 30, height: 25 });
+    assert.deepStrictEqual(Backdrop.shrunk({ x: 5000, y: 1300, width: 468, height: 400 }, 320 / 5120, 320, 90), { x: 312, y: 81, width: 8, height: 9 });
+    assert.strictEqual(Backdrop.shrunk({ x: 6000, y: 0, width: 10, height: 10 }, 320 / 5120, 320, 90), null);
 });
 
 test("dark pictures get light figures and bright ones dark figures", () => {

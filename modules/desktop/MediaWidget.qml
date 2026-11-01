@@ -12,7 +12,7 @@ WidgetCard {
     property real progress: 0
 
     function measure(): void {
-        root.progress = Media.length > 0 ? Math.max(0, Math.min(1, Media.now() / Media.length)) : 0;
+        root.progress = Media.progressNow();
     }
 
     title: Media.playing ? "Now playing" : "Paused"

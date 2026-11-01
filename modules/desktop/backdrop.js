@@ -3,16 +3,20 @@
 const ENOUGH = 3;
 const BUSY = 0.12;
 
-function cover(imageW, imageH, screenW, screenH, rect) {
-    if (imageW <= 0 || imageH <= 0 || screenW <= 0 || screenH <= 0)
+function placement(aspect, width, height) {
+    if (!(aspect > 0) || width <= 0 || height <= 0)
         return null;
-    const scale = Math.max(screenW / imageW, screenH / imageH);
-    const offsetX = (imageW * scale - screenW) / 2;
-    const offsetY = (imageH * scale - screenH) / 2;
-    const x = Math.max(0, (rect.x + offsetX) / scale);
-    const y = Math.max(0, (rect.y + offsetY) / scale);
-    const w = Math.min(imageW - x, rect.width / scale);
-    const h = Math.min(imageH - y, rect.height / scale);
+    const wide = aspect > width / height;
+    const w = wide ? height * aspect : width;
+    const h = wide ? height : width / aspect;
+    return { x: (width - w) / 2, y: (height - h) / 2, width: w, height: h };
+}
+
+function shrunk(rect, factor, width, height) {
+    const x = Math.max(0, Math.floor(rect.x * factor));
+    const y = Math.max(0, Math.floor(rect.y * factor));
+    const w = Math.min(width - x, Math.ceil(rect.width * factor));
+    const h = Math.min(height - y, Math.ceil(rect.height * factor));
     return w > 0 && h > 0 ? { x, y, width: w, height: h } : null;
 }
 

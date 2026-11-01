@@ -12,20 +12,26 @@ Item {
     property bool lightInk: true
     property bool busy: false
 
+    readonly property string url: root.source ? (root.source.startsWith("/") ? `file://${root.source}` : root.source) : ""
+    readonly property real factor: root.screen.width > 0 ? 320 / root.screen.width : 0
     readonly property real inkOnDark: Look.luminance(Appearance.colour.paper.r * 255, Appearance.colour.paper.g * 255, Appearance.colour.paper.b * 255)
     readonly property real inkOnLight: Look.luminance(Appearance.colour.ink.r * 255, Appearance.colour.ink.g * 255, Appearance.colour.ink.b * 255)
 
     function measure(): void {
-        if (!root.source) {
+        if (!root.url) {
             root.lightInk = true;
             root.busy = false;
             return;
         }
-        if (picture.status === Image.Ready)
+        if (shape.status !== Image.Ready)
+            return;
+        if (probe.isImageLoaded(root.url))
             probe.requestPaint();
+        else
+            probe.loadImage(root.url);
     }
 
-    onSourceChanged: settle.restart()
+    onUrlChanged: settle.restart()
     onScreenChanged: settle.restart()
     onRegionChanged: settle.restart()
     onInkOnDarkChanged: settle.restart()
@@ -39,34 +45,42 @@ Item {
     }
 
     Image {
-        id: picture
+        id: shape
 
-        source: root.source ? (root.source.startsWith("/") ? `file://${root.source}` : root.source) : ""
-        sourceSize.width: 256
+        source: root.url
+        sourceSize.width: 64
         asynchronous: true
         cache: false
         visible: false
 
-        onStatusChanged: if (picture.status === Image.Ready)
+        onStatusChanged: if (shape.status === Image.Ready)
             settle.restart()
     }
 
     Canvas {
         id: probe
 
-        width: 24
-        height: 24
+        width: Math.max(1, Math.round(root.screen.width * root.factor))
+        height: Math.max(1, Math.round(root.screen.height * root.factor))
         visible: false
         renderTarget: Canvas.Image
 
+        onImageLoaded: probe.requestPaint()
+
         onPaint: {
-            const spot = Look.cover(picture.implicitWidth, picture.implicitHeight, root.screen.width, root.screen.height, root.region);
-            if (!spot)
+            const url = root.url;
+            if (!url || !probe.isImageLoaded(url))
                 return;
+            const fill = Look.placement(shape.implicitHeight > 0 ? shape.implicitWidth / shape.implicitHeight : 0, probe.width, probe.height);
+            const spot = Look.shrunk(root.region, root.factor, probe.width, probe.height);
             const ctx = probe.getContext("2d");
             ctx.clearRect(0, 0, probe.width, probe.height);
-            ctx.drawImage(picture, spot.x, spot.y, spot.width, spot.height, 0, 0, probe.width, probe.height);
-            const seen = Look.judge(ctx.getImageData(0, 0, probe.width, probe.height).data, root.inkOnDark, root.inkOnLight);
+            if (fill)
+                ctx.drawImage(url, fill.x, fill.y, fill.width, fill.height);
+            probe.unloadImage(url);
+            if (!fill || !spot)
+                return;
+            const seen = Look.judge(ctx.getImageData(spot.x, spot.y, spot.width, spot.height).data, root.inkOnDark, root.inkOnLight);
             root.lightInk = seen.light;
             root.busy = seen.busy;
         }

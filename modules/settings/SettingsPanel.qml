@@ -89,7 +89,6 @@ FocusScope {
     function claim(): void {
         SettingsView.compact = root.compact;
         SettingsView.tiny = root.tiny;
-        SettingsView.spread = false;
         SettingsView.fold = root.fold;
         SettingsView.foldHeight = root.foldHeight;
     }
