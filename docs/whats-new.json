@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-11-01",
+      "date": "2026-11-01",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Desktop widgets show the time, month, music, weather, load and timers"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Settings floats in the middle of the screen; drag its top to move it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Settings opens on Home and explains each setting under its name"
+        }
+      ]
+    },
+    {
       "id": "2026-10-31",
       "date": "2026-10-31",
       "changes": [
