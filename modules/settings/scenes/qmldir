@@ -33,3 +33,4 @@ TerminalScene 1.0 TerminalScene.qml
 UsageScene 1.0 UsageScene.qml
 WallpaperScene 1.0 WallpaperScene.qml
 WeatherScene 1.0 WeatherScene.qml
+WidgetsScene 1.0 WidgetsScene.qml

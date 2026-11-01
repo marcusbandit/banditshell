@@ -82,7 +82,7 @@ const EXPECTED = [
     ["sound", ["output", "mic", "mixer", "notifications", "alerts"]],
     ["display", ["screens", "light"]],
     ["look", ["colour", "wallpaper", "type", "shape"]],
-    ["desktop", ["sidebar", "windows", "launcher", "clipboard"]],
+    ["desktop", ["sidebar", "widgets", "windows", "launcher", "clipboard"]],
     ["focus", ["modes", "clock", "screentime"]],
     ["input", ["keyboard", "shortcuts", "pointer", "tablet", "pen"]],
     ["power", ["battery", "powermode", "lock"]],
@@ -761,4 +761,16 @@ test("idle rows another daemon times show its value, or say they cannot, and tak
     const reading = Object.assign({}, unread, { idleRead: false });
     assert.deepStrictEqual([row("idleLock").held(reading), row("idleLock").group.rows[0].text(reading)], ["", "hypridle sets these times."]);
     assert.strictEqual(row("idleLock").group.rows[0].text({ idleHandled: false }), "");
+});
+
+test("home is a page of its own that the IPC and the search can reach", () => {
+    assert.deepStrictEqual(Catalogue.resolve("home"), { cat: "", page: "home", row: null });
+});
+
+test("every desktop widget has a switch that greys out with the column", () => {
+    const rows = Catalogue.PAGE_BY_ID.widgets.groups.flatMap(g => g.rows);
+    const cards = rows.filter(r => r.cfg.startsWith("widgets.") && r.kind === "toggle" && r.k !== "widgetsOn");
+    assert.deepStrictEqual(cards.map(r => r.cfg.split(".")[1]).sort(), Object.keys(lookup(DEFAULTS, "widgets")).filter(k => typeof lookup(DEFAULTS, `widgets.${k}`) === "boolean" && k !== "enabled").sort());
+    for (const r of cards)
+        assert.ok(r.dis({ v: k => k === "widgetsOn" ? false : true }), r.k);
 });

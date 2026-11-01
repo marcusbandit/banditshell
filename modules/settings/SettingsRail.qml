@@ -5,6 +5,7 @@ import qs.config
 import qs.components
 import qs.services
 import "catalogue.js" as Catalogue
+import "profile.js" as Profile
 
 Item {
     id: root
@@ -57,8 +58,65 @@ Item {
     }
 
     Item {
+        id: profile
+
+        width: root.width
+        height: root.tiny ? 40 : 56
+
+        SquircleRect {
+            anchors.fill: parent
+            visible: !root.tiny
+            radius: Appearance.rounding.normal
+            color: Appearance.colour.fill
+        }
+
+        SettingsAvatar {
+            id: face
+
+            x: root.tiny ? (parent.width - width) / 2 : Appearance.padding.small + 2
+            anchors.verticalCenter: parent.verticalCenter
+            width: root.tiny ? 36 : 40
+            height: width
+        }
+
+        Column {
+            x: face.x + face.width + Appearance.padding.normal
+            width: parent.width - x - Appearance.padding.normal
+            anchors.verticalCenter: parent.verticalCenter
+            visible: !root.tiny
+            spacing: 2
+
+            StyledText {
+                width: parent.width
+                text: face.login
+                font.pixelSize: Appearance.font.size.normal
+                font.weight: Font.DemiBold
+                elide: Text.ElideRight
+            }
+
+            Row {
+                spacing: Appearance.padding.small
+
+                StyledText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Profile.distroGlyph(SettingsState.os)
+                    font.family: Appearance.font.brand
+                    color: Appearance.colour.textDim
+                }
+
+                StyledText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: SettingsState.os
+                    color: Appearance.colour.textFaint
+                }
+            }
+        }
+    }
+
+    Item {
         id: field
 
+        y: profile.height + Appearance.padding.normal
         width: root.tiny && !query.activeFocus ? 40 : root.width
         height: 40
         z: 5
@@ -175,7 +233,7 @@ Item {
         id: list
 
         x: -Appearance.padding.small
-        y: field.height + Appearance.padding.normal
+        y: field.y + field.height + Appearance.padding.normal
         width: root.width + Appearance.padding.small * 2
         height: root.height - y - (fold.visible ? fold.height + Appearance.padding.small : 0)
         contentHeight: SettingsView.searching ? found.implicitHeight : tree.implicitHeight
@@ -211,6 +269,16 @@ Item {
                 radius: Appearance.rounding.normal
                 color: Appearance.colour.accentFill
             }
+
+            SquircleRect {
+                x: 0
+                y: (parent.height - height) / 2
+                width: 3
+                height: Math.round(parent.height * 0.5)
+                pill: "place"
+                color: Appearance.colour.accent
+                visible: !root.tiny
+            }
         }
 
         Follow {
@@ -234,6 +302,16 @@ Item {
             visible: !SettingsView.searching
 
             property real markY: 0
+
+            RailRow {
+                id: homeRow
+
+                width: parent.width
+                icon: "home"
+                label: "Home"
+                on: SettingsView.home
+                onClicked: SettingsView.go("home")
+            }
 
             Repeater {
                 model: Catalogue.CATS
@@ -325,7 +403,19 @@ Item {
             }
 
             function locate(): void {
+                tree.place();
+                if (!glide.ready && SettingsView.home) {
+                    glide.snap();
+                    glide.ready = true;
+                }
+            }
+
+            function place(): void {
                 const target = SettingsView.current;
+                if (target === "home") {
+                    tree.markY = homeRow.y;
+                    return;
+                }
                 const home = Catalogue.PAGE_BY_ID[target]?.cat ?? "";
                 let fallback = -1;
                 for (let i = 0; i < children.length; i++) {

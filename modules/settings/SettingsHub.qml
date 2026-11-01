@@ -13,7 +13,7 @@ Column {
     readonly property var note: root.cat ? root.cat.suggest(root.s) : null
     readonly property var notice: root.cat?.notice ? root.cat.notice(root.s) : null
     readonly property var tiles: (root.cat?.tiles ?? []).filter(t => Catalogue.present(t, SettingsState))
-    readonly property int columns: SettingsView.compact && !SettingsView.tiny && root.tiles.length === 4 ? 4 : 2
+    readonly property int columns: SettingsView.tiny ? 2 : Math.max(2, Math.min(root.tiles.length, Math.floor(root.width / 180)))
 
     function tileOn(k: string): bool {
         return !!root.s.v(k);
@@ -193,28 +193,34 @@ Column {
         height: Appearance.padding.large
     }
 
-    Repeater {
-        model: (root.cat?.pages ?? []).filter(p => Catalogue.present(p, SettingsState))
+    Column {
+        width: root.width
+        spacing: Appearance.padding.small
 
-        delegate: SettingsRowFrame {
-            id: page
+        Repeater {
+            model: (root.cat?.pages ?? []).filter(p => Catalogue.present(p, SettingsState))
 
-            required property var modelData
-            readonly property bool closed: !!page.modelData.closed && page.modelData.closed(root.s)
+            delegate: SettingsRowFrame {
+                id: page
 
-            width: root.width
-            icon: page.modelData.icon
-            label: Catalogue.nameOf(page.modelData, SettingsState)
-            detail: String(page.modelData.status(root.s) ?? "")
-            off: false
-            interactive: !page.closed
-            onActivated: SettingsView.go(page.modelData.id)
+                required property var modelData
+                readonly property bool closed: !!page.modelData.closed && page.modelData.closed(root.s)
 
-            Icon {
-                anchors.verticalCenter: parent.verticalCenter
-                visible: !page.closed
-                name: "chevron_right"
-                color: Appearance.colour.textFaint
+                width: root.width
+                card: true
+                icon: page.modelData.icon
+                label: Catalogue.nameOf(page.modelData, SettingsState)
+                detail: String(page.modelData.status(root.s) ?? "")
+                off: false
+                interactive: !page.closed
+                onActivated: SettingsView.go(page.modelData.id)
+
+                Icon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: !page.closed
+                    name: "chevron_right"
+                    color: Appearance.colour.textFaint
+                }
             }
         }
     }

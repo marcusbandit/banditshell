@@ -83,6 +83,7 @@ launcher's groups in the config.
 | wallpaper | 2 | Wallpaper, modules/wallpaper (with WallpaperWindow) | core, compositor | wallpaper, wallpapers | wallpaper |
 | bar | 3 | modules/sidebar, modules/menu, Tray, SidebarState | core, compositor, apps, audio, network, display | menu, sidebar | sidebar, calendar |
 | calculator | 3 | Calculator, Currency, modules/calculator | core, compositor, network | calculator | none |
+| desktop | 3 | modules/desktop, the widgets on the desktop layer under the windows | core, compositor, clock, media, wallpaper | none | widgets |
 | keyboard | 3 | modules/keyboard, Keystrokes | core, compositor, display | keyboard | tablet.autoKeyboard, tablet.height, tablet.seam, tablet.repeat, tablet.repeatDelay, tablet.repeatInterval |
 | launcher | 3 | the launcher itself, LauncherHotkeys, search.js | core, compositor, apps | launcher | launcher |
 | notifications | 3 | Notifications, AppNotifications, AlertSounds, modules/notifications | core, compositor, apps | notifications, quiet | notifications, sound |

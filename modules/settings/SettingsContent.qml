@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Effects
 import qs.config
 import qs.components
 import "catalogue.js" as Catalogue
@@ -8,9 +9,34 @@ import "catalogue.js" as Catalogue
 Item {
     id: root
 
-    property bool compact: false
+    property real trailRoom: 0
+    property bool covered: false
+    property bool showing: true
+    property bool lingering: false
 
-    signal detailsWanted
+    onShowingChanged: {
+        if (root.showing)
+            root.lingering = true;
+        else
+            linger.restart();
+    }
+
+    Timer {
+        id: linger
+
+        interval: 900
+        onTriggered: root.lingering = root.showing
+    }
+
+    Binding {
+        target: SettingsView
+        property: "sceneSeen"
+        when: root.showing
+        value: !root.covered && stage.visible && stage.y + stage.height > view.contentY && stage.y < view.contentY + view.height
+        restoreMode: Binding.RestoreNone
+    }
+
+    readonly property string sceneName: SettingsView.home || SettingsView.fold && SettingsView.preview === "arrange" ? "" : SettingsView.preview
 
     readonly property var s: SettingsState
     property string pendingReveal: ""
@@ -94,7 +120,8 @@ Item {
                 id: head
 
                 width: parent.width
-                height: Math.max(back.visible ? back.height + 4 : 0, words.implicitHeight) + 2 + Appearance.padding.card
+                height: SettingsView.home ? 0 : Math.max(back.visible ? back.height + 4 : 0, words.implicitHeight) + 2 + Appearance.padding.large
+                visible: !SettingsView.home
                 opacity: root.fade
                 transform: Translate {
                     y: root.slide
@@ -103,9 +130,9 @@ Item {
                 SettingsTool {
                     id: back
 
-                    x: Appearance.padding.normal - Appearance.padding.small
-                    y: 2 + 4
-                    visible: !SettingsView.hub
+                    x: 0
+                    y: 2
+                    visible: !SettingsView.hub && !SettingsView.home
                     icon: "arrow_back"
                     tip: SettingsView.cat?.name.toLowerCase() ?? ""
                     onClicked: SettingsView.go(SettingsView.cat.id)
@@ -114,34 +141,92 @@ Item {
                 Column {
                     id: words
 
-                    x: back.visible ? back.x + back.width + Appearance.padding.normal : Appearance.padding.normal
-                    y: 2
-                    width: parent.width - x - Appearance.padding.normal - (details.visible ? details.width + Appearance.padding.normal : 0)
+                    x: back.visible ? back.x + back.width + Appearance.padding.normal : Appearance.padding.small
+                    y: 0
+                    width: parent.width - x - root.trailRoom
 
                     StyledText {
                         width: parent.width
                         text: SettingsView.title
-                        font.pixelSize: Appearance.font.size.normal
+                        font.pixelSize: Appearance.font.size.large
+                        font.weight: Font.DemiBold
                         elide: Text.ElideRight
                     }
 
                     StyledText {
                         width: parent.width
-                        text: SettingsView.hub ? String(SettingsView.cat.blurb(root.s) ?? "") : String(SettingsView.page?.status(root.s) ?? "")
+                        visible: text !== ""
+                        text: SettingsView.home ? "" : SettingsView.hub ? String(SettingsView.cat.blurb(root.s) ?? "") : String(SettingsView.page?.status(root.s) ?? "")
                         color: Appearance.colour.textFaint
                         elide: Text.ElideRight
                     }
                 }
+            }
 
-                SettingsTool {
-                    id: details
+            Item {
+                id: stage
 
-                    x: parent.width - width - Appearance.padding.normal
-                    y: 2
-                    visible: root.compact
-                    icon: "info"
-                    tip: "details"
-                    onClicked: root.detailsWanted()
+                readonly property real wanted: scene.item?.stageHeight ?? 220
+                readonly property bool rounded: GraphicsInfo.api !== GraphicsInfo.Software && !!scene.item
+
+                visible: root.sceneName !== ""
+                width: parent.width
+                height: stage.visible ? Math.min(320, Math.max(200, stage.wanted)) + Appearance.padding.card : 0
+                opacity: root.fade
+                transform: Translate {
+                    y: root.slide
+                }
+
+                HoverHandler {
+                    onHoveredChanged: if (hovered)
+                        SettingsView.replays++
+                }
+
+                Item {
+                    id: plate
+
+                    width: parent.width
+                    height: parent.height - Appearance.padding.card
+
+                    SquircleRect {
+                        anchors.fill: parent
+                        radius: Appearance.rounding.large
+                        color: Appearance.colour.fill
+                    }
+
+                    Item {
+                        id: stageMask
+
+                        anchors.fill: parent
+                        visible: false
+                        layer.enabled: stage.rounded
+
+                        SquircleRect {
+                            anchors.fill: parent
+                            radius: Appearance.rounding.large
+                            color: "black"
+                        }
+                    }
+
+                    Item {
+                        anchors.fill: parent
+                        clip: true
+                        layer.enabled: stage.rounded
+                        layer.effect: MultiEffect {
+                            maskEnabled: true
+                            maskSource: stageMask
+                            maskThresholdMin: 0.5
+                            maskSpreadAtMin: 1
+                        }
+
+                        Loader {
+                            id: scene
+
+                            anchors.fill: parent
+                            active: root.lingering && root.sceneName !== ""
+                            source: root.sceneName ? Qt.resolvedUrl(`scenes/${root.sceneName.charAt(0).toUpperCase()}${root.sceneName.slice(1)}Scene.qml`) : ""
+                        }
+                    }
                 }
             }
 
@@ -216,6 +301,13 @@ Item {
 
                     Loader {
                         width: parent.width
+                        active: shelf.pageId === "home"
+                        visible: active
+                        sourceComponent: SettingsHome {}
+                    }
+
+                    Loader {
+                        width: parent.width
                         active: !!shelf.cat
                         visible: active
                         sourceComponent: SettingsHub {
@@ -237,26 +329,16 @@ Item {
 
                             width: shelf.width
                             z: SettingsView.lifted !== "" && group.modelData.rows.some(r => r.uid === SettingsView.lifted) ? 1 : 0
-                            topPadding: Appearance.padding.card
+                            topPadding: group.index > 0 || group.heading !== "" ? Appearance.padding.large : 0
+                            spacing: Appearance.padding.small
 
                             StyledText {
-                                x: Appearance.padding.normal
+                                x: Appearance.padding.small
                                 visible: group.heading !== ""
-                                text: group.heading.toUpperCase()
-                                color: Appearance.colour.textDim
-                            }
-
-                            Item {
-                                width: parent.width
-                                height: Appearance.padding.normal + 1 + Appearance.padding.small
-                                visible: group.heading !== ""
-
-                                Rectangle {
-                                    y: Appearance.padding.normal
-                                    width: parent.width
-                                    height: 1
-                                    color: Appearance.colour.separator
-                                }
+                                bottomPadding: Appearance.padding.small
+                                text: group.heading
+                                font.pixelSize: Appearance.font.size.normal
+                                font.weight: Font.DemiBold
                             }
 
                             Repeater {
@@ -311,6 +393,7 @@ Item {
     }
 
     Component.onCompleted: {
+        root.lingering = root.showing;
         root.keep(SettingsView.current);
         Qt.callLater(root.resume);
         if (SettingsView.flash && Date.now() - SettingsView.flash.at < 1500)

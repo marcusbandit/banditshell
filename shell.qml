@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.services
 import qs.modules
+import qs.modules.desktop
 import qs.modules.files
 import qs.modules.island
 import qs.modules.lock
@@ -65,6 +66,10 @@ ShellRoot {
             required property ShellScreen modelData
 
             WallpaperWindow {
+                screen: scope.modelData
+            }
+
+            DesktopWidgets {
                 screen: scope.modelData
             }
 

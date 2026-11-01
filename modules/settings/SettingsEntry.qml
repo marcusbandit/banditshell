@@ -93,6 +93,8 @@ Column {
         detail: root.stateText
         detailColour: root.bad ? Appearance.colour.alarm : Appearance.colour.textFaint
         detailLines: root.row.lines ?? 3
+        note: Catalogue.whyOf(root.row, SettingsState)
+        card: true
         pending: root.pendingText
         off: root.off
         flashStamp: root.flashing ? SettingsView.flash.at : 0

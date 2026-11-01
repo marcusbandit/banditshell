@@ -44,6 +44,8 @@ const LAYOUTS = [
     { id: "custom", name: "add custom", detail: "your own · drawn in the layout workshop" }
 ];
 
+const WIDGET_CARDS = ["widgetClock", "widgetCalendar", "widgetMedia", "widgetWeather", "widgetSystem", "widgetTimers"];
+
 const WIDGET_TITLES = {
     winLayouts: "Layout", via: "VIA layout", modes: "Modes", usage: "Today", recent: "Recent changes", nets: "Networks",
     devices: "Devices", volume: "Volume", apps: "Volume by app", walls: "Wallpapers", themes: "Theme", wsStyles: "Workspace style",
@@ -559,6 +561,33 @@ const PAGES_SOURCE = {
             ] }
         ]
     },
+    widgets: {
+        id: "widgets", name: "Widgets", icon: "widgets", preview: "widgets",
+        status: s => s.v("widgetsOn") ? `${WIDGET_CARDS.filter(k => s.v(k)).length} cards · ${s.v("widgetsSide")}` : "off",
+        groups: [
+            { rows: [
+                { n: [], icon: "widgets", label: "Desktop widgets", k: "widgetsOn", kind: "toggle", cfg: "widgets.enabled", kw: "desktop widgets on screen wallpaper column cards clock calendar",
+                    why: "A column of cards on the desktop, under your windows: the time, the month, what is playing, the weather, how busy the computer is and your timers." },
+                { n: [], icon: "align_horizontal_left", label: "Side", k: "widgetsSide", kind: "seg", o: ["left", "right"], cfg: "widgets.side", dis: s => !s.v("widgetsOn"), kw: "desktop widgets side left right position" },
+                { n: [], icon: "visibility", label: "Show them", k: "widgetsShown", kind: "seg", o: [["always", "always"], ["empty", "empty desktop"]], cfg: "widgets.shown", dis: s => !s.v("widgetsOn"), kw: "desktop widgets hide windows empty workspace",
+                    why: "Always keeps them on the desktop, under your windows. Empty desktop fades them out as soon as a window opens on that screen." }
+            ] },
+            { t: "Cards", rows: [
+                { n: [], icon: "schedule", label: "Clock", k: "widgetClock", kind: "toggle", cfg: "widgets.clock", dis: s => !s.v("widgetsOn"), kw: "desktop widget clock time big",
+                    why: "The time in large figures, hours over minutes, with the date under it." },
+                { n: [], icon: "calendar_month", label: "Calendar", k: "widgetCalendar", kind: "toggle", cfg: "widgets.calendar", dis: s => !s.v("widgetsOn"), kw: "desktop widget calendar month",
+                    why: "This month, with today marked. Scroll it or use the arrows to see other months." },
+                { n: [], icon: "music_note", label: "Now playing", k: "widgetMedia", kind: "toggle", cfg: "widgets.media", dis: s => !s.v("widgetsOn"), kw: "desktop widget media music player",
+                    why: "Shows only while something is playing or was just playing, with buttons to pause and skip." },
+                { n: [], icon: "partly_cloudy_day", label: "Weather", k: "widgetWeather", kind: "toggle", cfg: "widgets.weather", dis: s => !s.v("widgetsOn"), kw: "desktop widget weather temperature",
+                    why: "The temperature and the sky where you are. It follows the Weather setting under Clock." },
+                { n: [], icon: "memory", label: "System", k: "widgetSystem", kind: "toggle", cfg: "widgets.system", dis: s => !s.v("widgetsOn"), kw: "desktop widget cpu memory ram load",
+                    why: "How busy the processor is and how much memory is in use, read every two seconds while you can see it." },
+                { n: [], icon: "timer", label: "Timers", k: "widgetTimers", kind: "toggle", cfg: "widgets.timers", dis: s => !s.v("widgetsOn"), kw: "desktop widget timer countdown",
+                    why: "Running timers, and buttons that start a 5, 10 or 25 minute one." }
+            ] }
+        ]
+    },
     modes: {
         id: "modes", name: "Modes", icon: "tune", preview: "modes",
         status: s => s.v("mode") !== "none" ? s.v("mode") : "none",
@@ -956,7 +985,7 @@ const CATS = [
             { k: "edgeLift", icon: "vertical_align_top", label: "Edge lift" }
         ],
         suggest: () => null,
-        subs: ["sidebar", "windows", "launcher", "clipboard"] },
+        subs: ["sidebar", "widgets", "windows", "launcher", "clipboard"] },
     { id: "focus", name: "Focus", icon: "self_improvement",
         blurb: s => s.v("mode") !== "none" ? `${s.v("mode")} mode · cap ${s.v("capHours")} h` : s.v("dnd") ? "do not disturb" : `no mode · cap ${s.v("capHours")} h`,
         tiles: [
@@ -1334,6 +1363,8 @@ function hitFor(pageId, key) {
 
 function resolve(name) {
     const key = String(name || "");
+    if (key === "home")
+        return { cat: "", page: "home", row: null };
     if (CAT_BY_ID[key])
         return { cat: key, page: "", row: null };
     if (PAGE_BY_ID[key])

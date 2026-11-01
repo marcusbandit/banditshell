@@ -1,0 +1,11 @@
+module qs.modules.desktop
+Backdrop 1.0 Backdrop.qml
+CalendarWidget 1.0 CalendarWidget.qml
+ClockWidget 1.0 ClockWidget.qml
+DesktopWidgets 1.0 DesktopWidgets.qml
+MediaWidget 1.0 MediaWidget.qml
+SystemWidget 1.0 SystemWidget.qml
+TimersWidget 1.0 TimersWidget.qml
+WeatherWidget 1.0 WeatherWidget.qml
+WidgetCard 1.0 WidgetCard.qml
+WidgetColumn 1.0 WidgetColumn.qml
