@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.modules.controls
@@ -30,10 +31,11 @@ Item {
     property var values: ({})
     property var missing: []
     property string shownId: ""
+    property var made: ({})
 
     readonly property var shown: root.kind === "list" ? Protocol.listed(root.view, root.filter, (label, typed) => Ranking.place(label, typed)) : []
     readonly property var rows: root.source ? root.shown.map(item => root.pageRow(item)) : []
-    readonly property var peekRow: root.rows[root.selected]?.item.preview ? root.rows[root.selected] : null
+    readonly property var peekRow: root.actionAt < 0 && root.rows[root.selected]?.item.preview ? root.rows[root.selected] : null
     readonly property var actions: root.view?.actions ?? []
     readonly property real rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
 
@@ -49,6 +51,7 @@ Item {
             return;
         }
         root.shownId = root.viewId;
+        root.made = {};
         root.filter = "";
         root.selected = 0;
         root.field = 0;
@@ -61,12 +64,23 @@ Item {
     Component.onCompleted: root.viewChanged()
 
     function pageRow(item: var): var {
+        const known = root.made[item.id];
+        if (known?.item === item)
+            return known.row;
         const row = root.source.rowOf(item, 1);
         row.view = root.viewId;
         if (row.entry)
             row.entry.view = root.viewId;
         if (!item.icon.name && !item.icon.glyph && !item.icon.file)
-            row.icon = "chevron_right";
+            Object.assign(row, {
+                icon: "chevron_right",
+                glyph: "",
+                iconSource: row.iconSource === item.image ? row.iconSource : ""
+            });
+        root.made[item.id] = {
+            item: item,
+            row: row
+        };
         return row;
     }
 
@@ -332,7 +346,9 @@ Item {
             Repeater {
                 id: listRepeater
 
-                model: root.kind === "list" ? root.rows : []
+                model: ScriptModel {
+                    values: root.kind === "list" ? root.rows : []
+                }
 
                 delegate: Item {
                     id: line

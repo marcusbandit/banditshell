@@ -319,14 +319,12 @@ Singleton {
             root.note(id, `skipped ${message.error}`);
             return;
         }
-        if (message.type === "results" || message.type === "update") {
-            const items = message.type === "results" ? message.items : [message.item];
-            for (const problem of items.reduce((out, item) => out.concat(item.notes), [])) {
-                if (root.noted[`${id}\n${problem}`])
-                    continue;
-                root.noted[`${id}\n${problem}`] = true;
-                root.note(id, problem);
-            }
+        const items = message.type === "results" ? message.items : message.type === "update" ? [message.item] : message.type === "view" ? message.view.items ?? [] : [];
+        for (const problem of items.reduce((out, item) => out.concat(item.notes), [])) {
+            if (root.noted[`${id}\n${problem}`])
+                continue;
+            root.noted[`${id}\n${problem}`] = true;
+            root.note(id, problem);
         }
         if (message.type === "results") {
             const had = root.answers[id];
