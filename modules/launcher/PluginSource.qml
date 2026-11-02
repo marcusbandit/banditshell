@@ -235,7 +235,7 @@ QtObject {
         }
     }
 
-    function act(item: var, action: var): void {
+    function act(item: var, action: var, view: string): void {
         const id = typeof action === "string" ? action : "";
         const listed = id ? item.actions.find(a => a.id === id) : null;
         const enter = id ? null : Protocol.enterOf(item);
@@ -244,7 +244,7 @@ QtObject {
         else if (enter?.local)
             root.doLocal(enter.local);
         else
-            PluginHost.activate(root.pluginId, item.id, id || enter.action, root, "");
+            PluginHost.activate(root.pluginId, item.id, id || enter.action, root, view);
     }
 
     function copyOut(text: var): void {

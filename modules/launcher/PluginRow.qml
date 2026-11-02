@@ -20,6 +20,7 @@ Item {
         owner: root.row?.owner ?? null
         item: root.item
         selected: root.selected
+        view: root.row?.view ?? ""
     }
 
     implicitHeight: root.drawn ? own.item.implicitHeight : words.implicitHeight + Appearance.padding.normal * 2

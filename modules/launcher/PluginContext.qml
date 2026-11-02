@@ -5,11 +5,12 @@ QtObject {
     property var item: null
     property bool selected: false
     property bool preview: false
+    property string view: ""
 
     readonly property var props: item?.props ?? ({})
 
     function act(action: var): void {
-        owner?.act(item, action);
+        owner?.act(item, action, view);
     }
 
     function copy(text: var): void {

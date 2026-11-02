@@ -10,7 +10,7 @@ ranking, the actions menu, learned usage, aliases, hotkeys, Tab completion,
 the `?` page and `banditshell panel launcher run <id>` like any built-in row.
 `docs/architecture/launcher-sources.md` describes that contract.
 
-A row can be one line or up to six rows tall, show a preview beside the list,
+A row can be one line or up to twelve rows tall, show a preview beside the list,
 and be drawn by a QML file the plugin ships. See Tall rows, Previews and Rows
 drawn in QML below.
 
@@ -219,8 +219,8 @@ card grows to show all of its `text`.
 A tall row keeps its actions in the actions menu instead of drawing them as
 buttons, so nothing moves under the pointer.
 
-`height`, `image`, `text`, `tags`, `preview` and `qml` shape rows in the
-results. The rows of a list page are drawn one line each.
+`height`, `image`, `text`, `tags`, `preview` and `qml` shape rows the same
+way in the results and on a list page.
 
 ### Previews
 
@@ -247,7 +247,7 @@ the click and the keys, and runs the actions. The file's root item declares
 | `row.props` | The item's `props`. |
 | `row.selected` | True while the row is selected. |
 | `row.preview` | True when the file is drawing the peek card rather than a row. |
-| `row.act(id)` | Runs one of the item's actions, the way the actions menu does. With no id it does what Enter does. An id that is not among `actions` is sent to the plugin as an `activate`, so a button in the QML can ask for anything. |
+| `row.act(id)` | Runs one of the item's actions, the way the actions menu does. With no id it does what Enter does. An id that is not among `actions` is sent to the plugin as an `activate`, so a button in the QML can ask for anything. On a list page the `activate` carries the page's `view` id. |
 | `row.copy(text)`, `row.open(target)` | Copy and close, or open a link or absolute path and close. |
 | `row.fill(text)` | Replace the query. |
 | `row.close()` | Close the launcher. |
@@ -325,8 +325,10 @@ with the page's id when it has none.
 ```
 
 `list` is a nested list with its own filter field. The shell filters it with
-its own matcher, so typing never waits on the plugin. Enter on a row works as
-for results, with the page's id added to the `activate`.
+its own matcher, so typing never waits on the plugin. Its items take every
+field a result does, so they can be tall, carry tags and a preview, and be
+drawn in QML. Enter on a row works as for results, with the page's id added to
+the `activate`.
 
 ```json
 {"kind": "list", "id": "comments", "title": "Comments on PROJ-41", "placeholder": "Filter comments",

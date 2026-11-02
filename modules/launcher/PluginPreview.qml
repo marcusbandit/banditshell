@@ -15,6 +15,7 @@ Item {
         item: root.entry?.item ?? null
         selected: true
         preview: true
+        view: root.entry?.view ?? ""
     }
 
     width: own.item?.implicitWidth > 0 ? Math.max(root.narrowest, Math.min(root.widest, own.item.implicitWidth)) : root.widest
