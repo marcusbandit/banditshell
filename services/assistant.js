@@ -17,6 +17,8 @@ var LIGHT_MODELS = {
     openai: "mini"
 };
 
+var CODEX_TOOLS = ["shell_tool", "unified_exec", "apps", "browser_use", "computer_use", "in_app_browser", "multi_agent", "view_image"];
+
 var CLAUDE_MODELS = [["haiku", "Claude Haiku"], ["sonnet", "Claude Sonnet"], ["opus", "Claude Opus"]];
 
 var AGENTS = {
@@ -33,7 +35,7 @@ var AGENTS = {
         plan: "your ChatGPT plan",
         status: ["codex", "login", "status"],
         signIn: "codex login",
-        install: "npm install -g @openai/codex",
+        install: "npm install -g --prefix ~/.local @openai/codex",
         page: "https://developers.openai.com/codex/cli"
     }
 };
@@ -175,7 +177,8 @@ function backendLabel(backend) {
 function agentCommand(backend, model, system) {
     if (backend === "claude")
         return ["claude", "-p", "--safe-mode", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--no-session-persistence", "--tools", "", "--disable-slash-commands", "--system-prompt", system].concat(model ? ["--model", model] : []);
-    return ["codex", "exec", "--json", "--ephemeral", "--skip-git-repo-check", "--ignore-user-config", "--ignore-rules", "--sandbox", "read-only", "-c", "model_reasoning_effort=\"low\"", "-c", `developer_instructions=${JSON.stringify(system)}`].concat(model ? ["-m", model] : []).concat(["-"]);
+    const toolsOff = CODEX_TOOLS.reduce((out, tool) => out.concat(["-c", `features.${tool}=false`]), ["-c", "web_search=\"disabled\""]);
+    return ["codex", "exec", "--json", "--ephemeral", "--skip-git-repo-check", "--ignore-user-config", "--ignore-rules", "--sandbox", "read-only", "-c", "model_reasoning_effort=\"low\"", "-c", `developer_instructions=${JSON.stringify(system)}`].concat(toolsOff, model ? ["-m", model] : [], ["-"]);
 }
 
 function agentPrompt(messages) {

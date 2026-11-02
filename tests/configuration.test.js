@@ -319,8 +319,9 @@ test.describe("upgrade", () => {
     });
 
     test.it("moves the Anthropic API backend to Claude Code", () => {
-        const old = { launcher: { ai: { backend: "anthropic", model: "x" } } };
-        assert.deepStrictEqual(Configuration.upgrade(old).launcher.ai, { backend: "claude", model: "x" });
+        const old = { launcher: { ai: { backend: "anthropic", model: "claude-sonnet-5-5" } } };
+        assert.deepStrictEqual(Configuration.upgrade(old).launcher.ai, { backend: "claude", model: "sonnet" });
+        assert.strictEqual(Configuration.upgrade({ launcher: { ai: { backend: "anthropic", model: "gpt" } } }).launcher.ai.model, "");
         assert.strictEqual(Configuration.upgradeValue("launcher.ai.backend", "anthropic"), "claude");
         assert.strictEqual(Configuration.upgradeValue("launcher.ai.backend", "openai"), "openai");
     });

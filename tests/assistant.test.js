@@ -311,6 +311,8 @@ test.describe("assistant: Claude Code and Codex sessions", () => {
         assert.ok(command.includes('developer_instructions="say \\"hi\\"\\nthen stop"'));
         assert.strictEqual(command[command.indexOf("-m") + 1], "gpt-a");
         assert.strictEqual(command[command.length - 1], "-");
+        for (const off of ["features.shell_tool=false", "features.unified_exec=false", 'web_search="disabled"'])
+            assert.ok(command.includes(off), off);
         assert.ok(!Assistant.agentCommand("codex", "", "s").includes("-m"));
     });
 

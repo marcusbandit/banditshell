@@ -21,11 +21,15 @@ Singleton {
     readonly property string installer: `${Quickshell.shellDir}/scripts/install-package.sh`
     readonly property string terminal: `${Quickshell.shellDir}/scripts/in-terminal.sh`
     readonly property string sessionDir: `${Config.stateDir}/assistant-session`
+    readonly property string agentPath: `${Quickshell.env("HOME")}/.local/bin:${Quickshell.env("PATH") ?? ""}`
 
     property var tools: ({})
     property bool probed: false
 
     property var signedIn: ({})
+    property real signInCheckedAt: 0
+    property string agentStep: ""
+    property string agentStepFor: ""
     property var codexModels: []
 
     property var keys: ({})
@@ -65,8 +69,8 @@ Singleton {
         if (!root.enabled)
             return "off";
         if (root.agent) {
-            if (root.setup)
-                return root.setup;
+            if (root.agentStep && root.agentStepFor === root.backend)
+                return root.agentStep;
             if (!root.probed)
                 return "unknown";
             if (!root.tools[root.backend])
@@ -143,7 +147,7 @@ Singleton {
             return;
         if (!root.probed && !prober.running)
             prober.running = true;
-        if (root.agent && root.probed && root.signedIn[root.backend] !== true)
+        if (root.agent && root.probed && root.signedIn[root.backend] !== true && Date.now() - root.signInCheckedAt > 3000)
             root.checkSignIn();
         if (root.listedFor !== root.listing || root.local && Date.now() - root.listedAt > 4000)
             root.list();
@@ -170,14 +174,17 @@ Singleton {
     function checkSignIn(): void {
         if (!root.agent || !root.tools[root.backend] || signInChecker.running)
             return;
+        root.signInCheckedAt = Date.now();
         signInChecker.backend = root.backend;
-        signInChecker.command = root.agentInfo.status;
+        signInChecker.command = ["timeout", "10"].concat(root.agentInfo.status);
         signInChecker.running = true;
     }
 
     function signInChecked(backend: string, code: int): void {
         root.setSignedIn(backend, code === 0);
-        if (root.ready)
+        if (backend !== root.backend)
+            Qt.callLater(root.checkSignIn);
+        else if (root.ready)
             root.flush();
     }
 
@@ -194,15 +201,18 @@ Singleton {
     }
 
     function inTerminal(step: string, script: string): void {
-        root.setup = step;
+        root.agentStep = step;
+        root.agentStepFor = root.backend;
         root.trouble = "";
         agentTerminal.command = [root.terminal, `${script} || { echo; printf 'Press Enter to close. '; read _; }`];
         agentTerminal.running = true;
     }
 
     function terminalClosed(): void {
-        root.setup = "";
-        root.forgetSignIn(root.backend);
+        root.forgetSignIn(root.agentStepFor);
+        root.agentStep = "";
+        root.agentStepFor = "";
+        codexCache.reload();
         root.probed = false;
         prober.running = true;
     }
@@ -478,7 +488,8 @@ Singleton {
                 generation: root.generation,
                 body: Logic.agentPrompt(messages),
                 environment: {
-                    ANTHROPIC_API_KEY: null
+                    ANTHROPIC_API_KEY: null,
+                    PATH: root.agentPath
                 },
                 command: ["sh", "-c", "mkdir -p -- \"$1\" && cd -- \"$1\" && shift && exec \"$@\"", "sh", root.sessionDir].concat(Logic.agentCommand(root.backend, root.model, system))
             });
@@ -773,6 +784,9 @@ Singleton {
     Process {
         id: prober
 
+        environment: ({
+                PATH: root.agentPath
+            })
         command: ["sh", "-c", "for tool in ollama claude codex wtype wl-paste curl; do command -v \"$tool\" >/dev/null 2>&1 && echo \"$tool\"; done; [ -e /proc/driver/nvidia/version ] && echo nvidia; true"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -858,6 +872,9 @@ Singleton {
 
         property string backend: ""
 
+        environment: ({
+                PATH: root.agentPath
+            })
         onExited: code => root.signInChecked(signInChecker.backend, code)
     }
 
@@ -917,7 +934,7 @@ Singleton {
     FileView {
         id: codexCache
 
-        path: `${Quickshell.env("CODEX_HOME") || `${Quickshell.env("HOME")}/.codex`}/models_cache.json`
+        path: root.backend === "codex" ? `${Quickshell.env("CODEX_HOME") || `${Quickshell.env("HOME")}/.codex`}/models_cache.json` : ""
         printErrors: false
         onLoaded: {
             root.codexModels = Logic.readCodexModels(codexCache.text());
