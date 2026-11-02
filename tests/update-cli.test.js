@@ -885,6 +885,44 @@ test("a reload that fails but starts clean on a restart keeps the new version", 
     assert.ok(fs.existsSync(backupFile(world, "RELOADFAIL")));
 });
 
+test("a restart whose shell loses its screen surface starts once more and keeps the new version", () => {
+    const world = makeWorld();
+    startShell(world);
+    const target = advance(world, "surface", { EGLONCE: "x\n", "services/qmldir": "module qs.services\n// x\n" });
+    const got = applyTo(world, target);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    assert.match(got.out, /The screen was not ready yet, trying again/);
+    assert.strictEqual(liveHead(world), target);
+    assert.strictEqual(pids(world).length, 1);
+    assert.strictEqual(JSON.parse(readState(world, "result.json")).ok, true);
+    assert.strictEqual(fs.existsSync(stateFile(world, "skip")), false);
+});
+
+test("a shell that dies on a failed EGL swap before it answers starts once more too", () => {
+    const world = makeWorld();
+    startShell(world);
+    const target = advance(world, "swap", { EGLEARLY: "x\n", "services/qmldir": "module qs.services\n// x\n" });
+    const got = applyTo(world, target);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    assert.match(got.out, /The screen was not ready yet, trying again/);
+    assert.strictEqual(liveHead(world), target);
+    assert.strictEqual(pids(world).length, 1);
+});
+
+test("a shell that loses its screen surface twice rolls back once, naming the EGL failure", () => {
+    const world = makeWorld();
+    const before = liveHead(world);
+    startShell(world);
+    const target = advance(world, "surface", { EGLFAIL: "x\n", "services/qmldir": "module qs.services\n// x\n" });
+    const got = applyTo(world, target);
+    assert.strictEqual(got.status, 1, got.err + got.out);
+    assert.strictEqual(liveHead(world), before);
+    assert.match(JSON.parse(readState(world, "result.json")).why, /^the new version did not start: the shell exited: Could not create EGL surface \(EGL error 0x3003\)$/);
+    const starts = fs.readFileSync(path.join(world.fakeqs, "calls"), "utf8").split("\n").filter(call => call.startsWith("-d -p"));
+    assert.strictEqual(starts.length, 4);
+    assert.strictEqual(pids(world).length, 1);
+});
+
 test("a reload that makes the checkout's shell exit restarts it on the new version", () => {
     const world = makeWorld();
     const pid = startShell(world);

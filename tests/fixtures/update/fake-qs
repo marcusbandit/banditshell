@@ -47,6 +47,12 @@ list)
     pid=$!
     disown
     printf '%s\n' "$target" >"$dir/inst/$pid"
+    if [ -e "$target/EGLFAIL" ] || { { [ -e "$target/EGLONCE" ] || [ -e "$target/EGLEARLY" ]; } && [ ! -e "$dir/egl-once" ]; }; then
+        : >"$dir/egl-once"
+        mkdir -p "$dir/lost"
+        : >"$dir/lost/$pid"
+        [ ! -e "$target/EGLEARLY" ] || : >"$dir/lost/$pid.early"
+    fi
     if [ -e "$target/RELOADFAIL" ] || [ -e "$target/RELOADEXIT" ]; then
         mkdir -p "$dir/cold"
         : >"$dir/cold/$pid"
@@ -60,6 +66,14 @@ ipc)
     else
         exit 1
     fi
+    if [ -e "$dir/lost/$2.early" ]; then
+        kill -9 "$2" 2>/dev/null
+        for _ in $(seq 50); do
+            kill -0 "$2" 2>/dev/null || break
+            sleep 0.02
+        done
+        exit 1
+    fi
     if [ -e "$where/CONFIGWRITE" ] && [ ! -e "$dir/wrote/$2" ]; then
         mkdir -p "$dir/wrote"
         : >"$dir/wrote/$2"
@@ -67,10 +81,25 @@ ipc)
     fi
     [ ! -e "$where/NOANSWER" ] || exit 1
     echo "ok"
+    if [ -e "$dir/lost/$2" ]; then
+        kill -9 "$2" 2>/dev/null
+        for _ in $(seq 50); do
+            kill -0 "$2" 2>/dev/null || break
+            sleep 0.02
+        done
+    fi
     ;;
 log)
     shift
     [ "${1:-}" = --pid ] || exit 1
+    if [ -e "$dir/lost/$2.early" ]; then
+        echo "WARN qt.qpa.wayland: eglSwapBuffers failed with 0x3003, surface: 0x7f97a2e10700"
+        exit 0
+    elif [ -e "$dir/lost/$2" ]; then
+        echo "INFO: Configuration Loaded"
+        echo "WARN: Could not create EGL surface (EGL error 0x3003)"
+        exit 0
+    fi
     where=$(instance_dir "$2") || exit 1
     echo "INFO: loaded $where"
     if [ -e "$where/RELOADFAIL" ] && [ ! -e "$dir/cold/$2" ]; then
