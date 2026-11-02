@@ -47,6 +47,11 @@ list)
     pid=$!
     disown
     printf '%s\n' "$target" >"$dir/inst/$pid"
+    if [ -e "$target/EGLFAIL" ] || { [ -e "$target/EGLONCE" ] && [ ! -e "$dir/egl-once" ]; }; then
+        : >"$dir/egl-once"
+        mkdir -p "$dir/lost"
+        : >"$dir/lost/$pid"
+    fi
     if [ -e "$target/RELOADFAIL" ] || [ -e "$target/RELOADEXIT" ]; then
         mkdir -p "$dir/cold"
         : >"$dir/cold/$pid"
@@ -67,10 +72,22 @@ ipc)
     fi
     [ ! -e "$where/NOANSWER" ] || exit 1
     echo "ok"
+    if [ -e "$dir/lost/$2" ]; then
+        kill -9 "$2" 2>/dev/null
+        for _ in $(seq 50); do
+            kill -0 "$2" 2>/dev/null || break
+            sleep 0.02
+        done
+    fi
     ;;
 log)
     shift
     [ "${1:-}" = --pid ] || exit 1
+    if [ -e "$dir/lost/$2" ]; then
+        echo "INFO: Configuration Loaded"
+        echo "WARN: Could not create EGL surface (EGL error 0x3003)"
+        exit 0
+    fi
     where=$(instance_dir "$2") || exit 1
     echo "INFO: loaded $where"
     if [ -e "$where/RELOADFAIL" ] && [ ! -e "$dir/cold/$2" ]; then

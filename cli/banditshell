@@ -945,11 +945,27 @@ log_length() {
     (cd "$HOME" && qs log --pid "$1" 2>/dev/null) | wc -l
 }
 
+lost_surface() {
+    local pid="$1" mark="${2:-0}"
+    (cd "$HOME" && qs log --pid "$pid" 2>&1) | sed 's/\x1b\[[0-9;]*m//g' | tail -n +"$((mark + 1))" |
+        grep -oE 'Could not create EGL surface.*' | head -1 || true
+}
+
+shell_gone() {
+    local lost
+    lost=$(lost_surface "$1" "$2")
+    HEALTH_WHY="the shell exited${lost:+: $lost}"
+}
+
 health_check() {
     local pid="$1" mark="${2:-0}" tries steps=$((HEALTH_SCAN * 2)) trouble=""
     HEALTH_WHY=""
     if ! shell_answers "$pid"; then
-        HEALTH_WHY="the shell did not answer shell status within ${HEALTH_WAIT} seconds"
+        if kill -0 "$pid" 2>/dev/null; then
+            HEALTH_WHY="the shell did not answer shell status within ${HEALTH_WAIT} seconds"
+        else
+            shell_gone "$pid" "$mark"
+        fi
         return 1
     fi
     for ((tries = 0; tries <= steps; tries++)); do
@@ -958,7 +974,7 @@ health_check() {
             HEALTH_WHY="the log shows errors: ${trouble%%$'\n'*}"
             return 1
         fi
-        kill -0 "$pid" 2>/dev/null || { HEALTH_WHY="the shell exited"; return 1; }
+        kill -0 "$pid" 2>/dev/null || { shell_gone "$pid" "$mark"; return 1; }
         [ "$tries" -lt "$steps" ] && sleep 0.5
     done
     return 0
@@ -4291,12 +4307,31 @@ update_restart() {
     update_phase restart "$1"
     stop_shell || true
     ensure_built || true
-    if ! launch "$SHELL_DIR"; then
+    if ! launch "$SHELL_DIR" && ! relaunch_on_lost_surface; then
         update_roll_back "${2:-}the new version did not start: $HEALTH_WHY" 1
         return 1
     fi
     refresh_backup || true
     remember_checkout
+}
+
+relaunch_on_lost_surface() {
+    [[ "$HEALTH_WHY" == *"Could not create EGL surface"* ]] || return 1
+    update_phase restart "The screen was not ready yet, trying again..."
+    surfaces_gone
+    launch "$SHELL_DIR"
+}
+
+surfaces_gone() {
+    local tries pid lingering
+    for ((tries = 0; tries < 50; tries++)); do
+        lingering=0
+        for pid in $(hyprctl layers 2>/dev/null | grep -oE 'pid: [0-9]+$' | cut -d' ' -f2 | sort -u); do
+            kill -0 "$pid" 2>/dev/null || lingering=1
+        done
+        [ "$lingering" = 1 ] || return 0
+        sleep 0.1
+    done
 }
 
 update_conclude() {
