@@ -1,6 +1,8 @@
 .pragma library
 
-var API = 1;
+var API = 2;
+
+var APIS = [1, 2];
 
 var ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
@@ -15,6 +17,16 @@ var SCHEME = /^([a-z][a-z0-9+.-]*):/i;
 var ICON_NAME = /^[a-z0-9_]+$/;
 
 var ITEM_LIMIT = 50;
+
+var TALLEST = 12;
+
+var RANKS = ["first", "mixed", "last"];
+
+var LIFT = { first: 10, mixed: 0.5, last: -4 };
+
+var PROPS_LIMIT = 65536;
+
+var QML_PATH = /^(?![./])[A-Za-z0-9_./-]{1,200}\.qml$/;
 
 var LINE_LIMIT = 1048576;
 
@@ -100,14 +112,14 @@ function readManifest(text, folder, loose) {
     var title = textOf(raw.name).trim();
     if (!title)
         return { error: "plugin.json has no name", id: name };
-    if (raw.api !== API)
-        return { error: `asks for api ${raw.api === undefined ? "nothing" : textOf(raw.api)}, the shell speaks ${API}`, id: name, name: title };
+    if (APIS.indexOf(raw.api) < 0)
+        return { error: `asks for api ${raw.api === undefined ? "nothing" : textOf(raw.api)}, the shell speaks ${APIS.join(" and ")}`, id: name, name: title };
     if (!Array.isArray(raw.exec) || !raw.exec.length || raw.exec.some(a => typeof a !== "string") || !raw.exec[0])
         return { error: "exec is a list of strings, the program first", id: name, name: title };
     var prefix = (Array.isArray(raw.prefix) ? raw.prefix : typeof raw.prefix === "string" ? [raw.prefix] : []).filter(w => typeof w === "string" && /^\S+$/.test(w)).map(w => w.toLowerCase()).slice(0, 8);
     var global = raw.global && typeof raw.global === "object" ? {
         minLength: Math.max(1, Math.min(32, Math.round(Number(raw.global.minLength) || 3))),
-        cap: Math.max(1, Math.min(5, Math.round(Number(raw.global.cap) || 3)))
+        cap: Math.max(1, Math.min(ITEM_LIMIT, Math.round(Number(raw.global.cap) || 3)))
     } : null;
     if (!prefix.length && !global)
         return { error: "plugin.json needs a prefix, global or both", id: name, name: title };
@@ -130,6 +142,7 @@ function readManifest(text, folder, loose) {
     return {
         plugin: {
             id: name,
+            api: raw.api,
             name: title,
             about: textOf(raw.about).trim(),
             icon: iconOf(raw.icon, folder),
@@ -163,7 +176,7 @@ function environment(plugin, values, secrets) {
     var env = {
         BANDITSHELL_PLUGIN_ID: plugin.id,
         BANDITSHELL_PLUGIN_DIR: plugin.folder,
-        BANDITSHELL_API: String(API)
+        BANDITSHELL_API: String(plugin.api || API)
     };
     for (var p of plugin.preferences)
         env[envKey(p.key)] = valueOf(p, values, secrets);
@@ -215,6 +228,51 @@ function readAction(raw) {
     return Object.assign(readDoing(raw), { id: id, title: title, icon: textOf(raw.icon, 64) });
 }
 
+function imageOf(raw, folder) {
+    var t = textOf(raw, 4096).trim();
+    if (/^https:\/\//i.test(t))
+        return t;
+    if (t.charAt(0) === "/")
+        return fileUrl(t);
+    if (folder && t && !SCHEME.test(t) && t.split("/").indexOf("..") < 0)
+        return fileUrl(`${folder}/${t.replace(/^\.\//, "")}`);
+    return "";
+}
+
+function qmlOf(raw, folder) {
+    if (!given(raw))
+        return { file: "" };
+    var t = textOf(raw, 400).replace(/^\.\//, "");
+    if (!folder || !QML_PATH.test(t) || t.split("/").indexOf("..") >= 0)
+        return { file: "", note: `refused ${textOf(raw, 80)}: a QML file is a path inside the plugin's folder` };
+    return { file: `${folder}/${t}` };
+}
+
+function propsOf(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+        return {};
+    var text = JSON.stringify(raw);
+    return text.length > PROPS_LIMIT ? {} : JSON.parse(text);
+}
+
+function readPreview(raw, folder) {
+    if (typeof raw === "string")
+        return raw.trim() ? { text: textOf(raw, 20000) } : null;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+        return null;
+    if (given(raw.qml)) {
+        var drawn = qmlOf(raw.qml, folder);
+        return drawn.file ? { qml: drawn.file } : { note: drawn.note };
+    }
+    if (given(raw.image))
+        return imageOf(raw.image, folder) ? { image: imageOf(raw.image, folder) } : null;
+    if (given(raw.file)) {
+        var file = textOf(raw.file, 4096);
+        return file.charAt(0) === "/" ? { file: file } : null;
+    }
+    return given(raw.text) ? { text: textOf(raw.text, 20000) } : null;
+}
+
 function readItem(raw, folder) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw))
         return null;
@@ -224,13 +282,26 @@ function readItem(raw, folder) {
         return null;
     var keywords = Array.isArray(raw.keywords) ? raw.keywords.filter(w => typeof w === "string").map(w => w.slice(0, 64)).slice(0, 32) : [];
     var actions = (Array.isArray(raw.actions) ? raw.actions : []).map(readAction).filter(Boolean).slice(0, 12);
+    var drawn = qmlOf(raw.qml, folder);
+    var preview = readPreview(raw.preview, folder);
+    var notes = [drawn.note, preview?.note].filter(Boolean);
     return Object.assign(readDoing(raw), {
         id: id,
         title: title,
         subtitle: textOf(raw.subtitle).trim(),
         icon: iconOf(raw.icon, folder || ""),
         keywords: keywords,
-        actions: actions
+        actions: actions,
+        height: raw.height === "auto" ? 0 : Math.max(1, Math.min(TALLEST, Math.round(Number(raw.height) || 1))),
+        text: textOf(raw.text, 2000).trim(),
+        image: imageOf(raw.image, folder || ""),
+        tags: (Array.isArray(raw.tags) ? raw.tags : []).map(t => textOf(t, 40).trim()).filter(Boolean).slice(0, 4),
+        answer: raw.answer === true,
+        pin: raw.pin === true,
+        qml: drawn.file,
+        preview: preview && !preview.note ? preview : null,
+        props: propsOf(raw.props),
+        notes: notes
     });
 }
 
@@ -339,6 +410,9 @@ function readMessage(line, folder) {
         if (!Number.isInteger(raw.seq))
             return { error: "results without a seq" };
         return { type: "results", seq: raw.seq, items: readItems(raw.items, folder) };
+    case "update":
+        var item = readItem(raw.item, folder);
+        return item ? { type: "update", item: item } : { error: "update without an item that has an id and a title" };
     case "fill":
         return typeof raw.text === "string" ? { type: "fill", text: raw.text.slice(0, 1000) } : { error: "fill without text" };
     case "view":
@@ -376,6 +450,24 @@ function fileUrl(path) {
 
 function plainScore(item, typed, place) {
     return Math.max(place(item.title, typed), place(item.keywords.join(" "), typed) - 0.5);
+}
+
+function rankOf(value) {
+    return RANKS.indexOf(value) >= 0 ? value : "first";
+}
+
+function plainRows(items, typed, rank, place) {
+    var lift = LIFT[rankOf(rank)];
+    return items.map((item, i) => ({ item: item, i: i, score: item.pin ? Infinity : item.answer ? 4 : plainScore(item, typed, place) })).filter(m => m.score > 0).sort((a, b) => b.score - a.score || a.i - b.i).map(m => ({ item: m.item, score: m.score + lift }));
+}
+
+function kept(answer, asked) {
+    return !!answer && !answer.late && answer.prefixed === asked.prefixed ? answer.items.filter(i => !i.pin && !i.answer) : [];
+}
+
+function updated(items, item) {
+    var at = items.findIndex(i => i.id === item.id);
+    return at < 0 ? null : items.slice(0, at).concat([item], items.slice(at + 1));
 }
 
 function crashes(times, now) {

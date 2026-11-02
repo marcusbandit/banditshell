@@ -59,6 +59,14 @@ test("plugin install shows what the plugin runs before it copies it in", () => {
     assert.strictEqual(shell(["plugin", "install", source, "--yes"], { home: run.home, ...dry }).code, 1, "refuses a second copy");
 });
 
+test("plugin install names the QML a plugin draws inside the shell before it asks", () => {
+    const run = shell(["plugin", "install", path.join(ROOT, "docs/plugins/examples/streaks"), "--yes"], dry);
+    assert.strictEqual(run.code, 0, run.err);
+    assert.match(run.out, /^draws +StreakPreview\.qml, StreakRow\.qml, QML that runs inside the shell itself$/m);
+    assert.match(run.out, /QML is drawn inside the shell itself/);
+    assert.ok(run.out.indexOf("draws") < run.out.indexOf("installed"), "shown before installing");
+});
+
 test("plugin install clones a git url, shows its commit and leaves .git behind", () => {
     const stub = stubs();
     const fixture = path.join(ROOT, "docs/plugins/examples/hello-bash");
@@ -87,10 +95,10 @@ test("plugin install never installs without a yes", () => {
 
 test("plugin install refuses a folder whose manifest the shell would refuse", () => {
     const folder = directory("broken");
-    fs.writeFileSync(path.join(folder, "plugin.json"), '{"api":2,"id":"broken","name":"Broken","exec":["x"],"prefix":["b"]}');
+    fs.writeFileSync(path.join(folder, "plugin.json"), '{"api":3,"id":"broken","name":"Broken","exec":["x"],"prefix":["b"]}');
     const run = shell(["plugin", "install", folder, "--yes"], dry);
     assert.strictEqual(run.code, 1);
-    assert.match(run.err, /api 2/);
+    assert.match(run.err, /api 3/);
 });
 
 test("plugin install lists links, survives a dangling one and refuses one that leaves the plugin", () => {

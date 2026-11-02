@@ -47,6 +47,20 @@ LauncherConcept {
 
     readonly property real headerPitch: Appearance.font.line.small + Appearance.padding.normal + Appearance.padding.small
 
+    readonly property var fits: ({})
+    property int fitTick: 0
+
+    function noteFit(key: string, height: real): void {
+        if (!key || root.fits[key] === height)
+            return;
+        root.fits[key] = height;
+        root.fitTick++;
+    }
+
+    function fitOf(key: string): real {
+        return root.fitTick >= 0 ? root.fits[key] ?? root.rowPitch : root.rowPitch;
+    }
+
     readonly property int buttonLimit: 3
 
     property bool symbolsOpen: false
@@ -365,6 +379,12 @@ LauncherConcept {
         return event.key === Qt.Key_Up || event.key === Qt.Key_Down || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab;
     }
 
+    function rowMayClaim(event: var): bool {
+        if ([Qt.Key_Left, Qt.Key_Right, Qt.Key_Return, Qt.Key_Enter].includes(event.key))
+            return true;
+        return !!(event.modifiers & (Qt.ControlModifier | Qt.AltModifier)) && ![Qt.Key_Escape, Qt.Key_Up, Qt.Key_Down, Qt.Key_Tab, Qt.Key_Backtab, Qt.Key_Menu].includes(event.key);
+    }
+
     function claimKey(event: var): bool {
         search.arrangeNow();
         if (root.capture)
@@ -414,6 +434,8 @@ LauncherConcept {
 
         const row = root.results[root.selected];
         if (event.key === Qt.Key_Tab && (search.complete(row) || search.complete(root.results.find(r => r.kind === "suggest")) || search.complete(root.results.find(r => r.tab))))
+            return true;
+        if (row?.card && !root.answerHolds && !assistantCard.holds && root.rowMayClaim(event) && list.itemAtIndex(root.selected)?.claimRowKey(event))
             return true;
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
             root.actionsFor(row).slice(1).find(a => !a.tucked)?.run();
@@ -620,6 +642,8 @@ LauncherConcept {
     }
 
     property string listedQuery: ""
+    property real listedAt: 0
+    readonly property int seenAfter: 300
     property string selectedKey: ""
     property bool steered: false
 
@@ -629,11 +653,15 @@ LauncherConcept {
         Trace.note("results");
         if (search.query !== root.listedQuery) {
             root.listedQuery = search.query;
+            root.listedAt = Date.now();
             root.steered = false;
         }
-        const kept = root.steered ? root.results.findIndex(r => r.id === root.selectedKey) : -1;
+        const seen = !root.steered && Date.now() - root.listedAt >= root.seenAfter && !!root.selectedKey && root.selectedKey.indexOf("fallback:") !== 0;
+        const kept = root.steered || seen ? root.results.findIndex(r => r.id === root.selectedKey) : -1;
         if (kept >= 0) {
             root.selected = kept;
+            if (seen)
+                list.reveal(kept);
             return;
         }
         root.steered = false;
@@ -1177,7 +1205,7 @@ LauncherConcept {
                     GlideList {
                         id: list
 
-                        readonly property real needed: Math.max(root.rowPitch, root.results.reduce((sum, r) => sum + (r.header ? root.headerPitch : root.rowPitch), 0))
+                        readonly property real needed: Math.max(root.rowPitch, root.results.reduce((sum, r) => sum + (r.header ? root.headerPitch : r.span === 0 ? root.fitOf(r.key) : root.rowPitch * (r.span ?? 1)), 0))
 
                         y: (quickLaunch.full + Appearance.padding.large) * gridIn.value
                         width: parent.width
@@ -1212,7 +1240,7 @@ LauncherConcept {
                             required property int index
 
                             width: list.width
-                            height: line.modelData.header ? root.headerPitch : root.rowPitch
+                            height: line.modelData.header ? root.headerPitch : line.modelData.span === 0 ? line.fitted : root.rowPitch * (line.modelData.span ?? 1)
 
                             StyledText {
                                 visible: !!line.modelData.header
@@ -1249,12 +1277,12 @@ LauncherConcept {
                                 labelSize: Appearance.font.size.normal
                                 inlineDetail: true
 
-                                iconSource: line.modelData.iconSource ?? ""
-                                glyph: line.modelData.glyph ?? ""
-                                icon: line.modelData.icon ?? "apps"
+                                iconSource: line.carded ? "" : line.modelData.iconSource ?? ""
+                                glyph: line.carded ? "" : line.modelData.glyph ?? ""
+                                icon: line.carded ? "" : line.modelData.icon ?? "apps"
                                 mark: line.modelData.swatch ? swatch : null
-                                label: row.hovered && line.modelData.revealLabel ? line.modelData.revealLabel : line.modelData.label ?? ""
-                                detail: line.modelData.detail ?? ""
+                                label: line.carded ? "" : row.hovered && line.modelData.revealLabel ? line.modelData.revealLabel : line.modelData.label ?? ""
+                                detail: line.carded ? "" : line.modelData.detail ?? ""
                                 detailShared: root.detailStarts[line.index] ?? 0
                                 columns: line.modelData.columns ?? []
                                 trailingRoom: line.modelData.columns ? root.switchWidth + Appearance.padding.normal * 2 : 0
@@ -1270,11 +1298,13 @@ LauncherConcept {
                                 }
 
                                 Row {
+                                    id: trail
+
                                     spacing: Appearance.padding.small
                                     rightPadding: line.modelData.toggle !== undefined ? Appearance.padding.normal : 0
 
                                     Repeater {
-                                        model: line.modelData.armed ? [] : [line.modelData.alias, Chords.chordText(line.modelData.hotkey ?? "")].filter(Boolean)
+                                        model: line.modelData.armed ? [] : (line.modelData.tags ?? []).concat([line.modelData.alias, Chords.chordText(line.modelData.hotkey ?? "")]).filter(Boolean)
 
                                         delegate: Item {
                                             id: tag
@@ -1377,6 +1407,43 @@ LauncherConcept {
                                 }
                             }
 
+                            readonly property bool carded: !line.modelData.header && !!line.modelData.card
+
+                            function claimRowKey(event: var): bool {
+                                return typeof card.item?.claimKey === "function" && !!card.item.claimKey(event);
+                            }
+                            readonly property real fitted: Math.max(root.rowPitch, Math.min(root.rowPitch * 12, card.item?.implicitHeight ?? root.rowPitch))
+
+                            readonly property string fitNote: line.modelData.span === 0 ? `${line.modelData.key}\n${line.fitted}` : ""
+
+                            onFitNoteChanged: if (line.fitNote)
+                                root.noteFit(line.modelData.key, line.fitted)
+
+                            Loader {
+                                id: card
+
+                                anchors.fill: row
+                                anchors.leftMargin: Appearance.padding.normal
+                                anchors.rightMargin: Appearance.padding.normal + (trail.width > 0 ? trail.width + Appearance.padding.normal : 0)
+                                active: line.carded
+                                opacity: row.opacity
+                                sourceComponent: line.modelData.card ?? null
+                            }
+
+                            Binding {
+                                target: card.item
+                                property: "row"
+                                value: line.modelData
+                                when: card.item !== null
+                            }
+
+                            Binding {
+                                target: card.item
+                                property: "selected"
+                                value: row.selected
+                                when: card.item !== null
+                            }
+
                             Component {
                                 id: swatch
 
@@ -1416,10 +1483,14 @@ LauncherConcept {
                             }
 
                             onButtonsChanged: line.showButtons()
-                            Component.onCompleted: line.showButtons()
+                            Component.onCompleted: {
+                                line.showButtons();
+                                if (line.fitNote)
+                                    root.noteFit(line.modelData.key, line.fitted);
+                            }
 
                             readonly property var buttons: {
-                                if (!line.opened)
+                                if (!line.opened || line.carded && !line.modelData.armed)
                                     return [];
                                 if (line.modelData.armed)
                                     return search.confirmActions(line.modelData);

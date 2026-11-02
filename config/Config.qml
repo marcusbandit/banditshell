@@ -305,7 +305,9 @@ Singleton {
                 plugins: {
                     off: [],
 
-                    values: ({})
+                    values: ({}),
+
+                    rank: "first"
                 },
 
                 hiddenFiles: ".config",

@@ -135,7 +135,7 @@ Column {
 
         StyledText {
             width: parent.width
-            text: "A plugin is a small program, in any language, that answers what you type. Its rows look and rank like every other row:"
+            text: "A plugin is a small program, in any language, that answers what you type. Its rows come first in your searches and look like every other row, or taller, with a preview:"
             font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textDim
             wrapMode: Text.Wrap
@@ -162,7 +162,7 @@ Column {
 
         StyledText {
             width: parent.width
-            text: "It runs as you, so it can read your files and use the network like any program you start. Only add plugins you trust: installing one shows what it runs first."
+            text: "It runs as you, so it can read your files and use the network like any program you start. A plugin that draws its own rows runs that part inside the shell. Only add plugins you trust: installing one shows what it runs and draws first."
             font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textDim
             wrapMode: Text.Wrap

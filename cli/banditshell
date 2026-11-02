@@ -1724,6 +1724,9 @@ plugin_install() {
     [ ! -e "$target" ] && [ ! -L "$target" ] || { echo "banditshell: ${target/#$HOME/\~} already exists; remove it first" >&2; exit 1; }
     echo
     echo "A plugin runs as you, with your files and your network, like any program you start."
+    if find "$source" -name .git -prune -o -name '*.qml' -print -quit | grep -q .; then
+        echo "Its QML is drawn inside the shell itself, so a broken one can freeze the shell until you remove it."
+    fi
     if [ -z "$yes" ]; then
         [ -r /dev/tty ] && [ -t 0 ] || { echo "banditshell: nobody to ask; run it in a terminal or add --yes" >&2; exit 2; }
         read -r -p "Install $id into ${target/#$HOME/\~}? [y/N] " answer </dev/tty

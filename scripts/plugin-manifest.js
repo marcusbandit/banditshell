@@ -48,6 +48,9 @@ function describe(plugin, folder) {
     if (plugin.preferences.length)
         lines.push(`asks for  ${plugin.preferences.map(p => `${p.title}${p.type === "secret" ? " (secret)" : ""}`).join(", ")}`);
     const listed = files(folder).map(f => f.name);
+    const drawn = listed.map(name => name.replace(/ \(runs\)$/, "")).filter(name => /\.qml$/.test(name));
+    if (drawn.length)
+        lines.push(`draws     ${drawn.join(", ")}, QML that runs inside the shell itself`);
     lines.push(`files     ${listed.length > 12 ? `${listed.slice(0, 12).join(", ")} and ${listed.length - 12} more` : listed.join(", ")}`);
     return lines.join("\n");
 }

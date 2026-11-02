@@ -10,6 +10,10 @@ ranking, the actions menu, learned usage, aliases, hotkeys, Tab completion,
 the `?` page and `banditshell panel launcher run <id>` like any built-in row.
 `docs/architecture/launcher-sources.md` describes that contract.
 
+A row can be one line or up to six rows tall, show a preview beside the list,
+and be drawn by a QML file the plugin ships. See Tall rows, Previews and Rows
+drawn in QML below.
+
 A tool that only wants to show a row or two needs no plugin:
 `banditshell launcher add` pins one, see [push.md](push.md).
 
@@ -29,7 +33,8 @@ shell looks for new plugins each time the launcher opens.
 `examples/hello-bash` and `examples/hello-python` are two complete plugins:
 copy either folder into the plugins folder, open the launcher and type
 `hello world` or `greet ada`. The Python one opens all three kinds of page
-from its actions menu.
+from its actions menu. `examples/streaks` draws its rows and its preview in
+QML and updates a row in place: type `streak` and press Enter on a habit.
 
 ## Making and sharing plugins
 
@@ -60,7 +65,7 @@ plugin can reach before it lists any.
 
 ```json
 {
-  "api": 1,
+  "api": 2,
   "id": "jira",
   "name": "Jira",
   "about": "Search your Jira issues",
@@ -77,14 +82,14 @@ plugin can reach before it lists any.
 
 | field | required | meaning |
 |---|---|---|
-| `api` | yes | The protocol version, `1`. A plugin asking for a version the shell does not speak is listed but not started. |
+| `api` | yes | The protocol version, `2`. The shell still runs plugins that say `1`, and they can use everything below too; `2` makes an older shell, which cannot draw what api 2 adds, refuse the plugin instead of drawing it wrong. A plugin asking for a version the shell does not speak is listed but not started. |
 | `id` | yes | Lowercase letters, digits and `-`, the same as the folder name. |
 | `name` | yes | Shown in Settings and as the title of the plugin's group. |
 | `about` | no | One line for Settings and the `?` page. |
 | `icon` | no | A Material Symbols name, an emoji or an image path relative to the folder. Rows without an icon of their own use it. |
 | `exec` | yes | The program and its arguments, as a list. A first word starting with `./` is found in the plugin's folder. It runs with the folder as its working directory and is never passed through a shell. |
 | `prefix` | no | Words that send the rest of the query to this plugin alone, the way `gh` and `pkg` work. They are listed on the `?` page. |
-| `global` | no | Lets the plugin add rows to plain searches. `minLength` is how many characters a query needs first, 3 by default. `cap` is how many of its rows a plain search shows at most, 3 by default and never more than 5. Without `global` the plugin only answers after its prefix. |
+| `global` | no | Lets the plugin add rows to plain searches. `minLength` is how many characters a query needs first, 3 by default. `cap` is how many of its rows a plain search shows at most, 3 by default and up to 50. Without `global` the plugin only answers after its prefix. |
 | `preferences` | no | Settings the plugin needs, drawn by Settings so a plugin never ships its own settings window. |
 
 A manifest needs `prefix`, `global` or both; with neither, nothing would ever
@@ -110,7 +115,7 @@ it is kept in `~/.local/state/banditshell/plugin-secrets.json`, a file only
 you can read. Changing a preference restarts the program.
 
 The program also gets `BANDITSHELL_PLUGIN_ID`, `BANDITSHELL_PLUGIN_DIR` and
-`BANDITSHELL_API`.
+`BANDITSHELL_API`, the api its manifest asked for.
 
 ## The protocol
 
@@ -137,6 +142,7 @@ page's id.
 | message | what the shell does |
 |---|---|
 | `{"type":"results","seq":12,"items":[...]}` | Shows these rows in place of the plugin's last ones. An answer for any `seq` but the newest is dropped. |
+| `{"type":"update","item":{...}}` | Replaces the item with the same `id` among the rows on screen, at any time, without a new query. A download's progress or a ticked-off habit changes in place. An update for an item that is not on screen is skipped. |
 | `{"type":"fill","text":"jira PROJ-41 "}` | Replaces the query, the usual answer to `complete`. |
 | `{"type":"view","view":{...}}` | Opens a full page in place of the list. See Pages. |
 | `{"type":"effect","do":"copy","text":"..."}` | Does one thing for the plugin, so it needs neither `wl-copy` nor `xdg-open`. See Effects. |
@@ -172,6 +178,15 @@ the shell knows it is done.
 | `copy` | Text the shell copies. |
 | `run` | A program and its arguments, as a list, that the shell starts. Never passed through a shell. |
 | `actions` | More things the row can do, each `{ "id", "title", "icon" }` and optionally its own `open`, `copy` or `run`. |
+| `answer` | `true` when the row answers the query as typed, such as a sum or a conversion. A plain search then shows it even though its title and keywords do not match the typed words. |
+| `height` | How many rows tall it is, 1 to 12, 1 by default, in plain searches as after a prefix. `"auto"` lets the row's QML decide, see Rows drawn in QML. |
+| `pin` | `true` puts the row at the very top of a plain search, with the launcher's own pinned answers, whatever was typed. |
+| `text` | Body text under the subtitle on a row 2 or more tall, wrapped to fit. |
+| `image` | A picture drawn at the start of the row: an absolute path, a path in the plugin's folder or an `https://` link. On a one-line row it takes the icon's place. |
+| `tags` | Up to four short words drawn as chips at the end of the row. |
+| `preview` | What the peek card beside the list shows while the row is selected. See Previews. |
+| `qml` | A QML file in the plugin's folder that draws the row. See Rows drawn in QML. |
+| `props` | Any JSON object, up to 64 KB, handed to the row's and the preview's QML. |
 
 What Enter does:
 
@@ -188,6 +203,95 @@ plugin can also answer with fresh `results` or a `fill`.
 
 Links with any other scheme, and files that are not absolute paths, are
 refused and the row says so, as for list scripts.
+
+### Tall rows
+
+A row with `height` 2 or more is drawn by the shell as a card: the `image`,
+or the icon, large at the start, then the title, the subtitle and as many
+lines of `text` as fit, with `tags` at the end. With `"height": "auto"` the
+card grows to show all of its `text`.
+
+```json
+{"id": "today", "title": "2 of 3 done today", "subtitle": "Monday 02 November",
+ "text": "Still to do: Stretch.", "icon": "event_available", "height": 2, "tags": ["1 to go"]}
+```
+
+A tall row keeps its actions in the actions menu instead of drawing them as
+buttons, so nothing moves under the pointer.
+
+`height`, `image`, `text`, `tags`, `preview` and `qml` shape rows in the
+results. The rows of a list page are drawn one line each.
+
+### Previews
+
+`preview` fills the peek card beside the list while the row is selected,
+when the screen has room for it.
+
+| preview | what the card shows |
+|---|---|
+| `"Some text"` or `{"text": "..."}` | The text, its first 32 lines. |
+| `{"image": "..."}` | A picture: an absolute path, a path in the plugin's folder or an `https://` link. |
+| `{"file": "/abs/path"}` | The file the way the launcher previews files: the start of a text file, a picture, or a folder's listing. |
+| `{"qml": "Preview.qml"}` | A QML file in the plugin's folder, drawn like a row's QML. Its `implicitWidth` and `implicitHeight` size the card. |
+
+## Rows drawn in QML
+
+When `qml` names a file in the plugin's folder, that file draws the row
+inside the launcher's own row: the shell still draws the selection, handles
+the click and the keys, and runs the actions. The file's root item declares
+`property var row`, and the shell sets it to an object with:
+
+| member | what it is |
+|---|---|
+| `row.item` | The item as the shell read it: `title`, `subtitle`, `icon`, `actions` and the rest. |
+| `row.props` | The item's `props`. |
+| `row.selected` | True while the row is selected. |
+| `row.preview` | True when the file is drawing the peek card rather than a row. |
+| `row.act(id)` | Runs one of the item's actions, the way the actions menu does. With no id it does what Enter does. An id that is not among `actions` is sent to the plugin as an `activate`, so a button in the QML can ask for anything. |
+| `row.copy(text)`, `row.open(target)` | Copy and close, or open a link or absolute path and close. |
+| `row.fill(text)` | Replace the query. |
+| `row.close()` | Close the launcher. |
+
+While its row is selected, the file can take keys: give the root item a
+`function claimKey(event)` that returns `true` for the keys it handled.
+It is asked about Left, Right, Enter and any key held with Ctrl or Alt,
+before the launcher acts on them; `event.key`, `event.modifiers` and
+`event.text` say which. Typing, Escape and moving between rows stay with
+the launcher.
+
+The file is given the row's full width and `height` times the row pitch, and
+is clipped to it. With `"height": "auto"` the file's own `implicitHeight`
+sets the row's height instead, from one row to twelve, and the row follows it
+when it changes. It can import the shell's own modules, `qs.config` for
+`Appearance` (colours, type, spacing, rounding) and `qs.components` for
+`StyledText`, `Icon`, `SquircleRect` and the rest, so a plugin's rows can
+look like the shell's. Those modules change with the shell; a plugin that
+leans on more than the basics may need to follow them.
+
+```qml
+import QtQuick
+import qs.config
+import qs.components
+
+Item {
+    id: root
+
+    property var row: null
+
+    StyledText {
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.row?.item.title ?? ""
+        color: root.row?.selected ? Appearance.colour.text : Appearance.colour.textDim
+    }
+}
+```
+
+The shell compiles each file once, in the background, and draws the row
+plainly from `title` and `subtitle` until it is ready. A file that does not
+compile leaves its rows plain and writes the error to the plugin's log.
+`banditshell plugin dev` reloads the QML along with the program each time a
+file is saved. The path must stay inside the plugin's folder; anything else is
+refused and logged.
 
 ### Effects
 
@@ -250,12 +354,23 @@ and usually answers with an effect or another page.
 ## Ranking
 
 - After its prefix, the plugin's own order stands.
-- In a plain search the shell ranks plugin rows itself, on `title` and
+- In a plain search the shell matches plugin rows itself, on `title` and
   `keywords`, with the same matcher as apps, and shows at most `global.cap` of
-  them. Like file search results, they rank below the launcher's own best
-  matches, so a plugin cannot push itself to the top.
-- Rows that arrive after the built-in ones join below the selected row. A late
-  answer never moves the selection.
+  them. A row marked `answer` skips the match.
+- You installed a plugin on purpose, so by default its matching rows lead a
+  plain search, above apps, commands and settings. Only the launcher's pinned
+  answers, such as a sum or a link, stay above them. Settings, Launcher,
+  Plugin results changes that: `mixed` ranks plugin rows by how well they
+  match, ahead of built-in rows that match as well, and `last` keeps them
+  below the launcher's own rows. The setting is `launcher.plugins.rank`.
+- While the next answer is on its way, the rows from the last one stay on
+  screen, filtered by what is typed now, so the list does not flicker on
+  every key. Rows marked `pin` or `answer` belong to the query they
+  answered and leave with it.
+- Once the list has been on screen for a moment, a late answer never moves
+  the selection: plugin rows that arrive after it join above or below, and
+  Enter still runs the row that was highlighted. The next key you type
+  selects the top row again.
 
 ## When things go wrong
 
@@ -268,11 +383,19 @@ A broken plugin costs one row, never the shell.
   switched off, and one row says so with a button that opens its log.
   Switching it off and on again in Settings gives it a fresh start.
 - Standard error goes to `~/.local/state/banditshell/plugins/<id>.log`.
+- A QML file that does not compile, or names a path outside the plugin, is
+  logged there once, and its rows are drawn plainly.
 - After 10 minutes without a query the program is stopped. The next query
   starts it again.
 
-## Plugins draw nothing
+## What runs where
 
-Every row and page is drawn by the launcher's own components from the items a
-plugin sends. A plugin looks like the rest of the shell without trying, and it
-cannot slow down or crash the desktop, whatever language it is written in.
+The program runs on its own, so a slow or crashing program costs its rows and
+never the shell. A plugin that ships no QML is drawn entirely by the
+launcher's own components and looks like the rest of the shell without trying.
+
+QML is different: it runs inside the shell itself. A QML file that loops
+forever freezes the shell until the plugin is removed, and one that reads
+files or the network does so as the shell. `banditshell plugin install` lists
+every QML file a plugin ships before it asks, and Settings, Launcher, Plugins
+switches a plugin off like any other.

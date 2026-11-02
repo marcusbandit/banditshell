@@ -224,6 +224,7 @@ Singleton {
             onlineVideos: "launcher.online.videos",
             systemBrightness: "launcher.systemControls.brightness",
             systemLowestBrightness: "launcher.systemControls.lowestBrightness",
+            pluginRank: "launcher.plugins.rank",
             systemWifi: "launcher.systemControls.wifi",
             systemVpn: "launcher.systemControls.vpn",
             systemRecording: "launcher.systemControls.recording",

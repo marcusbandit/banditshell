@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import qs.config
 import qs.services
 import "../../services/plugin-protocol.js" as Protocol
 import "../../services/ranking.js" as Ranking
@@ -55,6 +56,8 @@ QtObject {
 
     readonly property var missing: PluginHost.missingOf(root.pluginId)
 
+    readonly property string rank: Protocol.rankOf(Config.values.launcher.plugins.rank)
+
     readonly property bool current: !!root.answer && !!root.asked && root.answer.text === root.asked.text && root.answer.prefixed === root.asked.prefixed
 
     function iconOf(icon: var): var {
@@ -67,14 +70,37 @@ QtObject {
     }
 
     function rowOf(item: var, score: real): var {
+        const span = item.height;
+        const preview = item.preview;
         return Object.assign({
             key: `plugin:${root.pluginId}:${item.id}`,
             kind: root.kind,
             item: item,
+            owner: root,
             label: item.title,
             detail: item.refusal || item.subtitle,
-            score: score
-        }, root.iconOf(item.icon));
+            score: score,
+            span: span,
+            tags: item.tags,
+            card: item.qml || span !== 1 ? root.rowCard : null,
+            peekText: preview?.text ?? "",
+            peekImage: preview?.image ?? "",
+            peekPath: preview?.file ?? "",
+            peekCard: preview?.qml ? root.previewCard : null,
+            entry: preview?.qml ? {
+                owner: root,
+                item: item,
+                qml: preview.qml
+            } : null
+        }, root.iconOf(item.icon), item.image && span === 1 && !item.qml ? {
+            iconSource: item.image
+        } : {});
+    }
+
+    function shown(items: var, asked: var): var {
+        if (asked.prefixed)
+            return items.map(item => root.rowOf(item, Infinity));
+        return Protocol.plainRows(items, asked.text, root.rank, Ranking.place).map(m => root.rowOf(m.item, m.score));
     }
 
     function problemRow(label: string, detail: string, icon: string, problem: string): var {
@@ -101,16 +127,15 @@ QtObject {
             const named = plugin.preferences.filter(p => root.missing.includes(p.key)).map(p => p.title.toLowerCase()).join(" and ");
             return asked.prefixed ? [root.problemRow(`${plugin.name} needs its ${named}`, "Enter opens its settings", "settings", "settings")] : [];
         }
-        if (!root.current)
+        if (!root.current) {
+            const kept = Protocol.kept(root.answer, asked);
+            if (kept.length)
+                return root.shown(kept, asked);
             return asked.prefixed ? [root.problemRow(root.state.until > Date.now() ? `${plugin.name} is starting again` : `Asking ${plugin.name}`, "", "hourglass_empty", "waiting")] : [];
+        }
         if (root.answer.late)
             return asked.prefixed ? [root.problemRow(`${plugin.name} did not answer in time`, "Enter opens its log", "timer_off", "late")] : [];
-        if (asked.prefixed)
-            return root.answer.items.map(item => root.rowOf(item, Infinity));
-        return root.answer.items.map(item => ({
-                    item: item,
-                    score: Protocol.plainScore(item, asked.text, Ranking.place)
-                })).filter(m => m.score > 0).sort((a, b) => b.score - a.score).map(m => root.rowOf(m.item, m.score - Ranking.EXACT));
+        return root.shown(root.answer.items, asked);
     }
 
     readonly property var groups: [
@@ -149,6 +174,14 @@ QtObject {
 
     property Component pageView: Component {
         PluginView {}
+    }
+
+    property Component rowCard: Component {
+        PluginRow {}
+    }
+
+    property Component previewCard: Component {
+        PluginPreview {}
     }
 
     function handle(message: var): void {
@@ -200,6 +233,40 @@ QtObject {
                 }));
             return;
         }
+    }
+
+    function act(item: var, action: var): void {
+        const id = typeof action === "string" ? action : "";
+        const listed = id ? item.actions.find(a => a.id === id) : null;
+        const enter = id ? null : Protocol.enterOf(item);
+        if (listed && (Protocol.local(listed) || listed.refusal))
+            root.doLocal(listed);
+        else if (enter?.local)
+            root.doLocal(enter.local);
+        else
+            PluginHost.activate(root.pluginId, item.id, id || enter.action, root, "");
+    }
+
+    function copyOut(text: var): void {
+        const copied = String(text ?? "");
+        root.search.leave(() => System.copyText(copied));
+    }
+
+    function openOut(target: var): void {
+        const opened = String(target ?? "");
+        const refusal = opened ? Protocol.targetRefusal(opened) : "open without a target";
+        if (refusal)
+            PluginHost.note(root.pluginId, `its QML ${refusal}`);
+        else
+            root.search.launch(() => System.openWith(opened));
+    }
+
+    function fillOut(text: var): void {
+        root.search.retype(String(text ?? ""));
+    }
+
+    function closeOut(): void {
+        root.search.leave(() => {});
     }
 
     function activateIn(item: string, action: string, view: string): void {

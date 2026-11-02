@@ -1,0 +1,13 @@
+{
+  "api": 2,
+  "id": "streaks",
+  "name": "Streaks",
+  "about": "Habits you keep every day, drawn as rows of days",
+  "icon": "local_fire_department",
+  "exec": ["python3", "-I", "plugin.py"],
+  "prefix": ["streak", "streaks"],
+  "global": { "minLength": 3, "cap": 3 },
+  "preferences": [
+    { "key": "habits", "type": "text", "title": "Habits", "placeholder": "Read, Stretch, Drink water", "default": "Read, Stretch, Drink water" }
+  ]
+}

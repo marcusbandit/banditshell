@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-11-02",
+      "date": "2026-11-02",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Plugin results lead your searches; Settings can move them back"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugin rows can be taller, show a preview and draw their own QML"
+        }
+      ]
+    },
+    {
       "id": "2026-11-01",
       "date": "2026-11-01",
       "changes": [

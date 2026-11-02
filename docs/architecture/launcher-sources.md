@@ -85,6 +85,10 @@ its `title`, and `note` is added to that header.
 | `toggle` | A bool that draws a switch at the end of the row. |
 | `slider` | A slider drawn in the row. |
 | `peekPath`, `peekText`, `peekImage`, `peekColour` | What the peek card beside the list shows for the row. |
+| `peekCard`, `entry` | A `Component` the peek card draws instead, given the row's `entry` as its `entry` property. |
+| `span` | How many row pitches tall the row is, 1 when missing. 0 lets the `card`'s `implicitHeight` decide, from one row pitch to twelve. |
+| `card` | A `Component` drawn over the row in place of its icon, title and detail. The list sets its `row` (this row) and `selected` properties and draws no action buttons beside it. |
+| `tags` | Short words drawn as chips at the end of the row, before its alias and hotkey. |
 
 A source may put anything else it needs on its rows, such as the object the
 row stands for. The launcher passes the row back unchanged.

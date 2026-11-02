@@ -27,6 +27,10 @@ Singleton {
     property var registered: ({})
     property var expecting: ({})
     property var page: null
+    readonly property var drawings: ({})
+    readonly property var noted: ({})
+    property var generations: ({})
+    property int drawn: 0
     property real scannedAt: 0
     property int seq: 0
     property bool scanAgain: false
@@ -79,6 +83,45 @@ Singleton {
         });
     }
 
+    function drawingOf(id: string, file: string): var {
+        void root.drawn;
+        const key = `${id}\n${file}`;
+        let had = root.drawings[key];
+        if (!had) {
+            const url = `${Protocol.fileUrl(file)}?v=${root.generations[id] ?? 0}`;
+            had = root.drawings[key] = {
+                url: url,
+                component: Qt.createComponent(url, Component.Asynchronous)
+            };
+            if (had.component.status === Component.Loading)
+                had.component.statusChanged.connect(() => root.settleDrawing(id, key, file));
+            else
+                Qt.callLater(() => root.settleDrawing(id, key, file));
+        }
+        return had.component.status === Component.Ready ? had : null;
+    }
+
+    function settleDrawing(id: string, key: string, file: string): void {
+        const had = root.drawings[key];
+        if (!had || had.settled || had.component.status === Component.Loading)
+            return;
+        had.settled = true;
+        if (had.component.status === Component.Error)
+            root.note(id, `could not draw ${file.slice(file.lastIndexOf("/") + 1)}, so its rows are drawn plain: ${had.component.errorString().trim()}`);
+        root.drawn++;
+    }
+
+    function forgetDrawings(id: string): void {
+        for (const table of [root.drawings, root.noted])
+            for (const key of Object.keys(table))
+                if (key.indexOf(`${id}\n`) === 0)
+                    delete table[key];
+        root.generations = Object.assign({}, root.generations, {
+            [id]: (root.generations[id] ?? 0) + 1
+        });
+        root.drawn++;
+    }
+
     function refresh(): void {
         if (scanner.running) {
             if (!root.scannedAt)
@@ -95,11 +138,13 @@ Singleton {
         return text.split("\x1e").slice(1).map(chunk => {
             const cut = chunk.indexOf("\n");
             const folder = chunk.slice(0, cut);
-            const read = Protocol.readManifest(chunk.slice(cut + 1), folder);
+            const tab = chunk.lastIndexOf("\t", cut);
+            const read = Protocol.readManifest(chunk.slice(cut + 1), tab < 0 ? folder : folder.slice(0, tab));
             return read.plugin ? {
                 id: read.plugin.id,
                 name: read.plugin.name,
-                plugin: read.plugin
+                plugin: read.plugin,
+                drawn: tab < 0 ? "" : folder.slice(tab + 1)
             } : {
                 id: read.id,
                 name: read.name ?? read.id,
@@ -216,7 +261,7 @@ Singleton {
             seq: seq,
             text: text,
             prefixed: prefixed,
-            items: had?.items ?? [],
+            items: had && had.prefixed === prefixed ? had.items : [],
             waiting: true,
             answered: false,
             at: Date.now()
@@ -274,6 +319,15 @@ Singleton {
             root.note(id, `skipped ${message.error}`);
             return;
         }
+        if (message.type === "results" || message.type === "update") {
+            const items = message.type === "results" ? message.items : [message.item];
+            for (const problem of items.reduce((out, item) => out.concat(item.notes), [])) {
+                if (root.noted[`${id}\n${problem}`])
+                    continue;
+                root.noted[`${id}\n${problem}`] = true;
+                root.note(id, problem);
+            }
+        }
         if (message.type === "results") {
             const had = root.answers[id];
             if (had && message.seq === had.seq)
@@ -283,6 +337,17 @@ Singleton {
                     answered: true,
                     late: false
                 }));
+            return;
+        }
+        if (message.type === "update") {
+            const had = root.answers[id];
+            const items = had ? Protocol.updated(had.items, message.item) : null;
+            if (items)
+                root.setAnswer(id, Object.assign({}, had, {
+                    items: items
+                }));
+            else
+                root.note(id, `skipped an update for ${message.item.id}, which is not on screen`);
             return;
         }
         const asked = root.expecting[id] ?? 0;
@@ -320,6 +385,7 @@ Singleton {
     }
 
     function reload(id: string): string {
+        root.forgetDrawings(id);
         root.stop(id);
         const answers = Object.assign({}, root.answers);
         delete answers[id];
@@ -391,7 +457,7 @@ Singleton {
     }
 
     property Process scanner: Process {
-        command: ["sh", "-c", 'for d in "$1"/*/; do f="${d}plugin.json"; [ -f "$f" ] || continue; printf "\\036%s\\n" "${d%/}"; head -c 65536 "$f"; done', "sh", root.folder]
+        command: ["sh", "-c", 'for d in "$1"/*/; do f="${d}plugin.json"; [ -f "$f" ] || continue; printf "\\036%s\\t%s\\n" "${d%/}" "$(find -L "$d" -maxdepth 4 -name "*.qml" -printf "%T@%p" 2>/dev/null | cksum)"; head -c 65536 "$f"; done', "sh", root.folder]
         stdout: StdioCollector {
             onStreamFinished: {
                 if (root.scanAgain) {
@@ -401,6 +467,9 @@ Singleton {
                 const found = root.readScan(text);
                 const first = !root.scannedAt;
                 root.scannedAt = Date.now();
+                for (const entry of found)
+                    if (entry.plugin && root.entryOf(entry.id)?.drawn !== undefined && root.entryOf(entry.id).drawn !== entry.drawn)
+                        root.forgetDrawings(entry.id);
                 if (!first && JSON.stringify(found) === JSON.stringify(root.found))
                     return;
                 root.found = found;
