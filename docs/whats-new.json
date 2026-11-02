@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-02-3",
+      "date": "2026-11-02",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "banditshell warns when the shell would stop with what started it"
+        }
+      ]
+    },
+    {
       "id": "2026-11-02-2",
       "date": "2026-11-02",
       "changes": [
