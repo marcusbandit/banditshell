@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Assistant = lib("services/assistant.js", ["askOf", "looksLikeQuestion", "chatRequest", "listRequest", "pullRequest", "readModels", "readChunk", "splitStatus", "failureText", "visibleText", "tidyRewrite", "readPull", "pullTotals", "sizeText", "snippet", "trimTurns", "undash", "keySafe", "keyFor", "keyless", "officialOpenai", "webLink", "lineBreaks", "typeBackRefusal", "modelFor", "isLocal", "actionOf", "ACTIONS", "STARTER", "rewriteMessage", "rewritePrompt"]);
+const Assistant = lib("services/assistant.js", ["askOf", "looksLikeQuestion", "chatRequest", "listRequest", "pullRequest", "readModels", "readChunk", "splitStatus", "failureText", "visibleText", "tidyRewrite", "readPull", "pullTotals", "sizeText", "snippet", "trimTurns", "undash", "keySafe", "keyFor", "keyless", "officialOpenai", "webLink", "lineBreaks", "typeBackRefusal", "modelFor", "isLocal", "actionOf", "ACTIONS", "STARTER", "rewriteMessage", "rewritePrompt", "agentCommand", "agentPrompt", "agentFailure", "readCodexModels", "signedOut", "modelLabel"]);
 
 const settings = {
     model: "m",
@@ -63,26 +63,18 @@ test.describe("assistant: requests", () => {
         const openai = Assistant.chatRequest("openai", settings, "s", messages);
         assert.strictEqual(openai.url, "https://api.example.com/v1/chat/completions");
         assert.strictEqual(openai.auth, "Authorization: Bearer ");
-        const anthropic = Assistant.chatRequest("anthropic", settings, "s", messages);
-        assert.strictEqual(anthropic.url, "https://api.anthropic.com/v1/messages");
-        assert.strictEqual(anthropic.auth, "x-api-key: ");
-        assert.ok(anthropic.headers.includes("anthropic-version: 2023-06-01"));
-        const body = JSON.parse(anthropic.body);
-        assert.strictEqual(body.system, "s");
-        assert.deepStrictEqual(body.messages, messages);
-        assert.ok(body.max_tokens > 0);
+        assert.strictEqual(openai.body.indexOf("sk-"), -1);
     });
 
     test.it("lists models where each backend keeps them", () => {
         assert.strictEqual(Assistant.listRequest("ollama", settings).url, "http://localhost:11434/api/tags");
         assert.strictEqual(Assistant.listRequest("openai", settings).url, "https://api.example.com/v1/models");
-        assert.ok(Assistant.listRequest("anthropic", settings).url.indexOf("https://api.anthropic.com/v1/models") === 0);
         assert.strictEqual(JSON.parse(Assistant.pullRequest(settings, "x").body).model, "x");
     });
 
     test.it("reads model lists", () => {
         assert.deepStrictEqual(Assistant.readModels("ollama", '{"models":[{"name":"a:1"},{"model":"b"}]}'), ["a:1", "b"]);
-        assert.deepStrictEqual(Assistant.readModels("anthropic", '{"data":[{"id":"claude-x"}]}'), ["claude-x"]);
+        assert.deepStrictEqual(Assistant.readModels("openai", '{"data":[{"id":"gpt-x"}]}'), ["gpt-x"]);
         assert.strictEqual(Assistant.readModels("ollama", "<html>"), null);
     });
 
@@ -91,9 +83,12 @@ test.describe("assistant: requests", () => {
         assert.strictEqual(Assistant.modelFor("ollama", "gone", ["x"]), "x");
         assert.strictEqual(Assistant.modelFor("ollama", "x", ["x", "y"]), "x");
         assert.strictEqual(Assistant.modelFor("ollama", "", []), "");
-        assert.strictEqual(Assistant.modelFor("anthropic", "", []), "claude-haiku-5-5");
-        assert.strictEqual(Assistant.modelFor("anthropic", "qwen", ["claude-a"]), "claude-a");
-        assert.strictEqual(Assistant.modelFor("anthropic", "", ["claude-opus-9", "claude-haiku-9"]), "claude-haiku-9");
+        assert.strictEqual(Assistant.modelFor("openai", "", ["gpt-big", "gpt-mini"]), "gpt-mini");
+        assert.strictEqual(Assistant.modelFor("claude", "", ["haiku", "sonnet", "opus"]), "haiku");
+        assert.strictEqual(Assistant.modelFor("claude", "qwen3:4b", ["haiku", "sonnet", "opus"]), "haiku");
+        assert.strictEqual(Assistant.modelFor("codex", "", ["gpt-a"]), "");
+        assert.strictEqual(Assistant.modelFor("codex", "gpt-a", ["gpt-a"]), "gpt-a");
+        assert.strictEqual(Assistant.modelFor("codex", "qwen3:4b", null), "");
     });
 
     test.it("knows a local address", () => {
@@ -119,11 +114,26 @@ test.describe("assistant: streams", () => {
         assert.strictEqual(Assistant.readChunk("openai", '    "message": "Incorrect API key",').other, '"message": "Incorrect API key",');
     });
 
-    test.it("reads Anthropic server-sent events", () => {
-        assert.strictEqual(Assistant.readChunk("anthropic", "event: content_block_delta").other, "");
-        assert.strictEqual(Assistant.readChunk("anthropic", 'data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello"}}').text, "Hello");
-        assert.strictEqual(Assistant.readChunk("anthropic", 'data: {"type":"message_stop"}').done, true);
-        assert.strictEqual(Assistant.readChunk("anthropic", 'data: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}').error, "Overloaded");
+    test.it("reads Claude Code's stream and its errors", () => {
+        assert.strictEqual(Assistant.readChunk("claude", '{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Sunlight"}}}').text, "Sunlight");
+        assert.strictEqual(Assistant.readChunk("claude", '{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"hm"}}}').text, "");
+        assert.strictEqual(Assistant.readChunk("claude", '{"type":"assistant","message":{"content":[{"type":"text","text":"Sunlight"}]}}').text, "");
+        const done = Assistant.readChunk("claude", '{"type":"result","subtype":"success","is_error":false,"result":"Sunlight"}');
+        assert.deepStrictEqual([done.done, done.error], [true, ""]);
+        const out = Assistant.readChunk("claude", '{"type":"result","subtype":"success","is_error":true,"result":"Not logged in · Please run /login"}');
+        assert.deepStrictEqual([out.done, out.error], [true, "Not logged in · Please run /login"]);
+        assert.strictEqual(Assistant.readChunk("claude", "[claude-code:unrecognized_model] {}").other, "[claude-code:unrecognized_model] {}");
+    });
+
+    test.it("reads Codex events, keeping retries out of the answer", () => {
+        const said = Assistant.readChunk("codex", '{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"Rayleigh scattering."}}');
+        assert.deepStrictEqual([said.text, said.block], ["Rayleigh scattering.", true]);
+        assert.strictEqual(Assistant.readChunk("codex", '{"type":"item.completed","item":{"type":"reasoning","text":"thinking"}}').text, "");
+        assert.strictEqual(Assistant.readChunk("codex", '{"type":"turn.completed","usage":{}}').done, true);
+        const retry = Assistant.readChunk("codex", '{"type":"error","message":"Reconnecting... 1/5"}');
+        assert.deepStrictEqual([retry.error, retry.other, retry.done], ["", "Reconnecting... 1/5", false]);
+        const failed = Assistant.readChunk("codex", '{"type":"turn.failed","error":{"message":"Please log out and sign in again."}}');
+        assert.deepStrictEqual([failed.error, failed.done], ["Please log out and sign in again.", true]);
     });
 
     test.it("explains a failure from what came back", () => {
@@ -230,7 +240,7 @@ test.describe("assistant: small helpers", () => {
 
 test.describe("assistant: where a key may go", () => {
     test.it("sends a key only over https or to this computer", () => {
-        assert.ok(Assistant.keySafe("https://api.anthropic.com/v1/messages"));
+        assert.ok(Assistant.keySafe("https://api.openai.com/v1/chat/completions"));
         assert.ok(Assistant.keySafe("http://localhost:1234/v1/chat/completions"));
         assert.ok(Assistant.keySafe("http://127.0.0.1:4000/v1/models"));
         assert.ok(Assistant.keySafe("http://[::1]:8080/v1"));
@@ -245,7 +255,7 @@ test.describe("assistant: where a key may go", () => {
     test.it("lets a plain http server answer without a key", () => {
         assert.ok(Assistant.keyless("openai", "http://192.168.1.20:1234/v1"));
         assert.ok(!Assistant.keyless("openai", "https://api.openai.com/v1"));
-        assert.ok(!Assistant.keyless("anthropic", "http://localhost:1234"));
+        assert.ok(!Assistant.keyless("claude", "http://localhost:1234"));
     });
 
     test.it("hands OPENAI_API_KEY only to OpenAI itself", () => {
@@ -276,5 +286,53 @@ test.describe("assistant: what a reply may do", () => {
     test.it("drops control characters from a rewrite", () => {
         assert.strictEqual(Assistant.tidyRewrite("Hi\u001b[2Jthere\u0007", "hi there"), "Hi[2Jthere");
         assert.strictEqual(Assistant.tidyRewrite("a\tb", "a b"), "a\tb");
+    });
+});
+
+test.describe("assistant: Claude Code and Codex sessions", () => {
+    test.it("runs Claude Code as a throwaway session with no tools and no key", () => {
+        const command = Assistant.agentCommand("claude", "haiku", "be brief");
+        assert.deepStrictEqual(command.slice(0, 2), ["claude", "-p"]);
+        for (const flag of ["--safe-mode", "--no-session-persistence", "--include-partial-messages", "--disable-slash-commands"])
+            assert.ok(command.includes(flag), flag);
+        assert.strictEqual(command[command.indexOf("--tools") + 1], "");
+        assert.strictEqual(command[command.indexOf("--output-format") + 1], "stream-json");
+        assert.strictEqual(command[command.indexOf("--system-prompt") + 1], "be brief");
+        assert.strictEqual(command[command.indexOf("--model") + 1], "haiku");
+        assert.ok(!Assistant.agentCommand("claude", "", "s").includes("--model"));
+    });
+
+    test.it("runs Codex read-only and ephemeral, with the prompt on stdin", () => {
+        const command = Assistant.agentCommand("codex", "gpt-a", 'say "hi"\nthen stop');
+        assert.deepStrictEqual(command.slice(0, 3), ["codex", "exec", "--json"]);
+        for (const flag of ["--ephemeral", "--skip-git-repo-check", "--ignore-user-config"])
+            assert.ok(command.includes(flag), flag);
+        assert.strictEqual(command[command.indexOf("--sandbox") + 1], "read-only");
+        assert.ok(command.includes('developer_instructions="say \\"hi\\"\\nthen stop"'));
+        assert.strictEqual(command[command.indexOf("-m") + 1], "gpt-a");
+        assert.strictEqual(command[command.length - 1], "-");
+        assert.ok(!Assistant.agentCommand("codex", "", "s").includes("-m"));
+    });
+
+    test.it("carries a follow-up's earlier turns in the prompt", () => {
+        assert.strictEqual(Assistant.agentPrompt([{ role: "user", content: "why?" }]), "why?");
+        const prompt = Assistant.agentPrompt([{ role: "user", content: "capital of France" }, { role: "assistant", content: "Paris" }, { role: "user", content: "and Spain" }]);
+        assert.ok(prompt.indexOf("Me: capital of France\n\nYou: Paris") > 0);
+        assert.ok(prompt.endsWith("\n\nand Spain"));
+    });
+
+    test.it("lists the Codex models its cache shows, in its order", () => {
+        const cache = JSON.stringify({ models: [{ slug: "b", display_name: "B", visibility: "list", priority: 9 }, { slug: "hidden", visibility: "hide", priority: 1 }, { slug: "a", display_name: "A", visibility: "list", priority: 2 }] });
+        assert.deepStrictEqual(Assistant.readCodexModels(cache), [["a", "A"], ["b", "B"]]);
+        assert.deepStrictEqual(Assistant.readCodexModels("{"), []);
+        assert.strictEqual(Assistant.modelLabel("sonnet"), "Claude Sonnet");
+    });
+
+    test.it("tells a signed-out CLI from other failures", () => {
+        assert.ok(Assistant.signedOut("Not logged in · Please run /login"));
+        assert.ok(Assistant.signedOut("Your refresh token was revoked. Please log out and sign in again."));
+        assert.ok(!Assistant.signedOut("Overloaded"));
+        assert.strictEqual(Assistant.agentFailure("codex", "noise\nReconnecting... 5/5\n"), "Reconnecting... 5/5");
+        assert.strictEqual(Assistant.agentFailure("claude", ""), "Claude Code did not answer");
     });
 });

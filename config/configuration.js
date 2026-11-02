@@ -53,6 +53,8 @@ function upgradeValue(path, value) {
         return value === "date" ? "mtime" : "kind";
     if (path === "files.markdown" && value === "source")
         return "raw";
+    if (path === "launcher.ai.backend" && value === "anthropic")
+        return "claude";
     return value;
 }
 
@@ -102,6 +104,8 @@ function upgradeLauncher(values) {
     }
     if (owns(launcher, "concept"))
         launcher.concept = upgradeValue("launcher.concept", launcher.concept);
+    if (isPlainObject(launcher.ai) && launcher.ai.backend === "anthropic")
+        launcher.ai = Object.assign({}, launcher.ai, { backend: "claude" });
     return Object.assign({}, values, { launcher });
 }
 

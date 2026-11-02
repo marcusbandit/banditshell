@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-11-02-5",
+      "date": "2026-11-02",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Launcher AI can answer through Claude Code or Codex, no API key"
+        },
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "The Anthropic API backend is now Claude Code; sign in to keep answers"
+        }
+      ]
+    },
+    {
       "id": "2026-11-02-4",
       "date": "2026-11-02",
       "changes": [

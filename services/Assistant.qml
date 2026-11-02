@@ -14,17 +14,25 @@ Singleton {
     readonly property bool enabled: !!root.settings.enabled
     readonly property string backend: root.settings.backend
     readonly property bool local: root.backend === "ollama"
+    readonly property bool agent: Logic.isAgent(root.backend)
+    readonly property var agentInfo: Logic.AGENTS[root.backend] ?? null
 
     readonly property string script: `${Quickshell.shellDir}/scripts/assistant-request.sh`
     readonly property string installer: `${Quickshell.shellDir}/scripts/install-package.sh`
+    readonly property string terminal: `${Quickshell.shellDir}/scripts/in-terminal.sh`
+    readonly property string sessionDir: `${Config.stateDir}/assistant-session`
 
     property var tools: ({})
     property bool probed: false
 
+    property var signedIn: ({})
+    property var codexModels: []
+
     property var keys: ({})
-    readonly property string savedKey: root.local ? "" : root.keys[root.backend] ?? ""
-    readonly property string environmentKey: root.backend === "anthropic" ? Quickshell.env("ANTHROPIC_API_KEY") ?? "" : Logic.officialOpenai(root.settings.openaiAddress) ? Quickshell.env("OPENAI_API_KEY") ?? "" : ""
-    readonly property string key: root.local ? "" : root.savedKey || root.environmentKey
+    readonly property bool keyed: root.backend === "openai"
+    readonly property string savedKey: root.keyed ? root.keys[root.backend] ?? "" : ""
+    readonly property string environmentKey: root.keyed && Logic.officialOpenai(root.settings.openaiAddress) ? Quickshell.env("OPENAI_API_KEY") ?? "" : ""
+    readonly property string key: root.keyed ? root.savedKey || root.environmentKey : ""
     readonly property bool keyless: Logic.keyless(root.backend, root.settings.openaiAddress)
     readonly property bool keyHeld: !!root.key && root.backend === "openai" && !Logic.keySafe(root.settings.openaiAddress)
 
@@ -40,10 +48,10 @@ Singleton {
     readonly property string listing: `${root.backend}|${root.settings.ollamaAddress}|${root.settings.openaiAddress}|${root.key ? "key" : ""}`
 
     readonly property string model: Logic.modelFor(root.backend, root.settings.model, root.models)
-    readonly property string modelName: Logic.modelLabel(root.model)
+    readonly property string modelName: root.model ? root.labelOf(root.model) : root.agent ? root.agentInfo.name : ""
 
     function labelOf(model: string): string {
-        return Logic.modelLabel(model);
+        return (root.backend === "codex" ? root.codexModels.find(m => m[0] === model)?.[1] : "") || Logic.modelLabel(model);
     }
 
     property string setup: ""
@@ -56,6 +64,16 @@ Singleton {
     readonly property string phase: {
         if (!root.enabled)
             return "off";
+        if (root.agent) {
+            if (root.setup)
+                return root.setup;
+            if (!root.probed)
+                return "unknown";
+            if (!root.tools[root.backend])
+                return "missing";
+            const signed = root.signedIn[root.backend];
+            return signed === undefined ? "unknown" : signed ? "ready" : "signedout";
+        }
         if (!root.local)
             return root.key || root.keyless ? "ready" : "nokey";
         if (root.setup)
@@ -117,11 +135,16 @@ Singleton {
     onEnabledChanged: if (root.enabled)
         root.refresh()
 
+    onBackendChanged: if (root.enabled)
+        root.refresh()
+
     function refresh(): void {
         if (!root.enabled)
             return;
         if (!root.probed && !prober.running)
             prober.running = true;
+        if (root.agent && root.probed && root.signedIn[root.backend] !== true)
+            root.checkSignIn();
         if (root.listedFor !== root.listing || root.local && Date.now() - root.listedAt > 4000)
             root.list();
     }
@@ -144,7 +167,55 @@ Singleton {
         };
     }
 
+    function checkSignIn(): void {
+        if (!root.agent || !root.tools[root.backend] || signInChecker.running)
+            return;
+        signInChecker.backend = root.backend;
+        signInChecker.command = root.agentInfo.status;
+        signInChecker.running = true;
+    }
+
+    function signInChecked(backend: string, code: int): void {
+        root.setSignedIn(backend, code === 0);
+        if (root.ready)
+            root.flush();
+    }
+
+    function setSignedIn(backend: string, signed: bool): void {
+        const next = Object.assign({}, root.signedIn);
+        next[backend] = signed;
+        root.signedIn = next;
+    }
+
+    function forgetSignIn(backend: string): void {
+        const next = Object.assign({}, root.signedIn);
+        delete next[backend];
+        root.signedIn = next;
+    }
+
+    function inTerminal(step: string, script: string): void {
+        root.setup = step;
+        root.trouble = "";
+        agentTerminal.command = [root.terminal, `${script} || { echo; printf 'Press Enter to close. '; read _; }`];
+        agentTerminal.running = true;
+    }
+
+    function terminalClosed(): void {
+        root.setup = "";
+        root.forgetSignIn(root.backend);
+        root.probed = false;
+        prober.running = true;
+    }
+
     function list(): void {
+        if (root.agent) {
+            root.models = root.backend === "claude" ? Logic.CLAUDE_MODELS.map(m => m[0]) : root.codexModels.map(m => m[0]);
+            root.reachable = true;
+            root.listed = true;
+            root.listedFor = root.listing;
+            root.listedAt = Date.now();
+            return;
+        }
         if (!root.local && !root.key && !root.keyless) {
             root.models = [];
             root.listed = true;
@@ -199,7 +270,13 @@ Singleton {
         root.trouble = "";
         switch (root.phase) {
         case "missing":
-            root.install();
+            if (root.agent)
+                root.inTerminal("installing", root.agentInfo.install);
+            else
+                root.install();
+            return;
+        case "signedout":
+            root.inTerminal("signingin", root.agentInfo.signIn);
             return;
         case "stopped":
             root.start();
@@ -212,6 +289,7 @@ Singleton {
             return;
         case "unknown":
         case "installing":
+        case "signingin":
         case "starting":
         case "pulling":
             return;
@@ -320,7 +398,7 @@ Singleton {
     }
 
     function openDownloadPage(): void {
-        Quickshell.execDetached(["xdg-open", "https://ollama.com/download"]);
+        Quickshell.execDetached(["xdg-open", root.agent ? root.agentInfo.page : "https://ollama.com/download"]);
     }
 
     function today(): string {
@@ -395,6 +473,18 @@ Singleton {
         root.finished = false;
         root.streaming = true;
         root.startedAt = Date.now();
+        if (root.agent) {
+            root.talk = talking.createObject(root, {
+                generation: root.generation,
+                body: Logic.agentPrompt(messages),
+                environment: {
+                    ANTHROPIC_API_KEY: null
+                },
+                command: ["sh", "-c", "mkdir -p -- \"$1\" && cd -- \"$1\" && shift && exec \"$@\"", "sh", root.sessionDir].concat(Logic.agentCommand(root.backend, root.model, system))
+            });
+            root.talk.running = true;
+            return;
+        }
         const request = Logic.chatRequest(root.backend, root.settingsFor(root.model), system, messages);
         const wired = root.wire(request, "stream");
         root.talk = talking.createObject(root, {
@@ -419,12 +509,19 @@ Singleton {
         if (chunk.error)
             root.error = chunk.error;
         if (chunk.text) {
+            if (chunk.block && (root.raw || root.arriving))
+                root.arriving += "\n\n";
             root.arriving += chunk.text;
             if (!flusher.running)
                 flusher.start();
         }
         if (chunk.done)
             root.complete();
+    }
+
+    function takeError(line: string, generation: int): void {
+        if (generation === root.generation && root.streaming && root.agent)
+            root.leftover += `${line}\n`;
     }
 
     function settle(): void {
@@ -441,7 +538,9 @@ Singleton {
         flusher.stop();
         root.streaming = false;
         if (!root.raw.trim() && !root.error)
-            root.error = Logic.failureText(root.status, root.leftover);
+            root.error = root.agent ? Logic.agentFailure(root.backend, root.leftover) : Logic.failureText(root.status, root.leftover);
+        if (root.agent && Logic.signedOut(root.error))
+            root.setSignedIn(root.backend, false);
         root.finished = !root.error;
         if (root.kind === "ask" && root.finished)
             root.turns = root.turns.concat([
@@ -565,7 +664,7 @@ Singleton {
     }
 
     function setKey(value: string): void {
-        if (root.local)
+        if (!root.keyed)
             return;
         const next = Object.assign({}, root.keys);
         next[root.backend] = value.trim();
@@ -635,7 +734,7 @@ Singleton {
             keyWriter.command = ["sh", "-c", "umask 077 && mkdir -p -- \"$(dirname -- \"$1\")\" && if [ -n \"$2\" ]; then cat > \"$1.new\" && mv -f -- \"$1.new\" \"$1\"; else rm -f -- \"$1\"; fi", "sh", root.keyPathFor(keySaver.backend), secret ? "write" : ""];
             keyWriter.stdinEnabled = true;
             keyWriter.running = true;
-            if (root.enabled && !root.local)
+            if (root.enabled && root.keyed)
                 root.list();
         }
     }
@@ -660,6 +759,10 @@ Singleton {
                 onRead: line => root.take(line, run.generation)
             }
 
+            stderr: SplitParser {
+                onRead: line => root.takeError(line, run.generation)
+            }
+
             onExited: root.ended(run.generation)
 
             onRunningChanged: if (!run.running)
@@ -670,13 +773,14 @@ Singleton {
     Process {
         id: prober
 
-        command: ["sh", "-c", "for tool in ollama wtype wl-paste curl; do command -v \"$tool\" >/dev/null 2>&1 && echo \"$tool\"; done; [ -e /proc/driver/nvidia/version ] && echo nvidia; true"]
+        command: ["sh", "-c", "for tool in ollama claude codex wtype wl-paste curl; do command -v \"$tool\" >/dev/null 2>&1 && echo \"$tool\"; done; [ -e /proc/driver/nvidia/version ] && echo nvidia; true"]
         stdout: StdioCollector {
             onStreamFinished: {
                 const found = {};
                 text.split("\n").filter(Boolean).forEach(tool => found[tool] = true);
                 root.tools = found;
                 root.probed = true;
+                root.checkSignIn();
             }
         }
     }
@@ -750,6 +854,20 @@ Singleton {
     }
 
     Process {
+        id: signInChecker
+
+        property string backend: ""
+
+        onExited: code => root.signInChecked(signInChecker.backend, code)
+    }
+
+    Process {
+        id: agentTerminal
+
+        onExited: root.terminalClosed()
+    }
+
+    Process {
         id: selectionReader
 
         property string then: ""
@@ -797,10 +915,14 @@ Singleton {
     }
 
     FileView {
-        id: anthropicKey
+        id: codexCache
 
-        path: root.keyPathFor("anthropic")
+        path: `${Quickshell.env("CODEX_HOME") || `${Quickshell.env("HOME")}/.codex`}/models_cache.json`
         printErrors: false
-        onLoaded: root.loadedKey("anthropic", anthropicKey.text())
+        onLoaded: {
+            root.codexModels = Logic.readCodexModels(codexCache.text());
+            if (root.backend === "codex")
+                root.list();
+        }
     }
 }

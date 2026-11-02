@@ -1361,13 +1361,16 @@ Singleton {
     readonly property var noteVaults: [["", "the one Obsidian opened last"]].concat(Notes.vaults.map(v => [v.path, v.name]))
 
     readonly property var aiModels: [["", "automatic"]].concat(Assistant.models.map(m => [m, Assistant.labelOf(m)]))
+    readonly property string aiTool: Assistant.agent ? Assistant.agentInfo.name : "Ollama"
     readonly property string aiNote: ({
             off: "off",
             unknown: "",
-            ready: Assistant.local ? `${Assistant.modelName} on this computer` : `${Assistant.modelName} over the internet`,
+            ready: Assistant.local ? `${Assistant.modelName} on this computer` : Assistant.agent ? `${Assistant.modelName} through ${Assistant.agentInfo.plan}` : `${Assistant.modelName} over the internet`,
             nokey: "no API key yet",
-            missing: "Ollama is not installed",
-            installing: "installing Ollama",
+            missing: `${root.aiTool} is not installed`,
+            installing: `installing ${root.aiTool}`,
+            signedout: `not signed in to ${root.aiTool}`,
+            signingin: `signing in to ${root.aiTool}`,
             stopped: "Ollama is not running",
             starting: "starting Ollama",
             empty: "no model downloaded yet",

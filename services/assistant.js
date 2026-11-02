@@ -6,19 +6,37 @@ var STARTER = {
     bytes: 2497293803
 };
 
-var BACKENDS = [["ollama", "Ollama"], ["openai", "OpenAI compatible"], ["anthropic", "Anthropic"]];
+var BACKENDS = [["ollama", "Ollama"], ["claude", "Claude Code"], ["codex", "Codex"], ["openai", "OpenAI compatible"]];
 
 var DEFAULT_MODELS = {
-    anthropic: "claude-haiku-5-5",
+    claude: "haiku",
     openai: "gpt-5-mini"
 };
 
 var LIGHT_MODELS = {
-    anthropic: "haiku",
     openai: "mini"
 };
 
-var ANTHROPIC = "https://api.anthropic.com/v1";
+var CLAUDE_MODELS = [["haiku", "Claude Haiku"], ["sonnet", "Claude Sonnet"], ["opus", "Claude Opus"]];
+
+var AGENTS = {
+    claude: {
+        name: "Claude Code",
+        plan: "your Claude plan",
+        status: ["claude", "auth", "status"],
+        signIn: "claude auth login",
+        install: "curl -fsSL https://claude.ai/install.sh | bash",
+        page: "https://code.claude.com/docs/en/setup"
+    },
+    codex: {
+        name: "Codex",
+        plan: "your ChatGPT plan",
+        status: ["codex", "login", "status"],
+        signIn: "codex login",
+        install: "npm install -g @openai/codex",
+        page: "https://developers.openai.com/codex/cli"
+    }
+};
 
 var CONTEXT = 8192;
 
@@ -52,6 +70,7 @@ var WEB_LINK = /^https?:\/\/[^\s]+$/i;
 var LINE_BREAKS = /\r\n|\r|\n/g;
 var CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g;
 var LOCAL_HOST = /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?\/?$/i;
+var SIGNED_OUT = /not logged in|please run \/login|sign in again|codex login|invalid api key|oauth token has expired/i;
 
 var ACTIONS = [
     {
@@ -144,6 +163,46 @@ function rewriteMessage(text) {
     };
 }
 
+function isAgent(backend) {
+    return Object.prototype.hasOwnProperty.call(AGENTS, backend);
+}
+
+function backendLabel(backend) {
+    const found = BACKENDS.find(b => b[0] === backend);
+    return found ? found[1] : "";
+}
+
+function agentCommand(backend, model, system) {
+    if (backend === "claude")
+        return ["claude", "-p", "--safe-mode", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--no-session-persistence", "--tools", "", "--disable-slash-commands", "--system-prompt", system].concat(model ? ["--model", model] : []);
+    return ["codex", "exec", "--json", "--ephemeral", "--skip-git-repo-check", "--ignore-user-config", "--ignore-rules", "--sandbox", "read-only", "-c", "model_reasoning_effort=\"low\"", "-c", `developer_instructions=${JSON.stringify(system)}`].concat(model ? ["-m", model] : []).concat(["-"]);
+}
+
+function agentPrompt(messages) {
+    const all = messages || [];
+    const last = all.length ? String(all[all.length - 1].content) : "";
+    if (all.length < 2)
+        return last;
+    const earlier = all.slice(0, -1).map(m => `${m.role === "assistant" ? "You" : "Me"}: ${m.content}`).join("\n\n");
+    return `Our chat so far:\n\n${earlier}\n\nNow answer this:\n\n${last}`;
+}
+
+function readCodexModels(text) {
+    const got = parse(text);
+    if (!got || !Array.isArray(got.models))
+        return [];
+    return got.models.filter(m => m && m.slug && m.visibility === "list").sort((a, b) => (a.priority || 0) - (b.priority || 0)).map(m => [m.slug, m.display_name || m.slug]);
+}
+
+function signedOut(text) {
+    return SIGNED_OUT.test(String(text || ""));
+}
+
+function agentFailure(backend, leftover) {
+    const lines = String(leftover || "").split("\n").map(l => l.trim()).filter(Boolean);
+    return lines.length ? lines[lines.length - 1] : `${backendLabel(backend)} did not answer`;
+}
+
 function trimSlash(url) {
     return String(url || "").replace(TRAILING_SLASHES, "");
 }
@@ -190,6 +249,8 @@ function typeBackRefusal(result, source, cut) {
 
 function modelFor(backend, chosen, available) {
     const known = available && available.length ? available : null;
+    if (backend === "codex")
+        return chosen && known && known.indexOf(chosen) >= 0 ? chosen : "";
     if (chosen && (!known || known.indexOf(chosen) >= 0))
         return chosen;
     if (backend === "ollama")
@@ -205,19 +266,6 @@ function modelFor(backend, chosen, available) {
 }
 
 function chatRequest(backend, settings, system, messages) {
-    if (backend === "anthropic")
-        return {
-            url: `${ANTHROPIC}/messages`,
-            auth: "x-api-key: ",
-            headers: ["Content-Type: application/json", "anthropic-version: 2023-06-01"],
-            body: JSON.stringify({
-                model: settings.model,
-                max_tokens: 1024,
-                system: system,
-                messages: messages,
-                stream: true
-            })
-        };
     const all = [
         {
             role: "system",
@@ -266,13 +314,6 @@ function warmRequest(settings) {
 }
 
 function listRequest(backend, settings) {
-    if (backend === "anthropic")
-        return {
-            url: `${ANTHROPIC}/models?limit=100`,
-            auth: "x-api-key: ",
-            headers: ["anthropic-version: 2023-06-01"],
-            body: ""
-        };
     if (backend === "openai")
         return {
             url: `${trimSlash(settings.openaiAddress)}/models`,
@@ -334,9 +375,35 @@ function readModels(backend, text) {
     return Array.isArray(got.data) ? got.data.map(m => m.id).filter(Boolean) : null;
 }
 
+function readClaude(got, out) {
+    const event = got.event;
+    if (got.type === "stream_event" && event && event.type === "content_block_delta" && event.delta && event.delta.type === "text_delta")
+        out.text = event.delta.text || "";
+    if (got.type === "result") {
+        out.done = true;
+        if (got.is_error)
+            out.error = String(got.result || got.errors && got.errors[0] || "Claude Code did not answer");
+    }
+    return out;
+}
+
+function readCodex(got, out) {
+    if (got.type === "item.completed" && got.item && got.item.type === "agent_message") {
+        out.text = got.item.text || "";
+        out.block = true;
+    }
+    if (got.type === "error")
+        out.other = String(got.message || "");
+    if (got.type === "turn.failed")
+        out.error = String(got.error && got.error.message || "Codex did not answer");
+    out.done = got.type === "turn.completed" || got.type === "turn.failed";
+    return out;
+}
+
 function readChunk(backend, line) {
     const out = {
         text: "",
+        block: false,
         done: false,
         error: "",
         status: 0,
@@ -350,12 +417,16 @@ function readChunk(backend, line) {
         out.status = +status[1];
         return out;
     }
-    if (backend === "ollama") {
+    if (isAgent(backend) || backend === "ollama") {
         const got = parse(raw);
         if (!got) {
             out.other = raw;
             return out;
         }
+        if (backend === "claude")
+            return readClaude(got, out);
+        if (backend === "codex")
+            return readCodex(got, out);
         if (got.error)
             out.error = String(got.error);
         out.text = got.message && got.message.content || "";
@@ -377,12 +448,6 @@ function readChunk(backend, line) {
         return out;
     if (got.error) {
         out.error = String(got.error.message || got.error);
-        return out;
-    }
-    if (backend === "anthropic") {
-        if (got.type === "content_block_delta" && got.delta && got.delta.type === "text_delta")
-            out.text = got.delta.text || "";
-        out.done = got.type === "message_stop";
         return out;
     }
     const choice = got.choices && got.choices[0];
@@ -492,7 +557,8 @@ function sizeText(bytes) {
 function modelLabel(name) {
     if (name === STARTER.name)
         return STARTER.label;
-    return String(name || "");
+    const claude = CLAUDE_MODELS.find(m => m[0] === name);
+    return claude ? claude[1] : String(name || "");
 }
 
 function snippet(text, limit) {

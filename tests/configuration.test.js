@@ -318,6 +318,13 @@ test.describe("upgrade", () => {
         assert.strictEqual(Configuration.upgradeValue("theme", "niagara"), "niagara");
     });
 
+    test.it("moves the Anthropic API backend to Claude Code", () => {
+        const old = { launcher: { ai: { backend: "anthropic", model: "x" } } };
+        assert.deepStrictEqual(Configuration.upgrade(old).launcher.ai, { backend: "claude", model: "x" });
+        assert.strictEqual(Configuration.upgradeValue("launcher.ai.backend", "anthropic"), "claude");
+        assert.strictEqual(Configuration.upgradeValue("launcher.ai.backend", "openai"), "openai");
+    });
+
     test.it("splits the old small sidebar clock into stacked at the small size, rail and open", () => {
         const old = { sidebar: { clock: { style: "small", date: "day" } } };
         assert.deepStrictEqual(Configuration.upgrade(old), { sidebar: { clock: { style: "stacked", size: "small", wideStyle: "stacked", wideSize: "small", date: "day" } } });

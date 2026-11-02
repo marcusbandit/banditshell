@@ -52,8 +52,9 @@ almost every day.
 
 - A launcher that answers as you type. Sums, units, dates and colours go
   through qalc. It finds open windows, emoji, your scripts, Wi-Fi networks and
-  SSH hosts, translates and defines words, starts a pomodoro, and asks a local
-  AI model through Ollama when you want one.
+  SSH hosts, translates and defines words, starts a pomodoro, and asks AI
+  through Ollama on your own machine, or through Claude Code or Codex with the
+  plan you already pay for.
 - The island at the top of the screen. A notification, a song change, a
   finished download, a kernel update waiting for a reboot: the newest takes
   the big spot and the rest wait as bubbles beside it.
