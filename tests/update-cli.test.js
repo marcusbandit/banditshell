@@ -677,17 +677,29 @@ test("a restart class update restarts the shell into the new tree and refreshes 
     assert.ok(fs.existsSync(backupFile(world, "services/Thing.qml")));
 });
 
-function restartUnder(systemdRun) {
+const UNSCOPED = /so the shell stops when the terminal or agent that started it stops/;
+
+function scopeWorld(systemdRun) {
     const world = makeWorld();
-    const runs = path.join(world.root, "systemd-run.calls");
+    world.runs = path.join(world.root, "systemd-run.calls");
     fs.writeFileSync(path.join(world.fakebin, "systemd-run"), `#!/bin/sh
-echo "$*" >>"${runs}"
+echo "$*" >>"${world.runs}"
 ${systemdRun}
+case "$*" in *--unit=banditshell-watch-*) exit 0 ;; esac
 while [ "$1" != -- ]; do shift; done
 shift
 exec "$@"
 `, { mode: 0o755 });
-    startShell(world);
+    fs.writeFileSync(path.join(world.fakebin, "gh"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+    return world;
+}
+
+const scopedCalls = world => fs.readFileSync(world.runs, "utf8").trim().split("\n").filter(call => !call.endsWith("-- true"));
+
+function restartUnder(systemdRun) {
+    const world = scopeWorld(systemdRun);
+    const started = run(world, ["start"]);
+    assert.strictEqual(started.status, 0, started.err + started.out);
     const target = advance(world, "singleton", {
         "services/qmldir": "module qs.services\nsingleton Thing 1.0 Thing.qml\n",
         "services/Thing.qml": "pragma Singleton\n"
@@ -695,18 +707,46 @@ exec "$@"
     const got = applyTo(world, target);
     assert.strictEqual(got.status, 0, got.err + got.out);
     assert.strictEqual(pids(world).length, 1);
-    return fs.readFileSync(runs, "utf8").trim().split("\n").filter(call => !call.endsWith("-- true"));
+    return { calls: scopedCalls(world), said: [started.err, got.err] };
 }
 
 test("a restarted shell gets a systemd scope of its own, so stopping what ran the update leaves it running", () => {
-    const calls = restartUnder("");
+    const { calls, said } = restartUnder("");
     assert.strictEqual(calls.length, 2);
     for (const call of calls)
         assert.match(call, /^--user --scope --quiet --collect --expand-environment=no --unit=banditshell-shell-\d+ -- qs -d -p \S+\/live$/);
+    for (const err of said)
+        assert.doesNotMatch(err, UNSCOPED);
 });
 
-test("a shell that cannot get a scope of its own still starts and restarts", () => {
-    assert.deepStrictEqual(restartUnder("exit 1"), []);
+test("a shell that cannot get a scope of its own still starts and restarts, and says it has none", () => {
+    const { calls, said } = restartUnder("exit 1");
+    assert.deepStrictEqual(calls, []);
+    for (const err of said)
+        assert.match(err, /systemd-run --user --scope does not work here, so the shell stops when the terminal or agent that started it stops/);
+});
+
+test("dev try, dev back and dev tidy start the shell in a scope of its own", () => {
+    const world = scopeWorld("");
+    const tried = path.join(world.root, "tried");
+    git(world.live, "worktree", "add", "-q", "-b", "feat/1-thing", tried);
+    for (const helper of ["bs-pty", "bs-ls", "bs-gamma"])
+        write(tried, `bin/${helper}`, "#!/bin/sh\n", 0o755);
+    git(tried, "push", "-q", "origin", "feat/1-thing");
+    git(world.live, "fetch", "-q", "origin");
+    startShell(world);
+    for (const args of [["dev", "try", "feat/1-thing"], ["dev", "back"], ["dev", "try", "feat/1-thing"], ["dev", "tidy"]]) {
+        const got = run(world, args);
+        assert.strictEqual(got.status, 0, args.join(" ") + "\n" + got.err + got.out);
+        assert.doesNotMatch(got.err, UNSCOPED);
+        assert.strictEqual(pids(world).length, 1, args.join(" "));
+    }
+    const shells = scopedCalls(world).filter(call => call.includes("--unit=banditshell-shell-"));
+    for (const call of shells)
+        assert.match(call, /^--user --scope --quiet --collect --expand-environment=no --unit=banditshell-shell-\d+ -- qs -d -p \S+$/);
+    assert.deepStrictEqual(shells.map(call => call.split(" ").pop()), [world.live, tried, world.live, tried, world.live]);
+    assert.strictEqual(scopedCalls(world).filter(call => call.includes("--unit=banditshell-watch-")).length, 2);
+    assert.strictEqual(fs.existsSync(tried), false);
 });
 
 const progress = world => {

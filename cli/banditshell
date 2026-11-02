@@ -758,17 +758,34 @@ cached_pid() {
     esac
 }
 
-own_scope() {
-    local -a scope=(systemd-run --user --scope --quiet --collect)
-    local unit
-    unit="--unit=banditshell-$1-$(date +%s%N)"
-    shift
+scope=()
+scope_found=0
+
+find_scope() {
+    local -a base=(systemd-run --user --scope --quiet --collect)
+    [ "$scope_found" = 0 ] || return 0
+    scope_found=1
     if ! command -v systemd-run >/dev/null 2>&1; then
-        "$@"
-    elif "${scope[@]}" --expand-environment=no -- true >/dev/null 2>&1; then
-        "${scope[@]}" --expand-environment=no "$unit" -- "$@"
-    elif "${scope[@]}" -- true >/dev/null 2>&1; then
-        "${scope[@]}" "$unit" -- "$@"
+        unscoped "systemd-run is not installed"
+    elif "${base[@]}" --expand-environment=no -- true >/dev/null 2>&1; then
+        scope=("${base[@]}" --expand-environment=no)
+    elif "${base[@]}" -- true >/dev/null 2>&1; then
+        scope=("${base[@]}")
+    else
+        unscoped "systemd-run --user --scope does not work here"
+    fi
+}
+
+unscoped() {
+    echo "${yellow}banditshell: $1, so the shell stops when the terminal or agent that started it stops$plain" >&2
+}
+
+own_scope() {
+    local name="$1"
+    shift
+    find_scope
+    if [ "${#scope[@]}" -gt 0 ]; then
+        "${scope[@]}" "--unit=banditshell-$name-$(date +%s%N)" -- "$@"
     else
         "$@"
     fi
@@ -992,6 +1009,7 @@ launch() {
         return 0
     fi
     out=$(mktemp)
+    find_scope
     if ! (cd "$HOME" && own_scope shell qs -d -p "$1") 8>&- >"$out" 2>&1 || grep -q "Failed to load configuration" "$out"; then
         launch_failed "$1" "$out" "did not load"
         return 1
