@@ -36,7 +36,6 @@ Item {
         id: own
 
         anchors.fill: parent
-        asynchronous: true
         clip: true
     }
 }

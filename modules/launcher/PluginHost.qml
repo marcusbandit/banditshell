@@ -138,11 +138,13 @@ Singleton {
         return text.split("\x1e").slice(1).map(chunk => {
             const cut = chunk.indexOf("\n");
             const folder = chunk.slice(0, cut);
-            const read = Protocol.readManifest(chunk.slice(cut + 1), folder);
+            const tab = chunk.lastIndexOf("\t", cut);
+            const read = Protocol.readManifest(chunk.slice(cut + 1), tab < 0 ? folder : folder.slice(0, tab));
             return read.plugin ? {
                 id: read.plugin.id,
                 name: read.plugin.name,
-                plugin: read.plugin
+                plugin: read.plugin,
+                drawn: tab < 0 ? "" : folder.slice(tab + 1)
             } : {
                 id: read.id,
                 name: read.name ?? read.id,
@@ -259,7 +261,7 @@ Singleton {
             seq: seq,
             text: text,
             prefixed: prefixed,
-            items: had?.items ?? [],
+            items: had && had.prefixed === prefixed ? had.items : [],
             waiting: true,
             answered: false,
             at: Date.now()
@@ -455,7 +457,7 @@ Singleton {
     }
 
     property Process scanner: Process {
-        command: ["sh", "-c", 'for d in "$1"/*/; do f="${d}plugin.json"; [ -f "$f" ] || continue; printf "\\036%s\\n" "${d%/}"; head -c 65536 "$f"; done', "sh", root.folder]
+        command: ["sh", "-c", 'for d in "$1"/*/; do f="${d}plugin.json"; [ -f "$f" ] || continue; printf "\\036%s\\t%s\\n" "${d%/}" "$(find -L "$d" -maxdepth 4 -name "*.qml" -printf "%T@%p" 2>/dev/null | cksum)"; head -c 65536 "$f"; done', "sh", root.folder]
         stdout: StdioCollector {
             onStreamFinished: {
                 if (root.scanAgain) {
@@ -465,6 +467,9 @@ Singleton {
                 const found = root.readScan(text);
                 const first = !root.scannedAt;
                 root.scannedAt = Date.now();
+                for (const entry of found)
+                    if (entry.plugin && root.entryOf(entry.id)?.drawn !== undefined && root.entryOf(entry.id).drawn !== entry.drawn)
+                        root.forgetDrawings(entry.id);
                 if (!first && JSON.stringify(found) === JSON.stringify(root.found))
                     return;
                 root.found = found;

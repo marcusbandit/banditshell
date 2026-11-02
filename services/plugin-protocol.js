@@ -176,7 +176,7 @@ function environment(plugin, values, secrets) {
     var env = {
         BANDITSHELL_PLUGIN_ID: plugin.id,
         BANDITSHELL_PLUGIN_DIR: plugin.folder,
-        BANDITSHELL_API: String(API)
+        BANDITSHELL_API: String(plugin.api || API)
     };
     for (var p of plugin.preferences)
         env[envKey(p.key)] = valueOf(p, values, secrets);
@@ -462,7 +462,7 @@ function plainRows(items, typed, rank, place) {
 }
 
 function kept(answer, asked) {
-    return !!answer && !answer.late && answer.prefixed === asked.prefixed ? answer.items : [];
+    return !!answer && !answer.late && answer.prefixed === asked.prefixed ? answer.items.filter(i => !i.pin && !i.answer) : [];
 }
 
 function updated(items, item) {

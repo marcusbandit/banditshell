@@ -435,7 +435,7 @@ LauncherConcept {
         const row = root.results[root.selected];
         if (event.key === Qt.Key_Tab && (search.complete(row) || search.complete(root.results.find(r => r.kind === "suggest")) || search.complete(root.results.find(r => r.tab))))
             return true;
-        if (row?.card && root.rowMayClaim(event) && list.itemAtIndex(root.selected)?.claimRowKey(event))
+        if (row?.card && !root.answerHolds && !assistantCard.holds && root.rowMayClaim(event) && list.itemAtIndex(root.selected)?.claimRowKey(event))
             return true;
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
             root.actionsFor(row).slice(1).find(a => !a.tucked)?.run();
@@ -642,6 +642,8 @@ LauncherConcept {
     }
 
     property string listedQuery: ""
+    property real listedAt: 0
+    readonly property int seenAfter: 300
     property string selectedKey: ""
     property bool steered: false
 
@@ -651,11 +653,15 @@ LauncherConcept {
         Trace.note("results");
         if (search.query !== root.listedQuery) {
             root.listedQuery = search.query;
+            root.listedAt = Date.now();
             root.steered = false;
         }
-        const kept = root.steered ? root.results.findIndex(r => r.id === root.selectedKey) : -1;
+        const seen = !root.steered && Date.now() - root.listedAt >= root.seenAfter && !!root.selectedKey && root.selectedKey.indexOf("fallback:") !== 0;
+        const kept = root.steered || seen ? root.results.findIndex(r => r.id === root.selectedKey) : -1;
         if (kept >= 0) {
             root.selected = kept;
+            if (seen)
+                list.reveal(kept);
             return;
         }
         root.steered = false;
@@ -1408,7 +1414,9 @@ LauncherConcept {
                             }
                             readonly property real fitted: Math.max(root.rowPitch, Math.min(root.rowPitch * 12, card.item?.implicitHeight ?? root.rowPitch))
 
-                            onFittedChanged: if (line.modelData.span === 0)
+                            readonly property string fitNote: line.modelData.span === 0 ? `${line.modelData.key}\n${line.fitted}` : ""
+
+                            onFitNoteChanged: if (line.fitNote)
                                 root.noteFit(line.modelData.key, line.fitted)
 
                             Loader {
@@ -1475,7 +1483,11 @@ LauncherConcept {
                             }
 
                             onButtonsChanged: line.showButtons()
-                            Component.onCompleted: line.showButtons()
+                            Component.onCompleted: {
+                                line.showButtons();
+                                if (line.fitNote)
+                                    root.noteFit(line.modelData.key, line.fitted);
+                            }
 
                             readonly property var buttons: {
                                 if (!line.opened || line.carded && !line.modelData.armed)

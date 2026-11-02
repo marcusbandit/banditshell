@@ -320,6 +320,9 @@ QtObject {
 
     property bool active: true
 
+    onActiveChanged: if (root.active)
+        PluginHost.refresh()
+
     property string target: ""
 
     onQueryChanged: {

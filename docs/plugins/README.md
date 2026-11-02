@@ -82,7 +82,7 @@ plugin can reach before it lists any.
 
 | field | required | meaning |
 |---|---|---|
-| `api` | yes | The protocol version, `2`. The shell still speaks `1`, which has everything below except what api 2 adds. A plugin asking for a version the shell does not speak is listed but not started. |
+| `api` | yes | The protocol version, `2`. The shell still runs plugins that say `1`, and they can use everything below too; `2` makes an older shell, which cannot draw what api 2 adds, refuse the plugin instead of drawing it wrong. A plugin asking for a version the shell does not speak is listed but not started. |
 | `id` | yes | Lowercase letters, digits and `-`, the same as the folder name. |
 | `name` | yes | Shown in Settings and as the title of the plugin's group. |
 | `about` | no | One line for Settings and the `?` page. |
@@ -115,7 +115,7 @@ it is kept in `~/.local/state/banditshell/plugin-secrets.json`, a file only
 you can read. Changing a preference restarts the program.
 
 The program also gets `BANDITSHELL_PLUGIN_ID`, `BANDITSHELL_PLUGIN_DIR` and
-`BANDITSHELL_API`.
+`BANDITSHELL_API`, the api its manifest asked for.
 
 ## The protocol
 
@@ -365,7 +365,12 @@ and usually answers with an effect or another page.
   below the launcher's own rows. The setting is `launcher.plugins.rank`.
 - While the next answer is on its way, the rows from the last one stay on
   screen, filtered by what is typed now, so the list does not flicker on
-  every key.
+  every key. Rows marked `pin` or `answer` belong to the query they
+  answered and leave with it.
+- Once the list has been on screen for a moment, a late answer never moves
+  the selection: plugin rows that arrive after it join above or below, and
+  Enter still runs the row that was highlighted. The next key you type
+  selects the top row again.
 
 ## When things go wrong
 

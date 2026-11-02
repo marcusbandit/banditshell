@@ -61,7 +61,7 @@ test.describe("plugin manifest", () => {
         assert.deepStrictEqual(P.environment(plugin, { site: "acme.atlassian.net" }, { token: "s3cret" }), {
             BANDITSHELL_PLUGIN_ID: "jira",
             BANDITSHELL_PLUGIN_DIR: "/p/jira",
-            BANDITSHELL_API: "2",
+            BANDITSHELL_API: "1",
             BANDITSHELL_PREF_SITE: "acme.atlassian.net",
             BANDITSHELL_PREF_TOKEN: "s3cret",
             BANDITSHELL_PREF_MINE: "1"
@@ -208,9 +208,11 @@ test.describe("plugin answers", () => {
 
     test.it("keeps the last rows on screen until the next answer, and updates one row in place", () => {
         const items = P.readItems([{ id: "a", title: "A" }, { id: "b", title: "B" }]);
-        assert.strictEqual(P.kept({ items, prefixed: true }, { prefixed: true }), items);
+        assert.deepStrictEqual(P.kept({ items, prefixed: true }, { prefixed: true }), items);
         assert.deepStrictEqual(P.kept({ items, prefixed: true, late: true }, { prefixed: true }), []);
         assert.deepStrictEqual(P.kept({ items, prefixed: false }, { prefixed: true }), []);
+        const answered = P.readItems([{ id: "a", title: "4", answer: true }, { id: "b", title: "Today", pin: true }, { id: "c", title: "C" }]);
+        assert.deepStrictEqual(P.kept({ items: answered, prefixed: false }, { prefixed: false }).map(i => i.id), ["c"]);
         const update = P.readMessage('{"type":"update","item":{"id":"b","title":"B done"}}');
         assert.deepStrictEqual(P.updated(items, update.item).map(i => i.title), ["A", "B done"]);
         assert.strictEqual(P.updated(items, P.readItems([{ id: "z", title: "Z" }])[0]), null);

@@ -44,7 +44,6 @@ Item {
         id: own
 
         anchors.fill: parent
-        asynchronous: true
         clip: true
         visible: root.drawn
     }
@@ -52,7 +51,7 @@ Item {
     Item {
         id: mark
 
-        readonly property real side: root.tall ? Math.max(Appearance.sizes.launcherIcon, Math.min(root.height - Appearance.padding.normal * 2, Appearance.sizes.launcherIcon * 3)) : Appearance.sizes.launcherIcon
+        readonly property real side: root.span === 0 ? Appearance.sizes.launcherIcon * 2 : root.tall ? Math.max(Appearance.sizes.launcherIcon, Math.min(root.height - Appearance.padding.normal * 2, Appearance.sizes.launcherIcon * 3)) : Appearance.sizes.launcherIcon
 
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
