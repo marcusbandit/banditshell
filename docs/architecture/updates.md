@@ -55,8 +55,10 @@ The words a person reads live in `services/update.js`. The work is done by `cli/
    that makes the checkout's shell exit counts as a failed one: the instance is looked up before
    the merge, and when it is gone after it with no other shell in its place, the same restart and
    check follow. A shell run from the last known good copy or a tried worktree was never the
-   checkout's, so it is left alone (#307). Once the new version has started, `config.json` as it
-   wrote it is copied as `<time>-after-<target>.json`.
+   checkout's, so it is left alone (#307). A new shell that exits because Qt could not create an
+   EGL surface gets one more start once no layer of an exited shell is left in `hyprctl layers`,
+   and when that start fails too the rollback reason names the EGL error (#430). Once the new
+   version has started, `config.json` as it wrote it is copied as `<time>-after-<target>.json`.
 6. **Roll back on failure.** If the health check of a start fails, `git reset --keep <previous>` puts the
    checkout back, the commit that failed goes into `update/skip` (it is not offered again until a
    newer one arrives) and the shell is relaunched. If even that launch fails, the last known

@@ -12,6 +12,17 @@
       ]
     },
     {
+      "id": "2026-11-02-2",
+      "date": "2026-11-02",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "An update tries again when the screen is busy instead of going back"
+        }
+      ]
+    },
+    {
       "id": "2026-11-02",
       "date": "2026-11-02",
       "changes": [
