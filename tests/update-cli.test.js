@@ -677,7 +677,7 @@ test("a restart class update restarts the shell into the new tree and refreshes 
     assert.ok(fs.existsSync(backupFile(world, "services/Thing.qml")));
 });
 
-const UNSCOPED = /so the shell stops when the terminal or agent that started it stops/;
+const UNSCOPED = /so the shell and its jobs stop when the terminal or agent that started them stops/;
 
 function scopeWorld(systemdRun) {
     const world = makeWorld();
@@ -723,7 +723,38 @@ test("a shell that cannot get a scope of its own still starts and restarts, and 
     const { calls, said } = restartUnder("exit 1");
     assert.deepStrictEqual(calls, []);
     for (const err of said)
-        assert.match(err, /systemd-run --user --scope does not work here, so the shell stops when the terminal or agent that started it stops/);
+        assert.match(err, /systemd-run --user --scope does not work here, so the shell and its jobs stop when the terminal or agent that started them stops/);
+});
+
+function withoutSystemdRun(world) {
+    const tools = path.join(world.root, "no-systemd-run");
+    fs.mkdirSync(tools);
+    for (const dir of process.env.PATH.split(":")) {
+        let names = [];
+        try {
+            names = fs.readdirSync(dir);
+        } catch {
+            continue;
+        }
+        for (const name of names.filter(name => name !== "systemd-run")) {
+            try {
+                fs.symlinkSync(path.join(dir, name), path.join(tools, name));
+            } catch {}
+        }
+    }
+    return { PATH: `${world.fakebin}:${tools}` };
+}
+
+test("without systemd-run the shell still starts, and says it has no scope once per login", () => {
+    const world = makeWorld();
+    const env = withoutSystemdRun(world);
+    const first = run(world, ["start"], env);
+    assert.strictEqual(first.status, 0, first.err + first.out);
+    assert.match(first.err, /systemd-run is not installed, so the shell and its jobs stop/);
+    const again = run(world, ["restart"], env);
+    assert.strictEqual(again.status, 0, again.err + again.out);
+    assert.doesNotMatch(again.err, UNSCOPED);
+    assert.strictEqual(pids(world).length, 1);
 });
 
 test("dev try, dev back and dev tidy start the shell in a scope of its own", () => {

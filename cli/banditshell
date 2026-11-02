@@ -766,7 +766,8 @@ find_scope() {
     [ "$scope_found" = 0 ] || return 0
     scope_found=1
     if ! command -v systemd-run >/dev/null 2>&1; then
-        unscoped "systemd-run is not installed"
+        [ -e "$RUN_DIR/told-no-systemd-run" ] || unscoped "systemd-run is not installed"
+        { mkdir -p "$RUN_DIR" && : >"$RUN_DIR/told-no-systemd-run"; } 2>/dev/null || true
     elif "${base[@]}" --expand-environment=no -- true >/dev/null 2>&1; then
         scope=("${base[@]}" --expand-environment=no)
     elif "${base[@]}" -- true >/dev/null 2>&1; then
@@ -777,7 +778,7 @@ find_scope() {
 }
 
 unscoped() {
-    echo "${yellow}banditshell: $1, so the shell stops when the terminal or agent that started it stops$plain" >&2
+    echo "${yellow}banditshell: $1, so the shell and its jobs stop when the terminal or agent that started them stops$plain" >&2
 }
 
 own_scope() {
@@ -4210,6 +4211,7 @@ update_apply() {
     if [ "$detach" = 1 ] && ! dry; then
         mkdir -p "$UPDATE_STATE"
         : >"$UPDATE_STATE/progress.log"
+        find_scope
         (cd "$HOME" && detach update "$(readlink -f "${BASH_SOURCE[0]}")" update apply --json ${to:+--to "$to"} 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log")
         return 0
     fi
@@ -4380,6 +4382,7 @@ update_rollback() {
     if [ "$detach" = 1 ] && ! dry; then
         mkdir -p "$UPDATE_STATE"
         : >"$UPDATE_STATE/progress.log"
+        find_scope
         (cd "$HOME" && detach rollback "$(readlink -f "${BASH_SOURCE[0]}")" update rollback --json 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log")
         return 0
     fi
