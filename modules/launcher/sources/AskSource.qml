@@ -51,7 +51,7 @@ QtObject {
         }
     ]
 
-    readonly property string backendName: (Logic.BACKENDS.find(b => b[0] === Assistant.backend) ?? ["", ""])[1]
+    readonly property string backendName: Logic.backendLabel(Assistant.backend)
 
     readonly property var setupRow: {
         const base = {
@@ -64,12 +64,25 @@ QtObject {
         switch (Assistant.phase) {
         case "missing":
             return Object.assign(base, {
-                label: "Install Ollama"
+                label: `Install ${Assistant.agent ? root.backendName : "Ollama"}`,
+                detail: Assistant.trouble || (Assistant.agent ? `uses ${Assistant.agentInfo.plan}` : "")
             });
         case "installing":
             return Object.assign(base, {
-                label: "Installing Ollama",
-                detail: ""
+                label: `Installing ${Assistant.agent ? root.backendName : "Ollama"}`,
+                detail: Assistant.agent ? "finish in the terminal" : ""
+            });
+        case "signedout":
+            return Object.assign(base, {
+                label: `Sign in to ${root.backendName}`,
+                detail: `uses ${Assistant.agentInfo.plan}`,
+                icon: "login"
+            });
+        case "signingin":
+            return Object.assign(base, {
+                label: `Signing in to ${root.backendName}`,
+                detail: "finish in the terminal",
+                icon: "login"
             });
         case "stopped":
             return Object.assign(base, {
@@ -132,9 +145,9 @@ QtObject {
             id: "assistantsetup",
             icon: "auto_awesome",
             label: "Set up AI answers",
-            words: "ai assistant ollama llm local model set up download start",
+            words: "ai assistant ollama claude code codex llm local model set up download start install sign in login",
             detail: Assistant.phase === "pulling" ? `${Assistant.progress}%` : "",
-            hidden: !Assistant.enabled || !Assistant.local || Assistant.ready || Assistant.phase === "unknown",
+            hidden: !Assistant.enabled || !Assistant.local && !Assistant.agent || Assistant.ready || Assistant.phase === "unknown",
             stay: true,
             run: () => Assistant.setUp(null)
         },
@@ -200,6 +213,19 @@ QtObject {
         };
         switch (Assistant.phase) {
         case "missing":
+            if (Assistant.agent)
+                return [
+                    {
+                        icon: "download",
+                        label: "Install",
+                        run: () => root.activate(row)
+                    },
+                    {
+                        icon: "open_in_new",
+                        label: `About ${root.backendName}`,
+                        run: () => root.search.leave(() => Assistant.openDownloadPage())
+                    }
+                ];
             return [
                 {
                     icon: "download",
@@ -230,6 +256,14 @@ QtObject {
                     run: () => root.activate(row)
                 },
                 apiKey
+            ];
+        case "signedout":
+            return [
+                {
+                    icon: "login",
+                    label: "Sign in",
+                    run: () => root.activate(row)
+                }
             ];
         case "nokey":
         case "unreachable":

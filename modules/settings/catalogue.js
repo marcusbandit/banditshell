@@ -538,11 +538,11 @@ const PAGES_SOURCE = {
             { t: "AI", rows: [
                 { n: [], icon: "auto_awesome", label: "Answers and rewriting", k: "aiOn", kind: "toggle", cfg: "launcher.ai.enabled", state: s => s.aiNote, kw: "ai assistant ask question answer chat llm ollama rewrite selected text grammar translate summarise",
                     why: "Type ? and a question to get an answer under the search field. Select text in any app, open the launcher and type fix, shorter, friendlier, summarise, translate or explain to work on it. Nothing is sent anywhere but the backend below." },
-                { n: [], icon: "dns", label: "Backend", k: "aiBackend", kind: "choice", o: [["ollama", "Ollama"], ["openai", "OpenAI compatible"], ["anthropic", "Anthropic"]], cfg: "launcher.ai.backend", dis: s => !s.v("aiOn"), kw: "ai backend provider ollama openai anthropic claude api local",
-                    why: "Ollama runs the model on this computer, so what you ask and select stays here. The other two send it to that service with your API key." },
+                { n: [], icon: "dns", label: "Backend", k: "aiBackend", kind: "choice", o: [["ollama", "Ollama"], ["claude", "Claude Code"], ["codex", "Codex"], ["openai", "OpenAI compatible"]], cfg: "launcher.ai.backend", dis: s => !s.v("aiOn"), kw: "ai backend provider ollama openai anthropic claude code codex chatgpt subscription plan api local",
+                    why: "Ollama runs the model on this computer, so what you ask and select stays here. Claude Code and Codex answer with the plan you signed in to them with, and need no key. OpenAI compatible sends it to that server with your API key." },
                 { n: [], icon: "neurology", label: "Model", k: "aiModel", kind: "choice", o: s => s.aiModels, cfg: "launcher.ai.model", dis: s => !s.v("aiOn"), state: s => s.aiModelNote, kw: "ai model llm qwen llama claude gpt" },
-                { n: [], icon: "key", label: "API key", k: "aiKey", kind: "secret", dis: s => !s.v("aiOn") || s.v("aiBackend") === "ollama", kw: "ai api key token secret openai anthropic",
-                    why: "Each backend keeps its own key, in a file only you can read in the shell's state folder, never in config.json." },
+                { n: [], icon: "key", label: "API key", k: "aiKey", kind: "secret", dis: s => !s.v("aiOn") || s.v("aiBackend") !== "openai", kw: "ai api key token secret openai",
+                    why: "Only OpenAI compatible needs a key. It stays in a file only you can read in the shell's state folder, never in config.json." },
                 { n: [], icon: "link", label: "Address", k: "aiAddress", kind: "text", mono: true, cfg: "launcher.ai.openaiAddress", state: s => s.aiAddressNote, dis: s => !s.v("aiOn") || s.v("aiBackend") !== "openai", kw: "ai api address url endpoint base url openrouter groq lm studio llama.cpp",
                     why: "Any server that speaks the OpenAI chat API: OpenAI, OpenRouter, Groq, LM Studio or llama.cpp. The key goes only to an https address or to this computer; a plain http server elsewhere is asked without it." }
             ] }
