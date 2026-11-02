@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "readMessage", "readItems", "enterOf", "plainScore", "crashes", "plainRows", "spanOf", "kept", "updated"]);
+const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "readMessage", "readItems", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 const JIRA = {
@@ -38,8 +38,9 @@ test.describe("plugin manifest", () => {
         assert.deepStrictEqual([plugin.id, plugin.name, plugin.exec, plugin.prefix, plugin.icon], ["jira", "Jira", ["/p/jira/jira-plugin", "--quiet"], ["jira", "j"], { name: "bug_report" }]);
     });
 
-    test.it("caps what a plugin may add to a plain search at five rows", () => {
-        assert.deepStrictEqual(manifest({}).plugin.global, { minLength: 3, cap: 5 });
+    test.it("lets a plugin add up to fifty rows to a plain search, three when it does not say", () => {
+        assert.deepStrictEqual(manifest({}).plugin.global, { minLength: 3, cap: 9 });
+        assert.deepStrictEqual(manifest({ global: { cap: 80 } }).plugin.global, { minLength: 3, cap: 50 });
         assert.deepStrictEqual(manifest({ global: {} }).plugin.global, { minLength: 3, cap: 3 });
     });
 
@@ -186,23 +187,22 @@ test.describe("plugin answers", () => {
 
     test.it("reads tall rows, pictures, tags, props and previews, and keeps QML inside the plugin's folder", () => {
         const [card, drawn, outside] = P.readItems([
-            { id: "a", title: "A", height: 9, image: "art/a.png", tags: ["new", 3, ""], text: "Two lines", preview: "Some text", props: { n: 1 } },
-            { id: "b", title: "B", qml: "./rows/Row.qml", preview: { qml: "Preview.qml" } },
+            { id: "a", title: "A", height: 20, image: "art/a.png", tags: ["new", 3, ""], text: "Two lines", preview: "Some text", props: { n: 1 } },
+            { id: "b", title: "B", qml: "./rows/Row.qml", preview: { qml: "Preview.qml" }, height: "auto" },
             { id: "c", title: "C", qml: "../elsewhere/Row.qml", preview: { qml: "/tmp/Row.qml" }, image: "javascript:x", props: [1] }
         ], "/p/jira");
-        assert.deepStrictEqual([card.height, card.image, card.tags, card.preview, card.props], [6, "file:///p/jira/art/a.png", ["new", "3"], { text: "Some text" }, { n: 1 }]);
-        assert.deepStrictEqual([drawn.qml, drawn.preview, drawn.height], ["/p/jira/rows/Row.qml", { qml: "/p/jira/Preview.qml" }, 1]);
-        assert.deepStrictEqual([outside.qml, outside.preview, outside.image, outside.props, outside.notes.length], ["", null, "", {}, 2]);
-        assert.deepStrictEqual([P.spanOf(card, true), P.spanOf(card, false)], [6, 3]);
+        assert.deepStrictEqual([card.height, card.image, card.tags, card.preview, card.props], [12, "file:///p/jira/art/a.png", ["new", "3"], { text: "Some text" }, { n: 1 }]);
+        assert.deepStrictEqual([drawn.qml, drawn.preview, drawn.height], ["/p/jira/rows/Row.qml", { qml: "/p/jira/Preview.qml" }, 0]);
+        assert.deepStrictEqual([outside.qml, outside.preview, outside.image, outside.props, outside.notes.length, outside.height], ["", null, "", {}, 2, 1]);
     });
 
     test.it("leads plain searches with plugin rows unless told to mix them in or keep them last", () => {
-        const items = P.readItems([{ id: "a", title: "Notes app" }, { id: "b", title: "Weather", answer: true }, { id: "c", title: "Zebra" }]);
+        const items = P.readItems([{ id: "a", title: "Notes app" }, { id: "b", title: "Weather", answer: true }, { id: "c", title: "Zebra" }, { id: "d", title: "Today", pin: true }]);
         const place = (label, typed) => Ranking.place(label, typed);
         const scores = rank => Object.fromEntries(P.plainRows(items, "notes", rank, place).map(m => [m.item.id, m.score]));
-        assert.deepStrictEqual(scores("first"), { a: 13, b: 14 });
-        assert.deepStrictEqual(scores("mixed"), { a: 3.5, b: 4.5 });
-        assert.deepStrictEqual(scores("last"), { a: -1, b: 0 });
+        assert.deepStrictEqual(scores("first"), { a: 13, b: 14, d: Infinity });
+        assert.deepStrictEqual(scores("mixed"), { a: 3.5, b: 4.5, d: Infinity });
+        assert.deepStrictEqual(scores("last"), { a: -1, b: 0, d: Infinity });
         assert.deepStrictEqual(scores("nonsense"), scores("first"));
     });
 
@@ -288,6 +288,6 @@ test("the streaks example draws its rows in QML and updates a row in place when 
     const { answers } = await talk(folder, [P.queryLine(1, "", true), P.activateLine(1, "read", "toggle")], { XDG_STATE_HOME: state });
     fs.rmSync(state, { recursive: true, force: true });
     const [results, update] = answers;
-    assert.deepStrictEqual(results.items.map(i => [i.id, i.height, path.basename(i.qml), i.preview && path.basename(i.preview.qml)]), [["today", 2, "", null], ["read", 1, "StreakRow.qml", "StreakPreview.qml"], ["stretch", 1, "StreakRow.qml", "StreakPreview.qml"], ["drink-water", 1, "StreakRow.qml", "StreakPreview.qml"]]);
+    assert.deepStrictEqual(results.items.map(i => [i.id, i.height, path.basename(i.qml), i.preview && path.basename(i.preview.qml)]), [["today", 0, "", null], ["read", 1, "StreakRow.qml", "StreakPreview.qml"], ["stretch", 1, "StreakRow.qml", "StreakPreview.qml"], ["drink-water", 1, "StreakRow.qml", "StreakPreview.qml"]]);
     assert.deepStrictEqual([update.type, update.item.id, update.item.props.done, update.item.props.streak], ["update", "read", true, 1]);
 });

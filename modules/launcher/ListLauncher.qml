@@ -47,6 +47,20 @@ LauncherConcept {
 
     readonly property real headerPitch: Appearance.font.line.small + Appearance.padding.normal + Appearance.padding.small
 
+    readonly property var fits: ({})
+    property int fitTick: 0
+
+    function noteFit(key: string, height: real): void {
+        if (!key || root.fits[key] === height)
+            return;
+        root.fits[key] = height;
+        root.fitTick++;
+    }
+
+    function fitOf(key: string): real {
+        return root.fitTick >= 0 ? root.fits[key] ?? root.rowPitch : root.rowPitch;
+    }
+
     readonly property int buttonLimit: 3
 
     property bool symbolsOpen: false
@@ -365,6 +379,12 @@ LauncherConcept {
         return event.key === Qt.Key_Up || event.key === Qt.Key_Down || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab;
     }
 
+    function rowMayClaim(event: var): bool {
+        if ([Qt.Key_Left, Qt.Key_Right, Qt.Key_Return, Qt.Key_Enter].includes(event.key))
+            return true;
+        return !!(event.modifiers & (Qt.ControlModifier | Qt.AltModifier)) && ![Qt.Key_Escape, Qt.Key_Up, Qt.Key_Down, Qt.Key_Tab, Qt.Key_Backtab, Qt.Key_Menu].includes(event.key);
+    }
+
     function claimKey(event: var): bool {
         search.arrangeNow();
         if (root.capture)
@@ -414,6 +434,8 @@ LauncherConcept {
 
         const row = root.results[root.selected];
         if (event.key === Qt.Key_Tab && (search.complete(row) || search.complete(root.results.find(r => r.kind === "suggest")) || search.complete(root.results.find(r => r.tab))))
+            return true;
+        if (row?.card && root.rowMayClaim(event) && list.itemAtIndex(root.selected)?.claimRowKey(event))
             return true;
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
             root.actionsFor(row).slice(1).find(a => !a.tucked)?.run();
@@ -1177,7 +1199,7 @@ LauncherConcept {
                     GlideList {
                         id: list
 
-                        readonly property real needed: Math.max(root.rowPitch, root.results.reduce((sum, r) => sum + (r.header ? root.headerPitch : root.rowPitch * (r.span ?? 1)), 0))
+                        readonly property real needed: Math.max(root.rowPitch, root.results.reduce((sum, r) => sum + (r.header ? root.headerPitch : r.span === 0 ? root.fitOf(r.key) : root.rowPitch * (r.span ?? 1)), 0))
 
                         y: (quickLaunch.full + Appearance.padding.large) * gridIn.value
                         width: parent.width
@@ -1212,7 +1234,7 @@ LauncherConcept {
                             required property int index
 
                             width: list.width
-                            height: line.modelData.header ? root.headerPitch : root.rowPitch * (line.modelData.span ?? 1)
+                            height: line.modelData.header ? root.headerPitch : line.modelData.span === 0 ? line.fitted : root.rowPitch * (line.modelData.span ?? 1)
 
                             StyledText {
                                 visible: !!line.modelData.header
@@ -1380,6 +1402,14 @@ LauncherConcept {
                             }
 
                             readonly property bool carded: !line.modelData.header && !!line.modelData.card
+
+                            function claimRowKey(event: var): bool {
+                                return typeof card.item?.claimKey === "function" && !!card.item.claimKey(event);
+                            }
+                            readonly property real fitted: Math.max(root.rowPitch, Math.min(root.rowPitch * 12, card.item?.implicitHeight ?? root.rowPitch))
+
+                            onFittedChanged: if (line.modelData.span === 0)
+                                root.noteFit(line.modelData.key, line.fitted)
 
                             Loader {
                                 id: card

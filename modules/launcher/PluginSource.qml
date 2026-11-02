@@ -69,8 +69,8 @@ QtObject {
         };
     }
 
-    function rowOf(item: var, score: real, prefixed: bool): var {
-        const span = Protocol.spanOf(item, prefixed);
+    function rowOf(item: var, score: real): var {
+        const span = item.height;
         const preview = item.preview;
         return Object.assign({
             key: `plugin:${root.pluginId}:${item.id}`,
@@ -82,7 +82,7 @@ QtObject {
             score: score,
             span: span,
             tags: item.tags,
-            card: item.qml || span > 1 ? root.rowCard : null,
+            card: item.qml || span !== 1 ? root.rowCard : null,
             peekText: preview?.text ?? "",
             peekImage: preview?.image ?? "",
             peekPath: preview?.file ?? "",
@@ -99,8 +99,8 @@ QtObject {
 
     function shown(items: var, asked: var): var {
         if (asked.prefixed)
-            return items.map(item => root.rowOf(item, Infinity, true));
-        return Protocol.plainRows(items, asked.text, root.rank, Ranking.place).map(m => root.rowOf(m.item, m.score, false));
+            return items.map(item => root.rowOf(item, Infinity));
+        return Protocol.plainRows(items, asked.text, root.rank, Ranking.place).map(m => root.rowOf(m.item, m.score));
     }
 
     function problemRow(label: string, detail: string, icon: string, problem: string): var {
@@ -325,6 +325,6 @@ QtObject {
         if (id.indexOf(prefix) !== 0)
             return null;
         const item = (root.answer?.items ?? []).find(i => i.id === id.slice(prefix.length));
-        return item ? root.rowOf(item, 1, true) : null;
+        return item ? root.rowOf(item, 1) : null;
     }
 }

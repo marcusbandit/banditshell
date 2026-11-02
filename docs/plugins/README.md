@@ -89,7 +89,7 @@ plugin can reach before it lists any.
 | `icon` | no | A Material Symbols name, an emoji or an image path relative to the folder. Rows without an icon of their own use it. |
 | `exec` | yes | The program and its arguments, as a list. A first word starting with `./` is found in the plugin's folder. It runs with the folder as its working directory and is never passed through a shell. |
 | `prefix` | no | Words that send the rest of the query to this plugin alone, the way `gh` and `pkg` work. They are listed on the `?` page. |
-| `global` | no | Lets the plugin add rows to plain searches. `minLength` is how many characters a query needs first, 3 by default. `cap` is how many of its rows a plain search shows at most, 3 by default and never more than 5. Without `global` the plugin only answers after its prefix. |
+| `global` | no | Lets the plugin add rows to plain searches. `minLength` is how many characters a query needs first, 3 by default. `cap` is how many of its rows a plain search shows at most, 3 by default and up to 50. Without `global` the plugin only answers after its prefix. |
 | `preferences` | no | Settings the plugin needs, drawn by Settings so a plugin never ships its own settings window. |
 
 A manifest needs `prefix`, `global` or both; with neither, nothing would ever
@@ -179,7 +179,8 @@ the shell knows it is done.
 | `run` | A program and its arguments, as a list, that the shell starts. Never passed through a shell. |
 | `actions` | More things the row can do, each `{ "id", "title", "icon" }` and optionally its own `open`, `copy` or `run`. |
 | `answer` | `true` when the row answers the query as typed, such as a sum or a conversion. A plain search then shows it even though its title and keywords do not match the typed words. |
-| `height` | How many rows tall it is, 1 to 6, 1 by default. A plain search draws it at most 3 rows tall. |
+| `height` | How many rows tall it is, 1 to 12, 1 by default, in plain searches as after a prefix. `"auto"` lets the row's QML decide, see Rows drawn in QML. |
+| `pin` | `true` puts the row at the very top of a plain search, with the launcher's own pinned answers, whatever was typed. |
 | `text` | Body text under the subtitle on a row 2 or more tall, wrapped to fit. |
 | `image` | A picture drawn at the start of the row: an absolute path, a path in the plugin's folder or an `https://` link. On a one-line row it takes the icon's place. |
 | `tags` | Up to four short words drawn as chips at the end of the row. |
@@ -207,7 +208,8 @@ refused and the row says so, as for list scripts.
 
 A row with `height` 2 or more is drawn by the shell as a card: the `image`,
 or the icon, large at the start, then the title, the subtitle and as many
-lines of `text` as fit, with `tags` at the end.
+lines of `text` as fit, with `tags` at the end. With `"height": "auto"` the
+card grows to show all of its `text`.
 
 ```json
 {"id": "today", "title": "2 of 3 done today", "subtitle": "Monday 02 November",
@@ -250,8 +252,17 @@ the click and the keys, and runs the actions. The file's root item declares
 | `row.fill(text)` | Replace the query. |
 | `row.close()` | Close the launcher. |
 
+While its row is selected, the file can take keys: give the root item a
+`function claimKey(event)` that returns `true` for the keys it handled.
+It is asked about Left, Right, Enter and any key held with Ctrl or Alt,
+before the launcher acts on them; `event.key`, `event.modifiers` and
+`event.text` say which. Typing, Escape and moving between rows stay with
+the launcher.
+
 The file is given the row's full width and `height` times the row pitch, and
-is clipped to it. It can import the shell's own modules, `qs.config` for
+is clipped to it. With `"height": "auto"` the file's own `implicitHeight`
+sets the row's height instead, from one row to twelve, and the row follows it
+when it changes. It can import the shell's own modules, `qs.config` for
 `Appearance` (colours, type, spacing, rounding) and `qs.components` for
 `StyledText`, `Icon`, `SquircleRect` and the rest, so a plugin's rows can
 look like the shell's. Those modules change with the shell; a plugin that

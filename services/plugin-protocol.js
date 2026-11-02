@@ -18,9 +18,7 @@ var ICON_NAME = /^[a-z0-9_]+$/;
 
 var ITEM_LIMIT = 50;
 
-var TALLEST = 6;
-
-var TALLEST_PLAIN = 3;
+var TALLEST = 12;
 
 var RANKS = ["first", "mixed", "last"];
 
@@ -121,7 +119,7 @@ function readManifest(text, folder, loose) {
     var prefix = (Array.isArray(raw.prefix) ? raw.prefix : typeof raw.prefix === "string" ? [raw.prefix] : []).filter(w => typeof w === "string" && /^\S+$/.test(w)).map(w => w.toLowerCase()).slice(0, 8);
     var global = raw.global && typeof raw.global === "object" ? {
         minLength: Math.max(1, Math.min(32, Math.round(Number(raw.global.minLength) || 3))),
-        cap: Math.max(1, Math.min(5, Math.round(Number(raw.global.cap) || 3)))
+        cap: Math.max(1, Math.min(ITEM_LIMIT, Math.round(Number(raw.global.cap) || 3)))
     } : null;
     if (!prefix.length && !global)
         return { error: "plugin.json needs a prefix, global or both", id: name, name: title };
@@ -294,11 +292,12 @@ function readItem(raw, folder) {
         icon: iconOf(raw.icon, folder || ""),
         keywords: keywords,
         actions: actions,
-        height: Math.max(1, Math.min(TALLEST, Math.round(Number(raw.height) || 1))),
+        height: raw.height === "auto" ? 0 : Math.max(1, Math.min(TALLEST, Math.round(Number(raw.height) || 1))),
         text: textOf(raw.text, 2000).trim(),
         image: imageOf(raw.image, folder || ""),
         tags: (Array.isArray(raw.tags) ? raw.tags : []).map(t => textOf(t, 40).trim()).filter(Boolean).slice(0, 4),
         answer: raw.answer === true,
+        pin: raw.pin === true,
         qml: drawn.file,
         preview: preview && !preview.note ? preview : null,
         props: propsOf(raw.props),
@@ -459,11 +458,7 @@ function rankOf(value) {
 
 function plainRows(items, typed, rank, place) {
     var lift = LIFT[rankOf(rank)];
-    return items.map((item, i) => ({ item: item, i: i, score: item.answer ? 4 : plainScore(item, typed, place) })).filter(m => m.score > 0).sort((a, b) => b.score - a.score || a.i - b.i).map(m => ({ item: m.item, score: m.score + lift }));
-}
-
-function spanOf(item, prefixed) {
-    return Math.min(item.height, prefixed ? TALLEST : TALLEST_PLAIN);
+    return items.map((item, i) => ({ item: item, i: i, score: item.pin ? Infinity : item.answer ? 4 : plainScore(item, typed, place) })).filter(m => m.score > 0).sort((a, b) => b.score - a.score || a.i - b.i).map(m => ({ item: m.item, score: m.score + lift }));
 }
 
 function kept(answer, asked) {

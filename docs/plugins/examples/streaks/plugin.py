@@ -86,7 +86,7 @@ def summary_item(data, today):
         "subtitle": today.strftime("%A %d %B"),
         "text": f"Still to do: {', '.join(left)}." if left else "Everything is done for today.",
         "icon": "event_available",
-        "height": 2,
+        "height": "auto",
         "tags": ["all done"] if not left else [f"{len(left)} to go"],
         "keywords": WORDS,
         "copy": f"{finished} of {len(HABITS)} habits done today",
