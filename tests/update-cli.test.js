@@ -677,17 +677,29 @@ test("a restart class update restarts the shell into the new tree and refreshes 
     assert.ok(fs.existsSync(backupFile(world, "services/Thing.qml")));
 });
 
-function restartUnder(systemdRun) {
+const UNSCOPED = /so the shell and its jobs stop when the terminal or agent that started them stops/;
+
+function scopeWorld(systemdRun) {
     const world = makeWorld();
-    const runs = path.join(world.root, "systemd-run.calls");
+    world.runs = path.join(world.root, "systemd-run.calls");
     fs.writeFileSync(path.join(world.fakebin, "systemd-run"), `#!/bin/sh
-echo "$*" >>"${runs}"
+echo "$*" >>"${world.runs}"
 ${systemdRun}
+case "$*" in *--unit=banditshell-watch-*) exit 0 ;; esac
 while [ "$1" != -- ]; do shift; done
 shift
 exec "$@"
 `, { mode: 0o755 });
-    startShell(world);
+    fs.writeFileSync(path.join(world.fakebin, "gh"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+    return world;
+}
+
+const scopedCalls = world => fs.readFileSync(world.runs, "utf8").trim().split("\n").filter(call => !call.endsWith("-- true"));
+
+function restartUnder(systemdRun) {
+    const world = scopeWorld(systemdRun);
+    const started = run(world, ["start"]);
+    assert.strictEqual(started.status, 0, started.err + started.out);
     const target = advance(world, "singleton", {
         "services/qmldir": "module qs.services\nsingleton Thing 1.0 Thing.qml\n",
         "services/Thing.qml": "pragma Singleton\n"
@@ -695,18 +707,77 @@ exec "$@"
     const got = applyTo(world, target);
     assert.strictEqual(got.status, 0, got.err + got.out);
     assert.strictEqual(pids(world).length, 1);
-    return fs.readFileSync(runs, "utf8").trim().split("\n").filter(call => !call.endsWith("-- true"));
+    return { calls: scopedCalls(world), said: [started.err, got.err] };
 }
 
 test("a restarted shell gets a systemd scope of its own, so stopping what ran the update leaves it running", () => {
-    const calls = restartUnder("");
+    const { calls, said } = restartUnder("");
     assert.strictEqual(calls.length, 2);
     for (const call of calls)
         assert.match(call, /^--user --scope --quiet --collect --expand-environment=no --unit=banditshell-shell-\d+ -- qs -d -p \S+\/live$/);
+    for (const err of said)
+        assert.doesNotMatch(err, UNSCOPED);
 });
 
-test("a shell that cannot get a scope of its own still starts and restarts", () => {
-    assert.deepStrictEqual(restartUnder("exit 1"), []);
+test("a shell that cannot get a scope of its own still starts and restarts, and says it has none", () => {
+    const { calls, said } = restartUnder("exit 1");
+    assert.deepStrictEqual(calls, []);
+    for (const err of said)
+        assert.match(err, /systemd-run --user --scope does not work here, so the shell and its jobs stop when the terminal or agent that started them stops/);
+});
+
+function withoutSystemdRun(world) {
+    const tools = path.join(world.root, "no-systemd-run");
+    fs.mkdirSync(tools);
+    for (const dir of process.env.PATH.split(":")) {
+        let names = [];
+        try {
+            names = fs.readdirSync(dir);
+        } catch {
+            continue;
+        }
+        for (const name of names.filter(name => name !== "systemd-run")) {
+            try {
+                fs.symlinkSync(path.join(dir, name), path.join(tools, name));
+            } catch {}
+        }
+    }
+    return { PATH: `${world.fakebin}:${tools}` };
+}
+
+test("without systemd-run the shell still starts, and says it has no scope once per login", () => {
+    const world = makeWorld();
+    const env = withoutSystemdRun(world);
+    const first = run(world, ["start"], env);
+    assert.strictEqual(first.status, 0, first.err + first.out);
+    assert.match(first.err, /systemd-run is not installed, so the shell and its jobs stop/);
+    const again = run(world, ["restart"], env);
+    assert.strictEqual(again.status, 0, again.err + again.out);
+    assert.doesNotMatch(again.err, UNSCOPED);
+    assert.strictEqual(pids(world).length, 1);
+});
+
+test("dev try, dev back and dev tidy start the shell in a scope of its own", () => {
+    const world = scopeWorld("");
+    const tried = path.join(world.root, "tried");
+    git(world.live, "worktree", "add", "-q", "-b", "feat/1-thing", tried);
+    for (const helper of ["bs-pty", "bs-ls", "bs-gamma"])
+        write(tried, `bin/${helper}`, "#!/bin/sh\n", 0o755);
+    git(tried, "push", "-q", "origin", "feat/1-thing");
+    git(world.live, "fetch", "-q", "origin");
+    startShell(world);
+    for (const args of [["dev", "try", "feat/1-thing"], ["dev", "back"], ["dev", "try", "feat/1-thing"], ["dev", "tidy"]]) {
+        const got = run(world, args);
+        assert.strictEqual(got.status, 0, args.join(" ") + "\n" + got.err + got.out);
+        assert.doesNotMatch(got.err, UNSCOPED);
+        assert.strictEqual(pids(world).length, 1, args.join(" "));
+    }
+    const shells = scopedCalls(world).filter(call => call.includes("--unit=banditshell-shell-"));
+    for (const call of shells)
+        assert.match(call, /^--user --scope --quiet --collect --expand-environment=no --unit=banditshell-shell-\d+ -- qs -d -p \S+$/);
+    assert.deepStrictEqual(shells.map(call => call.split(" ").pop()), [world.live, tried, world.live, tried, world.live]);
+    assert.strictEqual(scopedCalls(world).filter(call => call.includes("--unit=banditshell-watch-")).length, 2);
+    assert.strictEqual(fs.existsSync(tried), false);
 });
 
 const progress = world => {
@@ -883,6 +954,44 @@ test("a reload that fails but starts clean on a restart keeps the new version", 
     assert.strictEqual(JSON.parse(readState(world, "result.json")).ok, true);
     assert.strictEqual(fs.existsSync(stateFile(world, "skip")), false);
     assert.ok(fs.existsSync(backupFile(world, "RELOADFAIL")));
+});
+
+test("a restart whose shell loses its screen surface starts once more and keeps the new version", () => {
+    const world = makeWorld();
+    startShell(world);
+    const target = advance(world, "surface", { EGLONCE: "x\n", "services/qmldir": "module qs.services\n// x\n" });
+    const got = applyTo(world, target);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    assert.match(got.out, /The screen was not ready yet, trying again/);
+    assert.strictEqual(liveHead(world), target);
+    assert.strictEqual(pids(world).length, 1);
+    assert.strictEqual(JSON.parse(readState(world, "result.json")).ok, true);
+    assert.strictEqual(fs.existsSync(stateFile(world, "skip")), false);
+});
+
+test("a shell that dies on a failed EGL swap before it answers starts once more too", () => {
+    const world = makeWorld();
+    startShell(world);
+    const target = advance(world, "swap", { EGLEARLY: "x\n", "services/qmldir": "module qs.services\n// x\n" });
+    const got = applyTo(world, target);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    assert.match(got.out, /The screen was not ready yet, trying again/);
+    assert.strictEqual(liveHead(world), target);
+    assert.strictEqual(pids(world).length, 1);
+});
+
+test("a shell that loses its screen surface twice rolls back once, naming the EGL failure", () => {
+    const world = makeWorld();
+    const before = liveHead(world);
+    startShell(world);
+    const target = advance(world, "surface", { EGLFAIL: "x\n", "services/qmldir": "module qs.services\n// x\n" });
+    const got = applyTo(world, target);
+    assert.strictEqual(got.status, 1, got.err + got.out);
+    assert.strictEqual(liveHead(world), before);
+    assert.match(JSON.parse(readState(world, "result.json")).why, /^the new version did not start: the shell exited: Could not create EGL surface \(EGL error 0x3003\)$/);
+    const starts = fs.readFileSync(path.join(world.fakeqs, "calls"), "utf8").split("\n").filter(call => call.startsWith("-d -p"));
+    assert.strictEqual(starts.length, 4);
+    assert.strictEqual(pids(world).length, 1);
 });
 
 test("a reload that makes the checkout's shell exit restarts it on the new version", () => {
