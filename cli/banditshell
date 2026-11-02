@@ -935,10 +935,12 @@ shell_answers() {
     return 1
 }
 
+log_since() {
+    (cd "$HOME" && qs log --pid "$1" 2>&1) | sed 's/\x1b\[[0-9;]*m//g' | tail -n +"$((${2:-0} + 1))"
+}
+
 log_trouble() {
-    local pid="$1" mark="${2:-0}"
-    (cd "$HOME" && qs log --pid "$pid" 2>&1) | sed 's/\x1b\[[0-9;]*m//g' | tail -n +"$((mark + 1))" |
-        grep -E 'ReferenceError|Failed to load' | head -5 || true
+    log_since "$1" "${2:-0}" | grep -E 'ReferenceError|Failed to load' | head -5 || true
 }
 
 log_length() {
@@ -946,20 +948,20 @@ log_length() {
 }
 
 lost_surface() {
-    local pid="$1" mark="${2:-0}"
-    (cd "$HOME" && qs log --pid "$pid" 2>&1) | sed 's/\x1b\[[0-9;]*m//g' | tail -n +"$((mark + 1))" |
-        grep -oE 'Could not create EGL surface.*' | head -1 || true
+    log_since "$1" "${2:-0}" | grep -oE 'Could not create EGL surface.*|eglSwapBuffers failed with 0x3003' | head -1 || true
 }
 
 shell_gone() {
     local lost
     lost=$(lost_surface "$1" "$2")
     HEALTH_WHY="the shell exited${lost:+: $lost}"
+    [ -z "$lost" ] || HEALTH_LOST=1
 }
 
 health_check() {
     local pid="$1" mark="${2:-0}" tries steps=$((HEALTH_SCAN * 2)) trouble=""
     HEALTH_WHY=""
+    HEALTH_LOST=0
     if ! shell_answers "$pid"; then
         if kill -0 "$pid" 2>/dev/null; then
             HEALTH_WHY="the shell did not answer shell status within ${HEALTH_WAIT} seconds"
@@ -1007,6 +1009,7 @@ launch() {
         say_dry "watch the log for ${HEALTH_SCAN}s for ReferenceError or Failed to load"
         return 0
     fi
+    HEALTH_LOST=0
     out=$(mktemp)
     if ! (cd "$HOME" && own_scope shell qs -d -p "$1") 8>&- >"$out" 2>&1 || grep -q "Failed to load configuration" "$out"; then
         launch_failed "$1" "$out" "did not load"
@@ -3612,6 +3615,7 @@ U_DIR="" U_REMOTE="" U_CHANNEL="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET
 A_RESTART=0 A_HELPERS=0 A_DEPS="" A_DIRTY="" A_BLOCKED="" A_BUTTON="" A_SUMMARY=""
 U_WARNINGS=()
 HEALTH_WHY=""
+HEALTH_LOST=0
 U_SETTINGS=null U_SETTINGS_NEXT="" U_SETTINGS_COPY="" U_SETTINGS_WHY=""
 U_SETTINGS_KEPT=()
 SETTINGS_STAY="config.json could not be put back as it was, so it stays as it is"
@@ -4304,10 +4308,12 @@ update_finish_work() {
 }
 
 update_restart() {
+    local -a stopped
     update_phase restart "$1"
+    mapfile -t stopped < <(shell_pids)
     stop_shell || true
     ensure_built || true
-    if ! launch "$SHELL_DIR" && ! relaunch_on_lost_surface; then
+    if ! launch "$SHELL_DIR" && ! relaunch_on_lost_surface "${stopped[@]}"; then
         update_roll_back "${2:-}the new version did not start: $HEALTH_WHY" 1
         return 1
     fi
@@ -4316,9 +4322,9 @@ update_restart() {
 }
 
 relaunch_on_lost_surface() {
-    [[ "$HEALTH_WHY" == *"Could not create EGL surface"* ]] || return 1
+    [ "$HEALTH_LOST" = 1 ] || return 1
     update_phase restart "The screen was not ready yet, trying again..."
-    surfaces_gone
+    surfaces_gone "$@"
     launch "$SHELL_DIR"
 }
 
@@ -4327,7 +4333,9 @@ surfaces_gone() {
     for ((tries = 0; tries < 50; tries++)); do
         lingering=0
         for pid in $(hyprctl layers 2>/dev/null | grep -oE 'pid: [0-9]+$' | cut -d' ' -f2 | sort -u); do
-            kill -0 "$pid" 2>/dev/null || lingering=1
+            if [ ! -d "/proc/$pid" ] || printf '%s\n' "$@" | grep -qxF -- "$pid"; then
+                lingering=1
+            fi
         done
         [ "$lingering" = 1 ] || return 0
         sleep 0.1

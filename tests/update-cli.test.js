@@ -898,6 +898,17 @@ test("a restart whose shell loses its screen surface starts once more and keeps 
     assert.strictEqual(fs.existsSync(stateFile(world, "skip")), false);
 });
 
+test("a shell that dies on a failed EGL swap before it answers starts once more too", () => {
+    const world = makeWorld();
+    startShell(world);
+    const target = advance(world, "swap", { EGLEARLY: "x\n", "services/qmldir": "module qs.services\n// x\n" });
+    const got = applyTo(world, target);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    assert.match(got.out, /The screen was not ready yet, trying again/);
+    assert.strictEqual(liveHead(world), target);
+    assert.strictEqual(pids(world).length, 1);
+});
+
 test("a shell that loses its screen surface twice rolls back once, naming the EGL failure", () => {
     const world = makeWorld();
     const before = liveHead(world);
