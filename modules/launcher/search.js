@@ -169,6 +169,12 @@ function matchesNothing(rows) {
 
 var SHARED_START = 12;
 
+function rowMayClaim(key, modifiers) {
+    if ([Qt.Key_Left, Qt.Key_Right, Qt.Key_Return, Qt.Key_Enter].includes(key))
+        return true;
+    return !!(modifiers & (Qt.ControlModifier | Qt.AltModifier)) && ![Qt.Key_Escape, Qt.Key_Up, Qt.Key_Down, Qt.Key_Tab, Qt.Key_Backtab, Qt.Key_Menu].includes(key);
+}
+
 function sharedStarts(details) {
     const order = details.map((d, i) => i).filter(i => details[i]).sort((a, b) => details[a] < details[b] ? -1 : details[a] > details[b] ? 1 : 0);
     const starts = details.map(() => 0);

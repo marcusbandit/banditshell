@@ -1,11 +1,13 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.modules.controls
 import "../../services/plugin-protocol.js" as Protocol
 import "../../services/ranking.js" as Ranking
+import "search.js" as Search
 
 Item {
     id: root
@@ -29,8 +31,11 @@ Item {
     property var values: ({})
     property var missing: []
     property string shownId: ""
+    property var made: ({})
 
     readonly property var shown: root.kind === "list" ? Protocol.listed(root.view, root.filter, (label, typed) => Ranking.place(label, typed)) : []
+    readonly property var rows: root.source ? root.shown.map(item => root.pageRow(item)) : []
+    readonly property var peekRow: root.actionAt < 0 && root.rows[root.selected]?.item.preview ? root.rows[root.selected] : null
     readonly property var actions: root.view?.actions ?? []
     readonly property real rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
 
@@ -46,6 +51,7 @@ Item {
             return;
         }
         root.shownId = root.viewId;
+        root.made = {};
         root.filter = "";
         root.selected = 0;
         root.field = 0;
@@ -56,6 +62,27 @@ Item {
     }
 
     Component.onCompleted: root.viewChanged()
+
+    function pageRow(item: var): var {
+        const known = root.made[item.id];
+        if (known?.item === item)
+            return known.row;
+        const row = root.source.rowOf(item, 1);
+        row.view = root.viewId;
+        if (row.entry)
+            row.entry.view = root.viewId;
+        if (!item.icon.name && !item.icon.glyph && !item.icon.file)
+            Object.assign(row, {
+                icon: "chevron_right",
+                glyph: "",
+                iconSource: row.iconSource === item.image ? row.iconSource : ""
+            });
+        root.made[item.id] = {
+            item: item,
+            row: row
+        };
+        return row;
+    }
 
     function setValue(key: string, value: var): void {
         root.values = Object.assign({}, root.values, {
@@ -135,6 +162,8 @@ Item {
 
     function claimKey(event: var): bool {
         const page = scroller.height - Appearance.font.line.normal * 2;
+        if (root.kind === "list" && root.actionAt < 0 && root.rows[root.selected]?.card && Search.rowMayClaim(event.key, event.modifiers) && listRepeater.itemAt(root.selected)?.claimRowKey(event))
+            return true;
         switch (event.key) {
         case Qt.Key_Down:
             if (root.kind === "detail")
@@ -317,28 +346,86 @@ Item {
             Repeater {
                 id: listRepeater
 
-                model: root.kind === "list" ? root.shown : []
+                model: ScriptModel {
+                    values: root.kind === "list" ? root.rows : []
+                }
 
-                delegate: MenuRow {
+                delegate: Item {
                     id: line
 
                     required property var modelData
                     required property int index
 
+                    readonly property bool carded: !!line.modelData.card
+                    readonly property real fitted: Math.max(root.rowPitch, Math.min(root.rowPitch * 12, card.item?.implicitHeight ?? root.rowPitch))
+
+                    function claimRowKey(event: var): bool {
+                        return typeof card.item?.claimKey === "function" && !!card.item.claimKey(event);
+                    }
+
                     width: body.width
-                    iconSize: Appearance.sizes.launcherIcon
-                    rowHeight: root.rowPitch
-                    labelSize: Appearance.font.size.normal
-                    inlineDetail: true
-                    icon: line.modelData.icon.name ?? (line.modelData.icon.glyph || line.modelData.icon.file ? "" : "chevron_right")
-                    glyph: line.modelData.icon.glyph ?? ""
-                    iconSource: line.modelData.icon.file ? Protocol.fileUrl(line.modelData.icon.file) : ""
-                    label: line.modelData.title
-                    detail: line.modelData.refusal || line.modelData.subtitle
-                    selected: line.index === root.selected
-                    onActivated: {
-                        root.selected = line.index;
-                        root.runItem(line.modelData);
+                    height: line.modelData.span === 0 ? line.fitted : root.rowPitch * line.modelData.span
+
+                    MenuRow {
+                        id: row
+
+                        width: parent.width
+                        height: line.height
+                        iconSize: Appearance.sizes.launcherIcon
+                        rowHeight: root.rowPitch
+                        labelSize: Appearance.font.size.normal
+                        inlineDetail: true
+                        icon: line.carded ? "" : line.modelData.icon
+                        glyph: line.carded ? "" : line.modelData.glyph
+                        iconSource: line.carded ? "" : line.modelData.iconSource
+                        label: line.carded ? "" : line.modelData.label
+                        detail: line.carded ? "" : line.modelData.detail
+                        selected: line.index === root.selected
+                        onActivated: {
+                            root.selected = line.index;
+                            root.runItem(line.modelData.item);
+                        }
+
+                        Row {
+                            id: trail
+
+                            spacing: Appearance.padding.small
+
+                            Repeater {
+                                model: line.modelData.tags
+
+                                delegate: RowTag {
+                                    required property string modelData
+
+                                    anchors.verticalCenter: parent?.verticalCenter
+                                    text: modelData
+                                }
+                            }
+                        }
+                    }
+
+                    Loader {
+                        id: card
+
+                        anchors.fill: row
+                        anchors.leftMargin: Appearance.padding.normal
+                        anchors.rightMargin: Appearance.padding.normal + (trail.width > 0 ? trail.width + Appearance.padding.normal : 0)
+                        active: line.carded
+                        sourceComponent: line.modelData.card ?? null
+                    }
+
+                    Binding {
+                        target: card.item
+                        property: "row"
+                        value: line.modelData
+                        when: card.item !== null
+                    }
+
+                    Binding {
+                        target: card.item
+                        property: "selected"
+                        value: row.selected
+                        when: card.item !== null
                     }
                 }
             }

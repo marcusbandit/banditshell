@@ -22,6 +22,7 @@
       "modules/launcher/PluginRow.qml",
       "modules/launcher/PluginSource.qml",
       "modules/launcher/PluginView.qml",
+      "modules/launcher/RowTag.qml",
       "modules/launcher/module.json",
       "modules/launcher/placement.js",
       "modules/launcher/prefixes.js",

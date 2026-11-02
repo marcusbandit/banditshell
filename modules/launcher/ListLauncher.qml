@@ -379,12 +379,6 @@ LauncherConcept {
         return event.key === Qt.Key_Up || event.key === Qt.Key_Down || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab;
     }
 
-    function rowMayClaim(event: var): bool {
-        if ([Qt.Key_Left, Qt.Key_Right, Qt.Key_Return, Qt.Key_Enter].includes(event.key))
-            return true;
-        return !!(event.modifiers & (Qt.ControlModifier | Qt.AltModifier)) && ![Qt.Key_Escape, Qt.Key_Up, Qt.Key_Down, Qt.Key_Tab, Qt.Key_Backtab, Qt.Key_Menu].includes(event.key);
-    }
-
     function claimKey(event: var): bool {
         search.arrangeNow();
         if (root.capture)
@@ -435,7 +429,7 @@ LauncherConcept {
         const row = root.results[root.selected];
         if (event.key === Qt.Key_Tab && (search.complete(row) || search.complete(root.results.find(r => r.kind === "suggest")) || search.complete(root.results.find(r => r.tab))))
             return true;
-        if (row?.card && !root.answerHolds && !assistantCard.holds && root.rowMayClaim(event) && list.itemAtIndex(root.selected)?.claimRowKey(event))
+        if (row?.card && !root.answerHolds && !assistantCard.holds && Search.rowMayClaim(event.key, event.modifiers) && list.itemAtIndex(root.selected)?.claimRowKey(event))
             return true;
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
             root.actionsFor(row).slice(1).find(a => !a.tucked)?.run();
@@ -1306,29 +1300,11 @@ LauncherConcept {
                                     Repeater {
                                         model: line.modelData.armed ? [] : (line.modelData.tags ?? []).concat([line.modelData.alias, Chords.chordText(line.modelData.hotkey ?? "")]).filter(Boolean)
 
-                                        delegate: Item {
-                                            id: tag
-
+                                        delegate: RowTag {
                                             required property string modelData
 
                                             anchors.verticalCenter: parent?.verticalCenter
-                                            width: tagText.implicitWidth + Appearance.padding.normal * 2
-                                            height: tagText.implicitHeight + Appearance.padding.small
-
-                                            SquircleRect {
-                                                anchors.fill: parent
-                                                radius: Appearance.rounding.small
-                                                color: Appearance.colour.fill
-                                            }
-
-                                            StyledText {
-                                                id: tagText
-
-                                                anchors.centerIn: parent
-                                                text: tag.modelData
-                                                font.pixelSize: Appearance.font.size.small
-                                                color: Appearance.colour.textDim
-                                            }
+                                            text: modelData
                                         }
                                     }
 
@@ -1541,10 +1517,10 @@ LauncherConcept {
             y: panel.y + Math.max(root.inset - panel.y, Math.min(0, root.height - root.inset - panel.y - peek.height))
             z: 50
 
-            row: root.results[root.selected] ?? null
+            row: root.shownView ? viewLoader.item?.peekRow ?? null : root.results[root.selected] ?? null
             colour: root.answerColour || (root.answerHolds || !peek.row?.peekColour ? "" : search.colourEdit?.key === peek.row.key ? search.colourEdit.hex : peek.row.peekColour)
             growsLeft: !peek.roomRight
-            wanted: root.open && panel.arrived && !root.quick && root.settled && !root.capture && !root.shownView && !root.asking && (!root.answerHolds || !!root.answerColour) && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
+            wanted: root.open && panel.arrived && !root.quick && root.settled && !root.capture && (!root.shownView || !!viewLoader.item?.peekRow) && !root.asking && (!root.answerHolds || !!root.answerColour) && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
             longestFrame: root.longestFrame
 
             onColourPicked: (hex, done) => root.takeColour(hex, done)

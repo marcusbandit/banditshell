@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-02-4",
+      "date": "2026-11-02",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugin list pages show tall rows, tags, previews and QML rows"
+        }
+      ]
+    },
+    {
       "id": "2026-11-02-3",
       "date": "2026-11-02",
       "changes": [

@@ -18,3 +18,4 @@ PluginProcess 1.0 PluginProcess.qml
 PluginRow 1.0 PluginRow.qml
 PluginSource 1.0 PluginSource.qml
 PluginView 1.0 PluginView.qml
+RowTag 1.0 RowTag.qml
