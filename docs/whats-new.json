@@ -1,6 +1,52 @@
 {
   "entries": [
     {
+      "id": "2026-11-06-q13",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Battery menu has a power mode row"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Full or held-at-limit batteries no longer read as charging"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Battery power says Charging at or Drawing, and 99.6% is 100%"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Sound devices with the same name now show their card too"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Long menu pages fade at the edge where more follows"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Brightness controls stop at the Lowest brightness setting"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Sidebar brightness icon says its level and steps by 5%"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Settings Hold charge tile says it needs the helper, not 80%"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q10",
       "date": "2026-11-05",
       "changes": [
