@@ -24,7 +24,7 @@ function presetText(minutes) {
 }
 
 function squash(text) {
-    return String(text === undefined || text === null ? "" : text).toLowerCase().replace(/[_\s]+/g, " ").trim();
+    return String(text === undefined || text === null ? "" : text).toLowerCase().replace(/[_\s\/]+/g, " ").trim();
 }
 
 function cityOf(id) {

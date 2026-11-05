@@ -259,6 +259,7 @@ Column {
 
             anchors.right: parent.right
 
+            interactive: Clock.canUndo
             text: "Undo"
             onClicked: Clock.undoRemove()
         }
@@ -337,7 +338,7 @@ Column {
                     width: zoneRows.width
                     rowHeight: Math.max(Appearance.sizes.rowHeight, names.implicitHeight + Appearance.padding.small * 2 + zoneBar.height + Appearance.padding.small)
 
-                    onDismissed: Clock.removeZone(zoneCard.modelData.id)
+                    onDismissed: Clock.dismiss("place", zoneCard.modelData.id)
 
                     Column {
                         id: names
@@ -487,7 +488,7 @@ Column {
             tappable: true
 
             onTapped: Clock.toggleTimer(timerCard.modelData.id)
-            onDismissed: Clock.removeTimer(timerCard.modelData.id)
+            onDismissed: Clock.dismiss("timer", timerCard.modelData.id)
 
             StyledText {
                 id: remaining
@@ -706,7 +707,7 @@ Column {
             tappable: true
 
             onTapped: root.editing = alarmCard.open ? "" : alarmCard.modelData.id
-            onDismissed: Clock.removeAlarm(alarmCard.modelData.id)
+            onDismissed: Clock.dismiss("alarm", alarmCard.modelData.id)
 
             Item {
                 id: head

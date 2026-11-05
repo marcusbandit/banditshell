@@ -71,10 +71,12 @@ Item {
     function finish(save: bool): void {
         if (!root.typing)
             return;
+        const keepFocus = entry.activeFocus;
         root.typing = false;
         const n = Clock.typedNumber(entry.text, root.from, root.to);
         entry.text = "";
-        root.forceActiveFocus();
+        if (keepFocus)
+            root.forceActiveFocus();
         if (save && n >= 0) {
             root.hold();
             root.step(n);

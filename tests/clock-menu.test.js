@@ -29,6 +29,11 @@ test.describe("matchZones", () => {
         assert.deepStrictEqual(Menu.matchZones(ZONES, [], "hong kong", 8), ["Asia/Hong_Kong"]);
     });
 
+    test.it("takes a region path typed the way the zone id is written", () => {
+        assert.deepStrictEqual(Menu.matchZones(ZONES, [], "europe/lon", 8), ["Europe/London"]);
+        assert.deepStrictEqual(Menu.matchZones(ZONES, [], "america/new_york", 8), ["America/New_York"]);
+    });
+
     test.it("still takes the underscore form and ignores case and extra spaces", () => {
         assert.deepStrictEqual(Menu.matchZones(ZONES, [], "new_york", 8), ["America/New_York"]);
         assert.deepStrictEqual(Menu.matchZones(ZONES, [], "   New   York  ", 8), ["America/New_York"]);

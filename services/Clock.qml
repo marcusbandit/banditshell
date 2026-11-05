@@ -71,9 +71,42 @@ Singleton {
         forgetting.restart();
     }
 
+    function dismiss(kind: string, id: string): void {
+        if (kind === "alarm") {
+            const at = root.alarms.findIndex(a => a.id === id);
+            if (at < 0)
+                return;
+            const alarm = root.alarms[at];
+            root.remember("alarm", alarm, at, `${TimeFormat.clock(alarm.hour, alarm.minute)}${alarm.label ? ` ${alarm.label}` : ""} alarm removed`);
+            root.removeAlarm(id);
+        } else if (kind === "timer") {
+            const at = root.timers.findIndex(t => t.id === id);
+            if (at < 0)
+                return;
+            const timer = root.timers[at];
+            root.remember("timer", timer, at, `${timer.label || root.spanLabel(timer.total)} timer removed`);
+            root.removeTimer(id);
+        } else if (kind === "place") {
+            if (!root.places.includes(id))
+                return;
+            root.remember("place", id, root.places.indexOf(id), `${root.cityOf(id)} removed`);
+            root.removeZone(id);
+        }
+    }
+
+    readonly property bool canUndo: {
+        if (!root.removed)
+            return false;
+        if (root.removed.kind === "alarm")
+            return !root.alarmsFull;
+        if (root.removed.kind === "timer")
+            return !root.timersFull;
+        return true;
+    }
+
     function undoRemove(): void {
         const gone = root.removed;
-        if (!gone)
+        if (!gone || !root.canUndo)
             return;
         forgetting.stop();
         root.removed = null;
@@ -148,7 +181,6 @@ Singleton {
     function removeZone(id: string): void {
         if (!root.places.includes(id))
             return;
-        root.remember("place", id, root.places.indexOf(id), `${root.cityOf(id)} removed`);
         root.places = root.places.filter(z => z !== id);
         root.rebuildZones();
         root.save();
@@ -264,11 +296,8 @@ Singleton {
     }
 
     function removeTimer(id: string): void {
-        const at = root.timers.findIndex(t => t.id === id);
-        if (at < 0)
+        if (!root.timers.some(t => t.id === id))
             return;
-        const gone = root.timers[at];
-        root.remember("timer", gone, at, `${gone.label || root.spanLabel(gone.total)} timer removed`);
         root.timers = root.timers.filter(t => t.id !== id);
         root.save();
     }
@@ -363,13 +392,11 @@ Singleton {
     }
 
     function removeAlarm(id: string): void {
-        const at = root.alarms.findIndex(a => a.id === id);
-        if (at < 0)
+        const alarm = root.alarms.find(a => a.id === id);
+        if (!alarm)
             return;
-        const alarm = root.alarms[at];
         if (root.ringing && root.ringing.id === id)
             root.clearRinging();
-        root.remember("alarm", alarm, at, `${TimeFormat.clock(alarm.hour, alarm.minute)}${alarm.label ? ` ${alarm.label}` : ""} alarm removed`);
         root.alarms = root.alarms.filter(a => a.id !== id);
         root.save();
     }
