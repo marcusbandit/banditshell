@@ -339,13 +339,7 @@ function startSummary(rows) {
     return on === rows.length ? `all ${on} start` : `${on} of ${rows.length} start`;
 }
 
-function isAbsolute(path) {
-    return typeof path === "string" && path.charAt(0) === "/";
-}
-
 function enqueueWrite(queue, path, text) {
-    if (!isAbsolute(path) || (text !== null && typeof text !== "string"))
-        return queue;
     return queue.concat([{ path, text }]);
 }
 
@@ -369,14 +363,12 @@ function removalPath(entry) {
     return entry.source === "autostart" ? entry.row.path : null;
 }
 
-function addPlan(file, text, dir, entries, files) {
+function addPlan(file, text, dir, entries) {
     if (!file)
         return { kind: "none" };
     const known = entries.find(e => e.id === `autostart:${file}`);
     if (known)
         return { kind: "switch", entry: known };
-    if (files.some(f => baseName(f.path) === file))
-        return { kind: "none" };
     return { kind: "create", path: `${dir}/${file}`, text };
 }
 

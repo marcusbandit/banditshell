@@ -133,10 +133,14 @@ function modeString(w, h, hz) {
     return `${w}x${h}@${Math.round(hz)}`;
 }
 
+function resting(reported) {
+    return !!reported.disabled || !(reported.width > 0);
+}
+
 function specFor(reported, entry) {
     if (!reported)
         return null;
-    if (reported.disabled || !(reported.width > 0))
+    if (resting(reported))
         return Object.assign({ output: reported.name }, restingFields(reported, entry), {
             disabled: !!reported.disabled,
             mirror: reported.mirror ?? ""

@@ -39,10 +39,14 @@ function within(path, folder) {
 }
 
 function reread(state, folder, listed) {
-    const gone = !!state.verified && within(state.verified, folder) && listed.indexOf(state.verified) < 0;
+    const missing = state.missing && listed.indexOf(state.missing) >= 0 ? "" : state.missing;
+    const want = state.want;
+    const shown = !!want && want !== missing && (want === state.verified || state.available.indexOf(want) >= 0);
+    const gone = shown && within(want, folder) && listed.indexOf(want) < 0;
     return {
-        missing: state.missing && listed.indexOf(state.missing) >= 0 ? "" : state.missing,
-        recheck: gone ? state.verified : ""
+        missing,
+        verified: gone ? want : state.verified,
+        recheck: gone ? want : ""
     };
 }
 

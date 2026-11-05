@@ -72,6 +72,30 @@ Singleton {
         }
     }
 
+    Process {
+        id: stillThere
+
+        property string path: ""
+        property string next: ""
+
+        function check(path: string): void {
+            if (stillThere.running) {
+                stillThere.next = path;
+                return;
+            }
+            stillThere.path = path;
+            stillThere.next = "";
+            stillThere.exec(["test", "-e", path]);
+        }
+
+        onExited: code => {
+            if (code !== 0 && stillThere.path === root.configured)
+                root.missing = stillThere.path;
+            if (stillThere.next)
+                stillThere.check(stillThere.next);
+        }
+    }
+
     readonly property var perScreen: Config.values.wallpaper.perScreen ?? ({})
 
     function hasOwn(screen: string): bool {
@@ -466,14 +490,18 @@ Singleton {
         if (!scanned.length)
             console.info(`Wallpaper: nothing usable in ${root.dir}, so only the shipped picture is offered`);
         const next = [...scanned, root.fallback];
+        const seen = Paths.reread({
+            want: root.configured,
+            verified: root.verified,
+            missing: root.missing,
+            available: root.available
+        }, root.dir, next);
+        root.verified = seen.verified;
+        root.missing = seen.missing;
         if (JSON.stringify(next) !== JSON.stringify(root.available))
             root.available = next;
-        const seen = Paths.reread({ verified: root.verified, missing: root.missing }, root.dir, next);
-        root.missing = seen.missing;
-        if (seen.recheck && !prober.running) {
-            prober.path = seen.recheck;
-            prober.exec(["test", "-e", seen.recheck]);
-        }
+        if (seen.recheck)
+            stillThere.check(seen.recheck);
         root.measured(Library.kept(root.shapes, next), Library.kept(root.posters, next), Library.kept(root.frozen, next));
         if (changed || !Object.keys(root.colours).length)
             root.measureColours();

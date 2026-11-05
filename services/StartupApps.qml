@@ -173,7 +173,7 @@ Singleton {
     }
 
     function addApp(app: var): void {
-        const plan = StartupLog.addPlan(Entries.autostartName(app.id), Entries.autostartText(app), root.autostartDir, root.entries, root.autostartFiles);
+        const plan = StartupLog.addPlan(Entries.autostartName(app.id), Entries.autostartText(app), root.autostartDir, root.entries);
         if (plan.kind === "switch")
             return root.switchApp(plan.entry, true);
         if (plan.kind === "create") {

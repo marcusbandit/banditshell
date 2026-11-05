@@ -160,6 +160,13 @@ test.describe("removing a layout's file", () => {
         assert.deepStrictEqual(fs.readdirSync(folder), []);
     }));
 
+    test.it("never writes a name that could leave the layouts folder", () => withSandbox((dir, folder) => {
+        const written = run(Saved.writeCommand(folder, [{ name: "../outside", text: "x" }, { name: "a", text: "a" }], ""));
+        assert.strictEqual(written.status, 0, written.stderr);
+        assert.deepStrictEqual(fs.readdirSync(folder), ["a.lua"]);
+        assert.deepStrictEqual(fs.readdirSync(dir), ["layouts"]);
+    }));
+
     test.it("succeeds and removes nothing when the layouts folder does not exist yet", () => withSandbox(dir => {
         const removed = run(Saved.removeCommand(path.join(dir, "missing"), ["a"]));
         assert.strictEqual(removed.status, 0, removed.stderr);

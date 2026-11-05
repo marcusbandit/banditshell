@@ -43,7 +43,8 @@ function removeCommand(folder, names) {
 function writeCommand(folder, files, code) {
     var pairs = [];
     files.forEach(function (file) {
-        pairs.push(file.name, file.text);
+        if (SAFE_FILE_NAME.test(file.name))
+            pairs.push(file.name, file.text);
     });
     return ["sh", "-c", 'exec 2>&1; dir=$1; code=$2; shift 2; mkdir -p -- "$dir" || exit 1; while [ $# -gt 1 ]; do printf %s "$2" > "$dir/$1.lua.part" && mv -f -- "$dir/$1.lua.part" "$dir/$1.lua" || exit 1; shift 2; done; [ -n "$code" ] || exit 0; command -v hyprctl > /dev/null || { echo "hyprctl is not installed"; exit 3; }; exec hyprctl eval "$code"', "sh", folder, code].concat(pairs);
 }

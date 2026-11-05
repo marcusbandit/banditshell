@@ -42,7 +42,7 @@ Singleton {
     }
 
     function specFor(m: var): var {
-        return MonitorRules.specFor(m, m ? HyprConfig.monitorEntry(m.name) : null);
+        return MonitorRules.specFor(m, m && MonitorRules.resting(m) ? HyprConfig.monitorEntry(m.name) : null);
     }
 
     function layoutOf(m: var): var {

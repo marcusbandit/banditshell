@@ -117,28 +117,41 @@ test.describe("folder membership", () => {
 });
 
 test.describe("reread", () => {
-    test.it("asks to check a wallpaper on disk again once the folder stops listing it", () => {
-        assert.deepStrictEqual(Paths.reread({ verified: "/w/sea.png", missing: "" }, "/w", [FALLBACK]), { missing: "", recheck: "/w/sea.png" });
+    const listedSea = { want: "/w/sea.png", verified: "", missing: "", available: ["/w/sea.png", FALLBACK] };
+
+    test.it("checks a wallpaper picked from the folder on disk once the folder stops listing it", () => {
+        assert.deepStrictEqual(Paths.reread(listedSea, "/w", [FALLBACK]), { missing: "", verified: "/w/sea.png", recheck: "/w/sea.png" });
     });
 
-    test.it("leaves a listed wallpaper alone", () => {
-        assert.deepStrictEqual(Paths.reread({ verified: "/w/sea.png", missing: "" }, "/w/", ["/w/sea.png", FALLBACK]), { missing: "", recheck: "" });
+    test.it("checks a wallpaper found by probing once the folder stops listing it", () => {
+        const state = { want: "/w/sea.png", verified: "/w/sea.png", missing: "", available: [FALLBACK] };
+        assert.strictEqual(Paths.reread(state, "/w/", [FALLBACK]).recheck, "/w/sea.png");
+    });
+
+    test.it("leaves a wallpaper the folder still lists alone", () => {
+        assert.deepStrictEqual(Paths.reread(listedSea, "/w", ["/w/sea.png", FALLBACK]), { missing: "", verified: "", recheck: "" });
+    });
+
+    test.it("never checks a wallpaper that is not the one on screen", () => {
+        const state = { want: "/w/new.png", verified: "/w/old.png", missing: "/w/new.png", available: [FALLBACK] };
+        assert.deepStrictEqual(Paths.reread(state, "/w", [FALLBACK]), { missing: "/w/new.png", verified: "/w/old.png", recheck: "" });
     });
 
     test.it("forgets a missing wallpaper once the folder lists it again", () => {
-        assert.deepStrictEqual(Paths.reread({ verified: "", missing: "/w/sea.png" }, "/w", ["/w/sea.png", FALLBACK]), { missing: "", recheck: "" });
+        const state = { want: "/w/sea.png", verified: "", missing: "/w/sea.png", available: [FALLBACK] };
+        assert.deepStrictEqual(Paths.reread(state, "/w", ["/w/sea.png", FALLBACK]), { missing: "", verified: "", recheck: "" });
     });
 
-    test.it("never rechecks a wallpaper that lives outside the folder", () => {
-        assert.deepStrictEqual(Paths.reread({ verified: "/usr/share/pics/sea.png", missing: "" }, "/w", [FALLBACK]), { missing: "", recheck: "" });
-        assert.deepStrictEqual(Paths.reread({ verified: "/wild/sea.png", missing: "" }, "/w", [FALLBACK]), { missing: "", recheck: "" });
+    test.it("never checks a wallpaper that lives outside the folder", () => {
+        const state = { want: "/wild/sea.png", verified: "/wild/sea.png", missing: "", available: [FALLBACK] };
+        assert.strictEqual(Paths.reread(state, "/w", [FALLBACK]).recheck, "");
     });
 
-    test.it("shows the shipped picture once a deleted wallpaper fails the check", () => {
-        const state = { ready: true, unreadable: false, want: "/w/sea.png", verified: "/w/sea.png", available: [FALLBACK], fallback: FALLBACK };
-        const seen = Paths.reread({ verified: state.verified, missing: "" }, "/w", [FALLBACK]);
-        assert.strictEqual(Library.shown(Object.assign({}, state, { missing: seen.missing })), "/w/sea.png");
-        assert.strictEqual(Library.shown(Object.assign({}, state, { missing: seen.recheck })), FALLBACK);
+    test.it("keeps the wallpaper on screen while the check runs, then falls back if it is gone", () => {
+        const seen = Paths.reread(listedSea, "/w", [FALLBACK]);
+        const after = { ready: true, unreadable: false, want: "/w/sea.png", verified: seen.verified, available: [FALLBACK], fallback: FALLBACK };
+        assert.strictEqual(Library.shown(Object.assign({}, after, { missing: seen.missing })), "/w/sea.png");
+        assert.strictEqual(Library.shown(Object.assign({}, after, { missing: seen.recheck })), FALLBACK);
     });
 });
 

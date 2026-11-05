@@ -325,23 +325,23 @@ function withTempDir(run) {
 }
 
 test("adding an app that is listed switches it on instead of writing its file", () => {
-    const plan = Startup.addPlan("remmina-applet.desktop", "[Desktop Entry]\n", AUTOSTART_DIR, autostartRows(), autostartFiles());
+    const plan = Startup.addPlan("remmina-applet.desktop", "[Desktop Entry]\n", AUTOSTART_DIR, autostartRows());
     assert.strictEqual(plan.kind, "switch");
     assert.strictEqual(plan.entry.id, "autostart:remmina-applet.desktop");
 });
 
-test("adding an app whose file is in the folder but not listed never overwrites that file", () => {
-    const plan = Startup.addPlan("gnome-only.desktop", "[Desktop Entry]\n", AUTOSTART_DIR, autostartRows(), autostartFiles());
-    assert.deepStrictEqual(plan, { kind: "none" });
+test("adding an app whose file the list hides writes that file again", () => {
+    const plan = Startup.addPlan("gnome-only.desktop", "[Desktop Entry]\n", AUTOSTART_DIR, autostartRows());
+    assert.deepStrictEqual(plan, { kind: "create", path: `${AUTOSTART_DIR}/gnome-only.desktop`, text: "[Desktop Entry]\n" });
 });
 
 test("adding an app with a new file name writes it into the autostart folder", () => {
-    const plan = Startup.addPlan("spotify.desktop", "[Desktop Entry]\n", AUTOSTART_DIR, autostartRows(), autostartFiles());
+    const plan = Startup.addPlan("spotify.desktop", "[Desktop Entry]\n", AUTOSTART_DIR, autostartRows());
     assert.deepStrictEqual(plan, { kind: "create", path: `${AUTOSTART_DIR}/spotify.desktop`, text: "[Desktop Entry]\n" });
 });
 
 test("adding an app with no usable file name changes nothing", () => {
-    assert.deepStrictEqual(Startup.addPlan(Entries.autostartName(""), "x", AUTOSTART_DIR, [], []), { kind: "none" });
+    assert.deepStrictEqual(Startup.addPlan(Entries.autostartName(""), "x", AUTOSTART_DIR, []), { kind: "none" });
 });
 
 test("switching an autostart app off rewrites only its own file, with Hidden set", () => {
@@ -382,13 +382,6 @@ test("removing a Hyprland, systemd or launcher app names no file", () => {
     assert.strictEqual(Startup.removalPath({ source: "hyprland", row: { path: "/x/y" } }), null);
     assert.strictEqual(Startup.removalPath({ source: "systemd", row: {} }), null);
     assert.strictEqual(Startup.removalPath({ source: "launcher", row: { overridePath: "/o/x.conf" } }), null);
-});
-
-test("a write without an absolute path or without text is never queued", () => {
-    assert.deepStrictEqual(Startup.enqueueWrite([], "undefined", "x"), []);
-    assert.deepStrictEqual(Startup.enqueueWrite([], undefined, "x"), []);
-    assert.deepStrictEqual(Startup.enqueueWrite([], "relative/a.desktop", "x"), []);
-    assert.deepStrictEqual(Startup.enqueueWrite([], `${AUTOSTART_DIR}/a.desktop`, undefined), []);
 });
 
 test("a removal is queued with no text", () => {

@@ -812,8 +812,7 @@ Singleton {
         root.expecting = path;
         expiry.restart();
         root.cwd = path;
-        root.send(plan.text);
-        root.restat();
+        root.typeCd(path);
         return true;
     }
 
