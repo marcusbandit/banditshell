@@ -14,6 +14,7 @@ import "shellcli.js" as ShellCli
 import "../files/marks.js" as Marks
 import "../settings/catalogue.js" as Catalogue
 import "../../services/ranking.js" as Ranking
+import "../../services/system-monitor.js" as ProcessNames
 
 QtObject {
     id: root
@@ -1456,7 +1457,10 @@ QtObject {
 
     property var processes: []
 
-    readonly property var sessionProcesses: ["ps", "sh", "quickshell", "qs", "Hyprland", "systemd", "(sd-pam)", "dbus-broker", "dbus-broker-lau", "dbus-daemon", "pipewire", "pipewire-pulse", "wireplumber"]
+    readonly property var sessionProcesses: ["ps", "sh"].concat(ProcessNames.SESSION)
+
+    property var closing: ({})
+    property int relists: 0
 
     function listProcesses(): void {
         root.lister.running = false;
@@ -1466,33 +1470,74 @@ QtObject {
     property Process lister: Process {
         command: ["sh", "-c", 'ps -u "$(id -u)" -o pid=,rss=,comm= --sort=-rss']
         stdout: StdioCollector {
-            onStreamFinished: root.processes = Search.readProcesses(text, root.sessionProcesses)
+            onStreamFinished: {
+                root.processes = Search.readProcesses(text, root.sessionProcesses);
+                const left = {};
+                for (const pid of Object.keys(root.closing))
+                    if (root.processes.some(p => String(p.pid) === pid))
+                        left[pid] = true;
+                root.closing = left;
+            }
         }
     }
 
     property Timer relist: Timer {
-        interval: 400
-        onTriggered: root.listProcesses()
+        interval: 500
+        repeat: true
+        onTriggered: {
+            root.listProcesses();
+            root.relists -= 1;
+            if (root.relists <= 0)
+                running = false;
+        }
     }
 
     function memoryText(kb: real): string {
         return kb >= 1048576 ? `${(kb / 1048576).toLocaleString(Qt.locale(), "f", 1)} GB` : `${Math.max(1, Math.round(kb / 1024))} MB`;
     }
 
-    readonly property var processRows: root.killing === null ? [] : root.processes.filter(p => p.name.toLowerCase().indexOf(root.killing) >= 0).map(p => ({
-                key: `process:${p.pid}`,
-                kind: "process",
-                pid: p.pid,
-                label: p.name,
-                detail: `${root.memoryText(p.kb)} · PID ${p.pid}`,
-                iconSource: Apps.iconSourceFor([p.name]),
-                icon: "memory",
-                score: Infinity
-            }))
+    readonly property bool forcing: Search.killForce(root.text)
+
+    function killMode(pid: int): string {
+        const cut = root.armed.indexOf(":");
+        return cut > 0 && root.armed.slice(0, cut).startsWith("kill") && root.armed.slice(cut + 1) === String(pid) ? root.armed.slice(0, cut) : "";
+    }
+
+    readonly property var processRows: root.killing === null ? [] : root.processes.filter(p => p.name.toLowerCase().indexOf(root.killing) >= 0).map(p => {
+        const mode = root.killMode(p.pid);
+        return {
+            key: `process:${p.pid}`,
+            kind: "process",
+            pid: p.pid,
+            name: p.name,
+            mode: mode,
+            armed: mode !== "",
+            label: mode ? `Press Enter again to ${mode === "killhard" ? "force quit" : "quit"} ${p.name}` : p.name,
+            detail: mode ? "" : [root.closing[p.pid] ? "closing" : "", `${root.memoryText(p.kb)} · PID ${p.pid}`].filter(Boolean).join(" · "),
+            iconSource: Apps.iconSourceFor([p.name]),
+            icon: "memory",
+            score: Infinity
+        };
+    })
 
     function kill(pid: int, signal: string): void {
         Quickshell.execDetached(["kill", `-${signal}`, String(pid)]);
+        root.armed = "";
+        root.closing = Object.assign({}, root.closing, {
+            [pid]: true
+        });
+        root.relists = 10;
         root.relist.restart();
+    }
+
+    function pressProcess(row: var): void {
+        const signal = root.forcing ? "KILL" : "TERM";
+        if (row.mode)
+            root.kill(row.pid, row.mode === "killhard" ? "KILL" : "TERM");
+        else if (root.killing === "")
+            root.armed = `${root.forcing ? "killhard" : "kill"}:${row.pid}`;
+        else
+            root.kill(row.pid, signal);
     }
 
     readonly property var rows: root.keyed(root.arranged)
@@ -1700,7 +1745,7 @@ QtObject {
             root.leave(() => System.copyText(row.time));
             return;
         case "process":
-            root.kill(row.pid, "TERM");
+            root.pressProcess(row);
             return;
         case "setting":
             if (row.toggle !== undefined)
@@ -1773,6 +1818,17 @@ QtObject {
         const owner = root.sourceOf(row);
         if (owner?.confirmActionsFor)
             return owner.confirmActionsFor(row).concat([cancel]);
+        if (row.kind === "process")
+            return [
+                {
+                    icon: "dangerous",
+                    label: row.mode === "killhard" ? "Force quit" : "Quit",
+                    alarm: true,
+                    button: true,
+                    run: () => root.pressProcess(row)
+                },
+                cancel
+            ];
         if (row.kind === "app")
             return Uninstaller.plans[row.entry.id]?.refused ? [cancel] : [
                 {

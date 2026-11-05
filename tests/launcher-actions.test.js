@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Search = lib("modules/launcher/search.js", ["timerAsk", "reminderAsk", "volumeAsk", "zoneAsk", "zoneMatches", "readOffsets", "killAsk", "readProcesses", "spanText"]);
+const Search = lib("modules/launcher/search.js", ["timerAsk", "reminderAsk", "volumeAsk", "zoneAsk", "zoneMatches", "readOffsets", "killAsk", "killForce", "readProcesses", "spanText"]);
 
 const cityOf = id => id.slice(id.lastIndexOf("/") + 1).replace(/_/g, " ");
 
@@ -91,6 +91,13 @@ test.describe("killAsk and readProcesses", () => {
         assert.strictEqual(Search.killAsk("kill Firefox"), "firefox");
         assert.strictEqual(Search.killAsk("force quit steam"), "steam");
         assert.strictEqual(Search.killAsk("killer"), null);
+    });
+
+    test.it("tells a force quit from a plain kill", () => {
+        assert.strictEqual(Search.killForce("force quit steam"), true);
+        assert.strictEqual(Search.killForce(" Force   Quit"), true);
+        assert.strictEqual(Search.killForce("kill steam"), false);
+        assert.strictEqual(Search.killForce("force quitter"), false);
     });
 
     test.it("parses ps lines and skips names", () => {

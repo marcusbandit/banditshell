@@ -1118,6 +1118,10 @@ function killAsk(text) {
     return m && !portAsk(text) ? (m[1] || "").trim().toLowerCase() : null;
 }
 
+function killForce(text) {
+    return /^force\s+quit(?:\s|$)/i.test(String(text || "").trim());
+}
+
 function readProcesses(text, skip) {
     return String(text || "").split("\n").map(line => /^\s*(\d+)\s+(\d+)\s+(.+?)\s*$/.exec(line)).filter(m => m && (skip || []).indexOf(m[3]) < 0).map(m => ({
                 pid: parseInt(m[1], 10),
