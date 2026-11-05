@@ -3,6 +3,7 @@ import Quickshell
 import qs.config
 import qs.services
 import "../../../services/quicklinks.js" as Quicklinks
+import "../prefixes.js" as Prefixes
 
 QtObject {
     id: root
@@ -18,13 +19,19 @@ QtObject {
         partial: []
     }
 
-    readonly property bool intent: root.matched.exact.some(m => m.query !== "")
+    readonly property var claimed: root.search.prefixes.filter(p => p.section !== "Quicklinks").reduce((out, p) => out.concat(Prefixes.heads(p)), [])
+
+    function clashes(link: var): bool {
+        return root.claimed.indexOf(Quicklinks.cleanKeyword(link.keyword)) >= 0;
+    }
+
+    readonly property bool intent: root.matched.exact.some(m => m.query !== "" && !root.clashes(m.link))
 
     readonly property var groups: [
         {
             key: "quicklinks",
             title: "Quicklinks",
-            items: root.matched.exact.map(m => root.row(m.link, m.query, m.query ? Infinity : Quicklinks.KEYWORD_SCORE)).concat(root.matched.partial.slice(0, 3).map(p => root.row(p.link, "", p.score)))
+            items: root.matched.exact.map(m => root.row(m.link, m.query, m.query && !root.clashes(m.link) ? Infinity : Quicklinks.KEYWORD_SCORE)).concat(root.matched.partial.slice(0, 3).map(p => root.row(p.link, "", p.score)))
         }
     ]
 
@@ -44,7 +51,7 @@ QtObject {
             query: query,
             url: url,
             label: query ? `${link.name}: ${query}` : link.name,
-            detail: Quicklinks.hostOf(url),
+            detail: root.clashes(link) ? `${Quicklinks.hostOf(url)} · same word as a built-in source` : Quicklinks.hostOf(url),
             icon: Quicklinks.takes(link) ? "travel_explore" : "link",
             score: score
         };

@@ -86,7 +86,8 @@
       "launcher"
     ],
     "reads": [
-      "control"
+      "control",
+      "volume.step"
     ]
   }
 }

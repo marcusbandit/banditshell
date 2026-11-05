@@ -2,7 +2,6 @@ import QtQuick
 import Quickshell
 import qs.services
 import "../../../services/dictionary.js" as Words
-import "../../../services/ranking.js" as Ranking
 
 QtObject {
     id: root
@@ -132,7 +131,7 @@ QtObject {
                         word: root.modeRest
                     })] : [];
         if (!root.explicit)
-            return root.localEntry ? [root.wordRow(root.localEntry, false, Ranking.WORD - 0.5)] : [];
+            return root.localEntry ? [root.wordRow(root.localEntry, false, 0.5)] : [];
         const found = root.localEntry || root.onlineAnswer ? [root.wordRow(root.localEntry, true, Infinity)] : [];
         const completions = (root.answer?.completions ?? []).map((entry, i) => root.wordRow(entry, false, 9 - i * 0.01));
         if (found.length || completions.length)
