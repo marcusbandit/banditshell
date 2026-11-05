@@ -457,7 +457,7 @@ Column {
 
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(280, implicitWidth)
+                width: Math.min(340, implicitWidth)
                 text: String(Catalogue.optionLabel(root.row, SettingsState, root.value) ?? "")
                 color: Appearance.colour.textDim
                 elide: Text.ElideMiddle
