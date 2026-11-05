@@ -136,8 +136,8 @@ test.describe("urlOf", () => {
         assert.ok(Search.linkScore("Build.SH", ["build.sh"], true) < 0);
     });
 
-    test.it("holds a file-like name below the rows until the file search has answered", () => {
-        assert.ok(Search.linkScore("build.sh", [], false) < 0);
+    test.it("holds a file-like name back until the file search has answered", () => {
+        assert.strictEqual(Search.linkScore("build.sh", [], false), null);
         assert.strictEqual(Search.linkScore("build.sh", [], true), Infinity);
         assert.strictEqual(Search.linkScore("build.sh", ["other.sh"], true), Infinity);
     });

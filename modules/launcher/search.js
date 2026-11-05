@@ -130,7 +130,7 @@ function linkScore(text, fileNames, filesReady) {
     if (!ending || FILE_LIKE_ENDINGS.indexOf(ending[1]) < 0 || /^www\./.test(t))
         return Infinity;
     if (!filesReady)
-        return -0.5;
+        return null;
     return (fileNames || []).some(n => String(n || "").toLowerCase() === t) ? -0.5 : Infinity;
 }
 

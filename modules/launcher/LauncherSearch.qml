@@ -1561,7 +1561,7 @@ QtObject {
         });
     }
 
-    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, FileSearch.grepAnswered, root.sourceGroupLists, root.aloneSource, root.limits]
+    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, FileSearch.grepAnswered, FileSearch.found, root.sourceGroupLists, root.aloneSource, root.limits]
 
     property var arranged: []
     property bool arrangePending: false
@@ -1607,7 +1607,8 @@ QtObject {
                 }
             ], root.caps);
         const groups = [];
-        if (root.url)
+        const linkScore = Search.linkScore(root.text, root.fileRows.map(f => f.label), FileSearch.found === root.text.trim() || !FileSearch.fdFound);
+        if (root.url && linkScore !== null)
             groups.push({
                 key: "link",
                 title: "Link",
@@ -1618,7 +1619,7 @@ QtObject {
                         label: `Open ${root.text}`,
                         detail: "",
                         icon: "link",
-                        score: Search.linkScore(root.text, root.fileRows.map(f => f.label), FileSearch.found === root.text.trim() || !FileSearch.fdFound)
+                        score: linkScore
                     }
                 ]
             });
