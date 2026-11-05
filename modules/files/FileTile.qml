@@ -38,8 +38,9 @@ Item {
     property bool row: false
 
     property bool receiving: false
+    property bool cut: false
 
-    readonly property real ink: root.entry.hidden && !Files.showHidden ? Appearance.opacity.trail : 1
+    readonly property real ink: root.cut || root.entry.hidden && !Files.showHidden ? Appearance.opacity.trail : 1
     readonly property bool droppable: root.entry.kind === "dir" && root.entry.open
     readonly property bool isImage: root.entry.class === "image" && !root.entry.broken
 

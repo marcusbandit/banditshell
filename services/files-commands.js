@@ -26,6 +26,13 @@ function humanSize(bytes) {
     return `${sizeDigits(value)} ${SIZE_UNITS[step - 1]}`;
 }
 
+function progressLine(title, copied, total) {
+    if (!(total > 0))
+        return `${title}, ${humanSize(copied)} so far`;
+    const percent = Math.min(99, Math.floor(copied / total * 100));
+    return `${title}, ${humanSize(copied)} of ${humanSize(total)} (${percent}%)`;
+}
+
 function join(dir, name) {
     return dir === "/" ? `/${name}` : `${dir}/${name}`;
 }

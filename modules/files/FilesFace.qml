@@ -425,7 +425,7 @@ Item {
                 Files.makeFile(name);
             else
                 Files.makeFolder(name);
-        }, null, "create");
+        }, name => Files.createRefusal(name), "create");
     }
 
     function renameCurrent(): void {
@@ -774,8 +774,8 @@ Item {
         anchors.right: parent.right
         anchors.bottom: terminal.top
 
-        visible: Files.failure !== "" || FilesUndo.notice !== ""
-        height: failure.visible ? failureText.implicitHeight : 0
+        visible: FilesPaste.shown || Files.failure !== "" || FilesUndo.notice !== ""
+        height: failure.visible ? Math.max(failureText.implicitHeight, FilesPaste.shown ? stop.implicitHeight : 0) : 0
 
         StyledText {
             id: failureText
@@ -785,14 +785,30 @@ Item {
             anchors.top: parent.top
 
             leftPadding: Appearance.padding.normal
-            rightPadding: Appearance.padding.normal
+            rightPadding: Appearance.padding.normal + (FilesPaste.shown ? stop.width : 0)
             topPadding: Appearance.padding.small
             bottomPadding: Appearance.padding.small
 
-            text: Files.failure || FilesUndo.notice
+            text: FilesPaste.shown ? FilesPaste.line : Files.failure || FilesUndo.notice
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
-            color: Files.failure ? Appearance.colour.alarm : Appearance.colour.text
+            color: FilesPaste.shown ? Appearance.colour.text : Files.failure ? Appearance.colour.alarm : Appearance.colour.text
             elide: Text.ElideRight
+        }
+
+        Button {
+            id: stop
+
+            anchors.right: parent.right
+            anchors.rightMargin: Appearance.padding.normal
+            anchors.verticalCenter: parent.verticalCenter
+            visible: FilesPaste.shown
+
+            style: "ring"
+            text: "Stop"
+            interactive: !FilesPaste.stopping
+            zoom: Files.magnification
+
+            onClicked: FilesPaste.stop()
         }
 
         TapHandler {
