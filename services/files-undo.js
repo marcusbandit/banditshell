@@ -99,6 +99,10 @@ function existing(paths, text) {
     return out;
 }
 
+function trashLine(count) {
+    return (count === 1 ? "1 item" : count + " items") + " moved to the trash, Ctrl+Z to undo";
+}
+
 function vanished(paths, text) {
     var there = existing(paths, text);
     return paths.filter(function (path) {

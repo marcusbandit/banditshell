@@ -975,7 +975,11 @@ Singleton {
         const command = FilesCommands.trashCommand(paths);
         const at = Date.now() / 1000;
         root.failure = "";
-        root.spawn([...command.words, ...command.paths], "", whole => FilesUndo.trashed(paths, at, whole));
+        root.spawn([...command.words, ...command.paths], "", whole => {
+            FilesUndo.trashed(paths, at, whole);
+            if (whole)
+                FilesUndo.say(FilesUndo.trashLine(paths.length));
+        });
         FilesFind.forget(paths);
     }
 
@@ -1069,6 +1073,14 @@ Singleton {
 
     property var clipboard: []
     property bool clipboardCut: false
+
+    readonly property var cutTable: {
+        const table = Object.create(null);
+        if (root.clipboardCut)
+            for (const path of root.clipboard)
+                table[path] = true;
+        return table;
+    }
 
     function clip(paths: var, cut: bool): void {
         if (cut && paths.some(path => Trash.trashed(path, root.trashFiles)))

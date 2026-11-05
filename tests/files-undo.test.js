@@ -16,7 +16,7 @@ function lib(file, names) {
 
 const Undo = lib("services/files-undo.js", [
     "LIMIT", "into", "moved", "renamed", "copied", "fresh", "trashed", "remember",
-    "existsCommand", "existing", "vanished", "pick", "command", "outcome", "summary"
+    "existsCommand", "existing", "vanished", "trashLine", "pick", "command", "outcome", "summary"
 ]);
 const Trash = lib("services/files-trash.js", ["readCommand", "parse", "restoreCommand"]);
 const GioTrash = require("./fixtures/gio-trash.js");
@@ -98,6 +98,11 @@ test.describe("files undo", () => {
         } finally {
             box.done();
         }
+    });
+
+    test.it("says how many items went to the trash and how to undo it", () => {
+        assert.strictEqual(Undo.trashLine(1), "1 item moved to the trash, Ctrl+Z to undo");
+        assert.strictEqual(Undo.trashLine(3), "3 items moved to the trash, Ctrl+Z to undo");
     });
 
     test.it("remembers only the paths a failed trash really took, never one that stayed", () => {

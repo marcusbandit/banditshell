@@ -46,6 +46,10 @@ Singleton {
         });
     }
 
+    function trashLine(count: int): string {
+        return Undo.trashLine(count);
+    }
+
     function say(text: string): void {
         Files.failure = "";
         root.notice = text;
@@ -150,7 +154,7 @@ Singleton {
     Timer {
         id: fade
 
-        interval: 4000
+        interval: 5000
 
         onTriggered: root.notice = ""
     }
