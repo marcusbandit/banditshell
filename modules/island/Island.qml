@@ -530,6 +530,10 @@ Item {
             root.openTask("microphone");
             return;
         }
+        if (activity?.kind === "quiet") {
+            root.openTask("notifications");
+            return;
+        }
         if (activity?.style === "wifi" && !activity.action) {
             root.openTask("wifi");
             return;

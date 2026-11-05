@@ -257,7 +257,10 @@ QtObject {
         case "quiet":
             return {
                 icon: "do_not_disturb_on",
-                text: a.text
+                text: a.text,
+                trailing: "icon",
+                trailingIcon: "chevron_right",
+                trailingInk: true
             };
         case "notification":
             return {

@@ -21,6 +21,7 @@ Item {
     implicitHeight: Appearance.padding.large + column.implicitHeight + root.pad
 
     property bool leaving: false
+    property bool seen: false
 
     function leave(): void {
         if (root.leaving)
@@ -29,8 +30,18 @@ Item {
         root.hide();
     }
 
-    onWatchedChanged: if (root.watched)
-        root.leaving = false
+    onWatchedChanged: {
+        if (root.watched) {
+            root.leaving = false;
+            root.seen = true;
+            return;
+        }
+        if (!root.seen)
+            return;
+        root.seen = false;
+        if (root.failure)
+            Activities.remove(root.failure.id);
+    }
     onFailureChanged: if (!root.failure && root.watched)
         root.leave()
 
