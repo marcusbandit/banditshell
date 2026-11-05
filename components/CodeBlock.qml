@@ -206,8 +206,6 @@ Item {
         }
     }
 
-    readonly property real pageHeight: view.height
-
     function scrollBy(pixels: real): void {
         view.scrollBy(pixels);
     }

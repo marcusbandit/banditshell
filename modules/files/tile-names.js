@@ -19,26 +19,28 @@ function pieces(text) {
 }
 
 function chunked(text, fits) {
+    const chars = Array.from(text);
+    const part = (from, to) => chars.slice(from, to).join("");
     const greedy = [];
     let at = 0;
-    while (at < text.length) {
+    while (at < chars.length) {
         let lo = 1;
-        let hi = text.length - at;
+        let hi = chars.length - at;
         while (lo < hi) {
             const mid = Math.ceil((lo + hi) / 2);
-            if (fits(text.slice(at, at + mid)))
+            if (fits(part(at, at + mid)))
                 lo = mid;
             else
                 hi = mid - 1;
         }
-        greedy.push(text.slice(at, at + lo));
+        greedy.push(part(at, at + lo));
         at += lo;
     }
-    const size = Math.ceil(text.length / greedy.length);
+    const size = Math.ceil(chars.length / greedy.length);
     const even = [];
-    for (let i = 0; i < text.length; i += size)
-        even.push(text.slice(i, i + size));
-    return even.every(part => fits(part)) ? even : greedy;
+    for (let i = 0; i < chars.length; i += size)
+        even.push(part(i, i + size));
+    return even.every(piece => fits(piece)) ? even : greedy;
 }
 
 function wrapped(units, fits) {

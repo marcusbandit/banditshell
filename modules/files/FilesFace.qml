@@ -100,12 +100,20 @@ Item {
         root.gridKey(event);
     }
 
+    Connections {
+        target: preview
+
+        function onVisibleChanged(): void {
+            if (!preview.visible && Files.focus === "preview")
+                Files.focus = "grid";
+        }
+    }
+
     function previewKey(event: var): bool {
         const line = Files.zoomed(Appearance.font.line.small);
         const by = Chords.previewScroll(Qt, event.key, event.modifiers, Files.gridKeys[event.text] ?? "", Math.max(line, preview.pageHeight - line), line);
-        if (by === null)
+        if (by === null || !preview.scrollBy(by))
             return false;
-        preview.scrollBy(by);
         event.accepted = true;
         return true;
     }
@@ -192,6 +200,9 @@ Item {
     }
 
     function act(action: string): bool {
+        if (action === "focus:preview" && !preview.visible)
+            return true;
+
         switch (action) {
         case "left":
             root.move(-1, false);

@@ -99,6 +99,11 @@ test.describe("keys: what the window keeps while the terminal has focus", () => 
         assert.ok(Keys.windowOwns("Ctrl+J", "terminal"));
     });
 
+    test.it("keeps a chord the user rebound to move focus, whatever its keys", () => {
+        assert.ok(Keys.windowOwns("Ctrl+K", "focus:grid"));
+        assert.ok(Keys.windowOwns("Alt+P", "focus:preview"));
+    });
+
     test.it("hands everything else to the shell inside, tmux prefix and word jumps included", () => {
         for (const [key, action] of [["Ctrl+B", "sidebar"], ["Alt+Left", "back"], ["Alt+Right", "forward"], ["Alt+Up", "parent"], ["Alt+Home", "home"], ["Ctrl+,", "settings"], ["Ctrl+A", "all"]])
             assert.ok(!Keys.windowOwns(key, action), key);

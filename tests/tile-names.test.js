@@ -27,6 +27,13 @@ test.describe("tile names: wrapping a name under an icon", () => {
         assert.deepStrictEqual(Names.lines("ModemManager", 2, room(7)), ["ModemM", "anager"]);
     });
 
+    test.it("never cuts an emoji in half at a line break", () => {
+        const lines = Names.lines("\u{1F4C1}\u{1F4C1}\u{1F4C1}\u{1F4C1}\u{1F4C1}", 2, s => Array.from(s).length <= 3);
+        assert.deepStrictEqual(lines, ["\u{1F4C1}\u{1F4C1}\u{1F4C1}", "\u{1F4C1}\u{1F4C1}"]);
+        for (const line of lines)
+            assert.ok(!/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/.test(line));
+    });
+
     test.it("keeps the start and the extension of a name that needs more than two lines", () => {
         assert.deepStrictEqual(Names.lines("averyverylongfilenamewithoutspaces.tar.gz", 2, room(12)), ["averyverylon", "\u2026aces.tar.gz"]);
     });

@@ -65,7 +65,7 @@ function chordOf(qt, table, key, modifiers, text) {
 }
 
 function windowOwns(chord, action) {
-    return /^Ctrl\+[0-9]$/.test(chord) || action === "terminal";
+    return /^Ctrl\+[0-9]$/.test(chord) || action === "terminal" || action.indexOf("focus:") === 0;
 }
 
 function previewScroll(qt, key, modifiers, action, page, line) {

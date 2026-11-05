@@ -286,32 +286,31 @@ test.describe("files commands: the folder you just left", () => {
 
 test.describe("files commands: folder totals", () => {
     test.it("reads the byte total and the item count", () => {
-        assert.deepStrictEqual(Commands.totals("path /home/u/Projects\nsize 123456\nitems 80\n"), {path: "/home/u/Projects", bytes: 123456, items: 80});
-    });
-
-    test.it("keeps a path that holds spaces", () => {
-        assert.strictEqual(Commands.totals("path /home/u/My Files\nsize 1\nitems 0\n").path, "/home/u/My Files");
+        assert.deepStrictEqual(Commands.totals("token 3\nsize 123456\nitems 80\n"), {token: "3", bytes: 123456, items: 80});
     });
 
     test.it("leaves the size empty when du printed nothing", () => {
-        assert.deepStrictEqual(Commands.totals("path /root/secret\nsize \nitems 0\n"), {path: "/root/secret", bytes: null, items: 0});
+        assert.deepStrictEqual(Commands.totals("token 4\nsize \nitems 0\n"), {token: "4", bytes: null, items: 0});
     });
 
     test.it("runs du and ls on the path given as an argument, not spliced into the script", () => {
-        const command = Commands.totalsCommand("/tmp/a b'; rm -rf x");
-        assert.deepStrictEqual(command.slice(-2), ["sh", "/tmp/a b'; rm -rf x"]);
+        const command = Commands.totalsCommand("/tmp/a b'; rm -rf x", 7);
+        assert.deepStrictEqual(command.slice(-3), ["sh", "/tmp/a b'; rm -rf x", "7"]);
         assert.ok(!command[2].includes("rm -rf"));
     });
 
-    test.it("measures a real folder", () => {
+    test.it("measures a real folder whose name holds a newline", () => {
         const dir = fs.mkdtempSync(path.join(os.tmpdir(), "totals-"));
-        fs.writeFileSync(path.join(dir, "a"), "x".repeat(10000));
-        fs.writeFileSync(path.join(dir, ".hidden"), "y");
-        fs.mkdirSync(path.join(dir, "sub"));
-        const run = child.spawnSync(Commands.totalsCommand(dir)[0], Commands.totalsCommand(dir).slice(1), {encoding: "utf8"});
+        const odd = path.join(dir, "a\nb");
+        fs.mkdirSync(odd);
+        fs.writeFileSync(path.join(odd, "a"), "x".repeat(10000));
+        fs.writeFileSync(path.join(odd, ".hidden"), "y");
+        fs.mkdirSync(path.join(odd, "sub"));
+        const command = Commands.totalsCommand(odd, 9);
+        const run = child.spawnSync(command[0], command.slice(1), {encoding: "utf8"});
         const got = Commands.totals(run.stdout);
         fs.rmSync(dir, {recursive: true});
-        assert.strictEqual(got.path, dir);
+        assert.strictEqual(got.token, "9");
         assert.strictEqual(got.items, 3);
         assert.ok(got.bytes >= 10001);
     });

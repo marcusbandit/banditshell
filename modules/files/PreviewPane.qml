@@ -24,13 +24,16 @@ Item {
 
     readonly property real pageHeight: stage.height
 
-    function scrollBy(pixels: real): void {
+    function scrollBy(pixels: real): bool {
         if (folderList.visible)
             folderList.scrollBy(pixels);
         else if (scroller.visible)
             scroller.scrollBy(pixels);
         else if (code.visible)
             code.scrollBy(pixels);
+        else
+            return false;
+        return true;
     }
 
     readonly property bool isMarkdown: root.language === "markdown"

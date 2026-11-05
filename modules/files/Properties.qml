@@ -13,6 +13,7 @@ Item {
     property string path: ""
     property var stat: null
     property var folder: null
+    property int measuring: 0
 
     property bool up: false
 
@@ -22,11 +23,13 @@ Item {
         root.folder = null;
         root.up = true;
         measurer.running = false;
+        root.measuring += 1;
         statter.exec([Files.helper("bs-ls"), "--stat", path]);
     }
 
     function close(): void {
         root.up = false;
+        measurer.running = false;
     }
 
     visible: root.up || fade.value > 0
@@ -49,8 +52,8 @@ Item {
                 try {
                     const answer = JSON.parse(text);
                     root.stat = answer.ok ? answer : null;
-                    if (answer.ok && answer.kind === "dir")
-                        measurer.exec(FilesCommands.totalsCommand(answer.path));
+                    if (answer.ok && answer.kind === "dir" && answer.path === root.path)
+                        measurer.exec(FilesCommands.totalsCommand(answer.path, root.measuring));
                 } catch (e) {
                     root.stat = null;
                 }
@@ -64,7 +67,7 @@ Item {
         stdout: StdioCollector {
             onStreamFinished: {
                 const totals = FilesCommands.totals(text);
-                if (totals.path === root.path)
+                if (totals.token === String(root.measuring))
                     root.folder = totals;
             }
         }
