@@ -19,16 +19,31 @@ Singleton {
 
     readonly property real percentage: root.capacity > 0 ? Math.max(0, Math.min(1, root.energy / root.capacity)) : (device?.percentage ?? 0)
 
-    readonly property int percent: Math.floor(root.percentage * 100)
+    readonly property int percent: LowBattery.percentOf(root.percentage)
 
-    readonly property bool charging: {
-        const s = device?.state;
-        return s === UPowerDeviceState.Charging || s === UPowerDeviceState.FullyCharged || s === UPowerDeviceState.PendingCharge;
+    readonly property string deviceState: {
+        switch (device?.state) {
+        case UPowerDeviceState.Charging:
+            return "charging";
+        case UPowerDeviceState.FullyCharged:
+            return "full";
+        case UPowerDeviceState.PendingCharge:
+            return "pendingCharge";
+        default:
+            return "other";
+        }
     }
-    readonly property bool full: device?.state === UPowerDeviceState.FullyCharged
+
     readonly property bool onBattery: UPower.onBattery
+    readonly property string phase: LowBattery.phaseOf(root.deviceState, root.onBattery)
+
+    readonly property bool charging: root.phase === "charging"
+    readonly property bool full: root.phase === "full"
 
     readonly property real rate: Math.abs(device?.changeRate ?? 0)
+    readonly property string flow: LowBattery.flow(device?.changeRate ?? 0, root.phase)
+
+    readonly property int heldAt: ChargeLimit.helper && ChargeLimit.current > 0 && ChargeLimit.current < 100 ? ChargeLimit.current : 0
 
     readonly property real designCapacity: sysfs.designWh
     readonly property int cycles: sysfs.cycleCount
@@ -37,7 +52,7 @@ Singleton {
     readonly property real health: root.designCapacity > 0 && root.capacity > 0 ? Math.min(100, root.capacity / root.designCapacity * 100) : (device?.healthSupported ? device.healthPercentage : 0)
 
     readonly property int secondsLeft: charging ? (device?.timeToFull ?? 0) : (device?.timeToEmpty ?? 0)
-    readonly property bool estimating: available && secondsLeft <= 0 && !full
+    readonly property bool estimating: available && (charging || phase === "battery") && secondsLeft <= 0
 
     readonly property real lowThreshold: Config.values.battery.warnAt / 100
     readonly property real rearmThreshold: root.lowThreshold + LowBattery.rearmMargin
@@ -116,18 +131,11 @@ Singleton {
     onOnBatteryChanged: root.considerWarning()
     onReadingChanged: root.considerWarning()
 
-    readonly property string state: !available ? "no battery" : full ? "full" : charging ? "charging" : onBattery ? "on battery" : "plugged in"
+    readonly property string state: !available ? "no battery" : LowBattery.stateText(phase, heldAt)
+    readonly property string note: !available ? "" : LowBattery.noteText(phase, heldAt)
 
     function timeLabel(): string {
-        if (!available || full)
-            return "";
-        if (estimating)
-            return "estimating";
-        const mins = Math.round(secondsLeft / 60);
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
-        const left = h > 0 ? `${h}h ${m}m` : `${m}m`;
-        return charging ? `${left} to full` : `${left} left`;
+        return available ? LowBattery.timeText(phase, secondsLeft) : "";
     }
 
     readonly property var chargingSteps: [20, 30, 50, 60, 80, 90]
