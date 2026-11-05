@@ -179,6 +179,12 @@ test.describe("layout workshop model", () => {
         assert.match(Model.nameProblem("", []), /name/);
     });
 
+    test.it("a long name cut at a space still saves", () => {
+        const name = Model.cleanName(`${"a".repeat(39)} b`);
+        assert.strictEqual(name, "a".repeat(39));
+        assert.strictEqual(Model.nameProblem(name, []), "");
+    });
+
     test.it("deals stage windows to main, then right and left in turn", () => {
         const model = Model.stage();
         assert.deepStrictEqual(Model.dealing(model.arrangements[0], 6).assigned, ["main", "right", "left", "right", "left", "right"]);

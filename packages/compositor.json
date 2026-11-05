@@ -13,7 +13,7 @@
       "services/keymap.js",
       "services/monitor-rules.js"
     ],
-    "tests": ["tests/cli-migration.test.js", "tests/compositor-options.test.js", "tests/fixtures/hyprctl", "tests/hyprland-lua.test.js", "tests/keymap.test.js", "tests/monitor-rules.test.js"]
+    "tests": ["tests/cli-migration.test.js", "tests/compositor-options.test.js", "tests/fixtures/hyprctl", "tests/hypr-config-writes.test.js", "tests/hyprland-lua.test.js", "tests/keymap.test.js", "tests/monitor-rules.test.js"]
   },
   "requires": {
     "packages": ["core"],

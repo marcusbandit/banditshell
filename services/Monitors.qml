@@ -34,46 +34,15 @@ Singleton {
         }]
 
     function parseMode(s: string): var {
-        const m = /^(\d+)x(\d+)@([\d.]+)Hz$/.exec(s ?? "");
-        return m ? {
-            w: +m[1],
-            h: +m[2],
-            hz: +m[3]
-        } : null;
+        return MonitorRules.parseMode(s);
     }
 
     function modeString(w: int, h: int, hz: real): string {
-        return `${w}x${h}@${Math.round(hz)}`;
+        return MonitorRules.modeString(w, h, hz);
     }
 
     function specFor(m: var): var {
-        if (m.disabled || !(m.width > 0)) {
-            const entry = HyprConfig.monitorEntry(m.name);
-            return Object.assign({
-                output: m.name
-            }, MonitorRules.restingFields(m, entry), {
-                disabled: !!m.disabled,
-                mirror: m.mirror ?? ""
-            });
-        }
-        let mode = root.modeString(m.width, m.height, m.refreshRate);
-        for (const s of m.availableModes ?? []) {
-            const p = root.parseMode(s);
-            if (p && p.w === m.width && p.h === m.height && Math.round(p.hz) === Math.round(m.refreshRate)) {
-                mode = root.modeString(p.w, p.h, p.hz);
-                break;
-            }
-        }
-        return {
-            output: m.name,
-            mode,
-            position: `${m.x}x${m.y}`,
-            scale: m.scale,
-            transform: m.transform,
-            vrr: m.vrr ? 1 : 0,
-            disabled: false,
-            mirror: m.mirror ?? ""
-        };
+        return MonitorRules.specFor(m, m && MonitorRules.resting(m) ? HyprConfig.monitorEntry(m.name) : null);
     }
 
     function layoutOf(m: var): var {
@@ -176,14 +145,11 @@ Singleton {
             [spec.output]: spec
         });
 
-        const fields = MonitorRules.entryFields(spec);
         const entry = HyprConfig.monitorEntry(spec.output);
         if (entry)
-            HyprConfig.updateMonitor(entry.id, fields);
+            HyprConfig.updateMonitor(entry.id, MonitorRules.entryFields(spec));
         else
-            HyprConfig.addMonitor((HyprConfig.outputTable()?.file ?? HyprConfig.outputTables[0]?.file ?? "lua/monitors.lua"), Object.assign({
-                output: spec.output
-            }, fields));
+            HyprConfig.addMonitor(MonitorRules.entryFile(HyprConfig.outputTable(), HyprConfig.outputTables), MonitorRules.newEntry(spec));
 
         settle.restart();
 
@@ -249,10 +215,7 @@ Singleton {
                 for (const name in still) {
                     const m = root.outputs.find(o => o.name === name);
                     if (m) {
-                        const s = still[name];
-                        const cur = root.specFor(m);
-                        const same = !!s.disabled === !!cur.disabled && (s.mirror ?? "") === (cur.mirror ?? "");
-                        if (same && (s.disabled || s.mode === cur.mode && s.position === cur.position && Math.abs(s.scale - cur.scale) < 0.001 && s.transform === cur.transform && s.vrr === cur.vrr))
+                        if (MonitorRules.reached(still[name], root.specFor(m)))
                             delete still[name];
                     } else {
                         delete still[name];

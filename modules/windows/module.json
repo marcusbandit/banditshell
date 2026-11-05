@@ -5,8 +5,8 @@
   "owns": {
     "qml": ["modules/windows", "modules/workshop", "previews/WindowPreview.qml"],
     "services": ["LayoutDraft", "WindowLayouts", "WorkshopLayouts"],
-    "js": ["services/layout-lua.js", "services/layout-model.js"],
-    "tests": ["tests/fixtures/stage.lua", "tests/layout-workshop.test.js"]
+    "js": ["services/layout-lua.js", "services/layout-model.js", "services/workshop-layouts.js"],
+    "tests": ["tests/fixtures/stage.lua", "tests/layout-workshop.test.js", "tests/workshop-layouts.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor", "apps"],

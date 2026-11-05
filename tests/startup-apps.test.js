@@ -1,13 +1,15 @@
 const test = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
+const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const FIXTURES = path.join(__dirname, "fixtures/apps");
 const read = file => fs.readFileSync(path.join(ROOT, file), "utf8");
-const Entries = new Function(read("services/desktop-entries.js") + "\nreturn { parseBundle, indexEntries, indexPrograms, shownIn };")();
-const Startup = new Function(read("services/startup-apps.js") + "\nreturn { shellWords, quoteWord, parseExecLines, wrapperOf, offMarker, hyprlandApps, toggleReplacement, parseUnitFiles, candidateUnits, parseUnitShow, systemdApps, autostartApps, startSummary, launcherEnabled, readOverride, launcherApps, setDisabled, duplicateNotes, fullOrder };")();
+const Entries = new Function(read("services/desktop-entries.js") + "\nreturn { parseBundle, indexEntries, indexPrograms, shownIn, setHidden, autostartText, autostartName, sessionLaunches };")();
+const Startup = new Function(read("services/startup-apps.js") + "\nreturn { shellWords, quoteWord, parseExecLines, wrapperOf, offMarker, hyprlandApps, toggleReplacement, parseUnitFiles, candidateUnits, parseUnitShow, systemdApps, autostartApps, startSummary, launcherEnabled, readOverride, launcherApps, setDisabled, duplicateNotes, fullOrder, enqueueWrite, nextWrite, switchWrite, removalPath, addPlan, startedElsewhere, launchCommand };")();
 
 const lua = fs.readFileSync(path.join(FIXTURES, "autostart.lua"), "utf8");
 const files = [{ name: "lua/autostart.lua", text: lua }];
@@ -281,3 +283,226 @@ test("the summary counts what starts out of what is listed", () => {
     assert.strictEqual(Startup.startSummary(rows.slice(0, 2)), "all 2 start");
     assert.strictEqual(Startup.startSummary([]), "nothing to start yet");
 });
+
+test("an app on a commented line and on another active line is listed on, from the active line", () => {
+    const text = "-- hl.exec_cmd(\"spotify\")\nhl.exec_cmd(\"spotify\")\n";
+    const rows = Startup.hyprlandApps([{ name: "x", text }]);
+    assert.deepStrictEqual(rows.map(r => [r.command, r.on, r.line.line]), [["spotify", true, 2]]);
+});
+
+test("turning such an app off comments out the line that starts it", () => {
+    const text = "-- hl.exec_cmd(\"spotify\")\nhl.exec_cmd(\"spotify\")\n";
+    const row = Startup.hyprlandApps([{ name: "x", text }])[0];
+    const off = apply(text, row, Startup.toggleReplacement(row, false));
+    assert.strictEqual(off, "-- hl.exec_cmd(\"spotify\")\n-- hl.exec_cmd(\"spotify\")\n");
+    assert.strictEqual(Startup.hyprlandApps([{ name: "x", text: off }])[0].on, false);
+});
+
+test("an app on two active Hyprland lines is listed once", () => {
+    const text = "hl.exec_cmd(\"spotify\")\nhl.exec_cmd(\"spotify\")\n";
+    assert.strictEqual(Startup.hyprlandApps([{ name: "x", text }]).length, 1);
+});
+
+const AUTOSTART_DIR = "/home/bandit/.config/autostart";
+
+function autostartFiles() {
+    const dir = path.join(FIXTURES, "autostart");
+    const bundle = fs.readdirSync(dir).sort().map(f => `@@@${AUTOSTART_DIR}/${f}\n${fs.readFileSync(path.join(dir, f), "utf8")}`).join("");
+    return Entries.parseBundle(bundle);
+}
+
+function autostartRows() {
+    return Startup.autostartApps(autostartFiles(), ["Hyprland"], Entries.shownIn);
+}
+
+function withTempDir(run) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "startup-apps-"));
+    try {
+        run(dir);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+}
+
+test("adding an app that is listed switches it on instead of writing its file", () => {
+    const plan = Startup.addPlan("remmina-applet.desktop", "[Desktop Entry]\n", AUTOSTART_DIR, autostartRows());
+    assert.strictEqual(plan.kind, "switch");
+    assert.strictEqual(plan.entry.id, "autostart:remmina-applet.desktop");
+});
+
+test("adding an app whose file the list hides writes that file again", () => {
+    const plan = Startup.addPlan("gnome-only.desktop", "[Desktop Entry]\n", AUTOSTART_DIR, autostartRows());
+    assert.deepStrictEqual(plan, { kind: "create", path: `${AUTOSTART_DIR}/gnome-only.desktop`, text: "[Desktop Entry]\n" });
+});
+
+test("adding an app with a new file name writes it into the autostart folder", () => {
+    const plan = Startup.addPlan("spotify.desktop", "[Desktop Entry]\n", AUTOSTART_DIR, autostartRows());
+    assert.deepStrictEqual(plan, { kind: "create", path: `${AUTOSTART_DIR}/spotify.desktop`, text: "[Desktop Entry]\n" });
+});
+
+test("adding an app with no usable file name changes nothing", () => {
+    assert.deepStrictEqual(Startup.addPlan(Entries.autostartName(""), "x", AUTOSTART_DIR, []), { kind: "none" });
+});
+
+test("switching an autostart app off rewrites only its own file, with Hidden set", () => {
+    const row = autostartRows().find(r => r.file === "remmina-applet.desktop");
+    const write = Startup.switchWrite({ source: "autostart", row }, false, Entries.setHidden);
+    assert.strictEqual(write.path, `${AUTOSTART_DIR}/remmina-applet.desktop`);
+    assert.strictEqual(write.text, Entries.setHidden(row.text, true));
+    assert.ok(write.text.includes("Hidden=true"));
+});
+
+test("switching an autostart app on rewrites only its own file, with Hidden cleared", () => {
+    const row = autostartRows().find(r => r.file === "off.desktop");
+    const write = Startup.switchWrite({ source: "autostart", row }, true, Entries.setHidden);
+    assert.strictEqual(write.path, `${AUTOSTART_DIR}/off.desktop`);
+    assert.strictEqual(write.text, Entries.setHidden(row.text, false));
+    assert.ok(write.text.includes("Hidden=false"));
+});
+
+test("switching a launcher app off writes only its own override", () => {
+    const rows = Startup.launcherApps(Entries.parseBundle(launcherBundle(true)), "/home/x/.config/autostart-managed/overrides");
+    const row = rows.find(r => r.id === "launcher:spotify.desktop");
+    const write = Startup.switchWrite({ source: "launcher", row }, false, Entries.setHidden);
+    assert.strictEqual(write.path, "/home/x/.config/autostart-managed/overrides/spotify.conf");
+    assert.strictEqual(write.text, Startup.setDisabled(row.overrideText, true));
+});
+
+test("switching a Hyprland or systemd app writes no file", () => {
+    assert.strictEqual(Startup.switchWrite({ source: "hyprland", row: {} }, false, Entries.setHidden), null);
+    assert.strictEqual(Startup.switchWrite({ source: "systemd", row: {} }, false, Entries.setHidden), null);
+});
+
+test("removing an autostart app names only its own file", () => {
+    const row = autostartRows().find(r => r.file === "remmina-applet.desktop");
+    assert.strictEqual(Startup.removalPath({ source: "autostart", row }), `${AUTOSTART_DIR}/remmina-applet.desktop`);
+});
+
+test("removing a Hyprland, systemd or launcher app names no file", () => {
+    assert.strictEqual(Startup.removalPath({ source: "hyprland", row: { path: "/x/y" } }), null);
+    assert.strictEqual(Startup.removalPath({ source: "systemd", row: {} }), null);
+    assert.strictEqual(Startup.removalPath({ source: "launcher", row: { overridePath: "/o/x.conf" } }), null);
+});
+
+test("a removal is queued with no text", () => {
+    assert.deepStrictEqual(Startup.enqueueWrite([], `${AUTOSTART_DIR}/a.desktop`, null), [{ path: `${AUTOSTART_DIR}/a.desktop`, text: null }]);
+});
+
+test("queued writes run one at a time, in the order they were queued", () => {
+    let queue = Startup.enqueueWrite([], "/x/a.desktop", "one");
+    queue = Startup.enqueueWrite(queue, "/x/a.desktop", "two");
+    assert.strictEqual(Startup.nextWrite(queue, true), null);
+    const first = Startup.nextWrite(queue, false);
+    assert.deepStrictEqual(first.command.slice(4), ["/x/a.desktop", "one"]);
+    const second = Startup.nextWrite(first.queue, false);
+    assert.deepStrictEqual(second.command.slice(4), ["/x/a.desktop", "two"]);
+    assert.strictEqual(Startup.nextWrite(second.queue, false), null);
+});
+
+test("a removal runs rm -f on exactly its own path", () => {
+    const next = Startup.nextWrite(Startup.enqueueWrite([], "/x/a.desktop", null), false);
+    assert.deepStrictEqual(next.command, ["rm", "-f", "/x/a.desktop"]);
+});
+
+function runNext(queue) {
+    const next = Startup.nextWrite(queue, false);
+    const done = spawnSync(next.command[0], next.command.slice(1), { encoding: "utf8" });
+    assert.strictEqual(done.status, 0, done.stderr);
+}
+
+test("a write stores its text exactly, with quotes and substitutions left alone", () => withTempDir(dir => {
+    const file = path.join(dir, "a b.desktop");
+    const text = `Exec=sh -c 'echo "$(touch ${dir}/pwned)" \`touch ${dir}/ticked\`' %u\n`;
+    runNext(Startup.enqueueWrite([], file, text));
+    assert.strictEqual(fs.readFileSync(file, "utf8"), text);
+    assert.deepStrictEqual(fs.readdirSync(dir), ["a b.desktop"]);
+}));
+
+test("a write creates the folder it goes into", () => withTempDir(dir => {
+    const file = path.join(dir, "autostart", "a.desktop");
+    runNext(Startup.enqueueWrite([], file, "[Desktop Entry]\n"));
+    assert.strictEqual(fs.readFileSync(file, "utf8"), "[Desktop Entry]\n");
+}));
+
+test("a removal deletes only the file it names", () => withTempDir(dir => {
+    fs.writeFileSync(path.join(dir, "a.desktop"), "a");
+    fs.writeFileSync(path.join(dir, "b.desktop"), "b");
+    runNext(Startup.enqueueWrite([], path.join(dir, "a.desktop"), null));
+    assert.deepStrictEqual(fs.readdirSync(dir), ["b.desktop"]);
+}));
+
+test("only a running entry with a desktop file counts as started elsewhere", () => {
+    const entries = [
+        { source: "hyprland", on: true, desktopId: "spotify.desktop" },
+        { source: "hyprland", on: true, desktopId: "" },
+        { source: "launcher", on: false, desktopId: "vesktop.desktop" },
+        { source: "autostart", on: true, desktopId: "kitty.desktop" }
+    ];
+    assert.deepStrictEqual(Startup.startedElsewhere(entries), ["spotify"]);
+});
+
+test("an app another source starts is left out of the session launch", () => {
+    const entries = [{ source: "hyprland", on: true, desktopId: "remmina-applet.desktop" }];
+    assert.deepStrictEqual(Entries.sessionLaunches(autostartFiles(), ["Hyprland"], Startup.startedElsewhere(entries)), []);
+});
+
+test("an autostart entry never keeps its own app out of the session launch", () => {
+    const entries = [{ source: "autostart", on: true, desktopId: "remmina-applet.desktop" }];
+    assert.deepStrictEqual(Entries.sessionLaunches(autostartFiles(), ["Hyprland"], Startup.startedElsewhere(entries)), ["exec remmina -i"]);
+});
+
+test("an app whose other source is switched off still starts from its autostart file", () => {
+    const entries = [{ source: "hyprland", on: false, desktopId: "remmina-applet.desktop" }];
+    assert.deepStrictEqual(Entries.sessionLaunches(autostartFiles(), ["Hyprland"], Startup.startedElsewhere(entries)), ["exec remmina -i"]);
+});
+
+function stubSession(dir, active) {
+    fs.mkdirSync(path.join(dir, "bin"));
+    fs.writeFileSync(path.join(dir, "bin", "systemctl"), `#!/bin/sh\nexit ${active ? 0 : 1}\n`, { mode: 0o755 });
+    fs.writeFileSync(path.join(dir, "bin", "setsid"), `#!/bin/sh\nprintf '%s\\n' "$4" >> "${dir}/launched"\n`, { mode: 0o755 });
+}
+
+function startSession(dir, signature, launches, runtime = path.join(dir, "runtime")) {
+    if (runtime)
+        fs.mkdirSync(runtime, { recursive: true });
+    const argv = Startup.launchCommand(signature, launches);
+    const done = spawnSync(argv[0], argv.slice(1), { encoding: "utf8", env: { PATH: `${dir}/bin:/usr/bin:/bin`, XDG_RUNTIME_DIR: runtime } });
+    assert.strictEqual(done.status, 0, done.stderr);
+}
+
+function launched(dir) {
+    const file = path.join(dir, "launched");
+    return fs.existsSync(file) ? fs.readFileSync(file, "utf8").split("\n").filter(Boolean) : [];
+}
+
+test("a session starts each of its launches once, in order", () => withTempDir(dir => {
+    stubSession(dir, false);
+    startSession(dir, "sig-1", ["exec spotify", "exec vesktop"]);
+    assert.deepStrictEqual(launched(dir), ["exec spotify", "exec vesktop"]);
+}));
+
+test("a second start in the same Hyprland session starts nothing again", () => withTempDir(dir => {
+    stubSession(dir, false);
+    startSession(dir, "sig-1", ["exec spotify"]);
+    startSession(dir, "sig-1", ["exec spotify"]);
+    assert.deepStrictEqual(launched(dir), ["exec spotify"]);
+}));
+
+test("a new Hyprland session starts its launches again", () => withTempDir(dir => {
+    stubSession(dir, false);
+    startSession(dir, "sig-1", ["exec spotify"]);
+    startSession(dir, "sig-2", ["exec spotify"]);
+    assert.deepStrictEqual(launched(dir), ["exec spotify", "exec spotify"]);
+}));
+
+test("a session starts nothing while xdg-desktop-autostart already runs the apps", () => withTempDir(dir => {
+    stubSession(dir, true);
+    startSession(dir, "sig-1", ["exec spotify"]);
+    assert.deepStrictEqual(launched(dir), []);
+}));
+
+test("a session starts nothing without a runtime directory", () => withTempDir(dir => {
+    stubSession(dir, false);
+    startSession(dir, "sig-1", ["exec spotify"], "");
+    assert.deepStrictEqual(launched(dir), []);
+}));

@@ -35,8 +35,8 @@ function clamp(value, low, high) {
 }
 
 function cleanName(name) {
-    var text = String(name || "").toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^[^a-z]+/, "").replace(/-+$/, "");
-    return text.slice(0, 40);
+    var text = String(name || "").toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^[^a-z]+/, "");
+    return text.slice(0, 40).replace(/-+$/, "");
 }
 
 function nameProblem(name, taken) {

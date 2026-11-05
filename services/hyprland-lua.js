@@ -1626,3 +1626,57 @@ function luaLayouts(texts) {
     }
     return out;
 }
+
+function trialScript() {
+    return "dir=$(mktemp -d \"${TMPDIR:-/tmp}/banditshell-verify.XXXXXX\") || exit 1; (cd \"$1\" && find -L . -type f \\( -name '*.lua' -o -name '*.conf' \\) -exec cp --no-preserve=mode --parents -t \"$dir\" {} +) && chmod -R u+w \"$dir\" && printf '%s' \"$3\" > \"$dir/$2\" && printf '%s' \"$dir\" || { chmod -R u+w \"$dir\"; rm -rf \"$dir\"; exit 1; }";
+}
+
+function discardScript() {
+    return "case \"$1\" in */banditshell-verify.*) chmod -R u+w \"$1\"; rm -rf \"$1\";; esac";
+}
+
+function writeStep(commit, event) {
+    const keep = (changes, action) => ({
+        commit: Object.assign({}, commit, changes),
+        action
+    });
+    const abandon = why => keep({}, { type: "abandon", why });
+    const finish = said => keep({}, { type: "finish", ok: false, said });
+
+    if (event.type === "read") {
+        const disk = event.disk ?? "";
+        if (disk !== (event.cached ?? ""))
+            return abandon(`${commit.file} changed on disk since the scan`);
+        const next = spliceLines(disk, commit.startLine, commit.endLine, commit.replacement);
+        if (next === null)
+            return abandon(`lines ${commit.startLine}-${commit.endLine} are outside ${commit.file}`);
+        return keep({ previous: disk, next }, { type: "verify", purpose: "baseline" });
+    }
+
+    if (event.type === "verified") {
+        if (event.purpose === "baseline") {
+            if (!event.ok)
+                return abandon(event.broken ? event.report : baselineRefusal(event.report));
+            return keep({}, { type: commit.path.startsWith(`${event.hyprDir}/`) ? "makeTrial" : "writeReal" });
+        }
+        if (event.purpose === "trial")
+            return event.ok ? keep({}, { type: "writeReal" }) : abandon(event.report);
+        if (event.ok)
+            return keep({}, { type: "reload" });
+        return keep({ complaint: event.report || "Hyprland did not accept it" }, { type: "recheck", report: event.report });
+    }
+
+    if (event.type === "trialMade") {
+        if (!event.directory)
+            return keep({}, { type: "writeReal", note: "no trial copy to check first; writing the config directly" });
+        return keep({}, { type: "verifyTrial", directory: event.directory });
+    }
+
+    if (event.type === "rechecked") {
+        if ((event.disk ?? "") !== commit.next)
+            return finish(`${commit.complaint} · ${commit.file} was changed meanwhile, so it was left as it is`);
+        return keep({}, { type: "revert", text: commit.previous });
+    }
+
+    return keep({}, { type: "none" });
+}

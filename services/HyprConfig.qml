@@ -483,8 +483,8 @@ Singleton {
     property var settling: null
 
     readonly property string configName: root.configPath.slice(root.hyprDir.length + 1)
-    readonly property string trialScript: "dir=$(mktemp -d \"${TMPDIR:-/tmp}/banditshell-verify.XXXXXX\") || exit 1; (cd \"$1\" && find -L . -type f \\( -name '*.lua' -o -name '*.conf' \\) -exec cp --no-preserve=mode --parents -t \"$dir\" {} +) && chmod -R u+w \"$dir\" && printf '%s' \"$3\" > \"$dir/$2\" && printf '%s' \"$dir\" || { chmod -R u+w \"$dir\"; rm -rf \"$dir\"; exit 1; }"
-    readonly property string discardScript: "case \"$1\" in */banditshell-verify.*) chmod -R u+w \"$1\"; rm -rf \"$1\";; esac"
+    readonly property string trialScript: HyprlandLua.trialScript()
+    readonly property string discardScript: HyprlandLua.discardScript()
 
     function optionFiles(): var {
         return root.files.map(f => ({
@@ -611,21 +611,55 @@ Singleton {
         root.trialDirectory = "";
     }
 
+    function advance(event: var): void {
+        if (!root.committing)
+            return;
+        const result = HyprlandLua.writeStep(root.committing, event);
+        root.committing = result.commit;
+        root.perform(result.action);
+    }
+
+    function perform(action: var): void {
+        if (action.type === "abandon") {
+            root.abandon(action.why);
+        } else if (action.type === "finish") {
+            root.finishWrite(action.ok, action.said);
+        } else if (action.type === "verify") {
+            root.runVerify(action.purpose, root.configPath);
+        } else if (action.type === "makeTrial") {
+            root.prepareTrial();
+        } else if (action.type === "verifyTrial") {
+            root.trialDirectory = action.directory;
+            root.runVerify("trial", `${action.directory}/${root.configName}`);
+        } else if (action.type === "writeReal") {
+            if (action.note)
+                console.warn(`HyprConfig: ${action.note}.`);
+            root.writeReal();
+        } else if (action.type === "reload") {
+            root.reload();
+        } else if (action.type === "recheck") {
+            console.warn(`HyprConfig: the edit did not verify; putting the previous text back.\n${action.report}`);
+            root.begin("checking");
+            if (rechecker.path === root.committing.path)
+                rechecker.reload();
+            else
+                rechecker.path = root.committing.path;
+        } else if (action.type === "revert") {
+            root.reverting = true;
+            root.begin("reverting");
+            writer.setText(action.text);
+        }
+    }
+
     function write(disk: var): void {
         const c = root.committing;
         if (!c)
             return;
-        const cached = root.texts[c.path];
-        if ((disk ?? "") !== (cached ?? ""))
-            return root.abandon(`${c.file} changed on disk since the scan`);
-
-        const next = HyprlandLua.spliceLines(disk ?? "", c.startLine, c.endLine, c.replacement);
-        if (next === null)
-            return root.abandon(`lines ${c.startLine}-${c.endLine} are outside ${c.file}`);
-
-        c.previous = disk ?? "";
-        c.next = next;
-        root.runVerify("baseline", root.configPath);
+        root.advance({
+            type: "read",
+            disk,
+            cached: root.texts[c.path]
+        });
     }
 
     FileView {
@@ -683,31 +717,18 @@ Singleton {
     }
 
     function verified(purpose: string, ok: bool, report: string, broken: bool): void {
-        if (purpose === "baseline") {
-            if (ok)
-                return root.prepareTrial();
-            return root.abandon(broken ? report : HyprlandLua.baselineRefusal(report));
-        }
-        if (purpose === "trial") {
-            if (ok)
-                return root.writeReal();
-            return root.abandon(report);
-        }
-        if (ok)
-            return root.reload();
-        console.warn(`HyprConfig: the edit did not verify; putting the previous text back.\n${report}`);
-        root.committing.complaint = report || "Hyprland did not accept it";
-        root.begin("checking");
-        if (rechecker.path === root.committing.path)
-            rechecker.reload();
-        else
-            rechecker.path = root.committing.path;
+        root.advance({
+            type: "verified",
+            purpose,
+            ok,
+            report,
+            broken,
+            hyprDir: root.hyprDir
+        });
     }
 
     function prepareTrial(): void {
         const c = root.committing;
-        if (!c.path.startsWith(`${root.hyprDir}/`))
-            return root.writeReal();
         trialMaker.began = false;
         trialMaker.live = true;
         trialMaker.command = ["sh", "-c", root.trialScript, "sh", root.hyprDir, c.file, c.next];
@@ -719,12 +740,10 @@ Singleton {
         if (!trialMaker.live)
             return;
         trialMaker.live = false;
-        if (!directory) {
-            console.warn("HyprConfig: no trial copy to check first; writing the config directly.");
-            return root.writeReal();
-        }
-        root.trialDirectory = directory;
-        root.runVerify("trial", `${directory}/${root.configName}`);
+        root.advance({
+            type: "trialMade",
+            directory
+        });
     }
 
     function writeReal(): void {
@@ -736,14 +755,10 @@ Singleton {
     }
 
     function rechecked(disk: var): void {
-        const c = root.committing;
-        if (!c)
-            return;
-        if ((disk ?? "") !== c.next)
-            return root.finishWrite(false, `${c.complaint} · ${c.file} was changed meanwhile, so it was left as it is`);
-        root.reverting = true;
-        root.begin("reverting");
-        writer.setText(c.previous);
+        root.advance({
+            type: "rechecked",
+            disk
+        });
     }
 
     FileView {
