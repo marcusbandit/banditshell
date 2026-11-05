@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const src = fs.readFileSync(path.join(__dirname, "..", "modules/sidebar/workspaces.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const W = new Function(`${src}\nreturn { stride, eased, settled, flickDirection, notchTarget, markRow, HIT_REACH };`)();
+const W = new Function(`${src}\nreturn { stride, eased, settled, flickDirection, notchTarget, accumulate, markRow, HIT_REACH };`)();
 
 function flick(rate, pxPerSecond, ms) {
     const dt = 1000 / rate;
@@ -57,6 +57,24 @@ test.describe("workspace column wheel", () => {
 
     test.it("forgets the pending target once the wheel has been idle", () => {
         assert.strictEqual(W.notchTarget(3, 7, 1000, 2000, 1, 1, 8), 4);
+    });
+
+    test.it("counts a whole notch from several sub-notch wheel events", () => {
+        let rest = 0;
+        let whole = 0;
+        for (let i = 0; i < 8; i++) {
+            const got = W.accumulate(rest, 30, 10);
+            rest = got.rest;
+            whole += got.whole;
+        }
+        assert.strictEqual(whole, 2);
+        assert.ok(Math.abs(rest) < 1e-9);
+    });
+
+    test.it("counts a reversal from zero and drops a stale remainder", () => {
+        assert.strictEqual(W.accumulate(0.5, -60, 10).whole, 0);
+        assert.strictEqual(W.accumulate(0.5, -60, 10).rest, -0.5);
+        assert.strictEqual(W.accumulate(0.5, 60, 1000).rest, 0.5);
     });
 
     test.it("stops at the first and last workspace of the band", () => {

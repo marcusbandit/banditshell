@@ -160,6 +160,8 @@ Item {
     property real scrubVelocity: 0
 
     property int wheelPending: 0
+    property real wheelRest: 0
+    property real wheelSeen: 0
     property real wheelAt: 0
     property bool wheelHeld: false
 
@@ -247,13 +249,16 @@ Item {
         if (!notch || root.scrubHeld || scroll.active)
             return scroll.feed(wheel);
 
-        const natural = wheel.inverted || Compositor.naturalScrollMouse;
-        const notches = Math.round(wheel.angleDelta.y / 120) * (natural ? 1 : -1);
+        const now = Date.now();
+        const counted = Workspaces.accumulate(root.wheelRest, wheel.angleDelta.y, now - root.wheelSeen);
+        root.wheelSeen = now;
+        root.wheelRest = counted.rest;
         wheel.accepted = true;
-        if (notches === 0)
+        if (counted.whole === 0)
             return true;
 
-        const now = Date.now();
+        const natural = wheel.inverted || Compositor.naturalScrollMouse;
+        const notches = counted.whole * (natural ? 1 : -1);
         const to = Workspaces.notchTarget(root.active, root.wheelHeld ? root.wheelPending : null, root.wheelAt, now, notches, root.band, root.band + root.count - 1);
         root.wheelPending = to;
         root.wheelAt = now;

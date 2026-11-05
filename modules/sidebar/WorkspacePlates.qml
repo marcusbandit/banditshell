@@ -540,6 +540,8 @@ Item {
                     if (layout.scrubRelease())
                         return;
                     const mark = slotItem.markUnder(slotMouse.mapToItem(cell, mouse.x, mouse.y));
+                    if (mark && !slotItem.isActive)
+                        Hypr.switchTo(slotItem.info.id);
                     if (mark)
                         Hypr.focusClient(slotItem.info.windows.find(w => Hypr.classOf(w) === mark.cls && Hypr.isFocused(w)) ?? mark.client);
                     else

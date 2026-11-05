@@ -25,6 +25,13 @@ function flickDirection(speed) {
     return speed > 0 ? 1 : -1;
 }
 
+function accumulate(rest, delta, idle) {
+    var carried = idle > NOTCH_HOLD || rest * delta < 0 ? 0 : rest;
+    var total = carried + delta / 120;
+    var whole = (total < 0 ? Math.ceil(total) : Math.floor(total)) || 0;
+    return { whole: whole, rest: total - whole };
+}
+
 function notchTarget(active, pending, pendingAt, now, notches, first, last) {
     var from = pending !== null && now - pendingAt < NOTCH_HOLD ? pending : active;
     return Math.max(first, Math.min(last, from + notches));
