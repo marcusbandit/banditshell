@@ -133,6 +133,8 @@ Singleton {
             warmTo: "screen.warmTo",
             clock24: "region.clock24",
             dateFormat: "region.dateFormat",
+            firstDay: "region.firstDay",
+            weekNumbers: "region.weekNumbers",
             reduceMotion: "access.lessMotion",
             largerText: "access.largerText",
             contrast: "access.moreContrast",

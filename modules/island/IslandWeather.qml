@@ -163,6 +163,39 @@ Item {
                 }
             }
 
+            Item {
+                width: parent.width
+                height: Math.max(source.implicitHeight, change.implicitHeight)
+                visible: Weather.wanted && Weather.failure !== "place"
+
+                StyledText {
+                    id: source
+
+                    anchors.left: parent.left
+                    anchors.leftMargin: header.inset
+                    anchors.right: change.left
+                    anchors.rightMargin: Appearance.padding.normal
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Weather.location === "" ? "The town comes from your internet connection" : `Showing ${Weather.location}`
+                    color: Appearance.colour.textDim
+                    wrapMode: Text.Wrap
+                }
+
+                Button {
+                    id: change
+
+                    x: parent.width - width
+                    anchors.verticalCenter: parent.verticalCenter
+                    style: "ring"
+                    icon: "edit_location"
+                    text: "Change place"
+                    onClicked: root.act({
+                        kind: "settings",
+                        row: "weather.location"
+                    })
+                }
+            }
+
             StyledText {
                 width: parent.width
                 visible: !Weather.forecastReady && !Weather.failed

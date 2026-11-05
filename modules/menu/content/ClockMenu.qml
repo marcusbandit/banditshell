@@ -722,20 +722,22 @@ Column {
                     spacing: Appearance.padding.small
 
                     Repeater {
-                        model: root.daysInWeek
+                        model: TimeFormat.weekOrder
 
                         delegate: Button {
-                            required property int index
+                            required property int modelData
+
+                            readonly property int stored: (modelData + 6) % 7
 
                             width: (days.width - days.spacing * (root.daysInWeek - 1)) / root.daysInWeek
 
-                            text: Qt.locale().dayName(index + 1, Locale.NarrowFormat).toUpperCase()
+                            text: TimeFormat.weekdayInitial(modelData)
                             checkable: true
-                            checked: alarmCard.modelData.days.includes(index)
+                            checked: alarmCard.modelData.days.includes(stored)
                             onToggled: {
                                 const was = alarmCard.modelData.days;
                                 Clock.setAlarm(alarmCard.modelData.id, {
-                                    days: was.includes(index) ? was.filter(d => d !== index) : [...was, index]
+                                    days: was.includes(stored) ? was.filter(d => d !== stored) : [...was, stored]
                                 });
                             }
                         }
