@@ -83,6 +83,75 @@ Singleton {
     readonly property bool scanning: !!wifiDevice?.scannerEnabled
     readonly property string deviceName: wifiDevice?.name ?? ""
 
+    property string ipAddress: ""
+
+    function readAddress(): void {
+        if (!root.connected || !root.deviceName) {
+            root.ipAddress = "";
+            return;
+        }
+        if (addressReader.running) {
+            addressReader.again = true;
+            return;
+        }
+        addressReader.command = ["ip", "-j", "addr", "show", "dev", root.deviceName];
+        addressReader.running = true;
+    }
+
+    onConnectedChanged: {
+        root.readAddress();
+        if (root.connected)
+            addressSettle.restart();
+    }
+    onDeviceNameChanged: root.readAddress()
+    onViewedChanged: if (root.viewed)
+        root.readAddress()
+
+    Timer {
+        id: addressSettle
+
+        interval: 2500
+        onTriggered: root.readAddress()
+    }
+
+    function copyAddress(): void {
+        if (!root.ipAddress)
+            return;
+        addressCopier.running = false;
+        addressCopier.stdinEnabled = true;
+        addressCopier.running = true;
+        addressCopier.write(root.ipAddress);
+        addressCopier.stdinEnabled = false;
+    }
+
+    Process {
+        id: addressCopier
+
+        command: ["wl-copy", "-n"]
+    }
+
+    Process {
+        id: addressReader
+
+        property bool again: false
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (!root.connected)
+                    return;
+                const found = WifiList.parseAddresses(text);
+                root.ipAddress = found.v4 || found.v6;
+            }
+        }
+
+        onExited: {
+            if (!addressReader.again)
+                return;
+            addressReader.again = false;
+            root.readAddress();
+        }
+    }
+
     function setAutoconnect(on: bool): void {
         if (root.wifiDevice)
             root.wifiDevice.autoconnect = on;
@@ -738,14 +807,88 @@ Singleton {
         return card.ssid ? card : null;
     }
 
+    property string hiddenName: ""
+    property string hiddenLastName: ""
+    property string hiddenTrouble: ""
+
+    readonly property bool hiddenBusy: !!root.hiddenName
+
+    function joinHidden(ssid: string, security: string, password: string): string {
+        if (root.hiddenName)
+            return `still joining ${root.hiddenName}`;
+        if (!root.deviceName) {
+            root.hiddenTrouble = "there is no wireless adapter to put it on";
+            return root.hiddenTrouble;
+        }
+        root.hiddenTrouble = "";
+        root.hiddenName = ssid;
+        root.hiddenLastName = ssid;
+        hiddenJoin.command = ["python3", Quickshell.shellPath("scripts/wifi-hidden.py"), root.deviceName];
+        hiddenJoin.pending = JSON.stringify({
+            ssid: ssid,
+            security: security,
+            password: password
+        }) + "\n";
+        hiddenJoin.running = true;
+        return "";
+    }
+
+    Process {
+        id: hiddenJoin
+
+        property string pending: ""
+
+        stdinEnabled: true
+
+        onStarted: {
+            hiddenJoin.write(hiddenJoin.pending);
+            hiddenJoin.pending = "";
+            hiddenJoin.stdinEnabled = false;
+        }
+
+        stdout: SplitParser {
+            onRead: line => {
+                const event = WifiList.parseHiddenEvent(line);
+                if (event?.event === "failed")
+                    root.hiddenTrouble = event.why || "could not join";
+                else if (event?.event === "joined")
+                    root.hiddenTrouble = "";
+            }
+        }
+
+        onExited: code => {
+            if (code !== 0 && !root.hiddenTrouble)
+                root.hiddenTrouble = "could not join";
+            if (root.hiddenTrouble)
+                hiddenExpiry.restart();
+            hiddenJoin.stdinEnabled = true;
+            const name = root.hiddenName;
+            root.hiddenName = "";
+            root.hiddenDone(name, !root.hiddenTrouble);
+        }
+    }
+
+    signal hiddenDone(string name, bool ok)
+
+    Timer {
+        id: hiddenExpiry
+
+        interval: 8000
+        onTriggered: root.hiddenTrouble = ""
+    }
+
     function joinQr(text: string): string {
         const card = root.parseQr(text);
         if (!card)
             return "that code is not a Wi-Fi network";
-        if (card.hidden)
-            return `${card.ssid} is hidden, and a hidden network needs a profile`;
 
         const n = root.find(card.ssid);
+        if (card.hidden && !n) {
+            const security = WifiList.qrSecurity(card.security);
+            if (!security)
+                return `${card.ssid} uses security a card cannot carry here`;
+            return root.joinHidden(card.ssid, security, card.password);
+        }
         if (!n)
             return `${card.ssid} is not in range`;
         if (n.connected)

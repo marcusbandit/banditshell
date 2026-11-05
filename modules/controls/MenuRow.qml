@@ -77,10 +77,20 @@ Item {
         onClicked: mouse => mouse.button === Qt.RightButton ? root.asked(mouse.x, mouse.y) : root.activated()
     }
 
+    readonly property bool cut: title.truncated || detail.truncated || detail.trimmed
+
+    readonly property string hoverText: {
+        if (!root.cut)
+            return root.tip;
+        if (root.tip)
+            return `${root.label}, ${root.tip}`;
+        return root.detail ? `${root.label} · ${root.detail}` : root.label;
+    }
+
     HoverTip {
         host: root
         asked: pointer.containsMouse
-        text: pointer.containsMouse ? root.tip || (title.truncated || detail.truncated || detail.trimmed ? (root.detail ? `${root.label} · ${root.detail}` : root.label) : "") : ""
+        text: pointer.containsMouse ? root.hoverText : ""
     }
 
     Loader {

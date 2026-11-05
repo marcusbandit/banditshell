@@ -1,6 +1,7 @@
 module qs.modules.menu.content
 BatteryMenu 1.0 BatteryMenu.qml
 BluetoothMenu 1.0 BluetoothMenu.qml
+BluetoothPrompt 1.0 BluetoothPrompt.qml
 CalculatorMenu 1.0 CalculatorMenu.qml
 CalendarMenu 1.0 CalendarMenu.qml
 ClockCard 1.0 ClockCard.qml
