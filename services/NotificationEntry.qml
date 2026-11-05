@@ -16,7 +16,7 @@ QtObject {
     property bool durable: false
     property bool seen: false
     property bool withheld: false
-    property bool fullscreenHeld: false
+    property string fullscreenScreen: ""
 
     property string appName: ""
     property string summary: ""

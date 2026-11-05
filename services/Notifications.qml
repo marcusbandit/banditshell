@@ -172,14 +172,25 @@ Singleton {
 
     readonly property bool fullscreened: Hypr.fullscreenOn(Focus.offStageScreen)
 
-    onFullscreenedChanged: {
-        if (root.fullscreened || !Config.ready)
+    function releaseFullscreen(): void {
+        if (!Config.ready)
             return;
-        const waiting = root.history.filter(e => e.fullscreenHeld && !e.seen && !e.leaving).length;
-        for (const entry of root.history)
-            entry.fullscreenHeld = false;
+        const freed = root.history.filter(e => e.fullscreenScreen && !Hypr.fullscreenOn(e.fullscreenScreen));
+        if (freed.length === 0)
+            return;
+        const waiting = freed.filter(e => !e.seen && !e.leaving).length;
+        for (const entry of freed)
+            entry.fullscreenScreen = "";
         if (waiting > 0)
             root.heldReleased(waiting, "fullscreen");
+    }
+
+    Connections {
+        target: Hypr
+
+        function onFullscreenByMonitorChanged(): void {
+            root.releaseFullscreen();
+        }
     }
 
     onQuietChanged: {
@@ -474,7 +485,7 @@ Singleton {
         const plan = Popups.delivery(held, rule, Timing.muted(rule, at), root.fullscreened);
 
         entry.withheld = held;
-        entry.fullscreenHeld = plan.waiting;
+        entry.fullscreenScreen = plan.waiting ? Focus.offStageScreen : "";
 
         if (plan.popup)
             root.showPopups([entry, ...root.popups.filter(e => e !== entry)]);
@@ -500,6 +511,7 @@ Singleton {
             entry.leaveElapsed = 0;
             root.leaving = root.leaving.filter(e => e !== entry);
         }
+        root.snoozed = root.snoozed.filter(item => item.entry !== entry);
         entry.timeout = root.timeoutFor(entry.notification);
         entry.remaining = 1;
         entry.seen = false;
