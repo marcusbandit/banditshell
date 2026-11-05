@@ -1014,7 +1014,7 @@ const CATS = [
     { id: "power", name: "Power", icon: "battery_5_bar",
         blurb: s => s.hasBattery ? `${s.batteryPct}% · ${s.v("profile")}${s.v("chargeLimit") && !s.chargeTrouble ? ` · held at ${s.v("chargeMax")}%` : ""}` : `on mains · ${s.v("profile")}`,
         tiles: [
-            { k: "chargeLimit", icon: "battery_charging_80", label: "Hold charge", away: s => !s.hasBattery, dis: s => !s.hasBattery || !s.chargeSupported, det: s => !s.hasBattery ? "no battery" : s.v("chargeLimit") ? `${s.v("chargeMax")}%` : "off" },
+            { k: "chargeLimit", icon: "battery_charging_80", label: "Hold charge", away: s => !s.hasBattery, dis: s => !s.hasBattery || !s.chargeSupported, det: s => !s.hasBattery ? "no battery" : !s.v("chargeLimit") ? "off" : s.chargeTrouble.startsWith("needs the helper") ? "needs the helper" : s.chargeTrouble ? "not holding" : `${s.v("chargeMax")}%` },
             { k: "saver", icon: "eco", label: "Saver", dis: s => s.profileChoices.length === 0, det: s => s.v("profile") === "saver" ? "on" : "off" }
         ],
         suggest: s => s.hasBattery && !s.v("chargeLimit") && s.healthKnown ? { icon: "health_and_safety", label: `Health is at ${s.healthPct}%`, detail: "holding the charge at 80% slows that", set: ["chargeLimit", true] } : null,
