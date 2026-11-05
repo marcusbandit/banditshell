@@ -99,6 +99,13 @@ function existing(paths, text) {
     return out;
 }
 
+function vanished(paths, text) {
+    var there = existing(paths, text);
+    return paths.filter(function (path) {
+        return there.indexOf(path) < 0;
+    });
+}
+
 function pick(items, entry) {
     var taken = [];
     var out = [];

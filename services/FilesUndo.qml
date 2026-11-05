@@ -22,8 +22,13 @@ Singleton {
         root.before(Undo.renamed(from, to), then);
     }
 
-    function trashed(paths: var): void {
-        root.remember(Undo.trashed(paths, Date.now() / 1000));
+    function trashed(paths: var, at: real, whole: bool): void {
+        if (whole)
+            return root.remember(Undo.trashed(paths, at));
+        root.start(Undo.existsCommand(paths), text => {
+            if (text !== null)
+                root.remember(Undo.trashed(Undo.vanished(paths, text), at));
+        });
     }
 
     function pasted(cut: bool, pairs: var, replaced: var, at: real): void {

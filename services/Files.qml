@@ -700,7 +700,7 @@ Singleton {
 
     function run(command: var): void {
         root.failure = "";
-        const plan = FilesCommands.runPlan(root.shellName, pty.running && !root.shellBusy, command);
+        const plan = FilesCommands.runPlan(root.shellName, pty.running && root.terminalOpen && !root.shellBusy, command);
 
         if (plan.mode === "spawn") {
             root.spawn(plan.argv, "");
@@ -713,10 +713,11 @@ Singleton {
 
     property int working: 0
 
-    function spawn(command: var, input: string): void {
+    function spawn(command: var, input: string, then: var): void {
         job.createObject(root, {
             command: command,
             input: input,
+            then: then ?? null,
             stdinEnabled: input !== "",
             running: true
         });
@@ -736,6 +737,7 @@ Singleton {
 
             property string input: ""
             property bool begun: false
+            property var then: null
 
             stderr: StdioCollector {
                 id: complaint
@@ -761,6 +763,7 @@ Singleton {
                 root.working -= 1;
                 if (code !== 0 || status !== 0)
                     root.report(task.command, code, complaint.text);
+                task.then?.(code === 0 && status === 0);
                 root.restat();
                 task.destroy();
             }
@@ -791,7 +794,7 @@ Singleton {
     }
 
     function cd(path: string): bool {
-        const plan = FilesCommands.cdPlan(root.shellName, pty.running, root.shellBusy, path);
+        const plan = FilesCommands.cdPlan(root.shellName, pty.running, root.shellBusy || !root.terminalOpen, path);
         if (plan.mode === "refuse") {
             root.failure = plan.failure;
             return false;
@@ -877,7 +880,7 @@ Singleton {
             const busy = body.charAt(0) === "1";
             root.shellBusy = busy;
 
-            if (!busy && root.desynced) {
+            if (!busy && root.desynced && root.terminalOpen) {
                 root.desynced = false;
                 root.typeCd(root.cwd);
             }
@@ -960,8 +963,10 @@ Singleton {
         const paths = given.filter(path => !Trash.trashed(path, root.trashFiles));
         if (paths.length === 0)
             return;
-        root.run(FilesCommands.trashCommand(paths));
-        FilesUndo.trashed(paths);
+        const command = FilesCommands.trashCommand(paths);
+        const at = Date.now() / 1000;
+        root.failure = "";
+        root.spawn([...command.words, ...command.paths], "", whole => FilesUndo.trashed(paths, at, whole));
         FilesFind.forget(paths);
     }
 
@@ -1203,8 +1208,6 @@ Singleton {
     function act(action: string): bool {
         if (action.startsWith("focus:")) {
             const to = action.slice(6);
-            if (to === "terminal")
-                root.ensureTerminal();
             if (to !== "terminal" || root.terminalOpen)
                 root.focus = to;
             return true;
@@ -1215,6 +1218,10 @@ Singleton {
             root.terminalOpen = !root.terminalOpen;
             if (root.terminalOpen) {
                 root.ensureTerminal();
+                if (root.desynced && !root.shellBusy) {
+                    root.desynced = false;
+                    root.typeCd(root.cwd);
+                }
 
                 root.focus = "terminal";
             } else if (root.focus === "terminal") {
