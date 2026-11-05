@@ -411,10 +411,15 @@ Singleton {
     }
 
     function remove(entry: var): void {
-        if (!entry)
+        const had = entry ? root.entries.find(e => e.id === entry.id) : null;
+        if (!had)
             return;
-        root.entries = root.entries.filter(e => e.id !== entry.id);
-        if (root.current === entry.id)
+        if (root.shelf && root.shelf.kind !== "delete")
+            root.letGo();
+        root.shelf = Shelf.removal(root.entries, had, root.shelf);
+        root.shelfElapsed = 0;
+        root.entries = root.entries.filter(e => e.id !== had.id);
+        if (root.current === had.id)
             root.current = "";
         root.save();
         root.sweep(false);
@@ -451,6 +456,7 @@ Singleton {
 
     readonly property int shelved: root.shelf ? root.shelf.entries.length : 0
     readonly property int shelfKept: root.shelf ? root.shelf.before.length - root.shelf.entries.length : 0
+    readonly property string shelfKind: root.shelf?.kind ?? ""
     readonly property bool clearSaves: root.keep
 
     property bool wasCleared: false
@@ -470,9 +476,11 @@ Singleton {
     function letGo(): void {
         if (!root.shelf)
             return;
+        const cleared = root.shelf.kind !== "delete";
         root.shelf = null;
-        root.recovery = null;
-        root.sweep(true);
+        if (cleared)
+            root.recovery = null;
+        root.sweep(cleared);
     }
 
     function recoverySeen(): void {
@@ -492,6 +500,24 @@ Singleton {
             if (root.shelfElapsed >= root.undoMs)
                 root.letGo();
         }
+    }
+
+    Timer {
+        interval: 30000
+        repeat: true
+        running: root.loaded
+
+        onTriggered: root.forgetSecrets()
+    }
+
+    function forgetSecrets(): void {
+        const now = Date.now();
+        if (!root.entries.some(e => Secret.lapsed(e, now)))
+            return;
+        root.entries = Secret.expire(root.entries, now);
+        if (root.entries.every(e => e.id !== root.current))
+            root.current = "";
+        root.save();
     }
 
     property bool purgeOwed: false
@@ -739,7 +765,7 @@ Singleton {
                 return;
             }
 
-            root.entries = disk;
+            root.entries = Secret.expire(disk, Date.now());
             root.loaded = true;
 
             if (root.clipseOwed)
@@ -776,7 +802,7 @@ Singleton {
     function reconcile(disk: var): var {
         const theirs = new Set(disk.map(e => e?.id));
         const unseen = root.entries.filter(e => !theirs.has(e.id));
-        return [...disk, ...unseen].sort((a, b) => b.recorded - a.recorded);
+        return [...Secret.expire(disk, Date.now()), ...unseen].sort((a, b) => b.recorded - a.recorded);
     }
 
     property string lastWritten: ""
@@ -808,7 +834,7 @@ Singleton {
             return;
         const text = JSON.stringify(Object.assign({
             version: 1,
-            entries: root.entries
+            entries: Secret.persistable(root.entries)
         }, root.recovery ? {
             recovered: root.recovery
         } : {}));

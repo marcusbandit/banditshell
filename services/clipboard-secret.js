@@ -5,6 +5,7 @@ var MASK = "••••••••";
 var KEY_BLOCK = /^-----BEGIN [A-Z0-9 ]*PRIVATE KEY( BLOCK)?-----/;
 var TOKEN = /^(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,}|glpat-[\w-]{20,}|sk-[\w-]{20,}|sk_(live|test)_\w{16,}|xox[abprs]-[\w-]{10,}|AKIA[0-9A-Z]{16}|AIza[\w-]{30,}|eyJ[\w-]+\.eyJ[\w-]+\.[\w-]+)$/;
 var ADDRESS = /^[a-z][a-z0-9+.-]*:\/\/|^[~\/.]|^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i;
+var LIFETIME = 300000;
 var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function marked(types) {
@@ -55,4 +56,20 @@ function sensitive(entry) {
 
 function copyCommand(entry, sensitiveCopy) {
     return sensitiveCopy && sensitive(entry) ? ["wl-copy", "--sensitive", "-n"] : ["wl-copy", "-n"];
+}
+
+function lapsed(entry, now) {
+    return !entry.pinned && sensitive(entry) && now - entry.recorded >= LIFETIME;
+}
+
+function expire(entries, now) {
+    return (entries || []).filter(function (e) {
+        return !lapsed(e, now);
+    });
+}
+
+function persistable(entries) {
+    return (entries || []).filter(function (e) {
+        return e.pinned || !sensitive(e);
+    });
 }
