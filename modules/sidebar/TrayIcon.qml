@@ -2,11 +2,14 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 Item {
     id: root
 
     required property var item
+
+    property bool tipped: true
 
     readonly property bool hovered: mouse.containsMouse
     readonly property bool urgent: Tray.urgent(root.item)
@@ -46,6 +49,12 @@ Item {
                 speed: Appearance.animation.revealSpeed
             }
         }
+    }
+
+    HoverTip {
+        text: root.tipped ? Tray.tipOf(root.item) : ""
+        host: root
+        asked: root.hovered
     }
 
     MouseArea {

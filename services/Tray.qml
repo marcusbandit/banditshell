@@ -22,6 +22,10 @@ Singleton {
         return item?.title || item?.tooltipTitle || item?.id || "tray item";
     }
 
+    function tipOf(item: var): string {
+        return [root.nameOf(item), root.detailOf(item)].filter(p => p).join(" · ");
+    }
+
     function detailOf(item: var): string {
         const name = root.nameOf(item);
         return [item?.tooltipTitle ?? "", item?.tooltipDescription ?? ""].filter(p => p && p !== name).join(" · ");
