@@ -444,6 +444,8 @@ SURFACES=(launcher session clipboard media calculator quickcontrols keyboard set
 HELPERS=(bs-pty bs-ls bs-gamma)
 IPC_LIMIT="${BANDITSHELL_IPC_LIMIT:-10}"
 HANG_DIR="$STATE_DIR/hangs"
+LIVE_FILE="$STATE_DIR/live"
+HOLD_REASON="banditshell is running from here"
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != dumb ]; then
     bold=$'\e[1m' dim=$'\e[2m' red=$'\e[31m' green=$'\e[32m' yellow=$'\e[33m' magenta=$'\e[35m' cyan=$'\e[36m' plain=$'\e[0m'
@@ -504,6 +506,43 @@ branch_of() {
 known_shells() {
     printf '%s/shell.qml\n' "$SHELL_DIR" "$BACKUP"
     worktree_list | cut -f1 | sed 's|$|/shell.qml|'
+    [ ! -s "$LIVE_FILE" ] || sed 's|$|/shell.qml|' "$LIVE_FILE"
+}
+
+held_worktrees() {
+    { git -C "$SHELL_DIR" worktree list --porcelain 2>/dev/null || true; } | awk -v reason="$HOLD_REASON" '
+        /^worktree / { path = substr($0, 10) }
+        /^locked / && substr($0, 8) == reason { print path }
+    '
+}
+
+held_for_shell() { held_worktrees | grep -qxF -- "$1"; }
+
+hold_worktree() {
+    local target="$1" home path tmp
+    dry && return 0
+    home=$(main_dir)
+    while IFS= read -r path; do
+        if [ -n "$path" ] && [ "$path" != "$target" ]; then
+            git -C "$home" worktree unlock "$path" 2>/dev/null || true
+        fi
+    done < <(held_worktrees)
+    mkdir -p "$STATE_DIR" || return 0
+    if [ -z "$target" ] || [ "$target" = "$home" ]; then
+        rm -f "$LIVE_FILE"
+        return 0
+    fi
+    held_for_shell "$target" || git -C "$home" worktree lock --reason "$HOLD_REASON" "$target" 2>/dev/null || true
+    tmp=$(mktemp "$STATE_DIR/.live.XXXXXX") || return 0
+    printf '%s\n' "$target" >"$tmp" && mv -f "$tmp" "$LIVE_FILE"
+}
+
+vanished_live() {
+    local live
+    live=$(cat "$LIVE_FILE" 2>/dev/null) || return 1
+    [ -n "$live" ] && [ ! -e "$live/shell.qml" ] || return 1
+    instance_of "$live" >/dev/null || return 1
+    echo "$live"
 }
 
 shell_pids() {
@@ -651,11 +690,11 @@ tidy_worktrees() {
             echo "${yellow}kept $branch, $why: you are in it$plain"
         elif [ "$changed" -gt 0 ]; then
             echo "${yellow}kept $branch, $why: $changed changed since$plain"
-        elif [ -f "$(git -C "$path" rev-parse --absolute-git-dir)/locked" ]; then
+        elif [ -f "$(git -C "$path" rev-parse --absolute-git-dir)/locked" ] && ! held_for_shell "$path"; then
             echo "${yellow}kept $branch, $why: locked$plain"
         elif [ "$path" = "$live" ] && ! leave_merged "$home" "$base" "$branch" "$tip" "$why"; then
             continue
-        elif git -C "$home" worktree remove "$path"; then
+        elif { ! held_for_shell "$path" || git -C "$home" worktree unlock "$path"; } && git -C "$home" worktree remove "$path"; then
             git -C "$home" branch -qD "$branch" 2>/dev/null || true
             echo "${dim}cleared$plain $branch$dim, $magenta$why$plain"
             cleared=$((cleared + 1))
@@ -1106,10 +1145,12 @@ start_checkout() {
     ensure_lua || true
     ensure_built || complain "checkout incomplete, starting anyway (run: banditshell doctor)"
     if launch "$SHELL_DIR"; then
+        hold_worktree ""
         refresh_backup || true
         remember_checkout
         echo "$green$1$plain"
     else
+        hold_worktree ""
         start_backup || exit 1
         echo "running from backup - the checkout itself failed to load (errors: $FAILED_LOG)" >&2
         exit 1
@@ -1125,6 +1166,7 @@ try_worktree() {
     [ -z "$live" ] || [ "$live" = "$target" ] || echo "${dim}leaving $(branch_of "$live") for $name$plain"
     stop_shell || true
     if launch "$target"; then
+        hold_worktree "$target"
         echo "${green}trying $name$plain$dim - back to the checkout on its own once merged, or banditshell dev back$plain"
         (cd "$HOME" && detach watch "$(readlink -f "${BASH_SOURCE[0]}")" dev watch </dev/null >/dev/null 2>&1) || true
         return 0
@@ -1250,10 +1292,25 @@ answering_pid() {
     return 1
 }
 
+leave_vanished() {
+    local gone
+    gone=$(vanished_live) || return 1
+    session_locked && return 1
+    SHELL_DIR=$(main_dir)
+    [ -e "$SHELL_DIR/shell.qml" ] || return 1
+    go_back >/dev/null 2>&1 || true
+    notify-send -a banditshell "Back on $(branch_of "$SHELL_DIR")" "the folder the shell ran from was deleted: ${gone/#$HOME/\~}" 2>/dev/null || true
+    return 0
+}
+
 watchdog() {
     local strikes=0 known=""
     while sleep 10; do
         reach_hyprland || { strikes=0; known=""; continue; }
+        if leave_vanished; then
+            known=""
+            continue
+        fi
         if [ -n "$known" ] && answers "$known"; then
             strikes=0
             continue

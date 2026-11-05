@@ -780,6 +780,67 @@ test("dev try, dev back and dev tidy start the shell in a scope of its own", () 
     assert.strictEqual(fs.existsSync(tried), false);
 });
 
+function triedWorld() {
+    const world = scopeWorld("");
+    const tried = path.join(world.root, "tried");
+    git(world.live, "worktree", "add", "-q", "-b", "feat/1-thing", tried);
+    for (const helper of ["bs-pty", "bs-ls", "bs-gamma"])
+        write(tried, `bin/${helper}`, "#!/bin/sh\n", 0o755);
+    git(tried, "push", "-q", "origin", "feat/1-thing");
+    git(world.live, "fetch", "-q", "origin");
+    startShell(world);
+    const got = run(world, ["dev", "try", "feat/1-thing"]);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    return { world, tried };
+}
+
+const holds = world => git(world.live, "worktree", "list", "--porcelain").split("\n").filter(line => line.startsWith("locked "));
+const runningFrom = world => pids(world).map(pid => fs.readFileSync(path.join(world.fakeqs, "inst", pid), "utf8").trim());
+
+test("the worktree the shell runs from cannot be removed under it, and is let go once the shell leaves", () => {
+    const { world, tried } = triedWorld();
+    assert.deepStrictEqual(holds(world), ["locked banditshell is running from here"]);
+    const removal = spawnSync("git", ["-C", world.live, "worktree", "remove", "--force", tried], { encoding: "utf8" });
+    assert.notStrictEqual(removal.status, 0);
+    assert.match(removal.stderr, /locked working tree/);
+    assert.ok(fs.existsSync(path.join(tried, "shell.qml")));
+    const back = run(world, ["dev", "back"]);
+    assert.strictEqual(back.status, 0, back.err + back.out);
+    assert.deepStrictEqual(holds(world), []);
+    assert.deepStrictEqual(runningFrom(world), [world.live]);
+});
+
+test("a hand lock on a worktree still keeps it from dev tidy", () => {
+    const { world, tried } = triedWorld();
+    assert.strictEqual(run(world, ["dev", "back"]).status, 0);
+    git(world.live, "worktree", "lock", "--reason", "mine", tried);
+    const got = run(world, ["dev", "tidy"]);
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    assert.match(got.out, /kept feat\/1-thing, .*: locked/);
+    assert.ok(fs.existsSync(tried));
+});
+
+test("the watchdog takes the shell back to the checkout once the folder it ran from is deleted", () => {
+    const { world, tried } = triedWorld();
+    fs.rmSync(tried, { recursive: true, force: true });
+    const ticks = path.join(world.root, "ticks");
+    fs.writeFileSync(path.join(world.fakebin, "sleep"), `#!/bin/sh
+if [ "$1" = 10 ]; then
+    n=$(($(cat "${ticks}" 2>/dev/null || echo 0) + 1))
+    echo "$n" >"${ticks}"
+    [ "$n" -le 2 ]
+    exit
+fi
+exec /usr/bin/sleep "$@"
+`, { mode: 0o755 });
+    fs.mkdirSync(path.join(world.runtime, "hypr", "sig"), { recursive: true });
+    const got = run(world, ["watchdog"], { HYPRLAND_INSTANCE_SIGNATURE: "sig", WAYLAND_DISPLAY: "wayland-1" });
+    assert.strictEqual(got.status, 0, got.err + got.out);
+    assert.deepStrictEqual(runningFrom(world), [world.live]);
+    assert.deepStrictEqual(holds(world), []);
+    assert.strictEqual(fs.existsSync(path.join(world.state, "banditshell/live")), false);
+});
+
 const progress = world => {
     try {
         return readState(world, "progress.log").split("\n").filter(Boolean).map(l => JSON.parse(l));

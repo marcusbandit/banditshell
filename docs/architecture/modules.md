@@ -28,7 +28,7 @@ A manifest has these fields, and the check refuses any other.
   "name": "lock",
   "summary": "the lock screen",
   "layer": 5,
-  "owns": { "qml": ["modules/lock"], "services": ["Lock"], "assets": ["assets/pam.d"] },
+  "owns": { "qml": ["modules/lock"], "services": ["Lock"], "js": ["services/lock-hint.js"] },
   "requires": { "packages": ["core", "media"], "optional": [] },
   "provides": { "singletons": [], "ipc": [] },
   "config": { "namespace": ["lock"], "reads": [] }

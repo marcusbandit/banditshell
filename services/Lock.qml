@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Services.Pam
 import qs.config
 import "lock-hint.js" as LockHint
+import "lock-pam.js" as LockPam
 
 Singleton {
     id: root
@@ -21,6 +22,8 @@ Singleton {
     property bool toldLogind: false
 
     readonly property string recordPath: Quickshell.env("XDG_RUNTIME_DIR") ? `${Quickshell.env("XDG_RUNTIME_DIR")}/banditshell-lock-hint-${(root.sessionId || "auto").replace(/[^\w-]/g, "")}.json` : ""
+
+    readonly property string pamRoom: Quickshell.env("XDG_RUNTIME_DIR") || Quickshell.cacheDir
 
     readonly property bool busy: pam.active
 
@@ -110,7 +113,10 @@ Singleton {
             root.relock();
     }
 
-    Component.onCompleted: root.relockWithoutLogind()
+    Component.onCompleted: {
+        root.placeStack();
+        root.relockWithoutLogind();
+    }
 
     Binding {
         target: SessionControl
@@ -295,12 +301,19 @@ Singleton {
         return true;
     }
 
+    function placeStack(): bool {
+        if (!pamStack.path)
+            return false;
+        pamStack.setText(LockPam.stack);
+        return true;
+    }
+
     function check(secret: string): void {
         entry.answer = secret;
         entry.judged = false;
         verdict.restart();
 
-        if (!pam.start()) {
+        if (!root.placeStack() || !pam.start()) {
             entry.answer = "";
             root.refuse("couldn't check the password, try again", false);
         }
@@ -618,12 +631,22 @@ Singleton {
         onTriggered: inhibitor.running = false
     }
 
+    FileView {
+        id: pamStack
+
+        path: LockPam.file(root.pamRoom)
+        blockWrites: true
+        printErrors: false
+
+        onSaveFailed: err => console.warn(`Lock: could not write the PAM stack to ${pamStack.path}: ${FileViewError.toString(err)}`)
+    }
+
     PamContext {
         id: pam
 
-        config: "banditshell"
+        config: LockPam.service
 
-        configDirectory: Quickshell.shellPath("assets/pam.d")
+        configDirectory: LockPam.directory(root.pamRoom)
 
         onResponseRequiredChanged: {
             if (!pam.responseRequired)
