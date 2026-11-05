@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import qs.config
+import "workspace-span.js" as WorkspaceSpan
 
 Singleton {
     id: root
@@ -16,7 +17,7 @@ Singleton {
         return Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1;
     }
 
-    readonly property int count: Config.values.sidebar.workspaces.persistent
+    readonly property int persistent: Config.values.sidebar.workspaces.persistent
 
     readonly property var bands: HyprConfig.hostBands
 
@@ -29,6 +30,15 @@ Singleton {
             if (!b.invalid)
                 last = Math.max(last, b.last);
         return last + 1;
+    }
+
+    function countFor(screen: string): int {
+        const band = root.bands.find(x => x.monitor === screen && !x.invalid);
+        const busy = [];
+        for (const id in root.clients)
+            if (root.clients[id].length > 0)
+                busy.push(Number(id));
+        return WorkspaceSpan.span(root.persistent, root.bandFor(screen), band ? band.last : Infinity, busy, root.activeOn(screen));
     }
 
     readonly property var activeByMonitor: {
@@ -67,7 +77,7 @@ Singleton {
             return;
         kept.homed = true;
         const band = root.bandFor(root.focusedScreen);
-        if (root.activeId < band || root.activeId >= band + root.count)
+        if (root.activeId < band || root.activeId >= band + root.countFor(root.focusedScreen))
             root.switchTo(band);
     }
 

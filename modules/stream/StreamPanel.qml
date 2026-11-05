@@ -115,7 +115,7 @@ Item {
                             spacing: Appearance.padding.small
 
                             Repeater {
-                                model: Hypr.count
+                                model: Hypr.countFor(section.modelData)
 
                                 delegate: SquircleRect {
                                     id: chip
