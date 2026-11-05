@@ -38,6 +38,7 @@ SettingsRowFrame {
         from: 0
         to: root.ceiling
         step: 0.01
+        wheelStep: Config.values.volume.step
         warnAbove: root.ceiling > 1 ? 1 : root.ceiling
         text: `${Math.round(root.level * 100)}%`
         onMoved: v => Audio.setVolume(v)

@@ -47,6 +47,52 @@
       ]
     },
     {
+      "id": "2026-11-05-q01",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Typing build.sh selects the file, not a web link"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Aliases work on snippets, scripts, SSH hosts and quicklinks"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A taken launcher alias says who has it instead of being replaced"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "kill and top ask before quitting an app; force quit sends KILL"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "gh opens the GitHub source first, even with the default quicklink"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Command output shows every line and counts the ones left over"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Launcher volume commands use the volume step from Settings"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A plain word lists apps before its dictionary entry"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q12",
       "date": "2026-11-05",
       "changes": [
