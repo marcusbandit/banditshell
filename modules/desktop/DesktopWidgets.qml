@@ -45,6 +45,15 @@ PanelWindow {
         item: column
     }
 
+    Timer {
+        interval: Math.max(5, Weather.cfg.minutes) * 60000
+        repeat: true
+        running: win.live && win.cfg.weather && Weather.wanted
+        onRunningChanged: if (running)
+            Weather.refresh()
+        onTriggered: Weather.retry()
+    }
+
     Follow {
         id: shown
 
