@@ -1,5 +1,6 @@
 import QtQuick
 import qs.config
+import "pull-settle.js" as Settle
 
 MouseArea {
     id: root
@@ -10,6 +11,8 @@ MouseArea {
     required property real travel
 
     property bool armed: true
+
+    property bool reluctant: false
 
     signal pulled(real fraction, real aside)
 
@@ -90,9 +93,7 @@ MouseArea {
     function settle(): void {
 
         if (root.pulling)
-            root.finished(root.velocity >= 0
-                || (root.progress >= root.commit
-                    && root.velocity > -root.reversal));
+            root.finished(Settle.completes(root.progress, root.velocity, root.commit, root.reversal, root.reluctant ? ControlTuning.flickVelocity : 0));
 
         root.pulling = false;
         root.spent = false;
