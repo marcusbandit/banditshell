@@ -1,6 +1,52 @@
 {
   "entries": [
     {
+      "id": "2026-11-05-q29",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Enter in the clipboard panel pastes into the window you came from"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Deleting a clipboard entry can be undone for five seconds"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Clipboard rows have a View action and the header a search button"
+        },
+        {
+          "type": "bugs",
+          "severity": "major",
+          "text": "Clipboard: typing searches; pin is Ctrl+P, move is Ctrl+J and Ctrl+K"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Copied keys and tokens leave clipboard history after 5 minutes"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Transcription tab shows only when dictation is set up"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A short nudge on the clipboard header no longer closes the panel"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Dragged clipboard rows follow the pointer like notifications"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-2",
       "date": "2026-11-05",
       "changes": [

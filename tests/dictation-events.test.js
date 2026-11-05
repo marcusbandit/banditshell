@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/dictation-events.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Events = new Function(src + "\nreturn { read, outcome };")();
+const Events = new Function(src + "\nreturn { read, outcome, startKey };")();
 const [older, listening, cancelled, chrome, streamed] = fs.readFileSync(path.join(ROOT, "tests/fixtures/gvoice/events.jsonl"), "utf8").trim().split("\n");
 
 test.describe("dictation events", () => {
@@ -45,5 +45,26 @@ test.describe("dictation events", () => {
         assert.strictEqual(Events.read("[1, 2]"), null);
         assert.strictEqual(Events.read("null"), null);
         assert.strictEqual(Events.read('{"level": "loud"}').level, null);
+    });
+});
+
+test.describe("the key that starts dictation", () => {
+    const bind = (chord, cmd) => ({ chord, cmd });
+
+    test.it("reads the chord of the bind that runs voice", () => {
+        assert.strictEqual(Events.startKey([bind("SUPER + T", "kitty"), bind("SUPER + R", "voice toggle")]), "Super + R");
+    });
+
+    test.it("finds voice when it is run through a path", () => {
+        assert.strictEqual(Events.startKey([bind("SUPER + SHIFT + D", "/home/me/bin/voice up")]), "Super + Shift + D");
+    });
+
+    test.it("skips the binds that stop or cancel", () => {
+        assert.strictEqual(Events.startKey([bind("SUPER + ESCAPE", "voice cancel"), bind("SUPER + R", "voice start")]), "Super + R");
+    });
+
+    test.it("says nothing when no bind runs voice", () => {
+        assert.strictEqual(Events.startKey([bind("SUPER + T", "kitty"), { chord: "", cmd: "voice" }]), "");
+        assert.strictEqual(Events.startKey(null), "");
     });
 });

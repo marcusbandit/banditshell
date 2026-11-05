@@ -29,8 +29,7 @@
       "Pomodoro",
       "Projects",
       "ScriptCommands",
-      "Snippets",
-      "Typist"
+      "Snippets"
     ],
     "js": [
       "services/colour-picks.js",

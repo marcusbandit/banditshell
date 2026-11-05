@@ -27,3 +27,16 @@ function outcome(typed) {
         return "Partly kept";
     return "Dictation discarded";
 }
+
+function startKey(binds) {
+    var found = (binds || []).find(function (b) {
+        return b && b.chord && /(^|[\s/;&|])voice(\s|$)/.test(b.cmd || "") && !/\bvoice\s+(cancel|stop|down)\b/.test(b.cmd || "");
+    });
+    if (!found)
+        return "";
+    return String(found.chord).split("+").map(function (p) {
+        return p.trim();
+    }).filter(Boolean).map(function (p) {
+        return p.length <= 1 ? p : p.charAt(0) + p.slice(1).toLowerCase();
+    }).join(" + ");
+}
