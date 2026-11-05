@@ -13,6 +13,8 @@ Item {
 
     property string modeIcon: ""
 
+    property string modeName: ""
+
     property bool batteryWanted: false
 
     property bool awake: false
@@ -39,7 +41,9 @@ Item {
         wifiOn: Network.enabled,
         bluetoothAvailable: Bluetooth.available,
         bluetoothOn: Bluetooth.enabled,
+        wiredConnected: Network.wiredConnected,
         modeIcon: root.modeIcon,
+        modeName: root.modeName,
         quiet: Notifications.quieted,
         update: Update.state,
         updateMode: Config.values.sidebar.update,
