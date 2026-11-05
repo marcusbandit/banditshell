@@ -728,6 +728,10 @@ Singleton {
 
                 dateFormat: "words",
 
+                firstDay: "locale",
+
+                weekNumbers: false,
+
                 autoZone: false
             },
 

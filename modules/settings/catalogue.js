@@ -855,6 +855,10 @@ const PAGES_SOURCE = {
             { t: "Time", rows: [
                 { n: 109, icon: "schedule", label: "24-hour clock", k: "clock24", kind: "toggle", cfg: "region.clock24", state: s => s.timeExample, kw: "time format" },
                 { n: 109, icon: "calendar_today", label: "Dates", k: "dateFormat", kind: "choice", o: s => s.dateChoices, cfg: "region.dateFormat", kw: "date format" },
+                { n: [], icon: "date_range", label: "Week starts on", k: "firstDay", kind: "seg", o: [["locale", "system"], ["monday", "Mon"], ["sunday", "Sun"], ["saturday", "Sat"]], cfg: "region.firstDay", kw: "first day of the week calendar monday sunday saturday",
+                    why: "System follows your locale. The calendars and the alarm day buttons start their week on this day." },
+                { n: [], icon: "tag", label: "Week numbers", k: "weekNumbers", kind: "toggle", cfg: "region.weekNumbers", state: s => s.v("weekNumbers") ? "ISO week beside each row" : "off", kw: "calendar week number iso",
+                    why: "Adds a column of ISO week numbers to the calendar in the clock menu, the island and on the desktop." },
                 { n: 109, icon: "my_location", label: "Zone from network", k: "autoZone", kind: "toggle", cfg: "region.autoZone", state: s => s.autoZoneDetail, kw: "time zone",
                     why: "Picks the zone nearest to where geoclue says you are when you turn this on, and sets it with timedatectl. After that it only looks again when the network changes, and suggests the new zone under Zone for you to pick; it never asks for your password on its own. It needs geoclue installed." },
                 { n: 109, icon: "public", label: "Zone", k: "zone", kind: "choice", o: s => s.zoneChoices, dis: s => s.v("autoZone") && !s.zoneSuggested, state: s => s.zoneSuggested ? `the network puts you in ${s.zoneSuggested} · pick it to switch` : s.v("autoZone") ? "set from the network" : "password needed", kw: "time zone",

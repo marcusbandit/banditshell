@@ -12,7 +12,8 @@ Column {
     readonly property int columns: 7
     readonly property int rows: 6
 
-    readonly property real cell: Math.max(Appearance.sizes.minTarget, root.width / root.columns)
+    readonly property real gutter: TimeFormat.weekNumbers ? Math.round(Appearance.font.size.small * 2.5) : 0
+    readonly property real cell: Math.max(Appearance.sizes.minTarget, (root.width - root.gutter) / root.columns)
 
     readonly property date today: clock.date
 
@@ -112,10 +113,10 @@ Column {
             return;
         const strip = x - root.slide;
         const paneIx = Math.floor(strip / months.width);
-        const col = Math.min(root.columns - 1, Math.floor((strip - paneIx * months.width) / root.cell));
+        const col = Math.max(0, Math.min(root.columns - 1, Math.floor((strip - paneIx * months.width - root.gutter) / root.cell)));
         const row = Math.min(root.rows - 1, Math.floor(y / root.cell));
         const first = new Date(root.shownYear, root.shownMonth + paneIx, 1);
-        const lead = (first.getDay() + 6) % 7;
+        const lead = TimeFormat.weekdayLead(first);
         const day = new Date(first.getFullYear(), first.getMonth(), 1 - lead + row * root.columns + col);
 
         const delta = (day.getFullYear() * 12 + day.getMonth()) - (root.shownYear * 12 + root.shownMonth);
@@ -141,7 +142,7 @@ Column {
             Follow {
                 id: homeFade
 
-                target: homeTap.pressed || (homeTap.containsMouse && !todayPill.hovered) ? 1 : 0
+                target: homeTap.pressed || (homeTap.containsMouse && !todayPill.hovered && !previous.hovered && !next.hovered) ? 1 : 0
                 speed: Appearance.animation.revealSpeed
                 epsilon: Appearance.animation.fadeEpsilon
                 startsAtTarget: true
@@ -169,16 +170,43 @@ Column {
             font.bold: true
         }
 
-        Button {
-            id: todayPill
-
+        Row {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
+            spacing: Appearance.padding.small
 
-            visible: !root.showingToday
-            text: "Today"
+            Button {
+                id: todayPill
 
-            onClicked: root.home()
+                visible: !root.showingToday
+                text: "Today"
+
+                onClicked: root.home()
+            }
+
+            Button {
+                id: previous
+
+                style: "bare"
+                icon: "chevron_left"
+
+                onClicked: {
+                    root.page(-1);
+                    root.glide();
+                }
+            }
+
+            Button {
+                id: next
+
+                style: "bare"
+                icon: "chevron_right"
+
+                onClicked: {
+                    root.page(1);
+                    root.glide();
+                }
+            }
         }
     }
 
@@ -189,16 +217,17 @@ Column {
         height: childrenRect.height
 
         Repeater {
-            model: root.columns
+            model: TimeFormat.weekOrder
 
             delegate: StyledText {
                 required property int index
+                required property int modelData
 
-                x: index * root.cell
+                x: root.gutter + index * root.cell
                 width: root.cell
                 horizontalAlignment: Text.AlignHCenter
 
-                text: Qt.locale().dayName(index + 1, Locale.NarrowFormat).toUpperCase()
+                text: TimeFormat.weekdayInitial(modelData)
                 font.pixelSize: Appearance.font.size.small
                 color: Appearance.colour.textFaint
             }
@@ -214,7 +243,7 @@ Column {
             return root.steer(key);
         }
 
-        readonly property int cursorIndex: (new Date(root.shownYear, root.shownMonth, 1).getDay() + 6) % 7 + root.cursor.getDate() - 1
+        readonly property int cursorIndex: TimeFormat.weekdayLead(new Date(root.shownYear, root.shownMonth, 1)) + root.cursor.getDate() - 1
 
         width: parent.width
         height: root.cell * root.rows
@@ -350,7 +379,7 @@ Column {
 
             Item {
                 z: 1
-                x: (months.cursorIndex % root.columns) * root.cell + root.slide + Appearance.padding.small / 2
+                x: root.gutter + (months.cursorIndex % root.columns) * root.cell + root.slide + Appearance.padding.small / 2
                 y: Math.floor(months.cursorIndex / root.columns) * root.cell + Appearance.padding.small / 2
                 width: root.cell - Appearance.padding.small
                 height: width
@@ -370,7 +399,7 @@ Column {
 
                     readonly property date first: new Date(root.shownYear, root.shownMonth + pane.modelData, 1)
 
-                    readonly property int lead: (pane.first.getDay() + 6) % 7
+                    readonly property int lead: TimeFormat.weekdayLead(pane.first)
 
                     readonly property int todayIndex: pane.first.getFullYear() === root.today.getFullYear() && pane.first.getMonth() === root.today.getMonth() ? pane.lead + root.today.getDate() - 1 : -1
 
@@ -399,6 +428,27 @@ Column {
                     }
 
                     Repeater {
+                        model: TimeFormat.weekNumbers ? root.rows : 0
+
+                        delegate: StyledText {
+                            id: weekText
+
+                            required property int index
+
+                            x: 0
+                            y: weekText.index * root.cell
+                            width: root.gutter
+                            height: root.cell
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+
+                            text: `${TimeFormat.weekNumber(new Date(pane.first.getFullYear(), pane.first.getMonth(), 1 - pane.lead + weekText.index * root.columns))}`
+                            font.pixelSize: Appearance.font.size.small
+                            color: Appearance.colour.textFaint
+                        }
+                    }
+
+                    Repeater {
                         model: root.columns * root.rows
 
                         delegate: StyledText {
@@ -416,7 +466,7 @@ Column {
 
                             readonly property int level: cellText.awake > 0 ? Math.min(root.usageTones.length, Math.ceil(cellText.awake * root.usageTones.length)) : 0
 
-                            x: (cellText.index % root.columns) * root.cell
+                            x: root.gutter + (cellText.index % root.columns) * root.cell
                             y: Math.floor(cellText.index / root.columns) * root.cell
                             width: root.cell
                             height: root.cell
