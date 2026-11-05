@@ -347,7 +347,8 @@ test.describe("files paste conflicts", () => {
             let out = "";
             child.stdout.on("data", chunk => out += chunk);
             const closed = new Promise(resolve => child.on("close", code => resolve(code)));
-            await new Promise(resolve => setTimeout(resolve, 300));
+            for (let i = 0; i < 100 && !(fs.existsSync(ops[0].to) && fs.readFileSync(ops[0].to, "utf8") === "half"); i++)
+                await new Promise(resolve => setTimeout(resolve, 50));
             child.kill("SIGTERM");
             assert.strictEqual(await closed, 0);
             const outcome = Conflicts.results(ops, out);
@@ -363,9 +364,49 @@ test.describe("files paste conflicts", () => {
     });
 
     test.it("says the old file is in the trash when a replace was stopped", () => {
-        const outcome = Conflicts.results([{ name: "a.txt", to: "/o/a.txt", dir: "/o", folder: false }, { name: "b.txt", to: "/o/b.txt", dir: "/o", folder: false }, { name: "c.txt", to: "/o/c.txt", dir: "/o", folder: false }], "stopped replaced\n");
-        assert.strictEqual(Conflicts.stoppedLine(outcome, true, ""), "Stopped, a.txt is only partly moved, the old one is in the trash, 2 more were not started");
+        const ops = ["a.txt", "b.txt", "c.txt"].map(name => ({ name, to: "/o/" + name, dir: "/o", folder: false }));
+        const outcome = Conflicts.results(ops, "stopped half\n");
+        assert.deepStrictEqual(outcome.replaced, ["/o/a.txt"]);
+        assert.strictEqual(Conflicts.stoppedLine(outcome, true, ""), "Stopped, a.txt was not moved, the old one is in the trash, 2 more were not started");
         assert.strictEqual(Conflicts.stoppedLine(Conflicts.results([], ""), false, ""), "");
+    });
+
+    test.it("reports an op that had not started when Stop landed, not a partial copy", () => {
+        const ops = ["a.txt", "b.txt"].map(name => ({ name, to: "/o/" + name, dir: "/o", folder: false }));
+        const outcome = Conflicts.results(ops, "ok 0\nunstarted ok\n");
+        assert.deepStrictEqual(outcome.stopped, []);
+        assert.deepStrictEqual(outcome.unstarted, ["b.txt"]);
+        assert.strictEqual(Conflicts.stoppedLine(outcome, false, "o"), "Stopped, b.txt was not started");
+        const trashed = Conflicts.results(ops, "unstarted replaced\n");
+        assert.strictEqual(Conflicts.stoppedLine(trashed, false, "o"), "Stopped, 2 items were not started, the old one is in the trash");
+    });
+
+    test.it("trashes the partial copy and keeps the old file restorable when a replace is stopped", async () => {
+        const box = sandbox();
+        try {
+            fs.unlinkSync(path.join(path.dirname(box.home), "bin", "cp"));
+            fs.symlinkSync(which("sleep"), path.join(path.dirname(box.home), "bin", "sleep"));
+            fs.writeFileSync(path.join(path.dirname(box.home), "bin", "cp"), '#!/bin/sh\nprintf half > "$6"\n: > "$(dirname "$0")/../stubbed"\nexec sleep 30\n', { mode: 0o755 });
+            write(box.at("from", "a.txt"), "new");
+            write(box.at("to", "a.txt"), "old");
+            const list = Conflicts.probed(Conflicts.items([box.at("from", "a.txt")], box.at("to"), false), box.run(Conflicts.probeCommand(Conflicts.items([box.at("from", "a.txt")], box.at("to"), false))));
+            const ops = Conflicts.operations(list, ["replace"]);
+            const argv = Conflicts.command(ops, false);
+            const child = require("node:child_process").spawn("/bin/sh", argv.slice(1), { env: { PATH: path.join(path.dirname(box.home), "bin") }, stdio: ["ignore", "pipe", "ignore"] });
+            let out = "";
+            child.stdout.on("data", chunk => out += chunk);
+            const closed = new Promise(resolve => child.on("close", code => resolve(code)));
+            for (let i = 0; i < 100 && !fs.existsSync(path.join(path.dirname(box.home), "stubbed")); i++)
+                await new Promise(resolve => setTimeout(resolve, 50));
+            child.kill("SIGTERM");
+            assert.strictEqual(await closed, 0);
+            const outcome = Conflicts.results(ops, out);
+            assert.deepStrictEqual(outcome.replaced, [box.at("to", "a.txt")]);
+            assert.strictEqual(fs.existsSync(box.at("to", "a.txt")), false);
+            assert.deepStrictEqual(box.trashed().map(item => item.body).sort(), ["half", "old"]);
+        } finally {
+            box.done();
+        }
     });
 
     test.it("aims the progress poll at the numbered name when both are kept", () => {

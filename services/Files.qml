@@ -715,6 +715,16 @@ Singleton {
 
     property int working: 0
 
+    function quietly(command: var, input: string): void {
+        job.createObject(root, {
+            command: command,
+            input: input,
+            quiet: true,
+            stdinEnabled: input !== "",
+            running: true
+        });
+    }
+
     function spawn(command: var, input: string, then: var): void {
         job.createObject(root, {
             command: command,
@@ -740,6 +750,7 @@ Singleton {
             property string input: ""
             property bool begun: false
             property var then: null
+            property bool quiet: false
 
             stderr: StdioCollector {
                 id: complaint
@@ -747,7 +758,8 @@ Singleton {
 
             onStarted: {
                 task.begun = true;
-                root.working += 1;
+                if (!task.quiet)
+                    root.working += 1;
                 if (task.input !== "") {
                     task.write(task.input);
                     task.stdinEnabled = false;
@@ -757,11 +769,14 @@ Singleton {
             onRunningChanged: {
                 if (task.running || task.begun)
                     return;
-                root.failure = `${task.command[0]} could not be started`;
+                if (!task.quiet)
+                    root.failure = `${task.command[0]} could not be started`;
                 task.destroy();
             }
 
             onExited: (code, status) => {
+                if (task.quiet)
+                    return task.destroy();
                 root.working -= 1;
                 if (code !== 0 || status !== 0)
                     root.report(task.command, code, complaint.text);
@@ -796,7 +811,7 @@ Singleton {
     }
 
     function cd(path: string): bool {
-        const plan = FilesCommands.cdPlan(root.shellName, pty.running, root.shellBusy || !root.terminalOpen, path);
+        const plan = pty.running && !root.terminalOpen ? {mode: "desync"} : FilesCommands.cdPlan(root.shellName, pty.running, root.shellBusy, path);
         if (plan.mode === "refuse") {
             root.failure = plan.failure;
             return false;
@@ -976,10 +991,12 @@ Singleton {
         const command = FilesCommands.trashCommand(paths);
         const at = Date.now() / 1000;
         root.failure = "";
+        FilesUndo.trashed(paths, at);
         root.spawn([...command.words, ...command.paths], "", whole => {
-            FilesUndo.trashed(paths, at, whole);
             if (whole)
                 FilesUndo.say(FilesUndo.trashLine(paths.length));
+            else
+                FilesUndo.trashFailed(paths, at);
         });
         FilesFind.forget(paths);
     }
@@ -1089,39 +1106,49 @@ Singleton {
         root.clipboard = paths;
         root.clipboardCut = cut;
         const offer = ClipboardFiles.copyCommand(paths, cut);
-        root.spawn(offer.argv, offer.input);
+        root.quietly(offer.argv, offer.input);
+    }
+
+    function releaseCut(): void {
+        root.quietly(["wl-copy", "--clear"], "");
     }
 
     function paste(): void {
         if (root.inTrash)
             return;
+        const dir = root.cwd;
         FilesUndo.start(ClipboardFiles.typesCommand(), types => {
             const type = ClipboardFiles.pick(types ?? "");
+            if (type === "" && (types ?? "").trim() === "")
+                return root.pasteHeld(dir);
             if (type === "")
-                return root.pasteHeld();
+                return FilesUndo.say("The clipboard holds no files");
             FilesUndo.start(ClipboardFiles.readCommand(type), text => {
                 const found = ClipboardFiles.parse(type, text ?? "");
                 if (found.paths.length === 0 || ClipboardFiles.same(found.paths, root.clipboard) && found.cut === root.clipboardCut)
-                    return root.pasteHeld();
+                    return root.pasteHeld(dir);
                 if (found.cut)
                     FilesFind.forget(found.paths);
-                FilesPaste.start(found.paths, root.cwd, found.cut);
+                FilesPaste.start(found.paths, dir, found.cut, found.cut ? () => root.releaseCut() : null);
             });
         });
     }
 
-    function pasteHeld(): void {
-        if (root.clipboard.length === 0 || root.inTrash)
+    function pasteHeld(dir: string): void {
+        if (root.clipboard.length === 0)
             return;
         if (root.clipboardCut) {
             const moving = root.clipboard;
             FilesFind.forget(moving);
-            FilesPaste.start(moving, root.cwd, true, outcome => {
-                if (root.clipboard === moving)
-                    root.clipboard = Conflicts.leftover(moving, outcome);
+            FilesPaste.start(moving, dir, true, outcome => {
+                if (root.clipboard !== moving)
+                    return;
+                root.clipboard = Conflicts.leftover(moving, outcome);
+                if (root.clipboard.length === 0)
+                    root.releaseCut();
             });
         } else {
-            root.copyInto(root.clipboard, root.cwd);
+            root.copyInto(root.clipboard, dir);
         }
     }
 

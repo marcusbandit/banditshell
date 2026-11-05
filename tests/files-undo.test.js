@@ -16,7 +16,7 @@ function lib(file, names) {
 
 const Undo = lib("services/files-undo.js", [
     "LIMIT", "into", "moved", "renamed", "copied", "fresh", "trashed", "remember",
-    "existsCommand", "existing", "vanished", "trashLine", "pick", "command", "outcome", "summary"
+    "existsCommand", "existing", "withdraw", "trashLine", "pick", "command", "outcome", "summary"
 ]);
 const Trash = lib("services/files-trash.js", ["readCommand", "parse", "restoreCommand"]);
 const GioTrash = require("./fixtures/gio-trash.js");
@@ -105,14 +105,17 @@ test.describe("files undo", () => {
         assert.strictEqual(Undo.trashLine(3), "3 items moved to the trash, Ctrl+Z to undo");
     });
 
-    test.it("remembers only the paths a failed trash really took, never one that stayed", () => {
+    test.it("withdraws from the undo stack the paths a failed trash left in place, and the whole entry when none went", () => {
         const box = sandbox();
         try {
             fs.writeFileSync(box.at("stayed.txt"), "");
             const paths = [box.at("stayed.txt"), box.at("went.txt")];
-            const entry = Undo.trashed(Undo.vanished(paths, box.run(Undo.existsCommand(paths))), 100);
-            assert.deepStrictEqual(entry.paths, [box.at("went.txt")]);
-            assert.deepStrictEqual(Undo.remember([], Undo.trashed(Undo.vanished([box.at("stayed.txt")], box.run(Undo.existsCommand([box.at("stayed.txt")]))), 100)), []);
+            const other = Undo.trashed(["/elsewhere"], 50);
+            const entry = Undo.trashed(paths, 100);
+            const stayed = Undo.existing(paths, box.run(Undo.existsCommand(paths)));
+            const left = Undo.withdraw([other, entry], entry.at, stayed);
+            assert.deepStrictEqual(left, [other, { kind: "trash", paths: [box.at("went.txt")], at: entry.at }]);
+            assert.deepStrictEqual(Undo.withdraw([other, Undo.trashed(["/a"], 100)], Undo.trashed(["/a"], 100).at, ["/a"]), [other]);
         } finally {
             box.done();
         }

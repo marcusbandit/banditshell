@@ -25,6 +25,7 @@ Singleton {
     property var sources: []
     property var targets: []
     property var job: null
+    property int round: 0
 
     readonly property string line: root.stopping ? "Stopping, " + root.title.toLowerCase() : FilesCommands.progressLine(root.title, root.copied, root.total)
 
@@ -82,6 +83,7 @@ Singleton {
         root.title = Conflicts.busyTitle(ops, cut);
         root.sources = ops.map(op => op.from);
         root.targets = ops.map(op => op.target);
+        root.round += 1;
         root.copied = 0;
         root.total = 0;
         root.measuring = false;
@@ -89,6 +91,7 @@ Singleton {
         root.stopping = false;
         root.shown = false;
         root.active = true;
+        pulse.interval = 1000;
         pulse.restart();
         root.job = root.run(Conflicts.command(ops, cut), (text, errors) => {
             pulse.stop();
@@ -125,18 +128,23 @@ Singleton {
 
     function measure(): void {
         root.shown = true;
+        const round = root.round;
         if (!root.measuring) {
             root.measuring = true;
             root.run(Conflicts.sizeCommand(root.sources), text => {
-                if (root.active)
+                if (root.active && round === root.round)
                     root.total = Conflicts.sizeTotal(text ?? "");
             });
         }
         if (root.sizing)
             return;
         root.sizing = true;
+        const began = Date.now();
         root.run(Conflicts.sizeCommand(root.targets), text => {
+            if (round !== root.round)
+                return;
             root.sizing = false;
+            pulse.interval = Math.max(1000, (Date.now() - began) * 3);
             if (root.active)
                 root.copied = Conflicts.sizeTotal(text ?? "");
         });

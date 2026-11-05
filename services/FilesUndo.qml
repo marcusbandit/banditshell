@@ -22,12 +22,14 @@ Singleton {
         root.before(Undo.renamed(from, to), then);
     }
 
-    function trashed(paths: var, at: real, whole: bool): void {
-        if (whole)
-            return root.remember(Undo.trashed(paths, at));
+    function trashed(paths: var, at: real): void {
+        root.remember(Undo.trashed(paths, at));
+    }
+
+    function trashFailed(paths: var, at: real): void {
         root.start(Undo.existsCommand(paths), text => {
             if (text !== null)
-                root.remember(Undo.trashed(Undo.vanished(paths, text), at));
+                root.stack = Undo.withdraw(root.stack, Undo.trashed(paths, at).at, Undo.existing(paths, text));
         });
     }
 
@@ -124,6 +126,7 @@ Singleton {
         Files.cursorName = names[0];
         Files.anchorName = names[0];
         root.shown = names;
+        lapse.restart();
     }
 
     function start(command: var, done: var): var {
@@ -149,6 +152,14 @@ Singleton {
             root.waiting -= 1;
             root.undo();
         }
+    }
+
+    Timer {
+        id: lapse
+
+        interval: 10000
+
+        onTriggered: root.shown = []
     }
 
     Timer {
