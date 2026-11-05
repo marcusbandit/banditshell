@@ -13,7 +13,7 @@ function lib(file, names) {
 }
 
 const Chords = lib("services/chords.js", ["sameChord", "legacyChord", "chordText", "hotkeyCommand"]);
-const Search = lib("modules/launcher/search.js", ["suggestions", "cleanAlias", "aliasTarget", "aliasesById", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS", "isSecretish", "isText", "remembered", "looksLikeSecret"]);
+const Search = lib("modules/launcher/search.js", ["suggestions", "cleanAlias", "aliasTarget", "aliasesById", "aliasHolder", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS", "isSecretish", "isText", "remembered", "looksLikeSecret"]);
 
 test.describe("hotkey chords", () => {
     test.it("treats the same keys in another order as the same chord", () => {
@@ -54,6 +54,15 @@ test.describe("aliases", () => {
         assert.deepStrictEqual(Search.withAlias(before, "app:zen", "ff", "Zen"), { ff: { id: "app:zen", label: "Zen" }, g: gimp });
         assert.deepStrictEqual(Search.withAlias(before, "app:firefox", " ", "Firefox"), { g: gimp });
         assert.deepStrictEqual(Search.aliasesById(before), { "app:firefox": "ff", "app:gimp": "g" });
+    });
+
+    test.it("names the row that already owns an alias, and allows the owner to keep it", () => {
+        const before = { ff, g: gimp };
+        assert.strictEqual(Search.aliasHolder(before, " FF ", "app:zen"), "Firefox");
+        assert.strictEqual(Search.aliasHolder(before, "ff", "app:firefox"), "");
+        assert.strictEqual(Search.aliasHolder(before, "free", "app:zen"), "");
+        assert.strictEqual(Search.aliasHolder(before, "", "app:zen"), "");
+        assert.strictEqual(Search.aliasHolder(before, "constructor", "app:zen"), "");
     });
 });
 

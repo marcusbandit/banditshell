@@ -215,6 +215,22 @@ QtObject {
 
     readonly property var sourceGroupLists: root.sources.map(s => s.groups ?? [])
 
+    readonly property var sourceGroups: {
+        const groups = root.sourceGroupLists.reduce((out, list) => out.concat(list), []);
+        const hit = root.aliasRow;
+        if (!hit || !root.sourceOf(hit))
+            return groups;
+        return [{
+                key: "alias",
+                title: "Alias",
+                items: [Object.assign({}, hit, {
+                        score: Infinity
+                    })]
+            }].concat(groups.map(g => Object.assign({}, g, {
+                items: g.items.filter(r => r.key !== hit.key)
+            })));
+    }
+
     readonly property var sourceCommands: root.sources.reduce((out, s) => out.concat(s.commands ?? []), [])
 
     readonly property bool sourceIntent: root.sources.some(s => !!s.intent)
@@ -1600,7 +1616,7 @@ QtObject {
             title: "Inside files",
             note: root.contentNote,
             items: root.contentRows
-        }, ...root.sourceGroupLists.reduce((out, list) => out.concat(list), []));
+        }, ...root.sourceGroups);
         const remembered = Search.remembered(groups, key => LauncherMemory.bonusOf(key, Date.now()));
         const arranged = Search.arrange(remembered, root.limits);
         if (!Search.matchesNothing(arranged) || root.grepFor && FileSearch.grepAnswered !== root.text)
