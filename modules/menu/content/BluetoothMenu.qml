@@ -35,11 +35,19 @@ Column {
         }
     }
 
-    onShowingChanged: if (!root.showing)
-        root.opened = ""
+    onShowingChanged: {
+        Bluetooth.setViewing(root, root.showing);
+        if (!root.showing)
+            root.opened = "";
+    }
 
-    Component.onDestruction: if (root.startedScan)
-        Bluetooth.setDiscovering(false)
+    Component.onCompleted: Bluetooth.setViewing(root, root.showing)
+
+    Component.onDestruction: {
+        Bluetooth.setViewing(root, false);
+        if (root.startedScan)
+            Bluetooth.setDiscovering(false);
+    }
 
     component Choice: MenuRow {
         id: choice
@@ -59,6 +67,8 @@ Column {
     component Act: MenuRow {}
 
     component Fact: StyledText {
+        width: parent ? parent.width : implicitWidth
+        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
         leftPadding: Appearance.padding.normal
         topPadding: Appearance.padding.small
         bottomPadding: Appearance.padding.normal
@@ -74,7 +84,7 @@ Column {
         width: root.width
         icon: Bluetooth.statusIcon()
         label: "Bluetooth"
-        detail: !Bluetooth.available ? "no adapter" : !Bluetooth.enabled ? "off" : Bluetooth.anyConnected ? `${Bluetooth.connectedDevices.length} connected` : Bluetooth.discovering ? "scanning" : "on, nothing connected"
+        detail: !Bluetooth.available ? "no adapter" : !Bluetooth.enabled ? "off" : Bluetooth.anyConnected ? `${Bluetooth.connectedDevices.length} connected` : Bluetooth.discovering ? "scanning" : "none connected"
         interactive: Bluetooth.available
         onActivated: Bluetooth.setEnabled(!Bluetooth.enabled)
 
@@ -127,6 +137,10 @@ Column {
         }
     }
 
+    BluetoothPrompt {
+        width: root.width
+    }
+
     Separator {
         width: parent.width
         visible: Bluetooth.enabled
@@ -134,7 +148,7 @@ Column {
 
     Repeater {
 
-        model: Bluetooth.enabled ? Bluetooth.known.slice(0, Config.values.control.deviceListMax) : []
+        model: Bluetooth.enabled ? Bluetooth.known : []
 
         delegate: Column {
             id: entry
@@ -190,9 +204,8 @@ Column {
                     onFlipped: Bluetooth.setBlocked(entry.modelData, !entry.modelData.blocked)
                 }
 
-                Act {
-                    label: "Forget it"
-                    onActivated: {
+                ForgetRow {
+                    onConfirmed: {
                         root.opened = "";
                         Bluetooth.forget(entry.modelData);
                     }
@@ -253,7 +266,7 @@ Column {
         open: root.opened === "pair"
 
         Repeater {
-            model: Bluetooth.strangers.slice(0, Config.values.control.deviceListMax)
+            model: Bluetooth.strangers
 
             delegate: MenuRow {
                 required property var modelData

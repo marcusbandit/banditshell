@@ -67,6 +67,13 @@ Column {
             }
 
             SettingsTool {
+                icon: "add"
+                tip: "join a hidden network"
+                on: SettingsView.pin?.type === "net" && SettingsView.pin.id === ""
+                onClicked: SettingsView.openPin("net", "", "hidden network")
+            }
+
+            SettingsTool {
                 id: rescan
 
                 icon: "refresh"

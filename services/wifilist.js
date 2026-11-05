@@ -409,3 +409,44 @@ function failureMessage(name, kind) {
 function failureReason(kind) {
     return JOIN_REASONS[kind] || "Something went wrong while joining";
 }
+
+function parseAddresses(text) {
+    let list = [];
+    try {
+        list = JSON.parse(text);
+    } catch (e) {
+        return { v4: "", v6: "" };
+    }
+    const found = { v4: "", v6: "" };
+    for (const device of Array.isArray(list) ? list : []) {
+        for (const info of device?.addr_info ?? []) {
+            if (!info?.local || info.scope === "link" || info.scope === "host")
+                continue;
+            if (info.family === "inet" && !found.v4)
+                found.v4 = info.local;
+            else if (info.family === "inet6" && !found.v6)
+                found.v6 = info.local;
+        }
+    }
+    return found;
+}
+
+function parseHiddenEvent(line) {
+    try {
+        const event = JSON.parse(line);
+        return event && typeof event.event === "string" ? event : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function qrSecurity(type) {
+    const kind = String(type || "").toUpperCase();
+    if (kind === "NOPASS" || kind === "")
+        return "open";
+    if (kind === "WPA" || kind === "WPA2")
+        return "wpa";
+    if (kind === "SAE" || kind === "WPA3")
+        return "sae";
+    return "";
+}

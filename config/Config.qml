@@ -984,7 +984,6 @@ Singleton {
                 touchEdges: true,
 
                 signalBands: 4,
-                deviceListMax: 7,
 
                 rowHeight: 42,
                 sliderHeight: 6,
