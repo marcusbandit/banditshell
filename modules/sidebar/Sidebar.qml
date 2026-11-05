@@ -51,6 +51,9 @@ Item {
     readonly property bool holding: root.menusShown && root.menuKeys.indexOf(root.openKey) >= 0
     readonly property bool railWanted: root.rail && (root.dwelt || root.holding || root.touched)
 
+    onRailChanged: if (!root.rail)
+        root.touched = false
+
     clip: root.rail && root.expansion < 1
 
     readonly property string screen: QsWindow.window?.screen?.name ?? ""
@@ -331,13 +334,15 @@ Item {
         onHoveredChanged: {
             if (!pointer.hovered)
                 root.pressedAtRest = false;
+            else
+                root.touched = false;
         }
     }
 
     TapHandler {
         acceptedDevices: PointerDevice.TouchScreen | PointerDevice.Stylus
-        enabled: root.rail
-        onTapped: root.touched = !root.touched
+        enabled: root.rail && !root.touched
+        onTapped: root.touched = true
     }
 
     DragHandler {

@@ -82,10 +82,8 @@ Item {
     property var openItem: null
 
     function entryFor(key: string): var {
-        if (key === root.moreKey)
-            return root.items.find(i => i.key === key) ?? null;
         const entry = root.items.find(i => i.key === key) ?? null;
-        if (entry)
+        if (entry && key !== root.moreKey)
             root.openItem = root.shown.find(i => root.keyFor(i) === key) ?? null;
         return entry;
     }
