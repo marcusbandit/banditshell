@@ -1,6 +1,7 @@
 # Tests for everything that writes the user's files and config
 
 Status: ready-for-agent
+GitHub: #445
 Tier: 1
 
 A bad write here survives a restart: a broken Hyprland config, a moved or

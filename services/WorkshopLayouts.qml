@@ -7,6 +7,7 @@ import qs.config
 import "layout-model.js" as LayoutModel
 import "layout-lua.js" as LayoutLua
 import "hyprland-lua.js" as HyprlandLua
+import "workshop-layouts.js" as SavedLayouts
 
 Singleton {
     id: root
@@ -52,8 +53,7 @@ Singleton {
     }
 
     function problemWith(model: var, previous: string): string {
-        const others = root.layouts.map(other => other.name).filter(name => name !== previous);
-        if (others.indexOf(model.name) >= 0)
+        if (SavedLayouts.nameTaken(root.layouts, model.name, previous))
             return "you already have a layout with that name";
         return LayoutModel.nameProblem(model.name, root.taken);
     }
@@ -67,13 +67,10 @@ Singleton {
         const problem = root.problemWith(model, previous);
         if (problem)
             return problem;
-        const next = root.layouts.filter(other => other.name !== previous && other.name !== model.name);
-        const at = root.layouts.findIndex(other => other.name === (previous || model.name));
-        next.splice(at < 0 ? next.length : Math.min(at, next.length), 0, model);
-        root.layouts = next;
+        root.layouts = SavedLayouts.placed(root.layouts, model, previous);
         root.persist();
-        const renamedInUse = !!previous && previous !== model.name && WindowLayouts.current === `lua:${previous}`;
-        if (previous && previous !== model.name)
+        const renamedInUse = SavedLayouts.renamedInUse(previous, model.name, WindowLayouts.current);
+        if (SavedLayouts.isRename(previous, model.name))
             root.forget(previous);
         root.enqueue({
             writes: [model],
@@ -100,7 +97,7 @@ Singleton {
     function remove(name: string): void {
         if (!root.loaded || !root.keep)
             return;
-        root.layouts = root.layouts.filter(model => model.name !== name);
+        root.layouts = SavedLayouts.without(root.layouts, name);
         root.persist();
         root.forget(name);
         if (WindowLayouts.current === `lua:${name}`)
@@ -152,13 +149,13 @@ Singleton {
         root.output = "";
         root.code = 0;
         if (job.removes) {
-            worker.command = ["sh", "-c", 'cd -- "$1" 2>/dev/null || exit 0; shift; for name in "$@"; do rm -f -- "$name.lua"; done', "sh", root.folder].concat(job.removes);
+            worker.command = SavedLayouts.removeCommand(root.folder, job.removes);
         } else {
             const code = root.possible ? LayoutLua.loader(job.names.map(name => root.fileOf(name)), job.afterReload) : "";
-            const pairs = [];
-            for (const model of job.writes)
-                pairs.push(model.name, LayoutLua.generate(model));
-            worker.command = ["sh", "-c", 'exec 2>&1; dir=$1; code=$2; shift 2; mkdir -p -- "$dir" || exit 1; while [ $# -gt 1 ]; do printf %s "$2" > "$dir/$1.lua.part" && mv -f -- "$dir/$1.lua.part" "$dir/$1.lua" || exit 1; shift 2; done; [ -n "$code" ] || exit 0; command -v hyprctl > /dev/null || { echo "hyprctl is not installed"; exit 3; }; exec hyprctl eval "$code"', "sh", root.folder, code].concat(pairs);
+            worker.command = SavedLayouts.writeCommand(root.folder, job.writes.map(model => ({
+                name: model.name,
+                text: LayoutLua.generate(model)
+            })), code);
         }
         worker.running = true;
     }
@@ -172,21 +169,18 @@ Singleton {
         const job = root.job;
         root.job = null;
         if (job && job.writes) {
-            const text = output.trim();
-            const evalError = text.startsWith("error:");
-            const answered = root.possible && (text === "ok" || evalError);
-            const named = evalError ? LayoutLua.failedNames(text, job.names, root.folder) : [];
-            const broken = evalError && !named.length ? job.names : named;
-            const next = Object.assign({}, root.ready);
-            for (const name of job.names)
-                next[name] = answered && broken.indexOf(name) < 0;
-            root.ready = next;
-            root.failed = root.possible ? text !== "ok" : code !== 0;
-            const trouble = text.replace(/^error:\s*/, "") || `could not write ${root.folder}`;
-            if (!root.possible)
-                root.said = root.failed ? trouble : "saved · loading needs Hyprland with a Lua config";
-            else
-                root.said = root.failed ? trouble : job.names.length === 1 ? `lua:${job.names[0]} is loaded` : `${job.names.length} layouts loaded`;
+            const result = SavedLayouts.outcome({
+                ready: root.ready,
+                names: job.names,
+                output: output,
+                code: code,
+                possible: root.possible,
+                folder: root.folder,
+                named: LayoutLua.failedNames(output, job.names, root.folder)
+            });
+            root.ready = result.ready;
+            root.failed = result.failed;
+            root.said = result.said;
             if (job.then)
                 job.then();
         }

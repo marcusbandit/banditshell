@@ -18,8 +18,6 @@ Singleton {
     readonly property string readAutostartScript: "for f in \"$1\"/*.desktop; do [ -f \"$f\" ] || continue; printf '\\n@@@%s\\n' \"$f\"; cat \"$f\"; done"
     readonly property string launcherDir: `${root.xdgConfig}/autostart-managed`
     readonly property string readLauncherScript: "dir=$1; [ -d \"$dir\" ] || exit 0; for f in \"$dir\"/*.desktop; do [ -f \"$f\" ] || continue; printf '\\n@@@%s\\n' \"$f\"; cat \"$f\"; printf '\\n@@@override %s\\n' \"$f\"; o=\"$dir/overrides/$(basename \"$f\" .desktop).conf\"; [ -f \"$o\" ] && cat \"$o\"; done"
-    readonly property string writeFileScript: "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\""
-    readonly property string launchScript: "[ -n \"$XDG_RUNTIME_DIR\" ] || exit 0; signature=$1; shift; systemctl --user is-active --quiet xdg-desktop-autostart.target && exit 0; mkdir \"$XDG_RUNTIME_DIR/banditshell-autostart-$signature\" 2>/dev/null || exit 0; for command; do setsid -f sh -c \"$command\" </dev/null >/dev/null 2>&1; done"
 
     property var autostartFiles: []
     property var launcherFiles: []
@@ -154,36 +152,34 @@ Singleton {
     }
 
     function switchApp(entry: var, on: bool): void {
-        const row = entry.row;
         if (entry.source === "hyprland") {
             HyprConfig.toggleStartup(entry.id, on);
         } else if (entry.source === "systemd") {
-            unitSwitch.command = ["systemctl", "--user", on ? "enable" : "disable", row.unit];
+            unitSwitch.command = ["systemctl", "--user", on ? "enable" : "disable", entry.row.unit];
             unitSwitch.running = true;
-        } else if (entry.source === "launcher") {
-            root.queueWrite(row.overridePath, StartupLog.setDisabled(row.overrideText, !on));
         } else {
-            root.queueWrite(row.path, Entries.setHidden(row.text, !on));
-            if (on)
+            const write = StartupLog.switchWrite(entry, on, Entries.setHidden);
+            root.queueWrite(write.path, write.text);
+            if (entry.source === "autostart" && on)
                 root.runAutostart();
         }
         root.remember(entry.id, on);
     }
 
     function removeApp(entry: var): void {
-        if (entry.source === "autostart")
-            root.queueWrite(entry.row.path, null);
+        const path = StartupLog.removalPath(entry);
+        if (path)
+            root.queueWrite(path, null);
     }
 
     function addApp(app: var): void {
-        const file = Entries.autostartName(app.id);
-        if (!file)
-            return;
-        const known = root.entries.find(e => e.id === `autostart:${file}`);
-        if (known)
-            return root.switchApp(known, true);
-        root.queueWrite(`${root.autostartDir}/${file}`, Entries.autostartText(app));
-        root.runAutostart();
+        const plan = StartupLog.addPlan(Entries.autostartName(app.id), Entries.autostartText(app), root.autostartDir, root.entries, root.autostartFiles);
+        if (plan.kind === "switch")
+            return root.switchApp(plan.entry, true);
+        if (plan.kind === "create") {
+            root.queueWrite(plan.path, plan.text);
+            root.runAutostart();
+        }
     }
 
     function runAutostart(): void {
@@ -192,21 +188,16 @@ Singleton {
     }
 
     function queueWrite(path: string, text: var): void {
-        root.writeQueue = root.writeQueue.concat([
-            {
-                path,
-                text
-            }
-        ]);
+        root.writeQueue = StartupLog.enqueueWrite(root.writeQueue, path, text);
         root.pump();
     }
 
     function pump(): void {
-        if (fileJob.running || !root.writeQueue.length)
+        const next = StartupLog.nextWrite(root.writeQueue, fileJob.running);
+        if (!next)
             return;
-        const job = root.writeQueue[0];
-        root.writeQueue = root.writeQueue.slice(1);
-        fileJob.command = job.text === null ? ["rm", "-f", job.path] : ["sh", "-c", root.writeFileScript, "sh", job.path, job.text];
+        root.writeQueue = next.queue;
+        fileJob.command = next.command;
         fileJob.running = true;
     }
 
@@ -228,8 +219,8 @@ Singleton {
         if (root.sessionHandled || !HyprConfig.signature || !Config.values.startup.runAutostart)
             return;
         root.sessionHandled = true;
-        const elsewhere = root.entries.filter(e => e.source !== "autostart" && e.on && e.desktopId).map(e => e.desktopId.replace(/\.desktop$/, ""));
-        launcher.command = ["sh", "-c", root.launchScript, "sh", HyprConfig.signature].concat(Entries.sessionLaunches(root.autostartFiles, root.desktops, elsewhere));
+        const elsewhere = StartupLog.startedElsewhere(root.entries);
+        launcher.command = StartupLog.launchCommand(HyprConfig.signature, Entries.sessionLaunches(root.autostartFiles, root.desktops, elsewhere));
         launcher.running = true;
     }
 

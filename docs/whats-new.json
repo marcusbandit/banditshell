@@ -1,6 +1,37 @@
 {
   "entries": [
     {
+      "id": "2026-11-05",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "File sizes just under 1 MB read 1.0 MB, not 1024 kB"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Startup apps with a commented copy show as on and start once"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Your hand fix to a broken config.json is no longer overwritten"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A deleted wallpaper falls back to the shipped one, not a black screen"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Long window layout names cut at a space now save"
+        }
+      ]
+    },
+    {
       "id": "2026-11-02-5",
       "date": "2026-11-02",
       "changes": [

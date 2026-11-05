@@ -13,6 +13,7 @@ import "files-conflicts.js" as Conflicts
 import "files-find.js" as Find
 import "files-listing.js" as Listing
 import "files-trash.js" as Trash
+import "files-commands.js" as FilesCommands
 
 Singleton {
     id: root
@@ -58,7 +59,7 @@ Singleton {
     }
 
     function pathOf(entry: var): string {
-        return entry.key ?? root.join(root.cwd, entry.name);
+        return entry.key ?? FilesCommands.join(root.cwd, entry.name);
     }
 
     function indexOf(name: string): int {
@@ -147,10 +148,6 @@ Singleton {
 
     function clearPicked(): void {
         root.picked = [];
-    }
-
-    function join(dir: string, name: string): string {
-        return dir === "/" ? `/${name}` : `${dir}/${name}`;
     }
 
     function parentOf(path: string): string {
@@ -614,14 +611,7 @@ Singleton {
     }
 
     function humanSize(bytes: real): string {
-        if (bytes < 1024)
-            return `${bytes} B`;
-
-        const units = ["kB", "MB", "GB", "TB", "PB"];
-        const step = Math.min(units.length, Math.floor(Math.log(bytes) / Math.log(1024)));
-        const value = bytes / Math.pow(1024, step);
-
-        return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[step - 1]}`;
+        return FilesCommands.humanSize(bytes);
     }
 
     function humanTime(epoch: real): string {
@@ -708,31 +698,16 @@ Singleton {
 
     property string failure: ""
 
-    function typed(paths: var): var {
-        const out = [];
-        for (const path of paths) {
-            const quoted = Quoting.forShell(root.shellName, path);
-            if (quoted === null)
-                return null;
-            out.push(quoted);
-        }
-        return out;
-    }
-
-    function refusal(path: string): string {
-        return `cannot type this path into ${root.shellName || "the shell"}: ${Quoting.visible(path)}`;
-    }
-
-    function run(words: var, paths: var): void {
+    function run(command: var): void {
         root.failure = "";
-        const quoted = pty.running && !root.shellBusy ? root.typed(paths) : null;
+        const plan = FilesCommands.runPlan(root.shellName, pty.running && !root.shellBusy, command);
 
-        if (quoted === null) {
-            root.spawn([...words, ...paths], "");
+        if (plan.mode === "spawn") {
+            root.spawn(plan.argv, "");
             return;
         }
 
-        root.send(root.clearLine() + `${[...words, ...quoted].join(" ")}\r`);
+        root.send(plan.text);
         root.restat();
     }
 
@@ -793,18 +768,14 @@ Singleton {
     }
 
     function typeCd(path: string): bool {
-        const quoted = root.typed([path]);
-        if (quoted === null) {
-            root.failure = root.refusal(path);
+        const line = FilesCommands.cdLine(root.shellName, path);
+        if (line === null) {
+            root.failure = FilesCommands.refusal(root.shellName, path);
             return false;
         }
-        root.send(root.clearLine() + `cd ${quoted[0]}\r`);
+        root.send(line);
         root.restat();
         return true;
-    }
-
-    function clearLine(): string {
-        return root.shellName === "zsh" ? "\x1bq" : "\x05\x15";
     }
 
     function restat(): void {
@@ -820,18 +791,19 @@ Singleton {
     }
 
     function cd(path: string): bool {
-        if (pty.running && root.typed([path]) === null) {
-            root.failure = root.refusal(path);
+        const plan = FilesCommands.cdPlan(root.shellName, pty.running, root.shellBusy, path);
+        if (plan.mode === "refuse") {
+            root.failure = plan.failure;
             return false;
         }
         root.failure = "";
 
-        if (!pty.running) {
+        if (plan.mode === "local") {
             root.cwd = path;
             return true;
         }
 
-        if (root.shellBusy) {
+        if (plan.mode === "desync") {
             root.desynced = true;
             root.cwd = path;
             return true;
@@ -840,7 +812,8 @@ Singleton {
         root.expecting = path;
         expiry.restart();
         root.cwd = path;
-        root.typeCd(path);
+        root.send(plan.text);
+        root.restat();
         return true;
     }
 
@@ -960,12 +933,12 @@ Singleton {
 
     function makeFolder(name: string): void {
         if (name && !root.inTrash)
-            root.run(["mkdir", "-p", "--"], [root.join(root.cwd, name)]);
+            root.run(FilesCommands.folderCommand(root.cwd, name));
     }
 
     function makeFile(name: string): void {
         if (name && !root.inTrash)
-            root.run(["touch", "--"], [root.join(root.cwd, name)]);
+            root.run(FilesCommands.fileCommand(root.cwd, name));
     }
 
     function renameRefusal(path: string, name: string): string {
@@ -975,16 +948,16 @@ Singleton {
     function renameTo(path: string, name: string): void {
         if (!path || !name)
             return;
-        const to = root.join(root.parentOf(path), name);
+        const to = FilesCommands.join(root.parentOf(path), name);
         if (to !== path && !Trash.trashed(path, root.trashFiles))
-            FilesUndo.renaming(path, to, () => root.run(["mv", "-i", "--"], [path, to]));
+            FilesUndo.renaming(path, to, () => root.run(FilesCommands.moveCommand(path, to)));
     }
 
     function trash(given: var): void {
         const paths = given.filter(path => !Trash.trashed(path, root.trashFiles));
         if (paths.length === 0)
             return;
-        root.run(["gio", "trash", "--"], paths);
+        root.run(FilesCommands.trashCommand(paths));
         FilesUndo.trashed(paths);
         FilesFind.forget(paths);
     }
@@ -993,7 +966,7 @@ Singleton {
         if (paths.length === 0)
             return;
         const infos = root.entries.filter(e => e.trash && paths.includes(e.key)).map(e => Trash.infoPath(e.trash));
-        root.run(["rm", "-rf", "--"], [...paths, ...infos]);
+        root.run(FilesCommands.removeCommand(paths, infos));
         FilesFind.forget(paths);
     }
 

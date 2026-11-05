@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "wallpaper-library.js" as Library
+import "wallpaper-paths.js" as Paths
 
 Singleton {
     id: root
@@ -12,9 +13,7 @@ Singleton {
     readonly property string shipped: Quickshell.shellPath("assets/wallpapers/")
 
     function expand(path: string): string {
-        if (path && path.startsWith("shipped:"))
-            return `${root.shipped}${path.slice("shipped:".length)}`;
-        return path ? path.replace(/^~(?=\/|$)/, Quickshell.env("HOME")) : "";
+        return Paths.expand(path, Quickshell.env("HOME"), root.shipped);
     }
 
     function stored(path: string): string {
@@ -83,25 +82,12 @@ Singleton {
         return root.normalise(root.expand(root.perScreen[screen] ?? "")) || root.current;
     }
 
-    readonly property var formats: ({
-            still: ["png", "jpg", "jpeg", "webp", "bmp", "avif", "svg"],
-            motion: ["gif", "apng"],
-            video: ["mp4", "webm", "mkv", "mov", "m4v"],
-
-            audio: ["mp3", "flac", "ogg", "opus", "wav", "m4a"]
-        })
+    readonly property var formats: Paths.FORMATS
 
     readonly property var extensions: [...root.formats.still, ...root.formats.motion, ...root.formats.video, ...root.formats.audio]
 
     function kindOf(path: string): string {
-        const dot = path.lastIndexOf(".");
-        if (dot < 0)
-            return "";
-        const ext = path.slice(dot + 1).toLowerCase();
-        for (const kind in root.formats)
-            if (root.formats[kind].indexOf(ext) >= 0)
-                return kind;
-        return "";
+        return Paths.kindOf(path, root.formats);
     }
 
     function movesOf(path: string): bool {
@@ -176,10 +162,7 @@ Singleton {
     }
 
     function fits(path: string, screenAspect: real): bool {
-        const a = root.aspectOf(path);
-        if (!a || !screenAspect)
-            return true;
-        return Math.abs(Math.log(a / screenAspect)) <= Math.log(Config.values.wallpaper.fit);
+        return Paths.fits(root.aspectOf(path), screenAspect, Config.values.wallpaper.fit);
     }
 
     function fittedFor(screenAspect: real): var {
@@ -485,6 +468,12 @@ Singleton {
         const next = [...scanned, root.fallback];
         if (JSON.stringify(next) !== JSON.stringify(root.available))
             root.available = next;
+        const seen = Paths.reread({ verified: root.verified, missing: root.missing }, root.dir, next);
+        root.missing = seen.missing;
+        if (seen.recheck && !prober.running) {
+            prober.path = seen.recheck;
+            prober.exec(["test", "-e", seen.recheck]);
+        }
         root.measured(Library.kept(root.shapes, next), Library.kept(root.posters, next), Library.kept(root.frozen, next));
         if (changed || !Object.keys(root.colours).length)
             root.measureColours();
@@ -541,10 +530,7 @@ Singleton {
         const per = Config.values.wallpaper.perScreen ?? {};
         const wanted = [root.expand(Config.values.wallpaper.current), ...Object.keys(per).map(s => root.expand(per[s]))];
 
-        const strange = [];
-        for (const p of wanted)
-            if (p && root.available.indexOf(p) < 0 && !root.aliases[p] && !root.asked[p] && strange.indexOf(p) < 0)
-                strange.push(p);
+        const strange = Paths.strangeOf(wanted, root.available, root.aliases, root.asked);
         if (!strange.length)
             return;
 
@@ -575,41 +561,14 @@ Singleton {
 
         stdout: StdioCollector {
             onStreamFinished: {
-                const lines = text.trim().split("\n");
-                const n = resolver.strange.length;
-                if (lines.length !== n + resolver.listed.length) {
-                    console.warn(`Wallpaper: could not match ${n} configured wallpaper(s) against ${root.dir}`);
+                const found = Paths.resolved(resolver.strange, resolver.listed, text);
+                if (!found) {
+                    console.warn(`Wallpaper: could not match ${resolver.strange.length} configured wallpaper(s) against ${root.dir}`);
                     return;
                 }
+                root.aliases = Object.assign({}, root.aliases, found);
 
-                const home = {};
-                for (let i = 0; i < resolver.listed.length; i++)
-                    home[lines[n + i]] = resolver.listed[i];
-
-                const map = Object.assign({}, root.aliases);
-                for (let i = 0; i < n; i++)
-                    if (home[lines[i]])
-                        map[resolver.strange[i]] = home[lines[i]];
-                root.aliases = map;
-
-                const pairs = [];
-                const fixed = map[root.expand(Config.values.wallpaper.current)];
-                if (fixed)
-                    pairs.push(["wallpaper.current", fixed]);
-
-                const per = Config.values.wallpaper.perScreen ?? {};
-                const next = Object.assign({}, per);
-                let moved = false;
-                for (const screen in per) {
-                    const own = map[root.expand(per[screen])];
-                    if (own) {
-                        next[screen] = own;
-                        moved = true;
-                    }
-                }
-                if (moved)
-                    pairs.push(["wallpaper.perScreen", next]);
-
+                const pairs = Paths.repairs(resolver.strange, root.aliases, Config.values.wallpaper.current, Config.values.wallpaper.perScreen ?? {}, Quickshell.env("HOME"), root.shipped);
                 if (pairs.length)
                     Config.setMany(pairs);
             }

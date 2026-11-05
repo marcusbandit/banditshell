@@ -1141,7 +1141,8 @@ Singleton {
             return console.warn(`Config: no such setting "${result.refused}"`);
 
         const keys = pairs.map(pair => pair[0]).join(", ");
-        if (!root.loaded)
+        const decision = Configuration.saveDecision(root.loaded, root.unreadable);
+        if (decision === "drop")
             return console.warn(`Config: dropped ${keys}, because ${root.path} has not been read yet`);
 
         if (!result.changed.length)
@@ -1149,7 +1150,7 @@ Singleton {
         root.adopt(result.values);
         root.unsaved = root.unsaved.concat(pairs);
 
-        if (root.unreadable)
+        if (decision === "hold")
             return console.warn(`Config: ${keys} not saved, because ${root.path} could not be read and is left untouched`);
         root.saveSoon();
     }
@@ -1184,7 +1185,7 @@ Singleton {
     }
 
     function save(): void {
-        if (!root.writable)
+        if (Configuration.saveDecision(root.loaded, root.unreadable) !== "write")
             return;
         root.unsaved = [];
         root.lastWritten = JSON.stringify(root.tree, null, 4) + "\n";
@@ -1219,7 +1220,7 @@ Singleton {
 
         onLoaded: {
             const raw = text();
-            if (root.writable && raw === root.lastWritten)
+            if (Configuration.echoes(root.loaded, root.unreadable, raw, root.lastWritten))
                 return;
 
             const kept = root.loaded ? "the values it had" : "the defaults";
@@ -1236,6 +1237,7 @@ Singleton {
             if (next !== root.tree)
                 root.adopt(Configuration.reuse(root.tree, next));
             root.loaded = got.loaded;
+            root.unsaved = Configuration.unsavedAfterRead(got.unreadable, saver.running, root.unsaved);
             if (!got.unreadable)
                 root.everRead = true;
 

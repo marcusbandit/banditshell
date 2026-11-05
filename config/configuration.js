@@ -442,3 +442,19 @@ function readFailed(missing) {
         return { loaded: true, unreadable: true, fresh: false, save: false };
     return { loaded: true, unreadable: false, fresh: true, save: true };
 }
+
+function saveDecision(loaded, unreadable) {
+    if (!loaded)
+        return "drop";
+    if (unreadable)
+        return "hold";
+    return "write";
+}
+
+function echoes(loaded, unreadable, raw, lastWritten) {
+    return saveDecision(loaded, unreadable) === "write" && lastWritten !== "" && raw === lastWritten;
+}
+
+function unsavedAfterRead(unreadable, saving, unsaved) {
+    return unreadable || saving ? unsaved : [];
+}

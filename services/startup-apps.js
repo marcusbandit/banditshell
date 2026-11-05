@@ -3,6 +3,8 @@ const PLUMBING = ["dbus-update-activation-environment", "systemctl"];
 const OFF_MARKER = /^off:\s*(.*)$/;
 const POSITION_WORD = /^@(\d+)$/;
 const EXEC_LINE = /^(\s*)(--\s?)?hl\.exec_cmd\(\s*(["'])((?:\\.|(?!\3)[^\\])*)\3\s*\)\s*(?:--\s?(.*))?$/;
+const WRITE_SCRIPT = "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"";
+const LAUNCH_SCRIPT = "[ -n \"$XDG_RUNTIME_DIR\" ] || exit 0; signature=$1; shift; systemctl --user is-active --quiet xdg-desktop-autostart.target && exit 0; mkdir \"$XDG_RUNTIME_DIR/banditshell-autostart-$signature\" 2>/dev/null || exit 0; for command; do setsid -f sh -c \"$command\" </dev/null >/dev/null 2>&1; done";
 
 function luaUnescape(s) {
     let out = "";
@@ -130,12 +132,14 @@ function fullOrder(active, off) {
 
 function hyprlandApps(files) {
     const out = [];
-    const seen = new Set();
+    const at = Object.create(null);
     const add = row => {
-        if (seen.has(row.id))
-            return;
-        seen.add(row.id);
-        out.push(row);
+        if (!(row.id in at)) {
+            at[row.id] = out.length;
+            out.push(row);
+        } else if (row.on && !out[at[row.id]].on) {
+            out[at[row.id]] = row;
+        }
     };
     for (const file of files) {
         for (const line of parseExecLines(file.text)) {
@@ -333,4 +337,53 @@ function startSummary(rows) {
         return "nothing to start yet";
     const on = rows.filter(r => r.on).length;
     return on === rows.length ? `all ${on} start` : `${on} of ${rows.length} start`;
+}
+
+function isAbsolute(path) {
+    return typeof path === "string" && path.charAt(0) === "/";
+}
+
+function enqueueWrite(queue, path, text) {
+    if (!isAbsolute(path) || (text !== null && typeof text !== "string"))
+        return queue;
+    return queue.concat([{ path, text }]);
+}
+
+function nextWrite(queue, running) {
+    if (running || !queue.length)
+        return null;
+    const job = queue[0];
+    const command = job.text === null ? ["rm", "-f", job.path] : ["sh", "-c", WRITE_SCRIPT, "sh", job.path, job.text];
+    return { command, queue: queue.slice(1) };
+}
+
+function switchWrite(entry, on, hide) {
+    if (entry.source === "launcher")
+        return { path: entry.row.overridePath, text: setDisabled(entry.row.overrideText, !on) };
+    if (entry.source === "autostart")
+        return { path: entry.row.path, text: hide(entry.row.text, !on) };
+    return null;
+}
+
+function removalPath(entry) {
+    return entry.source === "autostart" ? entry.row.path : null;
+}
+
+function addPlan(file, text, dir, entries, files) {
+    if (!file)
+        return { kind: "none" };
+    const known = entries.find(e => e.id === `autostart:${file}`);
+    if (known)
+        return { kind: "switch", entry: known };
+    if (files.some(f => baseName(f.path) === file))
+        return { kind: "none" };
+    return { kind: "create", path: `${dir}/${file}`, text };
+}
+
+function startedElsewhere(entries) {
+    return entries.filter(e => e.source !== "autostart" && e.on && e.desktopId).map(e => e.desktopId.replace(/\.desktop$/, ""));
+}
+
+function launchCommand(signature, launches) {
+    return ["sh", "-c", LAUNCH_SCRIPT, "sh", signature].concat(launches);
 }

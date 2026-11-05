@@ -123,3 +123,47 @@ function guardSpecs(outputs, intents, list) {
             specs[spec.output] = spec;
     return specs;
 }
+
+function parseMode(s) {
+    const m = /^(\d+)x(\d+)@([\d.]+)Hz$/.exec(s ?? "");
+    return m ? { w: +m[1], h: +m[2], hz: +m[3] } : null;
+}
+
+function modeString(w, h, hz) {
+    return `${w}x${h}@${Math.round(hz)}`;
+}
+
+function specFor(reported, entry) {
+    if (!reported)
+        return null;
+    if (reported.disabled || !(reported.width > 0))
+        return Object.assign({ output: reported.name }, restingFields(reported, entry), {
+            disabled: !!reported.disabled,
+            mirror: reported.mirror ?? ""
+        });
+    return {
+        output: reported.name,
+        mode: modeString(reported.width, reported.height, reported.refreshRate),
+        position: `${reported.x}x${reported.y}`,
+        scale: reported.scale,
+        transform: reported.transform,
+        vrr: reported.vrr ? 1 : 0,
+        disabled: false,
+        mirror: reported.mirror ?? ""
+    };
+}
+
+function newEntry(spec) {
+    return Object.assign({ output: spec.output }, entryFields(spec));
+}
+
+function entryFile(table, tables) {
+    return table?.file ?? (tables ?? [])[0]?.file ?? "lua/monitors.lua";
+}
+
+function reached(want, live) {
+    const mirrorOf = s => s.disabled ? "" : (s.mirror ?? "");
+    if (!!want.disabled !== !!live.disabled || mirrorOf(want) !== mirrorOf(live))
+        return false;
+    return !!want.disabled || want.mode === live.mode && want.position === live.position && Math.abs(want.scale - live.scale) < 0.001 && want.transform === live.transform && want.vrr === live.vrr;
+}
