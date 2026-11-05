@@ -98,10 +98,22 @@ Singleton {
         return (n < 16 ? "0" : "") + n.toString(16);
     }
 
+    property bool pushedBorders: false
+
     function pushBorderColours(): void {
 
-        if (!Compositor.isHyprland || !root.pushBorders || !Hypr.parserKnown)
+        if (!Compositor.isHyprland || !Hypr.parserKnown)
             return;
+
+        const step = Options.borderStep(root.pushBorders, root.pushedBorders);
+        if (step === "restore") {
+            root.pushedBorders = false;
+            pusher.exec(["hyprctl", "reload"]);
+            return;
+        }
+        if (step !== "push")
+            return;
+        root.pushedBorders = true;
 
         const active = root.activeBorder;
         const inactive = root.inactiveBorder;
