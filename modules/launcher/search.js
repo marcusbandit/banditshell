@@ -1166,6 +1166,28 @@ function nextPickable(rows, from, step) {
     return -1;
 }
 
+function stepTarget(rows, selected, delta, holding) {
+    if (!holding)
+        return nextPickable(rows, selected + delta, delta < 0 ? -1 : 1);
+    return delta < 0 ? -1 : nextPickable(rows, selected, 1);
+}
+
+function shiftTarget(at, step, count) {
+    const to = at + step;
+    return at < 0 || to < 0 || to >= count ? -1 : to;
+}
+
+function caretKey(key, hasText, intoList) {
+    return hasText && !intoList && [Qt.Key_Home, Qt.Key_End, Qt.Key_Left, Qt.Key_Right].includes(key);
+}
+
+function opensSheet(key, modifiers) {
+    if (key === Qt.Key_Menu)
+        return true;
+    const plain = modifiers & (Qt.ControlModifier | Qt.ShiftModifier | Qt.AltModifier | Qt.MetaModifier);
+    return key === Qt.Key_K && plain === Qt.ControlModifier || key === Qt.Key_F10 && plain === Qt.ShiftModifier;
+}
+
 function cleanAlias(text) {
     return String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
 }

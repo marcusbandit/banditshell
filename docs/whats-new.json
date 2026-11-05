@@ -1,6 +1,67 @@
 {
   "entries": [
     {
+      "id": "2026-11-06-q02",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Launcher previews show on laptop-sized screens"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The chosen launcher row keeps its full name beside its buttons"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Home, End and the arrows edit the launcher query, not the list"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ctrl+K or Shift+F10 opens a launcher row's actions"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Press and hold a pinned app to open its actions"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The pinned app you pick with the keys shows its name"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Pinning a 13th app says the grid is full"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The first Down after an answer picks the first result"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The ? page shows each example in full"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Timer rows show am or pm when the end time has it"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Ordinary searches no longer show raw action ids"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q26",
       "date": "2026-11-05",
       "changes": [

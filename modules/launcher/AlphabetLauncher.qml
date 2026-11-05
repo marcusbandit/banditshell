@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import "search.js" as Search
 
 LauncherConcept {
     id: root
@@ -328,6 +329,13 @@ LauncherConcept {
                 sheet.close();
                 break;
             }
+            return true;
+        }
+
+        if (Search.opensSheet(event.key, event.modifiers) && !root.naming) {
+            const row = list.itemAtIndex(root.selected);
+            if (row)
+                root.askRow(row, row.width / 2, row.height / 2);
             return true;
         }
 
