@@ -12,6 +12,9 @@ Singleton {
     property var sounding: []
     property var staged: []
     property double now: Date.now()
+    property double pausedMs: 0
+    property double pausedAt: 0
+    readonly property bool held: Notices.held
 
     readonly property var timerItems: {
         root.now;
@@ -30,8 +33,28 @@ Singleton {
 
     readonly property var shown: [...root.staged, ...root.alarmItems, ...root.timerItems, ...Logic.ordered(root.entries).map(Logic.itemOf)]
 
+    function clock(): double {
+        return Logic.clockAt(Date.now(), root.pausedMs, root.pausedAt);
+    }
+
+    onHeldChanged: {
+        if (root.held) {
+            root.pausedAt = Date.now();
+            wake.stop();
+            return;
+        }
+        root.pausedMs += Date.now() - root.pausedAt;
+        root.pausedAt = 0;
+        root.sweepNow();
+    }
+
+    function sweepNow(): void {
+        root.entries = Logic.sweep(root.entries, root.clock());
+        root.reschedule();
+    }
+
     function push(spec: var): string {
-        const out = Logic.push(root.entries, spec, Date.now());
+        const out = Logic.push(root.entries, spec, root.clock());
         if (out.error)
             return out.error;
         root.entries = out.list;
@@ -40,7 +63,7 @@ Singleton {
     }
 
     function update(id: string, patch: var): string {
-        const out = Logic.update(root.entries, id, patch, Date.now());
+        const out = Logic.update(root.entries, id, patch, root.clock());
         if (out.error)
             return out.error;
         root.entries = out.list;
@@ -49,7 +72,7 @@ Singleton {
     }
 
     function end(id: string, outcome: string, lingerMs: var, text: string): string {
-        const out = Logic.end(root.entries, id, outcome, Date.now(), lingerMs, text);
+        const out = Logic.end(root.entries, id, outcome, root.clock(), lingerMs, text);
         if (out.error)
             return out.error;
         root.entries = out.list;
@@ -63,7 +86,7 @@ Singleton {
     }
 
     function lines(): string {
-        const at = Date.now();
+        const at = root.clock();
         return Logic.ordered(root.entries).map(e => Logic.listLine(e, at)).join("\n");
     }
 
@@ -106,8 +129,8 @@ Singleton {
     }
 
     function reschedule(): void {
-        const wait = Logic.nextWake(root.entries, Date.now());
-        if (wait < 0) {
+        const wait = Logic.nextWake(root.entries, root.clock());
+        if (wait < 0 || root.held) {
             wake.stop();
             return;
         }
@@ -118,10 +141,7 @@ Singleton {
     Timer {
         id: wake
 
-        onTriggered: {
-            root.entries = Logic.sweep(root.entries, Date.now());
-            root.reschedule();
-        }
+        onTriggered: root.sweepNow()
     }
 
     Timer {

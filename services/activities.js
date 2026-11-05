@@ -36,6 +36,10 @@ function parseSpan(text) {
     return covered === raw.length ? parseSpan(total) : -1;
 }
 
+function clockAt(now, pausedMs, pausedAt) {
+    return (pausedAt > 0 ? pausedAt : now) - (pausedMs || 0);
+}
+
 function readProgress(value) {
     if (value === undefined || value === null || value === "")
         return { unset: true };
