@@ -22,9 +22,9 @@ Column {
         { page: "colour", icon: "palette", title: "Colour", line: "theme and accent" },
         { page: "wallpaper", icon: "wallpaper", title: "Wallpaper", line: "pick a new one" },
         { page: "widgets", icon: "widgets", title: "Widgets", line: "on your desktop" },
-        { page: "sidebar", icon: "side_navigation", title: "Sidebar", line: "workspaces and status" },
+        { page: "sidebar", icon: "side_navigation", title: "Sidebar", line: "workspaces, status" },
         { page: "notifications", icon: "notifications", title: "Notifications", line: "popups and sounds" },
-        { page: "lock", icon: "lock", title: "Lock and idle", line: "when the screen locks" }
+        { page: "lock", icon: "lock", title: "Lock and idle", line: "when it locks" }
     ].filter(t => !!Catalogue.PAGE_BY_ID[t.page])
 
     spacing: Appearance.padding.large

@@ -417,8 +417,13 @@ Column {
             room: root.lineRoom
             trackWidth: SettingsView.tiny ? 120 : 180
             onTailChanged: root.noteTail(slider.tail)
+            onHeldChanged: SettingsView.sliding = slider.held
             Component.onCompleted: root.noteTail(slider.tail)
-            Component.onDestruction: root.noteTail(-1)
+            Component.onDestruction: {
+                root.noteTail(-1);
+                if (slider.held)
+                    SettingsView.sliding = false;
+            }
             value: Number(root.value ?? 0)
             from: Catalogue.val(root.row.min, SettingsState)
             to: Catalogue.val(root.row.max, SettingsState)
@@ -452,10 +457,10 @@ Column {
 
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.min(220, implicitWidth)
+                width: Math.min(280, implicitWidth)
                 text: String(Catalogue.optionLabel(root.row, SettingsState, root.value) ?? "")
                 color: Appearance.colour.textDim
-                elide: Text.ElideRight
+                elide: Text.ElideMiddle
             }
 
             SettingsTool {
