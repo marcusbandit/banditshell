@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/tour.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Tour = new Function(`${src}\nreturn { parseState, formatState, shouldStart, chordFor, keyText, plan, current, begin, observe, pass, words, place, sidebarOf, closing, tokens, tail, explainsSuper };`)();
+const Tour = new Function(`${src}\nreturn { parseState, formatState, shouldStart, chordFor, keyText, plan, current, begin, observe, pass, words, place, sidebarOf, closing, tokens, tail, explainsSuper, choices };`)();
 
 const rows = fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8").split("\n")
     .filter(line => line && !line.startsWith("#"))
@@ -218,4 +218,17 @@ test("Super is explained once, on the first card that shows it", () => {
     assert.strictEqual(Tour.explainsSuper(Tour.plan({ bare: false, sidebar: "rail", chords: {} })), "finished");
     assert.match(Tour.closing("Super + Space", false, true).again, /^Super is the Windows key\. /);
     assert.doesNotMatch(Tour.closing("Super + Space", false, false).again, /Windows/);
+});
+
+test("the island step says the weather finds the town from the connection and offers Set place and Off", () => {
+    const island = Tour.plan({ bare: false, sidebar: "rail", chords: {} }).find(s => s.id === "island");
+    assert.match(Tour.words(island, {}).payoff, /weather.*internet connection/);
+    assert.deepStrictEqual(Tour.choices(island, true).map(c => c.id), ["place", "off"]);
+    assert.deepStrictEqual(Tour.choices(island, false).map(c => c.id), ["on"]);
+});
+
+test("only the island step carries weather choices", () => {
+    for (const step of Tour.plan({ bare: false, sidebar: "rail", chords: {} }).filter(s => s.id !== "island"))
+        assert.deepStrictEqual(Tour.choices(step, true), [], step.id);
+    assert.deepStrictEqual(Tour.choices(null, true), []);
 });

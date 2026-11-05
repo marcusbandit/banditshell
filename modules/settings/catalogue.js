@@ -632,7 +632,7 @@ const PAGES_SOURCE = {
                 { n: [], icon: "thermostat", label: "Units", k: "weatherUnits", kind: "seg", o: [["metric", "°C"], ["imperial", "°F"]], cfg: "weather.units", dis: s => !s.v("weatherShow"), kw: "weather units celsius fahrenheit temperature",
                     why: "For the temperature in the island and the week ahead." },
                 { n: [], icon: "update", label: "Refresh after", k: "weatherMinutes", kind: "step", min: 5, max: 180, step: 5, unit: " min", cfg: "weather.minutes", dis: s => !s.v("weatherShow"), kw: "weather refresh interval",
-                    why: "How old a reading may get before opening the island fetches a new one." }
+                    why: "How often the weather is fetched again while the island, the lock screen or the desktop card shows it." }
             ] },
             { t: "Ask", rows: [
                 { n: 87, icon: "smart_toy", label: "Helper", k: "cloud", kind: "text", mono: true, cfg: "clock.cloud", kw: "clock ai helper command",

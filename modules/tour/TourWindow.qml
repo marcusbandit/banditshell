@@ -213,6 +213,15 @@ PanelWindow {
             });
     }
 
+    function choose(id: string): void {
+        if (id === "place")
+            Settings.openAt(win.output, "", "weather.location");
+        else if (id === "off")
+            Config.set("weather.show", false);
+        else if (id === "on")
+            Config.set("weather.show", true);
+    }
+
     function primary(): void {
         if (win.face === "seen")
             return Tour.pass();
@@ -265,7 +274,9 @@ PanelWindow {
                 tailAt: win.tail.at
                 number: Tour.number
                 count: Tour.steps.length
+                choices: Logic.choices(Tour.step, Config.values.weather.show)
 
+                onChoicePicked: id => win.choose(id)
                 onPrimaryPressed: win.primary()
                 onSecondaryPressed: win.secondary()
                 onQuit: Tour.quit()

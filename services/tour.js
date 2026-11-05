@@ -220,7 +220,7 @@ function words(step, facts, explain) {
     case "island":
         return {
             title: "The island",
-            payoff: "Notifications, music, timers and the clock arrive at the top centre.",
+            payoff: "Notifications, music, timers and the clock arrive at the top centre. The weather beside the clock finds your town from your internet connection.",
             ask: either(step.gesture ? "rest the pointer at the top centre" : ""),
             open: "Open the island",
             away: "Move away and it folds back up; if it stays, press Esc.",
@@ -255,6 +255,12 @@ function words(step, facts, explain) {
         };
     }
     return { title: "", payoff: "", ask: "", open: "", away: "", note: "" };
+}
+
+function choices(step, weatherShown) {
+    if (!step || step.id !== "island")
+        return [];
+    return weatherShown ? [{ id: "place", text: "Set place" }, { id: "off", text: "Turn weather off" }] : [{ id: "on", text: "Turn weather on" }];
 }
 
 function closing(chord, bare, explain) {
