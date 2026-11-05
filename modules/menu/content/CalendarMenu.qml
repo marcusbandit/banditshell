@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 Column {
     id: root
@@ -190,6 +191,10 @@ Column {
                 style: "bare"
                 icon: "chevron_left"
 
+                HoverTip {
+                    text: "Previous month"
+                }
+
                 onClicked: {
                     root.page(-1);
                     root.glide();
@@ -201,6 +206,10 @@ Column {
 
                 style: "bare"
                 icon: "chevron_right"
+
+                HoverTip {
+                    text: "Next month"
+                }
 
                 onClicked: {
                     root.page(1);

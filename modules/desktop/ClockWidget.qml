@@ -87,6 +87,7 @@ Item {
             text: TimeFormat.dateText(clock.date, "headline") ?? ""
             font.pixelSize: Appearance.font.size.large
             fontSizeMode: Text.HorizontalFit
+            elide: Text.ElideRight
             minimumPixelSize: Appearance.font.size.normal
             color: Qt.alpha(tone.value, 0.72)
         }

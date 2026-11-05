@@ -13,7 +13,7 @@ WidgetCard {
     WallClock {
         id: clock
 
-        precision: WallClock.Hours
+        precision: WallClock.Minutes
     }
 
     title: Weather.place

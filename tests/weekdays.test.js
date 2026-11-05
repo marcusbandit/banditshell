@@ -7,6 +7,14 @@ const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/weekdays.js"), "utf8").replace(/^\.pragma .*$/m, "");
 const Week = new Function(src + "\nreturn { CHOICES, firstDay, order, lead, mondayBased, qtDay, weekNumber };")();
 
+const dates = fs.readFileSync(path.join(ROOT, "services/dates.js"), "utf8").replace(/^\.pragma .*$/m, "");
+const Dates = new Function(dates + "\nreturn { isoWeek };")();
+
+test("the week number of a Monday row is the launcher's ISO week", () => {
+    for (let day = new Date(2024, 11, 30); day < new Date(2028, 0, 1); day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 7))
+        assert.strictEqual(Week.weekNumber(day), Dates.isoWeek(day), day.toDateString());
+});
+
 test.describe("firstDay", () => {
     test.it("follows the locale unless a day is chosen", () => {
         assert.strictEqual(Week.firstDay("locale", 0), 0);
