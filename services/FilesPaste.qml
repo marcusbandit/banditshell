@@ -69,6 +69,7 @@ Singleton {
             root.busy = false;
             const outcome = Conflicts.results(ops, text ?? "");
             FilesUndo.pasted(cut, outcome.pairs, outcome.replaced, at);
+            FilesUndo.show(Conflicts.arrived(outcome.pairs, Files.cwd));
             if (then)
                 then(outcome);
             const failed = Conflicts.failure(outcome, cut, ops.length, errors);

@@ -214,6 +214,14 @@ function results(ops, text) {
     return out;
 }
 
+function arrived(pairs, dir) {
+    return pairs.map(function (pair) {
+        return baseName(pair.to);
+    }).filter(function (name, i) {
+        return join(dir, name) === pairs[i].to;
+    });
+}
+
 function leftover(clipboard, outcome) {
     return clipboard.filter(function (path) {
         var bare = path.length > 1 ? path.replace(/\/+$/, "") : path;

@@ -206,6 +206,7 @@ Singleton {
         root.cursorName = "";
         root.anchorName = "";
         root.picked = [];
+        FilesUndo.shown = [];
         root.search = "";
         root.searching = false;
         root.refresh();
@@ -934,13 +935,17 @@ Singleton {
     }
 
     function makeFolder(name: string): void {
-        if (name && !root.inTrash)
-            root.run(FilesCommands.folderCommand(root.cwd, name));
+        if (!name || root.inTrash)
+            return;
+        root.run(FilesCommands.folderCommand(root.cwd, name));
+        FilesUndo.show([name]);
     }
 
     function makeFile(name: string): void {
-        if (name && !root.inTrash)
-            root.run(FilesCommands.fileCommand(root.cwd, name));
+        if (!name || root.inTrash)
+            return;
+        root.run(FilesCommands.fileCommand(root.cwd, name));
+        FilesUndo.show([name]);
     }
 
     function renameRefusal(path: string, name: string): string {
@@ -956,7 +961,11 @@ Singleton {
             return;
         const to = FilesCommands.join(root.parentOf(path), name);
         if (to !== path && !Trash.trashed(path, root.trashFiles))
-            FilesUndo.renaming(path, to, () => root.run(FilesCommands.moveCommand(path, to)));
+            FilesUndo.renaming(path, to, () => {
+                root.run(FilesCommands.moveCommand(path, to));
+                if (root.parentOf(path) === root.cwd)
+                    FilesUndo.show([name]);
+            });
     }
 
     function trash(given: var): void {

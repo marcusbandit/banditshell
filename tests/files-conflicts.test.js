@@ -16,7 +16,7 @@ function lib(file, names) {
 
 const Conflicts = lib("services/files-conflicts.js", [
     "numbered", "items", "loops", "placeable", "loopRefusal", "probeCommand", "probed", "choices", "answer", "next", "waiting",
-    "operations", "command", "results", "leftover", "reason", "failure", "notice", "nameRefusal",
+    "operations", "command", "results", "leftover", "arrived", "reason", "failure", "notice", "nameRefusal",
     "picture", "newer", "larger", "day", "keptName", "clashes", "clashLabel", "folderName"
 ]);
 const Undo = lib("services/files-undo.js", ["moved", "copied", "trashed", "batch", "command", "report", "remember", "pick"]);
@@ -321,6 +321,13 @@ test.describe("files paste conflicts", () => {
         assert.strictEqual(Conflicts.folderName("/h/u", "/h/u"), "Home");
         assert.strictEqual(Conflicts.folderName("/h/u/Documents", "/h/u"), "Documents");
         assert.strictEqual(Conflicts.folderName("/", "/h/u"), "/");
+    });
+
+    test.it("names the pasted items that landed in the folder on screen, kept-both names included", () => {
+        const pairs = [{ from: "/a/x.txt", to: "/b/x (2).txt" }, { from: "/a/y", to: "/b/y" }, { from: "/a/z", to: "/b/sub/z" }];
+        assert.deepStrictEqual(Conflicts.arrived(pairs, "/b"), ["x (2).txt", "y"]);
+        assert.deepStrictEqual(Conflicts.arrived([{ from: "/a/q", to: "/q" }], "/"), ["q"]);
+        assert.deepStrictEqual(Conflicts.arrived(pairs, "/elsewhere"), []);
     });
 
     test.it("refuses a new name or a rename that holds a slash", () => {
