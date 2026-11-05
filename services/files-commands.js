@@ -98,3 +98,35 @@ function trashCommand(paths) {
 function removeCommand(paths, infos) {
     return {words: ["rm", "-rf", "--"], paths: [...paths, ...infos]};
 }
+
+function leftChild(from, to) {
+    var base = to === "/" ? "" : to;
+    if (from.length <= base.length + 1 || from.indexOf(base + "/") !== 0)
+        return "";
+    return from.slice(base.length + 1).split("/")[0];
+}
+
+var TOTALS = 'printf "path %s\\n" "$1"; printf "size %s\\n" "$(du -s -b -- "$1/" 2>/dev/null | cut -f1)"; printf "items %s\\n" "$(ls -A -- "$1/" 2>/dev/null | wc -l)"';
+
+function totalsCommand(path) {
+    return ["sh", "-c", TOTALS, "sh", path];
+}
+
+function totals(text) {
+    var out = {path: "", bytes: null, items: null};
+    var lines = String(text).split("\n");
+    for (var i = 0; i < lines.length; i++) {
+        var space = lines[i].indexOf(" ");
+        if (space < 0)
+            continue;
+        var key = lines[i].slice(0, space);
+        var value = lines[i].slice(space + 1);
+        if (key === "path")
+            out.path = value;
+        else if (value !== "" && isFinite(Number(value)) && key === "size")
+            out.bytes = Number(value);
+        else if (value !== "" && isFinite(Number(value)) && key === "items")
+            out.items = Number(value);
+    }
+    return out;
+}
