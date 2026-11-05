@@ -14,18 +14,20 @@ var PROBE = 'facts() { if [ -d "$2" ] && [ ! -L "$2" ]; then c=$(find "$2" -mind
 
 var PICTURE = /\.(png|jpe?g|gif|webp|bmp|svg|avif|tiff?|ico)$/i;
 
-var PASTE = 'verb=$1; shift; '
-    + 'while [ $# -ge 5 ]; do mode=$1 from=$2 to=$3 stem=$4 ext=$5; shift 5; '
+var PASTE = 'verb=$1; shift; pid=; live=; said=ok; '
+    + 'halt() { if [ -z "$pid" ] && [ -n "$live" ]; then pid=$!; fi; if [ -n "$pid" ]; then kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null; if [ "$said" = replaced ]; then gio trash -- "$to" 2>/dev/null; echo "stopped half"; else echo "stopped ok"; fi; else echo "unstarted $said"; fi; exit 0; }; trap halt TERM; '
+    + 'while [ $# -ge 5 ]; do mode=$1 from=$2 to=$3 stem=$4 ext=$5; shift 5; said=ok; '
     + 'if [ ! -e "$from" ] && [ ! -L "$from" ]; then echo gone; continue; fi; '
-    + 'n=0; said=ok; '
+    + 'n=0; '
     + 'if [ "$mode" = both ]; then n=2; '
     + 'while [ -e "$stem ($n)$ext" ] || [ -L "$stem ($n)$ext" ]; do n=$((n+1)); done; '
     + 'to="$stem ($n)$ext"; '
     + 'elif [ -e "$to" ] || [ -L "$to" ]; then '
     + 'if [ "$mode" != replace ]; then echo taken; continue; fi; '
-    + 'gio trash -- "$to" || { echo failed; continue; }; said=replaced; fi; '
-    + 'if [ "$verb" = mv ]; then mv -n -T -- "$from" "$to"; else cp -r -T -- "$from" "$to"; fi; '
-    + 'if [ $? -eq 0 ] && { [ -e "$to" ] || [ -L "$to" ]; }; then echo "$said $n"; '
+    + 'said=replaced; gio trash -- "$to" || { said=ok; echo failed; continue; }; fi; '
+    + 'live=1; if [ "$verb" = mv ]; then mv -n -T -- "$from" "$to" & else cp -r --preserve=mode,timestamps -T -- "$from" "$to" & fi; '
+    + 'pid=$!; wait "$pid"; code=$?; pid=; live=; '
+    + 'if [ "$code" -eq 0 ] && { [ -e "$to" ] || [ -L "$to" ]; }; then echo "$said $n"; '
     + 'elif [ "$said" = replaced ]; then { [ ! -e "$to" ] && [ ! -L "$to" ]; } || gio trash -- "$to"; echo half; '
     + 'else echo failed; fi; done';
 
@@ -174,7 +176,8 @@ function operations(list, chosen) {
         if (mode === "skip" || mode === null)
             continue;
         var parts = split(list[i].name, list[i].folder);
-        out.push({mode: mode, from: list[i].from, to: list[i].to, name: list[i].name, folder: list[i].folder, dir: list[i].dir, stem: join(list[i].dir, parts.stem), ext: parts.ext});
+        var target = mode === "both" ? join(list[i].dir, numbered(list[i].name, list[i].folder, list[i].next || 2)) : list[i].to;
+        out.push({mode: mode, from: list[i].from, to: list[i].to, target: target, name: list[i].name, folder: list[i].folder, dir: list[i].dir, stem: join(list[i].dir, parts.stem), ext: parts.ext});
     }
     return out;
 }
@@ -190,9 +193,13 @@ function results(ops, text) {
     var lines = text.split("\n").filter(function (line) {
         return line.trim() !== "";
     });
-    var out = {pairs: [], replaced: [], done: [], gone: [], failed: [], half: [], kept: []};
+    var out = {pairs: [], replaced: [], done: [], gone: [], failed: [], half: [], kept: [], stopped: [], unstarted: [], parted: []};
+    var halted = lines.some(function (line) {
+        var word = line.trim().split(" ")[0];
+        return word === "stopped" || word === "unstarted";
+    });
     for (var i = 0; i < ops.length; i++) {
-        var words = (lines[i] || "failed").trim().split(" ");
+        var words = (lines[i] || (halted ? "unstarted" : "failed")).trim().split(" ");
         var op = ops[i];
         var n = parseInt(words[1], 10) || 0;
         var to = n > 0 ? join(op.dir, numbered(op.name, op.folder, n)) : op.to;
@@ -208,10 +215,27 @@ function results(ops, text) {
             out.half.push(op.name);
         if (words[0] === "gone")
             out.gone.push(op.from);
-        if (words[0] !== "ok" && words[0] !== "replaced" && words[0] !== "gone")
+        if (words[0] === "stopped")
+            out.stopped.push({name: op.name, to: op.to, replaced: words[1] === "half"});
+        if (words[0] === "stopped" && words[1] === "half")
+            out.replaced.push(op.to);
+        if (words[0] === "unstarted") {
+            out.unstarted.push(op.name);
+            if (words[1] === "replaced")
+                out.parted.push(op.name);
+        }
+        if (words[0] !== "ok" && words[0] !== "replaced" && words[0] !== "gone" && words[0] !== "stopped" && words[0] !== "unstarted")
             out.failed.push(op.name);
     }
     return out;
+}
+
+function arrived(pairs, dir) {
+    return pairs.map(function (pair) {
+        return baseName(pair.to);
+    }).filter(function (name, i) {
+        return join(dir, name) === pairs[i].to;
+    });
 }
 
 function leftover(clipboard, outcome) {
@@ -229,6 +253,39 @@ function reason(errors) {
         return "";
     var cut = lines[0].lastIndexOf(": ");
     return cut >= 0 ? lines[0].slice(cut + 2).trim() : "";
+}
+
+function stoppedLine(outcome, cut, where) {
+    if (outcome.stopped.length === 0 && outcome.unstarted.length === 0)
+        return "";
+    var said = "Stopped";
+    if (outcome.stopped.length > 0) {
+        var item = outcome.stopped[0];
+        said += item.replaced ? ", " + item.name + " was not " + (cut ? "moved" : "copied") + ", the old one is in the trash" : ", " + item.name + " is only partly " + (cut ? "moved" : "copied") + (where ? " in " + where : "");
+    }
+    var rest = outcome.unstarted.length;
+    if (rest > 0)
+        said += ", " + (rest === 1 ? outcome.unstarted[0] + " was" : rest + (outcome.stopped.length > 0 ? " more" : " items") + " were") + " not started";
+    if (outcome.parted.length > 0)
+        said += ", the old " + (outcome.parted.length === 1 ? "one is" : "ones are") + " in the trash";
+    return said;
+}
+
+function busyTitle(ops, cut) {
+    var verb = cut ? "Moving " : "Copying ";
+    return verb + (ops.length === 1 ? ops[0].name : ops.length + " items");
+}
+
+function sizeCommand(paths) {
+    return ["du", "-sbc", "--"].concat(paths);
+}
+
+function sizeTotal(text) {
+    var lines = text.split("\n").filter(function (line) {
+        return line.trim() !== "";
+    });
+    var last = lines.length > 0 ? lines[lines.length - 1].split("\t") : [];
+    return last[1] === "total" ? Number(last[0]) || 0 : 0;
 }
 
 function failure(outcome, cut, total, errors) {
@@ -310,9 +367,11 @@ function folderName(dir, home) {
     return dir === "/" ? "/" : baseName(dir);
 }
 
-function renameRefusal(name, original, entries, where) {
+function nameRefusal(name, original, entries, where) {
     if (name === original)
         return "";
+    if (name.indexOf("/") >= 0)
+        return "A name cannot contain a slash";
     for (var i = 0; i < entries.length; i++)
         if (entries[i].name === name)
             return "A " + (entries[i].kind === "dir" ? "folder" : "file") + " named " + name + " is already in " + where;

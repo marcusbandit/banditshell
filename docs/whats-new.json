@@ -52,6 +52,47 @@
       ]
     },
     {
+      "id": "2026-11-05-q25",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Copied files keep their modified time"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ctrl+C and Ctrl+X in Files work with other apps"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "File actions no longer type into a hidden terminal"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "New folder and Rename refuse taken names and slashes"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A long paste shows its progress and has a Stop button"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "New, renamed and pasted items are selected and shown"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Delete says it can be undone, and cut items are dimmed"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q14",
       "date": "2026-11-05",
       "changes": [

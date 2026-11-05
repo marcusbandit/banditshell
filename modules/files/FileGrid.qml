@@ -155,6 +155,7 @@ Item {
             z: tile.focused ? 1 : 0
             row: root.list
             picked: Files.isPicked(Files.keyOf(tile.entry))
+            cut: Files.cutTable[Files.pathOf(tile.entry)] === true
             focused: (root.keyed || root.marked) && tile.index === Files.cursor
             previewed: root.previewing && tile.index === Files.cursor
             keyed: root.keyed
