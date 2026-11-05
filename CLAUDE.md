@@ -48,6 +48,13 @@ work has a name, so that placeholder reads like a commit hash and matches
 nothing. `try` runs the files as they are, so nothing has to be committed
 first.
 
+`try` locks the worktree it starts (`git worktree lock`, reason "banditshell is
+running from here"), so `git worktree remove` and `gh pr merge --delete-branch`
+refuse to delete the folder under the live shell. `dev back`, `dev tidy` and the
+merge watcher let go of it. Never unlock it or `remove -f -f` it by hand: the
+shell reads its files while it runs. Merge with `gh pr merge --squash
+--delete-branch` from the main checkout, then `banditshell dev tidy`.
+
 A worktree ends with its PR. Once the PR is merged, run `banditshell dev tidy`
 from the main checkout: it removes every worktree whose work is on main, with
 its local branch, and keeps anything with changes and the one you are standing
