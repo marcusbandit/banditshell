@@ -824,6 +824,7 @@ test("the watchdog takes the shell back to the checkout once the folder it ran f
     const { world, tried } = triedWorld();
     fs.rmSync(tried, { recursive: true, force: true });
     const ticks = path.join(world.root, "ticks");
+    const sleeper = spawnSync("sh", ["-c", "command -v sleep"], { encoding: "utf8" }).stdout.trim();
     fs.writeFileSync(path.join(world.fakebin, "sleep"), `#!/bin/sh
 if [ "$1" = 10 ]; then
     n=$(($(cat "${ticks}" 2>/dev/null || echo 0) + 1))
@@ -831,7 +832,7 @@ if [ "$1" = 10 ]; then
     [ "$n" -le 2 ]
     exit
 fi
-exec /usr/bin/sleep "$@"
+exec "${sleeper}" "$@"
 `, { mode: 0o755 });
     fs.mkdirSync(path.join(world.runtime, "hypr", "sig"), { recursive: true });
     const got = run(world, ["watchdog"], { HYPRLAND_INSTANCE_SIGNATURE: "sig", WAYLAND_DISPLAY: "wayland-1" });
