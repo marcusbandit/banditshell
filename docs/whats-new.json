@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-11-05-q14",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A busy workspace past the always-shown count gets a slot"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "One mouse wheel notch over the workspace column switches one"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Clicking an app icon on a workspace plate focuses that window"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Workspace marks are easier to click and the rail holds still"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Workspace clicks and flicks no longer misfire"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A held window no longer closes on release after a fast lift"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-2",
       "date": "2026-11-05",
       "changes": [

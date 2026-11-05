@@ -54,6 +54,8 @@ Item {
 
             MouseArea {
                 anchors.fill: parent
+                anchors.topMargin: -layout.stride / 2
+                anchors.bottomMargin: -layout.stride / 2
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onEntered: root.hovered = slotItem.index

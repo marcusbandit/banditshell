@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import "workspaces.js" as Workspaces
 
 Item {
     id: root
@@ -12,13 +13,15 @@ Item {
     property int pitch: Appearance.sizes.workspaceWindowPitch
     property int gap: Appearance.sizes.workspaceGap
 
+    readonly property real stride: Workspaces.stride(root.base, root.gap, Workspaces.HIT_REACH)
+
     property bool stack: false
 
     property int perRow: 1
 
-    readonly property int count: Hypr.count
-
     required property string screen
+
+    readonly property int count: Hypr.countFor(root.screen)
 
     readonly property int band: Hypr.bandFor(root.screen)
 
@@ -58,7 +61,7 @@ Item {
                 windows,
                 marks
             });
-            y += h + root.gap;
+            y += h + root.stride;
         }
         return out;
     }
@@ -139,7 +142,7 @@ Item {
                 }));
     }
 
-    readonly property real scrubPitch: root.base + root.gap
+    readonly property real scrubPitch: root.base + root.stride
 
     property bool scrubHeld: false
     property bool scrubbing: false
@@ -153,7 +156,12 @@ Item {
     property bool scrubFired: false
 
     property real scrubLastY: 0
+    property real scrubLastAt: 0
     property real scrubVelocity: 0
+
+    property int wheelPending: 0
+    property real wheelAt: 0
+    property bool wheelHeld: false
 
     function scrubPress(x: real, y: real): void {
         scroll.finish();
@@ -170,6 +178,7 @@ Item {
         root.scrubStep = 0;
         root.scrubFired = false;
         root.scrubLastY = y;
+        root.scrubLastAt = Date.now();
         root.scrubVelocity = 0;
     }
 
@@ -177,15 +186,16 @@ Item {
         if (!root.scrubHeld || root.scrubSpent)
             return;
 
-        const vstep = y - root.scrubLastY;
+        const now = Date.now();
+        root.scrubVelocity = Workspaces.eased(root.scrubVelocity, y - root.scrubLastY, now - root.scrubLastAt);
         root.scrubLastY = y;
-        root.scrubVelocity += (vstep - root.scrubVelocity) * 0.4;
+        root.scrubLastAt = now;
 
         if (!root.scrubbing) {
             const dx = x - root.scrubFromX;
             const dy = y - root.scrubFromY;
 
-            if (Math.hypot(dx, dy) < Config.values.control.dragThreshold)
+            if (Math.hypot(dx, dy) < Config.values.control.pullSlack)
                 return;
 
             if (Math.abs(dy) <= Math.abs(dx)) {
@@ -210,12 +220,14 @@ Item {
     }
 
     function scrubRelease(): bool {
-        const consumed = root.scrubbing || root.scrubSpent;
+        let consumed = root.scrubFired;
 
-        if (root.scrubbing && !root.scrubFired && Math.abs(root.scrubVelocity) >= Config.values.control.flickVelocity) {
-            const to = root.scrubBase + (root.scrubVelocity > 0 ? 1 : -1);
-            if (to >= root.band && to < root.band + root.count)
+        if (root.scrubbing && !root.scrubFired) {
+            const to = root.scrubBase + Workspaces.flickDirection(Workspaces.settled(root.scrubVelocity, Date.now() - root.scrubLastAt));
+            if (to !== root.scrubBase && to >= root.band && to < root.band + root.count) {
                 Hypr.switchTo(to);
+                consumed = true;
+            }
         }
 
         root.scrubHeld = false;
@@ -231,7 +243,24 @@ Item {
     }
 
     function scrubWheel(wheel: var): bool {
-        return scroll.feed(wheel);
+        const notch = wheel.phase === 0 && wheel.pixelDelta.x === 0 && wheel.pixelDelta.y === 0 && wheel.angleDelta.y !== 0;
+        if (!notch || root.scrubHeld || scroll.active)
+            return scroll.feed(wheel);
+
+        const natural = wheel.inverted || Compositor.naturalScrollMouse;
+        const notches = Math.round(wheel.angleDelta.y / 120) * (natural ? 1 : -1);
+        wheel.accepted = true;
+        if (notches === 0)
+            return true;
+
+        const now = Date.now();
+        const to = Workspaces.notchTarget(root.active, root.wheelHeld ? root.wheelPending : null, root.wheelAt, now, notches, root.band, root.band + root.count - 1);
+        root.wheelPending = to;
+        root.wheelAt = now;
+        root.wheelHeld = true;
+        if (to !== root.active)
+            Hypr.switchTo(to);
+        return true;
     }
 
     ScrollGesture {
@@ -245,11 +274,9 @@ Item {
         onEnded: root.scrubRelease()
     }
 
-    Timer {
-        interval: 16
-        repeat: true
+    FrameAnimation {
         running: root.moving
-        onTriggered: root.step(interval / 1000)
+        onTriggered: root.step(frameTime)
     }
 
     Component.onCompleted: root.snap()

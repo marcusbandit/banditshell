@@ -7,6 +7,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.controls
+import "workspaces.js" as Workspaces
 
 Item {
     id: root
@@ -496,6 +497,15 @@ Item {
 
             readonly property bool covered: slotItem.isActive && layout.eclipsed
 
+            function markUnder(point: point): var {
+                const x = point.x - (cell.width - root.slot) / 2;
+                if (slotItem.covered || x < 0 || x > root.slot)
+                    return null;
+                const rows = slotItem.info.marks.length;
+                const row = Workspaces.markRow(point.y, root.slot, root.pitch, rows);
+                return slotItem.info.marks.find(m => (m.row ?? 0) === row) ?? null;
+            }
+
             y: slotItem.geom.y
             width: root.width
             height: slotItem.geom.h
@@ -526,8 +536,13 @@ Item {
                     layout.scrubMove(p.x, p.y);
                 }
 
-                onReleased: {
-                    if (!layout.scrubRelease())
+                onReleased: mouse => {
+                    if (layout.scrubRelease())
+                        return;
+                    const mark = slotItem.markUnder(slotMouse.mapToItem(cell, mouse.x, mouse.y));
+                    if (mark)
+                        Hypr.focusClient(slotItem.info.windows.find(w => Hypr.classOf(w) === mark.cls && Hypr.isFocused(w)) ?? mark.client);
+                    else
                         Hypr.switchTo(slotItem.info.id);
                 }
 
@@ -590,6 +605,13 @@ Item {
                         width: root.slot
                         height: root.pitch
                         opacity: coverFade.value
+
+                        readonly property string title: row.count > 1 ? `${Apps.nameFor(row.appClass)} (${row.count})` : (row.modelData.client?.lastIpcObject?.title || Apps.nameFor(row.appClass))
+
+                        HoverTip {
+                            text: slotItem.covered ? "" : row.title
+                            host: row
+                        }
 
                         Follow {
                             id: coverFade
