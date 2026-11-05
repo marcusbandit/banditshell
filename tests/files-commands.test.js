@@ -13,7 +13,7 @@ function source(file) {
 
 const Quoting = new Function(`${source("services/quoting.js")}\nreturn { forShell, posix, visible, hasControl };`)();
 const Commands = new Function("Quoting", `${source("services/files-commands.js").replace(/^\.import .*$/m, "")}
-return { humanSize, join, clearLine, typed, refusal, runPlan, cdLine, cdPlan, folderCommand, fileCommand, moveCommand, trashCommand, removeCommand, progressLine };`)(Quoting);
+return { humanSize, join, clearLine, typed, refusal, runPlan, cdLine, cdPlan, folderCommand, fileCommand, moveCommand, trashCommand, removeCommand, progressLine, leftChild, totalsCommand, totals };`)(Quoting);
 
 function installed(shell) {
     return child.spawnSync("sh", ["-c", `command -v ${shell}`]).status === 0;
@@ -268,3 +268,50 @@ for (const shell of ["zsh", "bash"]) {
         }
     });
 }
+
+test.describe("files commands: the folder you just left", () => {
+    test.it("names the child of the new folder that holds the old one", () => {
+        assert.strictEqual(Commands.leftChild("/a/b/c", "/a/b"), "c");
+        assert.strictEqual(Commands.leftChild("/a/b/c", "/a"), "b");
+        assert.strictEqual(Commands.leftChild("/a", "/"), "a");
+    });
+
+    test.it("names nothing when the new folder is not above the old one", () => {
+        assert.strictEqual(Commands.leftChild("/a/bc", "/a/b"), "");
+        assert.strictEqual(Commands.leftChild("/a", "/a"), "");
+        assert.strictEqual(Commands.leftChild("/x", "/y"), "");
+        assert.strictEqual(Commands.leftChild("/", "/a"), "");
+    });
+});
+
+test.describe("files commands: folder totals", () => {
+    test.it("reads the byte total and the item count", () => {
+        assert.deepStrictEqual(Commands.totals("token 3\nsize 123456\nitems 80\n"), {token: "3", bytes: 123456, items: 80});
+    });
+
+    test.it("leaves the size empty when du printed nothing", () => {
+        assert.deepStrictEqual(Commands.totals("token 4\nsize \nitems 0\n"), {token: "4", bytes: null, items: 0});
+    });
+
+    test.it("runs du and ls on the path given as an argument, not spliced into the script", () => {
+        const command = Commands.totalsCommand("/tmp/a b'; rm -rf x", 7);
+        assert.deepStrictEqual(command.slice(-3), ["sh", "/tmp/a b'; rm -rf x", "7"]);
+        assert.ok(!command[2].includes("rm -rf"));
+    });
+
+    test.it("measures a real folder whose name holds a newline", () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "totals-"));
+        const odd = path.join(dir, "a\nb");
+        fs.mkdirSync(odd);
+        fs.writeFileSync(path.join(odd, "a"), "x".repeat(10000));
+        fs.writeFileSync(path.join(odd, ".hidden"), "y");
+        fs.mkdirSync(path.join(odd, "sub"));
+        const command = Commands.totalsCommand(odd, 9);
+        const run = child.spawnSync(command[0], command.slice(1), {encoding: "utf8"});
+        const got = Commands.totals(run.stdout);
+        fs.rmSync(dir, {recursive: true});
+        assert.strictEqual(got.token, "9");
+        assert.strictEqual(got.items, 3);
+        assert.ok(got.bytes >= 10001);
+    });
+});

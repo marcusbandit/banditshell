@@ -17,6 +17,7 @@ Item {
     property bool marked: false
     property bool previewing: false
 
+    signal touched
     signal picked(int index, int modifiers)
     signal activated(int index)
     signal menuFor(int index, point position)
@@ -29,6 +30,7 @@ Item {
 
     readonly property int columns: root.list ? 1 : Math.max(1, Math.floor(width / Appearance.sizes.filesTile))
     readonly property real cell: width / root.columns
+    readonly property int pageRows: Math.max(1, Math.floor((grid.height - grid.topMargin - grid.bottomMargin) / root.cellHeight))
     readonly property real cellHeight: root.list ? Appearance.sizes.filesRow + (FilesFind.active ? Files.zoomed(Appearance.font.line.small) : 0) : root.cell * 1.18
 
     readonly property int target: root.dragging ? root.dropIndexAt(root.dragPoint) : -1
@@ -183,6 +185,7 @@ Item {
         property bool adding: false
 
         onPressed: mouse => {
+            root.touched();
             if (root.dropIndexAt(Qt.point(mouse.x, mouse.y)) >= 0) {
                 mouse.accepted = false;
                 return;

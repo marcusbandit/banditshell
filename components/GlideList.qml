@@ -24,6 +24,10 @@ ListView {
         wheel.scrollTo(y);
     }
 
+    function scrollBy(pixels: real): void {
+        root.scrollTo(root.anchor + pixels);
+    }
+
     function reveal(index: int): void {
         if (root.count <= 0)
             return;

@@ -36,6 +36,8 @@ Singleton {
     property string error: ""
 
     property string cursorName: ""
+    property string arrival: ""
+    property string previous: ""
     property var picked: []
     property string anchorName: ""
 
@@ -204,9 +206,11 @@ Singleton {
     }
 
     onCwdChanged: {
-        root.cursorName = "";
-        root.anchorName = "";
-        root.picked = [];
+        root.arrival = FilesCommands.leftChild(root.previous, root.cwd);
+        root.previous = root.cwd;
+        root.cursorName = root.arrival;
+        root.anchorName = root.arrival;
+        root.picked = root.arrival ? [root.arrival] : [];
         FilesUndo.shown = [];
         root.search = "";
         root.searching = false;
@@ -1277,7 +1281,7 @@ Singleton {
     function act(action: string): bool {
         if (action.startsWith("focus:")) {
             const to = action.slice(6);
-            if (to !== "terminal" || root.terminalOpen)
+            if (to === "terminal" ? root.terminalOpen : to !== "preview" || root.previewOpen)
                 root.focus = to;
             return true;
         }

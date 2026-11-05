@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 import "urls.js" as Urls
 import "tile-names.js" as TileNames
 import "row-columns.js" as RowColumns
@@ -98,6 +99,12 @@ Item {
 
     HoverHandler {
         id: hover
+    }
+
+    HoverTip {
+        host: root
+        asked: hover.hovered
+        text: hover.hovered && (root.row ? rowName.text : label.text).indexOf("\u2026") >= 0 ? root.entry.name : ""
     }
 
     Column {

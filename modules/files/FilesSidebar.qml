@@ -16,6 +16,10 @@ Item {
 
     property string receiving: ""
 
+    signal touched
+
+    readonly property bool more: scroller.contentHeight - scroller.contentY - scroller.height > Appearance.padding.hair
+
     readonly property real natural: {
         if (measure.font.pixelSize <= 0)
             return 0;
@@ -32,146 +36,186 @@ Item {
         font.pixelSize: Files.zoomed(Appearance.font.size.small)
     }
 
-    Column {
-        id: column
+    Flickable {
+        id: scroller
 
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.margins: Appearance.padding.small
+        anchors.fill: parent
 
-        spacing: Appearance.padding.normal
+        contentWidth: width
+        contentHeight: column.height + Appearance.padding.small * 2
+        boundsBehavior: Flickable.StopAtBounds
+        clip: true
 
-        Repeater {
-            model: root.sections
+        WheelStep {
+            flick: scroller
+        }
 
-            delegate: Column {
-                id: section
+        Column {
+            id: column
 
-                required property var modelData
+            x: Appearance.padding.small
+            y: Appearance.padding.small
+            width: scroller.width - Appearance.padding.small * 2
 
-                width: parent.width
-                spacing: 0
+            spacing: Appearance.padding.normal
 
-                visible: section.modelData.rows.length > 0
+            Repeater {
+                model: root.sections
 
-                StyledText {
-                    text: section.modelData.title.toUpperCase()
-                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
-                    font.letterSpacing: Files.zoomed(Appearance.font.size.small) * 0.12
-                    color: Appearance.colour.textFaint
+                delegate: Column {
+                    id: section
 
-                    leftPadding: Appearance.padding.normal
-                    bottomPadding: Appearance.padding.hair
-                    topPadding: Appearance.padding.small
-                }
+                    required property var modelData
 
-                Repeater {
-                    model: section.modelData.rows
+                    width: parent.width
+                    spacing: 0
 
-                    delegate: Item {
-                        id: place
+                    visible: section.modelData.rows.length > 0
 
-                        required property var modelData
+                    StyledText {
+                        text: section.modelData.title.toUpperCase()
+                        font.pixelSize: Files.zoomed(Appearance.font.size.small)
+                        font.letterSpacing: Files.zoomed(Appearance.font.size.small) * 0.12
+                        color: Appearance.colour.textFaint
 
-                        objectName: place.modelData.path
+                        leftPadding: Appearance.padding.normal
+                        bottomPadding: Appearance.padding.hair
+                        topPadding: Appearance.padding.small
+                    }
 
-                        readonly property bool here: Files.cwd === place.modelData.path
+                    Repeater {
+                        model: section.modelData.rows
 
-                        readonly property var usage: place.modelData.usage ?? null
+                        delegate: Item {
+                            id: place
 
-                        width: section.width
+                            required property var modelData
 
-                        height: Appearance.sizes.filesRow * (place.usage ? 1.5 : 1)
+                            objectName: place.modelData.path
 
-                        SquircleRect {
-                            anchors.fill: parent
-                            anchors.rightMargin: Appearance.padding.small
+                            readonly property bool here: Files.cwd === place.modelData.path
 
-                            radius: Appearance.rounding.small
-                            color: root.receiving === place.modelData.path ? Appearance.colour.accentFill : place.here ? Appearance.colour.fillStrong : hover.hovered ? Appearance.colour.fill : "transparent"
-                            stroke: root.receiving === place.modelData.path ? Appearance.colour.accent : "transparent"
-                            strokeWidth: root.receiving === place.modelData.path ? Appearance.stroke.ring : 0
-                        }
+                            readonly property var usage: place.modelData.usage ?? null
 
-                        Icon {
-                            id: glyph
+                            width: section.width
 
-                            anchors.left: parent.left
-                            anchors.leftMargin: Appearance.padding.normal
-                            anchors.verticalCenter: place.usage ? undefined : parent.verticalCenter
-                            anchors.top: place.usage ? parent.top : undefined
-                            anchors.topMargin: place.usage ? Appearance.padding.hair : 0
-
-                            name: place.modelData.icon
-                            size: Files.zoomed(Appearance.font.iconSize)
-                            color: place.here ? Appearance.colour.text : Appearance.colour.textDim
-                        }
-
-                        StyledText {
-                            anchors.left: glyph.right
-                            anchors.leftMargin: Appearance.padding.small
-                            anchors.right: detail.left
-                            anchors.rightMargin: Appearance.padding.small
-                            anchors.verticalCenter: glyph.verticalCenter
-
-                            text: place.modelData.name
-                            font.pixelSize: Files.zoomed(Appearance.font.size.small)
-                            elide: Text.ElideRight
-                            color: place.here ? Appearance.colour.text : Appearance.colour.textDim
-                        }
-
-                        StyledText {
-                            id: detail
-
-                            anchors.right: parent.right
-                            anchors.rightMargin: Appearance.padding.normal
-                            anchors.verticalCenter: glyph.verticalCenter
-
-                            text: place.modelData.detail ?? ""
-                            font.pixelSize: Files.zoomed(Appearance.font.size.small)
-                            color: Appearance.colour.textFaint
-                        }
-
-                        Item {
-                            visible: !!place.usage
-
-                            anchors.left: glyph.left
-                            anchors.right: parent.right
-                            anchors.rightMargin: Appearance.padding.normal
-                            anchors.bottom: parent.bottom
-                            anchors.bottomMargin: Appearance.padding.small
-
-                            implicitHeight: Appearance.font.stem * 2
+                            height: Appearance.sizes.filesRow * (place.usage ? 1.5 : 1)
 
                             SquircleRect {
                                 anchors.fill: parent
+                                anchors.rightMargin: Appearance.padding.small
 
-                                pill: "place"
-                                color: Appearance.colour.fill
+                                radius: Appearance.rounding.small
+                                color: root.receiving === place.modelData.path ? Appearance.colour.accentFill : place.here ? Appearance.colour.fillStrong : hover.hovered ? Appearance.colour.fill : "transparent"
+                                stroke: root.receiving === place.modelData.path ? Appearance.colour.accent : "transparent"
+                                strokeWidth: root.receiving === place.modelData.path ? Appearance.stroke.ring : 0
                             }
 
-                            SquircleRect {
-                                width: Math.max(parent.height, parent.width * (place.usage ? place.usage.fraction : 0))
-                                height: parent.height
+                            Icon {
+                                id: glyph
 
-                                pill: "place"
-                                color: place.usage && place.usage.fraction > 0.9 ? Appearance.colour.alarm : hover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+                                anchors.left: parent.left
+                                anchors.leftMargin: Appearance.padding.normal
+                                anchors.verticalCenter: place.usage ? undefined : parent.verticalCenter
+                                anchors.top: place.usage ? parent.top : undefined
+                                anchors.topMargin: place.usage ? Appearance.padding.hair : 0
+
+                                name: place.modelData.icon
+                                size: Files.zoomed(Appearance.font.iconSize)
+                                color: place.here ? Appearance.colour.text : Appearance.colour.textDim
                             }
-                        }
 
-                        HoverTip {
-                            id: hover
+                            StyledText {
+                                anchors.left: glyph.right
+                                anchors.leftMargin: Appearance.padding.small
+                                anchors.right: detail.left
+                                anchors.rightMargin: Appearance.padding.small
+                                anchors.verticalCenter: glyph.verticalCenter
 
-                            text: place.usage ? `${Files.humanSize(place.usage.used)} of ${Files.humanSize(place.usage.size)} used  ·  ${Math.round(place.usage.fraction * 100)}%` : place.modelData.path
-                        }
+                                text: place.modelData.name
+                                font.pixelSize: Files.zoomed(Appearance.font.size.small)
+                                elide: Text.ElideRight
+                                color: place.here ? Appearance.colour.text : Appearance.colour.textDim
+                            }
 
-                        TapHandler {
-                            onTapped: Files.go(place.modelData.path)
+                            StyledText {
+                                id: detail
+
+                                anchors.right: parent.right
+                                anchors.rightMargin: Appearance.padding.normal
+                                anchors.verticalCenter: glyph.verticalCenter
+
+                                text: place.modelData.detail ?? ""
+                                font.pixelSize: Files.zoomed(Appearance.font.size.small)
+                                color: Appearance.colour.textFaint
+                            }
+
+                            Item {
+                                visible: !!place.usage
+
+                                anchors.left: glyph.left
+                                anchors.right: parent.right
+                                anchors.rightMargin: Appearance.padding.normal
+                                anchors.bottom: parent.bottom
+                                anchors.bottomMargin: Appearance.padding.small
+
+                                implicitHeight: Appearance.font.stem * 2
+
+                                SquircleRect {
+                                    anchors.fill: parent
+
+                                    pill: "place"
+                                    color: Appearance.colour.fill
+                                }
+
+                                SquircleRect {
+                                    width: Math.max(parent.height, parent.width * (place.usage ? place.usage.fraction : 0))
+                                    height: parent.height
+
+                                    pill: "place"
+                                    color: place.usage && place.usage.fraction > 0.9 ? Appearance.colour.alarm : hover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+                                }
+                            }
+
+                            HoverTip {
+                                id: hover
+
+                                text: place.usage ? `${Files.humanSize(place.usage.used)} of ${Files.humanSize(place.usage.size)} used  ·  ${Math.round(place.usage.fraction * 100)}%` : place.modelData.path
+                            }
+
+                            TapHandler {
+                                onTapped: {
+                                    root.touched();
+                                    Files.go(place.modelData.path);
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+
+    SquircleRect {
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Appearance.padding.small
+
+        implicitWidth: cue.size + Appearance.padding.small * 2
+        implicitHeight: cue.size + Appearance.padding.hair * 2
+
+        visible: root.more
+        pill: "object"
+        color: Appearance.colour.fillStrong
+
+        Icon {
+            id: cue
+
+            anchors.centerIn: parent
+
+            name: "expand_more"
+            size: Files.zoomed(Appearance.font.iconSize)
+            color: Appearance.colour.textDim
         }
     }
 
