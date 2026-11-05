@@ -1,6 +1,52 @@
 {
   "entries": [
     {
+      "id": "2026-11-05-q26",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files: the terminal keeps Ctrl+B, Alt+arrows and Ctrl+,"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Folder names in icon view wrap instead of cutting off"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Properties shows a folder's item count and real size"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ctrl+2 lets the arrow and page keys scroll the preview"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The Files sidebar scrolls when its rows do not fit"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Clicking a file ends path or search typing"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Going up or back selects the folder you came from"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Page keys move a screen; Home and End jump to the ends"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q15",
       "date": "2026-11-05",
       "changes": [

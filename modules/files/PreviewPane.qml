@@ -20,6 +20,19 @@ Item {
 
     property var stat: null
 
+    signal touched
+
+    readonly property real pageHeight: stage.height
+
+    function scrollBy(pixels: real): void {
+        if (folderList.visible)
+            folderList.scrollBy(pixels);
+        else if (scroller.visible)
+            scroller.scrollBy(pixels);
+        else if (code.visible)
+            code.scrollBy(pixels);
+    }
+
     readonly property bool isMarkdown: root.language === "markdown"
     readonly property bool rendered: root.isMarkdown && Files.markdownRendered
     readonly property bool isFolder: root.entry && root.entry.kind === "dir"
@@ -388,6 +401,8 @@ Item {
     }
 
     Item {
+        id: stage
+
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: header.bottom
@@ -539,7 +554,13 @@ Item {
             contentHeight: document.implicitHeight
             boundsBehavior: Flickable.StopAtBounds
 
+            function scrollBy(pixels: real): void {
+                wheel.scrollTo(wheel.goal + pixels);
+            }
+
             WheelStep {
+                id: wheel
+
                 flick: scroller
             }
 
@@ -563,6 +584,8 @@ Item {
         }
 
         CodeBlock {
+            id: code
+
             anchors.fill: parent
             visible: root.isText && !root.rendered
 
@@ -609,6 +632,14 @@ Item {
                 color: Appearance.colour.textFaint
             }
         }
+    }
+
+    FocusMark {
+        shown: Files.focus === "preview"
+    }
+
+    TapHandler {
+        onTapped: root.touched()
     }
 
     FileView {
