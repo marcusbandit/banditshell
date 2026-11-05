@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Search = lib("modules/launcher/search.js", ["timerAsk", "reminderAsk", "volumeAsk", "zoneAsk", "zoneMatches", "readOffsets", "killAsk", "killForce", "readProcesses", "spanText"]);
+const Search = lib("modules/launcher/search.js", ["timerAsk", "reminderAsk", "volumeAsk", "zoneAsk", "zoneMatches", "readOffsets", "killAsk", "killForce", "printedRows", "readProcesses", "spanText"]);
 
 const cityOf = id => id.slice(id.lastIndexOf("/") + 1).replace(/_/g, " ");
 
@@ -98,6 +98,17 @@ test.describe("killAsk and readProcesses", () => {
         assert.strictEqual(Search.killForce(" Force   Quit"), true);
         assert.strictEqual(Search.killForce("kill steam"), false);
         assert.strictEqual(Search.killForce("force quitter"), false);
+    });
+
+    test.it("lists every kept line of a command's output and says how many followed", () => {
+        const lines = Array.from({ length: 40 }, (_, i) => `line ${i}`);
+        const rows = Search.printedRows({ lines, more: 18, text: "all of it" });
+        assert.strictEqual(rows.length, 41);
+        assert.strictEqual(rows[39].label, "line 39");
+        assert.strictEqual(rows[40].label, "18 more lines");
+        assert.strictEqual(rows[40].copy, "all of it");
+        assert.strictEqual(Search.printedRows({ lines: ["a"], more: 1, text: "a\nb" })[1].label, "1 more line");
+        assert.strictEqual(Search.printedRows({ lines: ["a", "b"], more: 0, text: "a\nb" }).length, 2);
     });
 
     test.it("parses ps lines and skips names", () => {

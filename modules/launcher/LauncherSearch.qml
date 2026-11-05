@@ -265,7 +265,7 @@ QtObject {
             devices: 4,
             processes: 8,
             shell: 12,
-            output: 12,
+            output: 41,
             suggestions: 6,
             sound: 5,
             files: 6,
@@ -1145,9 +1145,14 @@ QtObject {
         stdout: StdioCollector {
             id: cliSaid
 
-            onStreamFinished: root.cliOutput = {
-                line: root.cliRunner.line,
-                lines: cliSaid.text.split("\n").map(l => l.replace(/\x1b\[[0-9;]*m/g, "")).filter(l => l.trim()).slice(0, 40)
+            onStreamFinished: {
+                const all = cliSaid.text.split("\n").map(l => l.replace(/\x1b\[[0-9;]*m/g, "")).filter(l => l.trim());
+                root.cliOutput = {
+                    line: root.cliRunner.line,
+                    lines: all.slice(0, 40),
+                    more: Math.max(0, all.length - 40),
+                    text: all.join("\n")
+                };
             }
         }
     }
@@ -1187,14 +1192,7 @@ QtObject {
         }));
     }
 
-    readonly property var outputRows: !root.cliOutput || root.cliOutput.line !== (root.cliLine ?? "").trim() ? [] : root.cliOutput.lines.map((text, i) => ({
-                key: `printed:${i}:${text}`,
-                kind: "printed",
-                label: text,
-                detail: "",
-                icon: "subdirectory_arrow_right",
-                score: 1
-            }))
+    readonly property var outputRows: root.cliOutput && root.cliOutput.line === (root.cliLine ?? "").trim() ? Search.printedRows(root.cliOutput) : []
 
     readonly property var cities: ["Tokyo", "New York", "London", "Los Angeles", "Paris", "Berlin", "Sydney", "Singapore", "Dubai", "Toronto"]
 
@@ -1771,7 +1769,7 @@ QtObject {
             root.runCli(row.line);
             return;
         case "printed":
-            root.leave(() => System.copyText(row.label));
+            root.leave(() => System.copyText(row.copy ?? row.label));
             return;
         }
     }
@@ -2000,7 +1998,7 @@ QtObject {
             return [
                 {
                     icon: "content_copy",
-                    label: "Copy",
+                    label: row.copy ? "Copy all output" : "Copy",
                     run: () => root.activate(row)
                 }
             ];

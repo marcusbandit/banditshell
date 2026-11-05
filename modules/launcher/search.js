@@ -1118,6 +1118,28 @@ function killAsk(text) {
     return m && !portAsk(text) ? (m[1] || "").trim().toLowerCase() : null;
 }
 
+function printedRows(said) {
+    const rows = (said.lines || []).map((text, i) => ({
+                key: `printed:${i}:${text}`,
+                kind: "printed",
+                label: text,
+                detail: "",
+                icon: "subdirectory_arrow_right",
+                score: 1
+            }));
+    if (said.more > 0)
+        rows.push({
+            key: "printed:more",
+            kind: "printed",
+            label: said.more === 1 ? "1 more line" : `${said.more} more lines`,
+            detail: "Enter copies all the output",
+            copy: said.text,
+            icon: "more_horiz",
+            score: 1
+        });
+    return rows;
+}
+
 function killForce(text) {
     return /^force\s+quit(?:\s|$)/i.test(String(text || "").trim());
 }
