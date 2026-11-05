@@ -14,6 +14,7 @@ import "files-find.js" as Find
 import "files-listing.js" as Listing
 import "files-trash.js" as Trash
 import "files-commands.js" as FilesCommands
+import "files-clipboard.js" as ClipboardFiles
 
 Singleton {
     id: root
@@ -1087,9 +1088,29 @@ Singleton {
             return;
         root.clipboard = paths;
         root.clipboardCut = cut;
+        const offer = ClipboardFiles.copyCommand(paths, cut);
+        root.spawn(offer.argv, offer.input);
     }
 
     function paste(): void {
+        if (root.inTrash)
+            return;
+        FilesUndo.start(ClipboardFiles.typesCommand(), types => {
+            const type = ClipboardFiles.pick(types ?? "");
+            if (type === "")
+                return root.pasteHeld();
+            FilesUndo.start(ClipboardFiles.readCommand(type), text => {
+                const found = ClipboardFiles.parse(type, text ?? "");
+                if (found.paths.length === 0 || ClipboardFiles.same(found.paths, root.clipboard) && found.cut === root.clipboardCut)
+                    return root.pasteHeld();
+                if (found.cut)
+                    FilesFind.forget(found.paths);
+                FilesPaste.start(found.paths, root.cwd, found.cut);
+            });
+        });
+    }
+
+    function pasteHeld(): void {
         if (root.clipboard.length === 0 || root.inTrash)
             return;
         if (root.clipboardCut) {
