@@ -1281,7 +1281,7 @@ Singleton {
     function act(action: string): bool {
         if (action.startsWith("focus:")) {
             const to = action.slice(6);
-            if (to !== "terminal" || root.terminalOpen)
+            if (to === "terminal" ? root.terminalOpen : to !== "preview" || root.previewOpen)
                 root.focus = to;
             return true;
         }
