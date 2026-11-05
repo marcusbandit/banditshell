@@ -122,6 +122,14 @@ function urlOf(text) {
     return "";
 }
 
+function linkScore(text, fileNames) {
+    const t = String(text || "").trim().toLowerCase();
+    const bare = /^[a-z0-9\-]+(\.[a-z0-9\-]+)+$/.test(t) && !/^www\./.test(t);
+    if (!bare)
+        return Infinity;
+    return (fileNames || []).some(n => String(n || "").toLowerCase() === t) ? -0.5 : Infinity;
+}
+
 function encodedQuery(text) {
     try {
         return encodeURIComponent(text);

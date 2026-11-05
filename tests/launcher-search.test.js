@@ -11,7 +11,7 @@ function lib(file, names) {
 }
 
 const Calculation = lib("services/calculation.js", ["looksLikeCalculation", "qalcExpression", "readQalc"]);
-const Search = lib("modules/launcher/search.js", ["pathQuery", "shortPath", "pathRows", "fileRows", "urlOf", "webSearchUrl", "arrange", "nextPickable", "matchesNothing", "armsFirst", "sharedStarts"]);
+const Search = lib("modules/launcher/search.js", ["pathQuery", "shortPath", "pathRows", "fileRows", "urlOf", "linkScore", "webSearchUrl", "arrange", "nextPickable", "matchesNothing", "armsFirst", "sharedStarts"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 test.describe("looksLikeCalculation", () => {
@@ -128,6 +128,20 @@ test.describe("urlOf", () => {
     test.it("does not mistake file names and sentences for links", () => {
         for (const t of ["notes.txt", "shell.qml", "5.5", "hello world", "firefox", ""])
             assert.strictEqual(Search.urlOf(t), "", t);
+    });
+
+    test.it("ranks a bare name below a file of that exact name", () => {
+        for (const t of ["build.sh", "deploy.sh", "report.pl", "logo.ai", "Makefile.in", "notes.it"])
+            assert.ok(Search.linkScore(t, [t]) < 0, t);
+        assert.strictEqual(Search.linkScore("Build.SH", ["build.sh"]) < 0, true);
+    });
+
+    test.it("keeps a link first when no file has that name or the link is explicit", () => {
+        assert.strictEqual(Search.linkScore("build.sh", ["other.sh"]), Infinity);
+        assert.strictEqual(Search.linkScore("build.sh", []), Infinity);
+        assert.strictEqual(Search.linkScore("www.example.sh", ["www.example.sh"]), Infinity);
+        assert.strictEqual(Search.linkScore("https://example.sh", ["https://example.sh"]), Infinity);
+        assert.strictEqual(Search.linkScore("example.sh/a", ["example.sh/a"]), Infinity);
     });
 
     test.it("fills the search template", () => {

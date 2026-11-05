@@ -505,7 +505,7 @@ QtObject {
             detail: root.volumeText,
             hidden: !Audio.ready,
             stay: true,
-            run: () => Audio.setVolume(Math.min(Audio.maxVolume, Audio.volume + 0.1))
+            run: () => Audio.setVolume(Audio.quantise(Audio.volume + Config.values.volume.step))
         },
         {
             id: "volumedown",
@@ -516,7 +516,7 @@ QtObject {
             detail: root.volumeText,
             hidden: !Audio.ready,
             stay: true,
-            run: () => Audio.setVolume(Math.max(0, Audio.volume - 0.1))
+            run: () => Audio.setVolume(Audio.quantise(Audio.volume - Config.values.volume.step))
         },
         {
             id: "mute",
@@ -1555,7 +1555,7 @@ QtObject {
                         label: `Open ${root.text}`,
                         detail: "",
                         icon: "link",
-                        score: Infinity
+                        score: Search.linkScore(root.text, root.fileRows.map(f => f.label))
                     }
                 ]
             });
