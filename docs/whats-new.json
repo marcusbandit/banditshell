@@ -57,6 +57,57 @@
       ]
     },
     {
+      "id": "2026-11-05-q15",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Hovering a tray icon names the app"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Tray icons past the cap sit behind a +N you can open"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Tap or swipe the rail on a touchscreen to open it"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The mode icon in the open sidebar opens modes and shows a tip"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The rail keeps an update mark through checking and after a rollback"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Wi-Fi off with Ethernet up no longer shows Airplane mode"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Paint window borders off gives your own border colours back"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "VPN and Keep awake show in the full sidebar"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Press and hold opens a menu after half a second, not eight tenths"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q25",
       "date": "2026-11-05",
       "changes": [

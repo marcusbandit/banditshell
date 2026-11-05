@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const load = (file, names) => new Function(fs.readFileSync(path.join(ROOT, file), "utf8").replace(/^\.pragma .*$/m, "") + `\nreturn { ${names.join(", ")} };`)();
-const Anomalies = load("modules/sidebar/anomalies.js", ["list", "split", "slotsIn", "tip", "droppedTitle", "merge", "without", "airplaneOn"]);
+const Anomalies = load("modules/sidebar/anomalies.js", ["list", "split", "slotsIn", "tip", "droppedTitle", "merge", "without", "airplaneOn", "modeEntry"]);
 const Catalogue = load("modules/settings/catalogue.js", ["PAGE_BY_ID", "resolve"]);
 const Scrolling = load("modules/sidebar/scrolling.js", ["scrolled"]);
 
@@ -110,7 +110,7 @@ test("airplane means every radio the machine has is off", () => {
 
 test("updates show by state, stuck ones as warnings, and never when the button is off", () => {
     assert.deepStrictEqual(keys({ update: "idle" }), []);
-    assert.strictEqual(Anomalies.list(Object.assign({}, calm, { update: "downloaded" }))[0].icon, "download_done");
+    assert.strictEqual(Anomalies.list(Object.assign({}, calm, { update: "updated" }))[0].icon, "download_done");
     assert.strictEqual(Anomalies.list(Object.assign({}, calm, { update: "downloading" }))[0].icon, "cloud_download");
     assert.strictEqual(Anomalies.list(Object.assign({}, calm, { update: "available" }))[0].icon, "system_update_alt");
     const stuck = Anomalies.list(Object.assign({}, calm, { update: "available", diverged: true }))[0];
@@ -119,11 +119,34 @@ test("updates show by state, stuck ones as warnings, and never when the button i
     assert.deepStrictEqual(keys({ update: "failed", updateMode: "never" }), []);
 });
 
+test("the rail keeps a mark through every step of an update and after a rollback", () => {
+    const mark = update => Anomalies.list(Object.assign({}, calm, { update }))[0];
+    for (const update of ["downloading", "verifying", "restarting"])
+        assert.strictEqual(mark(update).icon, "cloud_download");
+    assert.deepStrictEqual([mark("updated").icon, mark("updated").title], ["download_done", "Update ready"]);
+    assert.deepStrictEqual([mark("rolledback").icon, mark("rolledback").tone], ["sync_problem", "warning"]);
+    assert.strictEqual(mark("rolledback").opens.menu, "update");
+});
+
+test("a wired link that works keeps Wi-Fi being off from reading as airplane mode", () => {
+    assert.ok(!Anomalies.airplaneOn(Object.assign({}, calm, { wifiOn: false, bluetoothOn: false, wiredConnected: true })));
+    assert.deepStrictEqual(keys({ wifiOn: false, wiredConnected: true, bluetoothAvailable: false }), []);
+});
+
+test("the mode mark names the mode, and a quiet mark with no mode opens the do not disturb row", () => {
+    const named = Anomalies.modeEntry({ modeIcon: "sports_esports", modeName: "Gaming" });
+    assert.strictEqual(Anomalies.tip(named), "Gaming mode, click for modes");
+    assert.strictEqual(Anomalies.modeEntry({ modeIcon: "target" }).title, "Mode on");
+    const quiet = Anomalies.modeEntry({ quiet: true });
+    assert.deepStrictEqual(quiet.opens, { settings: "modes", row: "dnd" });
+    assert.strictEqual(Anomalies.modeEntry({}), null);
+});
+
 test("only a live microphone or a screen recording sounds the alarm, and no mark wears the accent", () => {
     const every = [
         { batteryPercent: 5, batteryLow: true }, { batteryPercent: 5, batteryLow: true, charging: true }, { micStreams: true }, { micStreams: true, micMuted: true },
         { recording: true }, { vpn: true }, { awake: true }, { wifiOn: false, bluetoothOn: false }, { modeIcon: "target" }, { quiet: true },
-        { update: "available" }, { update: "downloading" }, { update: "downloaded" }, { update: "failed" }, { update: "available", diverged: true },
+        { update: "available" }, { update: "downloading" }, { update: "updated" }, { update: "failed" }, { update: "available", diverged: true },
         { layout: "US", layoutAway: true }, { layout: "DK" }
     ].map(state => Anomalies.list(Object.assign({}, calm, state))[0]);
     assert.deepStrictEqual(every.filter(e => e.tone === "alarm").map(e => e.key), ["mic", "recording"]);

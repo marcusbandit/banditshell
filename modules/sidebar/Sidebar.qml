@@ -4,7 +4,9 @@ import qs.config
 import qs.components
 import qs.services as Services
 
+import qs.modules.controls
 import qs.modules.menu.content
+import "anomalies.js" as Anomalies
 import "placement.js" as Placement
 
 Item {
@@ -19,11 +21,18 @@ Item {
 
     property string modeIcon: ""
 
+    property string modeName: ""
+
     property bool awake: false
 
     property real glanceReach: 0
 
-    readonly property string slotIcon: root.modeIcon || (Services.Notifications.quieted ? "do_not_disturb_on" : "")
+    readonly property var slotEntry: Anomalies.modeEntry({
+        modeIcon: root.modeIcon,
+        modeName: root.modeName,
+        quiet: Services.Notifications.quieted
+    })
+    readonly property string slotIcon: root.slotEntry?.icon ?? ""
 
     property real fullWidth: width
     property real expansion: 1
@@ -36,9 +45,14 @@ Item {
     readonly property real timeCentre: clock.timeShown ? foot.y + clock.y + clock.timeItem.y + clock.timeItem.height / 2 : -1
 
     property bool dwelt: false
+    property bool touched: false
+    readonly property bool touchOpen: root.rail && root.touched
     property bool pressedAtRest: false
     readonly property bool holding: root.menusShown && root.menuKeys.indexOf(root.openKey) >= 0
-    readonly property bool railWanted: root.rail && (root.dwelt || root.holding)
+    readonly property bool railWanted: root.rail && (root.dwelt || root.holding || root.touched)
+
+    onRailChanged: if (!root.rail)
+        root.touched = false
 
     clip: root.rail && root.expansion < 1
 
@@ -213,6 +227,19 @@ Item {
                     fill: 1
                     color: Appearance.colour.accent
                 }
+
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: mode.visible
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.markPressed(root.slotEntry.opens)
+
+                    HoverTip {
+                        text: mode.visible ? Anomalies.tip(root.slotEntry) : ""
+                        host: mode
+                    }
+                }
             }
 
             StatusIcons {
@@ -223,7 +250,9 @@ Item {
 
                 onRequested: key => root.requested(key)
                 onReleased: root.released()
+                onMarkPressed: opens => root.markPressed(opens)
                 menusShown: root.menusShown
+                awake: root.awake
             }
         }
     }
@@ -284,6 +313,7 @@ Item {
                 anchors.bottomMargin: glance.footInUse ? parent.height - glance.topEdge + Appearance.padding.large : root.endMargin(root.status)
 
                 modeIcon: root.modeIcon
+                modeName: root.modeName
                 awake: root.awake
                 room: rest.place.room
                 batteryWanted: ["top", "off"].includes(Config.values.sidebar.glance)
@@ -304,7 +334,24 @@ Item {
         onHoveredChanged: {
             if (!pointer.hovered)
                 root.pressedAtRest = false;
+            else
+                root.touched = false;
         }
+    }
+
+    TapHandler {
+        acceptedDevices: PointerDevice.TouchScreen | PointerDevice.Stylus
+        enabled: root.rail && !root.touched
+        onTapped: root.touched = true
+    }
+
+    DragHandler {
+        acceptedDevices: PointerDevice.TouchScreen | PointerDevice.Stylus
+        enabled: root.rail && !root.touched
+        target: null
+        yAxis.enabled: false
+        onTranslationChanged: if (active && translation.x > 0)
+            root.touched = true
     }
 
     Timer {

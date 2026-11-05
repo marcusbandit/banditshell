@@ -8,10 +8,16 @@ var DETAILS = "click for details";
 function updateEntry(state) {
     if (state.updateMode === "never")
         return null;
-    if (state.update === "downloaded")
+    if (state.update === "updated")
         return { key: "update", icon: "download_done", tone: "notice", title: "Update ready", hint: DETAILS, rank: 8, opens: UPDATE };
     if (state.update === "downloading")
         return { key: "update", icon: "cloud_download", tone: "notice", title: "Update downloading", hint: DETAILS, rank: 8, opens: UPDATE };
+    if (state.update === "verifying")
+        return { key: "update", icon: "cloud_download", tone: "notice", title: "Update checking", hint: DETAILS, rank: 8, opens: UPDATE };
+    if (state.update === "restarting")
+        return { key: "update", icon: "cloud_download", tone: "notice", title: "Update restarting", hint: DETAILS, rank: 8, opens: UPDATE };
+    if (state.update === "rolledback")
+        return { key: "update", icon: "sync_problem", tone: "warning", title: "Update rolled back", hint: DETAILS, rank: 4, opens: UPDATE };
     if (state.update === "failed" || (state.update === "available" && state.diverged))
         return { key: "update", icon: "sync_problem", tone: "warning", title: "Update stuck", hint: DETAILS, rank: 4, opens: UPDATE };
     if (state.update === "available")
@@ -43,7 +49,23 @@ function micEntry(state) {
 }
 
 function airplaneOn(state) {
-    return !!state.wifiAvailable && !state.wifiOn && (!state.bluetoothAvailable || !state.bluetoothOn);
+    return !!state.wifiAvailable && !state.wifiOn && (!state.bluetoothAvailable || !state.bluetoothOn) && !state.wiredConnected;
+}
+
+function vpnEntry(state) {
+    return state.vpn ? { key: "vpn", icon: "vpn_lock", tone: "notice", title: "VPN on", hint: "click for settings", rank: 5, opens: { settings: "vpn" } } : null;
+}
+
+function awakeEntry(state) {
+    return state.awake ? { key: "awake", icon: "coffee", tone: "notice", title: "Keeping awake", hint: "click to stop", rank: 7, opens: { stops: "awake" } } : null;
+}
+
+function modeEntry(state) {
+    if (state.modeIcon)
+        return { key: "mode", icon: state.modeIcon, tone: "notice", title: state.modeName ? state.modeName + " mode" : "Mode on", hint: "click for modes", rank: 3, opens: { settings: "modes" } };
+    if (state.quiet)
+        return { key: "quiet", icon: "do_not_disturb_on", tone: "notice", title: "Do not disturb", hint: "click for settings", rank: 3, opens: { settings: "modes", row: "dnd" } };
+    return null;
 }
 
 function found(state) {
@@ -52,11 +74,10 @@ function found(state) {
         batteryEntry(s),
         micEntry(s),
         s.recording ? { key: "recording", icon: "desktop_windows", dot: true, tone: "alarm", title: "Recording the screen", hint: "click to stop", rank: 1, opens: { stops: "recording" } } : null,
-        s.vpn ? { key: "vpn", icon: "vpn_lock", tone: "notice", title: "VPN on", hint: "click for settings", rank: 5, opens: { settings: "vpn" } } : null,
-        s.awake ? { key: "awake", icon: "coffee", tone: "notice", title: "Keeping awake", hint: "click to stop", rank: 7, opens: { stops: "awake" } } : null,
+        vpnEntry(s),
+        awakeEntry(s),
         airplaneOn(s) ? { key: "airplane", icon: "flight", tone: "notice", title: "Airplane mode", hint: "click for network", rank: 6, opens: { menu: "network" } } : null,
-        s.modeIcon ? { key: "mode", icon: s.modeIcon, tone: "notice", title: "Mode on", hint: "click for modes", rank: 3, opens: { settings: "modes" } } : null,
-        s.quiet && !s.modeIcon ? { key: "quiet", icon: "do_not_disturb_on", tone: "notice", title: "Do not disturb", hint: "click for settings", rank: 3, opens: { settings: "modes", row: "dnd" } } : null,
+        modeEntry(s),
         s.layout ? { key: "layout", text: s.layout, tone: s.layoutAway ? "notice" : "dim", title: (s.layoutName || s.layout) + " keyboard", hint: "click to switch", rank: s.layoutAway ? 4 : 9, spare: !s.layoutAway, opens: { cycles: "layout" } } : null,
         updateEntry(s)
     ].filter(function (e) {
