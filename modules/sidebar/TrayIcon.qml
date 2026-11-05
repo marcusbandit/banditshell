@@ -62,6 +62,8 @@ Item {
 
         onPressed: root.longPressed = false
 
+        pressAndHoldInterval: Appearance.animation.longPress
+
         onPressAndHold: {
             root.longPressed = true;
             root.requested(true);

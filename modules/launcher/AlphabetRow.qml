@@ -129,6 +129,8 @@ Item {
         onReleased: root.settleSwipe()
         onCanceled: root.settleSwipe()
 
+        pressAndHoldInterval: Appearance.animation.longPress
+
         onPressAndHold: mouse => {
             if (root.swiping)
                 return;

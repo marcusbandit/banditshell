@@ -353,6 +353,7 @@ Singleton {
         readonly property int grace: root.config.anim.grace
         readonly property int dwell: root.config.anim.dwell
         readonly property int tooltip: root.config.anim.tooltip
+        readonly property int longPress: root.config.anim.longPress ?? 480
 
         readonly property int settle: root.config.anim.settle
     }
