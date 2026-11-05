@@ -453,6 +453,8 @@ Item {
 
                 property bool naming: false
 
+                pressAndHoldInterval: Appearance.animation.longPress
+
                 onPressAndHold: {
                     barMouse.naming = true;
                     Tooltips.request(bar, bar.name, true);

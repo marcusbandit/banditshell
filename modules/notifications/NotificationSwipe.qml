@@ -227,6 +227,8 @@ Item {
             press.advance(mouse.x - press.anchorX, mouse.y - press.anchorY);
         }
 
+        pressAndHoldInterval: Appearance.animation.longPress
+
         onPressAndHold: {
             if (press.throwing || press.scrolling)
                 return;

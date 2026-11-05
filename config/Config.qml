@@ -100,6 +100,8 @@ Singleton {
 
                 tooltip: 450,
 
+                longPress: 480,
+
                 settle: 250
             },
 

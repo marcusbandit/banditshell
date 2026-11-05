@@ -2051,6 +2051,7 @@ Singleton {
     readonly property int changeCount: root.changes.length
 
     readonly property string modeIcon: Modes.icon
+    readonly property string modeName: Catalogue.MODES.find(m => m.id === Modes.current)?.name ?? ""
 
     readonly property string quietNote: Notifications.note
     readonly property string quietEndsNote: Notifications.endsNote
