@@ -333,6 +333,24 @@ Item {
     readonly property bool typing: !root.expanded && root.searching && query.text.length > 0
 
     function commonKey(event: var): bool {
+        if (event.modifiers & Qt.ControlModifier) {
+            switch (event.key) {
+            case Qt.Key_C:
+                if (query.selectedText)
+                    return false;
+                root.copyOnly();
+                return true;
+            case Qt.Key_P:
+                root.pin(root.current);
+                return true;
+            case Qt.Key_J:
+            case Qt.Key_K:
+                if (!root.expanded)
+                    root.move(event.key === Qt.Key_J ? 1 : -1);
+                return true;
+            }
+        }
+
         const pitch = list.count > 0 ? list.contentHeight / list.count : list.pitch;
         const page = Math.max(1, Math.floor(list.height / Math.max(1, pitch)) - 1);
 
@@ -427,12 +445,6 @@ Item {
                 return;
             }
 
-            if (event.key === Qt.Key_C && (event.modifiers & Qt.ControlModifier)) {
-                root.copyOnly();
-                event.accepted = true;
-                return;
-            }
-
             if (root.commonKey(event)) {
                 event.accepted = true;
                 return;
@@ -454,23 +466,11 @@ Item {
                 if (!root.expanded)
                     root.startSearch();
                 break;
-            case Qt.Key_J:
-            case Qt.Key_K:
-                if (!(event.modifiers & Qt.ControlModifier))
-                    return root.typeIn(event);
-                if (!root.expanded)
-                    root.move(event.key === Qt.Key_J ? 1 : -1);
-                break;
             case Qt.Key_Home:
                 root.moveTo(0);
                 break;
             case Qt.Key_End:
                 root.moveTo(root.results.length - 1);
-                break;
-            case Qt.Key_P:
-                if (!(event.modifiers & Qt.ControlModifier))
-                    return root.typeIn(event);
-                root.pin(root.current);
                 break;
             case Qt.Key_Delete:
                 root.discard(root.current);

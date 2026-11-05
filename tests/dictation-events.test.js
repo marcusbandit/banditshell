@@ -60,7 +60,7 @@ test.describe("the key that starts dictation", () => {
     });
 
     test.it("skips the binds that stop or cancel", () => {
-        assert.strictEqual(Events.startKey([bind("SUPER + ESCAPE", "voice cancel"), bind("SUPER + R", "voice start")]), "Super + R");
+        assert.strictEqual(Events.startKey([bind("SUPER + ESCAPE", "voice cancel"), bind("SUPER + Z", "voice retype"), bind("SUPER + R", "voice start")]), "Super + R");
     });
 
     test.it("says nothing when no bind runs voice", () => {

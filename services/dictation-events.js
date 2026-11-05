@@ -30,7 +30,7 @@ function outcome(typed) {
 
 function startKey(binds) {
     var found = (binds || []).find(function (b) {
-        return b && b.chord && /(^|[\s/;&|])voice(\s|$)/.test(b.cmd || "") && !/\bvoice\s+(cancel|stop|down)\b/.test(b.cmd || "");
+        return b && b.chord && /(^|[\s/;&|])voice(\s|$)/.test(b.cmd || "") && !/\bvoice\s+(cancel|stop|down|retype)\b/.test(b.cmd || "");
     });
     if (!found)
         return "";

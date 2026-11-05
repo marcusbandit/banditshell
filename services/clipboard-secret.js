@@ -59,7 +59,7 @@ function copyCommand(entry, sensitiveCopy) {
 }
 
 function lapsed(entry, now) {
-    return !entry.pinned && sensitive(entry) && now - entry.recorded >= LIFETIME;
+    return !entry.pinned && now - entry.recorded >= LIFETIME && sensitive(entry);
 }
 
 function expire(entries, now) {
