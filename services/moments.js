@@ -1,6 +1,7 @@
 const SCREENSHOT_MS = 6000;
 const BLUETOOTH_MS = 3000;
-const COPIED_MS = 900;
+const COPIED_MS = 1800;
+const TRASHED_MS = 8000;
 const COPIED_PREVIEW = 20;
 const MOMENT_KINDS = ["screenshot", "privacy", "copied", "bluetooth", "wifi"];
 const SCREENSHOT_ACTIONS = ["copy", "edit", "folder", "delete"];
@@ -51,6 +52,28 @@ function screenshotSpec(path) {
     };
 }
 
+function trashedSpec(path) {
+    const file = String(path || "").trim();
+    if (file === "")
+        return null;
+    return {
+        id: "moment:trashed",
+        style: "undo",
+        text: "Screenshot deleted",
+        icon: "delete",
+        until: TRASHED_MS,
+        priority: 40,
+        pressable: true,
+        source: "moments",
+        data: { entry: null, path: file },
+        actions: [{ name: "undo", label: "Undo" }]
+    };
+}
+
+function undoWanted(action) {
+    return action === "undo" || action === "";
+}
+
 function screenshotAction(name) {
     return SCREENSHOT_ACTIONS.includes(name) ? name : "open";
 }
@@ -67,9 +90,11 @@ function squash(text) {
 }
 
 function preview(text, max) {
-    const flat = squash(text);
+    const letters = Array.from(squash(text));
     const limit = max > 0 ? max : COPIED_PREVIEW;
-    return flat.length > limit ? flat.slice(0, limit).replace(/\s+$/, "") + "\u2026" : flat;
+    if (letters.length <= limit)
+        return letters.join("");
+    return letters.slice(0, limit).join("").replace(/[\s\u200d\ufe0f]+$/, "") + "\u2026";
 }
 
 function copyShape(command, secret) {

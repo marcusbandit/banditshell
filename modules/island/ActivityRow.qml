@@ -262,7 +262,7 @@ Item {
                     required property var modelData
                     required property int index
 
-                    readonly property bool primary: pill.index === root.actions.length - 1
+                    readonly property bool primary: !root.look.plainActions && pill.index === root.actions.length - 1
 
                     width: em.advanceWidth * pill.modelData.label.length + root.gap * 2
                     height: root.slot

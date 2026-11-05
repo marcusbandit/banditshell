@@ -142,7 +142,8 @@ QtObject {
                     trailing: ended ? "icon" : "actions",
                     trailingIcon: "check_circle",
                     trailingTone: Appearance.colour.accent,
-                    actions: a.actions ?? []
+                    actions: a.actions ?? [],
+                    plainActions: true
                 };
             if (a.style === "copied")
                 return {

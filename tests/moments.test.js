@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/moments.js"), "utf8");
-const M = new Function(src + "\nreturn { SCREENSHOT_MS, BLUETOOTH_MS, COPIED_MS, momentWanted, fileUrl, screenshotSpec, screenshotAction, editorCommand, preview, copyShape, copiedLabel, copiedSpec, audioDevice, batteryPercent, bluetoothSpec, wifiSpec, undoSpec, hushDone, newlyConnected };")();
+const M = new Function(src + "\nreturn { TRASHED_MS, trashedSpec, undoWanted, SCREENSHOT_MS, BLUETOOTH_MS, COPIED_MS, momentWanted, fileUrl, screenshotSpec, screenshotAction, editorCommand, preview, copyShape, copiedLabel, copiedSpec, audioDevice, batteryPercent, bluetoothSpec, wifiSpec, undoSpec, hushDone, newlyConnected };")();
 const act = fs.readFileSync(path.join(ROOT, "services/activities.js"), "utf8");
 const A = new Function(act + "\nreturn { push, itemOf, sweep };")();
 
@@ -103,8 +103,45 @@ test.describe("copied", () => {
     test.it("is a short lived activity", () => {
         const out = A.push([], M.copiedSpec(["wl-copy", "-n"], "hello"), 0);
         assert.ok(!out.error, out.error);
-        assert.strictEqual(M.COPIED_MS <= 1000, true);
+        assert.strictEqual(M.COPIED_MS >= 1500 && M.COPIED_MS <= 2000, true);
         assert.strictEqual(A.sweep(out.list, M.COPIED_MS + 1).length, 0);
+    });
+});
+
+test.describe("copied preview", () => {
+    test.it("never cuts an emoji in half", () => {
+        const text = "a".repeat(19) + "\u{1F600} and more";
+        const shown = M.preview(text, 20);
+        assert.strictEqual(shown, "a".repeat(19) + "\u{1F600}\u2026");
+        assert.ok(!/[\ud800-\udbff](?![\udc00-\udfff])/.test(shown));
+    });
+
+    test.it("does not end on a joiner or variation selector", () => {
+        assert.strictEqual(M.preview("abc\u200d\ufe0fdefgh", 5), "abc\u2026");
+    });
+
+    test.it("keeps short text whole", () => {
+        assert.strictEqual(M.preview("  hello   world ", 20), "hello world");
+    });
+});
+
+test.describe("deleted screenshot", () => {
+    test.it("offers an undo row that lasts 5 to 10 seconds", () => {
+        const spec = M.trashedSpec("/home/a/shot.png");
+        assert.strictEqual(spec.style, "undo");
+        assert.deepStrictEqual(spec.actions.map(a => a.name), ["undo"]);
+        assert.strictEqual(M.TRASHED_MS >= 5000 && M.TRASHED_MS <= 10000, true);
+        assert.ok(!A.push([], spec, 0).error);
+    });
+
+    test.it("has no row for an empty path", () => {
+        assert.strictEqual(M.trashedSpec(""), null);
+    });
+
+    test.it("undoes from the button or from the words", () => {
+        assert.strictEqual(M.undoWanted("undo"), true);
+        assert.strictEqual(M.undoWanted(""), true);
+        assert.strictEqual(M.undoWanted("retry"), false);
     });
 });
 

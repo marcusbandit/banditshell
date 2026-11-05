@@ -44,13 +44,33 @@ Singleton {
             Files.reveal(path);
             break;
         case "delete":
-            Files.trash([path]);
-            Activities.remove(entry.id);
+            root.trash(entry);
             return;
         default:
             Quickshell.execDetached(["xdg-open", path]);
         }
         Activities.end(entry.id, "done", 500, "");
+    }
+
+    function trash(entry: var): void {
+        const before = FilesUndo.stack[FilesUndo.stack.length - 1] ?? null;
+        Files.trash([entry.data.path]);
+        const mark = FilesUndo.stack[FilesUndo.stack.length - 1] ?? null;
+        Activities.remove(entry.id);
+        const spec = mark !== before ? Logic.trashedSpec(entry.data.path) : null;
+        if (spec)
+            Activities.push(Object.assign(spec, {
+                act: (undoing, action) => {
+                    if (Logic.undoWanted(action))
+                        root.untrash(undoing, mark);
+                }
+            }));
+    }
+
+    function untrash(entry: var, mark: var): void {
+        if (FilesUndo.stack[FilesUndo.stack.length - 1] === mark)
+            FilesUndo.undo();
+        Activities.remove(entry.id);
     }
 
     function copied(command: var, input: string, secret: bool): void {
@@ -94,7 +114,7 @@ Singleton {
         }
         Activities.push(Object.assign(spec, {
             act: (entry, action) => {
-                if (action === "undo")
+                if (Logic.undoWanted(action))
                     Notifications.undo();
             }
         }));
