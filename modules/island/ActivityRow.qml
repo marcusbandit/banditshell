@@ -57,12 +57,16 @@ Item {
     readonly property var actions: root.look.trailing === "actions" ? (root.look.actions ?? []) : []
     readonly property real pillGap: Appearance.padding.small
     readonly property string actionsTag: root.actions.length > 0 ? (root.look.trailingText ?? "") : ""
-    readonly property real actionsWidth: {
+    function actionsSpan(pad: real): real {
         let total = root.actionsTag ? em.advanceWidth * root.actionsTag.length + root.pillGap : 0;
         for (const a of root.actions)
-            total += em.advanceWidth * a.label.length + root.gap * 2 + root.pillGap;
+            total += em.advanceWidth * a.label.length + pad * 2 + root.pillGap;
         return Math.max(0, total - root.pillGap);
     }
+    readonly property real labelNeed: Math.min(Math.ceil(fit.implicitWidth), em.advanceWidth * 10)
+    readonly property bool tight: root.actions.length > 0 && root.width > 0 && root.width - (root.textX + root.gap + root.actionsSpan(root.gap) + root.inset) < root.labelNeed
+    readonly property real pillPad: root.tight ? root.pillGap : root.gap
+    readonly property real actionsWidth: root.actionsSpan(root.pillPad)
     readonly property real tailWidth: root.look.trailingSample ? Math.max(root.slot, sample.advanceWidth) : Math.max(root.slot, tail.implicitWidth)
     readonly property real trailingWidth: root.look.trailing === "text" ? root.tailWidth : root.look.trailing === "actions" ? root.actionsWidth : root.look.trailing ? root.slot : 0
     readonly property real tailRoom: root.trailingWidth > 0 ? root.gap + root.trailingWidth + root.inset : root.gap
@@ -148,7 +152,7 @@ Item {
         text: root.spoken
         color: root.look.dim ? Appearance.colour.textDim : Appearance.colour.text
         clip: true
-        elide: root.spoken === fit.text && fit.implicitWidth <= root.textWidth ? Text.ElideNone : root.kind === "download" ? Text.ElideMiddle : Text.ElideRight
+        elide: root.spoken === fit.text && fit.implicitWidth <= root.textWidth && fit.implicitWidth <= root.middle ? Text.ElideNone : root.kind === "download" ? Text.ElideMiddle : Text.ElideRight
     }
 
     Item {
@@ -264,7 +268,7 @@ Item {
 
                     readonly property bool primary: !root.look.plainActions && pill.index === root.actions.length - 1
 
-                    width: em.advanceWidth * pill.modelData.label.length + root.gap * 2
+                    width: em.advanceWidth * pill.modelData.label.length + root.pillPad * 2
                     height: root.slot
 
                     Follow {
