@@ -9,8 +9,25 @@ Item {
     id: root
 
     property string held: ""
+    property bool cancelled: false
 
     onHeldChanged: settle.elapsed = false
+
+    function hold(key: string): void {
+        if (!root.cancelled)
+            root.held = key;
+    }
+
+    function cancel(): void {
+        if (root.held !== "")
+            root.cancelled = true;
+        root.held = "";
+    }
+
+    function release(): void {
+        root.cancelled = false;
+        root.held = "";
+    }
 
     readonly property var shown: {
         if (root.held === "")

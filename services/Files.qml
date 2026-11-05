@@ -231,6 +231,8 @@ Singleton {
     function refresh(): void {
         if (!root.cwd)
             return;
+        if (root.windowOpen && !usageSoon.running)
+            usageSoon.start();
         root.generation += 1;
         root.listing = true;
         root.listingTrash = root.cwd === root.trashFiles;
@@ -482,6 +484,41 @@ Singleton {
         mounter.running = false;
         mounter.command = ["lsblk", "-J", "-o", "NAME,LABEL,MOUNTPOINTS,SIZE,RM,TYPE,FSTYPE"];
         mounter.running = true;
+    }
+
+    Process {
+        id: mountWatch
+
+        running: root.windowOpen
+        command: ["findmnt", "--poll", "--noheadings", "--output", "ACTION"]
+
+        stdout: SplitParser {
+            onRead: mountSoon.restart()
+        }
+    }
+
+    Timer {
+        id: mountSoon
+
+        interval: 400
+
+        onTriggered: root.refreshPlaces()
+    }
+
+    function refreshUsage(): void {
+        if (root.drives.length === 0)
+            return;
+        usage.running = false;
+        usage.command = ["df", "-P", "-B1", ...root.drives.map(d => d.path)];
+        usage.running = true;
+    }
+
+    Timer {
+        id: usageSoon
+
+        interval: 1200
+
+        onTriggered: root.refreshUsage()
     }
 
     Process {
@@ -1162,6 +1199,32 @@ Singleton {
 
     function openWith(path: string): void {
         System.openWith(path);
+    }
+
+    signal openersFound(string path, string kind, var apps)
+
+    function offerOpeners(path: string): void {
+        asker.running = false;
+        asker.path = path;
+        asker.command = FilesCommands.openersCommand(path);
+        asker.running = true;
+    }
+
+    function openIn(id: string, path: string): void {
+        Quickshell.execDetached(FilesCommands.launchCommand(id, path));
+    }
+
+    Process {
+        id: asker
+
+        property string path: ""
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const found = FilesCommands.openers(text);
+                root.openersFound(asker.path, found.kind, found.apps);
+            }
+        }
     }
 
     Connections {
