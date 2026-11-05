@@ -23,7 +23,7 @@ QtObject {
 
     readonly property var items: {
         if (root.asked)
-            return Logic.matching(root.listing, root.asked.words, Ranking.place, 12).map((entry, i) => root.row(entry, i === 0 ? Infinity : 100));
+            return Logic.matching(root.listing, root.asked.words, Ranking.place, 12).map((entry, i) => root.row(entry, i === 0 ? Infinity : 100, true));
         if (root.wanted)
             return Logic.ambient(root.listing, root.search.text, Ranking.place, 3).map(hit => root.row(hit.row, hit.score));
         return [];
@@ -59,7 +59,7 @@ QtObject {
         }
     ]
 
-    function row(entry: var, score: real): var {
+    function row(entry: var, score: real, listed: bool): var {
         const arming = root.search.armed === `action:${entry.id}`;
         return {
             key: `action:${entry.id}`,
@@ -67,7 +67,7 @@ QtObject {
             action: entry,
             armed: arming,
             label: arming ? `Press Enter again to ${entry.label.charAt(0).toLowerCase()}${entry.label.slice(1)}` : entry.label,
-            detail: arming ? "" : entry.id,
+            detail: arming || !listed ? "" : entry.id,
             icon: "bolt",
             ask: entry.args?.required ? {
                 prompt: entry.args.prompt,
@@ -83,7 +83,7 @@ QtObject {
         if (!root.enabled || id.indexOf("action:") !== 0)
             return null;
         const entry = ShellActions.rows.find(e => `action:${e.id}` === id);
-        return entry && !entry.args?.required && !entry.destructive ? root.row(entry, 0) : null;
+        return entry && !entry.args?.required && !entry.destructive ? root.row(entry, 0, true) : null;
     }
 
     function run(entry: var, text: string): void {

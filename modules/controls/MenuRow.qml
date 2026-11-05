@@ -77,7 +77,7 @@ Item {
         onClicked: mouse => mouse.button === Qt.RightButton ? root.asked(mouse.x, mouse.y) : root.activated()
     }
 
-    readonly property bool cut: title.truncated || detail.truncated || detail.trimmed
+    readonly property bool cut: title.truncated || detail.truncated || detail.trimmed || !!root.detail && !detail.visible && !root.columns.length
 
     readonly property string hoverText: {
         if (!root.cut)
@@ -157,7 +157,7 @@ Item {
             anchors.left: parent.left
             anchors.top: parent.top
 
-            width: root.columns.length ? Math.min(parent.width, fields.x - stack.x - Appearance.padding.large) : root.inlineDetail ? parent.width - detail.width - Appearance.padding.large : parent.width
+            width: root.columns.length ? Math.min(parent.width, fields.x - stack.x - Appearance.padding.large) : root.inlineDetail ? parent.width - (detail.visible ? detail.width + Appearance.padding.large : 0) : parent.width
 
             text: root.label
             font.pixelSize: root.labelSize
@@ -173,13 +173,14 @@ Item {
             anchors.top: root.inlineDetail ? undefined : title.bottom
             anchors.verticalCenter: root.inlineDetail ? parent.verticalCenter : undefined
 
-            readonly property real room: root.inlineDetail ? Math.max(parent.width * 0.3, parent.width - title.implicitWidth - Appearance.padding.large) : parent.width
+            readonly property real spare: parent.width - title.implicitWidth - Appearance.padding.large
+            readonly property real room: root.inlineDetail ? (detail.spare >= Appearance.font.size.small * 5 ? detail.spare : 0) : parent.width
             readonly property bool trimmed: root.detailShared > 0 && !root.columns.length && whole.advanceWidth > detail.room
 
             width: root.inlineDetail ? Math.min(implicitWidth, detail.room) : parent.width
             horizontalAlignment: root.inlineDetail ? Text.AlignRight : Text.AlignLeft
 
-            visible: !!root.detail && !root.columns.length
+            visible: !!root.detail && !root.columns.length && detail.room > 0
             text: detail.trimmed ? `…${root.detail.slice(root.detailShared)}` : root.detail
             font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textFaint
