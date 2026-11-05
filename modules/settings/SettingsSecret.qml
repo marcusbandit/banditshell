@@ -102,6 +102,11 @@ Row {
 
             onTextEdited: root.edited(input.text)
             onAccepted: root.accepted(input.text)
+
+            Keys.onEscapePressed: event => {
+                input.focus = false;
+                event.accepted = true;
+            }
             onActiveFocusChanged: activeFocus ? Prompts.request(root) : Prompts.release(root)
         }
 
