@@ -106,9 +106,12 @@ def main():
 
     bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
     loop = GLib.MainLoop()
-    outcome = {"code": 1, "saved": ""}
+    outcome = {"code": 1, "saved": "", "done": False}
 
     def finish(event, code):
+        if outcome["done"]:
+            return
+        outcome["done"] = True
         outcome["code"] = code
         say(event)
         loop.quit()
@@ -164,9 +167,13 @@ def main():
     except GLib.Error:
         pass
 
+    if outcome["done"]:
+        return outcome["code"]
+
     def expire():
-        discard()
-        finish({"event": "failed", "why": reason_text(6)}, 1)
+        if not outcome["done"]:
+            discard()
+            finish({"event": "failed", "why": reason_text(6)}, 1)
         return False
 
     GLib.timeout_add_seconds(TIMEOUT_SECONDS, expire)

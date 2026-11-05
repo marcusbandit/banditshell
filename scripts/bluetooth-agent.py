@@ -128,6 +128,23 @@ class Agent:
         except GLib.Error:
             return ""
 
+    def paired(self, path):
+        try:
+            result = self.bus.call_sync(
+                "org.bluez",
+                path,
+                "org.freedesktop.DBus.Properties",
+                "Get",
+                GLib.Variant("(ss)", ("org.bluez.Device1", "Paired")),
+                GLib.VariantType("(v)"),
+                Gio.DBusCallFlags.NONE,
+                2000,
+                None,
+            )
+            return bool(result.unpack()[0])
+        except GLib.Error:
+            return False
+
     def drop_all(self, error):
         for invocation, _method in self.pending.values():
             invocation.return_dbus_error(error, "")
@@ -146,7 +163,10 @@ class Agent:
             invocation.return_value(None)
             return
         if method == "AuthorizeService":
-            invocation.return_dbus_error(REJECTED, "")
+            if self.paired(values[0]):
+                invocation.return_value(None)
+            else:
+                invocation.return_dbus_error(REJECTED, "")
             return
         event = event_for(method, values, self.alias(values[0]) if values else "")
         if not event:

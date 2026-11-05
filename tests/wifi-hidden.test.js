@@ -117,6 +117,8 @@ def on_nm(conn, sender, path, iface, method, params, invocation):
     seen["psk"] = settings.get("802-11-wireless-security", {}).get("psk")
     seen["device"] = device
     invocation.return_value(GLib.Variant("(oo)", ("/org/freedesktop/NetworkManager/Settings/9", "/org/freedesktop/NetworkManager/ActiveConnection/4")))
+    if OUTCOME == "instant":
+        return
     state, reason = (2, 1) if OUTCOME == "joined" else (4, 9)
     def fire():
         conn.emit_signal(None, "/org/freedesktop/NetworkManager/ActiveConnection/4", "org.freedesktop.NetworkManager.Connection.Active", "StateChanged", GLib.Variant("(uu)", (state, reason)))
@@ -128,7 +130,7 @@ def on_saved(conn, sender, path, iface, method, params, invocation):
     invocation.return_value(None)
 
 def on_active(conn, sender, path, iface, method, params, invocation):
-    invocation.return_value(GLib.Variant("(v)", (GLib.Variant("u", 1),)))
+    invocation.return_value(GLib.Variant("(v)", (GLib.Variant("u", 2 if OUTCOME == "instant" else 1),)))
 
 def acquired(conn, name):
     conn.register_object("/org/freedesktop/NetworkManager", Gio.DBusNodeInfo.new_for_xml(XML).interfaces[0], on_nm, None, None)
@@ -167,6 +169,15 @@ test.describe("hidden network join on a private bus", { skip: (!hasGi && "python
         assert.deepStrictEqual(seen.out, [{ event: "joined" }]);
         assert.strictEqual(seen.exit, 0);
         assert.deepStrictEqual(seen.calls, []);
+    });
+
+    test("a join that is already up when first looked at ends at once and keeps the profile", () => {
+        const started = Date.now();
+        const seen = fakeManager("instant");
+        assert.deepStrictEqual(seen.out, [{ event: "joined" }]);
+        assert.strictEqual(seen.exit, 0);
+        assert.deepStrictEqual(seen.calls, []);
+        assert.ok(Date.now() - started < 15000);
     });
 
     test("a refused password says so and takes the profile back out", () => {

@@ -17,7 +17,10 @@ Column {
     property string trouble: ""
     property bool capsLock: false
 
+    property string sentName: ""
+
     signal submitted(string name, string security, string password)
+    signal finished
     signal cancelled
     signal capsAsked
 
@@ -26,7 +29,15 @@ Column {
     function submit(typed: string): void {
         if (root.busy || !name.text.trim())
             return;
-        root.submitted(name.text.trim(), root.kinds[root.kind], root.needsPassword ? typed || secret.value : "");
+        root.sentName = name.text.trim();
+        root.submitted(root.sentName, root.kinds[root.kind], root.needsPassword ? typed || secret.value : "");
+    }
+
+    function settled(joined: string, ok: bool): void {
+        if (ok && root.sentName && joined === root.sentName) {
+            root.sentName = "";
+            root.finished();
+        }
     }
 
     function claim(): void {

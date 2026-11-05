@@ -69,6 +69,14 @@ Item {
             onCancelled: Bluetooth.answer(false, "")
         }
 
+        Connections {
+            target: Bluetooth
+
+            function onAskChanged(): void {
+                entry.claim();
+            }
+        }
+
         Row {
             visible: !!root.ask
             spacing: Appearance.padding.small

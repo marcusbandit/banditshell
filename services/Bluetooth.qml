@@ -117,9 +117,11 @@ Singleton {
 
     function attempt(address: string, kind: string): void {
         const next = Object.assign({}, root.attempts);
-        next[address] = kind;
+        next[address] = {
+            kind: kind,
+            at: Date.now()
+        };
         root.attempts = next;
-        attemptExpiry.restart();
     }
 
     function settle(address: string): void {
@@ -131,12 +133,12 @@ Singleton {
     }
 
     function fail(address: string): void {
-        const kind = root.attempts[address];
-        if (!kind)
+        const tried = root.attempts[address];
+        if (!tried)
             return;
         root.settle(address);
         const next = Object.assign({}, root.failures);
-        next[address] = Pairing.failureLabel(kind);
+        next[address] = Pairing.failureLabel(tried.kind);
         root.failures = next;
         failureExpiry.restart();
     }
@@ -152,15 +154,17 @@ Singleton {
     Timer {
         id: attemptExpiry
 
-        interval: 25000
+        interval: 2000
+        repeat: true
+        running: Object.keys(root.attempts).length > 0
         onTriggered: {
-            const open = Object.keys(root.attempts).filter(address => {
+            const now = Date.now();
+            for (const address of Object.keys(root.attempts)) {
                 const device = root.deviceAt(address);
-                return device && (device.pairing || device.state === Bluez.BluetoothDeviceState.Connecting);
-            });
-            Object.keys(root.attempts).filter(address => !open.includes(address)).forEach(address => root.fail(address));
-            if (open.length)
-                attemptExpiry.restart();
+                const live = device && (device.pairing || device.state === Bluez.BluetoothDeviceState.Connecting);
+                if (!live && now - root.attempts[address].at > 25000)
+                    root.fail(address);
+            }
         }
     }
 
@@ -189,7 +193,7 @@ Singleton {
                         return;
                     if (device.connected)
                         root.settle(device.address);
-                    else if (device.state === Bluez.BluetoothDeviceState.Disconnected && root.attempts[device.address] === "connect")
+                    else if (device.state === Bluez.BluetoothDeviceState.Disconnected && root.attempts[device.address]?.kind === "connect")
                         root.fail(device.address);
                 }
 
@@ -197,6 +201,7 @@ Singleton {
                     const device = watch.modelData;
                     if (!device || device.pairing)
                         return;
+                    root.dropPrompts(device.address);
                     if (device.paired || device.bonded)
                         root.settle(device.address);
                     else
@@ -237,6 +242,13 @@ Singleton {
 
     readonly property var question: Pairing.describe(root.ask)
     readonly property var displayed: Pairing.describeShown(root.code)
+
+    function dropPrompts(address: string): void {
+        if (root.ask?.address === address)
+            root.ask = null;
+        if (root.code?.address === address)
+            root.code = null;
+    }
 
     function answer(accept: bool, text: string): bool {
         const reply = Pairing.answerFor(root.ask, accept, text);

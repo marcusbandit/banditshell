@@ -86,8 +86,19 @@ MANAGER_XML = """
 </interface></node>
 """
 
+PROPS_XML = """
+<node><interface name="org.freedesktop.DBus.Properties"><method name="Get"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="v" direction="out"/></method></interface></node>
+"""
+STRANGER = "/org/bluez/hci0/dev_11_22_33_44_55_66"
+
 calls = queue.Queue()
 registered = {}
+
+def on_device(conn, sender, path, iface, method, params, invocation):
+    prop = params.unpack()[1]
+    paired = path == DEVICE
+    value = GLib.Variant("b", paired) if prop == "Paired" else GLib.Variant("s", "Keys" if paired else "Stranger")
+    invocation.return_value(GLib.Variant("(v)", (value,)))
 
 def on_manager(conn, sender, path, iface, method, params, invocation):
     calls.put((method, params.unpack(), sender))
@@ -99,6 +110,8 @@ def on_manager(conn, sender, path, iface, method, params, invocation):
 
 def acquired(conn, name):
     conn.register_object("/org/bluez", Gio.DBusNodeInfo.new_for_xml(MANAGER_XML).interfaces[0], on_manager, None, None)
+    for device in (DEVICE, STRANGER):
+        conn.register_object(device, Gio.DBusNodeInfo.new_for_xml(PROPS_XML).interfaces[0], on_device, None, None)
     threading.Thread(target=scenario, args=(conn,), daemon=True).start()
 
 loop = GLib.MainLoop()
@@ -144,6 +157,7 @@ def scenario(conn):
         t.start()
         event = next_event("ask")
         results["confirm"] = [event["kind"], event["code"], event["address"]]
+        results["confirmName"] = event["name"]
         answer({"id": event["id"], "accept": True})
         t.join()
         results["confirmReply"] = out
@@ -176,7 +190,10 @@ def scenario(conn):
 
         out = {}
         ask(conn, "AuthorizeService", (DEVICE, "0000110b-0000-1000-8000-00805f9b34fb"), "(os)", None, out)
-        results["serviceReply"] = out
+        results["pairedService"] = out
+        out = {}
+        ask(conn, "AuthorizeService", (STRANGER, "0000110b-0000-1000-8000-00805f9b34fb"), "(os)", None, out)
+        results["strangerService"] = out
 
         out = {}
         ask(conn, "DisplayPasskey", (DEVICE, 4321, 2), "(ouq)", None, out)
@@ -207,11 +224,13 @@ test.describe("agent on a private bus", { skip: (!hasGi && "python3 gi is missin
         assert.strictEqual(seen.failure, undefined);
         assert.strictEqual(seen.capability, "KeyboardDisplay");
         assert.deepStrictEqual(seen.confirm, ["confirm", "123456", "AA:BB:CC:DD:EE:FF"]);
+        assert.strictEqual(seen.confirmName, "Keys");
         assert.deepStrictEqual(seen.confirmReply, { value: [] });
         assert.deepStrictEqual(seen.passkeyReply, { value: [4321] });
         assert.strictEqual(seen.refusedReply.error, "org.bluez.Error.Rejected");
         assert.strictEqual(seen.canceledReply.error, "org.bluez.Error.Canceled");
-        assert.strictEqual(seen.serviceReply.error, "org.bluez.Error.Rejected");
+        assert.deepStrictEqual(seen.pairedService, { value: [] });
+        assert.strictEqual(seen.strangerService.error, "org.bluez.Error.Rejected");
         assert.deepStrictEqual(seen.shown, ["004321", 2]);
         assert.strictEqual(seen.exit, 0);
         assert.deepStrictEqual(seen.manager, ["RegisterAgent", "RequestDefaultAgent", "UnregisterAgent"]);

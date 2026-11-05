@@ -47,6 +47,8 @@ Column {
     }
 
     HiddenNetworkForm {
+        id: hiddenFields
+
         width: parent.width
         visible: root.hidden
         busy: Network.hiddenBusy
@@ -56,16 +58,17 @@ Column {
         onCapsAsked: Keymap.refresh()
         onSubmitted: (name, security, password) => Network.joinHidden(name, security, password)
         onCancelled: SettingsView.unpin()
+        onFinished: {
+            SettingsView.unpin();
+            SettingsView.drop("joined the hidden network", "wifi");
+        }
     }
 
     Connections {
         target: Network
 
-        function onHiddenDone(): void {
-            if (!root.hidden || Network.hiddenTrouble)
-                return;
-            SettingsView.unpin();
-            SettingsView.drop("joined the hidden network", "wifi");
+        function onHiddenDone(name: string, ok: bool): void {
+            hiddenFields.settled(name, ok);
         }
     }
 

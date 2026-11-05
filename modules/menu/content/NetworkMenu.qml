@@ -761,6 +761,8 @@ Column {
                 visible: hiddenForm.active
 
                 sourceComponent: HiddenNetworkForm {
+                    id: hiddenFields
+
                     busy: Network.hiddenBusy
                     joining: Network.hiddenName
                     trouble: Network.hiddenTrouble
@@ -768,13 +770,13 @@ Column {
                     onCapsAsked: Keymap.refresh()
                     onSubmitted: (name, security, password) => Network.joinHidden(name, security, password)
                     onCancelled: root.opened = ""
+                    onFinished: root.opened = ""
 
                     Connections {
                         target: Network
 
-                        function onHiddenDone(): void {
-                            if (!Network.hiddenTrouble)
-                                root.opened = "";
+                        function onHiddenDone(name: string, ok: bool): void {
+                            hiddenFields.settled(name, ok);
                         }
                     }
                 }

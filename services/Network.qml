@@ -86,9 +86,12 @@ Singleton {
     property string ipAddress: ""
 
     function readAddress(): void {
-        addressReader.running = false;
         if (!root.connected || !root.deviceName) {
             root.ipAddress = "";
+            return;
+        }
+        if (addressReader.running) {
+            addressReader.again = true;
             return;
         }
         addressReader.command = ["ip", "-j", "addr", "show", "dev", root.deviceName];
@@ -130,11 +133,22 @@ Singleton {
     Process {
         id: addressReader
 
+        property bool again: false
+
         stdout: StdioCollector {
             onStreamFinished: {
+                if (!root.connected)
+                    return;
                 const found = WifiList.parseAddresses(text);
                 root.ipAddress = found.v4 || found.v6;
             }
+        }
+
+        onExited: {
+            if (!addressReader.again)
+                return;
+            addressReader.again = false;
+            root.readAddress();
         }
     }
 
@@ -799,12 +813,12 @@ Singleton {
 
     readonly property bool hiddenBusy: !!root.hiddenName
 
-    function joinHidden(ssid: string, security: string, password: string): void {
+    function joinHidden(ssid: string, security: string, password: string): string {
         if (root.hiddenName)
-            return;
+            return `still joining ${root.hiddenName}`;
         if (!root.deviceName) {
             root.hiddenTrouble = "there is no wireless adapter to put it on";
-            return;
+            return root.hiddenTrouble;
         }
         root.hiddenTrouble = "";
         root.hiddenName = ssid;
@@ -816,6 +830,7 @@ Singleton {
             password: password
         }) + "\n";
         hiddenJoin.running = true;
+        return "";
     }
 
     Process {
@@ -847,12 +862,13 @@ Singleton {
             if (root.hiddenTrouble)
                 hiddenExpiry.restart();
             hiddenJoin.stdinEnabled = true;
+            const name = root.hiddenName;
             root.hiddenName = "";
-            root.hiddenDone();
+            root.hiddenDone(name, !root.hiddenTrouble);
         }
     }
 
-    signal hiddenDone
+    signal hiddenDone(string name, bool ok)
 
     Timer {
         id: hiddenExpiry
@@ -871,8 +887,7 @@ Singleton {
             const security = WifiList.qrSecurity(card.security);
             if (!security)
                 return `${card.ssid} uses security a card cannot carry here`;
-            root.joinHidden(card.ssid, security, card.password);
-            return root.hiddenTrouble;
+            return root.joinHidden(card.ssid, security, card.password);
         }
         if (!n)
             return `${card.ssid} is not in range`;
