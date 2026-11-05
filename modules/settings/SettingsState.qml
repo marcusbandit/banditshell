@@ -488,14 +488,17 @@ Singleton {
     }
 
     function resetPage(pageId: string): var {
-        const keys = Catalogue.pageChanges(pageId, root);
-        const was = keys.map(k => ({
-                    k,
-                    value: root.v(k)
-                }));
+        const was = [];
         root.muteLog = true;
-        for (const k of keys)
+        for (const k of Catalogue.pageChanges(pageId, root)) {
+            const before = root.v(k);
             root.set(k, root.defaultOf(k));
+            if (JSON.stringify(root.v(k)) !== JSON.stringify(before))
+                was.push({
+                    k,
+                    value: before
+                });
+        }
         root.muteLog = false;
         return was;
     }

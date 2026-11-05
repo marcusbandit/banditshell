@@ -1139,10 +1139,10 @@ function pageChanges(pageId, s) {
     const seen = {};
     const out = [];
     for (const r of ROWS) {
-        if (r.page !== pageId || !r.k || seen[r.k])
+        if (r.page !== pageId || !r.k || seen[r.k] || !present(r, s) || !present(r.group, s))
             continue;
         seen[r.k] = true;
-        if (present(r, s) && present(r.group, s) && s.offersReset(r.k))
+        if (s.offersReset(r.k))
             out.push(r.k);
     }
     return out;

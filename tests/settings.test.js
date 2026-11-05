@@ -739,14 +739,12 @@ test("a reset arrow is never offered for a password, a button, a read-only path 
 });
 
 test("a page offers to reset exactly the rows whose value differs from the default", () => {
-    const page = Catalogue.PAGE_BY_ID.terminal;
     const keys = Catalogue.ROWS.filter(r => r.page === "terminal" && r.k).map(r => r.k);
     assert.ok(keys.length > 2);
     const state = (changedKeys) => ({ offersReset: k => changedKeys.includes(k), away: () => false });
     assert.deepStrictEqual(Catalogue.pageChanges("terminal", state([])), []);
     assert.deepStrictEqual(Catalogue.pageChanges("terminal", state([keys[0], keys[2]])), [keys[0], keys[2]]);
     assert.deepStrictEqual(Catalogue.pageChanges("terminal", state(["nowhere"])), []);
-    assert.ok(page);
 });
 
 test("a page reset skips rows on a hidden group", () => {
