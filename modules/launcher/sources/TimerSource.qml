@@ -40,7 +40,7 @@ QtObject {
                 },
                 {
                     text: ends,
-                    chars: Math.max(11, ends.length),
+                    chars: TimeFormat.clock24 ? 11 : 13,
                     tone: timer.paused ? "dim" : ""
                 }
             ],

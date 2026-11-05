@@ -25,7 +25,7 @@ QtObject {
         if (root.asked)
             return Logic.matching(root.listing, root.asked.words, Ranking.place, 12).map((entry, i) => root.row(entry, i === 0 ? Infinity : 100, true));
         if (root.wanted)
-            return Logic.ambient(root.listing, root.search.text, Ranking.place, 3).map(hit => root.row(hit.row, hit.score));
+            return Logic.ambient(root.listing, root.search.text, Ranking.place, 3).map(hit => root.row(hit.row, hit.score, false));
         return [];
     }
 

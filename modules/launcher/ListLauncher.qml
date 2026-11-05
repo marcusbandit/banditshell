@@ -289,7 +289,7 @@ LauncherConcept {
     }
 
     function claimTileKey(event: var): bool {
-        root.tileKeyed = true;
+        root.tileKeyed = root.tileKeyed || [Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down, Qt.Key_Home, Qt.Key_End].includes(event.key);
         const held = event.modifiers & Qt.ControlModifier;
         switch (event.key) {
         case Qt.Key_Left:
@@ -538,7 +538,7 @@ LauncherConcept {
             }
         ];
 
-        const full = !kept && Apps.starredApps.length >= root.pinnedLimit;
+        const full = !kept && Config.values.launcher.list.pinned && Apps.starredApps.length >= root.pinnedLimit;
         acts.push({
             icon: "push_pin",
             fill: kept,
@@ -594,9 +594,12 @@ LauncherConcept {
     function ask(item: Item, entry: var, x: real, y: real): void {
         if (!entry || entry.header)
             return;
+        const acts = root.actionsFor(entry);
+        if (!acts.length)
+            return;
         root.answerHolds = false;
         const at = item.mapToItem(panel, x, y);
-        sheet.popup(at.x, at.y, root.actionsFor(entry));
+        sheet.popup(at.x, at.y, acts);
     }
 
     function chooseRow(index: int): void {
@@ -1562,7 +1565,7 @@ LauncherConcept {
             readonly property real spaceRight: root.width - root.inset - (panel.x + panel.width + peek.gap)
             readonly property real spaceLeft: panel.x - peek.gap - root.inset
             readonly property bool roomRight: peek.spaceRight >= peek.naturalWidth || peek.spaceRight >= peek.spaceLeft
-            readonly property bool fits: peek.limit >= Appearance.sizes.launcherWidth * 0.3 && peek.fullWidth <= peek.limit
+            readonly property bool fits: peek.limit >= Appearance.sizes.launcherWidth * 0.3 && peek.fullWidth <= peek.limit + 1
 
             parent: root
             x: peek.roomRight ? panel.x + panel.width + peek.gap : panel.x - peek.gap - peek.width
