@@ -16,7 +16,7 @@ function lib(file, names) {
 
 const Conflicts = lib("services/files-conflicts.js", [
     "numbered", "items", "loops", "placeable", "loopRefusal", "probeCommand", "probed", "choices", "answer", "next", "waiting",
-    "operations", "command", "results", "leftover", "arrived", "reason", "failure", "notice", "nameRefusal",
+    "operations", "command", "results", "leftover", "arrived", "stoppedLine", "busyTitle", "sizeCommand", "sizeTotal", "reason", "failure", "notice", "nameRefusal",
     "picture", "newer", "larger", "day", "keptName", "clashes", "clashLabel", "folderName"
 ]);
 const Undo = lib("services/files-undo.js", ["moved", "copied", "trashed", "batch", "command", "report", "remember", "pick"]);
@@ -328,6 +328,59 @@ test.describe("files paste conflicts", () => {
         assert.deepStrictEqual(Conflicts.arrived(pairs, "/b"), ["x (2).txt", "y"]);
         assert.deepStrictEqual(Conflicts.arrived([{ from: "/a/q", to: "/q" }], "/"), ["q"]);
         assert.deepStrictEqual(Conflicts.arrived(pairs, "/elsewhere"), []);
+    });
+
+    test.it("stops on a term signal: kills the copy, keeps what was done and names the half-copied and unstarted items", async () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "files-stop-"));
+        try {
+            const bin = path.join(dir, "bin");
+            fs.mkdirSync(bin);
+            fs.symlinkSync(which("sleep"), path.join(bin, "sleep"));
+            fs.writeFileSync(path.join(bin, "cp"), '#!/bin/sh\nprintf half > "$6"\nexec sleep 30\n', { mode: 0o755 });
+            fs.writeFileSync(path.join(dir, "a.txt"), "a");
+            fs.writeFileSync(path.join(dir, "b.txt"), "b");
+            fs.mkdirSync(path.join(dir, "out"));
+            const make = name => ({ mode: "fresh", from: path.join(dir, name), to: path.join(dir, "out", name), target: path.join(dir, "out", name), name, folder: false, dir: path.join(dir, "out"), stem: path.join(dir, "out", name), ext: "" });
+            const ops = [make("a.txt"), make("b.txt")];
+            const argv = Conflicts.command(ops, false);
+            const child = require("node:child_process").spawn("/bin/sh", argv.slice(1), { env: { PATH: bin }, stdio: ["ignore", "pipe", "ignore"] });
+            let out = "";
+            child.stdout.on("data", chunk => out += chunk);
+            const closed = new Promise(resolve => child.on("close", code => resolve(code)));
+            await new Promise(resolve => setTimeout(resolve, 300));
+            child.kill("SIGTERM");
+            assert.strictEqual(await closed, 0);
+            const outcome = Conflicts.results(ops, out);
+            assert.deepStrictEqual(outcome.stopped, [{ name: "a.txt", to: ops[0].to, replaced: false }]);
+            assert.deepStrictEqual(outcome.unstarted, ["b.txt"]);
+            assert.deepStrictEqual(outcome.failed, []);
+            assert.strictEqual(fs.readFileSync(path.join(dir, "out", "a.txt"), "utf8"), "half");
+            assert.strictEqual(Conflicts.stoppedLine(outcome, false, "out"), "Stopped, a.txt is only partly copied in out, b.txt was not started");
+            assert.strictEqual(Conflicts.failure(outcome, false, 2, ""), "");
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    test.it("says the old file is in the trash when a replace was stopped", () => {
+        const outcome = Conflicts.results([{ name: "a.txt", to: "/o/a.txt", dir: "/o", folder: false }, { name: "b.txt", to: "/o/b.txt", dir: "/o", folder: false }, { name: "c.txt", to: "/o/c.txt", dir: "/o", folder: false }], "stopped replaced\n");
+        assert.strictEqual(Conflicts.stoppedLine(outcome, true, ""), "Stopped, a.txt is only partly moved, the old one is in the trash, 2 more were not started");
+        assert.strictEqual(Conflicts.stoppedLine(Conflicts.results([], ""), false, ""), "");
+    });
+
+    test.it("aims the progress poll at the numbered name when both are kept", () => {
+        const list = Conflicts.probed(Conflicts.items(["/a/x.txt"], "/b", false), "t1\nn1 4\n");
+        const ops = Conflicts.operations(list, ["both"]);
+        assert.strictEqual(ops[0].target, "/b/x (4).txt");
+        assert.strictEqual(Conflicts.operations(list, ["replace"])[0].target, "/b/x.txt");
+    });
+
+    test.it("titles a busy paste and adds up the sizes du reports", () => {
+        assert.strictEqual(Conflicts.busyTitle([{ name: "photos" }], false), "Copying photos");
+        assert.strictEqual(Conflicts.busyTitle([{ name: "a" }, { name: "b" }], true), "Moving 2 items");
+        assert.deepStrictEqual(Conflicts.sizeCommand(["/a b", "/c"]), ["du", "-sbc", "--", "/a b", "/c"]);
+        assert.strictEqual(Conflicts.sizeTotal("10\t/a\n20\t/b\n30\ttotal\n"), 30);
+        assert.strictEqual(Conflicts.sizeTotal(""), 0);
     });
 
     test.it("refuses a new name or a rename that holds a slash", () => {

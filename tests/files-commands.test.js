@@ -13,7 +13,7 @@ function source(file) {
 
 const Quoting = new Function(`${source("services/quoting.js")}\nreturn { forShell, posix, visible, hasControl };`)();
 const Commands = new Function("Quoting", `${source("services/files-commands.js").replace(/^\.import .*$/m, "")}
-return { humanSize, join, clearLine, typed, refusal, runPlan, cdLine, cdPlan, folderCommand, fileCommand, moveCommand, trashCommand, removeCommand };`)(Quoting);
+return { humanSize, join, clearLine, typed, refusal, runPlan, cdLine, cdPlan, folderCommand, fileCommand, moveCommand, trashCommand, removeCommand, progressLine };`)(Quoting);
 
 function installed(shell) {
     return child.spawnSync("sh", ["-c", `command -v ${shell}`]).status === 0;
@@ -171,6 +171,17 @@ test.describe("typing into the live shell", () => {
     test.it("types a newline in zsh and bash as one escaped word", () => {
         assert.strictEqual(Commands.runPlan("zsh", true, Commands.fileCommand("/home/ada", "a\nb")).text, "\x1bqtouch -- $'/home/ada/a\\x0ab'\r");
         assert.strictEqual(Commands.runPlan("bash", true, Commands.fileCommand("/home/ada", "a\nb")).text, "\x05\x15touch -- $'/home/ada/a\\x0ab'\r");
+    });
+});
+
+test.describe("paste progress", () => {
+    test.it("shows bytes and a percentage once the total is known", () => {
+        assert.strictEqual(Commands.progressLine("Copying photos", 5 * 1024 * 1024, 20 * 1024 * 1024), "Copying photos, 5.0 MB of 20 MB (25%)");
+    });
+
+    test.it("shows bytes so far while the total is unknown and never reaches 100% before the end", () => {
+        assert.strictEqual(Commands.progressLine("Moving 3 items", 2048, 0), "Moving 3 items, 2.0 kB so far");
+        assert.strictEqual(Commands.progressLine("Copying a", 1000, 1000), "Copying a, 1000 B of 1000 B (99%)");
     });
 });
 

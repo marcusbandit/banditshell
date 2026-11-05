@@ -126,8 +126,8 @@ Singleton {
         root.shown = names;
     }
 
-    function start(command: var, done: var): void {
-        step.createObject(root, {
+    function start(command: var, done: var): var {
+        return step.createObject(root, {
             command: command,
             done: done,
             running: true
