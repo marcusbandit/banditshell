@@ -22,7 +22,9 @@ Item {
     signal moved(int value)
     signal committed(int value)
 
-    readonly property bool keyable: true
+    property bool typing: false
+
+    readonly property bool keyable: !root.typing
     readonly property string adjusts: root.grabbed ? "vertical" : ""
 
     property bool grabbed: false
@@ -48,6 +50,46 @@ Item {
         if (root.value !== root.grabbedFrom)
             root.moved(root.grabbedFrom);
         return true;
+    }
+
+    function edit(first: string): void {
+        if (root.typing)
+            return;
+        if (root.grabbed) {
+            root.grabbed = false;
+            root.release();
+        }
+        root.typing = true;
+        entry.text = first;
+        entry.forceActiveFocus();
+        if (first === "")
+            entry.selectAll();
+        else
+            entry.cursorPosition = entry.text.length;
+    }
+
+    function finish(save: bool): void {
+        if (!root.typing)
+            return;
+        root.typing = false;
+        const n = Clock.typedNumber(entry.text, root.from, root.to);
+        entry.text = "";
+        root.forceActiveFocus();
+        if (save && n >= 0) {
+            root.hold();
+            root.step(n);
+            root.release();
+        }
+    }
+
+    Keys.onPressed: event => {
+        const held = Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier;
+        if (root.typing || (event.modifiers & held) !== 0)
+            return;
+        if (event.key >= Qt.Key_0 && event.key <= Qt.Key_9) {
+            root.edit(event.text);
+            event.accepted = true;
+        }
     }
 
     onActiveFocusChanged: if (!root.activeFocus && root.grabbed) {
@@ -150,9 +192,38 @@ Item {
 
         anchors.centerIn: parent
 
+        visible: !root.typing
         text: Clock.twoDigits(root.shown)
         font.pixelSize: Appearance.font.size.large
         color: root.grabbed ? Appearance.colour.accent : root.zeroIsEmpty && root.shown === 0 ? Appearance.colour.textFaint : Appearance.colour.text
+    }
+
+    TextInput {
+        id: entry
+
+        readonly property bool typable: true
+
+        anchors.fill: parent
+
+        visible: root.typing
+        horizontalAlignment: TextInput.AlignHCenter
+        verticalAlignment: TextInput.AlignVCenter
+        maximumLength: 2
+        inputMethodHints: Qt.ImhDigitsOnly
+        validator: RegularExpressionValidator {
+            regularExpression: /[0-9]{0,2}/
+        }
+
+        font.family: Appearance.font.family
+        font.pixelSize: Appearance.font.size.large
+        renderType: Text.NativeRendering
+        color: Appearance.colour.accent
+        selectionColor: Appearance.colour.accent
+        selectedTextColor: Appearance.colour.accentText
+
+        onEditingFinished: root.finish(true)
+
+        Keys.onEscapePressed: root.finish(false)
     }
 
     MouseArea {
@@ -160,8 +231,10 @@ Item {
 
         property real fromY: 0
         property int startValue: 0
+        property bool dragged: false
 
         anchors.fill: parent
+        enabled: !root.typing
         hoverEnabled: true
         cursorShape: pressed ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
@@ -170,16 +243,24 @@ Item {
         onPressed: mouse => {
             scroll.finish();
             root.hold();
+            pointer.dragged = false;
             pointer.fromY = mouse.y;
             pointer.startValue = root.held;
         }
 
         onPositionChanged: mouse => {
-            if (pointer.pressed)
-                root.ask(pointer.startValue - (mouse.y - pointer.fromY) / root.pitch);
+            if (!pointer.pressed)
+                return;
+            if (Math.abs(mouse.y - pointer.fromY) >= Config.values.control.dragThreshold)
+                pointer.dragged = true;
+            root.ask(pointer.startValue - (mouse.y - pointer.fromY) / root.pitch);
         }
 
-        onReleased: root.release()
+        onReleased: {
+            root.release();
+            if (!pointer.dragged)
+                root.edit("");
+        }
         onCanceled: root.release()
 
         onWheel: wheel => {

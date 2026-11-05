@@ -7,6 +7,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "alarms.js" as Alarms
+import "clock-menu.js" as Menu
 
 Singleton {
     id: root
@@ -21,6 +22,81 @@ Singleton {
 
     readonly property int timerMax: root.settings.timerMax
     readonly property int alarmMax: root.settings.alarmMax
+
+    readonly property bool timersFull: Menu.timersFull(root.timers, root.timerMax)
+    readonly property bool alarmsFull: root.alarms.length >= root.alarmMax
+    readonly property int timersRunning: Menu.runningTimers(root.timers).length
+
+    readonly property var timerPresets: Menu.TIMER_PRESETS
+
+    function presetText(minutes: int): string {
+        return Menu.presetText(minutes);
+    }
+
+    function fullNote(kind: string): string {
+        return Menu.fullNote(kind, kind === "timer" ? root.timerMax : root.alarmMax);
+    }
+
+    function matchZones(query: string, max: int): var {
+        return Menu.matchZones(root.allZones, [root.localZone, ...root.places], query, max);
+    }
+
+    function missingZoneText(query: string): string {
+        return Menu.missingZoneText(query, [root.localZone, ...root.places]);
+    }
+
+    function hour12(hour: int): int {
+        return Menu.hour12(hour);
+    }
+
+    function hour24(hour: int, pm: bool): int {
+        return Menu.hour24(hour, pm);
+    }
+
+    function typedNumber(text: string, from: int, to: int): int {
+        return Menu.typedNumber(text, from, to);
+    }
+
+    property var removed: null
+
+    readonly property int undoMs: 6000
+
+    function remember(kind: string, item: var, index: int, text: string): void {
+        root.removed = {
+            kind,
+            item,
+            index,
+            text
+        };
+        forgetting.restart();
+    }
+
+    function undoRemove(): void {
+        const gone = root.removed;
+        if (!gone)
+            return;
+        forgetting.stop();
+        root.removed = null;
+        if (gone.kind === "alarm") {
+            root.alarms = Menu.reinsert(root.alarms, gone.item, gone.index);
+        } else if (gone.kind === "timer") {
+            root.timers = Menu.reinsert(root.timers, gone.item, gone.index);
+        } else if (gone.kind === "place") {
+            if (root.places.includes(gone.item))
+                return;
+            root.places = Menu.reinsert(root.places, gone.item, gone.index);
+            root.rebuildZones();
+            root.refreshOffsets();
+        }
+        root.save();
+    }
+
+    Timer {
+        id: forgetting
+
+        interval: root.undoMs
+        onTriggered: root.removed = null
+    }
 
     readonly property var cloud: {
         const set = root.settings.cloud;
@@ -72,6 +148,7 @@ Singleton {
     function removeZone(id: string): void {
         if (!root.places.includes(id))
             return;
+        root.remember("place", id, root.places.indexOf(id), `${root.cityOf(id)} removed`);
         root.places = root.places.filter(z => z !== id);
         root.rebuildZones();
         root.save();
@@ -187,8 +264,11 @@ Singleton {
     }
 
     function removeTimer(id: string): void {
-        if (!root.timers.some(t => t.id === id))
+        const at = root.timers.findIndex(t => t.id === id);
+        if (at < 0)
             return;
+        const gone = root.timers[at];
+        root.remember("timer", gone, at, `${gone.label || root.spanLabel(gone.total)} timer removed`);
         root.timers = root.timers.filter(t => t.id !== id);
         root.save();
     }
@@ -283,11 +363,13 @@ Singleton {
     }
 
     function removeAlarm(id: string): void {
-        const alarm = root.alarms.find(a => a.id === id);
-        if (!alarm)
+        const at = root.alarms.findIndex(a => a.id === id);
+        if (at < 0)
             return;
+        const alarm = root.alarms[at];
         if (root.ringing && root.ringing.id === id)
             root.clearRinging();
+        root.remember("alarm", alarm, at, `${TimeFormat.clock(alarm.hour, alarm.minute)}${alarm.label ? ` ${alarm.label}` : ""} alarm removed`);
         root.alarms = root.alarms.filter(a => a.id !== id);
         root.save();
     }
@@ -681,7 +763,7 @@ Singleton {
 
         root.places = (Array.isArray(disk?.zones) ? disk.zones : []).filter(id => root.validZone(id));
 
-        root.alarms = (Array.isArray(disk?.alarms) ? disk.alarms : []).filter(a => a && Number.isFinite(a.hour) && Number.isFinite(a.minute)).slice(0, root.alarmMax).map(a => ({
+        root.alarms = (Array.isArray(disk?.alarms) ? disk.alarms : []).filter(a => a && Number.isFinite(a.hour) && Number.isFinite(a.minute)).map(a => ({
                     id: typeof a.id === "string" && a.id ? a.id : root.newId(),
                     hour: Math.max(0, Math.min(23, Math.round(a.hour))),
                     minute: Math.max(0, Math.min(59, Math.round(a.minute))),
@@ -714,7 +796,7 @@ Singleton {
             if (!t.paused)
                 t.finished = t.deadline <= now;
             return t;
-        }).filter(t => t.paused || !t.finished || now - t.deadline <= catchUpMs).slice(0, root.timerMax);
+        }).filter(t => t.paused || !t.finished || now - t.deadline <= catchUpMs);
 
         root.loaded = true;
         root.rebuildZones();

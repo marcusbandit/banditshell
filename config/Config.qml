@@ -501,7 +501,7 @@ Singleton {
 
                 catchUpMinutes: 60,
 
-                timerMax: 3,
+                timerMax: 8,
                 alarmMax: 8,
 
                 cloud: ["claude", "-p"],
