@@ -304,8 +304,9 @@ Singleton {
     function placeStack(): bool {
         if (!pamStack.path)
             return false;
+        pamStack.written = false;
         pamStack.setText(LockPam.stack);
-        return true;
+        return pamStack.written;
     }
 
     function check(secret: string): void {
@@ -634,10 +635,13 @@ Singleton {
     FileView {
         id: pamStack
 
+        property bool written: false
+
         path: LockPam.file(root.pamRoom)
         blockWrites: true
         printErrors: false
 
+        onSaved: pamStack.written = true
         onSaveFailed: err => console.warn(`Lock: could not write the PAM stack to ${pamStack.path}: ${FileViewError.toString(err)}`)
     }
 
