@@ -142,7 +142,14 @@ QtObject {
                     trailing: ended ? "icon" : "actions",
                     trailingIcon: "check_circle",
                     trailingTone: Appearance.colour.accent,
-                    actions: a.actions ?? [],
+                    actions: (a.actions ?? []).map(x => Object.assign({
+                            icon: ({
+                                    copy: "content_copy",
+                                    edit: "edit",
+                                    folder: "folder_open",
+                                    delete: "delete"
+                                })[x.name] ?? ""
+                        }, x)),
                     plainActions: true
                 };
             if (a.style === "copied")

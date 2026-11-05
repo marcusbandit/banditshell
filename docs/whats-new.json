@@ -1,6 +1,52 @@
 {
   "entries": [
     {
+      "id": "2026-11-05-q06",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Dictating no longer repeats Microphone on for an open mic"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Timed island rows wait while the pointer is on the island"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Delete on a screenshot row is a plain button, with an Undo after"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Screenshot and Undo rows keep their words at the overview width"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Closing a failed Wi-Fi view with X or Esc clears its row"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The Quiet row opens notifications; pressing Undo words undoes"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The camera and screen bubbles name the program on hover"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Copied and volume rows stay about 1.8 seconds"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-2",
       "date": "2026-11-05",
       "changes": [
