@@ -7,7 +7,7 @@ const ROOT = path.resolve(__dirname, "..");
 const load = (file, names) => new Function(fs.readFileSync(path.join(ROOT, file), "utf8").replace(/^\.pragma .*$/m, "") + `\nreturn { ${names.join(", ")} };`)();
 const Anomalies = load("modules/sidebar/anomalies.js", ["list", "split", "slotsIn", "tip", "droppedTitle", "merge", "without", "airplaneOn", "modeEntry"]);
 const Catalogue = load("modules/settings/catalogue.js", ["PAGE_BY_ID", "resolve"]);
-const Scrolling = load("modules/sidebar/scrolling.js", ["scrolled"]);
+const Scrolling = load("modules/sidebar/scrolling.js", ["scrolled", "brightnessStep"]);
 
 const calm = {
     battery: true,
@@ -264,4 +264,11 @@ test("scrolling steps a level by notches, flips for natural scroll and stays in 
     assert.strictEqual(Scrolling.scrolled(0.02, -240, false, 0.05, 1), 0);
     assert.strictEqual(Scrolling.scrolled(1.4, 120, false, 0.05, 1.5), 1.45);
     assert.strictEqual(Scrolling.scrolled(0.5, 30, false, 0.04, 1), 0.51);
+});
+
+test("a level that has a floor never scrolls below it, and the brightness step is its own", () => {
+    assert.strictEqual(Scrolling.scrolled(0.1, -240, false, Scrolling.brightnessStep, 1, 0.05), 0.05);
+    assert.strictEqual(Scrolling.scrolled(0.05, -120, false, Scrolling.brightnessStep, 1, 0.05), 0.05);
+    assert.strictEqual(Scrolling.scrolled(0.05, 120, false, Scrolling.brightnessStep, 1, 0.05), 0.1);
+    assert.strictEqual(Scrolling.brightnessStep, 0.05);
 });
