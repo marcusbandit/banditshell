@@ -133,6 +133,8 @@ Singleton {
             warmTo: "screen.warmTo",
             clock24: "region.clock24",
             dateFormat: "region.dateFormat",
+            firstDay: "region.firstDay",
+            weekNumbers: "region.weekNumbers",
             reduceMotion: "access.lessMotion",
             largerText: "access.largerText",
             contrast: "access.moreContrast",
@@ -2051,6 +2053,7 @@ Singleton {
     readonly property int changeCount: root.changes.length
 
     readonly property string modeIcon: Modes.icon
+    readonly property string modeName: Catalogue.MODES.find(m => m.id === Modes.current)?.name ?? ""
 
     readonly property string quietNote: Notifications.note
     readonly property string quietEndsNote: Notifications.endsNote

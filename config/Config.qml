@@ -100,6 +100,8 @@ Singleton {
 
                 tooltip: 450,
 
+                longPress: 480,
+
                 settle: 250
             },
 
@@ -726,6 +728,10 @@ Singleton {
 
                 dateFormat: "words",
 
+                firstDay: "locale",
+
+                weekNumbers: false,
+
                 autoZone: false
             },
 
@@ -982,7 +988,6 @@ Singleton {
                 touchEdges: true,
 
                 signalBands: 4,
-                deviceListMax: 7,
 
                 rowHeight: 42,
                 sliderHeight: 6,

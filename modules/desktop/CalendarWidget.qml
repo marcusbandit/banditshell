@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
 import "month.js" as Month
 
 WidgetCard {
@@ -13,7 +14,8 @@ WidgetCard {
     property int shownYear: clock.date.getFullYear()
     property int shownMonth: clock.date.getMonth()
     readonly property int todayKey: Month.keyOf(clock.date)
-    readonly property real cell: Math.floor((root.width - root.pad * 2) / 7)
+    readonly property real gutter: TimeFormat.weekNumbers ? Math.round(Appearance.font.size.small * 2.5) : 0
+    readonly property real cell: Math.floor((root.width - root.pad * 2 - root.gutter) / 7)
 
     function page(by: int): void {
         const to = Month.shifted(root.shownYear, root.shownMonth, by);
@@ -89,52 +91,79 @@ WidgetCard {
         }
     }
 
-    Grid {
-        columns: 7
+    Row {
+        Column {
+            visible: TimeFormat.weekNumbers
 
-        Repeater {
-            model: ["M", "T", "W", "T", "F", "S", "S"]
-
-            delegate: StyledText {
-                required property string modelData
-
-                width: root.cell
+            Item {
+                width: root.gutter
                 height: Math.round(root.cell * 0.6)
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                text: modelData
-                color: Appearance.colour.textFaint
+            }
+
+            Repeater {
+                model: TimeFormat.weekNumbers ? Month.cells(root.shownYear, root.shownMonth, TimeFormat.firstDay).filter(c => c.rowStart) : []
+
+                delegate: StyledText {
+                    required property var modelData
+
+                    width: root.gutter
+                    height: Math.round(root.cell * 0.72)
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    text: TimeFormat.weekNumber(modelData.rowStart)
+                    font.pixelSize: Appearance.font.size.small
+                    color: Appearance.colour.textFaint
+                }
             }
         }
 
-        Repeater {
-            model: Month.cells(root.shownYear, root.shownMonth)
+        Grid {
+            columns: 7
 
-            delegate: Item {
-                id: day
+            Repeater {
+                model: TimeFormat.weekOrder
 
-                required property var modelData
+                delegate: StyledText {
+                    required property int modelData
 
-                readonly property bool today: day.modelData.key === root.todayKey
-
-                width: root.cell
-                height: Math.round(root.cell * 0.72)
-
-                SquircleRect {
-                    anchors.centerIn: parent
-                    width: Math.min(parent.width, parent.height) - 4
-                    height: width
-                    pill: "object"
-                    visible: day.today
-                    color: Appearance.colour.accent
+                    width: root.cell
+                    height: Math.round(root.cell * 0.6)
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    text: TimeFormat.weekdayInitial(modelData)
+                    color: Appearance.colour.textFaint
                 }
+            }
 
-                StyledText {
-                    anchors.centerIn: parent
-                    text: day.modelData.day
-                    font.weight: day.today ? Font.DemiBold : Font.Normal
-                    color: day.today ? Appearance.colour.accentText : day.modelData.inMonth ? Appearance.colour.text : Appearance.colour.textFaint
-                    opacity: day.modelData.inMonth || day.today ? 1 : 0.5
+            Repeater {
+                model: Month.cells(root.shownYear, root.shownMonth, TimeFormat.firstDay)
+
+                delegate: Item {
+                    id: day
+
+                    required property var modelData
+
+                    readonly property bool today: day.modelData.key === root.todayKey
+
+                    width: root.cell
+                    height: Math.round(root.cell * 0.72)
+
+                    SquircleRect {
+                        anchors.centerIn: parent
+                        width: Math.min(parent.width, parent.height) - 4
+                        height: width
+                        pill: "object"
+                        visible: day.today
+                        color: Appearance.colour.accent
+                    }
+
+                    StyledText {
+                        anchors.centerIn: parent
+                        text: day.modelData.day
+                        font.weight: day.today ? Font.DemiBold : Font.Normal
+                        color: day.today ? Appearance.colour.accentText : day.modelData.inMonth ? Appearance.colour.text : Appearance.colour.textFaint
+                        opacity: day.modelData.inMonth || day.today ? 1 : 0.5
+                    }
                 }
             }
         }

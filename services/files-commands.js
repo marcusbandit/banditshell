@@ -26,6 +26,13 @@ function humanSize(bytes) {
     return `${sizeDigits(value)} ${SIZE_UNITS[step - 1]}`;
 }
 
+function progressLine(title, copied, total) {
+    if (!(total > 0))
+        return `${title}, ${humanSize(copied)} so far`;
+    const percent = Math.min(99, Math.floor(copied / total * 100));
+    return `${title}, ${humanSize(copied)} of ${humanSize(total)} (${percent}%)`;
+}
+
 function join(dir, name) {
     return dir === "/" ? `/${name}` : `${dir}/${name}`;
 }
@@ -90,4 +97,36 @@ function trashCommand(paths) {
 
 function removeCommand(paths, infos) {
     return {words: ["rm", "-rf", "--"], paths: [...paths, ...infos]};
+}
+
+function leftChild(from, to) {
+    var base = to === "/" ? "" : to;
+    if (from.length <= base.length + 1 || from.indexOf(base + "/") !== 0)
+        return "";
+    return from.slice(base.length + 1).split("/")[0];
+}
+
+var TOTALS = 'printf "token %s\\n" "$2"; printf "size %s\\n" "$(du -s -b -- "$1/" 2>/dev/null | cut -f1)"; printf "items %s\\n" "$(ls -A -- "$1/" 2>/dev/null | wc -l)"';
+
+function totalsCommand(path, token) {
+    return ["sh", "-c", TOTALS, "sh", path, String(token)];
+}
+
+function totals(text) {
+    var out = {token: "", bytes: null, items: null};
+    var lines = String(text).split("\n");
+    for (var i = 0; i < lines.length; i++) {
+        var space = lines[i].indexOf(" ");
+        if (space < 0)
+            continue;
+        var key = lines[i].slice(0, space);
+        var value = lines[i].slice(space + 1);
+        if (key === "token")
+            out.token = value;
+        else if (value !== "" && isFinite(Number(value)) && key === "size")
+            out.bytes = Number(value);
+        else if (value !== "" && isFinite(Number(value)) && key === "items")
+            out.items = Number(value);
+    }
+    return out;
 }

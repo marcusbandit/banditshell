@@ -9,6 +9,7 @@ Row {
     property real from: 0
     property real to: 1
     property real step: 1
+    property real wheelStep: root.step
     property real warnAbove: root.to
     property string text: ""
     property real trackWidth: 180
@@ -45,7 +46,7 @@ Row {
         value: root.value
         from: root.from
         to: root.to
-        step: root.step
+        step: root.wheelStep
         warnAbove: root.warnAbove
         enabled: root.enabled
         onMoved: v => {

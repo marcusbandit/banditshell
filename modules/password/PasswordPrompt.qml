@@ -178,6 +178,8 @@ Item {
                         visible: root.asksForSecret
 
                         framed: false
+                        capsLock: Keymap.capsLock
+                        onCapsAsked: Keymap.refresh()
                         textSize: Appearance.font.size.normal
                         markSize: Appearance.font.size.normal
                         placeholder: root.sentence(root.source.placeholder ?? (Keyring.passwordNew ? "new password" : "password"))

@@ -5,24 +5,31 @@ import Quickshell.Io
 import qs.config
 import qs.components
 import qs.services
+import "../../services/files-commands.js" as FilesCommands
 
 Item {
     id: root
 
     property string path: ""
     property var stat: null
+    property var folder: null
+    property int measuring: 0
 
     property bool up: false
 
     function show(path: string): void {
         root.path = path;
         root.stat = null;
+        root.folder = null;
         root.up = true;
+        measurer.running = false;
+        root.measuring += 1;
         statter.exec([Files.helper("bs-ls"), "--stat", path]);
     }
 
     function close(): void {
         root.up = false;
+        measurer.running = false;
     }
 
     visible: root.up || fade.value > 0
@@ -45,9 +52,23 @@ Item {
                 try {
                     const answer = JSON.parse(text);
                     root.stat = answer.ok ? answer : null;
+                    if (answer.ok && answer.kind === "dir" && answer.path === root.path)
+                        measurer.exec(FilesCommands.totalsCommand(answer.path, root.measuring));
                 } catch (e) {
                     root.stat = null;
                 }
+            }
+        }
+    }
+
+    Process {
+        id: measurer
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const totals = FilesCommands.totals(text);
+                if (totals.token === String(root.measuring))
+                    root.folder = totals;
             }
         }
     }
@@ -57,10 +78,16 @@ Item {
         if (!s)
             return [];
 
+        const f = root.folder;
+        const sizes = s.kind !== "dir" ? [{label: "Size", value: Files.humanSize(s.size)}] : [
+            {label: "Contains", value: !f ? "calculating…" : f.items === null ? "unknown" : f.items === 1 ? "1 item" : `${f.items.toLocaleString()} items`},
+            {label: "Size", value: !f ? "calculating…" : f.bytes === null ? "unknown" : Files.humanSize(f.bytes)}
+        ];
+
         const out = [
             {label: "Where", value: Files.parentOf(s.path)},
             {label: "Kind", value: s.kind === "dir" ? "Folder" : `${s.class}${s.ext ? ` (.${s.ext})` : ""}`},
-            {label: "Size", value: Files.humanSize(s.size)},
+            ...sizes,
             {label: "Modified", value: TimeFormat.stamp(new Date(s.mtime * 1000))},
             {label: "Owner", value: `${s.owner}:${s.group}`},
             {label: "Mode", value: `${Files.humanMode(s.mode)}  (${s.mode.toString(8)})`}

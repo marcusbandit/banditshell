@@ -43,7 +43,8 @@
       "services/ranking.js",
       "services/system-binaries.js",
       "services/timeformat.js",
-      "services/trace.js"
+      "services/trace.js",
+      "services/weekdays.js"
     ],
     "components": ["components"],
     "scripts": [
@@ -91,7 +92,8 @@
       "tests/timeformat.test.js",
       "tests/trace.test.js",
       "tests/user-folders.test.js",
-      "tests/wall-clock.test.js"
+      "tests/wall-clock.test.js",
+      "tests/weekdays.test.js"
     ]
   },
   "requires": {

@@ -60,6 +60,7 @@ Column {
                 from: 0
                 to: 1
                 step: 0.01
+                wheelStep: Config.values.volume.step
                 text: `${Math.round(app.level * 100)}%`
                 onMoved: v => Audio.setStreamVolume(app.modelData, v)
             }

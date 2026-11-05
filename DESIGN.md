@@ -3030,6 +3030,15 @@ needed: the padding has to be deferred with `Qt.callLater` (assigning `live` fro
 and the styles have to render `max(count, live.length)` delegates or the ghost has no plate to
 shrink.
 
+**The column is as long as the work, never shorter than the setting.** "Always there" is a floor.
+A workspace past it that holds a window, or that you are standing on, gets its slot (through
+`Hypr.countFor`, capped by the band and by ten) and loses it again once it is empty and left.
+Every workspace mark owns a band at least 24 px tall, so the rail's 6 px dots sit 24 px apart
+and the blocks and map styles pad their gaps up to the same band; the hit area is the band,
+not the mark. A press switches to the workspace unless the drag really moved it (12 px of
+slack, `pullSlack`), a flick is measured in pixels per millisecond and a pause zeroes it, and a
+mouse notch moves exactly one workspace while a touchpad scrubs 1:1.
+
 **A scratchpad is not a sixth workspace.** The first attempt drew special workspaces as a row of
 pills above the numbered run, and it was wrong twice: it took slots in a column that is a list of
 places you LIVE, and it pushed that column around every time one came or went. What a special

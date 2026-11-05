@@ -61,17 +61,28 @@ QtObject {
 
     readonly property var diskRows: SystemMonitor.disks.map(d => root.row(`disk:${d.mount}`, `${Monitor.bytesText(d.available)} free on ${d.mount}`, `${Monitor.percentText(d.fraction)} used · ${Monitor.bytesText(d.size)} · ${d.type}`, "hard_drive"))
 
-    readonly property var processRows: SystemMonitor.top.map(p => ({
-                key: `monitorprocess:${p.pid}`,
-                kind: "monitorprocess",
-                pid: p.pid,
-                own: p.own,
-                label: p.name,
-                detail: `${Monitor.cpuText(p.cpu)} CPU · ${Monitor.bytesText(p.memory)} · PID ${p.pid}`,
-                iconSource: Apps.iconSourceFor([p.name]),
-                icon: "memory",
-                score: Infinity
-            }))
+    readonly property string armedFor: root.search.armed.startsWith("top") ? root.search.armed : ""
+
+    function arming(pid: int): string {
+        const cut = root.armedFor.indexOf(":");
+        return cut > 0 && root.armedFor.slice(cut + 1) === String(pid) ? root.armedFor.slice(0, cut) : "";
+    }
+
+    readonly property var processRows: SystemMonitor.top.map(p => {
+        const mode = root.arming(p.pid);
+        return {
+            key: `monitorprocess:${p.pid}`,
+            kind: "monitorprocess",
+            pid: p.pid,
+            own: p.own,
+            mode: mode,
+            label: mode ? `Press Enter again to ${mode === "topkill" ? "force quit" : "quit"} ${p.name}` : p.name,
+            detail: mode ? "" : `${Monitor.cpuText(p.cpu)} CPU · ${Monitor.bytesText(p.memory)} · PID ${p.pid}`,
+            iconSource: Apps.iconSourceFor([p.name]),
+            icon: "memory",
+            score: Infinity
+        };
+    })
 
     readonly property var systemRows: {
         if (!root.watching)
@@ -121,6 +132,24 @@ QtObject {
             ];
         const pid = row.pid;
         const name = row.label;
+        if (row.mode)
+            return [
+                {
+                    icon: "dangerous",
+                    label: row.mode === "topkill" ? "Force quit" : "Quit",
+                    button: true,
+                    alarm: true,
+                    run: () => {
+                        root.search.armed = "";
+                        SystemMonitor.quit(pid, row.mode === "topkill");
+                    }
+                },
+                {
+                    icon: "close",
+                    label: "Cancel",
+                    run: () => root.search.armed = ""
+                }
+            ];
         if (!row.own)
             return [
                 {
@@ -136,13 +165,13 @@ QtObject {
                 icon: "close",
                 label: "Quit",
                 button: true,
-                run: () => SystemMonitor.quit(pid, false)
+                run: () => root.search.armed = `topquit:${pid}`
             },
             {
                 icon: "dangerous",
                 label: "Force quit",
                 tucked: true,
-                run: () => SystemMonitor.quit(pid, true)
+                run: () => root.search.armed = `topkill:${pid}`
             }
         ];
     }

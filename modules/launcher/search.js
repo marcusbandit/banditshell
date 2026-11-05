@@ -122,6 +122,18 @@ function urlOf(text) {
     return "";
 }
 
+var FILE_LIKE_ENDINGS = ["sh", "pl", "ai", "in", "it", "me", "no", "at"];
+
+function linkScore(text, fileNames, filesReady) {
+    const t = String(text || "").trim().toLowerCase();
+    const ending = /^[a-z0-9\-]+(?:\.[a-z0-9\-]+)*\.([a-z]+)$/.exec(t);
+    if (!ending || FILE_LIKE_ENDINGS.indexOf(ending[1]) < 0 || /^www\./.test(t))
+        return Infinity;
+    if (!filesReady)
+        return null;
+    return (fileNames || []).some(n => String(n || "").toLowerCase() === t) ? -0.5 : Infinity;
+}
+
 function encodedQuery(text) {
     try {
         return encodeURIComponent(text);
@@ -1110,6 +1122,32 @@ function killAsk(text) {
     return m && !portAsk(text) ? (m[1] || "").trim().toLowerCase() : null;
 }
 
+function printedRows(said) {
+    const rows = (said.lines || []).map((text, i) => ({
+                key: `printed:${i}:${text}`,
+                kind: "printed",
+                label: text,
+                detail: "",
+                icon: "subdirectory_arrow_right",
+                score: 1
+            }));
+    if (said.more > 0)
+        rows.push({
+            key: "printed:more",
+            kind: "printed",
+            label: said.more === 1 ? "1 more line" : `${said.more} more lines`,
+            detail: "Enter copies all the output",
+            copy: said.text,
+            icon: "more_horiz",
+            score: 1
+        });
+    return rows;
+}
+
+function killForce(text) {
+    return /^force\s+quit(?:\s|$)/i.test(String(text || "").trim());
+}
+
 function readProcesses(text, skip) {
     return String(text || "").split("\n").map(line => /^\s*(\d+)\s+(\d+)\s+(.+?)\s*$/.exec(line)).filter(m => m && (skip || []).indexOf(m[3]) < 0).map(m => ({
                 pid: parseInt(m[1], 10),
@@ -1135,6 +1173,16 @@ function cleanAlias(text) {
 function aliasTarget(aliases, text) {
     const said = cleanAlias(text);
     return said && aliases && Object.prototype.hasOwnProperty.call(aliases, said) ? aliases[said].id || "" : "";
+}
+
+function aliasHolder(aliases, alias, id, exists) {
+    const said = cleanAlias(alias);
+    if (!said || !aliases || !Object.prototype.hasOwnProperty.call(aliases, said))
+        return "";
+    const held = aliases[said];
+    if (held.id === id || exists && !exists(held.id))
+        return "";
+    return held.label || held.id || said;
 }
 
 function aliasesById(aliases) {

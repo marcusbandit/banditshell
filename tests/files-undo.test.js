@@ -16,7 +16,7 @@ function lib(file, names) {
 
 const Undo = lib("services/files-undo.js", [
     "LIMIT", "into", "moved", "renamed", "copied", "fresh", "trashed", "remember",
-    "existsCommand", "existing", "pick", "command", "outcome", "summary"
+    "existsCommand", "existing", "withdraw", "trashLine", "pick", "command", "outcome", "summary"
 ]);
 const Trash = lib("services/files-trash.js", ["readCommand", "parse", "restoreCommand"]);
 const GioTrash = require("./fixtures/gio-trash.js");
@@ -95,6 +95,27 @@ test.describe("files undo", () => {
             box.run(["sh", "-c", 'mv -- "$1" "$2"', "sh", box.at("notes.txt"), box.at("Projects")]);
             assert.deepStrictEqual(Undo.remember([], kept), []);
             assert.strictEqual(fs.readFileSync(box.at("Projects", "plan"), "utf8"), "kept");
+        } finally {
+            box.done();
+        }
+    });
+
+    test.it("says how many items went to the trash and how to undo it", () => {
+        assert.strictEqual(Undo.trashLine(1), "1 item moved to the trash, Ctrl+Z to undo");
+        assert.strictEqual(Undo.trashLine(3), "3 items moved to the trash, Ctrl+Z to undo");
+    });
+
+    test.it("withdraws from the undo stack the paths a failed trash left in place, and the whole entry when none went", () => {
+        const box = sandbox();
+        try {
+            fs.writeFileSync(box.at("stayed.txt"), "");
+            const paths = [box.at("stayed.txt"), box.at("went.txt")];
+            const other = Undo.trashed(["/elsewhere"], 50);
+            const entry = Undo.trashed(paths, 100);
+            const stayed = Undo.existing(paths, box.run(Undo.existsCommand(paths)));
+            const left = Undo.withdraw([other, entry], entry.at, stayed);
+            assert.deepStrictEqual(left, [other, { kind: "trash", paths: [box.at("went.txt")], at: entry.at }]);
+            assert.deepStrictEqual(Undo.withdraw([other, Undo.trashed(["/a"], 100)], Undo.trashed(["/a"], 100).at, ["/a"]), [other]);
         } finally {
             box.done();
         }

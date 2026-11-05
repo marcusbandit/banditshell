@@ -22,8 +22,15 @@ Singleton {
         root.before(Undo.renamed(from, to), then);
     }
 
-    function trashed(paths: var): void {
-        root.remember(Undo.trashed(paths, Date.now() / 1000));
+    function trashed(paths: var, at: real): void {
+        root.remember(Undo.trashed(paths, at));
+    }
+
+    function trashFailed(paths: var, at: real): void {
+        root.start(Undo.existsCommand(paths), text => {
+            if (text !== null)
+                root.stack = Undo.withdraw(root.stack, Undo.trashed(paths, at).at, Undo.existing(paths, text));
+        });
     }
 
     function pasted(cut: bool, pairs: var, replaced: var, at: real): void {
@@ -39,6 +46,10 @@ Singleton {
                 root.remember(Undo.fresh(entry, Undo.existing(targets, text)));
             then();
         });
+    }
+
+    function trashLine(count: int): string {
+        return Undo.trashLine(count);
     }
 
     function say(text: string): void {
@@ -115,10 +126,11 @@ Singleton {
         Files.cursorName = names[0];
         Files.anchorName = names[0];
         root.shown = names;
+        lapse.restart();
     }
 
-    function start(command: var, done: var): void {
-        step.createObject(root, {
+    function start(command: var, done: var): var {
+        return step.createObject(root, {
             command: command,
             done: done,
             running: true
@@ -143,9 +155,17 @@ Singleton {
     }
 
     Timer {
+        id: lapse
+
+        interval: 10000
+
+        onTriggered: root.shown = []
+    }
+
+    Timer {
         id: fade
 
-        interval: 4000
+        interval: 5000
 
         onTriggered: root.notice = ""
     }

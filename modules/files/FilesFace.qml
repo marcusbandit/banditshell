@@ -81,19 +81,49 @@ Item {
         }
         hints.held = "";
 
+        const typing = Files.focus === "terminal" && Files.terminalOpen;
         const chord = root.isChord(event) ? root.chordOf(event) : "";
-        if (chord && Files.chords[chord] !== undefined) {
+        if (chord && Files.chords[chord] !== undefined && (!typing || Chords.windowOwns(chord, Files.chords[chord]))) {
             event.accepted = root.act(Files.chords[chord]);
             if (event.accepted)
                 return;
         }
 
-        if (Files.focus === "terminal" && Files.terminalOpen) {
+        if (typing) {
             terminal.view.key(event);
             return;
         }
 
+        if (Files.focus === "preview" && preview.visible && root.previewKey(event))
+            return;
+
         root.gridKey(event);
+    }
+
+    Connections {
+        target: preview
+
+        function onVisibleChanged(): void {
+            if (!preview.visible && Files.focus === "preview")
+                Files.focus = "grid";
+        }
+    }
+
+    function previewKey(event: var): bool {
+        const line = Files.zoomed(Appearance.font.line.small);
+        const by = Chords.previewScroll(Qt, event.key, event.modifiers, Files.gridKeys[event.text] ?? "", Math.max(line, preview.pageHeight - line), line);
+        if (by === null || !preview.scrollBy(by))
+            return false;
+        event.accepted = true;
+        return true;
+    }
+
+    function release(): void {
+        if (path.editing)
+            path.stopEditing();
+        if (Files.searching)
+            Files.setSearching(false);
+        root.forceActiveFocus();
     }
 
     function gridKey(event: var): void {
@@ -124,11 +154,19 @@ Item {
             event.accepted = true;
             return;
         case Qt.Key_PageUp:
-            root.move(-grid.columns * 3, shift);
+            root.move(-grid.columns * grid.pageRows, shift);
             event.accepted = true;
             return;
         case Qt.Key_PageDown:
-            root.move(grid.columns * 3, shift);
+            root.move(grid.columns * grid.pageRows, shift);
+            event.accepted = true;
+            return;
+        case Qt.Key_Home:
+            root.select(0, shift);
+            event.accepted = true;
+            return;
+        case Qt.Key_End:
+            root.select(Files.visible.length - 1, shift);
             event.accepted = true;
             return;
         case Qt.Key_Return:
@@ -162,6 +200,9 @@ Item {
     }
 
     function act(action: string): bool {
+        if (action === "focus:preview" && !preview.visible)
+            return true;
+
         switch (action) {
         case "left":
             root.move(-1, false);
@@ -425,7 +466,7 @@ Item {
                 Files.makeFile(name);
             else
                 Files.makeFolder(name);
-        }, null, "create");
+        }, name => Files.createRefusal(name), "create");
     }
 
     function renameCurrent(): void {
@@ -484,6 +525,12 @@ Item {
         target: Files
 
         function onVisibleChanged(): void {
+            if (Files.arrival && !Files.listing && Files.indexOf(Files.arrival) >= 0) {
+                Files.arrival = "";
+                Qt.callLater(() => grid.reveal(Files.cursor));
+                return;
+            }
+
             const at = FilesUndo.shown.map(name => Files.indexOf(name)).filter(index => index >= 0);
             if (at.length === 0)
                 return;
@@ -597,6 +644,8 @@ Item {
         clip: true
 
         receiving: root.dragging ? sidebar.pathAt(sidebar.mapFromItem(root, root.dragAt.x, root.dragAt.y)) : ""
+
+        onTouched: root.release()
     }
 
     SplitHandle {
@@ -683,6 +732,7 @@ Item {
                 else
                     Files.setCursor(index);
             }
+            onTouched: root.release()
             onActivated: index => Files.open(Files.visible[index])
             onMenuFor: (index, position) => {
                 Files.focus = "grid";
@@ -764,6 +814,8 @@ Item {
 
             entry: Files.current
             path: Files.currentPath
+
+            onTouched: root.release()
         }
     }
 
@@ -774,8 +826,8 @@ Item {
         anchors.right: parent.right
         anchors.bottom: terminal.top
 
-        visible: Files.failure !== "" || FilesUndo.notice !== ""
-        height: failure.visible ? failureText.implicitHeight : 0
+        visible: FilesPaste.shown || Files.failure !== "" || FilesUndo.notice !== ""
+        height: failure.visible ? Math.max(failureText.implicitHeight, FilesPaste.shown ? stop.implicitHeight : 0) : 0
 
         StyledText {
             id: failureText
@@ -785,14 +837,30 @@ Item {
             anchors.top: parent.top
 
             leftPadding: Appearance.padding.normal
-            rightPadding: Appearance.padding.normal
+            rightPadding: Appearance.padding.normal + (FilesPaste.shown ? stop.width : 0)
             topPadding: Appearance.padding.small
             bottomPadding: Appearance.padding.small
 
-            text: Files.failure || FilesUndo.notice
+            text: FilesPaste.shown ? FilesPaste.line : Files.failure || FilesUndo.notice
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
-            color: Files.failure ? Appearance.colour.alarm : Appearance.colour.text
+            color: FilesPaste.shown ? Appearance.colour.text : Files.failure ? Appearance.colour.alarm : Appearance.colour.text
             elide: Text.ElideRight
+        }
+
+        Button {
+            id: stop
+
+            anchors.right: parent.right
+            anchors.rightMargin: Appearance.padding.normal
+            anchors.verticalCenter: parent.verticalCenter
+            visible: FilesPaste.shown
+
+            style: "ring"
+            text: "Stop"
+            interactive: !FilesPaste.stopping
+            zoom: Files.magnification
+
+            onClicked: FilesPaste.stop()
         }
 
         TapHandler {

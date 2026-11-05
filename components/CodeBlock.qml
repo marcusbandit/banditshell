@@ -206,6 +206,10 @@ Item {
         }
     }
 
+    function scrollBy(pixels: real): void {
+        view.scrollBy(pixels);
+    }
+
     GlideList {
         id: view
 

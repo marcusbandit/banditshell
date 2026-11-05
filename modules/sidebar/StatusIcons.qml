@@ -6,6 +6,7 @@ import qs.components
 import qs.services
 import qs.modules.controls
 import qs.modules.menu.content
+import "anomalies.js" as Anomalies
 import "scrolling.js" as Scrolling
 
 Item {
@@ -13,6 +14,10 @@ Item {
 
     signal requested(string key, bool deliberate)
     signal released
+
+    signal markPressed(var opens)
+
+    property bool awake: false
 
     property string hoveredKey: ""
 
@@ -96,6 +101,28 @@ Item {
             body: bluetoothMenu
         },
         {
+            key: "vpn",
+            title: Anomalies.tip(Anomalies.vpnEntry({
+                vpn: true
+            })),
+            reading: tunnel,
+            present: Tunnels.anyOn,
+            press: () => root.markPressed(Anomalies.vpnEntry({
+                    vpn: true
+                }).opens)
+        },
+        {
+            key: "awake",
+            title: Anomalies.tip(Anomalies.awakeEntry({
+                awake: true
+            })),
+            reading: kept,
+            present: root.awake,
+            press: () => root.markPressed(Anomalies.awakeEntry({
+                    awake: true
+                }).opens)
+        },
+        {
             key: "battery",
             title: "Battery",
             reading: battery,
@@ -146,6 +173,20 @@ Item {
         readonly property string icon: Bluetooth.statusIcon()
         readonly property bool active: Bluetooth.anyConnected
         readonly property bool available: Bluetooth.available
+    }
+
+    QtObject {
+        id: tunnel
+
+        readonly property string icon: "vpn_lock"
+        readonly property bool active: true
+    }
+
+    QtObject {
+        id: kept
+
+        readonly property string icon: "coffee"
+        readonly property bool active: true
     }
 
     QtObject {

@@ -14,6 +14,7 @@ import "shellcli.js" as ShellCli
 import "../files/marks.js" as Marks
 import "../settings/catalogue.js" as Catalogue
 import "../../services/ranking.js" as Ranking
+import "../../services/system-monitor.js" as ProcessNames
 
 QtObject {
     id: root
@@ -215,6 +216,22 @@ QtObject {
 
     readonly property var sourceGroupLists: root.sources.map(s => s.groups ?? [])
 
+    readonly property var sourceGroups: {
+        const groups = root.sourceGroupLists.reduce((out, list) => out.concat(list), []);
+        const hit = root.aliasRow;
+        if (!hit || !root.sourceOf(hit))
+            return groups;
+        return [{
+                key: "alias",
+                title: "Alias",
+                items: [Object.assign({}, hit, {
+                        score: Infinity
+                    })]
+            }].concat(groups.map(g => Object.assign({}, g, {
+                items: g.items.filter(r => r.key !== hit.key)
+            })));
+    }
+
     readonly property var sourceCommands: root.sources.reduce((out, s) => out.concat(s.commands ?? []), [])
 
     readonly property bool sourceIntent: root.sources.some(s => !!s.intent)
@@ -248,7 +265,7 @@ QtObject {
             devices: 4,
             processes: 8,
             shell: 12,
-            output: 12,
+            output: 41,
             suggestions: 6,
             sound: 5,
             files: 6,
@@ -505,7 +522,7 @@ QtObject {
             detail: root.volumeText,
             hidden: !Audio.ready,
             stay: true,
-            run: () => Audio.setVolume(Math.min(Audio.maxVolume, Audio.volume + 0.1))
+            run: () => Audio.setVolume(Audio.quantise(Audio.volume + Config.values.volume.step))
         },
         {
             id: "volumedown",
@@ -516,7 +533,7 @@ QtObject {
             detail: root.volumeText,
             hidden: !Audio.ready,
             stay: true,
-            run: () => Audio.setVolume(Math.max(0, Audio.volume - 0.1))
+            run: () => Audio.setVolume(Audio.quantise(Audio.volume - Config.values.volume.step))
         },
         {
             id: "mute",
@@ -1128,9 +1145,14 @@ QtObject {
         stdout: StdioCollector {
             id: cliSaid
 
-            onStreamFinished: root.cliOutput = {
-                line: root.cliRunner.line,
-                lines: cliSaid.text.split("\n").map(l => l.replace(/\x1b\[[0-9;]*m/g, "")).filter(l => l.trim()).slice(0, 40)
+            onStreamFinished: {
+                const all = cliSaid.text.split("\n").map(l => l.replace(/\x1b\[[0-9;]*m/g, "")).filter(l => l.trim());
+                root.cliOutput = {
+                    line: root.cliRunner.line,
+                    lines: all.slice(0, 40),
+                    more: Math.max(0, all.length - 40),
+                    text: all.join("\n")
+                };
             }
         }
     }
@@ -1170,14 +1192,7 @@ QtObject {
         }));
     }
 
-    readonly property var outputRows: !root.cliOutput || root.cliOutput.line !== (root.cliLine ?? "").trim() ? [] : root.cliOutput.lines.map((text, i) => ({
-                key: `printed:${i}:${text}`,
-                kind: "printed",
-                label: text,
-                detail: "",
-                icon: "subdirectory_arrow_right",
-                score: 1
-            }))
+    readonly property var outputRows: root.cliOutput && root.cliOutput.line === (root.cliLine ?? "").trim() ? Search.printedRows(root.cliOutput) : []
 
     readonly property var cities: ["Tokyo", "New York", "London", "Los Angeles", "Paris", "Berlin", "Sydney", "Singapore", "Dubai", "Toronto"]
 
@@ -1440,7 +1455,10 @@ QtObject {
 
     property var processes: []
 
-    readonly property var sessionProcesses: ["ps", "sh", "quickshell", "qs", "Hyprland", "systemd", "(sd-pam)", "dbus-broker", "dbus-broker-lau", "dbus-daemon", "pipewire", "pipewire-pulse", "wireplumber"]
+    readonly property var sessionProcesses: ["ps", "sh"].concat(ProcessNames.SESSION)
+
+    property var closing: ({})
+    property int relists: 0
 
     function listProcesses(): void {
         root.lister.running = false;
@@ -1450,33 +1468,78 @@ QtObject {
     property Process lister: Process {
         command: ["sh", "-c", 'ps -u "$(id -u)" -o pid=,rss=,comm= --sort=-rss']
         stdout: StdioCollector {
-            onStreamFinished: root.processes = Search.readProcesses(text, root.sessionProcesses)
+            onStreamFinished: {
+                root.processes = Search.readProcesses(text, root.sessionProcesses);
+                const left = {};
+                for (const pid of Object.keys(root.closing))
+                    if (root.processes.some(p => String(p.pid) === pid))
+                        left[pid] = true;
+                root.closing = left;
+                if (Object.keys(left).length === 0)
+                    root.relist.running = false;
+            }
         }
     }
 
     property Timer relist: Timer {
-        interval: 400
-        onTriggered: root.listProcesses()
+        interval: 500
+        repeat: true
+        onTriggered: {
+            root.listProcesses();
+            root.relists -= 1;
+            if (root.relists <= 0) {
+                running = false;
+                root.closing = ({});
+            }
+        }
     }
 
     function memoryText(kb: real): string {
         return kb >= 1048576 ? `${(kb / 1048576).toLocaleString(Qt.locale(), "f", 1)} GB` : `${Math.max(1, Math.round(kb / 1024))} MB`;
     }
 
-    readonly property var processRows: root.killing === null ? [] : root.processes.filter(p => p.name.toLowerCase().indexOf(root.killing) >= 0).map(p => ({
-                key: `process:${p.pid}`,
-                kind: "process",
-                pid: p.pid,
-                label: p.name,
-                detail: `${root.memoryText(p.kb)} · PID ${p.pid}`,
-                iconSource: Apps.iconSourceFor([p.name]),
-                icon: "memory",
-                score: Infinity
-            }))
+    readonly property bool forcing: Search.killForce(root.text)
+
+    function killMode(pid: int): string {
+        const cut = root.armed.indexOf(":");
+        return cut > 0 && root.armed.slice(0, cut).startsWith("kill") && root.armed.slice(cut + 1) === String(pid) ? root.armed.slice(0, cut) : "";
+    }
+
+    readonly property var processRows: root.killing === null ? [] : root.processes.filter(p => p.name.toLowerCase().indexOf(root.killing) >= 0).map(p => {
+        const mode = root.killMode(p.pid);
+        return {
+            key: `process:${p.pid}`,
+            kind: "process",
+            pid: p.pid,
+            name: p.name,
+            mode: mode,
+            armed: mode !== "",
+            label: mode ? `Press Enter again to ${mode === "killhard" ? "force quit" : "quit"} ${p.name}` : p.name,
+            detail: mode ? "" : [root.closing[p.pid] ? "closing" : "", `${root.memoryText(p.kb)} · PID ${p.pid}`].filter(Boolean).join(" · "),
+            iconSource: Apps.iconSourceFor([p.name]),
+            icon: "memory",
+            score: Infinity
+        };
+    })
 
     function kill(pid: int, signal: string): void {
         Quickshell.execDetached(["kill", `-${signal}`, String(pid)]);
+        root.armed = "";
+        root.closing = Object.assign({}, root.closing, {
+            [pid]: true
+        });
+        root.relists = 10;
         root.relist.restart();
+    }
+
+    function pressProcess(row: var): void {
+        const signal = root.forcing ? "KILL" : "TERM";
+        if (row.mode)
+            root.kill(row.pid, row.mode === "killhard" ? "KILL" : "TERM");
+        else if (root.killing === "")
+            root.armed = `${root.forcing ? "killhard" : "kill"}:${row.pid}`;
+        else
+            root.kill(row.pid, signal);
     }
 
     readonly property var rows: root.keyed(root.arranged)
@@ -1498,7 +1561,7 @@ QtObject {
         });
     }
 
-    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, FileSearch.grepAnswered, root.sourceGroupLists, root.aloneSource, root.limits]
+    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, FileSearch.grepAnswered, FileSearch.found, root.sourceGroupLists, root.aloneSource, root.limits]
 
     property var arranged: []
     property bool arrangePending: false
@@ -1544,7 +1607,8 @@ QtObject {
                 }
             ], root.caps);
         const groups = [];
-        if (root.url)
+        const linkScore = Search.linkScore(root.text, root.fileRows.map(f => f.label), FileSearch.found === root.text.trim() || !FileSearch.fdFound);
+        if (root.url && linkScore !== null)
             groups.push({
                 key: "link",
                 title: "Link",
@@ -1555,7 +1619,7 @@ QtObject {
                         label: `Open ${root.text}`,
                         detail: "",
                         icon: "link",
-                        score: Infinity
+                        score: linkScore
                     }
                 ]
             });
@@ -1600,7 +1664,7 @@ QtObject {
             title: "Inside files",
             note: root.contentNote,
             items: root.contentRows
-        }, ...root.sourceGroupLists.reduce((out, list) => out.concat(list), []));
+        }, ...root.sourceGroups);
         const remembered = Search.remembered(groups, key => LauncherMemory.bonusOf(key, Date.now()));
         const arranged = Search.arrange(remembered, root.limits);
         if (!Search.matchesNothing(arranged) || root.grepFor && FileSearch.grepAnswered !== root.text)
@@ -1684,7 +1748,7 @@ QtObject {
             root.leave(() => System.copyText(row.time));
             return;
         case "process":
-            root.kill(row.pid, "TERM");
+            root.pressProcess(row);
             return;
         case "setting":
             if (row.toggle !== undefined)
@@ -1710,7 +1774,7 @@ QtObject {
             root.runCli(row.line);
             return;
         case "printed":
-            root.leave(() => System.copyText(row.label));
+            root.leave(() => System.copyText(row.copy ?? row.label));
             return;
         }
     }
@@ -1757,6 +1821,17 @@ QtObject {
         const owner = root.sourceOf(row);
         if (owner?.confirmActionsFor)
             return owner.confirmActionsFor(row).concat([cancel]);
+        if (row.kind === "process")
+            return [
+                {
+                    icon: "dangerous",
+                    label: row.mode === "killhard" ? "Force quit" : "Quit",
+                    alarm: true,
+                    button: true,
+                    run: () => root.pressProcess(row)
+                },
+                cancel
+            ];
         if (row.kind === "app")
             return Uninstaller.plans[row.entry.id]?.refused ? [cancel] : [
                 {
@@ -1928,7 +2003,7 @@ QtObject {
             return [
                 {
                     icon: "content_copy",
-                    label: "Copy",
+                    label: row.copy ? "Copy all output" : "Copy",
                     run: () => root.activate(row)
                 }
             ];
