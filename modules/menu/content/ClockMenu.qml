@@ -902,11 +902,20 @@ Column {
 
         width: parent.width
         interactive: !Clock.alarmsFull
-        text: Clock.alarmsFull ? Clock.fullNote("alarm") : "Add an alarm"
+        text: "Add an alarm"
         onClicked: {
             const id = Clock.addAlarm();
             if (id)
                 root.editing = id;
         }
+    }
+
+    StyledText {
+        width: parent.width
+        visible: Clock.alarmsFull
+        text: Clock.fullNote("alarm")
+        color: Appearance.colour.textFaint
+        font.pixelSize: Appearance.font.size.small
+        wrapMode: Text.WordWrap
     }
 }
