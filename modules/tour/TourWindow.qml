@@ -215,7 +215,10 @@ PanelWindow {
 
     function choose(id: string): void {
         if (id === "place")
-            Settings.openAt(win.output, "", "weather.location");
+            Panels.open("settings", {
+                screen: win.output,
+                row: "weather.location"
+            });
         else if (id === "off")
             Config.set("weather.show", false);
         else if (id === "on")

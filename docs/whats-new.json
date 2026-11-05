@@ -1,6 +1,47 @@
 {
   "entries": [
     {
+      "id": "2026-11-06-q11",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Calendars have previous and next month buttons"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Pick the first day of the week and week numbers in Language"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The forecast always offers Change place"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The island tour step introduces the weather"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The desktop weather card appears on its own and keeps current"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The desktop clock shows the whole date"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Desktop Now playing wraps long titles and opens the media card"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q26",
       "date": "2026-11-05",
       "changes": [
