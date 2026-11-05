@@ -53,17 +53,7 @@ Item {
             root.close();
     }
 
-    visible: root.up || fade.value > 0
-    opacity: fade.value
-
-    Follow {
-        id: fade
-
-        target: root.up ? 1 : 0
-        speed: Appearance.animation.revealSpeed
-        epsilon: Appearance.animation.fadeEpsilon
-        startsAtTarget: true
-    }
+    visible: root.up
 
     Rectangle {
         anchors.fill: parent

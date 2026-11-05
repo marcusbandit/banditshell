@@ -24,8 +24,7 @@ Item {
         root.dismissed();
     }
 
-    visible: root.up || fade.value > 0
-    opacity: fade.value
+    visible: root.up
     focus: root.up
 
     property string rebinding: ""
@@ -119,15 +118,6 @@ Item {
             root.close();
             event.accepted = true;
         }
-    }
-
-    Follow {
-        id: fade
-
-        target: root.up ? 1 : 0
-        speed: Appearance.animation.revealSpeed
-        epsilon: Appearance.animation.fadeEpsilon
-        startsAtTarget: true
     }
 
     Rectangle {
