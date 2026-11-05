@@ -615,7 +615,7 @@ const PAGES_SOURCE = {
                 { n: 84, icon: "notifications_active", label: "Ring for", k: "ring", kind: "step", min: 1, max: 60, unit: " min", cfg: "clock.ringMinutes", kw: "alarms ring length" },
                 { n: 84, icon: "update", label: "Catch up", k: "catchUp", kind: "step", min: 0, max: 240, step: 15, unit: " min", cfg: "clock.catchUpMinutes", state: s => s.v("catchUp") ? "rings late after sleep" : "missed means missed", kw: "alarms catch-up",
                     why: "If the laptop slept through an alarm, it still rings on wake when it is this late or less." },
-                { n: 85, icon: "hourglass", label: "Longest timer", k: "timerMax", kind: "step", min: 1, max: 24, unit: " h", cfg: "clock.timerMax", kw: "timer limits" },
+                { n: 85, icon: "hourglass", label: "Timers at once", k: "timerMax", kind: "step", min: 1, max: 12, cfg: "clock.timerMax", fmt: v => `${v}`, kw: "timer limits" },
                 { n: 85, icon: "alarm", label: "Most alarms", k: "alarmMax", kind: "step", min: 1, max: 20, cfg: "clock.alarmMax", fmt: v => `${v}`, kw: "alarm limits" }
             ] },
             { t: "Other time zones", rows: [

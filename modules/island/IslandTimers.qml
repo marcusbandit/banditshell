@@ -18,7 +18,7 @@ Item {
     readonly property real pad: Appearance.padding.card
     readonly property real natural: Appearance.padding.large + column.implicitHeight + root.pad
 
-    readonly property int running: Clock.timers.filter(t => !t.finished).length
+    readonly property int running: Clock.timersRunning
     readonly property int armed: Clock.alarms.filter(a => a.armed).length
 
     implicitHeight: root.maxHeight > 0 ? Math.min(root.natural, root.maxHeight) : root.natural

@@ -1395,8 +1395,8 @@ QtObject {
     }
 
     readonly property int reminderHour: Config.values.launcher.utilities.reminderHour
-    readonly property bool alarmsFull: Clock.alarms.length >= Clock.alarmMax
-    readonly property bool timersFull: Clock.timers.filter(t => !t.finished).length >= Clock.timerMax
+    readonly property bool alarmsFull: Clock.alarmsFull
+    readonly property bool timersFull: Clock.timersFull
     readonly property string alarmsFullText: `alarms full · ${Clock.alarmMax} of ${Clock.alarmMax}`
     readonly property string timersFullText: `timers full · ${Clock.timerMax} of ${Clock.timerMax}`
 

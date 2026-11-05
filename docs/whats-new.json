@@ -1,6 +1,47 @@
 {
   "entries": [
     {
+      "id": "2026-11-05-q10",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A full timer or alarm list now says why Start did nothing"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Settings: 'Longest timer' is now 'Timers at once', default 8"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Add a place finds 'new york' and suggests common cities"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Timers and alarms show their names; the Timers count skips paused"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The alarm editor follows the 12-hour clock with am and pm"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Removing a timer, alarm or place can be undone for a few seconds"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Click a time field and type digits; presets now include 15 and 30"
+        }
+      ]
+    },
+    {
       "id": "2026-11-06-q11",
       "date": "2026-11-06",
       "changes": [
