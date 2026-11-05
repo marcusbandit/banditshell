@@ -14,6 +14,7 @@ import "files-find.js" as Find
 import "files-listing.js" as Listing
 import "files-trash.js" as Trash
 import "files-commands.js" as FilesCommands
+import "files-clipboard.js" as ClipboardFiles
 
 Singleton {
     id: root
@@ -206,6 +207,7 @@ Singleton {
         root.cursorName = "";
         root.anchorName = "";
         root.picked = [];
+        FilesUndo.shown = [];
         root.search = "";
         root.searching = false;
         root.refresh();
@@ -700,7 +702,7 @@ Singleton {
 
     function run(command: var): void {
         root.failure = "";
-        const plan = FilesCommands.runPlan(root.shellName, pty.running && !root.shellBusy, command);
+        const plan = FilesCommands.runPlan(root.shellName, pty.running && root.terminalOpen && !root.shellBusy, command);
 
         if (plan.mode === "spawn") {
             root.spawn(plan.argv, "");
@@ -713,10 +715,21 @@ Singleton {
 
     property int working: 0
 
-    function spawn(command: var, input: string): void {
+    function quietly(command: var, input: string): void {
         job.createObject(root, {
             command: command,
             input: input,
+            quiet: true,
+            stdinEnabled: input !== "",
+            running: true
+        });
+    }
+
+    function spawn(command: var, input: string, then: var): void {
+        job.createObject(root, {
+            command: command,
+            input: input,
+            then: then ?? null,
             stdinEnabled: input !== "",
             running: true
         });
@@ -736,6 +749,8 @@ Singleton {
 
             property string input: ""
             property bool begun: false
+            property var then: null
+            property bool quiet: false
 
             stderr: StdioCollector {
                 id: complaint
@@ -743,7 +758,8 @@ Singleton {
 
             onStarted: {
                 task.begun = true;
-                root.working += 1;
+                if (!task.quiet)
+                    root.working += 1;
                 if (task.input !== "") {
                     task.write(task.input);
                     task.stdinEnabled = false;
@@ -753,14 +769,18 @@ Singleton {
             onRunningChanged: {
                 if (task.running || task.begun)
                     return;
-                root.failure = `${task.command[0]} could not be started`;
+                if (!task.quiet)
+                    root.failure = `${task.command[0]} could not be started`;
                 task.destroy();
             }
 
             onExited: (code, status) => {
+                if (task.quiet)
+                    return task.destroy();
                 root.working -= 1;
                 if (code !== 0 || status !== 0)
                     root.report(task.command, code, complaint.text);
+                task.then?.(code === 0 && status === 0);
                 root.restat();
                 task.destroy();
             }
@@ -791,7 +811,7 @@ Singleton {
     }
 
     function cd(path: string): bool {
-        const plan = FilesCommands.cdPlan(root.shellName, pty.running, root.shellBusy, path);
+        const plan = pty.running && !root.terminalOpen ? {mode: "desync"} : FilesCommands.cdPlan(root.shellName, pty.running, root.shellBusy, path);
         if (plan.mode === "refuse") {
             root.failure = plan.failure;
             return false;
@@ -877,7 +897,7 @@ Singleton {
             const busy = body.charAt(0) === "1";
             root.shellBusy = busy;
 
-            if (!busy && root.desynced) {
+            if (!busy && root.desynced && root.terminalOpen) {
                 root.desynced = false;
                 root.typeCd(root.cwd);
             }
@@ -931,17 +951,25 @@ Singleton {
     }
 
     function makeFolder(name: string): void {
-        if (name && !root.inTrash)
-            root.run(FilesCommands.folderCommand(root.cwd, name));
+        if (!name || root.inTrash)
+            return;
+        root.run(FilesCommands.folderCommand(root.cwd, name));
+        FilesUndo.show([name]);
     }
 
     function makeFile(name: string): void {
-        if (name && !root.inTrash)
-            root.run(FilesCommands.fileCommand(root.cwd, name));
+        if (!name || root.inTrash)
+            return;
+        root.run(FilesCommands.fileCommand(root.cwd, name));
+        FilesUndo.show([name]);
     }
 
     function renameRefusal(path: string, name: string): string {
-        return Conflicts.renameRefusal(name, path.slice(path.lastIndexOf("/") + 1), root.entries, Conflicts.folderName(root.parentOf(path), root.home));
+        return Conflicts.nameRefusal(name, path.slice(path.lastIndexOf("/") + 1), root.entries, Conflicts.folderName(root.parentOf(path), root.home));
+    }
+
+    function createRefusal(name: string): string {
+        return Conflicts.nameRefusal(name, "", root.entries, Conflicts.folderName(root.cwd, root.home));
     }
 
     function renameTo(path: string, name: string): void {
@@ -949,15 +977,27 @@ Singleton {
             return;
         const to = FilesCommands.join(root.parentOf(path), name);
         if (to !== path && !Trash.trashed(path, root.trashFiles))
-            FilesUndo.renaming(path, to, () => root.run(FilesCommands.moveCommand(path, to)));
+            FilesUndo.renaming(path, to, () => {
+                root.run(FilesCommands.moveCommand(path, to));
+                if (root.parentOf(path) === root.cwd)
+                    FilesUndo.show([name]);
+            });
     }
 
     function trash(given: var): void {
         const paths = given.filter(path => !Trash.trashed(path, root.trashFiles));
         if (paths.length === 0)
             return;
-        root.run(FilesCommands.trashCommand(paths));
-        FilesUndo.trashed(paths);
+        const command = FilesCommands.trashCommand(paths);
+        const at = Date.now() / 1000;
+        root.failure = "";
+        FilesUndo.trashed(paths, at);
+        root.spawn([...command.words, ...command.paths], "", whole => {
+            if (whole)
+                FilesUndo.say(FilesUndo.trashLine(paths.length));
+            else
+                FilesUndo.trashFailed(paths, at);
+        });
         FilesFind.forget(paths);
     }
 
@@ -1052,25 +1092,63 @@ Singleton {
     property var clipboard: []
     property bool clipboardCut: false
 
+    readonly property var cutTable: {
+        const table = Object.create(null);
+        if (root.clipboardCut)
+            for (const path of root.clipboard)
+                table[path] = true;
+        return table;
+    }
+
     function clip(paths: var, cut: bool): void {
         if (cut && paths.some(path => Trash.trashed(path, root.trashFiles)))
             return;
         root.clipboard = paths;
         root.clipboardCut = cut;
+        const offer = ClipboardFiles.copyCommand(paths, cut);
+        root.quietly(offer.argv, offer.input);
+    }
+
+    function releaseCut(): void {
+        root.quietly(["wl-copy", "--clear"], "");
     }
 
     function paste(): void {
-        if (root.clipboard.length === 0 || root.inTrash)
+        if (root.inTrash)
+            return;
+        const dir = root.cwd;
+        FilesUndo.start(ClipboardFiles.typesCommand(), types => {
+            const type = ClipboardFiles.pick(types ?? "");
+            if (type === "" && (types ?? "").trim() === "")
+                return root.pasteHeld(dir);
+            if (type === "")
+                return FilesUndo.say("The clipboard holds no files");
+            FilesUndo.start(ClipboardFiles.readCommand(type), text => {
+                const found = ClipboardFiles.parse(type, text ?? "");
+                if (found.paths.length === 0 || ClipboardFiles.same(found.paths, root.clipboard) && found.cut === root.clipboardCut)
+                    return root.pasteHeld(dir);
+                if (found.cut)
+                    FilesFind.forget(found.paths);
+                FilesPaste.start(found.paths, dir, found.cut, found.cut ? () => root.releaseCut() : null);
+            });
+        });
+    }
+
+    function pasteHeld(dir: string): void {
+        if (root.clipboard.length === 0)
             return;
         if (root.clipboardCut) {
             const moving = root.clipboard;
             FilesFind.forget(moving);
-            FilesPaste.start(moving, root.cwd, true, outcome => {
-                if (root.clipboard === moving)
-                    root.clipboard = Conflicts.leftover(moving, outcome);
+            FilesPaste.start(moving, dir, true, outcome => {
+                if (root.clipboard !== moving)
+                    return;
+                root.clipboard = Conflicts.leftover(moving, outcome);
+                if (root.clipboard.length === 0)
+                    root.releaseCut();
             });
         } else {
-            root.copyInto(root.clipboard, root.cwd);
+            root.copyInto(root.clipboard, dir);
         }
     }
 
@@ -1199,8 +1277,6 @@ Singleton {
     function act(action: string): bool {
         if (action.startsWith("focus:")) {
             const to = action.slice(6);
-            if (to === "terminal")
-                root.ensureTerminal();
             if (to !== "terminal" || root.terminalOpen)
                 root.focus = to;
             return true;
@@ -1211,6 +1287,10 @@ Singleton {
             root.terminalOpen = !root.terminalOpen;
             if (root.terminalOpen) {
                 root.ensureTerminal();
+                if (root.desynced && !root.shellBusy) {
+                    root.desynced = false;
+                    root.typeCd(root.cwd);
+                }
 
                 root.focus = "terminal";
             } else if (root.focus === "terminal") {
