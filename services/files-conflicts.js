@@ -24,7 +24,7 @@ var PASTE = 'verb=$1; shift; '
     + 'elif [ -e "$to" ] || [ -L "$to" ]; then '
     + 'if [ "$mode" != replace ]; then echo taken; continue; fi; '
     + 'gio trash -- "$to" || { echo failed; continue; }; said=replaced; fi; '
-    + 'if [ "$verb" = mv ]; then mv -n -T -- "$from" "$to"; else cp -r -T -- "$from" "$to"; fi; '
+    + 'if [ "$verb" = mv ]; then mv -n -T -- "$from" "$to"; else cp -r --preserve=mode,timestamps -T -- "$from" "$to"; fi; '
     + 'if [ $? -eq 0 ] && { [ -e "$to" ] || [ -L "$to" ]; }; then echo "$said $n"; '
     + 'elif [ "$said" = replaced ]; then { [ ! -e "$to" ] && [ ! -L "$to" ]; } || gio trash -- "$to"; echo half; '
     + 'else echo failed; fi; done';
@@ -310,9 +310,11 @@ function folderName(dir, home) {
     return dir === "/" ? "/" : baseName(dir);
 }
 
-function renameRefusal(name, original, entries, where) {
+function nameRefusal(name, original, entries, where) {
     if (name === original)
         return "";
+    if (name.indexOf("/") >= 0)
+        return "A name cannot contain a slash";
     for (var i = 0; i < entries.length; i++)
         if (entries[i].name === name)
             return "A " + (entries[i].kind === "dir" ? "folder" : "file") + " named " + name + " is already in " + where;

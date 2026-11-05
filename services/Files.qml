@@ -941,7 +941,11 @@ Singleton {
     }
 
     function renameRefusal(path: string, name: string): string {
-        return Conflicts.renameRefusal(name, path.slice(path.lastIndexOf("/") + 1), root.entries, Conflicts.folderName(root.parentOf(path), root.home));
+        return Conflicts.nameRefusal(name, path.slice(path.lastIndexOf("/") + 1), root.entries, Conflicts.folderName(root.parentOf(path), root.home));
+    }
+
+    function createRefusal(name: string): string {
+        return Conflicts.nameRefusal(name, "", root.entries, Conflicts.folderName(root.cwd, root.home));
     }
 
     function renameTo(path: string, name: string): void {

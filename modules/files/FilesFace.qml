@@ -425,7 +425,7 @@ Item {
                 Files.makeFile(name);
             else
                 Files.makeFolder(name);
-        }, null, "create");
+        }, name => Files.createRefusal(name), "create");
     }
 
     function renameCurrent(): void {

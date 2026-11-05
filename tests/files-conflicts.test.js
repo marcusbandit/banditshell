@@ -16,7 +16,7 @@ function lib(file, names) {
 
 const Conflicts = lib("services/files-conflicts.js", [
     "numbered", "items", "loops", "placeable", "loopRefusal", "probeCommand", "probed", "choices", "answer", "next", "waiting",
-    "operations", "command", "results", "leftover", "reason", "failure", "notice", "renameRefusal",
+    "operations", "command", "results", "leftover", "reason", "failure", "notice", "nameRefusal",
     "picture", "newer", "larger", "day", "keptName", "clashes", "clashLabel", "folderName"
 ]);
 const Undo = lib("services/files-undo.js", ["moved", "copied", "trashed", "batch", "command", "report", "remember", "pick"]);
@@ -314,13 +314,48 @@ test.describe("files paste conflicts", () => {
 
     test.it("refuses a rename onto a name already in the folder, and says which folder", () => {
         const entries = [{ name: "draft.md", kind: "file" }, { name: "final.md", kind: "file" }, { name: "Notes", kind: "dir" }];
-        assert.strictEqual(Conflicts.renameRefusal("final.md", "draft.md", entries, "Documents"), "A file named final.md is already in Documents");
-        assert.strictEqual(Conflicts.renameRefusal("Notes", "draft.md", entries, "Home"), "A folder named Notes is already in Home");
-        assert.strictEqual(Conflicts.renameRefusal("draft.md", "draft.md", entries, "Documents"), "");
-        assert.strictEqual(Conflicts.renameRefusal("notes", "draft.md", entries, "Documents"), "");
+        assert.strictEqual(Conflicts.nameRefusal("final.md", "draft.md", entries, "Documents"), "A file named final.md is already in Documents");
+        assert.strictEqual(Conflicts.nameRefusal("Notes", "draft.md", entries, "Home"), "A folder named Notes is already in Home");
+        assert.strictEqual(Conflicts.nameRefusal("draft.md", "draft.md", entries, "Documents"), "");
+        assert.strictEqual(Conflicts.nameRefusal("notes", "draft.md", entries, "Documents"), "");
         assert.strictEqual(Conflicts.folderName("/h/u", "/h/u"), "Home");
         assert.strictEqual(Conflicts.folderName("/h/u/Documents", "/h/u"), "Documents");
         assert.strictEqual(Conflicts.folderName("/", "/h/u"), "/");
+    });
+
+    test.it("refuses a new name or a rename that holds a slash", () => {
+        const entries = [{ name: "draft.md", kind: "file" }];
+        assert.strictEqual(Conflicts.nameRefusal("2024/report.txt", "draft.md", entries, "Home"), "A name cannot contain a slash");
+        assert.strictEqual(Conflicts.nameRefusal("../report.txt", "draft.md", entries, "Home"), "A name cannot contain a slash");
+        assert.strictEqual(Conflicts.nameRefusal("a/b", "", entries, "Home"), "A name cannot contain a slash");
+    });
+
+    test.it("refuses a new folder or file on a name already in the folder", () => {
+        const entries = [{ name: "untitled folder", kind: "dir" }, { name: "untitled", kind: "file" }];
+        assert.strictEqual(Conflicts.nameRefusal("untitled folder", "", entries, "Home"), "A folder named untitled folder is already in Home");
+        assert.strictEqual(Conflicts.nameRefusal("untitled", "", entries, "Home"), "A file named untitled is already in Home");
+        assert.strictEqual(Conflicts.nameRefusal("untitled 2", "", entries, "Home"), "");
+    });
+
+    test.it("keeps the modified time and mode of a copied file and of every file in a copied folder", () => {
+        const box = sandbox();
+        try {
+            const then = new Date("2020-03-04T05:06:07Z");
+            write(box.at("from", "photo.jpg"), "pixels");
+            write(box.at("from", "album", "inner.txt"), "inside");
+            fs.chmodSync(box.at("from", "photo.jpg"), 0o640);
+            fs.utimesSync(box.at("from", "photo.jpg"), then, then);
+            fs.utimesSync(box.at("from", "album", "inner.txt"), then, then);
+            fs.utimesSync(box.at("from", "album"), then, then);
+            fs.mkdirSync(box.at("to"));
+            const { outcome } = box.paste([box.at("from", "photo.jpg"), box.at("from", "album")], box.at("to"), false);
+            assert.deepStrictEqual(outcome.failed, []);
+            for (const rel of [["photo.jpg"], ["album", "inner.txt"], ["album"]])
+                assert.strictEqual(fs.statSync(box.at("to", ...rel)).mtimeMs, then.getTime());
+            assert.strictEqual(fs.statSync(box.at("to", "photo.jpg")).mode & 0o777, 0o640);
+        } finally {
+            box.done();
+        }
     });
 
     test.it("tells the two files apart: sizes, times, the newer one and the name keep both gives", () => {
