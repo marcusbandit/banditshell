@@ -43,9 +43,15 @@ Singleton {
             wake.stop();
             return;
         }
-        root.pausedMs += Date.now() - root.pausedAt;
+        if (root.pausedAt > 0)
+            root.pausedMs += Date.now() - root.pausedAt;
         root.pausedAt = 0;
         root.sweepNow();
+    }
+
+    Component.onCompleted: {
+        if (root.held)
+            root.pausedAt = Date.now();
     }
 
     function sweepNow(): void {

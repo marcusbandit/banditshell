@@ -120,6 +120,16 @@ test.describe("copied preview", () => {
         assert.strictEqual(M.preview("abc\u200d\ufe0fdefgh", 5), "abc\u2026");
     });
 
+    test.it("keeps a flag, a skin tone and a joined family whole or drops them", () => {
+        const flag = "\u{1F1E9}\u{1F1F0}";
+        assert.strictEqual(M.preview("a".repeat(19) + flag + "xyz", 20), "a".repeat(19) + "\u2026");
+        assert.strictEqual(M.preview("a".repeat(18) + flag + "xyz", 20), "a".repeat(18) + flag + "\u2026");
+        const wave = "\u{1F44B}\u{1F3FD}";
+        assert.strictEqual(M.preview("a".repeat(19) + wave + "xyz", 20), "a".repeat(19) + "\u2026");
+        const family = "\u{1F468}\u200d\u{1F469}\u200d\u{1F467}";
+        assert.strictEqual(M.preview("a".repeat(19) + family, 20), "a".repeat(19) + "\u2026");
+    });
+
     test.it("keeps short text whole", () => {
         assert.strictEqual(M.preview("  hello   world ", 20), "hello world");
     });

@@ -699,6 +699,8 @@ Item {
     }
 
     function leaveTask(): void {
+        if (root.task === "wifi")
+            Activities.remove("moment:wifi");
         if (!root.backToOverview) {
             root.close();
             return;

@@ -68,8 +68,9 @@ Singleton {
     }
 
     function untrash(entry: var, mark: var): void {
-        if (FilesUndo.stack[FilesUndo.stack.length - 1] === mark)
-            FilesUndo.undo();
+        if (FilesUndo.stack[FilesUndo.stack.length - 1] !== mark)
+            return;
+        FilesUndo.undo();
         Activities.remove(entry.id);
     }
 

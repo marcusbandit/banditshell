@@ -89,12 +89,25 @@ function squash(text) {
     return String(text === undefined || text === null ? "" : text).replace(/\s+/g, " ").trim();
 }
 
+const CONTINUES = /^(?:[\u200d\ufe0f\u0300-\u036f]|[\u{1F3FB}-\u{1F3FF}])$/u;
+const REGIONAL = /^[\u{1F1E6}-\u{1F1FF}]$/u;
+
+function cutPoint(letters, limit) {
+    let at = limit;
+    while (at > 0 && (CONTINUES.test(letters[at]) || letters[at - 1] === "\u200d"))
+        at--;
+    let flags = 0;
+    while (flags < at && REGIONAL.test(letters[at - 1 - flags]))
+        flags++;
+    return flags % 2 === 1 ? at - 1 : at;
+}
+
 function preview(text, max) {
     const letters = Array.from(squash(text));
     const limit = max > 0 ? max : COPIED_PREVIEW;
     if (letters.length <= limit)
         return letters.join("");
-    return letters.slice(0, limit).join("").replace(/[\s\u200d\ufe0f]+$/, "") + "\u2026";
+    return letters.slice(0, cutPoint(letters, limit)).join("").replace(/[\s\u200d\ufe0f]+$/, "") + "\u2026";
 }
 
 function copyShape(command, secret) {
