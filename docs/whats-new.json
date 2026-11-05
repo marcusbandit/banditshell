@@ -1,6 +1,62 @@
 {
   "entries": [
     {
+      "id": "2026-11-05-q12",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Bluetooth lists every paired and nearby device, not just seven"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Bluetooth pairing asks for the PIN or number check it needs"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A failed Bluetooth connect says so on the row"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Join a hidden Wi-Fi network from the menu, Settings or a code"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Wi-Fi passwords have a show button and a Caps Lock warning"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The Wi-Fi menu shows your IP address and copies it"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The Wi-Fi share code is the same size with any number of networks"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Sharing Wi-Fi no longer puts the password in a process list"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Forget asks for a second press in the Wi-Fi and Bluetooth menus"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Cut network names show in full on hover, and detail lines wrap"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q25",
       "date": "2026-11-05",
       "changes": [

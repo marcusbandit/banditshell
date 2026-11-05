@@ -33,7 +33,7 @@ Column {
         root.opened = root.opened === key ? "" : key;
     }
 
-    readonly property bool takeover: root.opened === "code" || root.opened === "share"
+    readonly property bool takeover: root.opened === "code" || root.opened === "share" || root.opened === "hidden"
 
     readonly property real cardMax: Appearance.sizes.menuMaxHeight / 3
 
@@ -153,6 +153,14 @@ Column {
 
     component Act: MenuRow {}
 
+    component Address: Act {
+        icon: "content_copy"
+        label: "IP address"
+        detail: Network.ipAddress
+        tip: "copy"
+        onActivated: Network.copyAddress()
+    }
+
     component Tool: Item {
         id: tool
 
@@ -227,6 +235,8 @@ Column {
     }
 
     component Fact: StyledText {
+        width: parent ? parent.width : implicitWidth
+        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
         leftPadding: Appearance.padding.normal
         topPadding: Appearance.padding.small
         bottomPadding: Appearance.padding.normal
@@ -295,6 +305,14 @@ Column {
                 on: root.opened === "code"
                 tip: root.opened === "code" ? "close the camera" : "scan a code"
                 onActivated: root.toggleLayer("code")
+            }
+
+            Tool {
+                visible: Network.enabled
+                icon: "visibility_off"
+                on: root.opened === "hidden"
+                tip: root.opened === "hidden" ? "close the form" : "join a hidden network"
+                onActivated: root.toggleLayer("hidden")
             }
 
             Tool {
@@ -433,9 +451,23 @@ Column {
             onFlipped: Network.setManaged(!Network.managed)
         }
 
+        Address {
+            visible: Network.connected && !!Network.ipAddress
+        }
+
         Fact {
             text: Network.deviceName ? `${Network.deviceName} · ${Network.address}` : Network.address
         }
+    }
+
+    StyledText {
+        width: root.width
+        leftPadding: Appearance.padding.normal
+        visible: !!Network.hiddenTrouble && root.opened !== "hidden"
+        text: `${Network.hiddenLastName}: ${Network.hiddenTrouble}`
+        color: Appearance.colour.alarm
+        font.pixelSize: Appearance.font.size.small
+        wrapMode: Text.WordWrap
     }
 
     Notice {
@@ -581,6 +613,8 @@ Column {
 
                         SecretField {
                             claims: true
+                            capsLock: Keymap.capsLock
+                            onCapsAsked: Keymap.refresh()
 
                             placeholder: `password for ${entry.name}`
 
@@ -603,6 +637,8 @@ Column {
                             readonly property string kind: Network.signInKind(entry.modelData)
 
                             placeholder: entry.name
+                            capsLock: Keymap.capsLock
+                            onCapsAsked: Keymap.refresh()
                             methods: Network.signInMethods(kind)
                             refusal: Network.signInRefusal(kind)
                             domain: Network.knownServer(entry.name)
@@ -662,12 +698,15 @@ Column {
                                     }
                                 }
 
-                                Act {
+                                Address {
+                                    visible: entry.modelData.connected && !!Network.ipAddress
+                                }
+
+                                ForgetRow {
                                     visible: entry.modelData.known
                                     icon: "delete"
-                                    label: "Forget it"
                                     tip: "drops password"
-                                    onActivated: {
+                                    onConfirmed: {
                                         root.opened = "";
                                         Network.forget(Network.find(entry.name));
                                     }
@@ -714,6 +753,34 @@ Column {
             }
 
             Loader {
+                id: hiddenForm
+
+                width: parent.width
+
+                active: root.showing && root.opened === "hidden"
+                visible: hiddenForm.active
+
+                sourceComponent: HiddenNetworkForm {
+                    busy: Network.hiddenBusy
+                    joining: Network.hiddenName
+                    trouble: Network.hiddenTrouble
+                    capsLock: Keymap.capsLock
+                    onCapsAsked: Keymap.refresh()
+                    onSubmitted: (name, security, password) => Network.joinHidden(name, security, password)
+                    onCancelled: root.opened = ""
+
+                    Connections {
+                        target: Network
+
+                        function onHiddenDone(): void {
+                            if (!Network.hiddenTrouble)
+                                root.opened = "";
+                        }
+                    }
+                }
+            }
+
+            Loader {
                 id: sheet
 
                 width: parent.width
@@ -730,7 +797,7 @@ Column {
 
                         width: parent.width
 
-                        maxHeight: Math.max(0, Math.min(list.implicitHeight, root.cardMax) - (note.visible ? note.implicitHeight + parent.spacing : 0))
+                        maxHeight: Math.max(0, root.cardMax - (note.visible ? note.implicitHeight + parent.spacing : 0))
 
                         text: Network.card
 
