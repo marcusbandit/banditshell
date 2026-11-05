@@ -122,11 +122,15 @@ function urlOf(text) {
     return "";
 }
 
-function linkScore(text, fileNames) {
+var FILE_LIKE_ENDINGS = ["sh", "pl", "ai", "in", "it", "me", "no", "at"];
+
+function linkScore(text, fileNames, filesReady) {
     const t = String(text || "").trim().toLowerCase();
-    const bare = /^[a-z0-9\-]+(\.[a-z0-9\-]+)+$/.test(t) && !/^www\./.test(t);
-    if (!bare)
+    const ending = /^[a-z0-9\-]+(?:\.[a-z0-9\-]+)*\.([a-z]+)$/.exec(t);
+    if (!ending || FILE_LIKE_ENDINGS.indexOf(ending[1]) < 0 || /^www\./.test(t))
         return Infinity;
+    if (!filesReady)
+        return -0.5;
     return (fileNames || []).some(n => String(n || "").toLowerCase() === t) ? -0.5 : Infinity;
 }
 

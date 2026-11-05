@@ -130,18 +130,21 @@ test.describe("urlOf", () => {
             assert.strictEqual(Search.urlOf(t), "", t);
     });
 
-    test.it("ranks a bare name below a file of that exact name", () => {
+    test.it("ranks a file-like name below a file of that exact name", () => {
         for (const t of ["build.sh", "deploy.sh", "report.pl", "logo.ai", "Makefile.in", "notes.it"])
-            assert.ok(Search.linkScore(t, [t]) < 0, t);
-        assert.strictEqual(Search.linkScore("Build.SH", ["build.sh"]) < 0, true);
+            assert.ok(Search.linkScore(t, [t], true) < 0, t);
+        assert.ok(Search.linkScore("Build.SH", ["build.sh"], true) < 0);
     });
 
-    test.it("keeps a link first when no file has that name or the link is explicit", () => {
-        assert.strictEqual(Search.linkScore("build.sh", ["other.sh"]), Infinity);
-        assert.strictEqual(Search.linkScore("build.sh", []), Infinity);
-        assert.strictEqual(Search.linkScore("www.example.sh", ["www.example.sh"]), Infinity);
-        assert.strictEqual(Search.linkScore("https://example.sh", ["https://example.sh"]), Infinity);
-        assert.strictEqual(Search.linkScore("example.sh/a", ["example.sh/a"]), Infinity);
+    test.it("holds a file-like name below the rows until the file search has answered", () => {
+        assert.ok(Search.linkScore("build.sh", [], false) < 0);
+        assert.strictEqual(Search.linkScore("build.sh", [], true), Infinity);
+        assert.strictEqual(Search.linkScore("build.sh", ["other.sh"], true), Infinity);
+    });
+
+    test.it("keeps a link first when it is explicit or does not look like a file", () => {
+        for (const t of ["www.example.sh", "https://example.sh", "example.sh/a", "github.com", "example.io"])
+            assert.strictEqual(Search.linkScore(t, [t], false), Infinity, t);
     });
 
     test.it("fills the search template", () => {

@@ -1618,7 +1618,7 @@ QtObject {
                         label: `Open ${root.text}`,
                         detail: "",
                         icon: "link",
-                        score: Search.linkScore(root.text, root.fileRows.map(f => f.label))
+                        score: Search.linkScore(root.text, root.fileRows.map(f => f.label), FileSearch.found === root.text.trim() || !FileSearch.fdFound)
                     }
                 ]
             });
