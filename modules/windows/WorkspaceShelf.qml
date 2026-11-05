@@ -27,7 +27,7 @@ Item {
 
     readonly property var slots: {
         const out = [];
-        for (let i = 0; i < Hypr.count; i++)
+        for (let i = 0; i < Hypr.countFor(root.screen); i++)
             out.push({
                 target: root.band + i,
                 label: `${root.band + i}`,

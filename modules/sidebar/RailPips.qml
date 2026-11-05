@@ -14,10 +14,12 @@ Item {
 
     implicitHeight: layout.total
 
+    readonly property bool pointing: backstop.containsMouse
+
     function slotAt(y: real): int {
         for (let i = 0; i < layout.count; i++) {
             const g = layout.at(i);
-            if (y >= g.y - layout.gap / 2 && y <= g.y + g.h + layout.gap / 2)
+            if (y >= g.y - layout.stride / 2 && y <= g.y + g.h + layout.stride / 2)
                 return i;
         }
         return -1;
@@ -37,7 +39,8 @@ Item {
 
         anchors.left: parent.left
         anchors.right: parent.right
-        height: layout.total
+        y: -layout.stride / 2
+        height: layout.total + layout.stride
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         preventStealing: layout.scrubbing
@@ -57,7 +60,7 @@ Item {
         onReleased: mouse => {
             if (layout.scrubRelease())
                 return;
-            const i = root.slotAt(mouse.y);
+            const i = root.slotAt(mouse.y + backstop.y);
             if (i >= 0)
                 Hypr.switchTo(layout.idAt(i));
         }
