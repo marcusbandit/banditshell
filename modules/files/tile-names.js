@@ -18,6 +18,29 @@ function pieces(text) {
     return text.match(/[^\s\-_.]*(?:[\s\-_.]+|$)/g).filter(p => p !== "");
 }
 
+function chunked(text, fits) {
+    const greedy = [];
+    let at = 0;
+    while (at < text.length) {
+        let lo = 1;
+        let hi = text.length - at;
+        while (lo < hi) {
+            const mid = Math.ceil((lo + hi) / 2);
+            if (fits(text.slice(at, at + mid)))
+                lo = mid;
+            else
+                hi = mid - 1;
+        }
+        greedy.push(text.slice(at, at + lo));
+        at += lo;
+    }
+    const size = Math.ceil(text.length / greedy.length);
+    const even = [];
+    for (let i = 0; i < text.length; i += size)
+        even.push(text.slice(i, i + size));
+    return even.every(part => fits(part)) ? even : greedy;
+}
+
 function wrapped(units, fits) {
     const lines = [];
     let line = "";
@@ -40,8 +63,18 @@ function wrapped(units, fits) {
             line = unit;
             continue;
         }
-        line = cropped(trimmed(unit), fits);
-        close();
+        const word = trimmed(unit);
+        const parts = chunked(word, fits);
+        const start = used - unit.length;
+        let taken = 0;
+        for (let i = 0; i < parts.length - 1; i++) {
+            taken += parts[i].length;
+            line = parts[i];
+            used = start + taken;
+            close();
+        }
+        used = start + unit.length;
+        line = parts[parts.length - 1] + unit.slice(word.length);
     }
     if (line !== "")
         close();
