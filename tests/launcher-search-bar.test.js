@@ -62,6 +62,8 @@ test.describe("aliases", () => {
         assert.strictEqual(Search.aliasHolder(before, "ff", "app:firefox"), "");
         assert.strictEqual(Search.aliasHolder(before, "free", "app:zen"), "");
         assert.strictEqual(Search.aliasHolder(before, "", "app:zen"), "");
+        assert.strictEqual(Search.aliasHolder(before, "ff", "app:zen", id => id !== "app:firefox"), "");
+        assert.strictEqual(Search.aliasHolder(before, "ff", "app:zen", id => id === "app:firefox"), "Firefox");
         assert.strictEqual(Search.aliasHolder(before, "constructor", "app:zen"), "");
     });
 });

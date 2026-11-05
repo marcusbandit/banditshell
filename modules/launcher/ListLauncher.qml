@@ -333,7 +333,7 @@ LauncherConcept {
     function commitAlias(): void {
         const row = root.capture.row;
         const alias = Search.cleanAlias(query.text);
-        const holder = Search.aliasHolder(Config.values.launcher.aliases, alias, row.key);
+        const holder = Search.aliasHolder(Config.values.launcher.aliases, alias, row.key, held => !!search.rowById(held));
         if (holder) {
             root.capture = Object.assign({}, root.capture, {
                 said: `taken by ${holder}`

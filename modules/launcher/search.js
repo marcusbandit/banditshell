@@ -1171,12 +1171,14 @@ function aliasTarget(aliases, text) {
     return said && aliases && Object.prototype.hasOwnProperty.call(aliases, said) ? aliases[said].id || "" : "";
 }
 
-function aliasHolder(aliases, alias, id) {
+function aliasHolder(aliases, alias, id, exists) {
     const said = cleanAlias(alias);
     if (!said || !aliases || !Object.prototype.hasOwnProperty.call(aliases, said))
         return "";
     const held = aliases[said];
-    return held.id === id ? "" : held.label || held.id || said;
+    if (held.id === id || exists && !exists(held.id))
+        return "";
+    return held.label || held.id || said;
 }
 
 function aliasesById(aliases) {

@@ -1475,6 +1475,8 @@ QtObject {
                     if (root.processes.some(p => String(p.pid) === pid))
                         left[pid] = true;
                 root.closing = left;
+                if (Object.keys(left).length === 0)
+                    root.relist.running = false;
             }
         }
     }
@@ -1485,8 +1487,10 @@ QtObject {
         onTriggered: {
             root.listProcesses();
             root.relists -= 1;
-            if (root.relists <= 0)
+            if (root.relists <= 0) {
                 running = false;
+                root.closing = ({});
+            }
         }
     }
 
