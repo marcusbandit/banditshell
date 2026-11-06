@@ -24,6 +24,12 @@ function shownKeys(activeId, specialName) {
     return out;
 }
 
+function visibleKey(activeId, specialName) {
+    if (specialName)
+        return String(specialName);
+    return typeof activeId === "number" && activeId !== 0 ? String(activeId) : "";
+}
+
 function specialNames(workspaces, clients, monitors) {
     var out = [];
     function note(ws) {
@@ -38,18 +44,5 @@ function specialNames(workspaces, clients, monitors) {
         note(clients[i] && clients[i].workspace);
     for (i = 0; i < (monitors || []).length; i++)
         note(monitors[i] && monitors[i].specialWorkspace);
-    return out;
-}
-
-function group(clients) {
-    var out = {};
-    for (var i = 0; i < (clients || []).length; i++) {
-        var key = keyOf(clients[i].workspace);
-        if (!key)
-            continue;
-        if (!out[key])
-            out[key] = [];
-        out[key].push(clients[i]);
-    }
     return out;
 }

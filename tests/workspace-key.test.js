@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const src = fs.readFileSync(path.join(__dirname, "..", "services/workspace-key.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const { keyOf, shownKeys, specialNames, group } = new Function(`${src}\nreturn { keyOf, shownKeys, specialNames, group };`)();
+const { keyOf, shownKeys, visibleKey, specialNames } = new Function(`${src}\nreturn { keyOf, shownKeys, visibleKey, specialNames };`)();
 
 const fixture = name => JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "hyprctl", name), "utf8"));
 const clients = fixture("hyprland-0.57-clients.json");
@@ -34,7 +34,9 @@ test.describe("workspace keys on Hyprland 0.57", () => {
     });
 
     test.it("puts each window on its own special workspace", () => {
-        const grouped = group(clients);
+        const grouped = {};
+        for (const c of clients)
+            (grouped[keyOf(c.workspace)] = grouped[keyOf(c.workspace)] || []).push(c);
         const classes = key => grouped[key].map(c => c.class).sort();
         assert.deepStrictEqual(classes("special:music"), ["Spotify"]);
         assert.deepStrictEqual(classes("special:torrents"), ["org.qbittorrent.qBittorrent"]);
@@ -52,5 +54,11 @@ test.describe("workspace keys on Hyprland 0.57", () => {
         assert.deepStrictEqual(shownKeys(1, ""), ["1"]);
         assert.deepStrictEqual(shownKeys(1, "special:music"), ["1", "special:music"]);
         assert.deepStrictEqual(shownKeys(undefined, ""), []);
+    });
+
+    test.it("shows the special over the workspace beneath it", () => {
+        assert.strictEqual(visibleKey(1, "special:music"), "special:music");
+        assert.strictEqual(visibleKey(1, ""), "1");
+        assert.strictEqual(visibleKey(undefined, ""), "");
     });
 });

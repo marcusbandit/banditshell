@@ -83,10 +83,11 @@ Singleton {
     }
 
     function workspaceOf(client: var): var {
-        return client?.lastIpcObject?.workspace ?? ({
-                id: client?.workspace?.id,
-                name: client?.workspace?.name
-            });
+        const live = {
+            id: client?.workspace?.id,
+            name: client?.workspace?.name
+        };
+        return WorkspaceKey.keyOf(live) !== "" ? live : (client?.lastIpcObject?.workspace ?? live);
     }
 
     function keyOf(client: var): string {
@@ -121,7 +122,7 @@ Singleton {
     }
 
     readonly property var specials: {
-        const names = WorkspaceKey.specialNames(Hyprland.workspaces.values.map(ws => ws.lastIpcObject ?? ({
+        const names = WorkspaceKey.specialNames(Hyprland.workspaces.values.map(ws => ws.lastIpcObject?.name ? ws.lastIpcObject : ({
                     id: ws.id,
                     name: ws.name
                 })), Hyprland.toplevels.values.map(c => ({
@@ -530,8 +531,7 @@ Singleton {
     }
 
     function visibleOn(mon: var): string {
-        const shown = root.shownOn(mon);
-        return mon.lastIpcObject?.specialWorkspace?.name ? shown[shown.length - 1] : (shown[0] ?? "");
+        return WorkspaceKey.visibleKey(mon.activeWorkspace?.id, mon.lastIpcObject?.specialWorkspace?.name);
     }
 
     function clientsOn(screen: var): var {
