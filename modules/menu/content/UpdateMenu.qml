@@ -461,7 +461,7 @@ Column {
 
                 readonly property color hue: root.hue(tagged.modelData.key)
 
-                readonly property bool keyable: true
+                readonly property bool keyable: (tagged.modelData.go ?? []).length === 0
 
                 width: root.width
                 height: Math.max(tagChip.height, taggedText.height, taggedGo.visible ? taggedGo.y + taggedGo.height : 0)

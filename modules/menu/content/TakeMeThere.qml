@@ -14,7 +14,7 @@ Button {
 
     onClicked: {
         const win = QsWindow.window;
-        win?.whatsNew?.hide();
+        win?.whatsNew?.item?.leave();
         win?.menus?.hide();
         Quickshell.execDetached([`${Quickshell.shellDir}/cli/banditshell`, ...root.go]);
     }

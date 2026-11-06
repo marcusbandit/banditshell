@@ -59,7 +59,7 @@ PanelWindow {
     readonly property var usage: Usage
     readonly property var clipboardHistory: Clipboard
 
-    readonly property var panels: [launcherLayer, clipLayer, wallpaperLayer, sessionLayer, cheatLayer, calcLayer, mediaLayer]
+    readonly property var panels: [launcherLayer, clipLayer, wallpaperLayer, sessionLayer, cheatLayer, calcLayer, mediaLayer, whatsNewLayer]
 
     readonly property bool panelOpen: win.panels.some(panel => panel.open)
     readonly property bool covering: win.panels.some(panel => panel.open && panel !== mediaLayer)
@@ -292,7 +292,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: win.underFullscreen ? WlrKeyboardFocus.None : (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || islandLayer.wantsEscape || settingsLayer.open || whatsNewLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: win.underFullscreen ? WlrKeyboardFocus.None : (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -868,9 +868,12 @@ PanelWindow {
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
 
+            onOpenChanged: if (open)
+                win.closeOthers(whatsNewLayer)
+
             panel: WhatsNewLog {
                 entries: WhatsNew.log(WhatsNew.entries, WhatsNew.pending)
-                unread: WhatsNew.pending.length
+                unread: WhatsNew.pending.reduce((n, e) => n + e.changes.length, 0)
                 holeX: chassis.holeX
                 holeY: chassis.holeY
                 holeWidth: chassis.holeWidth

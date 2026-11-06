@@ -202,6 +202,10 @@ const SECTIONS = [
 
 const SHORT_LIST = 6;
 
+function tagOf(key) {
+    return SECTIONS.find(known => known.key === key).tag;
+}
+
 function sectionOf(c) {
     if (c.severity === "major")
         return "major";
@@ -234,7 +238,7 @@ function shortList(entries, unread) {
     const out = [];
     for (const s of sections(entries, unread))
         for (const c of s.changes)
-            out.push({ key: s.key, tag: SECTIONS.find(known => known.key === s.key).tag, text: c.text, go: c.go, unread: c.unread });
+            out.push({ key: s.key, tag: tagOf(s.key), text: c.text, go: c.go, unread: c.unread });
     return out.length <= SHORT_LIST ? out : [];
 }
 
@@ -250,7 +254,7 @@ function logOf(entries, unread) {
             if (!c)
                 continue;
             const key = sectionOf(c);
-            changes.push({ key: key, tag: SECTIONS.find(known => known.key === key).tag, text: c.text, go: c.go });
+            changes.push({ key: key, tag: tagOf(key), text: c.text, go: c.go });
         }
         if (changes.length)
             out.push({ id: e.id, date: typeof e.date === "string" ? e.date : "", unread: fresh.indexOf(e.id) >= 0, changes: changes });

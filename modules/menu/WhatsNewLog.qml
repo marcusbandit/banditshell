@@ -56,6 +56,12 @@ Item {
         root.restoreTo = "";
     }
 
+    function leave(): void {
+        root.open = false;
+        keys.focus = false;
+        root.restoreTo = "";
+    }
+
     function toggle(): void {
         if (root.open)
             root.hide();
@@ -85,16 +91,16 @@ Item {
         epsilon: 0.005
     }
 
+    Keys.onPressed: event => {
+        if (event.key !== Qt.Key_Escape)
+            return;
+        Appearance.instantly();
+        root.hide();
+        event.accepted = true;
+    }
+
     Item {
         id: keys
-
-        Keys.onPressed: event => {
-            if (event.key !== Qt.Key_Escape)
-                return;
-            Appearance.instantly();
-            root.hide();
-            event.accepted = true;
-        }
     }
 
     TextMetrics {

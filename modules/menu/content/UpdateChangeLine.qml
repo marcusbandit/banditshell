@@ -12,7 +12,7 @@ Item {
     property var go: []
     property real unreadBar: 3
 
-    readonly property bool keyable: true
+    readonly property bool keyable: root.go.length === 0
 
     height: Math.max(changeText.height, goButton.visible ? goButton.y + goButton.height : 0)
 
