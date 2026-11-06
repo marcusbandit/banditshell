@@ -459,6 +459,8 @@ Item {
             root.thrown = 0;
         }
 
+        pressAndHoldInterval: Appearance.animation.longPress
+
         onPressAndHold: mouse => {
             press.held = true;
             root.menu(mouse.x, mouse.y);

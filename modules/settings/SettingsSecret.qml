@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 Row {
     id: root
@@ -38,6 +39,20 @@ Row {
             color: Appearance.colour.fill
             stroke: input.activeFocus ? Appearance.colour.accent : "transparent"
             strokeWidth: input.activeFocus ? Appearance.stroke.ring : 0
+        }
+
+        Icon {
+            anchors.right: parent.right
+            anchors.rightMargin: Appearance.padding.normal
+            anchors.verticalCenter: parent.verticalCenter
+
+            visible: input.activeFocus && Keymap.capsLock
+            name: "keyboard_capslock"
+            color: Appearance.colour.warning
+
+            HoverTip {
+                text: "caps lock is on"
+            }
         }
 
         Item {
@@ -102,7 +117,18 @@ Row {
 
             onTextEdited: root.edited(input.text)
             onAccepted: root.accepted(input.text)
-            onActiveFocusChanged: activeFocus ? Prompts.request(root) : Prompts.release(root)
+            onActiveFocusChanged: {
+                if (activeFocus) {
+                    Prompts.request(root);
+                    Keymap.refresh();
+                } else {
+                    Prompts.release(root);
+                }
+            }
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_CapsLock)
+                    Qt.callLater(Keymap.refresh);
+            }
         }
 
         MouseArea {

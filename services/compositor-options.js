@@ -50,3 +50,9 @@ function settle(got, kept) {
         out[option.key] = got[option.key] ?? kept[option.key];
     return out;
 }
+
+function borderStep(wanted, pushed) {
+    if (wanted)
+        return "push";
+    return pushed ? "restore" : "none";
+}

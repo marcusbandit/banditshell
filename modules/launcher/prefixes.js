@@ -32,7 +32,7 @@ function completion(p) {
 }
 
 function detail(p) {
-    return p.example ? `${p.about}, as in ${p.example}` : p.about;
+    return p.example ? `${p.example} · ${p.about}` : p.about;
 }
 
 function order(a, b) {
@@ -40,11 +40,9 @@ function order(a, b) {
 }
 
 function sections(prefixes) {
-    var linked = {};
-    (prefixes || []).filter(p => p && p.section === "Quicklinks").forEach(p => heads(p).forEach(h => linked[h] = true));
     var taken = {};
     var unique = (prefixes || []).filter(p => {
-        var key = p && p.word && (p.section === "Quicklinks" || !linked[p.word]) ? `${p.section}\n${p.word}` : "";
+        var key = p && p.word ? `${p.section}\n${p.word}` : "";
         var fresh = key && !taken[key];
         if (fresh)
             taken[key] = true;

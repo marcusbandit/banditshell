@@ -414,6 +414,11 @@ PanelWindow {
         }
 
         Region {
+            intersection: Intersection.Combine
+            item: sidebar.touchOpen ? touchAway : null
+        }
+
+        Region {
             intersection: Intersection.Intersect
             width: win.underFullscreen ? 0 : win.width
             height: win.underFullscreen ? 0 : win.height
@@ -500,6 +505,17 @@ PanelWindow {
             wanted: wallpaperLayer.open
         }
 
+        Item {
+            id: touchAway
+
+            anchors.fill: parent
+            visible: sidebar.touchOpen
+
+            TapHandler {
+                onTapped: sidebar.touched = false
+            }
+        }
+
         Chassis {
             id: chassis
 
@@ -540,6 +556,7 @@ PanelWindow {
             pullSpan: Math.hypot(win.width, win.height)
 
             modeIcon: SettingsState.modeIcon
+            modeName: SettingsState.modeName
             awake: Idle.awake
 
             glanceReach: Math.max(0, glance.footReach - win.border)

@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/compositor-options.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Options = new Function(src + "\nreturn { batch, readOptions, missing, settle };")();
+const Options = new Function(src + "\nreturn { batch, readOptions, missing, settle, borderStep };")();
 
 const captured = fs.readFileSync(path.join(ROOT, "tests/fixtures/hyprctl/getoption-batch.txt"), "utf8");
 
@@ -71,4 +71,11 @@ test("with no shape option answered the shell does not follow Hyprland", () => {
     assert.strictEqual(Options.settle(Options.readOptions(""), KEPT), null);
     const scrollOnly = '{"option": "input:natural_scroll", "bool": true, "set": true }\n';
     assert.strictEqual(Options.settle(Options.readOptions(scrollOnly), KEPT), null);
+});
+
+test("switching border painting off restores Hyprland's own colours once", () => {
+    assert.strictEqual(Options.borderStep(true, false), "push");
+    assert.strictEqual(Options.borderStep(true, true), "push");
+    assert.strictEqual(Options.borderStep(false, true), "restore");
+    assert.strictEqual(Options.borderStep(false, false), "none");
 });

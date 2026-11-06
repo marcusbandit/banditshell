@@ -99,6 +99,27 @@ function existing(paths, text) {
     return out;
 }
 
+function trashLine(count) {
+    return (count === 1 ? "1 item" : count + " items") + " moved to the trash, Ctrl+Z to undo";
+}
+
+function withdraw(stack, at, stayed) {
+    var out = [];
+    for (var i = 0; i < stack.length; i++) {
+        var entry = stack[i];
+        if (entry.kind !== "trash" || entry.at !== at) {
+            out.push(entry);
+            continue;
+        }
+        var kept = entry.paths.filter(function (path) {
+            return stayed.indexOf(path) < 0;
+        });
+        if (kept.length > 0)
+            out.push({kind: "trash", paths: kept, at: entry.at});
+    }
+    return out;
+}
+
 function pick(items, entry) {
     var taken = [];
     var out = [];

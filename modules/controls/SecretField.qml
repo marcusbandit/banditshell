@@ -17,6 +17,16 @@ Item {
 
     property bool framed: true
 
+    property bool revealed: false
+
+    property bool capsLock: false
+
+    signal capsAsked
+
+    readonly property real tail: eye.width + Appearance.padding.normal * 2 + (root.capsOn ? caps.width + Appearance.padding.small : 0)
+
+    readonly property bool capsOn: root.capsLock && field.activeFocus
+
     readonly property real inset: root.framed ? Appearance.padding.large : 0
 
     property real textSize: Appearance.font.size.small
@@ -25,18 +35,22 @@ Item {
 
     readonly property int count: field.length
 
+    readonly property string value: field.text
+
     readonly property bool empty: root.count === 0
 
     signal accepted(string secret)
     signal cancelled
 
     function clear(): void {
+        root.revealed = false;
         field.text = "";
         if (root.visible)
             field.forceActiveFocus();
     }
 
     function cancel(): void {
+        root.revealed = false;
         field.text = "";
         root.cancelled();
     }
@@ -45,6 +59,7 @@ Item {
         if (root.busy || !field.length)
             return;
         const secret = field.text;
+        root.revealed = false;
         field.text = "";
         root.accepted(secret);
     }
@@ -99,26 +114,49 @@ Item {
 
         anchors.fill: parent
         anchors.leftMargin: root.inset
-        anchors.rightMargin: root.inset
+        anchors.rightMargin: root.inset + root.tail
 
         enabled: !root.busy
-        echoMode: TextInput.NoEcho
-        cursorDelegate: Item {}
+        echoMode: root.revealed ? TextInput.Normal : TextInput.NoEcho
+        cursorDelegate: root.revealed ? null : blankCursor
         activeFocusOnTab: true
+        clip: true
 
         font.family: Appearance.font.family
-        font.pixelSize: Appearance.font.size.small
+        font.pixelSize: root.revealed ? root.textSize : Appearance.font.size.small
         renderType: Text.NativeRendering
-        color: "transparent"
+        color: root.revealed ? Appearance.colour.text : "transparent"
+        selectionColor: Appearance.colour.accent
+        selectedTextColor: Appearance.colour.accentText
+        verticalAlignment: TextInput.AlignVCenter
 
         onAccepted: root.submit()
         Keys.onEscapePressed: root.cancel()
+        Keys.onPressed: event => {
+            if (event.key === Qt.Key_CapsLock)
+                Qt.callLater(() => root.capsAsked());
+        }
 
         onCursorPositionChanged: root.reveal()
 
         readonly property bool surfaceActive: field.Window.active
         onSurfaceActiveChanged: if (field.surfaceActive && root.visible)
             field.forceActiveFocus()
+    }
+
+    Component {
+        id: blankCursor
+
+        Item {}
+    }
+
+    Connections {
+        target: field
+
+        function onActiveFocusChanged(): void {
+            if (field.activeFocus)
+                root.capsAsked();
+        }
     }
 
     function stake(): void {
@@ -136,7 +174,11 @@ Item {
             field.forceActiveFocus();
     }
 
-    onVisibleChanged: root.land()
+    onVisibleChanged: {
+        if (!root.visible)
+            root.revealed = false;
+        root.land();
+    }
     onClaimsChanged: root.land()
     onBusyChanged: if (!root.busy)
         root.land()
@@ -265,8 +307,9 @@ Item {
 
         anchors.fill: parent
         anchors.leftMargin: root.inset
-        anchors.rightMargin: root.inset
+        anchors.rightMargin: root.inset + root.tail
         clip: true
+        visible: !root.revealed
         opacity: !root.framed && root.busy ? Appearance.opacity.disabled : 1
 
         Item {
@@ -287,6 +330,51 @@ Item {
             pill: "object"
             color: root.alarm ? Appearance.colour.alarm : Appearance.colour.accent
             visible: field.activeFocus && !root.empty
+        }
+    }
+
+    Icon {
+        id: caps
+
+        anchors.right: eye.left
+        anchors.rightMargin: Appearance.padding.small
+        anchors.verticalCenter: parent.verticalCenter
+
+        visible: root.capsOn
+        name: "keyboard_capslock"
+        size: root.textSize
+        color: Appearance.colour.warning
+
+        HoverTip {
+            text: "caps lock is on"
+        }
+    }
+
+    Icon {
+        id: eye
+
+        anchors.right: parent.right
+        anchors.rightMargin: root.inset + Appearance.padding.normal
+        anchors.verticalCenter: parent.verticalCenter
+
+        opacity: root.busy ? Appearance.opacity.disabled : 1
+        size: root.textSize
+        name: root.revealed ? "visibility_off" : "visibility"
+        color: Appearance.colour.textDim
+
+        MouseArea {
+            anchors.fill: parent
+            anchors.margins: -Appearance.padding.small
+            enabled: !root.busy
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                root.revealed = !root.revealed;
+                field.forceActiveFocus();
+            }
+        }
+
+        HoverTip {
+            text: root.revealed ? "hide" : "show"
         }
     }
 }

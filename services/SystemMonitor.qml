@@ -13,6 +13,7 @@ Singleton {
 
     property var previous: null
     property var top: []
+    property int resamples: 0
     property var disks: []
     property real uptime: 0
     property int cores: 0
@@ -60,7 +61,7 @@ Singleton {
                     return;
                 root.uptime = now.uptime;
                 if (root.previous)
-                    root.top = Monitor.topProcesses(root.previous, now, 5);
+                    root.top = Monitor.topProcesses(root.previous, now, 5, Monitor.SESSION);
                 root.previous = root.sampling ? now : null;
             }
         }
@@ -85,6 +86,7 @@ Singleton {
 
     function quit(pid: int, force: bool): void {
         Quickshell.execDetached(["kill", force ? "-KILL" : "-TERM", String(pid)]);
+        root.resamples = 8;
         resample.restart();
     }
 
@@ -133,7 +135,13 @@ Singleton {
         id: resample
 
         interval: 400
-        onTriggered: if (root.sampling)
-            root.sample()
+        onTriggered: {
+            if (root.sampling)
+                root.sample();
+            if (root.resamples > 0) {
+                root.resamples -= 1;
+                resample.restart();
+            }
+        }
     }
 }

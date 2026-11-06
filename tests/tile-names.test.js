@@ -22,9 +22,24 @@ test.describe("tile names: wrapping a name under an icon", () => {
         assert.deepStrictEqual(Names.lines("quarterly summary.xlsx", 2, room(14)), ["quarterly", "summary.xlsx"]);
     });
 
-    test.it("cuts a word too long for a line with an ellipsis instead of wrapping it", () => {
-        assert.deepStrictEqual(Names.lines("Projects", 2, room(7)), ["Projec\u2026"]);
-        assert.deepStrictEqual(Names.lines("averyverylongfilenamewithoutspaces.tar.gz", 2, room(12)), ["averyverylo\u2026", "tar.gz"]);
+    test.it("wraps a single long word across both lines instead of cutting it", () => {
+        assert.deepStrictEqual(Names.lines("Documents", 2, room(7)), ["Docum", "ents"]);
+        assert.deepStrictEqual(Names.lines("ModemManager", 2, room(7)), ["ModemM", "anager"]);
+    });
+
+    test.it("never cuts an emoji in half at a line break", () => {
+        const lines = Names.lines("\u{1F4C1}\u{1F4C1}\u{1F4C1}\u{1F4C1}\u{1F4C1}", 2, s => Array.from(s).length <= 3);
+        assert.deepStrictEqual(lines, ["\u{1F4C1}\u{1F4C1}\u{1F4C1}", "\u{1F4C1}\u{1F4C1}"]);
+        for (const line of lines)
+            assert.ok(!/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/.test(line));
+    });
+
+    test.it("keeps the start and the extension of a name that needs more than two lines", () => {
+        assert.deepStrictEqual(Names.lines("averyverylongfilenamewithoutspaces.tar.gz", 2, room(12)), ["averyverylon", "\u2026aces.tar.gz"]);
+    });
+
+    test.it("lets a short word share the line the long word ended on", () => {
+        assert.deepStrictEqual(Names.lines("Wallpapers-4k", 2, room(8)), ["Wallpa", "pers-4k"]);
     });
 
     test.it("keeps the end of the stem, where numbered files differ", () => {

@@ -49,8 +49,7 @@ Item {
         root.selected = root.choices[Math.max(0, Math.min(root.choices.length - 1, at + by))];
     }
 
-    visible: root.up || fade.value > 0
-    opacity: fade.value
+    visible: root.up
     focus: root.up
 
     Keys.onPressed: event => {
@@ -89,15 +88,6 @@ Item {
         }
     }
 
-    Follow {
-        id: fade
-
-        target: root.up ? 1 : 0
-        speed: Appearance.animation.revealSpeed
-        epsilon: Appearance.animation.fadeEpsilon
-        startsAtTarget: true
-    }
-
     Rectangle {
         anchors.fill: parent
         color: Appearance.colour.scrim
@@ -111,7 +101,7 @@ Item {
     SquircleRect {
         anchors.centerIn: parent
 
-        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, 560)
+        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, Files.zoomed(560))
         implicitHeight: body.implicitHeight + Appearance.padding.large * 2
 
         radius: Appearance.rounding.large
@@ -134,7 +124,7 @@ Item {
                 width: parent.width
 
                 text: root.question ? `${root.question.name} is already in ${root.folder}` : ""
-                font.pixelSize: Appearance.font.size.normal
+                font.pixelSize: Files.zoomed(Appearance.font.size.normal)
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 maximumLineCount: 3
                 elide: Text.ElideRight
@@ -180,7 +170,7 @@ Item {
                     width: body.width
 
                     text: !root.question ? "" : modelData === "replace" ? `Replace moves the ${root.called} already in ${root.folder} to the trash` : modelData === "skip" ? `Skip leaves the ${root.called} in ${root.folder} as it is` : `Keep both saves the new one as ${Conflicts.keptName(root.question)}`
-                    font.pixelSize: Appearance.font.size.small
+                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
                     color: Appearance.colour.textDim
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 }
@@ -191,7 +181,7 @@ Item {
                 visible: !root.canReplace
 
                 text: root.question ? `The ${root.called} in ${root.folder} holds what you are pasting, so it cannot be replaced` : ""
-                font.pixelSize: Appearance.font.size.small
+                font.pixelSize: Files.zoomed(Appearance.font.size.small)
                 color: Appearance.colour.textDim
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }
@@ -207,6 +197,7 @@ Item {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     checked: root.all
+                    zoom: Files.magnification
 
                     onToggled: root.all = !root.all
                 }
@@ -220,7 +211,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     text: `Do the same for ${Conflicts.clashLabel(root.later)}`
-                    font.pixelSize: Appearance.font.size.small
+                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
 
                     TapHandler {
@@ -239,6 +230,7 @@ Item {
 
                     text: "Stop pasting"
                     style: "bare"
+                    zoom: Files.magnification
 
                     onClicked: FilesPaste.cancel()
                 }
@@ -262,6 +254,8 @@ Item {
                             style: destructive ? "ring" : chosen ? "accent" : "plate"
                             alarm: destructive
                             paint: destructive && chosen ? Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.alarm, 0.22) : undefined
+
+                            zoom: Files.magnification
 
                             onClicked: root.choose(modelData)
                         }

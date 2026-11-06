@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import "edge-speed.js" as EdgeSpeed
 
 Item {
     id: root
@@ -184,6 +185,10 @@ Item {
         gone.snap();
     }
 
+    function speed(): real {
+        return EdgeSpeed.settled(root.velocity, Date.now() - root.lastEvent);
+    }
+
     function track(x: real, y: real): void {
         root.pointX = x;
         root.pointY = y;
@@ -272,7 +277,7 @@ Item {
             return;
         }
 
-        if (root.velocity >= Config.values.windows.fling) {
+        if (root.speed() >= Config.values.windows.fling) {
 
             root.undoAim();
             Hypr.closeWindow(root.held.addr);
@@ -432,7 +437,7 @@ Item {
         interval: Config.values.windows.settle
         repeat: true
         running: root.grabbed && root.lifted && !root.mapped
-        onTriggered: if (root.velocity < Config.values.windows.fling)
+        onTriggered: if (root.speed() < Config.values.windows.fling)
             root.mapped = true
     }
 

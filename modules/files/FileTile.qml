@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 import "urls.js" as Urls
 import "tile-names.js" as TileNames
 import "row-columns.js" as RowColumns
@@ -38,8 +39,9 @@ Item {
     property bool row: false
 
     property bool receiving: false
+    property bool cut: false
 
-    readonly property real ink: root.entry.hidden && !Files.showHidden ? Appearance.opacity.trail : 1
+    readonly property real ink: root.cut || root.entry.hidden && !Files.showHidden ? Appearance.opacity.trail : 1
     readonly property bool droppable: root.entry.kind === "dir" && root.entry.open
     readonly property bool isImage: root.entry.class === "image" && !root.entry.broken
 
@@ -97,6 +99,12 @@ Item {
 
     HoverHandler {
         id: hover
+    }
+
+    HoverTip {
+        host: root
+        asked: hover.hovered
+        text: hover.hovered && (root.row ? rowName.text : label.text).indexOf("\u2026") >= 0 ? root.entry.name : ""
     }
 
     Column {
