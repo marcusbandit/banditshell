@@ -18,6 +18,7 @@ Row {
     SettingsTool {
         anchors.verticalCenter: parent.verticalCenter
         icon: "remove"
+        repeats: true
         tip: "less"
         enabled: root.enabled && root.value - root.step >= root.from - 0.00001
         onClicked: root.moved(Math.max(root.from, +(root.value - root.step).toFixed(4)))
@@ -34,6 +35,7 @@ Row {
     SettingsTool {
         anchors.verticalCenter: parent.verticalCenter
         icon: "add"
+        repeats: true
         tip: "more"
         enabled: root.enabled && root.value + root.step <= root.to + 0.00001
         onClicked: root.moved(Math.min(root.to, +(root.value + root.step).toFixed(4)))

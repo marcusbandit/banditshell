@@ -37,6 +37,7 @@ Singleton {
     readonly property bool searching: root.query.trim() !== "" || root.searchFocused
 
     property string layoutHover: ""
+    property bool sliding: false
 
     property var flash: null
     property int turn: 0

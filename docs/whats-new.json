@@ -1,6 +1,57 @@
 {
   "entries": [
     {
+      "id": "2026-11-05-q16",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings search opens the folded list so you can read it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Hover a folded Settings row to see its page name"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Hold a plus or minus button in Settings to keep stepping"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Each Settings page can reset all its changed rows, with undo"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Esc in a Settings password box only leaves the box"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Dragging Settings moves it from the first pixel"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Opening Screens keeps the Settings list and close button in place"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The Settings width slider applies when you let go"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Long Settings names and font names are no longer cut short"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q06",
       "date": "2026-11-05",
       "changes": [

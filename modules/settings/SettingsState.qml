@@ -489,6 +489,29 @@ Singleton {
             root.log(k, r, before, after);
     }
 
+    function resetPage(pageId: string): var {
+        const was = [];
+        root.muteLog = true;
+        for (const k of Catalogue.pageChanges(pageId, root)) {
+            const before = root.v(k);
+            root.set(k, root.defaultOf(k));
+            if (JSON.stringify(root.v(k)) !== JSON.stringify(before))
+                was.push({
+                    k,
+                    value: before
+                });
+        }
+        root.muteLog = false;
+        return was;
+    }
+
+    function putBack(was: var): void {
+        root.muteLog = true;
+        for (const w of was)
+            root.set(w.k, w.value);
+        root.muteLog = false;
+    }
+
     function lookup(values: var, key: string): var {
         let at = values;
         for (const part of key.split(".")) {

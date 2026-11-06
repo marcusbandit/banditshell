@@ -26,12 +26,14 @@ FocusScope {
             h: Math.max(0, root.height - root.band * 2 - root.margin * 2)
         })
     readonly property bool narrow: root.width < 640
-    readonly property real baseWidth: Math.max(0, Math.min(Appearance.sizes.settingsWidth, root.room.w))
+    readonly property real wantedWidth: Appearance.sizes.settingsWidth
+    property real settledWidth: Appearance.sizes.settingsWidth
+    readonly property real baseWidth: Math.max(0, Math.min(root.settledWidth, root.room.w))
     readonly property real baseHeight: root.narrow ? root.room.h : Math.min(Appearance.sizes.settingsHeight, root.room.h)
 
     readonly property bool arranging: SettingsView.current === "screens"
     readonly property bool fold: root.arranging
-    readonly property real contentWidth: root.baseWidth - root.padding * 2 - root.railWidth - root.gutter
+    readonly property real contentWidth: root.baseWidth - root.padding * 2 - root.railRest - root.gutter
     readonly property real foldHeight: Math.round(Math.max(300, Math.min(460, root.contentWidth * 0.5)))
 
     readonly property real panelWidth: root.baseWidth
@@ -41,7 +43,10 @@ FocusScope {
     readonly property real gutter: root.tiny ? Appearance.padding.normal : Appearance.sizes.settingsGutter
     readonly property real railSlim: 52
     readonly property bool railFolded: root.tiny || SettingsState.railFolded
-    readonly property real railWidth: root.railFolded ? root.railSlim : Appearance.sizes.settingsRail
+    readonly property bool searchOpen: root.railFolded && SettingsView.searching
+    readonly property real railFull: Math.min(Appearance.sizes.settingsRail, root.baseWidth - root.padding * 2)
+    readonly property real railRest: root.railFolded ? root.railSlim : root.railFull
+    readonly property real railWidth: root.railFolded && !root.searchOpen ? root.railSlim : root.railFull
     readonly property real paneWidth: Appearance.sizes.settingsPane
 
     readonly property bool tiny: root.baseWidth < 640
@@ -52,7 +57,7 @@ FocusScope {
     readonly property var at: root.narrow ? {
         x: root.room.x,
         y: root.room.y
-    } : Floating.place(root.room, grow.width, grow.height, root.spot)
+    } : Floating.place(root.room, grow.width, grow.height, root.spot, root.baseHeight)
     readonly property real farEdge: root.at.x + root.panelWidth
 
     readonly property var blobs: {
@@ -105,6 +110,18 @@ FocusScope {
             SettingsView.unpin();
             SettingsView.query = "";
             SettingsState.closed();
+        }
+    }
+
+    onWantedWidthChanged: if (!SettingsView.sliding)
+        root.settledWidth = root.wantedWidth
+
+    Connections {
+        target: SettingsView
+
+        function onSlidingChanged(): void {
+            if (!SettingsView.sliding)
+                root.settledWidth = root.wantedWidth;
         }
     }
 
@@ -224,10 +241,7 @@ FocusScope {
 
                 onActiveChanged: {
                     if (move.active) {
-                        move.start = SettingsState.spot ?? {
-                            x: 0,
-                            y: 0
-                        };
+                        move.start = Floating.drawn(root.room, grow.width, grow.height, SettingsState.spot, root.baseHeight);
                         return;
                     }
                     if (root.dragSpot)
@@ -236,7 +250,7 @@ FocusScope {
                 }
 
                 onCentroidChanged: if (move.active)
-                    root.dragSpot = Floating.dragged(root.room, grow.width, grow.height, move.start, move.centroid.scenePosition.x - move.centroid.scenePressPosition.x, move.centroid.scenePosition.y - move.centroid.scenePressPosition.y)
+                    root.dragSpot = Floating.dragged(root.room, grow.width, grow.height, move.start, move.centroid.scenePosition.x - move.centroid.scenePressPosition.x, move.centroid.scenePosition.y - move.centroid.scenePressPosition.y, root.baseHeight)
             }
 
             TapHandler {
@@ -282,20 +296,34 @@ FocusScope {
                     rail.focusSearch();
                 }
 
+                SquircleRect {
+                    x: rail.x - Appearance.padding.small
+                    y: rail.y - Appearance.padding.small
+                    width: rail.width + Appearance.padding.small * 2
+                    height: rail.height + Appearance.padding.small * 2
+                    z: 3
+                    radius: Appearance.rounding.large
+                    color: Appearance.colour.surfaceSolid
+                    visible: root.tiny && rail.width > root.railSlim + 1
+                }
+
                 SettingsRail {
                     id: rail
 
+                    readonly property real held: root.tiny ? Math.min(root.railSlim, width) : width
+
                     x: root.padding
                     y: root.padding
+                    z: 4
                     width: railGrow.value
                     height: page.height - root.padding * 2
-                    tiny: root.tiny || root.railFolded && railGrow.value < root.railSlim + 1
+                    tiny: railGrow.value < root.railSlim + 1
                     foldable: !root.tiny
                     folded: root.railFolded
                 }
 
                 Rectangle {
-                    x: rail.x + rail.width + Math.round(root.gutter / 2)
+                    x: rail.x + rail.held + Math.round(root.gutter / 2)
                     y: root.padding
                     width: 1
                     height: page.height - root.padding * 2
@@ -305,7 +333,7 @@ FocusScope {
                 SettingsContent {
                     id: content
 
-                    x: rail.x + rail.width + root.gutter
+                    x: rail.x + rail.held + root.gutter
                     y: root.padding
                     width: page.width - root.padding - x
                     height: page.height - root.padding * 2

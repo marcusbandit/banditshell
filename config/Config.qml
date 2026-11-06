@@ -756,7 +756,7 @@ Singleton {
                 width: 1280,
                 height: 820,
 
-                rail: 264,
+                rail: 288,
 
                 railRow: 36,
 

@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "hitIndexOf", "hitIsOpen", "hitToOpen", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf", "resettable", "changed", "seeThrough", "loggedSeeThrough", "hitTitle", "hitWhy", "hitPath", "pathCuts", "marked"]);
+const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "hitIndexOf", "hitIsOpen", "hitToOpen", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf", "resettable", "changed", "seeThrough", "loggedSeeThrough", "hitTitle", "hitWhy", "hitPath", "pathCuts", "marked", "pageChanges"]);
 const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "anchor", "nudge", "resize", "fit"]);
 const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "extent", "rects", "board", "lit", "struck", "fromSheet"]);
 const Frames = lib(path.join(SETTINGS, "scenes/keyframes.js"), ["bezier", "STANDARD", "ARRIVE", "BACK", "at", "pulse", "steps"]);
@@ -745,6 +745,32 @@ test("a reset arrow is never offered for a password, a button, a read-only path 
     const screens = Object.values(Catalogue.ROWS).filter(r => r.k && r.k.startsWith("scr:"));
     assert.ok(screens.length > 0);
     assert.ok(screens.every(r => !Catalogue.resettable(r)));
+});
+
+test("a page offers to reset exactly the rows whose value differs from the default", () => {
+    const keys = Catalogue.ROWS.filter(r => r.page === "terminal" && r.k).map(r => r.k);
+    assert.ok(keys.length > 2);
+    const state = (changedKeys) => ({ offersReset: k => changedKeys.includes(k), away: () => false });
+    assert.deepStrictEqual(Catalogue.pageChanges("terminal", state([])), []);
+    assert.deepStrictEqual(Catalogue.pageChanges("terminal", state([keys[0], keys[2]])), [keys[0], keys[2]]);
+    assert.deepStrictEqual(Catalogue.pageChanges("terminal", state(["nowhere"])), []);
+});
+
+test("a page reset skips rows on a hidden group", () => {
+    const row = Catalogue.ROWS.find(r => r.page === "terminal" && r.k);
+    const all = { offersReset: () => true };
+    assert.ok(Catalogue.pageChanges("terminal", all).includes(row.k));
+    const hidden = row.group;
+    const original = hidden.away;
+    hidden.away = () => true;
+    try {
+        assert.ok(!Catalogue.pageChanges("terminal", all).includes(row.k));
+    } finally {
+        if (original === undefined)
+            delete hidden.away;
+        else
+            hidden.away = original;
+    }
 });
 
 test("a place the weather does not know gets one message under the row, with a way out", () => {

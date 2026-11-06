@@ -159,12 +159,32 @@ Item {
                     onClicked: SettingsView.go(SettingsView.cat.id)
                 }
 
+                SettingsTool {
+                    id: pageReset
+
+                    readonly property var changed: SettingsView.hub || SettingsView.home ? [] : Catalogue.pageChanges(SettingsView.current, root.s)
+
+                    x: parent.width - root.trailRoom - width
+                    y: 2
+                    visible: pageReset.changed.length > 0
+                    icon: "restart_alt"
+                    tip: pageReset.changed.length === 1 ? "reset the 1 changed setting on this page" : `reset the ${pageReset.changed.length} changed settings on this page`
+                    onClicked: {
+                        const was = SettingsState.resetPage(SettingsView.current);
+                        if (was.length > 0)
+                            SettingsView.drop(was.length === 1 ? "1 setting reset" : `${was.length} settings reset`, "restart_alt", {
+                                label: "undo",
+                                run: () => SettingsState.putBack(was)
+                            });
+                    }
+                }
+
                 Column {
                     id: words
 
                     x: back.visible ? back.x + back.width + Appearance.padding.normal : Appearance.padding.small
                     y: 0
-                    width: parent.width - x - root.trailRoom
+                    width: parent.width - x - root.trailRoom - (pageReset.visible ? pageReset.width + Appearance.padding.small : 0)
 
                     StyledText {
                         width: parent.width
