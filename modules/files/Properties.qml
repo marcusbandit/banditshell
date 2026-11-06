@@ -32,17 +32,7 @@ Item {
         measurer.running = false;
     }
 
-    visible: root.up || fade.value > 0
-    opacity: fade.value
-
-    Follow {
-        id: fade
-
-        target: root.up ? 1 : 0
-        speed: Appearance.animation.revealSpeed
-        epsilon: Appearance.animation.fadeEpsilon
-        startsAtTarget: true
-    }
+    visible: root.up
 
     Process {
         id: statter
@@ -114,7 +104,7 @@ Item {
     SquircleRect {
         anchors.centerIn: parent
 
-        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, 520)
+        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, Files.zoomed(520))
         implicitHeight: body.implicitHeight + Appearance.padding.large * 2
 
         radius: Appearance.rounding.large
@@ -139,15 +129,15 @@ Item {
                     fileClass: root.stat ? root.stat.class : "unknown"
                     link: root.stat ? root.stat.link : false
                     broken: root.stat ? root.stat.broken : false
-                    size: Appearance.icon.large
+                    size: Files.zoomed(Appearance.icon.large)
                 }
 
                 StyledText {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - Appearance.icon.large - Appearance.padding.normal
+                    width: parent.width - Files.zoomed(Appearance.icon.large) - Appearance.padding.normal
 
                     text: root.stat ? root.stat.name : "…"
-                    font.pixelSize: Appearance.font.size.normal
+                    font.pixelSize: Files.zoomed(Appearance.font.size.normal)
                     elide: Text.ElideMiddle
                 }
             }
@@ -168,16 +158,18 @@ Item {
                     spacing: Appearance.padding.normal
 
                     StyledText {
-                        width: Appearance.font.size.small * 0.6 * 10
+                        width: Files.zoomed(Appearance.font.size.small) * 0.6 * 10
 
                         text: line.modelData.label
+                        font.pixelSize: Files.zoomed(Appearance.font.size.small)
                         color: Appearance.colour.textFaint
                     }
 
                     StyledText {
-                        width: line.width - Appearance.font.size.small * 0.6 * 10 - Appearance.padding.normal
+                        width: line.width - Files.zoomed(Appearance.font.size.small) * 0.6 * 10 - Appearance.padding.normal
 
                         text: line.modelData.value
+                        font.pixelSize: Files.zoomed(Appearance.font.size.small)
                         elide: Text.ElideMiddle
                     }
                 }

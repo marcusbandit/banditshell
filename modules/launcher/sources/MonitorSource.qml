@@ -48,7 +48,7 @@ QtObject {
         if (!Battery.available)
             return null;
         const left = Battery.secondsLeft > 0 ? Search.spanText(Math.round(Battery.secondsLeft / 60) * 60) : "";
-        const state = Battery.full ? "full" : Battery.charging ? (left ? `charging · full in ${left}` : "charging") : left ? `${left} left` : "on battery";
+        const state = Battery.charging ? (left ? `charging · full in ${left}` : "charging") : Battery.onBattery ? (left ? `${left} left` : "on battery") : Battery.state;
         return root.row("battery", `Battery ${Battery.percent}%`, state, Battery.charging ? "battery_charging_full" : "battery_full");
     }
 

@@ -503,7 +503,7 @@ Singleton {
 
                 catchUpMinutes: 60,
 
-                timerMax: 3,
+                timerMax: 8,
                 alarmMax: 8,
 
                 cloud: ["claude", "-p"],
@@ -728,6 +728,10 @@ Singleton {
 
                 dateFormat: "words",
 
+                firstDay: "locale",
+
+                weekNumbers: false,
+
                 autoZone: false
             },
 
@@ -830,8 +834,10 @@ Singleton {
                     "g": "first",
                     "G": "last",
                     "/": "search",
+                    "Ctrl+F": "search",
                     " ": "preview",
                     ".": "hidden",
+                    "Ctrl+H": "hidden",
                     "v": "view",
                     "Ctrl+=": "zoomin",
                     "Ctrl++": "zoomin",

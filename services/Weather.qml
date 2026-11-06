@@ -19,6 +19,7 @@ Singleton {
 
     property var current: null
     property double fetchedAt: 0
+    property double failedAt: 0
     property string fetchedFor: ""
     property string place: ""
     property var coordinates: null
@@ -75,6 +76,12 @@ Singleton {
             root.retry();
     }
 
+    function keepFresh(): void {
+        if (root.failure !== "" && Date.now() - root.failedAt < Math.max(5, root.cfg.minutes) * 60000)
+            return;
+        root.refresh();
+    }
+
     function retry(): void {
         if (!root.wanted || reader.running)
             return;
@@ -89,6 +96,7 @@ Singleton {
         if (answer.failure) {
             root.failure = answer.failure;
             root.failedFor = place;
+            root.failedAt = Date.now();
             root.suggest();
             return;
         }

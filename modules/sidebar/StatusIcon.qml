@@ -11,6 +11,7 @@ Item {
     property bool alarm: false
     property bool warning: false
     property bool available: true
+    property bool clickable: true
 
     property Component mark: null
 
@@ -61,8 +62,9 @@ Item {
         anchors.topMargin: -Appearance.sizes.statusGap / 2
         anchors.bottomMargin: -Appearance.sizes.statusGap / 2
         hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: root.activated()
+        cursorShape: root.clickable ? Qt.PointingHandCursor : Qt.ArrowCursor
+        onClicked: if (root.clickable)
+            root.activated()
 
         onWheel: wheel => {
             root.scrolled(wheel);

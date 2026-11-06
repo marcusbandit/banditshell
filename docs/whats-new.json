@@ -62,6 +62,231 @@
       ]
     },
     {
+      "id": "2026-11-06-q13",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Battery menu has a power mode row"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Full or held-at-limit batteries no longer read as charging"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Battery power says Charging at or Drawing, and 99.6% is 100%"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Sound devices with the same name now show their card too"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Long menu pages fade at the edge where more follows"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Brightness controls stop at the Lowest brightness setting"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Sidebar brightness icon says its level and steps by 5%"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Settings Hold charge tile says it needs the helper, not 80%"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-q28",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Files is an app: type files in the launcher, the tour shows it"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Drop files from other apps into Files; Ctrl-drag copies"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ctrl+F searches and Ctrl+H shows hidden files in Files"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Files shows how many items a folder has and what you selected"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files sorts img2 before img10"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A missing folder says so and offers Go up and Home"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Arrow and page keys glide the Files list like the wheel"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Taking a key in File browser settings asks first; defaults restore"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Launcher file search finds files that .gitignore lists"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Slow touchpad scrolling in the Files terminal follows your fingers"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-q27",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Drives and their usage bars update while Files is open"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Open with lists the apps that handle the file"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files dialogs scale with the zoom"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files dialogs open and close at once"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The drag ghost stays under the pointer"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Keys no longer reach the file grid behind Properties"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Ctrl-clicking no longer raises the key panel"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-05-q10",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A full timer or alarm list now says why Start did nothing"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Settings: 'Longest timer' is now 'Timers at once', default 8"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Add a place finds 'new york' and suggests common cities"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Timers and alarms show their names; the Timers count skips paused"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The alarm editor follows the 12-hour clock with am and pm"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Removing a timer, alarm or place can be undone for a few seconds"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Click a time field and type digits; presets now include 15 and 30"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-q11",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Calendars have previous and next month buttons"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Pick the first day of the week and week numbers in Language"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The forecast always offers Change place"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The island tour step introduces the weather"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The desktop weather card appears on its own and keeps current"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The desktop clock shows the whole date"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Desktop Now playing wraps long titles and opens the media card"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q26",
       "date": "2026-11-05",
       "changes": [
