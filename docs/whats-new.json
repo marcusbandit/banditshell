@@ -22,6 +22,17 @@
       ]
     },
     {
+      "id": "2026-11-06-q91",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Settings opens even while a sidebar menu is open"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q16",
       "date": "2026-11-05",
       "changes": [

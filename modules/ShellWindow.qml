@@ -602,6 +602,15 @@ PanelWindow {
         }
 
         Connections {
+            target: Settings
+
+            function onSummoned(screen: string): void {
+                if (screen !== "" && screen === (win.screen?.name ?? ""))
+                    menuLayer.hide();
+            }
+        }
+
+        Connections {
             target: sidebar.status
 
             function onRequested(key: string, deliberate: bool): void {
@@ -850,6 +859,7 @@ PanelWindow {
             panel: SettingsPanel {
                 originX: chassis.barWidth
                 band: win.border
+                menuOpen: menuLayer.open
                 yielded: win.panelOpen || menuLayer.open || Prompts.awayIn(settingsLayer.QsWindow.window) || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
             }
         }

@@ -858,7 +858,16 @@ kbd {
     padding: var(--s6) var(--gutter) 0;
 }
 
-.doc-head h1 {
+.entry {
+    display: grid;
+    gap: var(--s4);
+    max-width: var(--column);
+    margin: 0 auto;
+    padding: var(--s6) var(--gutter) 0;
+}
+
+.doc-head h1,
+.entry h1 {
     font-size: var(--large);
 }
 
@@ -1102,4 +1111,102 @@ kbd {
     .table td:nth-child(2)::before {
         content: none;
     }
+}
+
+.entry .doc-head,
+.entry .roadmap {
+    grid-column: 1;
+}
+
+.entry .doc-head {
+    display: grid;
+    gap: var(--s1);
+    max-width: var(--measure);
+}
+
+.entry .meta {
+    margin-top: 0;
+}
+
+.chip {
+    display: inline-block;
+    padding: 1px var(--s1);
+    border-radius: 6px;
+    corner-shape: squircle;
+    background: var(--gold);
+    color: var(--ink);
+    font: var(--small) / 1.4 var(--pixel);
+}
+
+.posts {
+    display: grid;
+    gap: var(--s1);
+    max-width: 36rem;
+}
+
+.post-card {
+    display: grid;
+    gap: 4px;
+    padding: var(--s2);
+    border-radius: 20px;
+    corner-shape: squircle;
+    background: var(--chassis);
+    box-shadow: var(--ring);
+}
+
+.post-card h2 {
+    font-size: var(--normal);
+}
+
+.post-card h2 a {
+    color: var(--paper);
+    text-decoration: none;
+}
+
+.post-card h2 a:hover {
+    text-decoration: underline 2px var(--mid);
+    text-underline-offset: 4px;
+}
+
+.post-card p:last-child {
+    color: var(--dim);
+}
+
+.prose {
+    --marker: var(--mid);
+    padding-bottom: var(--s4);
+}
+
+.prose > * + * {
+    margin-top: var(--s2);
+}
+
+.prose > h2 {
+    margin-top: var(--s8);
+}
+
+.prose > h2 + * {
+    margin-top: var(--s1);
+}
+
+.prose figure {
+    margin-top: var(--s3);
+}
+
+.prose figure + * {
+    margin-top: var(--s3);
+}
+
+.prose figure img {
+    display: block;
+    height: auto;
+    border-radius: var(--radius);
+    corner-shape: squircle;
+    box-shadow: var(--ring);
+}
+
+.prose figcaption {
+    margin-top: var(--s1);
+    font-size: var(--small);
+    color: var(--dim);
 }

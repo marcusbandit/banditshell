@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { card, longDate, posts } from "./blog.mjs";
 import { escape, inline, render } from "./roadmap.mjs";
 
 const SITE = dirname(fileURLToPath(import.meta.url));
@@ -10,6 +11,7 @@ const DIST = join(SITE, "dist");
 const REPO = "https://github.com/marcusbandit/banditshell";
 const ORIGIN = "https://banditshell.marcusrosado.com";
 const SOURCE = "docs/roadmap.md";
+const DRAFTS = process.argv.includes("--drafts");
 
 const git = (...args) => {
     try {
@@ -38,6 +40,10 @@ const notes = (building?.items ?? []).slice(0, 4).map((item) => {
     return `<article class="note"><span class="note-icon" aria-hidden="true"></span><span class="note-text"><strong>${inline(title, REPO)}</strong><span>${inline(body, REPO)}</span></span></article>`;
 });
 
+const articles = posts(join(SITE, "blog"), SITE, REPO, { drafts: DRAFTS });
+
+const hasBlog = articles.length > 0;
+
 const entries = [
     { label: "Install banditshell", hint: "Install", href: "#install" },
     { label: "What's in it", hint: "Features", href: "#features" },
@@ -48,19 +54,28 @@ const entries = [
         href: `/roadmap/#${section.id}`,
         words: plain(section.html).slice(0, 1600),
     })),
+    ...(hasBlog ? [{ label: "Read the blog", hint: "Blog", href: "/blog/" }] : []),
+    ...articles.filter((entry) => !entry.draft).map((entry) => ({
+        label: entry.title,
+        hint: "Blog",
+        href: `/blog/${entry.slug}/`,
+        words: entry.words,
+    })),
     { label: "Source on GitHub", hint: "GitHub", href: REPO },
     { label: "Report a bug", hint: "GitHub", href: `${REPO}/issues` },
     { label: "Buy me a coffee", hint: "Ko-fi", href: "https://ko-fi.com/marcusbandit" },
 ];
 
-const page = (values) =>
-    fill(template("layout.html"), {
+const page = (values) => {
+    const merged = { roadmapCurrent: "", blogCurrent: "", robots: "", scripts: "", ...values };
+    return fill(template("layout.html"), {
         repo: REPO,
         commit: commit ? `<a href="${REPO}/commit/${commit}"><code>${commit}</code></a>` : "an uncommitted tree",
-        roadmapCurrent: "",
-        scripts: "",
-        ...values,
+        blogNav: hasBlog ? `<a href="/blog/"${merged.blogCurrent}>Blog</a>` : "",
+        blogFoot: hasBlog ? '<a href="/blog/">Blog</a>' : "",
+        ...merged,
     });
+};
 
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(join(DIST, "roadmap"), { recursive: true });
@@ -101,6 +116,49 @@ writeFileSync(
     }),
 );
 
+const blogLead = "A post for every banditshell release, written for the people who use the shell.";
+
+if (hasBlog) {
+    mkdirSync(join(DIST, "blog"), { recursive: true });
+    writeFileSync(
+        join(DIST, "blog", "index.html"),
+        page({
+            title: "Blog | banditshell",
+            description: blogLead,
+            url: `${ORIGIN}/blog/`,
+            page: "blog-page",
+            blogCurrent: ' aria-current="page"',
+            main: fill(template("blog.html"), { posts: articles.map(card).join("\n") }),
+        }),
+    );
+}
+
+for (const entry of articles) {
+    mkdirSync(join(DIST, "blog", entry.slug), { recursive: true });
+    writeFileSync(
+        join(DIST, "blog", entry.slug, "index.html"),
+        page({
+            title: `${escape(entry.title)} | banditshell`,
+            description: escape(entry.summary),
+            url: `${ORIGIN}/blog/${entry.slug}/`,
+            page: "blog-post",
+            blogCurrent: ' aria-current="page"',
+            robots: entry.draft ? '<meta name="robots" content="noindex">' : "",
+            main: fill(template("post.html"), {
+                heading: escape(entry.title),
+                byline: `${entry.draft ? '<span class="chip">Draft</span> ' : ""}<time datetime="${entry.date}">${longDate(entry.date)}</time>${
+                    entry.release
+                        ? entry.draft
+                            ? ` · written for ${escape(entry.release)}`
+                            : ` · <a href="${REPO}/releases/tag/${escape(entry.release)}">Release ${escape(entry.release)}</a>`
+                        : ""
+                }`,
+                body: entry.html,
+            }),
+        }),
+    );
+}
+
 writeFileSync(
     join(DIST, "404.html"),
     page({
@@ -108,7 +166,7 @@ writeFileSync(
         description,
         url: `${ORIGIN}/`,
         page: "lost",
-        main: `<section class="band lost"><h1>Not here</h1><p class="measure">Nothing lives at this address. The <a href="/">front page</a> and the <a href="/roadmap/">roadmap</a> do.</p></section>`,
+        main: `<section class="band lost"><h1>Not here</h1><p class="measure">Nothing lives at this address. ${hasBlog ? 'The <a href="/">front page</a>, the <a href="/roadmap/">roadmap</a> and the <a href="/blog/">blog</a> do.' : 'The <a href="/">front page</a> and the <a href="/roadmap/">roadmap</a> do.'}</p></section>`,
     }),
 );
 
@@ -146,4 +204,4 @@ cpSync(join(SITE, "fonts"), join(DIST, "fonts"), { recursive: true });
 cpSync(join(SITE, "images"), join(DIST, "images"), { recursive: true });
 copyFileSync(join(ROOT, "docs/readme/hero.webp"), join(DIST, "hero.webp"));
 
-console.log(`built ${DIST} from ${SOURCE}, updated ${updated}${commit ? ` at ${commit}` : ""}`);
+console.log(`built ${DIST} from ${SOURCE}, updated ${updated}${commit ? ` at ${commit}` : ""}, ${articles.length} blog ${articles.length === 1 ? "post" : "posts"}${DRAFTS ? " with drafts" : ""}`);
