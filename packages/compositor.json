@@ -12,9 +12,10 @@
       "services/hyprland-lua.js",
       "services/keymap.js",
       "services/monitor-rules.js",
+      "services/workspace-key.js",
       "services/workspace-span.js"
     ],
-    "tests": ["tests/cli-migration.test.js", "tests/compositor-options.test.js", "tests/fixtures/hyprctl", "tests/hypr-config-writes.test.js", "tests/hyprland-lua.test.js", "tests/keymap.test.js", "tests/monitor-rules.test.js", "tests/workspace-span.test.js"]
+    "tests": ["tests/cli-migration.test.js", "tests/compositor-options.test.js", "tests/fixtures/hyprctl", "tests/hypr-config-writes.test.js", "tests/hyprland-lua.test.js", "tests/keymap.test.js", "tests/monitor-rules.test.js", "tests/workspace-key.test.js", "tests/workspace-span.test.js"]
   },
   "requires": {
     "packages": ["core"],

@@ -1,0 +1,18 @@
+[
+  {
+    "name": "HDMI-A-1",
+    "id": 0,
+    "activeWorkspace": {
+      "address": "1",
+      "id": 1,
+      "type": "normal",
+      "name": "1"
+    },
+    "specialWorkspace": {
+      "address": "",
+      "type": "",
+      "name": ""
+    },
+    "focused": true
+  }
+]
