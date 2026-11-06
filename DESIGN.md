@@ -1247,8 +1247,10 @@ banditshell/
 │   │                            must not read (notifications, the keyring
 │   │                            prompt) to the band's screen. Follows
 │   │                            hypr-mode: on every Hyprland reload it reads
-│   │                            ~/.local/state/hypr/streamer and turns itself
-│   │                            on or off to match
+│   │                            ~/.local/state/hypr/streamer, turns on when
+│   │                            the file appears and off when a file it saw
+│   │                            goes; with no file ever seen, the mode set in
+│   │                            Settings stays as it is
 │   ├── Obs.qml                  OBS over its WebSocket, only while streaming:
 │   │                            the password is read from OBS's own config,
 │   │                            state arrives as events, and the one poll is
@@ -1404,7 +1406,7 @@ banditshell/
 │   │   │                        click seeks to it
 │   │   ├── LyricBlock.qml       words laid out into rows by hand (FontMetrics
 │   │   │                        measures exactly what StyledText draws), lit word
-│   │   │                        by word in reading order, the sung part glowing
+│   │   │                        by word in reading order, the sung part brighter
 │   │   ├── PlayerChips.qml      every player, the shown one by name, the rest by mark
 │   │   └── Equalizer.qml        three bars that move while something plays
 │   ├── VolumeRail.qml           the volume pill on the right edge; DISABLED

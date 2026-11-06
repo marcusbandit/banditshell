@@ -427,16 +427,81 @@ function gapFill(entry, t) {
     return Math.max(0, Math.min(1, (t - entry.start) / span));
 }
 
-function layout(widths, space, room) {
+function serverFailed(status) {
+    return status === 0 || status === 429 || status >= 500;
+}
+
+function fit(texts, measure, room) {
+    const out = { texts: [], widths: [], joined: [], first: [] };
+    for (const text of texts) {
+        out.first.push(out.texts.length);
+        const whole = measure(text);
+        const chars = Array.from(text);
+        if (whole <= room || chars.length < 2) {
+            out.texts.push(text);
+            out.widths.push(whole);
+            out.joined.push(false);
+            continue;
+        }
+        let from = 0;
+        while (from < chars.length) {
+            let to = from + 1;
+            let width = measure(chars.slice(from, to).join(""));
+            while (to < chars.length) {
+                const next = measure(chars.slice(from, to + 1).join(""));
+                if (next > room)
+                    break;
+                to++;
+                width = next;
+            }
+            out.texts.push(chars.slice(from, to).join(""));
+            out.widths.push(width);
+            out.joined.push(from > 0);
+            from = to;
+        }
+    }
+    return out;
+}
+
+function piecePosition(fitted, position) {
+    const words = fitted.first.length;
+    if (!(position > 0))
+        return 0;
+    if (position >= words)
+        return fitted.texts.length;
+    const i = Math.floor(position);
+    const part = position - i;
+    const from = fitted.first[i];
+    const to = i + 1 < words ? fitted.first[i + 1] : fitted.texts.length;
+    if (to - from === 1)
+        return from + part;
+    let reach = part * fitted.widths.slice(from, to).reduce((a, b) => a + b, 0);
+    for (let k = from; k < to; k++) {
+        if (reach < fitted.widths[k])
+            return k + reach / fitted.widths[k];
+        reach -= fitted.widths[k];
+    }
+    return to;
+}
+
+function rowText(fitted, row) {
+    let text = "";
+    for (let k = row.first; k < row.first + row.count; k++)
+        text += (k > row.first && !fitted.joined[k] ? " " : "") + fitted.texts[k];
+    return text;
+}
+
+function layout(widths, space, room, joined) {
     const rows = [];
     let row = null;
     for (let i = 0; i < widths.length; i++) {
         const w = widths[i];
-        if (!row || (row.width > 0 && row.width + space + w > room)) {
+        const gap = joined && joined[i] ? 0 : space;
+        if (!row || (row.width > 0 && row.width + gap + w > room)) {
             row = { first: i, count: 0, width: 0, starts: [] };
             rows.push(row);
         }
-        const x = row.count === 0 ? 0 : row.width + space;
+        const x = row.count === 0 ? 0 : row.width + gap;
         row.starts.push(x);
         row.width = x + w;
         row.count++;

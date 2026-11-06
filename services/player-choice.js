@@ -1,7 +1,7 @@
 .pragma library
 
 function shown(players, chosen, recent, rank) {
-    if (chosen && players.includes(chosen))
+    if (chosen && players.includes(chosen) && rank(chosen) > 0)
         return chosen;
     const playing = players.filter(p => p.isPlaying && rank(p) > 1);
     if (playing.length > 0)
