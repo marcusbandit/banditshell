@@ -106,6 +106,23 @@ Singleton {
             root.audio = [];
     }
 
+    property string problem: ""
+
+    function report(text: string): void {
+        if (text === "")
+            return;
+        root.problem = text;
+        problemClear.restart();
+    }
+
+    Timer {
+        id: problemClear
+
+        interval: 6000
+
+        onTriggered: root.problem = ""
+    }
+
     function call(type: string, data: var, then: var): void {
         if (root.link !== "ready")
             return;
@@ -137,6 +154,8 @@ Singleton {
             delete root.waiting[d.requestId];
             if (then && d.requestStatus?.result)
                 then(d.responseData ?? {});
+            else if (!d.requestStatus?.result)
+                root.report(ObsProtocol.refusal(d.requestType, d.requestStatus));
         }
     }
 
