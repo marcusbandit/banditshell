@@ -60,6 +60,22 @@ Singleton {
 
     property bool spicyAbsent: false
 
+    property bool hintDismissed: false
+
+    function dismissHint(): void {
+        root.hintDismissed = true;
+        hintStore.setText("dismissed\n");
+    }
+
+    FileView {
+        id: hintStore
+
+        path: `${Config.stateDir}/spicy-hint-dismissed`
+        printErrors: false
+
+        onLoaded: root.hintDismissed = true
+    }
+
     readonly property bool synced: root.state === "synced"
     readonly property bool plain: root.state === "plain"
     readonly property bool ready: root.synced || root.plain
@@ -444,7 +460,7 @@ Singleton {
             root.request(`${root.api}/${steps[i]}`, (status, body) => {
                 if (root.job !== job)
                     return;
-                if (status === 0) {
+                if (Parse.serverFailed(status)) {
                     job.failed = !job.spicy;
                     settle(root.lrclibFound(fallback));
                     return;

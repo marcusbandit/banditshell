@@ -137,6 +137,32 @@ Item {
                 }
             }
 
+            Row {
+                visible: Lyrics.spicyAbsent && !!Lyrics.spotifyId && !Lyrics.hintDismissed
+                x: Appearance.padding.normal
+                width: visible ? parent.width - Appearance.padding.normal * 2 : 0
+                height: visible ? implicitHeight : 0
+                spacing: Appearance.padding.small
+
+                StyledText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - hintClose.width - parent.spacing
+                    wrapMode: Text.Wrap
+                    text: "Word timing needs the Spicy Lyrics add-on in Spotify"
+                    color: Appearance.colour.textFaint
+                }
+
+                Button {
+                    id: hintClose
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    icon: "close"
+                    text: "Hide"
+
+                    onClicked: Lyrics.dismissHint()
+                }
+            }
+
             Item {
                 width: parent.width
                 height: credit.implicitHeight + Appearance.padding.huge
@@ -148,7 +174,7 @@ Item {
                     anchors.bottom: parent.bottom
                     width: parent.width - Appearance.padding.normal * 2
                     wrapMode: Text.Wrap
-                    text: (Lyrics.writers.length > 0 ? `written by ${Lyrics.writers.join(", ")}\n` : "") + (Lyrics.plain ? `lyrics from ${Lyrics.source}, not synced` : `lyrics from ${Lyrics.source}`) + (Lyrics.spicyAbsent && Lyrics.spotifyId ? "\nword timing needs Spicy Lyrics in Spotify: run install.sh" : "")
+                    text: (Lyrics.writers.length > 0 ? `written by ${Lyrics.writers.join(", ")}\n` : "") + (Lyrics.plain ? `lyrics from ${Lyrics.source}, not synced` : `lyrics from ${Lyrics.source}`)
                     color: Appearance.colour.textFaint
                 }
             }

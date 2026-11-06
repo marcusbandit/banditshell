@@ -253,10 +253,12 @@ Item {
                     Media.toggle();
                 break;
             case Qt.Key_Left:
-                root.seek(-1, shift);
+                if (!shift || !event.isAutoRepeat)
+                    root.seek(-1, shift);
                 break;
             case Qt.Key_Right:
-                root.seek(1, shift);
+                if (!shift || !event.isAutoRepeat)
+                    root.seek(1, shift);
                 break;
             case Qt.Key_Up:
                 root.volume(1);
@@ -265,10 +267,12 @@ Item {
                 root.volume(-1);
                 break;
             case Qt.Key_N:
-                Media.next();
+                if (!event.isAutoRepeat)
+                    Media.next();
                 break;
             case Qt.Key_P:
-                Media.previous();
+                if (!event.isAutoRepeat)
+                    Media.previous();
                 break;
             case Qt.Key_M:
                 if (!event.isAutoRepeat)
@@ -724,7 +728,7 @@ Item {
                                 case "instrumental":
                                     return "instrumental, no lyrics";
                                 case "failed":
-                                    return "could not reach lrclib.net";
+                                    return "could not reach lrclib.net, click to try again";
                                 case "missing":
                                     return "no lyrics found for this one";
                                 default:

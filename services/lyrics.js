@@ -427,6 +427,10 @@ function gapFill(entry, t) {
     return Math.max(0, Math.min(1, (t - entry.start) / span));
 }
 
+function serverFailed(status) {
+    return status === 0 || status === 429 || status >= 500;
+}
+
 function fit(texts, measure, room) {
     const out = { texts: [], widths: [], joined: [], first: [] };
     for (const text of texts) {

@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/lyrics.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Lyrics = new Function(src + "\nreturn { stamp, parseLrc, group, separate, fromLrc, fromSpicy, plain, lineAt, progress, wordFill, gapFill, fit, piecePosition, rowText, layout, litWidth, cleanTitle, firstArtist, pick, query };")();
+const Lyrics = new Function(src + "\nreturn { stamp, parseLrc, group, separate, fromLrc, fromSpicy, plain, lineAt, progress, wordFill, gapFill, serverFailed, fit, piecePosition, rowText, layout, litWidth, cleanTitle, firstArtist, pick, query };")();
 
 const close = (a, b) => Math.abs(a - b) < 1e-6;
 const texts = words => words.map(w => w.text).join(" ");
@@ -218,6 +218,18 @@ test.describe("layout", () => {
         assert.strictEqual(Lyrics.litWidth(rows[0], widths, 3), 80);
         assert.strictEqual(Lyrics.litWidth(rows[1], widths, 1.5), 0);
         assert.strictEqual(Lyrics.litWidth(rows[1], widths, 2.5), 25);
+    });
+});
+
+test.describe("lrclib answers", () => {
+    test.it("treats a dropped connection, a rate limit and a server error as a failure", () => {
+        for (const status of [0, 429, 500, 502, 503])
+            assert.strictEqual(Lyrics.serverFailed(status), true, String(status));
+    });
+
+    test.it("treats a plain not found as no lyrics, not a failure", () => {
+        for (const status of [200, 400, 404])
+            assert.strictEqual(Lyrics.serverFailed(status), false, String(status));
     });
 });
 
