@@ -43,7 +43,7 @@ SquircleRect {
         Item {
             id: picture
 
-            width: Appearance.font.line.small * 3
+            width: Files.zoomed(Appearance.font.line.small) * 3
             height: width
             anchors.verticalCenter: parent.verticalCenter
 
@@ -79,7 +79,7 @@ SquircleRect {
                 width: parent.width
 
                 text: root.label
-                font.pixelSize: Appearance.font.size.small
+                font.pixelSize: Files.zoomed(Appearance.font.size.small)
                 color: Appearance.colour.textDim
                 elide: Text.ElideRight
             }
@@ -88,7 +88,7 @@ SquircleRect {
                 width: parent.width
 
                 text: root.detail
-                font.pixelSize: Appearance.font.size.small
+                font.pixelSize: Files.zoomed(Appearance.font.size.small)
                 elide: Text.ElideRight
             }
 
@@ -115,7 +115,7 @@ SquircleRect {
 
                             anchors.centerIn: parent
                             text: tag.modelData
-                            font.pixelSize: Appearance.font.size.small
+                            font.pixelSize: Files.zoomed(Appearance.font.size.small)
                             color: Appearance.colour.text
                         }
                     }

@@ -33,7 +33,7 @@ Item {
         if (event.key === Qt.Key_Control)
             root.copying = false;
         if (event.key === Qt.Key_Control || event.key === Qt.Key_Alt || event.key === Qt.Key_Meta)
-            hints.held = "";
+            hints.release();
     }
 
     Connections {
@@ -62,6 +62,13 @@ Item {
         if (settings.up || prompt.up || confirm.up || conflict.up)
             return;
 
+        if (properties.up) {
+            if (event.key === Qt.Key_Escape || event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                properties.close();
+            event.accepted = true;
+            return;
+        }
+
         if (sheet.open) {
             switch (event.key) {
             case Qt.Key_Up:
@@ -83,11 +90,11 @@ Item {
         }
 
         if (event.key === Qt.Key_Control) {
-            hints.held = "Ctrl";
+            hints.hold("Ctrl", event.isAutoRepeat);
             return;
         }
         if (event.key === Qt.Key_Alt) {
-            hints.held = "Alt";
+            hints.hold("Alt", event.isAutoRepeat);
             return;
         }
         hints.held = "";
@@ -190,9 +197,7 @@ Item {
             event.accepted = true;
             return;
         case Qt.Key_Escape:
-            if (properties.visible) {
-                properties.close();
-            } else if (FilesFind.running) {
+            if (FilesFind.running) {
                 FilesFind.stop();
             } else if (Files.search) {
                 Files.setSearch("");
@@ -303,6 +308,29 @@ Item {
         return Files.act(action);
     }
 
+    property point menuAt: Qt.point(root.width / 2, root.height / 2)
+
+    Connections {
+        target: Files
+
+        function onOpenersFound(path: string, kind: string, apps: var): void {
+            if (!Files.windowOpen)
+                return;
+            const rows = apps.map(app => ({
+                        icon: "open_in_new",
+                        label: app.name,
+                        run: () => Files.openIn(app.id, path)
+                    }));
+            if (rows.length === 0)
+                rows.push({
+                    icon: "open_in_new",
+                    label: kind ? `No app lists ${kind}, try the default` : "Try the default app",
+                    run: () => Files.openWith(path)
+                });
+            sheet.popup(root.menuAt.x, root.menuAt.y, rows, 0);
+        }
+    }
+
     function warm(): void {
         grid.warm();
     }
@@ -347,14 +375,28 @@ Item {
                 run: () => Files.reveal(Files.pathOf(one))
             }, {
                 icon: "open_in_new",
-                label: "Open with…",
+                label: "Open",
                 run: () => Files.openWith(Files.pathOf(one))
+            }, {
+                icon: "apps",
+                label: "Open with…",
+                run: () => Files.offerOpeners(Files.pathOf(one))
+            });
+        else if (one && one.kind === "dir")
+            acts.push({
+                icon: "folder_open",
+                label: "Open",
+                run: () => Files.open(one)
             });
         else if (one)
             acts.push({
-                icon: one.kind === "dir" ? "folder_open" : "open_in_new",
-                label: one.kind === "dir" ? "Open" : "Open with…",
+                icon: "open_in_new",
+                label: "Open",
                 run: () => Files.open(one)
+            }, {
+                icon: "apps",
+                label: "Open with…",
+                run: () => Files.offerOpeners(Files.pathOf(one))
             });
 
         acts.push({
@@ -751,12 +793,14 @@ Item {
                 if (!Files.isPicked(Files.keyOf(Files.visible[index])))
                     Files.setCursor(index);
                 const at = grid.mapToItem(root, position.x, position.y);
+                root.menuAt = at;
                 sheet.popup(at.x, at.y, root.fileActions(), -1);
             }
             onMenuForEmpty: position => {
                 Files.focus = "grid";
                 Files.clearPicked();
                 const at = grid.mapToItem(root, position.x, position.y);
+                root.menuAt = at;
                 sheet.popup(at.x, at.y, root.folderActions(), -1);
             }
             onLifted: index => {
@@ -777,8 +821,6 @@ Item {
                 root.dragAt = at;
 
                 if (!root.placed) {
-                    followX.snap();
-                    followY.snap();
                     root.placed = true;
                     return;
                 }
@@ -1026,26 +1068,11 @@ Item {
         }
     }
 
-    Follow {
-        id: followX
-
-        target: root.dragAt.x
-
-        speed: Appearance.animation.trackSpeed * 2
-    }
-
-    Follow {
-        id: followY
-
-        target: root.dragAt.y
-        speed: Appearance.animation.trackSpeed * 2
-    }
-
     Item {
         visible: root.dragging && root.placed && !root.incoming
 
-        x: followX.value - width / 2
-        y: followY.value - height / 2
+        x: root.dragAt.x - width / 2
+        y: root.dragAt.y - height / 2
         width: Appearance.sizes.filesTile * 0.6
         height: width
         opacity: 0.85
@@ -1090,6 +1117,11 @@ Item {
         id: hints
 
         anchors.fill: parent
+    }
+
+    PointHandler {
+        onActiveChanged: if (active)
+            hints.cancel()
     }
 
     FocusVisible {

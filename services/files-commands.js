@@ -154,3 +154,64 @@ function outside(paths, dir) {
         return (cut <= 0 ? "/" : path.slice(0, cut)) !== dir;
     });
 }
+
+var OPENERS_QUERY = [
+    'kind=$(xdg-mime query filetype "$1" 2>/dev/null)',
+    'printf "%s\\n" "$kind"',
+    '[ -n "$kind" ] || exit 0',
+    'preferred=$(xdg-mime query default "$kind" 2>/dev/null)',
+    'printf "%s\\n" "$preferred"',
+    'dirs="${XDG_DATA_HOME:-$HOME/.local/share}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"',
+    '{ printf "%s\\n" "$preferred"; gio mime "$kind" 2>/dev/null | awk \'/^[ \\t]+[^ \\t]+\\.desktop$/ { gsub(/^[ \\t]+/, ""); print }\'; } | awk \'NF && !seen[$0]++\' | while IFS= read -r id; do',
+    '  nested=$(printf "%s" "$id" | sed "s,-,/,")',
+    '  IFS=:; for d in $dirs; do',
+    '    f="$d/applications/$id"',
+    '    [ -f "$f" ] || f="$d/applications/$nested"',
+    '    [ -f "$f" ] || continue',
+    '    [ "$id" = "$preferred" ] || ! grep -qi "^NoDisplay=true" "$f" || break',
+    '    printf "%s\\t%s\\n" "$id" "$(grep -m1 "^Name=" "$f" | cut -d= -f2-)"',
+    '    break',
+    '  done',
+    '  IFS=',
+    'done'
+].join("\n");
+
+function openersCommand(path) {
+    return ["sh", "-c", OPENERS_QUERY, "sh", path];
+}
+
+function desktopId(id) {
+    return String(id || "").replace(/\.desktop$/, "");
+}
+
+function openers(answer) {
+    var lines = String(answer).split("\n");
+    var kind = lines[0].trim();
+    var preferred = desktopId(lines[1] ? lines[1].trim() : "");
+    if (!kind)
+        return {kind: "", apps: []};
+
+    var apps = [];
+    var seen = {};
+    for (var i = 2; i < lines.length; i++) {
+        var tab = lines[i].indexOf("\t");
+        if (tab < 0)
+            continue;
+        var id = desktopId(lines[i].slice(0, tab));
+        if (!id || seen[id])
+            continue;
+        seen[id] = true;
+        apps.push({id: id, name: lines[i].slice(tab + 1).trim() || id});
+    }
+    apps.sort(function (a, b) {
+        var first = (a.id === preferred ? 0 : 1) - (b.id === preferred ? 0 : 1);
+        var left = a.name.toLowerCase();
+        var right = b.name.toLowerCase();
+        return first || (left < right ? -1 : left > right ? 1 : 0);
+    });
+    return {kind: kind, apps: apps};
+}
+
+function launchCommand(id, path) {
+    return ["gtk-launch", desktopId(id), path];
+}

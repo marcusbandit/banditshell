@@ -57,6 +57,47 @@
       ]
     },
     {
+      "id": "2026-11-06-q27",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Drives and their usage bars update while Files is open"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Open with lists the apps that handle the file"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files dialogs scale with the zoom"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files dialogs open and close at once"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The drag ghost stays under the pointer"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Keys no longer reach the file grid behind Properties"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Ctrl-clicking no longer raises the key panel"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q10",
       "date": "2026-11-05",
       "changes": [
