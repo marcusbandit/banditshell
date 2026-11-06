@@ -21,7 +21,7 @@ export function front(source) {
 }
 
 export function webpSize(buffer) {
-    if (buffer.toString("ascii", 0, 4) !== "RIFF" || buffer.toString("ascii", 8, 12) !== "WEBP") return null;
+    if (buffer.length < 30 || buffer.toString("ascii", 0, 4) !== "RIFF" || buffer.toString("ascii", 8, 12) !== "WEBP") return null;
     const kind = buffer.toString("ascii", 12, 16);
     if (kind === "VP8X") return { width: buffer.readUIntLE(24, 3) + 1, height: buffer.readUIntLE(27, 3) + 1 };
     if (kind === "VP8L") {
@@ -32,21 +32,80 @@ export function webpSize(buffer) {
     return null;
 }
 
+export function pngSize(buffer) {
+    if (buffer.length < 24 || buffer.toString("latin1", 1, 4) !== "PNG" || buffer.toString("ascii", 12, 16) !== "IHDR") return null;
+    return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+}
+
+export function jpegSize(buffer) {
+    if (buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) return null;
+    let at = 2;
+    while (at + 9 < buffer.length) {
+        if (buffer[at] !== 0xff) return null;
+        const marker = buffer[at + 1];
+        if (marker === 0xff) {
+            at += 1;
+            continue;
+        }
+        if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+            return { width: buffer.readUInt16BE(at + 7), height: buffer.readUInt16BE(at + 5) };
+        }
+        at += 2 + buffer.readUInt16BE(at + 2);
+    }
+    return null;
+}
+
+export const imageSize = (buffer) => webpSize(buffer) ?? pngSize(buffer) ?? jpegSize(buffer);
+
+const IMAGE_SRC = /^\/images\/[\w.-]+\.(?:webp|png|jpe?g)$/i;
+
+export function flag(value, file) {
+    if (value === undefined) return false;
+    const text = value.replace(/\s+#.*$/, "").replace(/^(["'])(.*)\1$/, "$2").trim().toLowerCase();
+    if (text === "true") return true;
+    if (text === "false") return false;
+    throw new Error(`${file}: draft is true or false`);
+}
+
+const realDate = (iso) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+    const date = new Date(`${iso}T00:00:00Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === iso;
+};
+
+const releaseKey = (release) => (release.match(/^v?(\d+)\.(\d+)\.(\d+)/) ?? []).slice(1).map(Number);
+
+const byRelease = (a, b) => {
+    const left = releaseKey(a.release);
+    const right = releaseKey(b.release);
+    for (let i = 0; i < 3; i++) {
+        const delta = (right[i] ?? 0) - (left[i] ?? 0);
+        if (delta) return delta;
+    }
+    return 0;
+};
+
 export function post(source, file, site, repo) {
     const { meta, body } = front(source);
     const slug = basename(file, ".md");
     for (const key of ["title", "date", "summary"]) {
         if (!meta[key]) throw new Error(`${file}: front matter needs ${key}`);
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(meta.date)) throw new Error(`${file}: date is YYYY-MM-DD`);
+    if (!realDate(meta.date)) throw new Error(`${file}: date is a real day as YYYY-MM-DD`);
+    const draft = flag(meta.draft, file);
     const parsed = blocks(body);
     for (const block of parsed) {
         if (block.type !== "image") continue;
+        if (!IMAGE_SRC.test(block.src)) throw new Error(`${file}: image ${block.src} must be /images/<name>.webp, .png or .jpg`);
+        let buffer;
         try {
-            Object.assign(block, webpSize(readFileSync(join(site, block.src.replace(/^\//, "")))) ?? {});
+            buffer = readFileSync(join(site, block.src.slice(1)));
         } catch {
             throw new Error(`${file}: image ${block.src} is not in site/`);
         }
+        const size = imageSize(buffer);
+        if (!size) throw new Error(`${file}: image ${block.src} is not a readable webp, png or jpg`);
+        Object.assign(block, size);
     }
     return {
         slug,
@@ -54,18 +113,25 @@ export function post(source, file, site, repo) {
         date: meta.date,
         summary: meta.summary,
         release: meta.release ?? "",
-        draft: meta.draft === "true",
+        draft,
         html: parsed.map((block) => html(block, repo)).join("\n"),
-        words: parsed.filter((block) => block.type === "paragraph").map((block) => block.text).join(" ").replace(/[*`]/g, "").slice(0, 1600),
+        words: parsed
+            .filter((block) => block.type === "paragraph")
+            .map((block) => block.text)
+            .join(" ")
+            .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+            .replace(/[*`]/g, "")
+            .slice(0, 1600),
     };
 }
 
 export function posts(dir, site, repo, { drafts = false } = {}) {
     return readdirSync(dir)
         .filter((name) => name.endsWith(".md"))
-        .map((name) => post(readFileSync(join(dir, name), "utf8"), name, site, repo))
-        .filter((entry) => drafts || !entry.draft)
-        .sort((a, b) => b.date.localeCompare(a.date) || b.slug.localeCompare(a.slug));
+        .map((name) => ({ name, source: readFileSync(join(dir, name), "utf8") }))
+        .filter(({ name, source }) => drafts || !flag(front(source).meta.draft, name))
+        .map(({ name, source }) => post(source, name, site, repo))
+        .sort((a, b) => b.date.localeCompare(a.date) || byRelease(a, b));
 }
 
 export const card = (entry) =>

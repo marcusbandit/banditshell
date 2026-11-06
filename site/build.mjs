@@ -42,6 +42,8 @@ const notes = (building?.items ?? []).slice(0, 4).map((item) => {
 
 const articles = posts(join(SITE, "blog"), SITE, REPO, { drafts: DRAFTS });
 
+const hasBlog = articles.length > 0;
+
 const entries = [
     { label: "Install banditshell", hint: "Install", href: "#install" },
     { label: "What's in it", hint: "Features", href: "#features" },
@@ -52,7 +54,7 @@ const entries = [
         href: `/roadmap/#${section.id}`,
         words: plain(section.html).slice(0, 1600),
     })),
-    { label: "Read the blog", hint: "Blog", href: "/blog/" },
+    ...(hasBlog ? [{ label: "Read the blog", hint: "Blog", href: "/blog/" }] : []),
     ...articles.filter((entry) => !entry.draft).map((entry) => ({
         label: entry.title,
         hint: "Blog",
@@ -64,20 +66,19 @@ const entries = [
     { label: "Buy me a coffee", hint: "Ko-fi", href: "https://ko-fi.com/marcusbandit" },
 ];
 
-const page = (values) =>
-    fill(template("layout.html"), {
+const page = (values) => {
+    const merged = { roadmapCurrent: "", blogCurrent: "", robots: "", scripts: "", ...values };
+    return fill(template("layout.html"), {
         repo: REPO,
         commit: commit ? `<a href="${REPO}/commit/${commit}"><code>${commit}</code></a>` : "an uncommitted tree",
-        roadmapCurrent: "",
-        blogCurrent: "",
-        robots: "",
-        scripts: "",
-        ...values,
+        blogNav: hasBlog ? `<a href="/blog/"${merged.blogCurrent}>Blog</a>` : "",
+        blogFoot: hasBlog ? '<a href="/blog/">Blog</a>' : "",
+        ...merged,
     });
+};
 
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(join(DIST, "roadmap"), { recursive: true });
-mkdirSync(join(DIST, "blog"), { recursive: true });
 
 const description = "A desktop shell for Hyprland, written from scratch in Quickshell. Nothing sits on screen until you reach for it.";
 
@@ -117,19 +118,20 @@ writeFileSync(
 
 const blogLead = "A post for every banditshell release, written for the people who use the shell.";
 
-writeFileSync(
-    join(DIST, "blog", "index.html"),
-    page({
-        title: "Blog | banditshell",
-        description: blogLead,
-        url: `${ORIGIN}/blog/`,
-        page: "blog-page",
-        blogCurrent: ' aria-current="page"',
-        main: fill(template("blog.html"), {
-            posts: articles.length ? articles.map(card).join("\n") : '<p class="measure dim">Nothing here yet. The first post goes up with the next release.</p>',
+if (hasBlog) {
+    mkdirSync(join(DIST, "blog"), { recursive: true });
+    writeFileSync(
+        join(DIST, "blog", "index.html"),
+        page({
+            title: "Blog | banditshell",
+            description: blogLead,
+            url: `${ORIGIN}/blog/`,
+            page: "blog-page",
+            blogCurrent: ' aria-current="page"',
+            main: fill(template("blog.html"), { posts: articles.map(card).join("\n") }),
         }),
-    }),
-);
+    );
+}
 
 for (const entry of articles) {
     mkdirSync(join(DIST, "blog", entry.slug), { recursive: true });
@@ -164,7 +166,7 @@ writeFileSync(
         description,
         url: `${ORIGIN}/`,
         page: "lost",
-        main: `<section class="band lost"><h1>Not here</h1><p class="measure">Nothing lives at this address. The <a href="/">front page</a>, the <a href="/roadmap/">roadmap</a> and the <a href="/blog/">blog</a> do.</p></section>`,
+        main: `<section class="band lost"><h1>Not here</h1><p class="measure">Nothing lives at this address. ${hasBlog ? 'The <a href="/">front page</a>, the <a href="/roadmap/">roadmap</a> and the <a href="/blog/">blog</a> do.' : 'The <a href="/">front page</a> and the <a href="/roadmap/">roadmap</a> do.'}</p></section>`,
     }),
 );
 

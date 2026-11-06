@@ -18,7 +18,7 @@ Type `build.sh` and the launcher used to put an "Open build.sh" link above the f
 
 ![The launcher after typing build.sh, before on the left and after on the right](/images/blog-launcher.webp "Typing build.sh. On the right the file is the first row and the link sits below it.")
 
-Aliases now work on every kind of row, not only apps. If you give a row an alias that another row already owns, the launcher tells you who has it and does not save it (#460).
+Aliases now work on rows from your snippets, scripts, SSH hosts, quicklinks and emoji, not only apps. If you give a row an alias that another row already owns, the launcher tells you who has it and does not save it (#460).
 
 `kill` and everything in `top` ask for a second Enter before they end a process, the same way Ports does (#461). Command output keeps all forty lines and ends in an "N more lines" row, where Enter copies the lot (#464).
 
@@ -44,7 +44,7 @@ The terminal pane also stops swallowing keys. tmux's Ctrl+B and the Alt+arrow wo
 
 A notification that gets replaced with new text now pops up again. Before, the change slipped in unseen (#506).
 
-"Remind me" survives a restart. If the reminder came due while the shell was off, it shows once when the shell starts (#507). A critical alert is never pushed out by a busy hour of ordinary ones (#509).
+"Remind me" survives a restart. If the reminder came due while the shell was off, it shows once when the shell starts (#507). A newer popup never pushes a critical alert off the screen (#509).
 
 When a fullscreen window covers the island, notifications wait. Afterwards the island says how many it held and one press opens them (#513).
 
@@ -58,7 +58,7 @@ The clock menu names things now. Timers and alarms show the name you gave them, 
 
 When a list is full, the button says why. "8 timers is the most, remove one" beats a button that quietly does nothing. You can click a time field and type the digits. Adding a city takes "new york" or "hong kong" as typed.
 
-The calendar has month buttons next to its heading. A new setting picks the first day of the week, and another turns on week numbers (#529). The desktop weather card fetches on its own and says where its town came from.
+The calendar has month buttons next to its heading. A new setting picks the first day of the week, and another turns on week numbers (#529). The desktop weather card fetches on its own, and the forecast view in the island says where its town came from.
 
 ## The sidebar and the rail
 
@@ -72,7 +72,7 @@ Every workspace mark owns a slot at least 24 pixels tall, so the dots are easy t
 
 Bluetooth lists every paired and nearby device, and pairing a keyboard or a phone works from the menu. It shows the code to type or the number to confirm.
 
-You can join a hidden Wi-Fi network from the menu, from Settings and from a QR code. Password fields have a show button and warn you when Caps Lock is on. Forget needs a second press, so a stray click cannot drop a saved network.
+You can join a hidden Wi-Fi network from the menu, from Settings and from a QR code. The Wi-Fi password field has a show button, and every password field warns you when Caps Lock is on. Forget needs a second press, so a stray click cannot drop a saved network.
 
 The battery menu stopped fibbing. A full battery says "full". One held at its limit says "plugged in, held at 80%". If your machine has a power profile daemon, the menu has a row for saver, balanced and fast.
 
@@ -80,7 +80,7 @@ The battery menu stopped fibbing. A full battery says "full". One held at its li
 
 Enter on a clipboard entry pastes it into the window you came from, terminals included. Deleting an entry has an Undo, and Ctrl+Z puts it back where it was.
 
-Text that looks like a secret no longer lands in the history file, and it drops out of the panel after five minutes.
+Text that looks like a secret no longer lands in the history file, and unless you pin it, it drops out of the panel after five minutes.
 
 Settings opens its list when you search while the list is folded. Holding a stepper button repeats it. A page with changed rows has a reset button in its header, and the toast that follows offers Undo.
 
