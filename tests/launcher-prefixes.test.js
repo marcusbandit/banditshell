@@ -88,7 +88,7 @@ test.describe("the ? page", () => {
     });
 
     test.it("says what a prefix does, with its example when it has one", () => {
-        assert.strictEqual(Prefixes.detail({ about: "Connect to a host", example: "ssh nemurenai" }), "Connect to a host, as in ssh nemurenai");
+        assert.strictEqual(Prefixes.detail({ about: "Connect to a host", example: "ssh nemurenai" }), "ssh nemurenai · Connect to a host");
         assert.strictEqual(Prefixes.detail({ about: "Test your internet speed" }), "Test your internet speed");
     });
 });
