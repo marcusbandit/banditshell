@@ -47,6 +47,103 @@
       ]
     },
     {
+      "id": "2026-11-06-q28",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Files is an app: type files in the launcher, the tour shows it"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Drop files from other apps into Files; Ctrl-drag copies"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ctrl+F searches and Ctrl+H shows hidden files in Files"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Files shows how many items a folder has and what you selected"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files sorts img2 before img10"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A missing folder says so and offers Go up and Home"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Arrow and page keys glide the Files list like the wheel"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Taking a key in File browser settings asks first; defaults restore"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Launcher file search finds files that .gitignore lists"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Slow touchpad scrolling in the Files terminal follows your fingers"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-q27",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Drives and their usage bars update while Files is open"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Open with lists the apps that handle the file"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files dialogs scale with the zoom"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files dialogs open and close at once"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The drag ghost stays under the pointer"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Keys no longer reach the file grid behind Properties"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Ctrl-clicking no longer raises the key panel"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q10",
       "date": "2026-11-05",
       "changes": [

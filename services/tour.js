@@ -2,11 +2,12 @@
 
 var SUPER_NOTE = "Super is the Windows key.";
 
-var ORDER = ["launcher", "island", "sidebar", "hotkeys", "settings"];
+var ORDER = ["launcher", "island", "sidebar", "files", "hotkeys", "settings"];
 
 var SUMMONS = {
     launcher: { ids: ["launcher.toggle", "launcher.open", "panel.launcher.toggle", "panel.launcher.open"], global: "launcher" },
     island: { ids: ["panel.island.toggle", "panel.island.open"] },
+    files: { ids: ["panel.files.toggle", "panel.files.open"] },
     hotkeys: { ids: ["panel.hotkeys.toggle", "panel.hotkeys.open"] },
     settings: { ids: ["panel.settings.toggle", "panel.settings.open"] }
 };
@@ -233,6 +234,15 @@ function words(step, facts, explain) {
             ask: step.gesture === "rail" ? "Rest the pointer on the rail at the left edge." : "Press a mark in the column on the left.",
             open: step.gesture === "rail" ? "Open the rail" : "Open a menu",
             away: step.gesture === "rail" ? "It grows into the full column. Move away and it rests again." : "Press it again, or Esc, to close the menu.",
+            note: note
+        };
+    case "files":
+        return {
+            title: "The file browser",
+            payoff: "Your folders with a preview beside them and a terminal underneath. It opens folders for other apps too.",
+            ask: key ? "Press " + key + ", or type `files` in the launcher." : "Type `files` in the launcher, or give it a key in Settings, Keys.",
+            open: "Open the files",
+            away: "Press Esc with nothing selected, or the key again, to put it away.",
             note: note
         };
     case "hotkeys":

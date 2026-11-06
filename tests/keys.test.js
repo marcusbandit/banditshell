@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/files/keys.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Keys = new Function(src + "\nreturn { names, chordOf, NAMED, windowOwns, previewScroll };")();
+const Keys = new Function(src + "\nreturn { names, chordOf, NAMED, windowOwns, previewScroll, holder, moved, sameKeys };")();
 
 const Qt = {
     ShiftModifier: 0x02000000,
@@ -141,5 +141,30 @@ test.describe("keys: scrolling the preview from the keyboard", () => {
         assert.strictEqual(scroll(Qt.Key_Down, Qt.ControlModifier), null);
         assert.strictEqual(scroll(Qt.Key_Left), null);
         assert.strictEqual(scroll(Qt.Key_Return), null);
+    });
+});
+
+test.describe("rebinding file browser keys", () => {
+    const map = {j: "down", k: "up", "Ctrl+F": "search", "/": "search"};
+
+    test.it("names the action that already holds the chord", () => {
+        assert.strictEqual(Keys.holder(map, "k", "j"), "down");
+        assert.strictEqual(Keys.holder(map, "k", "x"), "");
+        assert.strictEqual(Keys.holder(map, "k", "k"), "");
+    });
+
+    test.it("does not count a chord of the same action as taken", () => {
+        assert.strictEqual(Keys.holder(map, "/", "Ctrl+F"), "");
+    });
+
+    test.it("moves the action to the new chord and drops the one that held it", () => {
+        assert.deepStrictEqual(Keys.moved(map, "k", "j"), {"Ctrl+F": "search", "/": "search", j: "up"});
+        assert.deepStrictEqual(map, {j: "down", k: "up", "Ctrl+F": "search", "/": "search"});
+    });
+
+    test.it("compares a keymap to its defaults whatever the key order", () => {
+        assert.strictEqual(Keys.sameKeys({a: "x", b: "y"}, {b: "y", a: "x"}), true);
+        assert.strictEqual(Keys.sameKeys({a: "x"}, {a: "z"}), false);
+        assert.strictEqual(Keys.sameKeys({a: "x"}, {a: "x", b: "y"}), false);
     });
 });
