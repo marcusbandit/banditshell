@@ -79,11 +79,11 @@ Item {
         }
 
         if (event.key === Qt.Key_Control) {
-            hints.hold("Ctrl");
+            hints.hold("Ctrl", event.isAutoRepeat);
             return;
         }
         if (event.key === Qt.Key_Alt) {
-            hints.hold("Alt");
+            hints.hold("Alt", event.isAutoRepeat);
             return;
         }
         hints.held = "";
@@ -303,6 +303,8 @@ Item {
         target: Files
 
         function onOpenersFound(path: string, kind: string, apps: var): void {
+            if (!Files.windowOpen)
+                return;
             const rows = apps.map(app => ({
                         icon: "open_in_new",
                         label: app.name,
@@ -362,14 +364,28 @@ Item {
                 run: () => Files.reveal(Files.pathOf(one))
             }, {
                 icon: "open_in_new",
+                label: "Open",
+                run: () => Files.openWith(Files.pathOf(one))
+            }, {
+                icon: "apps",
                 label: "Open with…",
                 run: () => Files.offerOpeners(Files.pathOf(one))
             });
+        else if (one && one.kind === "dir")
+            acts.push({
+                icon: "folder_open",
+                label: "Open",
+                run: () => Files.open(one)
+            });
         else if (one)
             acts.push({
-                icon: one.kind === "dir" ? "folder_open" : "open_in_new",
-                label: one.kind === "dir" ? "Open" : "Open with…",
-                run: () => one.kind === "dir" ? Files.open(one) : Files.offerOpeners(Files.pathOf(one))
+                icon: "open_in_new",
+                label: "Open",
+                run: () => Files.open(one)
+            }, {
+                icon: "apps",
+                label: "Open with…",
+                run: () => Files.offerOpeners(Files.pathOf(one))
             });
 
         acts.push({

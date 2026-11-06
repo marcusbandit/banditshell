@@ -161,6 +161,7 @@ Item {
                         width: Files.zoomed(Appearance.font.size.small) * 0.6 * 10
 
                         text: line.modelData.label
+                        font.pixelSize: Files.zoomed(Appearance.font.size.small)
                         color: Appearance.colour.textFaint
                     }
 
@@ -168,6 +169,7 @@ Item {
                         width: line.width - Files.zoomed(Appearance.font.size.small) * 0.6 * 10 - Appearance.padding.normal
 
                         text: line.modelData.value
+                        font.pixelSize: Files.zoomed(Appearance.font.size.small)
                         elide: Text.ElideMiddle
                     }
                 }

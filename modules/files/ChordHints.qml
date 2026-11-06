@@ -13,7 +13,9 @@ Item {
 
     onHeldChanged: settle.elapsed = false
 
-    function hold(key: string): void {
+    function hold(key: string, repeating: bool): void {
+        if (!repeating)
+            root.cancelled = false;
         if (!root.cancelled)
             root.held = key;
     }

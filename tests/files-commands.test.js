@@ -339,7 +339,9 @@ test.describe("files commands: folder totals", () => {
         fs.mkdirSync(bin);
         fs.mkdirSync(apps, {recursive: true});
         fs.writeFileSync(path.join(bin, "xdg-mime"), '#!/bin/sh\nif [ "$2" = filetype ]; then echo text/plain; else echo secret.desktop; fi\n', {mode: 0o755});
-        fs.writeFileSync(path.join(bin, "gio"), '#!/bin/sh\nprintf "Default application for x: edit.desktop\\nRegistered applications:\\n\\tedit.desktop\\n\\tsecret.desktop\\n\\tgone.desktop\\n"\n', {mode: 0o755});
+        fs.writeFileSync(path.join(bin, "gio"), '#!/bin/sh\nprintf "Default application for x: edit.desktop\\nRegistered applications:\\n\\tedit.desktop\\n\\tsecret.desktop\\n\\tgone.desktop\\n\\tkde4-old.desktop\\n"\n', {mode: 0o755});
+        fs.mkdirSync(path.join(apps, "kde4"));
+        fs.writeFileSync(path.join(apps, "kde4", "old.desktop"), "[Desktop Entry]\nName=Old KDE\n");
         fs.writeFileSync(path.join(apps, "edit.desktop"), "[Desktop Entry]\nName=Editor One\nExec=edit %f\n");
         fs.writeFileSync(path.join(apps, "secret.desktop"), "[Desktop Entry]\nName=Secret\nNoDisplay=true\n");
         const command = Commands.openersCommand("/tmp/a file.txt");
@@ -347,6 +349,6 @@ test.describe("files commands: folder totals", () => {
         fs.rmSync(dir, {recursive: true});
         const got = Commands.openers(run.stdout);
         assert.strictEqual(got.kind, "text/plain");
-        assert.deepStrictEqual(got.apps.map(a => [a.id, a.name]), [["secret", "Secret"], ["edit", "Editor One"]]);
+        assert.deepStrictEqual(got.apps.map(a => [a.id, a.name]), [["secret", "Secret"], ["edit", "Editor One"], ["kde4-old", "Old KDE"]]);
     });
 });
