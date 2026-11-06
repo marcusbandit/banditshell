@@ -41,6 +41,7 @@ Singleton {
         return {
             launcher: Logic.chordFor("launcher", binds, rows),
             island: Logic.chordFor("island", binds, rows),
+            files: Logic.chordFor("files", binds, rows),
             hotkeys: Logic.chordFor("hotkeys", binds, rows),
             settings: Logic.chordFor("settings", binds, rows)
         };

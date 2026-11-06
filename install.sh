@@ -149,6 +149,7 @@ build_table() {
     add_step helpers                       "helpers_built"                           @helpers                      2 "the pty, the directory lister and the gamma client"
     add_step completion                    "completion_present"                      @completion                   2 "tab completion for the CLI, in zsh and bash"
     add_step path                          "path_present"                            @path                         2 "banditshell on your PATH: ~/.local/bin/banditshell, when nothing else provides one"
+    add_step files-entry                   "files_entry_present"                     @files-entry                  2 "Files in the launcher and the application menus: ~/.local/share/applications/banditshell-files.desktop"
     add_step home-bin                      "home_bin_present"                        @home-bin                     2 "the command an exec-once line starts the shell with: ~/bin/banditshell"
     add_step lua-api                       "lua_api_present"                         @lua-api                      2 "the Lua module for binds: the shim beside hyprland.lua and the checkout pointer"
     add_step spicy-lyrics                  "spicy_lyrics_present"                    @spicy                        2 "word-timed lyrics: Spicetify and Spicy Lyrics, in Spotify"
@@ -241,6 +242,18 @@ path_present() {
 
 install_path() {
     mkdir -p "$LOCAL_BIN" && ln -sfn "$REPO/cli/banditshell" "$LOCAL_BIN/banditshell"
+}
+
+FILES_ENTRY_NAME=banditshell-files.desktop
+
+files_entry_present() {
+    local dest="${XDG_DATA_HOME:-$HOME/.local/share}/applications/$FILES_ENTRY_NAME"
+    [ "$(readlink -f "$dest" 2>/dev/null)" = "$(readlink -f "$REPO/assets/applications/$FILES_ENTRY_NAME" 2>/dev/null)" ]
+}
+
+install_files_entry() {
+    local dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+    mkdir -p "$dir" && ln -sfn "$REPO/assets/applications/$FILES_ENTRY_NAME" "$dir/$FILES_ENTRY_NAME"
 }
 
 HOME_BIN="$HOME/bin"
@@ -894,6 +907,7 @@ run_step() {
         @cli) install_cli && ok=0 ;;
         @path) install_path && ok=0 ;;
         @home-bin) install_home_bin && ok=0 ;;
+        @files-entry) install_files_entry && ok=0 ;;
         @lua-api) install_lua_api && ok=0 ;;
         @helpers) install_helpers && ok=0 ;;
         @spicy) install_spicy_lyrics && ok=0 ;;
