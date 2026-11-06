@@ -794,7 +794,7 @@ Item {
         if (root.expanded)
             Media.sync();
         else
-            Notifications.markSeen();
+            Notifications.markSeenOf([...root.deckEntries, ...overview.drawn]);
     }
 
     onUpgradeOpenChanged: SystemUpgrade.watchers += root.upgradeOpen ? 1 : -1

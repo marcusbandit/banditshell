@@ -258,7 +258,7 @@ PanelWindow {
             break;
         case "held":
             islandLayer.close();
-            launcherLayer.show("notifications held ");
+            launcherLayer.show(notice.why === "fullscreen" ? "notifications unread " : "notifications held ");
             break;
         case "kernel":
             if (!SystemUpgrade.start())

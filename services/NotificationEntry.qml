@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Services.Notifications
 import qs.config
 import "../components/markup.js" as Markup
+import "notification-popups.js" as Popups
 import "notification-store.js" as Store
 
 QtObject {
@@ -15,6 +16,7 @@ QtObject {
     property bool durable: false
     property bool seen: false
     property bool withheld: false
+    property string fullscreenScreen: ""
 
     property string appName: ""
     property string summary: ""
@@ -135,9 +137,18 @@ QtObject {
         const n = root.notification;
         if (!n)
             return;
+        const body = Markup.sanitise(n.body);
+        const news = root.snapped && Popups.textChanged({
+            summary: root.summary,
+            body: root.body
+        }, {
+            summary: n.summary,
+            body: body
+        });
+
         root.appName = n.appName;
         root.summary = n.summary;
-        root.body = Markup.sanitise(n.body);
+        root.body = body;
         root.appIcon = n.appIcon;
         root.desktopEntry = n.desktopEntry;
         root.category = String(n.hints?.category ?? "");
@@ -155,10 +166,23 @@ QtObject {
         root.progress = typeof v === "number" && isFinite(v) ? Math.max(0, Math.min(100, v)) : -1;
 
         root.live = true;
+        root.snapped = true;
         root.updated();
+        if (news)
+            renewal.restart();
     }
 
+    property bool snapped: false
+
     signal updated
+    signal renewed
+
+    readonly property Timer renewal: Timer {
+        id: renewal
+
+        interval: 1
+        onTriggered: root.renewed()
+    }
 
     onNotificationChanged: root.snapshot()
     Component.onCompleted: root.snapshot()

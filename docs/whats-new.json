@@ -1,6 +1,47 @@
 {
   "entries": [
     {
+      "id": "2026-11-05-q08",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A changed notification pops up again and sounds, not silent"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A Remind me survives a restart or reboot"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A critical alert stays up when newer notifications arrive"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A reminder obeys Do Not Disturb and a muted app"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Closing the island marks only the notifications it showed as read"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Notifications under a fullscreen window are listed after it ends"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Timers and messages that start with a dash now show up"
+        }
+      ]
+    },
+    {
       "id": "2026-11-06-q02",
       "date": "2026-11-06",
       "changes": [

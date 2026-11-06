@@ -211,11 +211,12 @@ Singleton {
     Connections {
         target: Notifications
 
-        function onHeldReleased(count: int): void {
+        function onHeldReleased(count: int, why: string): void {
             root.pass({
                 key: `held:${Date.now()}`,
                 kind: "held",
-                count: count
+                count: count,
+                why: why
             });
         }
     }
