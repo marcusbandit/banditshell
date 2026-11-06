@@ -29,6 +29,8 @@ Singleton {
             return "full";
         case UPowerDeviceState.PendingCharge:
             return "pendingCharge";
+        case UPowerDeviceState.Discharging:
+            return "discharging";
         default:
             return "other";
         }

@@ -1,7 +1,7 @@
 function uniqueLabels(entries) {
     const labels = {};
     const groups = {};
-    for (const entry of entries) {
+    for (const entry of entries.slice().sort((a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0)) {
         labels[entry.key] = entry.label;
         (groups[entry.label] = groups[entry.label] || []).push(entry);
     }

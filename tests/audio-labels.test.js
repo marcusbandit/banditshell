@@ -33,3 +33,10 @@ test("a device with no card name falls back to a number, and a unique label stay
     ]);
     assert.deepStrictEqual(labels, { a: "Speakers 1", b: "Speakers 2", c: "Headphones" });
 });
+
+test("twins are numbered by name, so the order devices appear in does not swap them", () => {
+    const a = { key: "alsa_output.usb-1", label: "Analog Stereo", card: "USB Headset" };
+    const b = { key: "alsa_output.usb-2", label: "Analog Stereo", card: "USB Headset" };
+    assert.deepStrictEqual(uniqueLabels([a, b]), uniqueLabels([b, a]));
+    assert.strictEqual(uniqueLabels([b, a])["alsa_output.usb-1"], "Analog Stereo · USB Headset 1");
+});

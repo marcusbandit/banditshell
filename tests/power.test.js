@@ -304,6 +304,7 @@ test("a battery that is full or held at its limit is not charging and has no est
     assert.strictEqual(Battery.phaseOf("other", false), "plugged");
     assert.strictEqual(Battery.phaseOf("pendingCharge", true), "battery");
     assert.strictEqual(Battery.phaseOf("charging", false), "charging");
+    assert.strictEqual(Battery.phaseOf("discharging", false), "battery");
 
     assert.strictEqual(Battery.stateText("held", 80), "plugged in, held at 80%");
     assert.strictEqual(Battery.stateText("held", 0), "not charging");

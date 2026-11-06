@@ -1357,6 +1357,7 @@ Singleton {
     readonly property string profileTrouble: PowerProfile.trouble
     readonly property bool chargeSupported: !ChargeLimit.probed || ChargeLimit.supported
     readonly property string chargeTrouble: ChargeLimit.trouble
+    readonly property bool chargeNeedsHelper: ChargeLimit.probed && ChargeLimit.supported && !ChargeLimit.helper
     readonly property int trayCount: Tray.items.length
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
     readonly property var currencies: Currency.codes

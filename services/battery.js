@@ -73,7 +73,7 @@ function afterResume(stage) {
 function phaseOf(state, onBattery) {
     if (state === "charging" || state === "full")
         return state;
-    if (onBattery)
+    if (onBattery || state === "discharging")
         return "battery";
     return state === "pendingCharge" ? "held" : "plugged";
 }

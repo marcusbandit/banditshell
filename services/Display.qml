@@ -198,7 +198,7 @@ Singleton {
         if (!display?.index)
             return;
         const levels = Object.assign({}, root.displayLevels);
-        levels[display.index] = Math.max(0, Math.min(1, v));
+        levels[display.index] = Brightness.clamp(v, Config.values.launcher.systemControls?.lowestBrightness);
         root.displayLevels = levels;
         root.markPending([display.index]);
     }
