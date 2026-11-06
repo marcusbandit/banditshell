@@ -602,6 +602,15 @@ PanelWindow {
         }
 
         Connections {
+            target: Settings
+
+            function onSummoned(screen: string): void {
+                if (screen === (win.screen?.name ?? ""))
+                    menuLayer.hide();
+            }
+        }
+
+        Connections {
             target: sidebar.status
 
             function onRequested(key: string, deliberate: bool): void {

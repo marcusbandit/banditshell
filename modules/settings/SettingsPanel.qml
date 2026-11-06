@@ -116,6 +116,13 @@ FocusScope {
     onWantedWidthChanged: if (!SettingsView.sliding)
         root.settledWidth = root.wantedWidth
 
+    Binding {
+        target: Settings
+        property: "covered"
+        value: root.yielded
+        when: root.shown
+    }
+
     Connections {
         target: SettingsView
 

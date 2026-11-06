@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import "settings-summon.js" as Summon
 
 Singleton {
     id: root
@@ -10,6 +11,9 @@ Singleton {
     property string screenName: ""
     property string page: "home"
     property string reveal: ""
+    property bool covered: false
+
+    signal summoned(string screen)
 
     function show(screen: string, which: string): void {
         const span = root.open ? null : Trace.begin("settings open");
@@ -17,6 +21,7 @@ Singleton {
         if (which)
             root.page = which;
         root.open = true;
+        root.summoned(root.screenName);
         Trace.step("shown", span);
     }
 
@@ -27,7 +32,7 @@ Singleton {
     }
 
     function toggle(screen: string): void {
-        if (root.open && (!screen || screen === root.screenName))
+        if (Summon.toggleAction(root.open, root.covered, screen, root.screenName) === "hide")
             root.hide();
         else
             root.show(screen, "");
