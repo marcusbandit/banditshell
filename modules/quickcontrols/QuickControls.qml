@@ -265,7 +265,7 @@ Item {
                     width: root.sliderWidth
 
                     value: Display.levelKnown ? Display.level : 0
-                    from: 0
+                    from: Display.floor
                     to: 1
                     dimmed: !Display.levelKnown
 

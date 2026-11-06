@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Services.Notifications
 import qs.config
 import "quiet-hours.js" as QuietHours
+import "notification-popups.js" as Popups
 import "notification-rules.js" as Rules
 import "notification-search.js" as Search
 import "notification-shelf.js" as Shelf
@@ -72,17 +73,6 @@ Singleton {
         let changed = false;
         for (const entry of list ?? [])
             if (entry && !entry.seen) {
-                entry.seen = true;
-                changed = true;
-            }
-        if (changed)
-            root.save();
-    }
-
-    function markSeen(): void {
-        let changed = false;
-        for (const entry of root.history)
-            if (!entry.seen) {
                 entry.seen = true;
                 changed = true;
             }
@@ -170,14 +160,37 @@ Singleton {
 
     property double quietSince: 0
 
-    signal heldReleased(int count)
+    signal heldReleased(int count, string why)
 
     onQuietedChanged: {
         if (root.quieted || !Config.ready)
             return;
         const waiting = root.history.filter(e => e.withheld && !e.seen && !e.leaving).length;
         if (waiting > 0)
-            root.heldReleased(waiting);
+            root.heldReleased(waiting, "quiet");
+    }
+
+    readonly property bool fullscreened: Hypr.fullscreenOn(Focus.offStageScreen)
+
+    function releaseFullscreen(): void {
+        if (!Config.ready)
+            return;
+        const freed = root.history.filter(e => e.fullscreenScreen && !Hypr.fullscreenOn(e.fullscreenScreen));
+        if (freed.length === 0)
+            return;
+        const waiting = freed.filter(e => !e.seen && !e.leaving).length;
+        for (const entry of freed)
+            entry.fullscreenScreen = "";
+        if (waiting > 0)
+            root.heldReleased(waiting, "fullscreen");
+    }
+
+    Connections {
+        target: Hypr
+
+        function onFullscreenByMonitorChanged(): void {
+            root.releaseFullscreen();
+        }
     }
 
     onQuietChanged: {
@@ -463,21 +476,54 @@ Singleton {
             root.showPopups(Shelf.placed(root.popups, back));
     }
 
+    function deliver(entry: var, at: double): void {
+        const kind = root.kindOf(entry);
+        const ours = (entry?.appName ?? "") === "banditshell";
+        const critical = entry.urgency === NotificationUrgency.Critical;
+        const held = root.holdingAt(at) && !(ours && kind === "battery") && !(kind === "alarm" && root.letAlarms) && !(critical && root.criticalThrough);
+        const rule = root.ruleFor(entry);
+        const plan = Popups.delivery(held, rule, Timing.muted(rule, at), root.fullscreened);
+
+        entry.withheld = held;
+        entry.fullscreenScreen = plan.waiting ? Focus.offStageScreen : "";
+
+        if (plan.popup)
+            root.showPopups([entry, ...root.popups.filter(e => e !== entry)]);
+
+        if (plan.sound)
+            AlertSounds.play(AlertSounds.kinds.includes(kind) ? kind : "notification");
+    }
+
     function wake(entry: var): void {
         if (!root.history.includes(entry) || entry.leaving)
             return;
         entry.timeout = Timing.wakeTimeout(entry.timeout, entry.urgency === NotificationUrgency.Critical, entry.live, root.defaultTimeout);
         entry.remaining = 1;
         entry.seen = false;
-        root.showPopups([entry, ...root.popups.filter(e => e !== entry)]);
-        if (!root.holdingAt(Date.now()))
-            AlertSounds.play("notification");
+        root.deliver(entry, Date.now());
     }
+
+    function renew(entry: var): void {
+        if (!root.history.includes(entry) || !entry.live || (entry.leaving && entry.forget))
+            return;
+        if (entry.leaving) {
+            entry.leaving = false;
+            entry.leaveElapsed = 0;
+            root.leaving = root.leaving.filter(e => e !== entry);
+        }
+        root.snoozed = root.snoozed.filter(item => item.entry !== entry);
+        entry.timeout = root.timeoutFor(entry.notification);
+        entry.remaining = 1;
+        entry.seen = false;
+        root.deliver(entry, Date.now());
+    }
+
+    onSnoozedChanged: root.save()
 
     Timer {
         interval: 1000
         repeat: true
-        running: root.snoozed.length > 0
+        running: Config.ready && root.snoozed.length > 0
 
         onTriggered: {
             const split = Timing.due(root.snoozed, Date.now());
@@ -491,8 +537,9 @@ Singleton {
     }
 
     function showPopups(shown: var): void {
-        root.popups = shown.slice(0, root.maxPopups);
-        for (const old of shown.slice(root.maxPopups))
+        const fitted = Popups.fit(shown, root.maxPopups, e => e.urgency === NotificationUrgency.Critical && !e.leaving);
+        root.popups = fitted.shown;
+        for (const old of fitted.dropped)
             root.expire(old);
     }
 
@@ -683,6 +730,7 @@ Singleton {
         entry.orphaned.connect(path => root.erase(path));
         entry.pinnedChanged.connect(root.save);
         entry.updated.connect(() => root.updatedOnShelf(entry));
+        entry.renewed.connect(() => root.renew(entry));
     }
 
     function revive(record: var): var {
@@ -719,6 +767,10 @@ Singleton {
         root.restored = true;
         if (revived.length > 0)
             root.history = root.trimmed([...root.history, ...revived].sort((a, b) => b.time - a.time));
+        records.forEach((r, i) => {
+            if (r.wake > 0 && root.history.includes(revived[i]))
+                root.snoozed = Timing.snoozeAdd(root.snoozed, revived[i], r.wake);
+        });
         prune.run();
     }
 
@@ -743,7 +795,7 @@ Singleton {
         saveDelay.stop();
         if (!root.persistent || !root.restored)
             return;
-        const text = JSON.stringify(Store.serialise(root.history, root.pictureLimit));
+        const text = JSON.stringify(Store.serialise(root.history, root.pictureLimit, root.snoozed));
         if (text === root.lastWritten)
             return;
         root.lastWritten = text;
@@ -892,20 +944,7 @@ Singleton {
             if (notification.transient)
                 root.history = root.history.filter(e => e !== entry);
 
-            const kind = root.kindOf(entry);
-            const ours = (entry?.appName ?? "") === "banditshell";
-            const critical = entry.urgency === NotificationUrgency.Critical;
-            const held = root.holdingAt(Date.now()) && !(ours && kind === "battery") && !(kind === "alarm" && root.letAlarms) && !(critical && root.criticalThrough);
-            const rule = root.ruleFor(entry);
-            const silenced = Timing.muted(rule, arrived);
-
-            entry.withheld = held;
-
-            if (!held && rule.pop && !silenced)
-                root.showPopups([entry, ...root.popups]);
-
-            if (!held && rule.snd && !silenced)
-                AlertSounds.play(AlertSounds.kinds.includes(kind) ? kind : "notification");
+            root.deliver(entry, arrived);
         }
     }
 

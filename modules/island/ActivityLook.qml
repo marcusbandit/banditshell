@@ -256,7 +256,7 @@ QtObject {
         case "held":
             return {
                 icon: "notifications_paused",
-                text: `${a.count} held while quiet`,
+                text: `${a.count} held while ${a.why || "quiet"}`,
                 trailing: "icon",
                 trailingIcon: "chevron_right",
                 trailingInk: true

@@ -10,5 +10,6 @@ function kindOf(category) {
 }
 
 function commandFor(spec) {
-    return ["notify-send", "-a", "banditshell", "-u", spec.urgency ?? "normal", "-c", categoryFor(spec.kind), spec.summary, spec.body ?? ""];
+    const category = spec.kind ? ["-c", categoryFor(spec.kind)] : [];
+    return ["notify-send", "-a", "banditshell", "-u", spec.urgency ?? "normal", ...category, "--", String(spec.summary ?? ""), String(spec.body ?? "")];
 }

@@ -10,6 +10,7 @@ Item {
     id: root
 
     property var entry: null
+    property bool pastes: false
 
     signal back
     signal accepted
@@ -138,7 +139,7 @@ Item {
 
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            text: "Copy"
+            text: root.pastes ? "Paste" : "Copy"
             onClicked: root.accepted()
         }
     }

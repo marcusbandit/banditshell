@@ -23,6 +23,7 @@ Item {
     property string fill: ""
     property bool busy: false
     property bool checking: false
+    property bool capsLock: false
     property var readServer: text => text.trim()
     property var schoolOf: (domain, identity) => null
     property var innerOf: method => []
@@ -32,6 +33,7 @@ Item {
     signal accepted(var form, string password)
     signal check(var form)
     signal cancelled
+    signal capsAsked
 
     property int method: 0
     property string trust: "auto"
@@ -438,7 +440,7 @@ Item {
 
                 anchors.fill: parent
                 anchors.leftMargin: Appearance.padding.normal
-                anchors.rightMargin: entry.secret ? eye.width + Appearance.padding.normal * 2 : Appearance.padding.normal
+                anchors.rightMargin: entry.secret ? eye.width + Appearance.padding.normal * 2 + (caps.visible ? caps.width + Appearance.padding.small : 0) : Appearance.padding.normal
 
                 verticalAlignment: TextInput.AlignVCenter
                 echoMode: entry.secret && !entry.shown ? TextInput.Password : TextInput.Normal
@@ -457,12 +459,36 @@ Item {
 
                 Keys.onEscapePressed: root.cancelled()
 
+                Keys.onPressed: event => {
+                    if (event.key === Qt.Key_CapsLock)
+                        Qt.callLater(() => root.capsAsked());
+                }
+
+                onActiveFocusChanged: if (box.activeFocus && entry.secret)
+                    root.capsAsked()
+
                 StyledText {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: !box.text && !box.activeFocus
                     text: entry.hint
                     color: Appearance.colour.textFaint
                     font.pixelSize: Appearance.font.size.small
+                }
+            }
+
+            Icon {
+                id: caps
+
+                anchors.right: eye.left
+                anchors.rightMargin: Appearance.padding.small
+                anchors.verticalCenter: parent.verticalCenter
+
+                visible: entry.secret && box.activeFocus && root.capsLock
+                name: "keyboard_capslock"
+                color: Appearance.colour.warning
+
+                HoverTip {
+                    text: "caps lock is on"
                 }
             }
 

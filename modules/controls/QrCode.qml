@@ -85,12 +85,18 @@ Item {
         if (!root.encoder || !root.text)
             return;
 
-        write.command = [root.encoder, "-o", "-", "-t", "ASCII", "-m", "0", "-l", root.level, "--", root.text];
+        write.command = [root.encoder, "-o", "-", "-t", "ASCII", "-m", "0", "-l", root.level];
+        write.stdinEnabled = true;
         write.running = true;
     }
 
     Process {
         id: write
+
+        onStarted: {
+            write.write(root.text);
+            write.stdinEnabled = false;
+        }
 
         stdout: StdioCollector {
             onStreamFinished: {
@@ -190,13 +196,15 @@ Item {
         return Appearance.blend(root.ink, Appearance.blend(root.pine, root.printed.dim, at / 3), root.phase(i, tide.value));
     }
 
+    readonly property real margin: Appearance.padding.large
+
     Item {
         id: face
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
 
-        width: root.side
+        width: root.width
         height: root.side + root.hem
 
         SquircleRect {
@@ -222,33 +230,42 @@ Item {
             }
         }
 
-        Repeater {
-            model: root.figures
+        Item {
+            id: code
 
-            delegate: Shape {
-                id: band
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.top
+            width: root.side
+            height: root.side
 
-                required property int index
-                required property string modelData
+            Repeater {
+                model: root.figures
 
-                width: root.drawn
-                height: root.drawn
-                preferredRendererType: Shape.CurveRenderer
-                transform: Scale {
-                    xScale: root.module / root.grain
-                    yScale: root.module / root.grain
-                }
-                asynchronous: true
+                delegate: Shape {
+                    id: band
 
-                opacity: root.phase(band.index, wave.value)
+                    required property int index
+                    required property string modelData
 
-                ShapePath {
-                    fillColor: root.hue(band.index)
-                    strokeColor: "transparent"
-                    fillRule: ShapePath.WindingFill
+                    width: root.drawn
+                    height: root.drawn
+                    preferredRendererType: Shape.CurveRenderer
+                    transform: Scale {
+                        xScale: root.module / root.grain
+                        yScale: root.module / root.grain
+                    }
+                    asynchronous: true
 
-                    PathSvg {
-                        path: band.modelData
+                    opacity: root.phase(band.index, wave.value)
+
+                    ShapePath {
+                        fillColor: root.hue(band.index)
+                        strokeColor: "transparent"
+                        fillRule: ShapePath.WindingFill
+
+                        PathSvg {
+                            path: band.modelData
+                        }
                     }
                 }
             }
@@ -260,9 +277,9 @@ Item {
             anchors.top: parent.top
             anchors.topMargin: root.side
             anchors.left: parent.left
-            anchors.leftMargin: root.quiet * root.module
+            anchors.leftMargin: root.margin
             anchors.right: parent.right
-            anchors.rightMargin: root.quiet * root.module
+            anchors.rightMargin: root.margin
 
             opacity: wordsFade.value
 
@@ -298,7 +315,7 @@ Item {
                 text: root.detail
                 color: detailTone.value
                 horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideMiddle
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
 
                 FollowColour {
                     id: detailTone

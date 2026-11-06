@@ -3,6 +3,8 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Bluetooth as Bluez
+import Quickshell.Io
+import "bluetooth-pairing.js" as Pairing
 
 Singleton {
     id: root
@@ -96,31 +98,205 @@ Singleton {
     function toggleDevice(device: var): void {
         if (!device)
             return;
-        if (device.connected)
+        if (device.connected) {
             device.disconnect();
-        else if (device.paired || device.bonded)
+            return;
+        }
+        root.clearFailure(device.address);
+        if (device.paired || device.bonded) {
+            root.attempt(device.address, "connect");
             device.connect();
-        else
+        } else {
+            root.attempt(device.address, "pair");
             device.pair();
+        }
+    }
+
+    property var attempts: ({})
+    property var failures: ({})
+
+    function attempt(address: string, kind: string): void {
+        const next = Object.assign({}, root.attempts);
+        next[address] = {
+            kind: kind,
+            at: Date.now()
+        };
+        root.attempts = next;
+    }
+
+    function settle(address: string): void {
+        if (!(address in root.attempts))
+            return;
+        const next = Object.assign({}, root.attempts);
+        delete next[address];
+        root.attempts = next;
+    }
+
+    function fail(address: string): void {
+        const tried = root.attempts[address];
+        if (!tried)
+            return;
+        root.settle(address);
+        const next = Object.assign({}, root.failures);
+        next[address] = Pairing.failureLabel(tried.kind);
+        root.failures = next;
+        failureExpiry.restart();
+    }
+
+    function clearFailure(address: string): void {
+        if (!(address in root.failures))
+            return;
+        const next = Object.assign({}, root.failures);
+        delete next[address];
+        root.failures = next;
+    }
+
+    Timer {
+        id: attemptExpiry
+
+        interval: 2000
+        repeat: true
+        running: Object.keys(root.attempts).length > 0
+        onTriggered: {
+            const now = Date.now();
+            for (const address of Object.keys(root.attempts)) {
+                const device = root.deviceAt(address);
+                const live = device && (device.pairing || device.state === Bluez.BluetoothDeviceState.Connecting);
+                if (!live && now - root.attempts[address].at > 25000)
+                    root.fail(address);
+            }
+        }
+    }
+
+    Timer {
+        id: failureExpiry
+
+        interval: 6000
+        onTriggered: root.failures = ({})
+    }
+
+    Instantiator {
+        model: Bluez.Bluetooth.devices
+
+        delegate: QtObject {
+            id: watch
+
+            required property var modelData
+
+            readonly property Connections link: Connections {
+                target: watch.modelData ?? null
+                ignoreUnknownSignals: true
+
+                function onStateChanged(): void {
+                    const device = watch.modelData;
+                    if (!device)
+                        return;
+                    if (device.connected)
+                        root.settle(device.address);
+                    else if (device.state === Bluez.BluetoothDeviceState.Disconnected && root.attempts[device.address]?.kind === "connect")
+                        root.fail(device.address);
+                }
+
+                function onPairingChanged(): void {
+                    const device = watch.modelData;
+                    if (!device || device.pairing)
+                        return;
+                    root.dropPrompts(device.address);
+                    if (device.paired || device.bonded)
+                        root.settle(device.address);
+                    else
+                        root.fail(device.address);
+                }
+            }
+        }
     }
 
     function stateLabel(device: var): string {
         if (!device)
             return "";
-        if (device.blocked)
-            return "blocked";
-        if (device.pairing)
-            return "pairing";
-        if (device.state === Bluez.BluetoothDeviceState.Connecting)
-            return "connecting";
-        if (device.state === Bluez.BluetoothDeviceState.Disconnecting)
-            return "disconnecting";
-        if (device.connected)
-            return device.batteryAvailable ? `connected · ${Math.round(device.battery * 100)}%` : "connected";
+        return Pairing.stateLabel({
+            blocked: device.blocked,
+            pairing: device.pairing,
+            connecting: device.state === Bluez.BluetoothDeviceState.Connecting,
+            disconnecting: device.state === Bluez.BluetoothDeviceState.Disconnecting,
+            connected: device.connected,
+            battery: device.batteryAvailable ? device.battery : -1,
+            paired: device.paired || device.bonded
+        }, root.failures[device.address] ?? "");
+    }
 
-        if (device.paired || device.bonded)
-            return "paired";
-        return "not paired";
+    property var viewers: []
+
+    readonly property bool viewed: root.viewers.length > 0
+
+    function setViewing(viewer: var, on: bool): void {
+        const held = root.viewers.indexOf(viewer) >= 0;
+        if (on && !held)
+            root.viewers = root.viewers.concat([viewer]);
+        else if (!on && held)
+            root.viewers = root.viewers.filter(other => other !== viewer);
+    }
+
+    property var ask: null
+    property var code: null
+
+    readonly property var question: Pairing.describe(root.ask)
+    readonly property var displayed: Pairing.describeShown(root.code)
+
+    function dropPrompts(address: string): void {
+        if (root.ask?.address === address)
+            root.ask = null;
+        if (root.code?.address === address)
+            root.code = null;
+    }
+
+    function answer(accept: bool, text: string): bool {
+        const reply = Pairing.answerFor(root.ask, accept, text);
+        if (!reply)
+            return false;
+        agent.write(JSON.stringify(reply) + "\n");
+        root.ask = null;
+        return true;
+    }
+
+    function heard(line: string): void {
+        const event = Pairing.parseEvent(line);
+        if (!event)
+            return;
+        if (event.event === "ask")
+            root.ask = event;
+        else if (event.event === "show")
+            root.code = event;
+        else if (event.event === "cancel") {
+            root.ask = null;
+            root.code = null;
+        } else if (event.event === "error")
+            console.warn(`Bluetooth: could not register a pairing agent: ${event.why}`);
+    }
+
+    onViewedChanged: if (!root.viewed)
+        root.answer(false, "")
+
+    Process {
+        id: agent
+
+        running: root.available && root.enabled && root.viewed
+        command: ["python3", Quickshell.shellPath("scripts/bluetooth-agent.py")]
+
+        stdinEnabled: true
+
+        stdout: SplitParser {
+            onRead: line => root.heard(line)
+        }
+
+        stderr: SplitParser {
+            onRead: line => console.warn(`Bluetooth agent: ${line}`)
+        }
+
+        onExited: {
+            root.ask = null;
+            root.code = null;
+        }
     }
 
     readonly property var kinds: [

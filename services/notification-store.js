@@ -23,7 +23,11 @@ function basename(path) {
     return cut < 0 ? String(path ?? "") : String(path).slice(cut + 1);
 }
 
-function serialise(entries, pictureLimit) {
+function serialise(entries, pictureLimit, snoozed) {
+    const wakes = new Map();
+    for (const item of snoozed ?? [])
+        if (item && item.entry && number(item.at, 0) > 0)
+            wakes.set(item.entry, item.at);
     const kept = [];
     let pictures = 0;
     for (const e of entries ?? []) {
@@ -48,7 +52,8 @@ function serialise(entries, pictureLimit) {
             picture: withPicture ? name : "",
             pinned: !!e.pinned,
             seen: !!e.seen,
-            withheld: !!e.withheld
+            withheld: !!e.withheld,
+            wake: wakes.get(e) ?? 0
         });
     }
     return { version: VERSION, entries: kept };
@@ -95,7 +100,8 @@ function restore(raw, limit, known, picturesDir) {
             cached: PICTURE_NAME.test(text(r.picture)) && picturesDir ? `${picturesDir}/${r.picture}` : "",
             pinned: !!r.pinned,
             seen: !!r.seen,
-            withheld: !!r.withheld
+            withheld: !!r.withheld,
+            wake: Math.max(0, number(r.wake, 0))
         });
     }
     out.sort((a, b) => b.time - a.time);

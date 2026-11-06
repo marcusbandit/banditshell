@@ -17,6 +17,7 @@ Item {
     property bool marked: false
     property bool previewing: false
 
+    signal touched
     signal picked(int index, int modifiers)
     signal activated(int index)
     signal menuFor(int index, point position)
@@ -29,7 +30,10 @@ Item {
 
     readonly property int columns: root.list ? 1 : Math.max(1, Math.floor(width / Appearance.sizes.filesTile))
     readonly property real cell: width / root.columns
+    readonly property int pageRows: Math.max(1, Math.floor((grid.height - grid.topMargin - grid.bottomMargin) / root.cellHeight))
     readonly property real cellHeight: root.list ? Appearance.sizes.filesRow + (FilesFind.active ? Files.zoomed(Appearance.font.line.small) : 0) : root.cell * 1.18
+
+    readonly property var failure: Listing.failure(Files.error)
 
     readonly property int target: root.dragging ? root.dropIndexAt(root.dragPoint) : -1
 
@@ -39,14 +43,23 @@ Item {
         return grid.indexAt(position.x + grid.contentX, position.y + grid.contentY);
     }
 
-    function reveal(index: int): void {
-        grid.positionViewAtIndex(index, GridView.Contain);
+    function reveal(index: int, glide: bool): void {
+        if (!glide)
+            grid.positionViewAtIndex(index, GridView.Contain);
         const top = Math.floor(index / root.columns) * root.cellHeight - grid.topMargin;
         const bottom = top + root.cellHeight + grid.topMargin + grid.bottomMargin;
-        if (top < grid.contentY)
-            grid.contentY = top;
-        else if (bottom > grid.contentY + grid.height)
-            grid.contentY = bottom - grid.height;
+        const goal = glide ? wheel.goal : grid.contentY;
+        let to = goal;
+        if (top < goal)
+            to = top;
+        else if (bottom > goal + grid.height)
+            to = bottom - grid.height;
+        if (to === goal)
+            return;
+        if (glide)
+            wheel.scrollTo(to);
+        else
+            grid.contentY = to;
     }
 
     function warm(): void {
@@ -137,6 +150,8 @@ Item {
         model: tiles
 
         WheelStep {
+            id: wheel
+
             flick: grid
         }
 
@@ -155,6 +170,7 @@ Item {
             z: tile.focused ? 1 : 0
             row: root.list
             picked: Files.isPicked(Files.keyOf(tile.entry))
+            cut: Files.cutTable[Files.pathOf(tile.entry)] === true
             focused: (root.keyed || root.marked) && tile.index === Files.cursor
             previewed: root.previewing && tile.index === Files.cursor
             keyed: root.keyed
@@ -182,6 +198,7 @@ Item {
         property bool adding: false
 
         onPressed: mouse => {
+            root.touched();
             if (root.dropIndexAt(Qt.point(mouse.x, mouse.y)) >= 0) {
                 mouse.accepted = false;
                 return;
@@ -258,9 +275,9 @@ Item {
         Icon {
             anchors.horizontalCenter: parent.horizontalCenter
 
-            name: Files.error ? "lock" : FilesFind.active ? "search" : "folder_open"
+            name: Files.error ? root.failure.icon : FilesFind.active ? "search" : "folder_open"
             size: Files.zoomed(Appearance.icon.huge)
-            color: Files.error ? Appearance.colour.alarm : Appearance.colour.textFaint
+            color: Files.error && root.failure.alarm ? Appearance.colour.alarm : Appearance.colour.textFaint
         }
 
         StyledText {
@@ -268,9 +285,33 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap
 
-            text: Files.error ? Files.error : FilesFind.active && FilesFind.running ? "searching home…" : FilesFind.active ? `nothing matching "${Files.search}" in home` : Files.search ? `nothing matching "${Files.search}"` : "empty"
+            text: Files.error ? root.failure.text : FilesFind.active && FilesFind.running ? "searching home…" : FilesFind.active ? `nothing matching "${Files.search}" in home` : Files.search ? `nothing matching "${Files.search}"` : "empty"
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
+        }
+
+        Row {
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: Appearance.padding.small
+            visible: !!Files.error
+
+            Button {
+                visible: Files.cwd !== "/"
+                style: "ring"
+                text: "Go up"
+                zoom: Files.magnification
+
+                onClicked: Files.go(Files.parentOf(Files.cwd))
+            }
+
+            Button {
+                visible: Files.cwd !== Files.home
+                style: "ring"
+                text: "Home"
+                zoom: Files.magnification
+
+                onClicked: Files.go(Files.home)
+            }
         }
 
         StyledText {

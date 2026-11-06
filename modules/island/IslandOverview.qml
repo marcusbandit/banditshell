@@ -69,6 +69,7 @@ Item {
     readonly property var live: root.activities.filter(a => a.kind !== "notifications")
     readonly property var listed: root.activities.find(a => a.kind === "notifications") ?? null
     readonly property int clipped: DeckFit.clippedEntries(root.notifications, notices.hiddenCards)
+    readonly property var drawn: root.hasNotices ? notices.drawn : []
     readonly property var summary: root.listed && root.clipped > 0 ? Object.assign({}, root.listed, {
         count: root.listed.count + root.clipped
     }) : root.listed

@@ -47,6 +47,640 @@
       ]
     },
     {
+      "id": "2026-11-05-q29",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Enter in the clipboard pastes, and deleted entries can be undone"
+        },
+        {
+          "type": "bugs",
+          "severity": "major",
+          "text": "Clipboard: typing searches; pin is Ctrl+P, move is Ctrl+J and Ctrl+K"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Copied keys and tokens leave clipboard history after 5 minutes"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Clipboard rows have a View action and the header a search button"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Transcription tab shows only when dictation is set up"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-05-q08",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A changed notification pops up again and sounds, not silent"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A Remind me survives a restart or reboot"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A critical alert stays up when newer notifications arrive"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A reminder obeys Do Not Disturb and a muted app"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Closing the island marks only the notifications it showed as read"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Notifications under a fullscreen window are listed after it ends"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Timers and messages that start with a dash now show up"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-q02",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Launcher previews show on laptop-sized screens"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The chosen launcher row keeps its full name beside its buttons"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Home, End and the arrows edit the launcher query, not the list"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ctrl+K or Shift+F10 opens a launcher row's actions"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Press and hold a pinned app to open its actions"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The pinned app you pick with the keys shows its name"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Pinning a 13th app says the grid is full"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The first Down after an answer picks the first result"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The ? page shows each example in full"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Timer rows show am or pm when the end time has it"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Ordinary searches no longer show raw action ids"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-q13",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Battery menu has a power mode row"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Full or held-at-limit batteries no longer read as charging"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Battery power says Charging at or Drawing, and 99.6% is 100%"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Sound devices with the same name now show their card too"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Long menu pages fade at the edge where more follows"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Brightness controls stop at the Lowest brightness setting"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Sidebar brightness icon says its level and steps by 5%"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Settings Hold charge tile says it needs the helper, not 80%"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-q28",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Files is an app: type files in the launcher, the tour shows it"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Drop files from other apps into Files; Ctrl-drag copies"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ctrl+F searches and Ctrl+H shows hidden files in Files"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Files shows how many items a folder has and what you selected"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files sorts img2 before img10"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A missing folder says so and offers Go up and Home"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Arrow and page keys glide the Files list like the wheel"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Taking a key in File browser settings asks first; defaults restore"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Launcher file search finds files that .gitignore lists"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Slow touchpad scrolling in the Files terminal follows your fingers"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-q27",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Drives and their usage bars update while Files is open"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Open with lists the apps that handle the file"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files dialogs scale with the zoom"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files dialogs open and close at once"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The drag ghost stays under the pointer"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Keys no longer reach the file grid behind Properties"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Ctrl-clicking no longer raises the key panel"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-05-q10",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A full timer or alarm list now says why Start did nothing"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Settings: 'Longest timer' is now 'Timers at once', default 8"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Add a place finds 'new york' and suggests common cities"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Timers and alarms show their names; the Timers count skips paused"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The alarm editor follows the 12-hour clock with am and pm"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Removing a timer, alarm or place can be undone for a few seconds"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Click a time field and type digits; presets now include 15 and 30"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-q11",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Calendars have previous and next month buttons"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Pick the first day of the week and week numbers in Language"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The forecast always offers Change place"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The island tour step introduces the weather"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The desktop weather card appears on its own and keeps current"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The desktop clock shows the whole date"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Desktop Now playing wraps long titles and opens the media card"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-05-q26",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files: the terminal keeps Ctrl+B, Alt+arrows and Ctrl+,"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Folder names in icon view wrap instead of cutting off"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Properties shows a folder's item count and real size"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ctrl+2 lets the arrow and page keys scroll the preview"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The Files sidebar scrolls when its rows do not fit"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Clicking a file ends path or search typing"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Going up or back selects the folder you came from"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Page keys move a screen; Home and End jump to the ends"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-05-q01",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Typing build.sh selects the file, not a web link"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Aliases work on snippets, scripts, SSH hosts and quicklinks"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A taken launcher alias says who has it instead of being replaced"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "kill and top ask before quitting an app; force quit sends KILL"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "gh opens the GitHub source first, even with the default quicklink"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Command output shows every line and counts the ones left over"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Launcher volume commands use the volume step from Settings"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A plain word lists apps before its dictionary entry"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-05-q12",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Bluetooth lists every paired and nearby device, not just seven"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Bluetooth pairing asks for the PIN or number check it needs"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A failed Bluetooth connect says so on the row"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Join a hidden Wi-Fi network from the menu, Settings or a code"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Wi-Fi passwords have a show button and a Caps Lock warning"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The Wi-Fi menu shows your IP address and copies it"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The Wi-Fi share code is the same size with any number of networks"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Sharing Wi-Fi no longer puts the password in a process list"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Forget asks for a second press in the Wi-Fi and Bluetooth menus"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Cut network names show in full on hover, and detail lines wrap"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-05-q15",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Hovering a tray icon names the app"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Tray icons past the cap sit behind a +N you can open"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Tap or swipe the rail on a touchscreen to open it"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The mode icon in the open sidebar opens modes and shows a tip"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The rail keeps an update mark through checking and after a rollback"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Wi-Fi off with Ethernet up no longer shows Airplane mode"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Paint window borders off gives your own border colours back"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "VPN and Keep awake show in the full sidebar"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Press and hold opens a menu after half a second, not eight tenths"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-05-q25",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Copied files keep their modified time"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ctrl+C and Ctrl+X in Files work with other apps"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "File actions no longer type into a hidden terminal"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "New folder and Rename refuse taken names and slashes"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A long paste shows its progress and has a Stop button"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "New, renamed and pasted items are selected and shown"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Delete says it can be undone, and cut items are dimmed"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-05-q14",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A busy workspace past the always-shown count gets a slot"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "One mouse wheel notch over the workspace column switches one"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Clicking an app icon on a workspace plate focuses that window"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Workspace marks are easier to click and the rail holds still"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Workspace clicks and flicks no longer misfire"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A held window no longer closes on release after a fast lift"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-2",
       "date": "2026-11-05",
       "changes": [

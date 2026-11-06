@@ -5,6 +5,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.controls
+import "../../components/drag-resist.js" as Drag
 
 Item {
     id: root
@@ -46,14 +47,16 @@ Item {
 
     implicitHeight: Math.max(Appearance.sizes.rowHeight, body.implicitHeight + Appearance.padding.normal * 2) + Appearance.padding.small
 
+    readonly property real resisted: Drag.resist(root.thrown, root.throwFull, Config.values.control.dragResistance)
+
     Follow {
         id: slide
 
         speed: Appearance.animation.revealSpeed
-        target: root.throwing ? root.thrown : 0
+        target: root.throwing ? root.resisted : 0
     }
 
-    readonly property real offset: slide.value * Config.values.control.dragResistance
+    readonly property real offset: slide.value
 
     property bool placed: false
     property bool leaving: false
@@ -414,6 +417,7 @@ Item {
             press.lastX = dx;
 
             root.thrown = dx;
+            slide.snap();
         }
 
         onReleased: mouse => {
@@ -458,6 +462,8 @@ Item {
             root.throwing = false;
             root.thrown = 0;
         }
+
+        pressAndHoldInterval: Appearance.animation.longPress
 
         onPressAndHold: mouse => {
             press.held = true;

@@ -9,6 +9,7 @@ Column {
     id: root
 
     readonly property string ssid: SettingsView.pin?.id ?? ""
+    readonly property bool hidden: root.ssid === ""
     readonly property var n: Network.networks.find(x => x.name === root.ssid) ?? null
     readonly property bool on: !!root.n?.connected
     readonly property bool secured: !!root.n && Network.secured(root.n)
@@ -45,9 +46,36 @@ Column {
         Network.join(root.n, "");
     }
 
+    HiddenNetworkForm {
+        id: hiddenFields
+
+        width: parent.width
+        visible: root.hidden
+        busy: Network.hiddenBusy
+        joining: Network.hiddenName
+        trouble: Network.hiddenTrouble
+        capsLock: Keymap.capsLock
+        onCapsAsked: Keymap.refresh()
+        onSubmitted: (name, security, password) => Network.joinHidden(name, security, password)
+        onCancelled: SettingsView.unpin()
+        onFinished: {
+            SettingsView.unpin();
+            SettingsView.drop("joined the hidden network", "wifi");
+        }
+    }
+
+    Connections {
+        target: Network
+
+        function onHiddenDone(name: string, ok: bool): void {
+            hiddenFields.settled(name, ok);
+        }
+    }
+
     Item {
         width: parent.width
         height: 160
+        visible: !root.hidden
 
         SquircleRect {
             anchors.fill: parent
@@ -145,6 +173,7 @@ Column {
     Flow {
         width: parent.width
         spacing: Appearance.padding.small
+        visible: !root.hidden
 
         Button {
             visible: root.on && Network.captive

@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.Pipewire
 import qs.config
+import "audio.js" as Names
 
 Singleton {
     id: root
@@ -94,10 +95,24 @@ Singleton {
         return "";
     }
 
-    function deviceLabel(node: PwNode): string {
+    function plainLabel(node: PwNode): string {
         if (root.isBluetooth(node))
             return root.label(node);
         return node?.properties?.["device.profile.description"] || root.label(node);
+    }
+
+    function labelEntries(nodes: var): var {
+        return nodes.map(n => ({
+                    key: n.name,
+                    label: root.plainLabel(n),
+                    card: root.isBluetooth(n) ? "" : n.properties?.["device.description"] || n.properties?.["device.nick"] || ""
+                }));
+    }
+
+    readonly property var deviceLabels: Object.assign(Names.uniqueLabels(root.labelEntries(root.sinks)), Names.uniqueLabels(root.labelEntries(root.sources)))
+
+    function deviceLabel(node: PwNode): string {
+        return root.deviceLabels[node?.name] ?? root.plainLabel(node);
     }
 
     function streamLabel(node: PwNode): string {
