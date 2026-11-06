@@ -1,6 +1,57 @@
 {
   "entries": [
     {
+      "id": "2026-11-06-q32",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Streamer mode stays on when Hyprland reloads or the shell restarts"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Lyrics wrap long lines with no spaces, and the sung part has no glow"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Lyrics scroll 100 px a notch, and a touchpad follows your fingers"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A lyrics server error says so and a click retries"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Holding N or P on the media card skips one track, not several"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Media card chips only show players that have a track"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The stream deck says why OBS refused Go live or Record"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The deck offers Open OBS when its WebSocket server is off"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The Spotify word timing hint names the add-on and can be hidden"
+        }
+      ]
+    },
+    {
       "id": "2026-11-06-q28",
       "date": "2026-11-06",
       "changes": [
