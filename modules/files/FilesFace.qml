@@ -8,6 +8,7 @@ import "urls.js" as Urls
 import "keys.js" as Chords
 import "deletion.js" as Deletion
 import "../../services/files-commands.js" as Commands
+import "../../services/files-clipboard.js" as ClipboardFiles
 import "../../services/files-find.js" as Find
 
 Item {
@@ -26,6 +27,8 @@ Item {
     }
 
     Keys.onReleased: event => {
+        if (event.key === Qt.Key_Control)
+            root.copying = false;
         if (event.key === Qt.Key_Control || event.key === Qt.Key_Alt || event.key === Qt.Key_Meta)
             hints.held = "";
     }
@@ -45,10 +48,14 @@ Item {
 
         function onWindowOpenChanged(): void {
             keys.clear();
+            root.copying = false;
         }
     }
 
     Keys.onPressed: event => {
+        if (event.key === Qt.Key_Control)
+            root.copying = true;
+
         if (settings.up || prompt.up || confirm.up || conflict.up)
             return;
 
@@ -883,6 +890,8 @@ Item {
     }
 
     property bool dragging: false
+    property bool incoming: false
+    property bool copying: false
     property point dragAt: Qt.point(0, 0)
 
     property bool exported: false
@@ -924,6 +933,25 @@ Item {
         Drag.onDragFinished: exporter.Drag.active = false
     }
 
+    function destinationAt(position: point, fallback: string): string {
+        const crumb = path.pathAt(path.mapFromItem(root, position.x, position.y));
+        if (crumb)
+            return crumb;
+
+        if (Files.sidebarOpen) {
+            const place = sidebar.pathAt(sidebar.mapFromItem(root, position.x, position.y));
+            if (place)
+                return place;
+        }
+
+        const index = grid.dropIndexAt(grid.mapFromItem(root, position.x, position.y));
+        const target = index < 0 ? null : Files.visible[index];
+        if (target && target.kind === "dir" && target.open && !Files.isPicked(Files.keyOf(target)))
+            return Files.pathOf(target);
+
+        return fallback;
+    }
+
     function drop(position: point): void {
         root.dragging = false;
 
@@ -931,31 +959,49 @@ Item {
         if (moving.length === 0)
             return;
 
-        const crumb = path.pathAt(path.mapFromItem(root, position.x, position.y));
-        if (crumb) {
-            Files.moveInto(moving, crumb);
-            return;
-        }
+        const dir = root.destinationAt(position, "");
+        if (dir)
+            Files.dropInto(moving, dir, root.copying);
+    }
 
-        if (Files.sidebarOpen) {
-            const place = sidebar.pathAt(sidebar.mapFromItem(root, position.x, position.y));
-            if (place) {
-                Files.moveInto(moving, place);
+    function receive(urls: var, position: point): void {
+        root.incoming = false;
+        root.dragging = false;
+        const paths = urls.map(url => ClipboardFiles.path(url.toString())).filter(one => one !== "");
+        const dir = root.destinationAt(position, Files.cwd);
+        if (paths.length > 0 && dir)
+            Files.receiveInto(paths, dir);
+    }
+
+    DropArea {
+        anchors.fill: parent
+
+        onEntered: event => {
+            if (!event.hasUrls) {
+                event.accepted = false;
                 return;
             }
+            event.accept(Qt.CopyAction);
+            root.incoming = true;
+            root.dragging = true;
+            root.dragAt = Qt.point(event.x, event.y);
         }
-
-        const local = grid.mapFromItem(root, position.x, position.y);
-        const index = grid.dropIndexAt(local);
-        if (index < 0)
-            return;
-
-        const target = Files.visible[index];
-
-        if (!target || target.kind !== "dir" || !target.open || Files.isPicked(Files.keyOf(target)))
-            return;
-
-        Files.moveInto(moving, Files.pathOf(target));
+        onPositionChanged: event => {
+            if (root.incoming)
+                root.dragAt = Qt.point(event.x, event.y);
+        }
+        onExited: {
+            if (root.incoming) {
+                root.incoming = false;
+                root.dragging = false;
+            }
+        }
+        onDropped: event => {
+            if (!root.incoming)
+                return;
+            event.accept(Qt.CopyAction);
+            root.receive(event.urls, Qt.point(event.x, event.y));
+        }
     }
 
     Follow {
@@ -974,7 +1020,7 @@ Item {
     }
 
     Item {
-        visible: root.dragging && root.placed
+        visible: root.dragging && root.placed && !root.incoming
 
         x: followX.value - width / 2
         y: followY.value - height / 2
@@ -995,6 +1041,26 @@ Item {
 
             fileClass: Files.current ? Files.current.class : "unknown"
             size: parent.width * 0.5
+        }
+
+        SquircleRect {
+            visible: root.copying
+
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: -Appearance.padding.hair
+            width: parent.width * 0.4
+            height: width
+
+            pill: "object"
+            color: Appearance.colour.accent
+
+            Icon {
+                anchors.centerIn: parent
+                name: "add"
+                size: parent.width * 0.8
+                color: Appearance.colour.accentText
+            }
         }
     }
 

@@ -13,7 +13,7 @@ function source(file) {
 
 const Quoting = new Function(`${source("services/quoting.js")}\nreturn { forShell, posix, visible, hasControl };`)();
 const Commands = new Function("Quoting", `${source("services/files-commands.js").replace(/^\.import .*$/m, "")}
-return { humanSize, join, clearLine, typed, refusal, runPlan, cdLine, cdPlan, folderCommand, fileCommand, moveCommand, trashCommand, removeCommand, progressLine, leftChild, totalsCommand, totals, statusLine };`)(Quoting);
+return { humanSize, join, clearLine, typed, refusal, runPlan, cdLine, cdPlan, folderCommand, fileCommand, moveCommand, trashCommand, removeCommand, progressLine, leftChild, totalsCommand, totals, statusLine, outside };`)(Quoting);
 
 function installed(shell) {
     return child.spawnSync("sh", ["-c", `command -v ${shell}`]).status === 0;
@@ -333,5 +333,12 @@ test.describe("statusLine", () => {
     test.it("says the size only covers files when a folder is picked", () => {
         const picks = [{kind: "file", size: 100}, {kind: "dir", size: 4096}];
         assert.strictEqual(Commands.statusLine(9, picks, size), "2 selected, 100 B in files");
+    });
+});
+
+test.describe("outside", () => {
+    test.it("keeps the files that are not already in the folder", () => {
+        assert.deepStrictEqual(Commands.outside(["/home/a/x.png", "/home/b/y.png", "/z.txt"], "/home/a"), ["/home/b/y.png", "/z.txt"]);
+        assert.deepStrictEqual(Commands.outside(["/z.txt"], "/"), []);
     });
 });

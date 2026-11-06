@@ -145,3 +145,10 @@ function statusLine(total, picks, humanSize) {
     }
     return `${total} item${total === 1 ? "" : "s"}`;
 }
+
+function outside(paths, dir) {
+    return paths.filter(function (path) {
+        var cut = path.lastIndexOf("/");
+        return (cut <= 0 ? "/" : path.slice(0, cut)) !== dir;
+    });
+}

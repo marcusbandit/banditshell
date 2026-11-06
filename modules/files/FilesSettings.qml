@@ -485,6 +485,7 @@ Item {
 
                                     Button {
                                         text: "Replace"
+                                        style: "accent"
                                         zoom: Files.magnification
                                         onClicked: root.replace()
                                     }
