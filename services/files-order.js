@@ -1,7 +1,6 @@
 .pragma library
 
 const SORTS = ["name", "size", "mtime", "kind"];
-const NATURAL = {numeric: true, sensitivity: "base"};
 
 const SORT_WORDS = { name: "name", mtime: "date", size: "size", kind: "type" };
 
@@ -11,6 +10,33 @@ const ORDER_WORDS = {
     size: ["biggest", "smallest"],
     kind: ["a to z", "z to a"]
 };
+
+function chunks(text) {
+    return text.toLowerCase().match(/\d+|\D+/g) ?? [];
+}
+
+function natural(a, b) {
+    const left = chunks(a), right = chunks(b);
+    const shared = Math.min(left.length, right.length);
+    for (let i = 0; i < shared; i++) {
+        const x = left[i], y = right[i];
+        if (x === y)
+            continue;
+        const digits = x.charCodeAt(0) >= 48 && x.charCodeAt(0) <= 57 && y.charCodeAt(0) >= 48 && y.charCodeAt(0) <= 57;
+        if (digits) {
+            const nx = x.replace(/^0+(?=\d)/, ""), ny = y.replace(/^0+(?=\d)/, "");
+            if (nx.length !== ny.length)
+                return nx.length < ny.length ? -1 : 1;
+            if (nx !== ny)
+                return nx < ny ? -1 : 1;
+            continue;
+        }
+        const order = x.localeCompare(y);
+        if (order !== 0)
+            return order < 0 ? -1 : 1;
+    }
+    return left.length === right.length ? 0 : left.length < right.length ? -1 : 1;
+}
 
 function foldersNote(key) {
     return key === "size" ? "folders by name" : "folders on top";
@@ -46,7 +72,7 @@ function trashOrder(key, reversed) {
 
 function ordered(entries, key, reversed) {
     const sign = reversed ? -1 : 1;
-    const byName = (a, b) => a.name.localeCompare(b.name, undefined, NATURAL);
+    const byName = (a, b) => natural(a.name, b.name);
     const primary = {
         size: (a, b) => b.size - a.size,
         mtime: (a, b) => b.mtime - a.mtime,

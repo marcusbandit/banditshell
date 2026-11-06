@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Order = lib("services/files-order.js", ["SORTS", "SORT_WORDS", "orderWords", "foldersNote", "ordered", "merged", "trashOrder", "headers", "chosen"]);
+const Order = lib("services/files-order.js", ["SORTS", "SORT_WORDS", "orderWords", "foldersNote", "ordered", "natural", "merged", "trashOrder", "headers", "chosen"]);
 const Catalogue = lib("modules/settings/catalogue.js", ["ROW_BY_KEY", "PAGE_BY_ID", "options", "filesSortOrder", "filesFoldersNote"]);
 const Configuration = lib("config/configuration.js", ["merge", "upgrade"]);
 
@@ -183,5 +183,16 @@ test.describe("files order", () => {
     test.it("does not reorder the list it was given", () => {
         Order.ordered(entries, "size");
         assert.deepStrictEqual(entries.map(e => e.name), ["b.txt", "a.png", "c.md", "zdir"]);
+    });
+
+    test.it("sorts numbers inside names by value", () => {
+        const files = ["img10.png", "img2.png", "img1.png", "scan 9.pdf", "scan 10.pdf", "scan 2.pdf", "IMG3.png"].map(name => ({name: name, kind: "file"}));
+        assert.deepStrictEqual(Order.ordered(files, "name").map(e => e.name), ["img1.png", "img2.png", "IMG3.png", "img10.png", "scan 2.pdf", "scan 9.pdf", "scan 10.pdf"]);
+    });
+
+    test.it("compares numbers longer than a double and zero padding", () => {
+        assert.strictEqual(Order.natural("a99999999999999999999", "a100000000000000000000"), -1);
+        assert.strictEqual(Order.natural("a007", "a7"), 0);
+        assert.strictEqual(Order.natural("a", "a1"), -1);
     });
 });
