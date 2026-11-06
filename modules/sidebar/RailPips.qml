@@ -81,6 +81,7 @@ Item {
             readonly property var geom: layout.at(pip.index)
             readonly property var info: layout.slots[pip.index]
             readonly property bool isActive: layout.active === layout.idAt(pip.index)
+            readonly property bool floating: pip.isActive && layout.eclipsed
             readonly property bool isOccupied: (pip.info?.windows?.length ?? 0) > 0
 
             x: Math.round((root.width - width) / 2)
@@ -95,7 +96,26 @@ Item {
                 anchors.fill: parent
                 radius: pip.radius
                 color: Appearance.colour.accent
-                opacity: lit.value
+                opacity: lit.value * (1 - 0.6 * ring.value)
+            }
+
+            SquircleRect {
+                anchors.fill: parent
+                anchors.margins: -Math.max(2, Math.round(root.mark * 0.4))
+                radius: Math.min(Appearance.rounding.small, Math.min(width, height) / 2)
+                stroke: Appearance.colour.accent
+                strokeWidth: Math.max(1.5, root.mark / 4)
+                opacity: ring.value
+                visible: ring.value > 0.01
+            }
+
+            Follow {
+                id: ring
+
+                target: pip.floating ? 1 : 0
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
             Follow {
