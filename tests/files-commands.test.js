@@ -330,6 +330,10 @@ test.describe("statusLine", () => {
         assert.strictEqual(Commands.statusLine(300, picks, size), "2 selected, 124 B");
     });
 
+    test.it("leaves the size out when only folders are picked", () => {
+        assert.strictEqual(Commands.statusLine(9, [{kind: "dir", size: 4096}, {kind: "dir", size: 4096}], size), "2 selected");
+    });
+
     test.it("says the size only covers files when a folder is picked", () => {
         const picks = [{kind: "file", size: 100}, {kind: "dir", size: 4096}];
         assert.strictEqual(Commands.statusLine(9, picks, size), "2 selected, 100 B in files");

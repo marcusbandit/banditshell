@@ -190,6 +190,11 @@ test.describe("files order", () => {
         assert.deepStrictEqual(Order.ordered(files, "name").map(e => e.name), ["img1.png", "img2.png", "IMG3.png", "img10.png", "scan 2.pdf", "scan 9.pdf", "scan 10.pdf"]);
     });
 
+    test.it("puts a name with a suffix before the same name with a number", () => {
+        const files = ["report2.pdf", "report.pdf", "report 1.pdf", "photo1.jpg", "photo.jpg", "photoa.jpg"].map(name => ({name: name, kind: "file"}));
+        assert.deepStrictEqual(Order.ordered(files, "name").map(e => e.name), ["photo.jpg", "photo1.jpg", "photoa.jpg", "report 1.pdf", "report.pdf", "report2.pdf"]);
+    });
+
     test.it("compares numbers longer than a double and zero padding", () => {
         assert.strictEqual(Order.natural("a99999999999999999999", "a100000000000000000000"), -1);
         assert.strictEqual(Order.natural("a007", "a7"), 0);

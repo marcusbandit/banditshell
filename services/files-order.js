@@ -15,21 +15,43 @@ function chunks(text) {
     return text.toLowerCase().match(/\d+|\D+/g) ?? [];
 }
 
-function natural(a, b) {
-    const left = chunks(a), right = chunks(b);
+function isDigits(chunk) {
+    const code = chunk.charCodeAt(0);
+    return code >= 48 && code <= 57;
+}
+
+function startsWithLetter(chunk) {
+    return chunk.charAt(0).toLowerCase() !== chunk.charAt(0).toUpperCase();
+}
+
+function natural(a, b, parts) {
+    const split = parts ?? chunks;
+    const left = split(a), right = split(b);
     const shared = Math.min(left.length, right.length);
     for (let i = 0; i < shared; i++) {
         const x = left[i], y = right[i];
         if (x === y)
             continue;
-        const digits = x.charCodeAt(0) >= 48 && x.charCodeAt(0) <= 57 && y.charCodeAt(0) >= 48 && y.charCodeAt(0) <= 57;
-        if (digits) {
+        const xd = isDigits(x), yd = isDigits(y);
+        if (xd && yd) {
             const nx = x.replace(/^0+(?=\d)/, ""), ny = y.replace(/^0+(?=\d)/, "");
             if (nx.length !== ny.length)
                 return nx.length < ny.length ? -1 : 1;
             if (nx !== ny)
                 return nx < ny ? -1 : 1;
             continue;
+        }
+        if (xd !== yd) {
+            const text = xd ? y : x;
+            const textFirst = !startsWithLetter(text);
+            return (xd ? !textFirst : textFirst) ? -1 : 1;
+        }
+        if (x.startsWith(y) || y.startsWith(x)) {
+            const xLonger = x.length > y.length;
+            const rest = xLonger ? x.slice(y.length) : y.slice(x.length);
+            const following = (xLonger ? right : left)[i + 1];
+            const shortFirst = following === undefined || startsWithLetter(rest);
+            return shortFirst === xLonger ? 1 : -1;
         }
         const order = x.localeCompare(y);
         if (order !== 0)
@@ -72,7 +94,9 @@ function trashOrder(key, reversed) {
 
 function ordered(entries, key, reversed) {
     const sign = reversed ? -1 : 1;
-    const byName = (a, b) => natural(a.name, b.name);
+    const cache = Object.create(null);
+    const parts = name => cache[name] ?? (cache[name] = chunks(name));
+    const byName = (a, b) => natural(a.name, b.name, parts);
     const primary = {
         size: (a, b) => b.size - a.size,
         mtime: (a, b) => b.mtime - a.mtime,

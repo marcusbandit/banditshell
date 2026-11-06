@@ -13,7 +13,7 @@ Singleton {
 
     readonly property string hidden: Config.values.launcher.hiddenFiles
 
-    readonly property var noise: ["node_modules", ".cache", ".git", ".npm", ".cargo", ".rustup", ".gradle", ".m2", ".var", ".steam", ".local/share/Steam", ".local/share/Trash", ".mozilla", ".pki", ".nv"]
+    readonly property var noise: ["node_modules", ".cache", ".git", ".npm", ".cargo", ".rustup", ".gradle", ".m2", ".var", ".steam", ".local/share/Steam", ".local/share/Trash", ".mozilla", ".pki", ".nv", ".venv", "venv", "__pycache__", ".tox", ".mypy_cache", ".pytest_cache"]
 
     readonly property var appNoise: ["Cache", "Code Cache", "GPUCache", "CacheStorage", "Service Worker", "IndexedDB", "blob_storage", "Local Storage", "Session Storage", "Crashpad", "DawnCache", "DawnGraphiteCache", "DawnWebGPUCache", "GrShaderCache", "ShaderCache", "WebStorage", "Partitions", "CachedData", "workspaceStorage", "History", "logs"]
 

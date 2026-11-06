@@ -26,6 +26,9 @@ Item {
         return (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) !== 0;
     }
 
+    onActiveFocusChanged: if (!root.activeFocus)
+        root.copying = false
+
     Keys.onReleased: event => {
         if (event.key === Qt.Key_Control)
             root.copying = false;
@@ -645,7 +648,7 @@ Item {
 
         anchors.left: parent.left
         anchors.top: rule.bottom
-        anchors.bottom: failure.top
+        anchors.bottom: status.top
 
         width: Files.sidebarOpen ? Math.min(Math.max(Files.zoomed(Files.sidebarWidth), sidebar.natural), root.sidebarMost) : 0
         visible: width > 0
@@ -661,7 +664,7 @@ Item {
 
         anchors.left: sidebar.right
         anchors.top: rule.bottom
-        anchors.bottom: failure.top
+        anchors.bottom: status.top
 
         visible: Files.sidebarOpen
 
@@ -686,7 +689,7 @@ Item {
         anchors.left: Files.sidebarOpen ? sidebarEdge.right : parent.left
         anchors.right: parent.right
         anchors.top: rule.bottom
-        anchors.bottom: failure.top
+        anchors.bottom: status.top
 
         readonly property real listNeed: Appearance.padding.small * 5 + Appearance.padding.hair * 2 + Files.zoomed(Appearance.font.iconSize) + listDigit.advanceWidth * Files.nameLeast + Appearance.padding.normal * 3 + previewEdge.implicitWidth
         readonly property real previewRoom: Math.min(Files.previewWidth, width * 0.45, Files.listed ? Math.max(200, width - listNeed) : Infinity)
@@ -827,6 +830,24 @@ Item {
         }
     }
 
+    StyledText {
+        id: status
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: failure.top
+
+        leftPadding: Appearance.padding.normal
+        rightPadding: Appearance.padding.normal
+        topPadding: Appearance.padding.small
+        bottomPadding: Appearance.padding.small
+
+        text: Files.listing || Files.error ? "" : Commands.statusLine(Files.visible.length, Files.picked.length > 1 ? Files.picks : [], Files.humanSize)
+        font.pixelSize: Files.zoomed(Appearance.font.size.small)
+        color: Appearance.colour.textFaint
+        elide: Text.ElideRight
+    }
+
     Item {
         id: failure
 
@@ -834,9 +855,7 @@ Item {
         anchors.right: parent.right
         anchors.bottom: terminal.top
 
-        readonly property string status: Files.listing || Files.error ? "" : Commands.statusLine(Files.visible.length, Files.picked.length > 1 ? Files.picks : [], Files.humanSize)
-
-        visible: FilesPaste.shown || Files.failure !== "" || FilesUndo.notice !== "" || failure.status !== ""
+        visible: FilesPaste.shown || Files.failure !== "" || FilesUndo.notice !== ""
         height: failure.visible ? Math.max(failureText.implicitHeight, FilesPaste.shown ? stop.implicitHeight : 0) : 0
 
         StyledText {
@@ -851,9 +870,9 @@ Item {
             topPadding: Appearance.padding.small
             bottomPadding: Appearance.padding.small
 
-            text: FilesPaste.shown ? FilesPaste.line : Files.failure || FilesUndo.notice || failure.status
+            text: FilesPaste.shown ? FilesPaste.line : Files.failure || FilesUndo.notice
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
-            color: FilesPaste.shown ? Appearance.colour.text : Files.failure ? Appearance.colour.alarm : FilesUndo.notice ? Appearance.colour.text : Appearance.colour.textFaint
+            color: FilesPaste.shown ? Appearance.colour.text : Files.failure ? Appearance.colour.alarm : Appearance.colour.text
             elide: Text.ElideRight
         }
 
@@ -930,7 +949,10 @@ Item {
         Drag.supportedActions: Qt.CopyAction | Qt.MoveAction
         Drag.proposedAction: Qt.CopyAction
 
-        Drag.onDragFinished: exporter.Drag.active = false
+        Drag.onDragFinished: {
+            exporter.Drag.active = false;
+            root.exported = false;
+        }
     }
 
     function destinationAt(position: point, fallback: string): string {
@@ -977,7 +999,7 @@ Item {
         anchors.fill: parent
 
         onEntered: event => {
-            if (!event.hasUrls) {
+            if (!event.hasUrls || root.exported) {
                 event.accepted = false;
                 return;
             }

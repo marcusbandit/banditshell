@@ -141,6 +141,8 @@ function statusLine(total, picks, humanSize) {
             else
                 bytes += entry.size || 0;
         }
+        if (folders === picks.length)
+            return `${picks.length} selected`;
         return `${picks.length} selected, ${humanSize(bytes)}${folders > 0 ? " in files" : ""}`;
     }
     return `${total} item${total === 1 ? "" : "s"}`;

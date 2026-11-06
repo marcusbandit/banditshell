@@ -548,6 +548,7 @@ Item {
                                     cursorShape: Qt.PointingHandCursor
 
                                     onClicked: {
+                                        root.clash = null;
                                         root.rebinding = binding.waiting ? "" : binding.id;
                                         root.forceActiveFocus();
                                     }
