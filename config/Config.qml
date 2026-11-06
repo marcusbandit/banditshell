@@ -691,7 +691,7 @@ Singleton {
 
                 neutral: 6500,
 
-                linger: 1200,
+                linger: 1800,
 
                 grabFraction: 0.3,
 

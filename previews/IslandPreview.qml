@@ -883,6 +883,18 @@ ShellRoot {
             expect: "activity"
         },
         {
+            name: "pin the island: the screenshot row keeps its name beside smaller buttons",
+            run: () => island.pinned = true,
+            wait: 600,
+            expect: "overview"
+        },
+        {
+            name: "unpin: the screenshot row is back in the pill",
+            run: () => island.pinned = false,
+            wait: 600,
+            expect: "activity"
+        },
+        {
             name: "the microphone goes live: a privacy row shows below it first",
             run: () => Activities.push(PrivacyLogic.usageSpec({
                     kind: "mic",
@@ -927,6 +939,12 @@ ShellRoot {
             run: () => Activities.push(MomentLogic.copiedSpec(["wl-copy", "--sensitive", "-n"], "hunter2")),
             wait: 400,
             expect: "privacy, below it: activity"
+        },
+        {
+            name: "the copied row lapses",
+            run: () => {},
+            wait: 2200,
+            expect: "privacy"
         },
         {
             name: "a masked history entry is copied where wl-copy has no --sensitive: still masked",
@@ -981,13 +999,14 @@ ShellRoot {
             expect: "the failed Wi-Fi join"
         },
         {
-            name: "leave the view: the failure still waits after ten seconds",
+            name: "leave the view: it counts as seen and the failure goes",
             run: () => {
                 island.leaveTask();
                 island.close();
             },
-            wait: 10000,
-            expect: "activity"
+            wait: 1500,
+            expect: "hidden",
+            holds: () => !Activities.entries.some(e => e.id === "moment:wifi")
         },
         {
             name: "it goes once it is closed",

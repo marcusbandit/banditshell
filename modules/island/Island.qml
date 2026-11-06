@@ -530,6 +530,10 @@ Item {
             root.openTask("microphone");
             return;
         }
+        if (activity?.kind === "quiet") {
+            root.openTask("notifications");
+            return;
+        }
         if (activity?.style === "wifi" && !activity.action) {
             root.openTask("wifi");
             return;
@@ -695,6 +699,8 @@ Item {
     }
 
     function leaveTask(): void {
+        if (root.task === "wifi")
+            Activities.remove("moment:wifi");
         if (!root.backToOverview) {
             root.close();
             return;
