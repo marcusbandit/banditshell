@@ -17,17 +17,20 @@ Singleton {
 
     function show(screen: string, which: string): void {
         const span = root.open ? null : Trace.begin("settings open");
+        const seen = root.open && !root.covered && (!screen || screen === root.screenName);
         root.screenName = screen || root.screenName || Quickshell.screens[0]?.name || "";
         if (which)
             root.page = which;
         root.open = true;
-        root.summoned(root.screenName);
+        if (!seen)
+            root.summoned(root.screenName);
         Trace.step("shown", span);
     }
 
     function hide(): void {
         const span = root.open ? Trace.begin("settings close") : null;
         root.open = false;
+        root.covered = false;
         Trace.step("hidden", span);
     }
 

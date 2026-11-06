@@ -605,7 +605,7 @@ PanelWindow {
             target: Settings
 
             function onSummoned(screen: string): void {
-                if (screen === (win.screen?.name ?? ""))
+                if (screen !== "" && screen === (win.screen?.name ?? ""))
                     menuLayer.hide();
             }
         }
@@ -859,6 +859,7 @@ PanelWindow {
             panel: SettingsPanel {
                 originX: chassis.barWidth
                 band: win.border
+                menuOpen: menuLayer.open
                 yielded: win.panelOpen || menuLayer.open || Prompts.awayIn(settingsLayer.QsWindow.window) || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
             }
         }

@@ -12,6 +12,7 @@ FocusScope {
     required property real band
 
     property bool yielded: false
+    property bool menuOpen: false
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
@@ -119,7 +120,7 @@ FocusScope {
     Binding {
         target: Settings
         property: "covered"
-        value: root.yielded
+        value: root.menuOpen
         when: root.shown
     }
 
