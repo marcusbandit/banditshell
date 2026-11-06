@@ -13,7 +13,7 @@ function source(file) {
 
 const Quoting = new Function(`${source("services/quoting.js")}\nreturn { forShell, posix, visible, hasControl };`)();
 const Commands = new Function("Quoting", `${source("services/files-commands.js").replace(/^\.import .*$/m, "")}
-return { humanSize, join, clearLine, typed, refusal, runPlan, cdLine, cdPlan, folderCommand, fileCommand, moveCommand, trashCommand, removeCommand, progressLine, leftChild, totalsCommand, totals };`)(Quoting);
+return { humanSize, join, clearLine, typed, refusal, runPlan, cdLine, cdPlan, folderCommand, fileCommand, moveCommand, trashCommand, removeCommand, progressLine, leftChild, totalsCommand, totals, statusLine };`)(Quoting);
 
 function installed(shell) {
     return child.spawnSync("sh", ["-c", `command -v ${shell}`]).status === 0;
@@ -313,5 +313,25 @@ test.describe("files commands: folder totals", () => {
         assert.strictEqual(got.token, "9");
         assert.strictEqual(got.items, 3);
         assert.ok(got.bytes >= 10001);
+    });
+});
+
+test.describe("statusLine", () => {
+    const size = bytes => `${bytes} B`;
+
+    test.it("counts the items of a folder", () => {
+        assert.strictEqual(Commands.statusLine(300, [], size), "300 items");
+        assert.strictEqual(Commands.statusLine(1, [{kind: "file", size: 5}], size), "1 item");
+        assert.strictEqual(Commands.statusLine(0, [], size), "0 items");
+    });
+
+    test.it("counts a selection of many and adds up the file sizes", () => {
+        const picks = [{kind: "file", size: 100}, {kind: "file", size: 24}];
+        assert.strictEqual(Commands.statusLine(300, picks, size), "2 selected, 124 B");
+    });
+
+    test.it("says the size only covers files when a folder is picked", () => {
+        const picks = [{kind: "file", size: 100}, {kind: "dir", size: 4096}];
+        assert.strictEqual(Commands.statusLine(9, picks, size), "2 selected, 100 B in files");
     });
 });

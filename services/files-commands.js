@@ -130,3 +130,18 @@ function totals(text) {
     }
     return out;
 }
+
+function statusLine(total, picks, humanSize) {
+    if (picks.length > 1) {
+        let bytes = 0;
+        let folders = 0;
+        for (const entry of picks) {
+            if (entry.kind === "dir")
+                folders++;
+            else
+                bytes += entry.size || 0;
+        }
+        return `${picks.length} selected, ${humanSize(bytes)}${folders > 0 ? " in files" : ""}`;
+    }
+    return `${total} item${total === 1 ? "" : "s"}`;
+}

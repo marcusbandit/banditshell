@@ -7,6 +7,7 @@ import qs.services
 import "urls.js" as Urls
 import "keys.js" as Chords
 import "deletion.js" as Deletion
+import "../../services/files-commands.js" as Commands
 import "../../services/files-find.js" as Find
 
 Item {
@@ -826,7 +827,9 @@ Item {
         anchors.right: parent.right
         anchors.bottom: terminal.top
 
-        visible: FilesPaste.shown || Files.failure !== "" || FilesUndo.notice !== ""
+        readonly property string status: Files.listing || Files.error ? "" : Commands.statusLine(Files.visible.length, Files.picked.length > 1 ? Files.picks : [], Files.humanSize)
+
+        visible: FilesPaste.shown || Files.failure !== "" || FilesUndo.notice !== "" || failure.status !== ""
         height: failure.visible ? Math.max(failureText.implicitHeight, FilesPaste.shown ? stop.implicitHeight : 0) : 0
 
         StyledText {
@@ -841,9 +844,9 @@ Item {
             topPadding: Appearance.padding.small
             bottomPadding: Appearance.padding.small
 
-            text: FilesPaste.shown ? FilesPaste.line : Files.failure || FilesUndo.notice
+            text: FilesPaste.shown ? FilesPaste.line : Files.failure || FilesUndo.notice || failure.status
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
-            color: FilesPaste.shown ? Appearance.colour.text : Files.failure ? Appearance.colour.alarm : Appearance.colour.text
+            color: FilesPaste.shown ? Appearance.colour.text : Files.failure ? Appearance.colour.alarm : FilesUndo.notice ? Appearance.colour.text : Appearance.colour.textFaint
             elide: Text.ElideRight
         }
 
