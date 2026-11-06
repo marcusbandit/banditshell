@@ -231,6 +231,8 @@ Singleton {
     function refresh(): void {
         if (!root.cwd)
             return;
+        if (root.windowOpen && !usageSoon.running)
+            usageSoon.start();
         root.generation += 1;
         root.listing = true;
         root.listingTrash = root.cwd === root.trashFiles;
@@ -485,6 +487,63 @@ Singleton {
     }
 
     Process {
+        id: mountWatch
+
+        property int failures: 0
+        property bool resting: false
+
+        running: root.windowOpen && !mountWatch.resting
+        command: ["findmnt", "--poll", "--noheadings", "--output", "ACTION"]
+
+        stdout: SplitParser {
+            onRead: mountSoon.restart()
+        }
+
+        onExited: {
+            if (!root.windowOpen || mountWatch.failures >= 3)
+                return;
+            mountWatch.failures += 1;
+            mountWatch.resting = true;
+            mountRetry.start();
+        }
+    }
+
+    Timer {
+        id: mountRetry
+
+        interval: 5000
+
+        onTriggered: mountWatch.resting = false
+    }
+
+    Timer {
+        id: mountSoon
+
+        interval: 400
+
+        onTriggered: root.refreshPlaces()
+    }
+
+    function refreshUsage(): void {
+        if (root.drives.length === 0)
+            return;
+        if (usage.running) {
+            usageSoon.restart();
+            return;
+        }
+        usage.command = ["df", "-P", "-B1", ...root.drives.map(d => d.path)];
+        usage.running = true;
+    }
+
+    Timer {
+        id: usageSoon
+
+        interval: 1200
+
+        onTriggered: root.refreshUsage()
+    }
+
+    Process {
         id: placer
 
         stdout: StdioCollector {
@@ -543,11 +602,7 @@ Singleton {
                     if (mounted.join("\n") !== root.mounts.join("\n"))
                         root.mounts = mounted;
 
-                    if (out.length > 0) {
-                        usage.running = false;
-                        usage.command = ["df", "-P", "-B1", ...out.map(d => d.path)];
-                        usage.running = true;
-                    }
+                    root.refreshUsage();
                 } catch (e) {
                     root.drives = [];
                 }
@@ -566,6 +621,8 @@ Singleton {
 
         stdout: StdioCollector {
             onStreamFinished: {
+                if (text === "")
+                    return;
                 const filled = {};
                 for (const line of text.split("\n").slice(1)) {
                     const parts = line.trim().split(/\s+/);
@@ -1162,6 +1219,34 @@ Singleton {
 
     function openWith(path: string): void {
         System.openWith(path);
+    }
+
+    signal openersFound(string path, string kind, var apps)
+
+    function offerOpeners(path: string): void {
+        asker.running = false;
+        asker.path = path;
+        asker.command = FilesCommands.openersCommand(path);
+        asker.running = true;
+    }
+
+    function openIn(id: string, path: string): void {
+        Quickshell.execDetached(FilesCommands.launchCommand(id, path));
+    }
+
+    Process {
+        id: asker
+
+        property string path: ""
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (text === "")
+                    return;
+                const found = FilesCommands.openers(text);
+                root.openersFound(asker.path, found.kind, found.apps);
+            }
+        }
     }
 
     Connections {

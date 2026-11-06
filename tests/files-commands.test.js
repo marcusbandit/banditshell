@@ -13,7 +13,7 @@ function source(file) {
 
 const Quoting = new Function(`${source("services/quoting.js")}\nreturn { forShell, posix, visible, hasControl };`)();
 const Commands = new Function("Quoting", `${source("services/files-commands.js").replace(/^\.import .*$/m, "")}
-return { humanSize, join, clearLine, typed, refusal, runPlan, cdLine, cdPlan, folderCommand, fileCommand, moveCommand, trashCommand, removeCommand, progressLine, leftChild, totalsCommand, totals };`)(Quoting);
+return { humanSize, join, clearLine, typed, refusal, runPlan, cdLine, cdPlan, folderCommand, fileCommand, moveCommand, trashCommand, removeCommand, progressLine, leftChild, totalsCommand, totals, openersCommand, openers, launchCommand };`)(Quoting);
 
 function installed(shell) {
     return child.spawnSync("sh", ["-c", `command -v ${shell}`]).status === 0;
@@ -313,5 +313,42 @@ test.describe("files commands: folder totals", () => {
         assert.strictEqual(got.token, "9");
         assert.strictEqual(got.items, 3);
         assert.ok(got.bytes >= 10001);
+    });
+
+    test.it("lists the apps for the file's type, the default first", () => {
+        const got = Commands.openers("image/png\nimv.desktop\nkrita_png.desktop\tKrita\nimv.desktop\timv\ngimp.desktop\tGIMP\n");
+        assert.strictEqual(got.kind, "image/png");
+        assert.deepStrictEqual(got.apps.map(a => [a.id, a.name]), [["imv", "imv"], ["gimp", "GIMP"], ["krita_png", "Krita"]]);
+    });
+
+    test.it("lists nothing when the file's type is unknown", () => {
+        assert.deepStrictEqual(Commands.openers("\n"), {kind: "", apps: []});
+    });
+
+    test.it("keeps a path with spaces and quotes as one argument for the app", () => {
+        assert.deepStrictEqual(Commands.launchCommand("gimp.desktop", "/tmp/a b'; rm -rf x.png"), ["gtk-launch", "gimp", "/tmp/a b'; rm -rf x.png"]);
+        const command = Commands.openersCommand("/tmp/a b'; rm -rf x");
+        assert.strictEqual(command[command.length - 1], "/tmp/a b'; rm -rf x");
+        assert.ok(!command[2].includes("rm -rf"));
+    });
+
+    test.it("finds names in the desktop files and keeps a hidden default but skips other hidden entries when run for real", () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "openers-"));
+        const bin = path.join(dir, "bin");
+        const apps = path.join(dir, "share", "applications");
+        fs.mkdirSync(bin);
+        fs.mkdirSync(apps, {recursive: true});
+        fs.writeFileSync(path.join(bin, "xdg-mime"), '#!/bin/sh\nif [ "$2" = filetype ]; then echo text/plain; else echo secret.desktop; fi\n', {mode: 0o755});
+        fs.writeFileSync(path.join(bin, "gio"), '#!/bin/sh\nprintf "Default application for x: edit.desktop\\nRegistered applications:\\n\\tedit.desktop\\n\\tsecret.desktop\\n\\tgone.desktop\\n\\tkde4-old.desktop\\n"\n', {mode: 0o755});
+        fs.mkdirSync(path.join(apps, "kde4"));
+        fs.writeFileSync(path.join(apps, "kde4", "old.desktop"), "[Desktop Entry]\nName=Old KDE\n");
+        fs.writeFileSync(path.join(apps, "edit.desktop"), "[Desktop Entry]\nName=Editor One\nExec=edit %f\n");
+        fs.writeFileSync(path.join(apps, "secret.desktop"), "[Desktop Entry]\nName=Secret\nNoDisplay=true\n");
+        const command = Commands.openersCommand("/tmp/a file.txt");
+        const run = child.spawnSync(command[0], command.slice(1), {encoding: "utf8", env: {PATH: `${bin}:/usr/bin:/bin`, HOME: dir, XDG_DATA_HOME: path.join(dir, "none"), XDG_DATA_DIRS: path.join(dir, "share")}});
+        fs.rmSync(dir, {recursive: true});
+        const got = Commands.openers(run.stdout);
+        assert.strictEqual(got.kind, "text/plain");
+        assert.deepStrictEqual(got.apps.map(a => [a.id, a.name]), [["secret", "Secret"], ["edit", "Editor One"], ["kde4-old", "Old KDE"]]);
     });
 });
