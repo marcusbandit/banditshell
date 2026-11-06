@@ -5,8 +5,9 @@
   "owns": {
     "qml": ["modules/settings", "previews/SettingsPreview.qml"],
     "services": ["Modes", "Settings", "ThemeSwitcher"],
+    "js": ["services/settings-summon.js"],
     "scripts": ["scripts/pointing-devices.py"],
-    "tests": ["tests/pointing-devices.test.js", "tests/restore.test.js", "tests/settings-floating.test.js", "tests/settings.test.js"]
+    "tests": ["tests/pointing-devices.test.js", "tests/restore.test.js", "tests/settings-floating.test.js", "tests/settings-summon.test.js", "tests/settings.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor", "display", "clock"],
