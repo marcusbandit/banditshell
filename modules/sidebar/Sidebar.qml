@@ -42,8 +42,6 @@ Item {
     readonly property real revealed: root.rail ? Math.max(0, Math.min(1, (root.expansion - 0.3) / 0.5)) : 1
     readonly property real railRestWidth: root.fullWidth - Appearance.sizes.sidebarWidth + Appearance.sizes.railWidth
 
-    readonly property real timeCentre: clock.timeShown ? foot.y + clock.y + clock.timeItem.y + clock.timeItem.height / 2 : -1
-
     property bool dwelt: false
     property bool touched: false
     readonly property bool touchOpen: root.rail && root.touched
@@ -300,8 +298,6 @@ Item {
                 topInset: root.endMargin(root.tray) + Appearance.padding.large
                 bottomInset: root.endMargin(root.status) + Appearance.padding.large
                 tabsReach: root.glanceReach
-                timeCentre: root.timeCentre
-                floor: Placement.railFloor(glance.headEdge + Appearance.padding.large, pips.implicitHeight, (Appearance.sizes.statusSlot + Appearance.sizes.statusGap) * rest.slotsReserved, Appearance.padding.huge, Appearance.padding.large)
             }
 
             RailAnomalies {
