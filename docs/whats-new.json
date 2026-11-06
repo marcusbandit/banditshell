@@ -38,6 +38,10 @@
           "type": "bugs",
           "severity": "minor",
           "text": "Ctrl-clicking no longer raises the key panel"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q10",
       "date": "2026-11-05",
       "changes": [
@@ -75,7 +79,6 @@
           "type": "features",
           "severity": "minor",
           "text": "Click a time field and type digits; presets now include 15 and 30"
-||||||| parent of 2a3a13fa (fix(files): live drives, Open with chooser, true drag ghost, Properties keys, Ctrl click)
         }
       ]
     },
