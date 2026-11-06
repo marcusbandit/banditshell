@@ -17,6 +17,8 @@ Item {
 
     property bool menusShown: false
 
+    property bool menuOpen: false
+
     property real pullSpan: 0
 
     property string modeIcon: ""
@@ -70,6 +72,7 @@ Item {
     signal updateRequested(bool deliberate)
 
     signal markPressed(var opens)
+    signal menuAsked(real x, real y, var actions)
 
     readonly property var menuItems: [...tray.items, root.updateEntry, root.clockEntry, root.calendarEntry, ...status.items]
     readonly property var menuKeys: root.menuItems.map(i => i.key)
@@ -275,7 +278,7 @@ Item {
         Item {
             id: rest
 
-            readonly property bool holdsRest: anomalies.pointing || pips.pointing
+            readonly property bool holdsRest: anomalies.pointing
             readonly property int slotsReserved: 4
             readonly property var place: Placement.rail(pips.implicitHeight, rest.height, glance.headEdge + Appearance.padding.large, rest.height - anomalies.anchors.bottomMargin, (Appearance.sizes.statusSlot + Appearance.sizes.statusGap) * rest.slotsReserved, Appearance.padding.huge)
 
@@ -341,6 +344,29 @@ Item {
         onTapped: root.touched = true
     }
 
+    function menuActions(): var {
+        const rail = root.rail;
+        return [
+            {
+                icon: "side_navigation",
+                label: "Sidebar settings",
+                run: () => root.markPressed({
+                        settings: "sidebar"
+                    })
+            },
+            {
+                icon: rail ? "left_panel_open" : "left_panel_close",
+                label: rail ? "Keep the sidebar open" : "Fold the sidebar",
+                run: () => Config.set("sidebar.style", rail ? "full" : "rail")
+            }
+        ];
+    }
+
+    TapHandler {
+        acceptedButtons: Qt.RightButton
+        onTapped: (point, button) => root.menuAsked(point.position.x, point.position.y, root.menuActions())
+    }
+
     DragHandler {
         acceptedDevices: PointerDevice.TouchScreen | PointerDevice.Stylus
         enabled: root.rail && !root.touched
@@ -352,13 +378,13 @@ Item {
 
     Timer {
         interval: Appearance.animation.dwell
-        running: root.rail && pointer.hovered && !root.dwelt && !root.pressedAtRest && !(resting.item?.holdsRest ?? false)
+        running: root.rail && pointer.hovered && !root.dwelt && !root.pressedAtRest && !root.menuOpen && !(resting.item?.holdsRest ?? false)
         onTriggered: root.dwelt = true
     }
 
     Timer {
         interval: Appearance.animation.grace
-        running: !pointer.hovered && root.dwelt
+        running: !pointer.hovered && root.dwelt && !root.menuOpen
         onTriggered: root.dwelt = false
     }
 

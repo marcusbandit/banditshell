@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-11-06-s797",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Hovering the folded sidebar's workspaces unfolds it again"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Right-click the sidebar for Sidebar settings or to fold it"
+        }
+      ]
+    },
+    {
       "id": "2026-11-06-q90",
       "date": "2026-11-06",
       "changes": [

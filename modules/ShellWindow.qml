@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import qs.components
 import qs.config
 import qs.modules.calculator
 import qs.modules.cheatsheet
@@ -290,7 +291,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: win.underFullscreen ? WlrKeyboardFocus.None : (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: win.underFullscreen ? WlrKeyboardFocus.None : (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard || sidebarSheet.open ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -396,6 +397,11 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: keyringLayer.open ? keyringLayer.maskItem : null
+        }
+
+        Region {
+            intersection: Intersection.Combine
+            item: sidebarSheet.open ? sidebarSheet : null
         }
 
         Region {
@@ -552,6 +558,7 @@ PanelWindow {
 
             menusShown: menuLayer.open
             openKey: menuLayer.currentKey
+            menuOpen: sidebarSheet.open
 
             pullSpan: Math.hypot(win.width, win.height)
 
@@ -562,6 +569,10 @@ PanelWindow {
             glanceReach: Math.max(0, glance.footReach - win.border)
 
             onMarkPressed: opens => win.pressMark(opens)
+            onMenuAsked: (x, y, actions) => {
+                const at = sidebar.mapToItem(sidebarSheet, x, y);
+                sidebarSheet.popup(at.x, at.y, actions, -1);
+            }
         }
 
         RestingGlance {
@@ -694,6 +705,20 @@ PanelWindow {
             warmSource: sidebar.status.items
 
             keyboardHeld: win.panelOpen
+        }
+
+        ActionSheet {
+            id: sidebarSheet
+
+            anchors.fill: parent
+            z: 200
+
+            Keys.onUpPressed: sidebarSheet.move(-1)
+            Keys.onDownPressed: sidebarSheet.move(1)
+            Keys.onReturnPressed: sidebarSheet.activate(sidebarSheet.selected)
+            Keys.onEnterPressed: sidebarSheet.activate(sidebarSheet.selected)
+
+            onClosed: body.forceActiveFocus()
         }
 
         Launcher {
