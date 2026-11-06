@@ -61,7 +61,7 @@ Column {
 
     readonly property bool wentBack: Update.wentBackByHand && Update.resultPending
 
-    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, root.listed.length > 0 && root.unreadCount > 0 ? titleRow.implicitWidth + Appearance.padding.normal + markRead.implicitWidth : 0, goBackOffer.implicitWidth, goBackRow.implicitWidth, Update.diverged ? pullRow.fullWidth : 0, reinstallRow.implicitWidth, reportRow.implicitWidth)
+    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, root.listed.length > 0 && root.unreadCount > 0 ? titleRow.implicitWidth + Appearance.padding.normal + markRead.implicitWidth : 0, goBackOffer.implicitWidth, logButton.implicitWidth, goBackRow.implicitWidth, Update.diverged ? pullRow.fullWidth : 0, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
     onShowingChanged: if (root.showing) {
         root.settled = true;
@@ -364,6 +364,21 @@ Column {
         }
     }
 
+    Button {
+        id: logButton
+
+        visible: !root.asking && !root.leaving && WhatsNew.entries.length > 0
+        text: "Open the full log"
+        icon: "open_in_full"
+        style: "ring"
+
+        onClicked: {
+            const win = QsWindow.window;
+            win.menus.hide();
+            win.whatsNew.show();
+        }
+    }
+
     Column {
         width: parent.width
         visible: root.listed.length > 0 && (root.leaving || !root.asking || root.reinstallAsking)
@@ -449,7 +464,7 @@ Column {
                 readonly property bool keyable: true
 
                 width: root.width
-                height: Math.max(tagChip.height, taggedText.height)
+                height: Math.max(tagChip.height, taggedText.height, taggedGo.visible ? taggedGo.y + taggedGo.height : 0)
 
                 FocusMark {
                     shown: tagged.activeFocus
@@ -481,6 +496,14 @@ Column {
                     text: tagged.modelData.text
                     color: root.unreadCount > 0 && tagged.modelData.unread !== true ? Appearance.colour.textDim : Appearance.colour.text
                     wrapMode: Text.WordWrap
+                }
+
+                TakeMeThere {
+                    id: taggedGo
+
+                    x: taggedText.x
+                    y: taggedText.height + Appearance.padding.hair
+                    go: tagged.modelData.go ?? []
                 }
             }
         }

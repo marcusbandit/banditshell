@@ -2,6 +2,14 @@ const TYPES = ["issues", "bugs", "features", "ui", "config"];
 
 const IMPACT_KEYS = ["restart", "cli", "binds", "deps"];
 
+function destination(raw) {
+    const text = Array.isArray(raw) ? raw.join(" ") : raw;
+    if (typeof text !== "string")
+        return [];
+    const words = text.trim().split(/\s+/);
+    return words.length >= 3 && words[0] === "panel" && words[2] === "open" ? words : [];
+}
+
 function change(raw) {
     if (!raw || typeof raw !== "object")
         return null;
@@ -10,7 +18,8 @@ function change(raw) {
     return {
         type: typeof raw.type === "string" ? raw.type : "",
         severity: raw.severity === "major" ? "major" : "minor",
-        text: raw.text.trim()
+        text: raw.text.trim(),
+        go: destination(raw.go)
     };
 }
 
@@ -225,8 +234,28 @@ function shortList(entries, unread) {
     const out = [];
     for (const s of sections(entries, unread))
         for (const c of s.changes)
-            out.push({ key: s.key, tag: SECTIONS.find(known => known.key === s.key).tag, text: c.text, unread: c.unread });
+            out.push({ key: s.key, tag: SECTIONS.find(known => known.key === s.key).tag, text: c.text, go: c.go, unread: c.unread });
     return out.length <= SHORT_LIST ? out : [];
+}
+
+function logOf(entries, unread) {
+    const fresh = unreadIds(unread);
+    const out = [];
+    for (const e of Array.isArray(entries) ? entries : []) {
+        if (!e || e.example === true || typeof e.id !== "string")
+            continue;
+        const changes = [];
+        for (const raw of Array.isArray(e.changes) ? e.changes : []) {
+            const c = change(raw);
+            if (!c)
+                continue;
+            const key = sectionOf(c);
+            changes.push({ key: key, tag: SECTIONS.find(known => known.key === key).tag, text: c.text, go: c.go });
+        }
+        if (changes.length)
+            out.push({ id: e.id, date: typeof e.date === "string" ? e.date : "", unread: fresh.indexOf(e.id) >= 0, changes: changes });
+    }
+    return out;
 }
 
 function unreadCount(lines, groups) {

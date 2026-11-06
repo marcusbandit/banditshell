@@ -9,11 +9,12 @@ Item {
     property color hue: Appearance.colour.textDim
     property bool major: false
     property bool unread: false
+    property var go: []
     property real unreadBar: 3
 
     readonly property bool keyable: true
 
-    height: changeText.height
+    height: Math.max(changeText.height, goButton.visible ? goButton.y + goButton.height : 0)
 
     FocusMark {
         shown: root.activeFocus
@@ -37,5 +38,13 @@ Item {
         text: root.text
         color: root.major || root.unread ? Appearance.colour.text : Appearance.colour.textDim
         wrapMode: Text.WordWrap
+    }
+
+    TakeMeThere {
+        id: goButton
+
+        x: changeText.x
+        y: changeText.height + Appearance.padding.hair
+        go: root.go
     }
 }

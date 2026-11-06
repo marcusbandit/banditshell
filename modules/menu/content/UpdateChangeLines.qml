@@ -24,6 +24,7 @@ Column {
             hue: root.hue
             major: root.major
             unread: modelData.unread === true
+            go: modelData.go ?? []
             unreadBar: root.unreadBar
         }
     }

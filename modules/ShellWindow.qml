@@ -46,6 +46,8 @@ PanelWindow {
 
     readonly property LazyPanel settings: settingsLayer
 
+    readonly property LazyPanel whatsNew: whatsNewLayer
+
     readonly property Island island: islandLayer
     readonly property Chassis frame: chassis
     readonly property QuickControls quickControls: quickLayer
@@ -290,7 +292,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: win.underFullscreen ? WlrKeyboardFocus.None : (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: win.underFullscreen ? WlrKeyboardFocus.None : (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || islandLayer.wantsEscape || settingsLayer.open || whatsNewLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -361,6 +363,11 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: settingsLayer.open ? settingsLayer.maskItem : null
+        }
+
+        Region {
+            intersection: Intersection.Combine
+            item: whatsNewLayer.open ? whatsNewLayer.maskItem : null
         }
 
         Region {
@@ -851,6 +858,23 @@ PanelWindow {
                 originX: chassis.barWidth
                 band: win.border
                 yielded: win.panelOpen || menuLayer.open || Prompts.awayIn(settingsLayer.QsWindow.window) || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
+            }
+        }
+
+        LazyPanel {
+            id: whatsNewLayer
+
+            name: "whatsnew"
+            anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
+
+            panel: WhatsNewLog {
+                entries: WhatsNew.log(WhatsNew.entries, WhatsNew.pending)
+                unread: WhatsNew.pending.length
+                holeX: chassis.holeX
+                holeY: chassis.holeY
+                holeWidth: chassis.holeWidth
+                holeHeight: chassis.holeHeight
             }
         }
 

@@ -108,6 +108,7 @@
     "R3 modules/ShellWindow.qml uses SystemUpgrade of updates without requiring it",
     "R3 modules/ShellWindow.qml uses Tablet of display without requiring it",
     "R3 modules/ShellWindow.qml uses Usage of screentime without requiring it",
+    "R3 modules/ShellWindow.qml uses WhatsNew of updates without requiring it",
     "R3 modules/calculator/CalculatorIpc.qml uses Shell of host without requiring it",
     "R3 modules/cheatsheet/HotkeysIpc.qml uses Shell of host without requiring it",
     "R3 modules/clipboard/ClipboardIpc.qml uses Shell of host without requiring it",

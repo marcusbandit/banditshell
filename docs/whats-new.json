@@ -1,13 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-11-06-q92",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Expand the What's new card into a big log that stays open",
+          "go": "panel update open"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "New features in What's new have a Take me there button",
+          "go": "panel update open"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q16",
       "date": "2026-11-05",
       "changes": [
         {
           "type": "features",
           "severity": "minor",
-          "text": "Settings search opens the folded list so you can read it"
+          "text": "Settings search opens the folded list so you can read it",
+          "go": "panel settings open"
         },
         {
           "type": "ui",
@@ -17,12 +36,14 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Hold a plus or minus button in Settings to keep stepping"
+          "text": "Hold a plus or minus button in Settings to keep stepping",
+          "go": "panel settings open updates"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Each Settings page can reset all its changed rows, with undo"
+          "text": "Each Settings page can reset all its changed rows, with undo",
+          "go": "panel settings open colour"
         },
         {
           "type": "bugs",
@@ -104,7 +125,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Enter in the clipboard pastes, and deleted entries can be undone"
+          "text": "Enter in the clipboard pastes, and deleted entries can be undone",
+          "go": "panel clipboard open"
         },
         {
           "type": "bugs",
@@ -119,7 +141,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Clipboard rows have a View action and the header a search button"
+          "text": "Clipboard rows have a View action and the header a search button",
+          "go": "panel clipboard open"
         },
         {
           "type": "ui",
@@ -160,7 +183,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Notifications under a fullscreen window are listed after it ends"
+          "text": "Notifications under a fullscreen window are listed after it ends",
+          "go": "panel notifications open"
         },
         {
           "type": "bugs",
@@ -191,17 +215,20 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Ctrl+K or Shift+F10 opens a launcher row's actions"
+          "text": "Ctrl+K or Shift+F10 opens a launcher row's actions",
+          "go": "panel launcher open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Press and hold a pinned app to open its actions"
+          "text": "Press and hold a pinned app to open its actions",
+          "go": "panel launcher open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The pinned app you pick with the keys shows its name"
+          "text": "The pinned app you pick with the keys shows its name",
+          "go": "panel launcher open"
         },
         {
           "type": "bugs",
@@ -237,7 +264,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Battery menu has a power mode row"
+          "text": "Battery menu has a power mode row",
+          "go": "panel battery open"
         },
         {
           "type": "bugs",
@@ -257,7 +285,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Long menu pages fade at the edge where more follows"
+          "text": "Long menu pages fade at the edge where more follows",
+          "go": "panel network open"
         },
         {
           "type": "bugs",
@@ -283,22 +312,26 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Files is an app: type files in the launcher, the tour shows it"
+          "text": "Files is an app: type files in the launcher, the tour shows it",
+          "go": "panel launcher open files"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Drop files from other apps into Files; Ctrl-drag copies"
+          "text": "Drop files from other apps into Files; Ctrl-drag copies",
+          "go": "panel files open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Ctrl+F searches and Ctrl+H shows hidden files in Files"
+          "text": "Ctrl+F searches and Ctrl+H shows hidden files in Files",
+          "go": "panel files open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Files shows how many items a folder has and what you selected"
+          "text": "Files shows how many items a folder has and what you selected",
+          "go": "panel files open"
         },
         {
           "type": "bugs",
@@ -344,7 +377,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Open with lists the apps that handle the file"
+          "text": "Open with lists the apps that handle the file",
+          "go": "panel files open"
         },
         {
           "type": "bugs",
@@ -405,12 +439,14 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Removing a timer, alarm or place can be undone for a few seconds"
+          "text": "Removing a timer, alarm or place can be undone for a few seconds",
+          "go": "panel clock open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Click a time field and type digits; presets now include 15 and 30"
+          "text": "Click a time field and type digits; presets now include 15 and 30",
+          "go": "panel clock open"
         }
       ]
     },
@@ -421,22 +457,26 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Calendars have previous and next month buttons"
+          "text": "Calendars have previous and next month buttons",
+          "go": "panel calendar open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Pick the first day of the week and week numbers in Language"
+          "text": "Pick the first day of the week and week numbers in Language",
+          "go": "panel settings open firstDay"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The forecast always offers Change place"
+          "text": "The forecast always offers Change place",
+          "go": "panel clock open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The island tour step introduces the weather"
+          "text": "The island tour step introduces the weather",
+          "go": "panel settings open about"
         },
         {
           "type": "bugs",
@@ -451,7 +491,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Desktop Now playing wraps long titles and opens the media card"
+          "text": "Desktop Now playing wraps long titles and opens the media card",
+          "go": "panel media open"
         }
       ]
     },
@@ -477,7 +518,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Ctrl+2 lets the arrow and page keys scroll the preview"
+          "text": "Ctrl+2 lets the arrow and page keys scroll the preview",
+          "go": "panel files open"
         },
         {
           "type": "bugs",
@@ -492,12 +534,14 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Going up or back selects the folder you came from"
+          "text": "Going up or back selects the folder you came from",
+          "go": "panel files open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Page keys move a screen; Home and End jump to the ends"
+          "text": "Page keys move a screen; Home and End jump to the ends",
+          "go": "panel files open"
         }
       ]
     },
@@ -559,7 +603,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Bluetooth pairing asks for the PIN or number check it needs"
+          "text": "Bluetooth pairing asks for the PIN or number check it needs",
+          "go": "panel bluetooth open"
         },
         {
           "type": "bugs",
@@ -569,17 +614,20 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Join a hidden Wi-Fi network from the menu, Settings or a code"
+          "text": "Join a hidden Wi-Fi network from the menu, Settings or a code",
+          "go": "panel network open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Wi-Fi passwords have a show button and a Caps Lock warning"
+          "text": "Wi-Fi passwords have a show button and a Caps Lock warning",
+          "go": "panel network open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The Wi-Fi menu shows your IP address and copies it"
+          "text": "The Wi-Fi menu shows your IP address and copies it",
+          "go": "panel network open"
         },
         {
           "type": "bugs",
@@ -610,17 +658,20 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Hovering a tray icon names the app"
+          "text": "Hovering a tray icon names the app",
+          "go": "panel settings open tray"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Tray icons past the cap sit behind a +N you can open"
+          "text": "Tray icons past the cap sit behind a +N you can open",
+          "go": "panel settings open tray"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Tap or swipe the rail on a touchscreen to open it"
+          "text": "Tap or swipe the rail on a touchscreen to open it",
+          "go": "panel settings open sidebar"
         },
         {
           "type": "bugs",
@@ -645,7 +696,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "VPN and Keep awake show in the full sidebar"
+          "text": "VPN and Keep awake show in the full sidebar",
+          "go": "panel settings open sidebar"
         },
         {
           "type": "ui",
@@ -666,7 +718,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Ctrl+C and Ctrl+X in Files work with other apps"
+          "text": "Ctrl+C and Ctrl+X in Files work with other apps",
+          "go": "panel files open"
         },
         {
           "type": "bugs",
@@ -681,17 +734,20 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "A long paste shows its progress and has a Stop button"
+          "text": "A long paste shows its progress and has a Stop button",
+          "go": "panel files open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "New, renamed and pasted items are selected and shown"
+          "text": "New, renamed and pasted items are selected and shown",
+          "go": "panel files open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Delete says it can be undone, and cut items are dimmed"
+          "text": "Delete says it can be undone, and cut items are dimmed",
+          "go": "panel files open"
         }
       ]
     },
@@ -707,12 +763,14 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "One mouse wheel notch over the workspace column switches one"
+          "text": "One mouse wheel notch over the workspace column switches one",
+          "go": "panel settings open sidebar"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Clicking an app icon on a workspace plate focuses that window"
+          "text": "Clicking an app icon on a workspace plate focuses that window",
+          "go": "panel settings open sidebar"
         },
         {
           "type": "ui",
@@ -780,7 +838,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Launcher AI can answer through Claude Code or Codex, no API key"
+          "text": "Launcher AI can answer through Claude Code or Codex, no API key",
+          "go": "panel launcher open ?"
         },
         {
           "type": "config",
@@ -796,7 +855,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Plugin list pages show tall rows, tags, previews and QML rows"
+          "text": "Plugin list pages show tall rows, tags, previews and QML rows",
+          "go": "panel settings open launcher"
         }
       ]
     },
@@ -834,7 +894,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Plugin rows can be taller, show a preview and draw their own QML"
+          "text": "Plugin rows can be taller, show a preview and draw their own QML",
+          "go": "panel settings open launcher"
         }
       ]
     },
@@ -845,7 +906,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Desktop widgets show the time, month, music, weather, load and timers"
+          "text": "Desktop widgets show the time, month, music, weather, load and timers",
+          "go": "panel settings open widgets"
         },
         {
           "type": "ui",
@@ -877,7 +939,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell plugin new, dev and install make and share plugins"
+          "text": "banditshell plugin new, dev and install make and share plugins",
+          "go": "panel settings open launcher"
         },
         {
           "type": "ui",
@@ -893,7 +956,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Launcher plugins can open detail, list and form pages"
+          "text": "Launcher plugins can open detail, list and form pages",
+          "go": "panel settings open launcher"
         }
       ]
     },
@@ -904,12 +968,14 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Plugins in any language add their own results to the launcher"
+          "text": "Plugins in any language add their own results to the launcher",
+          "go": "panel settings open launcher"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Settings, Launcher lists your plugins with a switch and their settings"
+          "text": "Settings, Launcher lists your plugins with a switch and their settings",
+          "go": "panel settings open launcher"
         }
       ]
     },
@@ -1003,7 +1069,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Tools can add their own launcher rows with banditshell launcher add"
+          "text": "Tools can add their own launcher rows with banditshell launcher add",
+          "go": "panel launcher open"
         }
       ]
     },
@@ -1052,7 +1119,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "The docs now describe launcher plugins and their JSON protocol"
+          "text": "The docs now describe launcher plugins and their JSON protocol",
+          "go": "panel settings open launcher"
         }
       ]
     },
