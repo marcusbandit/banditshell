@@ -278,7 +278,7 @@ Item {
         Item {
             id: rest
 
-            readonly property bool holdsRest: anomalies.pointing
+            readonly property bool holdsRest: anomalies.pointing || pips.pressing
             readonly property int slotsReserved: 4
             readonly property var place: Placement.rail(pips.implicitHeight, rest.height, glance.headEdge + Appearance.padding.large, rest.height - anomalies.anchors.bottomMargin, (Appearance.sizes.statusSlot + Appearance.sizes.statusGap) * rest.slotsReserved, Appearance.padding.huge)
 
@@ -291,6 +291,8 @@ Item {
                 height: pips.implicitHeight
 
                 screen: root.screen
+
+                onHeld: root.pressedAtRest = true
             }
 
             RailGlance {
@@ -357,14 +359,20 @@ Item {
             {
                 icon: rail ? "left_panel_open" : "left_panel_close",
                 label: rail ? "Keep the sidebar open" : "Fold the sidebar",
-                run: () => Config.set("sidebar.style", rail ? "full" : "rail")
+                run: () => {
+                    root.dwelt = false;
+                    root.pressedAtRest = pointer.hovered;
+                    Config.set("sidebar.style", rail ? "full" : "rail");
+                }
             }
         ];
     }
 
-    TapHandler {
+    MouseArea {
+        anchors.fill: parent
+        z: -1
         acceptedButtons: Qt.RightButton
-        onTapped: (point, button) => root.menuAsked(point.position.x, point.position.y, root.menuActions())
+        onPressed: mouse => root.menuAsked(mouse.x, mouse.y, root.menuActions())
     }
 
     DragHandler {

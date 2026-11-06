@@ -88,6 +88,7 @@ PanelWindow {
     onUnderFullscreenChanged: if (win.underFullscreen) {
         win.closePanels(null, false);
         menuLayer.hide();
+        sidebarSheet.close();
     }
 
     Component.onCompleted: {
@@ -176,6 +177,7 @@ PanelWindow {
     }
 
     function closePanels(opening: Item, here: bool): void {
+        sidebarSheet.close();
         for (const panel of win.panels)
             if (panel !== opening)
                 panel.hide();
@@ -571,6 +573,8 @@ PanelWindow {
             onMarkPressed: opens => win.pressMark(opens)
             onMenuAsked: (x, y, actions) => {
                 const at = sidebar.mapToItem(sidebarSheet, x, y);
+                if (!sidebarSheet.open)
+                    sidebarSheet.giveBack = body.Window.activeFocusItem;
                 sidebarSheet.popup(at.x, at.y, actions, -1);
             }
         }
@@ -718,7 +722,14 @@ PanelWindow {
             Keys.onReturnPressed: sidebarSheet.activate(sidebarSheet.selected)
             Keys.onEnterPressed: sidebarSheet.activate(sidebarSheet.selected)
 
-            onClosed: body.forceActiveFocus()
+            property Item giveBack: null
+
+            onClosed: {
+                const back = sidebarSheet.giveBack;
+                sidebarSheet.giveBack = null;
+                if (sidebarSheet.activeFocus)
+                    (back?.visible ? back : body).forceActiveFocus();
+            }
         }
 
         Launcher {
