@@ -195,4 +195,12 @@ test.describe("files order", () => {
         assert.strictEqual(Order.natural("a007", "a7"), 0);
         assert.strictEqual(Order.natural("a", "a1"), -1);
     });
+
+    test.it("ships Ctrl+F for search and Ctrl+H for hidden files in the files grid", () => {
+        const grid = defaults().files.grid;
+        assert.strictEqual(grid["Ctrl+F"], "search");
+        assert.strictEqual(grid["Ctrl+H"], "hidden");
+        assert.strictEqual(grid["/"], "search");
+        assert.strictEqual(grid["."], "hidden");
+    });
 });
