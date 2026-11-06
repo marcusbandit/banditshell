@@ -7,6 +7,8 @@ import qs.services
 import "urls.js" as Urls
 import "keys.js" as Chords
 import "deletion.js" as Deletion
+import "../../services/files-commands.js" as Commands
+import "../../services/files-clipboard.js" as ClipboardFiles
 import "../../services/files-find.js" as Find
 
 Item {
@@ -24,7 +26,12 @@ Item {
         return (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) !== 0;
     }
 
+    onActiveFocusChanged: if (!root.activeFocus)
+        root.copying = false
+
     Keys.onReleased: event => {
+        if (event.key === Qt.Key_Control)
+            root.copying = false;
         if (event.key === Qt.Key_Control || event.key === Qt.Key_Alt || event.key === Qt.Key_Meta)
             hints.release();
     }
@@ -44,10 +51,14 @@ Item {
 
         function onWindowOpenChanged(): void {
             keys.clear();
+            root.copying = false;
         }
     }
 
     Keys.onPressed: event => {
+        if (event.key === Qt.Key_Control)
+            root.copying = true;
+
         if (settings.up || prompt.up || confirm.up || conflict.up)
             return;
 
@@ -332,7 +343,7 @@ Item {
             Files.extendTo(to);
         else
             Files.setCursor(to);
-        grid.reveal(to);
+        grid.reveal(to, true);
         keys.keyed();
     }
 
@@ -569,7 +580,7 @@ Item {
         function onVisibleChanged(): void {
             if (Files.arrival && !Files.listing && Files.indexOf(Files.arrival) >= 0) {
                 Files.arrival = "";
-                Qt.callLater(() => grid.reveal(Files.cursor));
+                Qt.callLater(() => grid.reveal(Files.cursor, false));
                 return;
             }
 
@@ -580,8 +591,8 @@ Item {
             const first = Math.min(...at);
             Files.cursorName = Files.visible[first].name;
             Files.anchorName = Files.cursorName;
-            grid.reveal(Math.max(...at));
-            grid.reveal(first);
+            grid.reveal(Math.max(...at), false);
+            grid.reveal(first, false);
         }
     }
 
@@ -679,7 +690,7 @@ Item {
 
         anchors.left: parent.left
         anchors.top: rule.bottom
-        anchors.bottom: failure.top
+        anchors.bottom: status.top
 
         width: Files.sidebarOpen ? Math.min(Math.max(Files.zoomed(Files.sidebarWidth), sidebar.natural), root.sidebarMost) : 0
         visible: width > 0
@@ -695,7 +706,7 @@ Item {
 
         anchors.left: sidebar.right
         anchors.top: rule.bottom
-        anchors.bottom: failure.top
+        anchors.bottom: status.top
 
         visible: Files.sidebarOpen
 
@@ -720,7 +731,7 @@ Item {
         anchors.left: Files.sidebarOpen ? sidebarEdge.right : parent.left
         anchors.right: parent.right
         anchors.top: rule.bottom
-        anchors.bottom: failure.top
+        anchors.bottom: status.top
 
         readonly property real listNeed: Appearance.padding.small * 5 + Appearance.padding.hair * 2 + Files.zoomed(Appearance.font.iconSize) + listDigit.advanceWidth * Files.nameLeast + Appearance.padding.normal * 3 + previewEdge.implicitWidth
         readonly property real previewRoom: Math.min(Files.previewWidth, width * 0.45, Files.listed ? Math.max(200, width - listNeed) : Infinity)
@@ -861,6 +872,24 @@ Item {
         }
     }
 
+    StyledText {
+        id: status
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: failure.top
+
+        leftPadding: Appearance.padding.normal
+        rightPadding: Appearance.padding.normal
+        topPadding: Appearance.padding.small
+        bottomPadding: Appearance.padding.small
+
+        text: Files.listing || Files.error ? "" : Commands.statusLine(Files.visible.length, Files.picked.length > 1 ? Files.picks : [], Files.humanSize)
+        font.pixelSize: Files.zoomed(Appearance.font.size.small)
+        color: Appearance.colour.textFaint
+        elide: Text.ElideRight
+    }
+
     Item {
         id: failure
 
@@ -922,6 +951,8 @@ Item {
     }
 
     property bool dragging: false
+    property bool incoming: false
+    property bool copying: false
     property point dragAt: Qt.point(0, 0)
 
     property bool exported: false
@@ -960,7 +991,29 @@ Item {
         Drag.supportedActions: Qt.CopyAction | Qt.MoveAction
         Drag.proposedAction: Qt.CopyAction
 
-        Drag.onDragFinished: exporter.Drag.active = false
+        Drag.onDragFinished: {
+            exporter.Drag.active = false;
+            root.exported = false;
+        }
+    }
+
+    function destinationAt(position: point, fallback: string): string {
+        const crumb = path.pathAt(path.mapFromItem(root, position.x, position.y));
+        if (crumb)
+            return crumb;
+
+        if (Files.sidebarOpen) {
+            const place = sidebar.pathAt(sidebar.mapFromItem(root, position.x, position.y));
+            if (place)
+                return place;
+        }
+
+        const index = grid.dropIndexAt(grid.mapFromItem(root, position.x, position.y));
+        const target = index < 0 ? null : Files.visible[index];
+        if (target && target.kind === "dir" && target.open && !Files.isPicked(Files.keyOf(target)))
+            return Files.pathOf(target);
+
+        return fallback;
     }
 
     function drop(position: point): void {
@@ -970,35 +1023,53 @@ Item {
         if (moving.length === 0)
             return;
 
-        const crumb = path.pathAt(path.mapFromItem(root, position.x, position.y));
-        if (crumb) {
-            Files.moveInto(moving, crumb);
-            return;
-        }
+        const dir = root.destinationAt(position, "");
+        if (dir)
+            Files.dropInto(moving, dir, root.copying);
+    }
 
-        if (Files.sidebarOpen) {
-            const place = sidebar.pathAt(sidebar.mapFromItem(root, position.x, position.y));
-            if (place) {
-                Files.moveInto(moving, place);
+    function receive(urls: var, position: point): void {
+        root.incoming = false;
+        root.dragging = false;
+        const paths = urls.map(url => ClipboardFiles.path(url.toString())).filter(one => one !== "");
+        const dir = root.destinationAt(position, Files.cwd);
+        if (paths.length > 0 && dir)
+            Files.receiveInto(paths, dir);
+    }
+
+    DropArea {
+        anchors.fill: parent
+
+        onEntered: event => {
+            if (!event.hasUrls || root.exported) {
+                event.accepted = false;
                 return;
             }
+            event.accept(Qt.CopyAction);
+            root.incoming = true;
+            root.dragging = true;
+            root.dragAt = Qt.point(event.x, event.y);
         }
-
-        const local = grid.mapFromItem(root, position.x, position.y);
-        const index = grid.dropIndexAt(local);
-        if (index < 0)
-            return;
-
-        const target = Files.visible[index];
-
-        if (!target || target.kind !== "dir" || !target.open || Files.isPicked(Files.keyOf(target)))
-            return;
-
-        Files.moveInto(moving, Files.pathOf(target));
+        onPositionChanged: event => {
+            if (root.incoming)
+                root.dragAt = Qt.point(event.x, event.y);
+        }
+        onExited: {
+            if (root.incoming) {
+                root.incoming = false;
+                root.dragging = false;
+            }
+        }
+        onDropped: event => {
+            if (!root.incoming)
+                return;
+            event.accept(Qt.CopyAction);
+            root.receive(event.urls, Qt.point(event.x, event.y));
+        }
     }
 
     Item {
-        visible: root.dragging && root.placed
+        visible: root.dragging && root.placed && !root.incoming
 
         x: root.dragAt.x - width / 2
         y: root.dragAt.y - height / 2
@@ -1019,6 +1090,26 @@ Item {
 
             fileClass: Files.current ? Files.current.class : "unknown"
             size: parent.width * 0.5
+        }
+
+        SquircleRect {
+            visible: root.copying
+
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: -Appearance.padding.hair
+            width: parent.width * 0.4
+            height: width
+
+            pill: "object"
+            color: Appearance.colour.accent
+
+            Icon {
+                anchors.centerIn: parent
+                name: "add"
+                size: parent.width * 0.8
+                color: Appearance.colour.accentText
+            }
         }
     }
 

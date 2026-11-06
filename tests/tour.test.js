@@ -84,9 +84,9 @@ test("every step says the payoff before the ask", () => {
     }
 });
 
-test("plans five steps and drops the sidebar when there is none", () => {
-    assert.deepStrictEqual(Tour.plan({ bare: false, sidebar: "rail", chords: {} }).map(s => s.id), ["launcher", "island", "sidebar", "hotkeys", "settings"]);
-    assert.deepStrictEqual(Tour.plan({ bare: true, sidebar: "none", chords: {} }).map(s => s.id), ["launcher", "island", "hotkeys", "settings"]);
+test("plans six steps and drops the sidebar when there is none", () => {
+    assert.deepStrictEqual(Tour.plan({ bare: false, sidebar: "rail", chords: {} }).map(s => s.id), ["launcher", "island", "sidebar", "files", "hotkeys", "settings"]);
+    assert.deepStrictEqual(Tour.plan({ bare: true, sidebar: "none", chords: {} }).map(s => s.id), ["launcher", "island", "files", "hotkeys", "settings"]);
 });
 
 test("every step offers one button that opens the thing itself", () => {
@@ -231,4 +231,13 @@ test("only the island step carries weather choices", () => {
     for (const step of Tour.plan({ bare: false, sidebar: "rail", chords: {} }).filter(s => s.id !== "island"))
         assert.deepStrictEqual(Tour.choices(step, true), [], step.id);
     assert.deepStrictEqual(Tour.choices(null, true), []);
+});
+
+test("the file browser step names the key that opens it, or the launcher word", () => {
+    const binds = [bind("bs.panel.files.toggle", 64, "e")];
+    assert.strictEqual(Tour.chordFor("files", binds, rows), "Super + E");
+    const step = Tour.plan({ bare: false, sidebar: "rail", chords: { files: "Super + E" } }).find(s => s.id === "files");
+    assert.match(Tour.words(step, {}).ask, /Press Super \+ E/);
+    const bareStep = Tour.plan({ bare: false, sidebar: "rail", chords: {} }).find(s => s.id === "files");
+    assert.match(Tour.words(bareStep, {}).ask, /`files`/);
 });

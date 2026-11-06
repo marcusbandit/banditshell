@@ -131,6 +131,30 @@ function totals(text) {
     return out;
 }
 
+function statusLine(total, picks, humanSize) {
+    if (picks.length > 1) {
+        let bytes = 0;
+        let folders = 0;
+        for (const entry of picks) {
+            if (entry.kind === "dir")
+                folders++;
+            else
+                bytes += entry.size || 0;
+        }
+        if (folders === picks.length)
+            return `${picks.length} selected`;
+        return `${picks.length} selected, ${humanSize(bytes)}${folders > 0 ? " in files" : ""}`;
+    }
+    return `${total} item${total === 1 ? "" : "s"}`;
+}
+
+function outside(paths, dir) {
+    return paths.filter(function (path) {
+        var cut = path.lastIndexOf("/");
+        return (cut <= 0 ? "/" : path.slice(0, cut)) !== dir;
+    });
+}
+
 var OPENERS_QUERY = [
     'kind=$(xdg-mime query filetype "$1" 2>/dev/null)',
     'printf "%s\\n" "$kind"',

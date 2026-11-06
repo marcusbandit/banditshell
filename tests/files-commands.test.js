@@ -13,7 +13,7 @@ function source(file) {
 
 const Quoting = new Function(`${source("services/quoting.js")}\nreturn { forShell, posix, visible, hasControl };`)();
 const Commands = new Function("Quoting", `${source("services/files-commands.js").replace(/^\.import .*$/m, "")}
-return { humanSize, join, clearLine, typed, refusal, runPlan, cdLine, cdPlan, folderCommand, fileCommand, moveCommand, trashCommand, removeCommand, progressLine, leftChild, totalsCommand, totals, openersCommand, openers, launchCommand };`)(Quoting);
+return { humanSize, join, clearLine, typed, refusal, runPlan, cdLine, cdPlan, folderCommand, fileCommand, moveCommand, trashCommand, removeCommand, progressLine, leftChild, totalsCommand, totals, statusLine, outside, openersCommand, openers, launchCommand };`)(Quoting);
 
 function installed(shell) {
     return child.spawnSync("sh", ["-c", `command -v ${shell}`]).status === 0;
@@ -350,5 +350,36 @@ test.describe("files commands: folder totals", () => {
         const got = Commands.openers(run.stdout);
         assert.strictEqual(got.kind, "text/plain");
         assert.deepStrictEqual(got.apps.map(a => [a.id, a.name]), [["secret", "Secret"], ["edit", "Editor One"], ["kde4-old", "Old KDE"]]);
+    });
+});
+
+test.describe("statusLine", () => {
+    const size = bytes => `${bytes} B`;
+
+    test.it("counts the items of a folder", () => {
+        assert.strictEqual(Commands.statusLine(300, [], size), "300 items");
+        assert.strictEqual(Commands.statusLine(1, [{kind: "file", size: 5}], size), "1 item");
+        assert.strictEqual(Commands.statusLine(0, [], size), "0 items");
+    });
+
+    test.it("counts a selection of many and adds up the file sizes", () => {
+        const picks = [{kind: "file", size: 100}, {kind: "file", size: 24}];
+        assert.strictEqual(Commands.statusLine(300, picks, size), "2 selected, 124 B");
+    });
+
+    test.it("leaves the size out when only folders are picked", () => {
+        assert.strictEqual(Commands.statusLine(9, [{kind: "dir", size: 4096}, {kind: "dir", size: 4096}], size), "2 selected");
+    });
+
+    test.it("says the size only covers files when a folder is picked", () => {
+        const picks = [{kind: "file", size: 100}, {kind: "dir", size: 4096}];
+        assert.strictEqual(Commands.statusLine(9, picks, size), "2 selected, 100 B in files");
+    });
+});
+
+test.describe("outside", () => {
+    test.it("keeps the files that are not already in the folder", () => {
+        assert.deepStrictEqual(Commands.outside(["/home/a/x.png", "/home/b/y.png", "/z.txt"], "/home/a"), ["/home/b/y.png", "/z.txt"]);
+        assert.deepStrictEqual(Commands.outside(["/z.txt"], "/"), []);
     });
 });

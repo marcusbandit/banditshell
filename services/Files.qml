@@ -1126,6 +1126,20 @@ Singleton {
         FilesPaste.start(paths, dir, false);
     }
 
+    function dropInto(paths: var, dir: string, copy: bool): void {
+        if (!copy || Trash.within(dir, root.trashFiles) || paths.some(path => Trash.trashed(path, root.trashFiles)))
+            return root.moveInto(paths, dir);
+        root.copyInto(paths, dir);
+    }
+
+    function receiveInto(paths: var, dir: string): void {
+        if (Trash.within(dir, root.trashFiles))
+            return;
+        const fresh = FilesCommands.outside(paths, dir);
+        if (fresh.length > 0)
+            root.copyInto(fresh, dir);
+    }
+
     function placeOf(dir: string): string {
         const place = Find.place(dir, root.home);
         return place === "~" ? "~/" : place;

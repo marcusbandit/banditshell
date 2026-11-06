@@ -22,6 +22,7 @@ PanelWindow {
             launcher: win.shell?.launcher?.open ?? false,
             island: win.shell?.island?.expanded ?? false,
             sidebar: (win.shell?.menus?.open ?? false) || win.railWide,
+            files: Files.windowOpen,
             hotkeys: win.shell?.hotkeys?.open ?? false,
             settings: Panels.isOpen("settings")
         })
@@ -205,6 +206,8 @@ PanelWindow {
             win.shell.island.pinned = true;
         else if (id === "sidebar")
             win.shell?.openMenu("calendar", true);
+        else if (id === "files")
+            Files.show("");
         else if (id === "hotkeys")
             win.shell?.hotkeys?.show();
         else if (id === "settings")
