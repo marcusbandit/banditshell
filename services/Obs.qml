@@ -108,6 +108,11 @@ Singleton {
 
     property string problem: ""
 
+    onLinkChanged: root.problem = ""
+    onLiveChanged: root.problem = ""
+    onRecordingChanged: root.problem = ""
+    onSceneChanged: root.problem = ""
+
     function report(text: string): void {
         if (text === "")
             return;

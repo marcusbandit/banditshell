@@ -26,7 +26,7 @@ Item {
     }
 
     readonly property real space: metrics.font.pixelSize > 0 && metrics.font.family ? metrics.advanceWidth(" ") : 0
-    readonly property var fitted: Lyrics.fit(root.space > 0 ? root.words.map(w => w.text) : [], text => metrics.advanceWidth(text), Math.max(1, root.width))
+    readonly property var fitted: Lyrics.fit(root.space > 0 && root.width > 0 ? root.words.map(w => w.text) : [], text => metrics.advanceWidth(text), Math.max(1, root.width))
     readonly property var rows: Lyrics.layout(root.fitted.widths, root.space, Math.max(1, root.width), root.fitted.joined)
     readonly property real rowHeight: Math.round(root.pixelSize * Appearance.font.leading)
 
