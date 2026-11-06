@@ -1247,8 +1247,10 @@ banditshell/
 │   │                            must not read (notifications, the keyring
 │   │                            prompt) to the band's screen. Follows
 │   │                            hypr-mode: on every Hyprland reload it reads
-│   │                            ~/.local/state/hypr/streamer and turns itself
-│   │                            on or off to match
+│   │                            ~/.local/state/hypr/streamer, turns on when
+│   │                            the file appears and off when a file it saw
+│   │                            goes; with no file ever seen, the mode set in
+│   │                            Settings stays as it is
 │   ├── Obs.qml                  OBS over its WebSocket, only while streaming:
 │   │                            the password is read from OBS's own config,
 │   │                            state arrives as events, and the one poll is

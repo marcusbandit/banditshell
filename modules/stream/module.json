@@ -5,8 +5,8 @@
   "owns": {
     "qml": ["modules/stream"],
     "services": ["Obs", "ObsLink", "StreamState"],
-    "js": ["services/obs.js"],
-    "tests": ["tests/obs.test.js"]
+    "js": ["services/obs.js", "services/stream-follow.js"],
+    "tests": ["tests/obs.test.js", "tests/stream-follow.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor", "apps", "audio", "network"],
