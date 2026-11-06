@@ -41,14 +41,23 @@ Item {
         return grid.indexAt(position.x + grid.contentX, position.y + grid.contentY);
     }
 
-    function reveal(index: int): void {
-        grid.positionViewAtIndex(index, GridView.Contain);
+    function reveal(index: int, glide: bool): void {
+        if (!glide)
+            grid.positionViewAtIndex(index, GridView.Contain);
         const top = Math.floor(index / root.columns) * root.cellHeight - grid.topMargin;
         const bottom = top + root.cellHeight + grid.topMargin + grid.bottomMargin;
-        if (top < grid.contentY)
-            grid.contentY = top;
-        else if (bottom > grid.contentY + grid.height)
-            grid.contentY = bottom - grid.height;
+        const goal = glide ? wheel.goal : grid.contentY;
+        let to = goal;
+        if (top < goal)
+            to = top;
+        else if (bottom > goal + grid.height)
+            to = bottom - grid.height;
+        if (to === goal)
+            return;
+        if (glide)
+            wheel.scrollTo(to);
+        else
+            grid.contentY = to;
     }
 
     function warm(): void {
@@ -139,6 +148,8 @@ Item {
         model: tiles
 
         WheelStep {
+            id: wheel
+
             flick: grid
         }
 

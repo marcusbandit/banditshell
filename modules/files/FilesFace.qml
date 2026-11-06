@@ -304,7 +304,7 @@ Item {
             Files.extendTo(to);
         else
             Files.setCursor(to);
-        grid.reveal(to);
+        grid.reveal(to, true);
         keys.keyed();
     }
 
@@ -527,7 +527,7 @@ Item {
         function onVisibleChanged(): void {
             if (Files.arrival && !Files.listing && Files.indexOf(Files.arrival) >= 0) {
                 Files.arrival = "";
-                Qt.callLater(() => grid.reveal(Files.cursor));
+                Qt.callLater(() => grid.reveal(Files.cursor, false));
                 return;
             }
 
@@ -538,8 +538,8 @@ Item {
             const first = Math.min(...at);
             Files.cursorName = Files.visible[first].name;
             Files.anchorName = Files.cursorName;
-            grid.reveal(Math.max(...at));
-            grid.reveal(first);
+            grid.reveal(Math.max(...at), false);
+            grid.reveal(first, false);
         }
     }
 
