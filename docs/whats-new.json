@@ -1,6 +1,37 @@
 {
   "entries": [
     {
+      "id": "2026-11-05-q29",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Enter in the clipboard pastes, and deleted entries can be undone"
+        },
+        {
+          "type": "bugs",
+          "severity": "major",
+          "text": "Clipboard: typing searches; pin is Ctrl+P, move is Ctrl+J and Ctrl+K"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Copied keys and tokens leave clipboard history after 5 minutes"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Clipboard rows have a View action and the header a search button"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Transcription tab shows only when dictation is set up"
+        }
+      ]
+    },
+    {
       "id": "2026-11-05-q08",
       "date": "2026-11-05",
       "changes": [

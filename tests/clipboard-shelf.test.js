@@ -7,7 +7,7 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/clipboard-shelf.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Shelf = new Function(src + "\nreturn { identity, shelve, kept, restored, salvage, seen, stamp, backupCommand };")();
+const Shelf = new Function(src + "\nreturn { identity, shelve, removal, kept, restored, salvage, seen, stamp, backupCommand };")();
 
 const entry = (id, text, extra) => Object.assign({ id, recorded: Number(id), text, pinned: false }, extra);
 
@@ -40,6 +40,44 @@ test.describe("clipboard clear and undo", () => {
     test.it("leaves out a pinned entry deleted during the window", () => {
         const shelf = Shelf.shelve(history);
         assert.deepStrictEqual(Shelf.restored([history[1]], shelf).map(e => e.id), ["5", "4", "3", "1"]);
+    });
+});
+
+test.describe("clipboard delete and undo", () => {
+    const history = [entry("5", "five"), entry("4", "four", { pinned: true }), entry("3", "three"), entry("2", "two"), entry("1", "one")];
+    const without = (...ids) => history.filter(e => !ids.includes(e.id));
+
+    test.it("puts one deleted entry back in its old place", () => {
+        const shelf = Shelf.removal(history, history[2], null);
+        assert.strictEqual(shelf.kind, "delete");
+        assert.deepStrictEqual(Shelf.restored(without("3"), shelf).map(e => e.id), ["5", "4", "3", "2", "1"]);
+    });
+
+    test.it("brings a pinned entry back still pinned", () => {
+        const shelf = Shelf.removal(history, history[1], null);
+        const back = Shelf.restored(without("4"), shelf);
+        assert.deepStrictEqual(back.map(e => e.id), ["5", "4", "3", "2", "1"]);
+        assert.strictEqual(back[1].pinned, true);
+    });
+
+    test.it("restores every entry deleted in a row", () => {
+        const first = Shelf.removal(history, history[3], null);
+        const second = Shelf.removal(without("2"), history[0], first);
+        assert.deepStrictEqual(second.entries.map(e => e.id), ["2", "5"]);
+        assert.deepStrictEqual(Shelf.restored(without("2", "5"), second).map(e => e.id), ["5", "4", "3", "2", "1"]);
+    });
+
+    test.it("takes in an entry copied after the first delete", () => {
+        const first = Shelf.removal(history, history[3], null);
+        const fresh = entry("9", "fresh");
+        const second = Shelf.removal([fresh, ...without("2")], fresh, first);
+        assert.deepStrictEqual(Shelf.restored(without("2"), second).map(e => e.id), ["9", "5", "4", "3", "2", "1"]);
+    });
+
+    test.it("does not bring back an entry copied again meanwhile", () => {
+        const shelf = Shelf.removal(history, history[2], null);
+        const again = [entry("9", "three"), ...without("3")];
+        assert.deepStrictEqual(Shelf.restored(again, shelf).map(e => e.id), ["9", "5", "4", "2", "1"]);
     });
 });
 

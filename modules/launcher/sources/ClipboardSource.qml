@@ -29,6 +29,8 @@ QtObject {
 
     readonly property bool clearing: root.search.armed === "clipboardclear"
 
+    readonly property string deleting: root.search.armed.startsWith("clipboarddelete:") ? root.search.armed.slice(16) : ""
+
     readonly property var prefixes: [
         {
             section: "Files and clipboard",
@@ -40,7 +42,10 @@ QtObject {
         }
     ]
 
-    readonly property bool offersUndo: root.explicit && Clipboard.shelved > 0 && (root.asked.term === "" || "undo clear".startsWith(root.asked.term.toLowerCase()))
+    readonly property bool offersUndo: root.explicit && Clipboard.shelved > 0 && (root.asked.term === "" || root.undoLabel.toLowerCase().startsWith(root.asked.term.toLowerCase()))
+
+    readonly property bool undoingDelete: Clipboard.shelfKind === "delete"
+    readonly property string undoLabel: root.undoingDelete ? "Undo delete" : "Undo clear"
 
     property string revealed: ""
 
@@ -94,7 +99,8 @@ QtObject {
             kind: "clipboard",
             entry: entry,
             going: root.clearing && !entry.pinned,
-            label: masked ? Clipboard.mask : text,
+            armed: root.deleting === entry.id,
+            label: root.deleting === entry.id ? "Press Enter again to delete" : masked ? Clipboard.mask : text,
             revealLabel: masked ? text : "",
             masked: masked,
             secret: secret,
@@ -122,8 +128,8 @@ QtObject {
         return {
             key: "clipboardundo",
             kind: "clipboardundo",
-            label: "Undo clear",
-            detail: `${Clipboard.shelved} cleared`,
+            label: root.undoLabel,
+            detail: root.undoingDelete ? (Clipboard.shelved === 1 ? "1 deleted" : `${Clipboard.shelved} deleted`) : `${Clipboard.shelved} cleared`,
             icon: "undo",
             score: Infinity
         };
@@ -138,6 +144,14 @@ QtObject {
         const address = root.search.windowTarget();
         Clipboard.copy(row.entry);
         root.search.leave(() => Typist.paste(address));
+    }
+
+    function discard(entry: var): void {
+        if (entry.pinned) {
+            root.search.armed = `clipboarddelete:${entry.id}`;
+            return;
+        }
+        Clipboard.remove(entry);
     }
 
     function copy(row: var): void {
@@ -157,6 +171,11 @@ QtObject {
                 root.search.armed = "clipboardclear";
             return;
         }
+        if (root.deleting === row.entry.id) {
+            root.search.armed = "";
+            Clipboard.remove(row.entry);
+            return;
+        }
         if (Typist.found)
             root.paste(row);
         else
@@ -164,6 +183,18 @@ QtObject {
     }
 
     function confirmActionsFor(row: var): var {
+        if (row.kind === "clipboard")
+            return [
+                {
+                    icon: "delete",
+                    label: "Delete",
+                    alarm: true,
+                    run: () => {
+                        root.search.armed = "";
+                        Clipboard.remove(row.entry);
+                    }
+                }
+            ];
         return [
             {
                 icon: "delete_sweep",
@@ -197,7 +228,7 @@ QtObject {
             {
                 icon: typing ? "content_paste_go" : "content_copy",
                 label: typing ? "Paste" : "Copy",
-                run: () => root.activate(row)
+                run: () => typing ? root.paste(row) : root.copy(row)
             }
         ];
         if (typing)
@@ -221,7 +252,7 @@ QtObject {
             icon: "delete",
             label: "Delete",
             alarm: true,
-            run: () => Clipboard.remove(row.entry)
+            run: () => root.discard(row.entry)
         });
         if (!typing && Typist.probed)
             acts.push({

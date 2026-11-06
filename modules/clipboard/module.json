@@ -4,7 +4,7 @@
   "layer": 2,
   "owns": {
     "qml": ["modules/clipboard"],
-    "services": ["Clipboard", "Dictation"],
+    "services": ["Clipboard", "Dictation", "Typist"],
     "js": ["services/clipboard-search.js", "services/clipboard-sweep.js", "services/dictation-events.js", "services/clipboard-shelf.js", "services/clipboard-secret.js", "services/clipboard-age.js"],
     "tests": ["tests/clipboard-sweep.test.js", "tests/dictation-events.test.js", "tests/fixtures/gvoice/events.jsonl", "tests/clipboard-shelf.test.js", "tests/clipboard-secret.test.js", "tests/clip-record.test.js", "tests/clipboard-age.test.js"],
     "scripts": ["scripts/clip-record.sh"]
@@ -14,7 +14,7 @@
     "optional": []
   },
   "provides": {
-    "singletons": ["Clipboard", "Dictation"],
+    "singletons": ["Clipboard", "Dictation", "Typist"],
     "ipc": ["clipboard"]
   },
   "config": {
