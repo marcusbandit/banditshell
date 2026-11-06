@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import "vt.js" as TerminalEmulator
+import "terminal-wheel.js" as Wheel
 
 Item {
     id: root
@@ -204,6 +205,7 @@ Item {
 
     property int lastCol: -1
     property int lastRow: -1
+    property real wheelCarry: 0
 
     WheelHandler {
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
@@ -212,8 +214,11 @@ Item {
             if (!root.term)
                 return;
 
-            const notches = event.pixelDelta.y !== 0 ? event.pixelDelta.y / root.cellHeight : event.angleDelta.y / 40;
-            const step = Math.round(notches);
+            if (event.phase === Qt.ScrollBegin)
+                root.wheelCarry = 0;
+            const moved = Wheel.rows(root.wheelCarry, event.pixelDelta.y, event.angleDelta.y, root.cellHeight);
+            root.wheelCarry = moved.carry;
+            const step = moved.step;
             if (step === 0)
                 return;
 

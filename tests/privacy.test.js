@@ -159,6 +159,26 @@ test.describe("posting", () => {
         assert.deepStrictEqual(s, { post: true, announce: false, heard: ["voice"] });
     });
 
+    test.it("a dictation does not make the listener that was already there news again", () => {
+        const heard = ["voice"];
+        const during = P.micStep(heard, null, false, { kind: "mic", apps: ["dictation", "voice"] });
+        assert.deepStrictEqual(during, { post: false, announce: false, heard: ["voice"] });
+        const after = P.micStep(during.heard, { kind: "mic", apps: ["voice"] }, false);
+        assert.deepStrictEqual(after, { post: false, announce: false, heard: ["voice"] });
+    });
+
+    test.it("a listener that stops during a dictation and starts again afterwards is news", () => {
+        const during = P.micStep(["voice"], null, false, { kind: "mic", apps: ["dictation"] });
+        assert.deepStrictEqual(during.heard, []);
+        assert.strictEqual(P.micStep(during.heard, { kind: "mic", apps: ["voice"] }, false).announce, true);
+    });
+
+    test.it("a listener that starts during a dictation is announced when it ends", () => {
+        const during = P.micStep(["voice"], null, false, { kind: "mic", apps: ["dictation", "voice", "Zoom"] });
+        const after = P.micStep(during.heard, { kind: "mic", apps: ["Zoom", "voice"] }, false);
+        assert.strictEqual(after.announce, true);
+    });
+
     test.it("posts what changed and ends what stopped", () => {
         const mic = { kind: "mic", apps: ["Zoom"] };
         const camera = { kind: "camera", apps: ["Zoom"] };

@@ -43,7 +43,8 @@
       "services/ranking.js",
       "services/system-binaries.js",
       "services/timeformat.js",
-      "services/trace.js"
+      "services/trace.js",
+      "services/weekdays.js"
     ],
     "components": ["components"],
     "scripts": [
@@ -69,6 +70,7 @@
       "tests/cli.test.js",
       "tests/configuration.test.js",
       "tests/desktop-entries.test.js",
+      "tests/drag-resist.test.js",
       "tests/engine-compat.test.js",
       "tests/files-zoom.test.js",
       "tests/fixtures/certificate-files.txt",
@@ -79,6 +81,7 @@
       "tests/markup.test.js",
       "tests/notify.test.js",
       "tests/pick-file.test.js",
+      "tests/pull-settle.test.js",
       "tests/quickshell-version.test.js",
       "tests/quoting.test.js",
       "tests/ranking.test.js",
@@ -91,7 +94,8 @@
       "tests/timeformat.test.js",
       "tests/trace.test.js",
       "tests/user-folders.test.js",
-      "tests/wall-clock.test.js"
+      "tests/wall-clock.test.js",
+      "tests/weekdays.test.js"
     ]
   },
   "requires": {

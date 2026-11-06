@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/wifilist.js"), "utf8");
-const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, pick, secretLine, signInSecrets, signInMethods, signInRefusal, knownServer, serverDomain, filePath, outerIdentity, outerIdentityFor, innerMethods, innerMethod, innerName, signInArgs, serverCheckArgs, serverCheckSecrets, serverTrouble, serverLabel, serverMessage, serverSeenMessage, schoolCertificate, schoolFor, realmOf, trustedAuthority, checkAuthority, serverMatch, SCHOOL_CERTIFICATES, failureLabel, failureMessage, failureReason };")();
+const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, pick, secretLine, signInSecrets, signInMethods, signInRefusal, knownServer, serverDomain, filePath, outerIdentity, outerIdentityFor, innerMethods, innerMethod, innerName, signInArgs, serverCheckArgs, serverCheckSecrets, serverTrouble, serverLabel, serverMessage, serverSeenMessage, schoolCertificate, schoolFor, realmOf, trustedAuthority, checkAuthority, serverMatch, SCHOOL_CERTIFICATES, failureLabel, failureMessage, failureReason, parseAddresses, parseHiddenEvent, qrSecurity };")();
 
 const STEPS = 4;
 
@@ -617,5 +617,43 @@ test.describe("join failures", () => {
     test.it("falls back to a general cause for a reason it does not know", () => {
         assert.strictEqual(WifiList.failureLabel("nonsense"), "could not join");
         assert.strictEqual(WifiList.failureMessage("Cafe", undefined), "Cafe: could not join");
+    });
+});
+
+test.describe("parseAddresses", () => {
+    const text = fs.readFileSync(path.join(ROOT, "tests/fixtures/network/ip-address.txt"), "utf8");
+
+    test("reads the global IPv4 and IPv6 address, not the link-local one", () => {
+        assert.deepStrictEqual(WifiList.parseAddresses(text), { v4: "192.168.1.23", v6: "2001:db8:1::4d2" });
+    });
+
+    test("a device with only a link-local address has none to show", () => {
+        const only = JSON.stringify([{ addr_info: [{ family: "inet6", local: "fe80::1", scope: "link" }] }]);
+        assert.deepStrictEqual(WifiList.parseAddresses(only), { v4: "", v6: "" });
+    });
+
+    test("empty, broken and unexpected output gives nothing", () => {
+        const none = { v4: "", v6: "" };
+        assert.deepStrictEqual(WifiList.parseAddresses(""), none);
+        assert.deepStrictEqual(WifiList.parseAddresses("not json"), none);
+        assert.deepStrictEqual(WifiList.parseAddresses("{}"), none);
+        assert.deepStrictEqual(WifiList.parseAddresses("[null,{}]"), none);
+    });
+});
+
+test.describe("hidden network helpers", () => {
+    test("the join helper's lines parse and noise is ignored", () => {
+        assert.deepStrictEqual(WifiList.parseHiddenEvent('{"event":"failed","why":"wrong password"}'), { event: "failed", why: "wrong password" });
+        assert.strictEqual(WifiList.parseHiddenEvent("Traceback"), null);
+        assert.strictEqual(WifiList.parseHiddenEvent("{}"), null);
+    });
+
+    test("a Wi-Fi code's security type maps to the join helper's", () => {
+        assert.strictEqual(WifiList.qrSecurity("WPA"), "wpa");
+        assert.strictEqual(WifiList.qrSecurity("WPA2"), "wpa");
+        assert.strictEqual(WifiList.qrSecurity("SAE"), "sae");
+        assert.strictEqual(WifiList.qrSecurity("nopass"), "open");
+        assert.strictEqual(WifiList.qrSecurity(""), "open");
+        assert.strictEqual(WifiList.qrSecurity("WEP"), "");
     });
 });

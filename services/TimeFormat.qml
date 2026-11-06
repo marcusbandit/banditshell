@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import "timeformat.js" as Formatting
+import "weekdays.js" as Weekdays
 
 Singleton {
     id: root
@@ -12,6 +13,21 @@ Singleton {
     readonly property string dateStyle: Formatting.styleOf(Config.values.region.dateFormat)
 
     readonly property var styles: Formatting.STYLES
+    readonly property int firstDay: Weekdays.firstDay(Config.values.region.firstDay, Qt.locale().firstDayOfWeek)
+    readonly property bool weekNumbers: Config.values.region.weekNumbers
+    readonly property var weekOrder: Weekdays.order(root.firstDay)
+
+    function weekdayLead(moment: date): int {
+        return Weekdays.lead(moment, root.firstDay);
+    }
+
+    function weekdayInitial(day: int): string {
+        return Qt.locale().dayName(Weekdays.qtDay(day), Locale.NarrowFormat).toUpperCase();
+    }
+
+    function weekNumber(rowStart: date): int {
+        return Weekdays.weekNumber(rowStart);
+    }
 
     function styleOf(value: string): string {
         return Formatting.styleOf(value);

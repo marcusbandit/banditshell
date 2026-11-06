@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
 
 Flow {
     id: root
@@ -23,13 +24,13 @@ Flow {
 
             StyledText {
                 text: hint.modelData[0]
-                font.pixelSize: Appearance.font.size.small
+                font.pixelSize: Files.zoomed(Appearance.font.size.small)
                 color: Appearance.colour.accent
             }
 
             StyledText {
                 text: hint.modelData[1]
-                font.pixelSize: Appearance.font.size.small
+                font.pixelSize: Files.zoomed(Appearance.font.size.small)
                 color: Appearance.colour.textDim
             }
         }

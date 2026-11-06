@@ -80,11 +80,15 @@ Item {
         }
 
         StyledText {
-            x: root.trailing ? stack.width - width : 0
+            width: root.width - root.pad * 2
+            horizontalAlignment: root.trailing ? Text.AlignRight : Text.AlignLeft
             leftPadding: root.trailing ? 0 : Math.round(root.digits * 0.05)
             rightPadding: root.trailing ? Math.round(root.digits * 0.05) : 0
             text: TimeFormat.dateText(clock.date, "headline") ?? ""
             font.pixelSize: Appearance.font.size.large
+            fontSizeMode: Text.HorizontalFit
+            elide: Text.ElideRight
+            minimumPixelSize: Appearance.font.size.normal
             color: Qt.alpha(tone.value, 0.72)
         }
     }

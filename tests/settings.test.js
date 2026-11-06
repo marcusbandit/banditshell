@@ -567,6 +567,15 @@ test("a desktop without a battery or a lid hides what it can't use", () => {
     assert.ok(Catalogue.CAT_BY_ID.power.tiles.filter(t => Catalogue.present(t, desk)).every(t => t.k !== "chargeLimit"));
 });
 
+test("the Hold charge tile shows no percentage while nothing is held", () => {
+    const tile = Catalogue.CAT_BY_ID.power.tiles.find(t => t.k === "chargeLimit");
+    const state = (trouble, helperMissing, limit = true) => new Proxy(fakeState({ chargeLimit: limit, chargeMax: 80 }), { get: (t, k) => k === "hasBattery" ? true : k === "chargeTrouble" ? trouble : k === "chargeNeedsHelper" ? helperMissing : t[k] });
+    assert.strictEqual(tile.det(state("needs the helper", true)), "needs the helper");
+    assert.strictEqual(tile.det(state("the firmware kept it at 100%", false)), "not holding");
+    assert.strictEqual(tile.det(state("", false)), "80%");
+    assert.strictEqual(tile.det(state("", false, false)), "off");
+});
+
 test("screen rows that wait for apply say so", () => {
     for (const k of ["scr:on", "scr:mirror", "scr:res", "scr:hz", "scr:scale", "scr:rot", "scr:vrr"]) {
         const r = Catalogue.ROWS.find(x => x.k === k);

@@ -72,10 +72,10 @@ test.describe("the ? page", () => {
         assert.deepStrictEqual(page.map(s => [s.title, s.prefixes.length]), [["Desktop", 1]]);
     });
 
-    test.it("shows a quicklink in place of the source prefix its keyword wins over", () => {
+    test.it("lists a source prefix and a quicklink that share a keyword", () => {
         const page = Prefixes.sections([row("Ask and look up", "gh"), row("Ask and look up", "define"), row("Quicklinks", "hub", ["gh"]), row("Quicklinks", "gh")]);
         assert.deepStrictEqual(page.map(s => [s.title, s.prefixes.map(p => p.word)]), [
-            ["Ask and look up", ["define"]],
+            ["Ask and look up", ["define", "gh"]],
             ["Quicklinks", ["gh", "hub"]]
         ]);
     });
@@ -88,7 +88,7 @@ test.describe("the ? page", () => {
     });
 
     test.it("says what a prefix does, with its example when it has one", () => {
-        assert.strictEqual(Prefixes.detail({ about: "Connect to a host", example: "ssh nemurenai" }), "Connect to a host, as in ssh nemurenai");
+        assert.strictEqual(Prefixes.detail({ about: "Connect to a host", example: "ssh nemurenai" }), "ssh nemurenai · Connect to a host");
         assert.strictEqual(Prefixes.detail({ about: "Test your internet speed" }), "Test your internet speed");
     });
 });

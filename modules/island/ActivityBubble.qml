@@ -110,7 +110,7 @@ Item {
         case "alarm":
             return a.text;
         case "privacy":
-            return root.items.map(i => i.text).join(", ");
+            return root.items.map(i => [i.text, i.detail].filter(t => t).join(": ")).join(", ");
         }
         return "";
     }

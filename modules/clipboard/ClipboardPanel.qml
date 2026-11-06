@@ -6,6 +6,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.controls
+import "../../services/dictation-events.js" as DictationEvents
 
 Item {
     id: root
@@ -17,9 +18,18 @@ Item {
     property bool shown: false
 
     property int tab: 0
-    readonly property var tabs: ["Clipboard", "Transcription"]
+    readonly property var tabs: Dictation.present ? ["Clipboard", "Transcription"] : ["Clipboard"]
+
+    onTabsChanged: if (root.tab >= root.tabs.length) {
+        root.tab = 0;
+        root.reading = null;
+        root.selected = 0;
+        list.reset();
+    }
 
     readonly property bool speech: root.tab === 1
+
+    readonly property string dictationKey: DictationEvents.startKey(HyprConfig.binds)
 
     property bool searching: false
     property int selected: 0
@@ -85,11 +95,13 @@ Item {
         return n === 1 ? "1 item" : `${n} items`;
     }
 
-    readonly property bool undoing: !root.speech && !root.searching && Clipboard.shelved > 0
+    readonly property bool undoing: !root.speech && Clipboard.shelved > 0
 
     readonly property bool telling: !root.speech && !root.searching && !!Clipboard.recovery
 
     readonly property string cleared: {
+        if (Clipboard.shelfKind === "delete")
+            return Clipboard.shelved === 1 ? "Deleted" : `${Clipboard.shelved} deleted`;
         const gone = `${Clipboard.shelved} cleared`;
         if (!Clipboard.clearSaves)
             return `${gone} · history file not read`;
@@ -144,6 +156,17 @@ Item {
         Qt.callLater(query.forceActiveFocus);
     }
 
+    function typeIn(event: var): void {
+        const ch = event.text;
+        if (root.expanded || (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) || ch.length !== 1 || ch.trim() === "" || ch < " " || ch === "\x7f")
+            return;
+        if (!root.searching)
+            root.startSearch();
+        query.text += ch;
+        query.cursorPosition = query.text.length;
+        event.accepted = true;
+    }
+
     function stopSearch(): void {
         root.searching = false;
         query.text = "";
@@ -185,10 +208,23 @@ Item {
             Qt.callLater(keys.forceActiveFocus);
     }
 
+    readonly property bool pasting: !root.speech && Typist.found
+
     function accept(): void {
-        if (root.current)
-            root.history.use(root.current);
+        root.place(root.current, root.pasting);
+    }
+
+    function copyOnly(): void {
+        root.place(root.current, false);
+    }
+
+    function place(e: var, paste: bool): void {
+        const address = Hypr.windowAddress(root.restoreTo);
+        if (e)
+            root.history.use(e);
         root.hide();
+        if (e && paste && address)
+            Typist.paste(address);
     }
 
     function pin(e: var): void {
@@ -235,16 +271,24 @@ Item {
         if (!e)
             return [];
 
-        const acts = [
-            {
-                icon: "content_copy",
-                label: root.speech ? "Use this" : "Copy",
-                run: () => {
-                    root.history.use(e);
-                    root.hide();
-                }
-            }
-        ];
+        const acts = [];
+
+        if (root.pasting)
+            acts.push({
+                icon: "content_paste_go",
+                label: "Paste",
+                run: () => root.place(e, true)
+            });
+
+        acts.push({
+            icon: "content_copy",
+            label: root.speech ? "Use this" : "Copy",
+            run: () => root.place(e, false)
+        }, {
+            icon: "open_in_full",
+            label: "View",
+            run: () => root.reading = e
+        });
 
         const paths = Clipboard.pathsOf(e);
         if (paths.length)
@@ -286,7 +330,27 @@ Item {
         list.reset();
     }
 
+    readonly property bool typing: !root.expanded && root.searching && query.text.length > 0
+
     function commonKey(event: var): bool {
+        if (event.modifiers & Qt.ControlModifier) {
+            switch (event.key) {
+            case Qt.Key_C:
+                if (query.selectedText)
+                    return false;
+                root.copyOnly();
+                return true;
+            case Qt.Key_P:
+                root.pin(root.current);
+                return true;
+            case Qt.Key_J:
+            case Qt.Key_K:
+                if (!root.expanded)
+                    root.move(event.key === Qt.Key_J ? 1 : -1);
+                return true;
+            }
+        }
+
         const pitch = list.count > 0 ? list.contentHeight / list.count : list.pitch;
         const page = Math.max(1, Math.floor(list.height / Math.max(1, pitch)) - 1);
 
@@ -297,9 +361,13 @@ Item {
             return true;
 
         case Qt.Key_Right:
+            if (root.typing)
+                return false;
             root.expand();
             return true;
         case Qt.Key_Left:
+            if (root.typing)
+                return false;
             root.collapse();
             return true;
 
@@ -395,22 +463,8 @@ Item {
                 break;
 
             case Qt.Key_Slash:
-                root.startSearch();
-                break;
-            case Qt.Key_J:
                 if (!root.expanded)
-                    root.move(1);
-                break;
-            case Qt.Key_K:
-                if (!root.expanded)
-                    root.move(-1);
-                break;
-
-            case Qt.Key_L:
-                root.expand();
-                break;
-            case Qt.Key_H:
-                root.collapse();
+                    root.startSearch();
                 break;
             case Qt.Key_Home:
                 root.moveTo(0);
@@ -418,15 +472,11 @@ Item {
             case Qt.Key_End:
                 root.moveTo(root.results.length - 1);
                 break;
-            case Qt.Key_P:
-                root.pin(root.current);
-                break;
-            case Qt.Key_X:
             case Qt.Key_Delete:
                 root.discard(root.current);
                 break;
             default:
-                return;
+                return root.typeIn(event);
             }
             event.accepted = true;
         }
@@ -447,6 +497,7 @@ Item {
         angle: Config.values.control.pullAngleEdge
 
         travel: panel.fullHeight
+        reluctant: true
 
         onPulled: fraction => root.pushTo(fraction)
         onFinished: gone => root.pushEnd(gone)
@@ -546,6 +597,23 @@ Item {
                             onPicked: index => root.setTab(index)
                         }
 
+                        Button {
+                            id: searchOpen
+
+                            anchors.left: tabStrip.right
+                            anchors.leftMargin: Appearance.padding.small
+                            anchors.verticalCenter: parent.verticalCenter
+                            style: "bare"
+                            icon: "search"
+                            visible: !root.searching
+                            onClicked: root.startSearch()
+
+                            HoverTip {
+                                text: "Search"
+                                asked: searchOpen.hovered
+                            }
+                        }
+
                         Row {
                             id: clearBar
 
@@ -598,6 +666,8 @@ Item {
                         }
 
                         Row {
+                            id: undoBar
+
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: Appearance.padding.small
@@ -654,7 +724,8 @@ Item {
                         Item {
                             id: field
 
-                            anchors.right: parent.right
+                            anchors.right: undoBar.visible ? undoBar.left : parent.right
+                            anchors.rightMargin: undoBar.visible ? Appearance.padding.large : 0
                             anchors.left: tabStrip.right
                             anchors.leftMargin: Appearance.padding.large
                             anchors.verticalCenter: parent.verticalCenter
@@ -707,6 +778,11 @@ Item {
                                 clip: true
 
                                 Keys.onPressed: event => {
+                                    if (event.key === Qt.Key_Z && (event.modifiers & Qt.ControlModifier) && !query.text && !root.speech && Clipboard.undo()) {
+                                        event.accepted = true;
+                                        return;
+                                    }
+
                                     if (root.commonKey(event)) {
                                         event.accepted = true;
                                         return;
@@ -873,9 +949,7 @@ Item {
                                     return "Nothing matches.";
                                 if (!root.speech)
                                     return Clipboard.wasCleared ? "History cleared." : "Nothing has been copied yet.";
-                                if (!Dictation.present)
-                                    return "The dictation daemon is not running.\n`voice up` starts it.";
-                                return "Nothing has been dictated yet.\nSUPER + R starts.";
+                                return root.dictationKey ? `Nothing has been dictated yet.\n${root.dictationKey} starts it.` : "Nothing has been dictated yet.";
                             }
                         }
                     }
@@ -930,6 +1004,7 @@ Item {
                     height: viewport.height
 
                     entry: root.reading
+                    pastes: root.pasting
 
                     onBack: root.collapse()
                     onAccepted: root.accept()

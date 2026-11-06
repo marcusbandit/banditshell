@@ -76,7 +76,8 @@ Singleton {
         const diff = Logic.changes(root.posted, root.usages);
         root.posted = root.usages;
         const mic = root.usages.find(u => u.kind === "mic") ?? null;
-        const step = Logic.micStep(root.heard, mic, micMoment.running);
+        const hushed = root.quiet.mic ? Logic.usages(root.snapshot, {}).find(u => u.kind === "mic") ?? null : null;
+        const step = Logic.micStep(root.heard, mic, micMoment.running, hushed);
         root.heard = step.heard;
         if (!mic)
             micMoment.stop();

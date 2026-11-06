@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/clipboard-secret.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Secret = new Function(src + "\nreturn { HINT, MASK, marked, looksSecret, sensitive, copyCommand };")();
+const Secret = new Function(src + "\nreturn { HINT, MASK, LIFETIME, marked, looksSecret, sensitive, copyCommand, lapsed, expire, persistable };")();
 
 test.describe("clipboard secrets", () => {
     test.it("treats anything the source marked as a password as secret", () => {
@@ -39,5 +39,30 @@ test.describe("clipboard secrets", () => {
         assert.deepStrictEqual(Secret.copyCommand(secret, true), ["wl-copy", "--sensitive", "-n"]);
         assert.deepStrictEqual(Secret.copyCommand(secret, false), ["wl-copy", "-n"]);
         assert.deepStrictEqual(Secret.copyCommand({ text: "plain words", types: [] }, true), ["wl-copy", "-n"]);
+    });
+});
+
+test.describe("clipboard secrets leave history", () => {
+    const token = "gh" + "p_" + "x".repeat(36);
+    const made = (id, text, extra) => Object.assign({ id, text, recorded: 1000, pinned: false }, extra);
+
+    test.it("drops an unpinned secret once its few minutes are up", () => {
+        const kept = [made("a", "hello world"), made("b", token)];
+        assert.deepStrictEqual(Secret.expire(kept, 1000 + Secret.LIFETIME - 1).map(e => e.id), ["a", "b"]);
+        assert.deepStrictEqual(Secret.expire(kept, 1000 + Secret.LIFETIME).map(e => e.id), ["a"]);
+    });
+
+    test.it("keeps a secret the user pinned", () => {
+        assert.strictEqual(Secret.lapsed(made("b", token, { pinned: true }), 1e9), false);
+    });
+
+    test.it("never expires a picture or a file list", () => {
+        assert.strictEqual(Secret.lapsed(made("c", token, { file: "/s/a.png" }), 1e9), false);
+        assert.strictEqual(Secret.lapsed(made("d", token, { paths: ["/a/b"] }), 1e9), false);
+    });
+
+    test.it("leaves unpinned secrets out of what is written to disk", () => {
+        const all = [made("a", "hello world"), made("b", token), made("c", token + "z", { pinned: true })];
+        assert.deepStrictEqual(Secret.persistable(all).map(e => e.id), ["a", "c"]);
     });
 });

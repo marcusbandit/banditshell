@@ -168,7 +168,7 @@ Singleton {
             return "";
         switch (p.type) {
         case "net":
-            return p.id;
+            return p.id || p.title;
         case "scan":
             return "scan a code";
         case "dev":

@@ -70,6 +70,12 @@ WidgetCard {
                 source: Media.artUrl
                 radius: Appearance.rounding.normal
             }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Panels.open("media", {})
+            }
         }
 
         Column {
@@ -85,7 +91,15 @@ WidgetCard {
                 text: Media.title
                 font.pixelSize: Appearance.font.size.normal
                 font.weight: Font.DemiBold
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
                 elide: Text.ElideRight
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Panels.open("media", {})
+                }
             }
 
             StyledText {
@@ -102,17 +116,20 @@ WidgetCard {
 
                 Press {
                     icon: "skip_previous"
+                    tip: "Previous"
                     onClicked: Media.previous()
                 }
 
                 Press {
                     icon: Media.playing ? "pause" : "play_arrow"
+                    tip: Media.playing ? "Pause" : "Play"
                     strong: true
                     onClicked: Media.toggle()
                 }
 
                 Press {
                     icon: "skip_next"
+                    tip: "Next"
                     onClicked: Media.next()
                 }
             }
@@ -142,6 +159,7 @@ WidgetCard {
         id: press
 
         property string icon: ""
+        property string tip: ""
         property bool strong: false
 
         signal clicked
@@ -180,6 +198,11 @@ WidgetCard {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
             onClicked: press.clicked()
+        }
+
+        FloatingTooltip {
+            text: press.tip
+            shown: pressHover.hovered
         }
     }
 }

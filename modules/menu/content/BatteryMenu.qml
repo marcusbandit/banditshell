@@ -22,7 +22,7 @@ Column {
 
                 lead: true,
                 value: Battery.state,
-                note: Battery.timeLabel() || "fully charged"
+                note: Battery.timeLabel() || Battery.note
             }
         ];
 
@@ -35,9 +35,9 @@ Column {
 
         rows.push({
             lead: false,
-            value: Battery.rate > 0 ? `${Battery.rate.toFixed(1)} W` : "idle",
+            value: Battery.flow !== "idle" ? `${Battery.rate.toFixed(1)} W` : "idle",
 
-            note: Battery.charging && !Battery.full ? "input" : "draw"
+            note: Battery.flow === "in" ? "input" : "draw"
         });
 
         return rows;
@@ -127,6 +127,31 @@ Column {
                     }
                 }
             }
+        }
+    }
+
+    Separator {
+        width: parent.width
+        visible: PowerProfile.available
+    }
+
+    Column {
+        width: parent.width
+        visible: PowerProfile.available
+        spacing: Appearance.padding.small
+
+        StyledText {
+            text: "POWER MODE"
+            color: Appearance.colour.textFaint
+            font.pixelSize: Appearance.font.size.small
+        }
+
+        Segments {
+            width: parent.width
+
+            options: PowerProfile.choices
+            current: Math.max(0, PowerProfile.choices.indexOf(PowerProfile.profile))
+            onPicked: index => PowerProfile.set(PowerProfile.choices[index])
         }
     }
 

@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
 
 Item {
     id: root
@@ -53,17 +54,7 @@ Item {
             run(answer);
     }
 
-    visible: root.up || fade.value > 0
-    opacity: fade.value
-
-    Follow {
-        id: fade
-
-        target: root.up ? 1 : 0
-        speed: Appearance.animation.revealSpeed
-        epsilon: Appearance.animation.fadeEpsilon
-        startsAtTarget: true
-    }
+    visible: root.up
 
     Rectangle {
         anchors.fill: parent
@@ -78,7 +69,7 @@ Item {
     SquircleRect {
         anchors.centerIn: parent
 
-        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, 420)
+        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, Files.zoomed(420))
         implicitHeight: body.implicitHeight + Appearance.padding.large * 2
 
         radius: Appearance.rounding.large
@@ -97,7 +88,7 @@ Item {
                 width: parent.width
 
                 text: root.title
-                font.pixelSize: Appearance.font.size.normal
+                font.pixelSize: Files.zoomed(Appearance.font.size.normal)
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 maximumLineCount: 4
                 elide: Text.ElideRight
@@ -122,7 +113,7 @@ Item {
                     clip: true
 
                     font.family: Appearance.font.family
-                    font.pixelSize: Appearance.font.size.small
+                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
                     color: Appearance.colour.text
                     selectionColor: Appearance.colour.accent
                     selectedTextColor: Appearance.colour.accentText
@@ -140,7 +131,7 @@ Item {
                 visible: root.refusal !== ""
 
                 text: root.refusal
-                font.pixelSize: Appearance.font.size.small
+                font.pixelSize: Files.zoomed(Appearance.font.size.small)
                 color: Appearance.colour.alarm
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }

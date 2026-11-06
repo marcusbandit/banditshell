@@ -4,7 +4,10 @@
   "layer": 2,
   "owns": {
     "qml": ["modules/ipc/AudioIpc.qml"],
-    "services": ["Audio", "Bluetooth"]
+    "services": ["Audio", "Bluetooth"],
+    "js": ["services/audio.js", "services/bluetooth-pairing.js"],
+    "scripts": ["scripts/bluetooth-agent.py"],
+    "tests": ["tests/audio-labels.test.js", "tests/bluetooth-agent.test.js", "tests/bluetooth-pairing.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor"],

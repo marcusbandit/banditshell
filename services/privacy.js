@@ -103,9 +103,11 @@ function micNews(heard, apps) {
     return (apps || []).some(app => !known.includes(app));
 }
 
-function micStep(heard, usage, showing) {
+function micStep(heard, usage, showing, hushed) {
     const apps = usage ? usage.apps : [];
     const known = (heard || []).filter(app => apps.includes(app));
+    if (!usage && hushed)
+        return { post: false, announce: false, heard: (heard || []).filter(app => hushed.apps.includes(app)) };
     if (!usage)
         return { post: false, announce: false, heard: [] };
     const announce = micNews(known, apps);

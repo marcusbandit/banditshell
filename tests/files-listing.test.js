@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/files-listing.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Listing = new Function(`${src}\nreturn { table, same, reuse, changed, steps, stale, rereadIn, MOST_STEPS, REREAD_GAP };`)();
+const Listing = new Function(`${src}\nreturn { table, same, reuse, changed, steps, stale, rereadIn, failure, MOST_STEPS, REREAD_GAP };`)();
 
 function play(before, steps, after) {
     const keys = before.slice();
@@ -127,5 +127,14 @@ test.describe("files listing", () => {
         assert.strictEqual(Listing.rereadIn(10000, 8000), 0);
         assert.strictEqual(Listing.rereadIn(10000, 9000), 0);
         assert.strictEqual(Listing.rereadIn(10000, 9700), 700);
+    });
+
+    test.it("tells a missing folder from one that cannot be entered", () => {
+        assert.strictEqual(Listing.failure("No such file or directory").kind, "missing");
+        assert.strictEqual(Listing.failure("No such file or directory").alarm, false);
+        assert.strictEqual(Listing.failure("Not a directory").kind, "file");
+        assert.strictEqual(Listing.failure("Permission denied").kind, "denied");
+        assert.strictEqual(Listing.failure("Permission denied").icon, "lock");
+        assert.deepStrictEqual([Listing.failure("Input/output error").kind, Listing.failure("Input/output error").text], ["other", "Input/output error"]);
     });
 });

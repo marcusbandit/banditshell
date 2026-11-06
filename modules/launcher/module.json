@@ -44,6 +44,7 @@
     "tests": [
       "tests/launcher-actions.test.js",
       "tests/launcher-calculator.test.js",
+      "tests/launcher-list-keys.test.js",
       "tests/launcher-phrases.test.js",
       "tests/launcher-placement.test.js",
       "tests/launcher-plugin-cli.test.js",
@@ -86,7 +87,8 @@
       "launcher"
     ],
     "reads": [
-      "control"
+      "control",
+      "volume.step"
     ]
   }
 }

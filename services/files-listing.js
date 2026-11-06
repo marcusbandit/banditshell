@@ -143,3 +143,14 @@ function stale(seen, entry) {
 function rereadIn(now, readAt) {
     return Math.max(0, readAt + REREAD_GAP - now);
 }
+
+function failure(message) {
+    const text = message || "";
+    if (/no such file/i.test(text))
+        return {kind: "missing", icon: "folder_off", text: "This folder does not exist", alarm: false};
+    if (/not a directory/i.test(text))
+        return {kind: "file", icon: "folder_off", text: "This is not a folder", alarm: false};
+    if (/permission denied|not permitted/i.test(text))
+        return {kind: "denied", icon: "lock", text: "You do not have access to this folder", alarm: true};
+    return {kind: "other", icon: "error", text: text || "This folder cannot be opened", alarm: true};
+}

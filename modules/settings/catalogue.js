@@ -615,7 +615,7 @@ const PAGES_SOURCE = {
                 { n: 84, icon: "notifications_active", label: "Ring for", k: "ring", kind: "step", min: 1, max: 60, unit: " min", cfg: "clock.ringMinutes", kw: "alarms ring length" },
                 { n: 84, icon: "update", label: "Catch up", k: "catchUp", kind: "step", min: 0, max: 240, step: 15, unit: " min", cfg: "clock.catchUpMinutes", state: s => s.v("catchUp") ? "rings late after sleep" : "missed means missed", kw: "alarms catch-up",
                     why: "If the laptop slept through an alarm, it still rings on wake when it is this late or less." },
-                { n: 85, icon: "hourglass", label: "Longest timer", k: "timerMax", kind: "step", min: 1, max: 24, unit: " h", cfg: "clock.timerMax", kw: "timer limits" },
+                { n: 85, icon: "hourglass", label: "Timers at once", k: "timerMax", kind: "step", min: 1, max: 12, cfg: "clock.timerMax", fmt: v => `${v}`, kw: "timer limits" },
                 { n: 85, icon: "alarm", label: "Most alarms", k: "alarmMax", kind: "step", min: 1, max: 20, cfg: "clock.alarmMax", fmt: v => `${v}`, kw: "alarm limits" }
             ] },
             { t: "Other time zones", rows: [
@@ -632,7 +632,7 @@ const PAGES_SOURCE = {
                 { n: [], icon: "thermostat", label: "Units", k: "weatherUnits", kind: "seg", o: [["metric", "°C"], ["imperial", "°F"]], cfg: "weather.units", dis: s => !s.v("weatherShow"), kw: "weather units celsius fahrenheit temperature",
                     why: "For the temperature in the island and the week ahead." },
                 { n: [], icon: "update", label: "Refresh after", k: "weatherMinutes", kind: "step", min: 5, max: 180, step: 5, unit: " min", cfg: "weather.minutes", dis: s => !s.v("weatherShow"), kw: "weather refresh interval",
-                    why: "How old a reading may get before opening the island fetches a new one." }
+                    why: "How often the weather is fetched again while the island, the lock screen or the desktop card shows it." }
             ] },
             { t: "Ask", rows: [
                 { n: 87, icon: "smart_toy", label: "Helper", k: "cloud", kind: "text", mono: true, cfg: "clock.cloud", kw: "clock ai helper command",
@@ -855,6 +855,10 @@ const PAGES_SOURCE = {
             { t: "Time", rows: [
                 { n: 109, icon: "schedule", label: "24-hour clock", k: "clock24", kind: "toggle", cfg: "region.clock24", state: s => s.timeExample, kw: "time format" },
                 { n: 109, icon: "calendar_today", label: "Dates", k: "dateFormat", kind: "choice", o: s => s.dateChoices, cfg: "region.dateFormat", kw: "date format" },
+                { n: [], icon: "date_range", label: "Week starts on", k: "firstDay", kind: "seg", o: [["locale", "system"], ["monday", "Mon"], ["sunday", "Sun"], ["saturday", "Sat"]], cfg: "region.firstDay", kw: "first day of the week calendar monday sunday saturday",
+                    why: "System follows your locale. The calendars and the alarm day buttons start their week on this day." },
+                { n: [], icon: "tag", label: "Week numbers", k: "weekNumbers", kind: "toggle", cfg: "region.weekNumbers", state: s => s.v("weekNumbers") ? "ISO week beside each row" : "off", kw: "calendar week number iso",
+                    why: "Adds a column of ISO week numbers to the calendar in the clock menu, the island and on the desktop." },
                 { n: 109, icon: "my_location", label: "Zone from network", k: "autoZone", kind: "toggle", cfg: "region.autoZone", state: s => s.autoZoneDetail, kw: "time zone",
                     why: "Picks the zone nearest to where geoclue says you are when you turn this on, and sets it with timedatectl. After that it only looks again when the network changes, and suggests the new zone under Zone for you to pick; it never asks for your password on its own. It needs geoclue installed." },
                 { n: 109, icon: "public", label: "Zone", k: "zone", kind: "choice", o: s => s.zoneChoices, dis: s => s.v("autoZone") && !s.zoneSuggested, state: s => s.zoneSuggested ? `the network puts you in ${s.zoneSuggested} · pick it to switch` : s.v("autoZone") ? "set from the network" : "password needed", kw: "time zone",
@@ -1010,7 +1014,7 @@ const CATS = [
     { id: "power", name: "Power", icon: "battery_5_bar",
         blurb: s => s.hasBattery ? `${s.batteryPct}% · ${s.v("profile")}${s.v("chargeLimit") && !s.chargeTrouble ? ` · held at ${s.v("chargeMax")}%` : ""}` : `on mains · ${s.v("profile")}`,
         tiles: [
-            { k: "chargeLimit", icon: "battery_charging_80", label: "Hold charge", away: s => !s.hasBattery, dis: s => !s.hasBattery || !s.chargeSupported, det: s => !s.hasBattery ? "no battery" : s.v("chargeLimit") ? `${s.v("chargeMax")}%` : "off" },
+            { k: "chargeLimit", icon: "battery_charging_80", label: "Hold charge", away: s => !s.hasBattery, dis: s => !s.hasBattery || !s.chargeSupported, det: s => !s.hasBattery ? "no battery" : !s.v("chargeLimit") ? "off" : s.chargeNeedsHelper ? "needs the helper" : s.chargeTrouble ? "not holding" : `${s.v("chargeMax")}%` },
             { k: "saver", icon: "eco", label: "Saver", dis: s => s.profileChoices.length === 0, det: s => s.v("profile") === "saver" ? "on" : "off" }
         ],
         suggest: s => s.hasBattery && !s.v("chargeLimit") && s.healthKnown ? { icon: "health_and_safety", label: `Health is at ${s.healthPct}%`, detail: "holding the charge at 80% slows that", set: ["chargeLimit", true] } : null,

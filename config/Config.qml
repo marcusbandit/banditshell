@@ -100,6 +100,8 @@ Singleton {
 
                 tooltip: 450,
 
+                longPress: 480,
+
                 settle: 250
             },
 
@@ -501,7 +503,7 @@ Singleton {
 
                 catchUpMinutes: 60,
 
-                timerMax: 3,
+                timerMax: 8,
                 alarmMax: 8,
 
                 cloud: ["claude", "-p"],
@@ -689,7 +691,7 @@ Singleton {
 
                 neutral: 6500,
 
-                linger: 1200,
+                linger: 1800,
 
                 grabFraction: 0.3,
 
@@ -725,6 +727,10 @@ Singleton {
                 clock24: true,
 
                 dateFormat: "words",
+
+                firstDay: "locale",
+
+                weekNumbers: false,
 
                 autoZone: false
             },
@@ -828,8 +834,10 @@ Singleton {
                     "g": "first",
                     "G": "last",
                     "/": "search",
+                    "Ctrl+F": "search",
                     " ": "preview",
                     ".": "hidden",
+                    "Ctrl+H": "hidden",
                     "v": "view",
                     "Ctrl+=": "zoomin",
                     "Ctrl++": "zoomin",
@@ -982,7 +990,6 @@ Singleton {
                 touchEdges: true,
 
                 signalBands: 4,
-                deviceListMax: 7,
 
                 rowHeight: 42,
                 sliderHeight: 6,

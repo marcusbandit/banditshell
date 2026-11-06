@@ -12,7 +12,8 @@
       "services/wifilist.js"
     ],
     "assets": ["assets/certificates"],
-    "tests": ["tests/fixtures/network", "tests/network.test.js", "tests/wifilist.test.js"]
+    "scripts": ["scripts/wifi-hidden.py"],
+    "tests": ["tests/fixtures/network", "tests/network.test.js", "tests/wifi-hidden.test.js", "tests/wifilist.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor"],

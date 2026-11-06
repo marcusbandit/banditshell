@@ -21,7 +21,9 @@ Item {
     property real tailAt: 0
     property int number: 1
     property int count: 5
+    property var choices: []
 
+    signal choicePicked(string id)
     signal primaryPressed
     signal secondaryPressed
     signal quit
@@ -259,6 +261,26 @@ Item {
             text: root.after
             colour: Appearance.colour.textDim
             visible: root.after !== ""
+        }
+
+        Flow {
+            width: body.width
+            spacing: Appearance.padding.small
+            visible: root.mode === "ask" && root.choices.length > 0
+
+            Repeater {
+                model: root.choices
+
+                Button {
+                    required property var modelData
+
+                    text: modelData.text
+                    style: "ring"
+                    size: 0
+
+                    onClicked: root.choicePicked(modelData.id)
+                }
+            }
         }
 
         Item {

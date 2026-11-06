@@ -142,7 +142,15 @@ QtObject {
                     trailing: ended ? "icon" : "actions",
                     trailingIcon: "check_circle",
                     trailingTone: Appearance.colour.accent,
-                    actions: a.actions ?? []
+                    actions: (a.actions ?? []).map(x => Object.assign({
+                            icon: ({
+                                    copy: "content_copy",
+                                    edit: "edit",
+                                    folder: "folder_open",
+                                    delete: "delete"
+                                })[x.name] ?? ""
+                        }, x)),
+                    plainActions: true
                 };
             if (a.style === "copied")
                 return {
@@ -248,7 +256,7 @@ QtObject {
         case "held":
             return {
                 icon: "notifications_paused",
-                text: `${a.count} held while quiet`,
+                text: `${a.count} held while ${a.why || "quiet"}`,
                 trailing: "icon",
                 trailingIcon: "chevron_right",
                 trailingInk: true
@@ -256,7 +264,10 @@ QtObject {
         case "quiet":
             return {
                 icon: "do_not_disturb_on",
-                text: a.text
+                text: a.text,
+                trailing: "icon",
+                trailingIcon: "chevron_right",
+                trailingInk: true
             };
         case "notification":
             return {
