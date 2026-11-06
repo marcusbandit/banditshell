@@ -23,6 +23,7 @@ const patterns = {
     numbered: /^\d+\.\s+(.*)$/,
     rule: /^-{3,}\s*$/,
     row: /^\|/,
+    image: /^!\[([^\]]*)\]\((\S+?)(?:\s+"([^"]*)")?\)\s*$/,
 };
 
 const startsBlock = (line) =>
@@ -39,6 +40,10 @@ export function blocks(markdown) {
         } else if (patterns.heading.test(line)) {
             const [, marks, text] = line.match(patterns.heading);
             out.push({ type: "heading", level: marks.length, text: text.trim() });
+            i++;
+        } else if (patterns.image.test(line)) {
+            const [, alt, src, caption = ""] = line.match(patterns.image);
+            out.push({ type: "image", alt, src, caption });
             i++;
         } else if (patterns.rule.test(line)) {
             out.push({ type: "rule" });
@@ -67,13 +72,18 @@ export function blocks(markdown) {
     return out;
 }
 
-function html(block, repo) {
+export function html(block, repo) {
     const text = (t) => inline(t, repo);
     switch (block.type) {
         case "heading":
             return `<h${block.level}>${text(block.text)}</h${block.level}>`;
         case "rule":
             return "<hr>";
+        case "image": {
+            const size = block.width ? ` width="${block.width}" height="${block.height}"` : "";
+            const caption = block.caption ? `<figcaption>${text(block.caption)}</figcaption>` : "";
+            return `<figure><img src="${escape(block.src)}"${size} loading="lazy" decoding="async" alt="${escape(block.alt)}">${caption}</figure>`;
+        }
         case "paragraph":
             return `<p>${text(block.text)}</p>`;
         case "list": {

@@ -39,4 +39,32 @@ test.describe("roadmap site", () => {
             { type: "paragraph", text: "four five" },
         ]);
     });
+
+    test.it("leaves a draft post out of the build unless drafts are asked for", async () => {
+        const dir = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "blog-"));
+        const write = (name, draft) =>
+            fs.writeFileSync(path.join(dir, name), `---\ntitle: T ${name}\ndate: 2026-11-0${draft ? 2 : 1}\nsummary: s\n${draft ? "draft: true\n" : ""}---\n\nbody\n`);
+        write("live.md", false);
+        write("soon.md", true);
+        const { posts } = await import(pathToFileURL(path.join(ROOT, "site/blog.mjs")).href);
+        assert.deepStrictEqual(posts(dir, dir, REPO).map((p) => p.slug), ["live"]);
+        assert.deepStrictEqual(posts(dir, dir, REPO, { drafts: true }).map((p) => p.slug), ["soon", "live"]);
+        fs.rmSync(dir, { recursive: true });
+    });
+
+    test.it("reads front matter and refuses a post that lacks a title, date or summary", async () => {
+        const { front, post } = await import(pathToFileURL(path.join(ROOT, "site/blog.mjs")).href);
+        assert.deepStrictEqual(front('---\ntitle: "A, b"\ndraft: true\n---\ntext\n'), { meta: { title: "A, b", draft: "true" }, body: "text\n" });
+        assert.throws(() => post("---\ntitle: x\ndate: 2026-11-06\n---\ntext", "x.md", ROOT, REPO), /needs summary/);
+        assert.throws(() => post("---\ntitle: x\ndate: 6 Nov\nsummary: s\n---\ntext", "x.md", ROOT, REPO), /YYYY-MM-DD/);
+    });
+
+    test.it("gives every post image its real size so the page does not jump", async () => {
+        const { blocks } = await load();
+        const { webpSize, post } = await import(pathToFileURL(path.join(ROOT, "site/blog.mjs")).href);
+        assert.deepStrictEqual(blocks('![a b](/images/x.webp "A cap")')[0], { type: "image", alt: "a b", src: "/images/x.webp", caption: "A cap" });
+        assert.deepStrictEqual(webpSize(fs.readFileSync(path.join(ROOT, "site/images/blog-rail.webp"))), { width: 300, height: 313 });
+        const html = post("---\ntitle: t\ndate: 2026-11-06\nsummary: s\n---\n![alt](/images/blog-rail.webp)\n", "t.md", path.join(ROOT, "site"), REPO).html;
+        assert.match(html, /<img src="\/images\/blog-rail.webp" width="300" height="313"/);
+    });
 });
