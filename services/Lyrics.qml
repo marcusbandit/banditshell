@@ -86,8 +86,20 @@ Singleton {
         return Parse.gapFill(entry, t + root.lead);
     }
 
-    function layout(widths: var, space: real, room: real): var {
-        return Parse.layout(widths, space, room);
+    function fit(texts: var, measure: var, room: real): var {
+        return Parse.fit(texts, measure, room);
+    }
+
+    function piecePosition(fitted: var, position: real): real {
+        return Parse.piecePosition(fitted, position);
+    }
+
+    function rowText(fitted: var, row: var): string {
+        return Parse.rowText(fitted, row);
+    }
+
+    function layout(widths: var, space: real, room: real, joined: var): var {
+        return Parse.layout(widths, space, room, joined);
     }
 
     function litWidth(row: var, widths: var, position: real): real {

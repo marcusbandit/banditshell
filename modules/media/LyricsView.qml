@@ -72,7 +72,7 @@ Item {
         id: scroll
 
         target: root.browsing || !Lyrics.synced ? root.browseTarget : root.followTarget
-        speed: Appearance.animation.scrollSpeed * 0.55
+        speed: root.browsing ? Appearance.animation.scrollSpeed : Appearance.animation.scrollSpeed * 0.55
         epsilon: 0.2
     }
 
@@ -205,12 +205,25 @@ Item {
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
 
         onWheel: event => {
+            if (event.phase === Qt.ScrollBegin || event.phase === Qt.ScrollEnd) {
+                event.accepted = false;
+                return;
+            }
+            if (Math.abs(event.angleDelta.x) > Math.abs(event.angleDelta.y) || Math.abs(event.pixelDelta.x) > Math.abs(event.pixelDelta.y) || event.angleDelta.y === 0 && event.pixelDelta.y === 0) {
+                event.accepted = false;
+                return;
+            }
             if (!root.browsing) {
                 root.browsing = true;
                 root.browseTarget = scroll.value;
             }
-            const delta = event.pixelDelta.y !== 0 ? event.pixelDelta.y : event.angleDelta.y / 120 * Appearance.font.line.normal * 2;
-            root.browseTarget = Math.max(root.minScroll, Math.min(root.maxScroll, root.browseTarget - delta));
+            if (event.phase === Qt.NoScrollPhase) {
+                const notches = event.angleDelta.y !== 0 ? event.angleDelta.y / 120 : event.pixelDelta.y / 15;
+                root.browseTarget = Math.max(root.minScroll, Math.min(root.maxScroll, root.browseTarget - notches * ControlTuning.wheelNotch));
+            } else {
+                root.browseTarget = Math.max(root.minScroll, Math.min(root.maxScroll, scroll.value - event.pixelDelta.y));
+                scroll.snap();
+            }
             comeBack.restart();
         }
     }

@@ -1406,7 +1406,7 @@ banditshell/
 │   │   │                        click seeks to it
 │   │   ├── LyricBlock.qml       words laid out into rows by hand (FontMetrics
 │   │   │                        measures exactly what StyledText draws), lit word
-│   │   │                        by word in reading order, the sung part glowing
+│   │   │                        by word in reading order, the sung part brighter
 │   │   ├── PlayerChips.qml      every player, the shown one by name, the rest by mark
 │   │   └── Equalizer.qml        three bars that move while something plays
 │   ├── VolumeRail.qml           the volume pill on the right edge; DISABLED

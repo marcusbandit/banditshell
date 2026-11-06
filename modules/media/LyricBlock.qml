@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Effects
 import qs.config
 import qs.components
 import qs.services
@@ -27,18 +26,18 @@ Item {
     }
 
     readonly property real space: metrics.font.pixelSize > 0 && metrics.font.family ? metrics.advanceWidth(" ") : 0
-    readonly property var widths: root.space > 0 ? root.words.map(w => metrics.advanceWidth(w.text)) : []
-    readonly property var rows: Lyrics.layout(root.widths, root.space, Math.max(1, root.width))
+    readonly property var fitted: Lyrics.fit(root.space > 0 ? root.words.map(w => w.text) : [], text => metrics.advanceWidth(text), Math.max(1, root.width))
+    readonly property var rows: Lyrics.layout(root.fitted.widths, root.space, Math.max(1, root.width), root.fitted.joined)
     readonly property real rowHeight: Math.round(root.pixelSize * Appearance.font.leading)
 
     implicitHeight: root.rows.length * root.rowHeight
 
     function rowText(row: var): string {
-        return root.words.slice(row.first, row.first + row.count).map(w => w.text).join(" ");
+        return Lyrics.rowText(root.fitted, row);
     }
 
     Follow {
-        id: glow
+        id: fill
 
         target: root.lit ? 1 : 0
         speed: root.lit ? Appearance.animation.revealSpeed : Appearance.animation.revealSpeed * 0.35
@@ -70,21 +69,11 @@ Item {
 
     Item {
         anchors.fill: parent
-        visible: glow.value > 0.004
-        opacity: glow.value
-
-        layer.enabled: visible && GraphicsInfo.api !== GraphicsInfo.Software
-        layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowColor: Appearance.withAlpha(root.bright, 0.5)
-            shadowBlur: 0.45
-            shadowHorizontalOffset: 0
-            shadowVerticalOffset: 0
-            autoPaddingEnabled: true
-        }
+        visible: fill.value > 0.004
+        opacity: fill.value
 
         Repeater {
-            model: glow.value > 0.004 ? root.rows : []
+            model: fill.value > 0.004 ? root.rows : []
 
             delegate: Item {
                 id: row
@@ -94,7 +83,7 @@ Item {
 
                 x: root.opposite ? root.width - row.modelData.width : 0
                 y: row.index * root.rowHeight
-                width: Lyrics.litWidth(row.modelData, root.widths, root.held)
+                width: Lyrics.litWidth(row.modelData, root.fitted.widths, Lyrics.piecePosition(root.fitted, root.held))
                 height: root.rowHeight
                 clip: true
                 visible: width > 0

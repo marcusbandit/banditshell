@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/lyrics.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Lyrics = new Function(src + "\nreturn { stamp, parseLrc, group, separate, fromLrc, fromSpicy, plain, lineAt, progress, wordFill, gapFill, layout, litWidth, cleanTitle, firstArtist, pick, query };")();
+const Lyrics = new Function(src + "\nreturn { stamp, parseLrc, group, separate, fromLrc, fromSpicy, plain, lineAt, progress, wordFill, gapFill, fit, piecePosition, rowText, layout, litWidth, cleanTitle, firstArtist, pick, query };")();
 
 const close = (a, b) => Math.abs(a - b) < 1e-6;
 const texts = words => words.map(w => w.text).join(" ");
@@ -218,6 +218,62 @@ test.describe("layout", () => {
         assert.strictEqual(Lyrics.litWidth(rows[0], widths, 3), 80);
         assert.strictEqual(Lyrics.litWidth(rows[1], widths, 1.5), 0);
         assert.strictEqual(Lyrics.litWidth(rows[1], widths, 2.5), 25);
+    });
+});
+
+test.describe("a word wider than the room", () => {
+    const measure = t => Array.from(t).length * 27;
+
+    test.it("leaves words that fit as they are", () => {
+        const fitted = Lyrics.fit(["hello", "world"], measure, 300);
+        assert.deepStrictEqual(fitted.texts, ["hello", "world"]);
+        assert.deepStrictEqual(fitted.joined, [false, false]);
+        assert.deepStrictEqual(fitted.first, [0, 1]);
+    });
+
+    test.it("breaks an unspaced line by character to fit the room", () => {
+        const line = "あ".repeat(25);
+        const fitted = Lyrics.fit([line], measure, 600);
+        assert.deepStrictEqual(fitted.texts.map(t => Array.from(t).length), [22, 3]);
+        assert.deepStrictEqual(fitted.joined, [false, true]);
+        assert.ok(fitted.widths.every(w => w <= 600));
+    });
+
+    test.it("lays the pieces on separate rows with no space between them", () => {
+        const fitted = Lyrics.fit(["あ".repeat(25), "end"], measure, 600);
+        const rows = Lyrics.layout(fitted.widths, 8, 600, fitted.joined);
+        assert.deepStrictEqual(rows.map(r => r.count), [1, 2]);
+        assert.deepStrictEqual(rows.map(r => Lyrics.rowText(fitted, r)), ["あ".repeat(22), "あああ end"]);
+        assert.ok(rows.every(r => r.width <= 600));
+    });
+
+    test.it("keeps a space between words and none inside a broken word", () => {
+        const fitted = Lyrics.fit(["a", "いいいいい", "b"], measure, 54);
+        const rows = Lyrics.layout(fitted.widths, 8, 54, fitted.joined);
+        assert.deepStrictEqual(rows.map(r => Lyrics.rowText(fitted, r)), ["a", "いい", "いい", "い", "b"]);
+    });
+
+    test.it("does not split a pair of code units that make one character", () => {
+        const fitted = Lyrics.fit(["\u{1F600}\u{1F600}\u{1F600}"], measure, 54);
+        assert.deepStrictEqual(fitted.texts, ["\u{1F600}\u{1F600}", "\u{1F600}"]);
+    });
+
+    test.it("maps the sung position of a split word onto its pieces", () => {
+        const fitted = Lyrics.fit(["a", "あ".repeat(25)], measure, 600);
+        assert.strictEqual(Lyrics.piecePosition(fitted, 0), 0);
+        assert.strictEqual(Lyrics.piecePosition(fitted, 1), 1);
+        assert.strictEqual(Lyrics.piecePosition(fitted, 2), 3);
+        const half = Lyrics.piecePosition(fitted, 1.5);
+        assert.ok(half > 1 && half < 2);
+        assert.ok(close(half, 1 + (12.5 * 27) / 594));
+    });
+
+    test.it("lights the first row of a split word before the second", () => {
+        const fitted = Lyrics.fit(["あ".repeat(25)], measure, 600);
+        const rows = Lyrics.layout(fitted.widths, 8, 600, fitted.joined);
+        const lit = p => rows.map(r => Lyrics.litWidth(r, fitted.widths, Lyrics.piecePosition(fitted, p)));
+        assert.deepStrictEqual(lit(0.4), [270, 0]);
+        assert.deepStrictEqual(lit(1), [594, 81]);
     });
 });
 
