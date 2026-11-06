@@ -31,10 +31,10 @@ Singleton {
     }
 
     function commands(text: string): var {
-        const base = ["nice", "-n", "10", root.fd, "--fixed-strings", "--ignore-case", "--type", "f", "--type", "d", "--max-results", String(root.findLimit), ...(text.indexOf("/") >= 0 ? ["--full-path"] : []), ...root.excluding("--exclude", root.noise, "")];
+        const base = ["nice", "-n", "10", root.fd, "--fixed-strings", "--ignore-case", "--no-ignore-vcs", "--type", "f", "--type", "d", "--max-results", String(root.findLimit), ...(text.indexOf("/") >= 0 ? ["--full-path"] : []), ...root.excluding("--exclude", root.noise, "")];
         const out = [base.concat(root.hidden === "all" ? ["--hidden", "--exclude", "/.config"] : [], ["--", text, System.home])];
         if (root.configSearched)
-            out.push(base.concat(["--no-ignore-vcs"], root.excluding("--exclude", root.appNoise, ""), ["--", text, root.configDir]));
+            out.push(base.concat(root.excluding("--exclude", root.appNoise, ""), ["--", text, root.configDir]));
         return out;
     }
 
