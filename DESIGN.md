@@ -2132,7 +2132,7 @@ nothing. The clock style `off` and the sidebar's battery toggle still hide each 
 mode draws no glance outside the rail. `wide` widens the rail but not its workspace marks. This
 bends 2.1 for two readings everyone asks for; nothing else joins them at rest.
 
-Pointing at the rail for `anim.dwell` grows it into the full column: the clock, tray, status
+Pointing anywhere on the rail, workspace marks included, for `anim.dwell` grows it into the full column: the clock, tray, status
 icons and mode icon, with the workspaces turning from marks into plates. It is not a new panel.
 `Chassis` smooths one number (`railOpen`, through `Follow`) and the cutout's left edge simply
 moves, so the growth is the band swelling over the windows, and the content fades in as the

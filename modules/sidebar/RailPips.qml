@@ -14,7 +14,9 @@ Item {
 
     implicitHeight: layout.total
 
-    readonly property bool pointing: backstop.containsMouse
+    readonly property bool pressing: backstop.pressed
+
+    signal held
 
     function slotAt(y: real): int {
         for (let i = 0; i < layout.count; i++) {
@@ -46,6 +48,7 @@ Item {
         preventStealing: layout.scrubbing
 
         onPressed: mouse => {
+            root.held();
             const p = backstop.mapToItem(null, mouse.x, mouse.y);
             layout.scrubPress(p.x, p.y);
         }
