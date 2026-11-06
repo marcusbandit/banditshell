@@ -5,37 +5,34 @@ import Quickshell.Io
 import qs.config
 import qs.components
 import qs.services
+import "../../services/files-commands.js" as FilesCommands
 
 Item {
     id: root
 
     property string path: ""
     property var stat: null
+    property var folder: null
+    property int measuring: 0
 
     property bool up: false
 
     function show(path: string): void {
         root.path = path;
         root.stat = null;
+        root.folder = null;
         root.up = true;
+        measurer.running = false;
+        root.measuring += 1;
         statter.exec([Files.helper("bs-ls"), "--stat", path]);
     }
 
     function close(): void {
         root.up = false;
+        measurer.running = false;
     }
 
-    visible: root.up || fade.value > 0
-    opacity: fade.value
-
-    Follow {
-        id: fade
-
-        target: root.up ? 1 : 0
-        speed: Appearance.animation.revealSpeed
-        epsilon: Appearance.animation.fadeEpsilon
-        startsAtTarget: true
-    }
+    visible: root.up
 
     Process {
         id: statter
@@ -45,9 +42,23 @@ Item {
                 try {
                     const answer = JSON.parse(text);
                     root.stat = answer.ok ? answer : null;
+                    if (answer.ok && answer.kind === "dir" && answer.path === root.path)
+                        measurer.exec(FilesCommands.totalsCommand(answer.path, root.measuring));
                 } catch (e) {
                     root.stat = null;
                 }
+            }
+        }
+    }
+
+    Process {
+        id: measurer
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const totals = FilesCommands.totals(text);
+                if (totals.token === String(root.measuring))
+                    root.folder = totals;
             }
         }
     }
@@ -57,10 +68,16 @@ Item {
         if (!s)
             return [];
 
+        const f = root.folder;
+        const sizes = s.kind !== "dir" ? [{label: "Size", value: Files.humanSize(s.size)}] : [
+            {label: "Contains", value: !f ? "calculating…" : f.items === null ? "unknown" : f.items === 1 ? "1 item" : `${f.items.toLocaleString()} items`},
+            {label: "Size", value: !f ? "calculating…" : f.bytes === null ? "unknown" : Files.humanSize(f.bytes)}
+        ];
+
         const out = [
             {label: "Where", value: Files.parentOf(s.path)},
             {label: "Kind", value: s.kind === "dir" ? "Folder" : `${s.class}${s.ext ? ` (.${s.ext})` : ""}`},
-            {label: "Size", value: Files.humanSize(s.size)},
+            ...sizes,
             {label: "Modified", value: TimeFormat.stamp(new Date(s.mtime * 1000))},
             {label: "Owner", value: `${s.owner}:${s.group}`},
             {label: "Mode", value: `${Files.humanMode(s.mode)}  (${s.mode.toString(8)})`}
@@ -87,7 +104,7 @@ Item {
     SquircleRect {
         anchors.centerIn: parent
 
-        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, 520)
+        implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, Files.zoomed(520))
         implicitHeight: body.implicitHeight + Appearance.padding.large * 2
 
         radius: Appearance.rounding.large
@@ -112,15 +129,15 @@ Item {
                     fileClass: root.stat ? root.stat.class : "unknown"
                     link: root.stat ? root.stat.link : false
                     broken: root.stat ? root.stat.broken : false
-                    size: Appearance.icon.large
+                    size: Files.zoomed(Appearance.icon.large)
                 }
 
                 StyledText {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - Appearance.icon.large - Appearance.padding.normal
+                    width: parent.width - Files.zoomed(Appearance.icon.large) - Appearance.padding.normal
 
                     text: root.stat ? root.stat.name : "…"
-                    font.pixelSize: Appearance.font.size.normal
+                    font.pixelSize: Files.zoomed(Appearance.font.size.normal)
                     elide: Text.ElideMiddle
                 }
             }
@@ -141,16 +158,18 @@ Item {
                     spacing: Appearance.padding.normal
 
                     StyledText {
-                        width: Appearance.font.size.small * 0.6 * 10
+                        width: Files.zoomed(Appearance.font.size.small) * 0.6 * 10
 
                         text: line.modelData.label
+                        font.pixelSize: Files.zoomed(Appearance.font.size.small)
                         color: Appearance.colour.textFaint
                     }
 
                     StyledText {
-                        width: line.width - Appearance.font.size.small * 0.6 * 10 - Appearance.padding.normal
+                        width: line.width - Files.zoomed(Appearance.font.size.small) * 0.6 * 10 - Appearance.padding.normal
 
                         text: line.modelData.value
+                        font.pixelSize: Files.zoomed(Appearance.font.size.small)
                         elide: Text.ElideMiddle
                     }
                 }

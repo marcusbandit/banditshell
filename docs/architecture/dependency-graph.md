@@ -102,6 +102,7 @@ flowchart BT
     launcher_tools --> notifications
     power --> compositor
     tour --> apps
+    tour --> files
     tour --> settings
     updates --> compositor
     host --> desktop
@@ -124,7 +125,6 @@ flowchart BT
     lock --> power
     screentime --> power
     session --> power
-    events --> files
     events --> updates
     events --> host
     events --> island
@@ -147,9 +147,9 @@ further than its manifest allows, `node scripts/check-modules.js --explain <pack
 | capture | 2 | screen recording and region picking | `modules/picker`, `services/ScreenRecorder.qml`, `services/Screenshots.qml` | core, compositor | launcher-system, island |
 | cheatsheet | 2 | the hotkey cheat sheet and keyboard models | `modules/cheatsheet`, `services/Keyboards.qml` | core, compositor | none |
 | clipboard | 2 | clipboard history and dictation | `modules/clipboard`, `services/Clipboard.qml`, `services/Dictation.qml`, `services/Typist.qml` | core, compositor | launcher-ai, launcher-tools, island, launcher-shell |
-| clock | 2 | timers, alarms, world clocks and weather | `modules/ipc/ClockIpc.qml`, `services/Clock.qml`, `services/Localisation.qml`, `services/Weather.qml` | core, compositor | desktop, settings, launcher-tools, island, lock |
+| clock | 2 | timers, alarms, world clocks and weather | `modules/ipc/ClockIpc.qml`, `services/Clock.qml`, `services/Localisation.qml`, `services/Weather.qml` | core, compositor | desktop, settings, launcher-tools, tour, island, lock |
 | display | 2 | brightness, night light, dark mode and tablet state | `modules/ipc/DisplayIpc.qml`, `services/Backlight.qml`, `services/DarkMode.qml`, `services/Display.qml`, `services/Tablet.qml` | core, compositor | bar, keyboard, quickcontrols, settings, launcher-system, island |
-| files | 2 | the file browser and its terminal | `modules/files`, `previews/FilesPreview.qml`, `previews/TerminalDebug.qml`, `services/Downloads.qml`, `services/Files.qml`, `services/FilesFind.qml`, `services/FilesPaste.qml`, `services/FilesUndo.qml` | core, compositor | launcher-devops, launcher-tools, island, launcher-online, events, launcher-shell |
+| files | 2 | the file browser and its terminal | `modules/files`, `previews/FilesPreview.qml`, `previews/TerminalDebug.qml`, `services/Downloads.qml`, `services/Files.qml`, `services/FilesFind.qml`, `services/FilesPaste.qml`, `services/FilesUndo.qml` | core, compositor | launcher-devops, launcher-tools, tour, island, launcher-online, events, launcher-shell |
 | media | 2 | media players, lyrics and the player widgets | `modules/media`, `services/Lyrics.qml`, `services/Media.qml` | core, compositor | desktop, island, lock, events |
 | network | 2 | network, hotspot, tunnels and Tailscale | `services/Hotspot.qml`, `services/Network.qml`, `services/NetworkEvents.qml`, `services/Tailscale.qml`, `services/Tunnels.qml`, `services/WifiJoin.qml` | core, compositor | bar, calculator, stream, launcher-system, island |
 | password | 2 | the keyring and polkit password prompts | `modules/password`, `services/Keyring.qml`, `services/PasswordRequest.qml` | core, compositor | none |
@@ -170,7 +170,7 @@ further than its manifest allows, `node scripts/check-modules.js --explain <pack
 | launcher-system | 4 | the launcher's system control sources | `modules/launcher/sources/BrightnessSource.qml`, `modules/launcher/sources/RecordSource.qml`, `modules/launcher/sources/SoundSource.qml`, `modules/launcher/sources/VpnSource.qml`, `modules/launcher/sources/WifiSource.qml`, `modules/launcher/sources/WorkshopSource.qml` | core, compositor, audio, capture, display, network, launcher | none |
 | launcher-tools | 4 | the launcher's power tools, typing and utility sources | `modules/launcher/sources/ClipboardSource.qml`, `modules/launcher/sources/ColourSource.qml`, `modules/launcher/sources/DevSource.qml`, `modules/launcher/sources/EmojiSource.qml`, `modules/launcher/sources/LatestSource.qml`, `modules/launcher/sources/LoremSource.qml`, `modules/launcher/sources/NotesSource.qml`, `modules/launcher/sources/NotificationSource.qml`, `modules/launcher/sources/PomodoroSource.qml`, `modules/launcher/sources/ProjectSource.qml`, `modules/launcher/sources/QuicklinkSource.qml`, `modules/launcher/sources/ScriptSource.qml`, `modules/launcher/sources/SnippetSource.qml`, `modules/launcher/sources/TimerSource.qml`, `services/ColourPicks.qml`, `services/DevUtilities.qml`, `services/Emoji.qml`, `services/FileSearch.qml`, `services/LatestFiles.qml`, `services/Notes.qml`, `services/Pomodoro.qml`, `services/Projects.qml`, `services/ScriptCommands.qml`, `services/Snippets.qml` | core, compositor, clipboard, clock, files, launcher, notifications | launcher-shell |
 | power | 4 | battery, charge limit, power profile, lid and idle | `previews/BatteryPreview.qml`, `services/Battery.qml`, `services/ChargeLimit.qml`, `services/Idle.qml`, `services/Lid.qml`, `services/Power.qml`, `services/PowerProfile.qml`, `services/Suspension.qml` | core, compositor | lock, screentime, session |
-| tour | 4 | the first-run tour over the real desktop | `modules/tour`, `services/Tour.qml` | core, compositor, apps, settings | host |
+| tour | 4 | the first-run tour over the real desktop | `modules/tour`, `services/Tour.qml` | core, compositor, apps, clock, files, settings | host |
 | updates | 4 | update checks, pacman and what's new | `services/Pacman.qml`, `services/SystemUpgrade.qml`, `services/Update.qml`, `services/WhatsNew.qml` | core, compositor | island, events |
 | host | 5 | the shell window, chassis, window registry and the IPC front | `modules/BandProgress.qml`, `modules/Chassis.qml`, `modules/FrameExclusions.qml`, `modules/FullscreenBorder.qml`, `modules/Ipc.qml`, `modules/ShellWindow.qml`, `modules/Tooltip.qml`, `modules/ipc/HostIpc.qml`, `modules/ipc/qmldir`, `modules/qmldir`, `preview.qml`, `previews/qmldir`, `shell.qml`, `services/Shell.qml` | core, compositor, desktop, tour | events, launcher-shell |
 | island | 5 | the dynamic island and its activities | `modules/island`, `previews/IslandPreview.qml`, `services/Activities.qml`, `services/Levels.qml`, `services/Moments.qml`, `services/Notices.qml`, `services/Privacy.qml` | core, compositor, apps, audio, capture, clipboard, clock, display, files, media, network, bar, calculator, notifications, updates | events |

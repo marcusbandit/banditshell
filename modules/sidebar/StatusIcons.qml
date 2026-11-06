@@ -6,6 +6,7 @@ import qs.components
 import qs.services
 import qs.modules.controls
 import qs.modules.menu.content
+import "anomalies.js" as Anomalies
 import "scrolling.js" as Scrolling
 
 Item {
@@ -13,6 +14,10 @@ Item {
 
     signal requested(string key, bool deliberate)
     signal released
+
+    signal markPressed(var opens)
+
+    property bool awake: false
 
     property string hoveredKey: ""
 
@@ -69,7 +74,7 @@ Item {
 
     function scrollBrightness(wheel: var): void {
         if (Display.levelKnown)
-            Display.setLevel(Scrolling.scrolled(Display.level, wheel.angleDelta.y, root.naturalScroll(wheel), Config.values.volume.step, 1));
+            Display.setLevel(Scrolling.scrolled(Display.level, wheel.angleDelta.y, root.naturalScroll(wheel), Scrolling.brightnessStep, 1, Display.floor));
     }
 
     readonly property var allGauges: [
@@ -94,6 +99,28 @@ Item {
             reading: bluetooth,
             shown: Config.values.sidebar.status.bluetooth,
             body: bluetoothMenu
+        },
+        {
+            key: "vpn",
+            title: Anomalies.tip(Anomalies.vpnEntry({
+                vpn: true
+            })),
+            reading: tunnel,
+            present: Tunnels.anyOn,
+            press: () => root.markPressed(Anomalies.vpnEntry({
+                    vpn: true
+                }).opens)
+        },
+        {
+            key: "awake",
+            title: Anomalies.tip(Anomalies.awakeEntry({
+                awake: true
+            })),
+            reading: kept,
+            present: root.awake,
+            press: () => root.markPressed(Anomalies.awakeEntry({
+                    awake: true
+                }).opens)
         },
         {
             key: "battery",
@@ -149,6 +176,20 @@ Item {
     }
 
     QtObject {
+        id: tunnel
+
+        readonly property string icon: "vpn_lock"
+        readonly property bool active: true
+    }
+
+    QtObject {
+        id: kept
+
+        readonly property string icon: "coffee"
+        readonly property bool active: true
+    }
+
+    QtObject {
         id: battery
 
         readonly property string icon: Battery.icon()
@@ -168,6 +209,7 @@ Item {
         id: brightness
 
         readonly property string icon: "brightness_6"
+        readonly property string tip: Display.levelKnown ? `Brightness ${Math.round(Display.level * 100)}%, scroll to change` : "Brightness"
         readonly property bool active: Display.levelKnown
         readonly property bool available: Display.levelKnown
     }
@@ -248,6 +290,7 @@ Item {
                 alarm: modelData.reading.alarm ?? false
                 warning: modelData.reading.warning ?? false
                 available: modelData.reading.available ?? true
+                clickable: hasMenu || modelData.press !== undefined
 
                 onHoveredChanged: {
                     if (hovered) {
@@ -266,7 +309,7 @@ Item {
                 }
 
                 HoverTip {
-                    text: hasMenu ? "" : modelData.title
+                    text: hasMenu ? "" : modelData.reading.tip ?? modelData.title
                     asked: hovered
                 }
             }

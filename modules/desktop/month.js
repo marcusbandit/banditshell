@@ -2,16 +2,17 @@
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-function cells(year, month) {
+function cells(year, month, firstDay) {
     const first = new Date(year, month, 1);
-    const lead = (first.getDay() + 6) % 7;
+    const lead = (first.getDay() - firstDay + 7) % 7;
     const out = [];
     for (let i = 0; i < 42; i++) {
         const at = new Date(year, month, 1 - lead + i);
         out.push({
             day: at.getDate(),
             inMonth: at.getMonth() === month,
-            key: at.getFullYear() * 10000 + at.getMonth() * 100 + at.getDate()
+            key: at.getFullYear() * 10000 + at.getMonth() * 100 + at.getDate(),
+            rowStart: i % 7 === 0 ? at : null
         });
     }
     return out;

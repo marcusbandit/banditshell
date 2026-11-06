@@ -25,6 +25,7 @@ QtObject {
     }
 
     function timerRow(timer: var, at: double): var {
+        const ends = timer.paused ? "paused" : `ends ${TimeFormat.time(new Date(timer.deadline), false)}`;
         return {
             key: `runningtimer:${timer.id}`,
             kind: "runningtimer",
@@ -38,8 +39,8 @@ QtObject {
                     tone: timer.paused ? "dim" : "lit"
                 },
                 {
-                    text: timer.paused ? "paused" : `ends ${TimeFormat.time(new Date(timer.deadline), false)}`,
-                    chars: 11,
+                    text: ends,
+                    chars: TimeFormat.clock24 ? 11 : 13,
                     tone: timer.paused ? "dim" : ""
                 }
             ],

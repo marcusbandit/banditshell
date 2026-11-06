@@ -37,7 +37,7 @@ test("memory share counts what is not available", () => {
 const Month = lib("modules/desktop/month.js", ["cells", "keyOf", "title", "shifted"]);
 
 test("a month grid starts on the Monday before the first", () => {
-    const grid = Month.cells(2026, 10);
+    const grid = Month.cells(2026, 10, 1);
     assert.strictEqual(grid.length, 42);
     assert.deepStrictEqual(grid.slice(0, 7).map(c => c.day), [26, 27, 28, 29, 30, 31, 1]);
     assert.strictEqual(grid[6].inMonth, true);
@@ -47,9 +47,17 @@ test("a month grid starts on the Monday before the first", () => {
 });
 
 test("a month that starts on a Monday has no lead days", () => {
-    const grid = Month.cells(2026, 5);
+    const grid = Month.cells(2026, 5, 1);
     assert.strictEqual(grid[0].day, 1);
     assert.strictEqual(grid[0].inMonth, true);
+});
+
+test("a month grid starts on whichever weekday the week starts on", () => {
+    const sunday = Month.cells(2026, 10, 0);
+    assert.deepStrictEqual(sunday.slice(0, 7).map(c => c.day), [1, 2, 3, 4, 5, 6, 7]);
+    const saturday = Month.cells(2026, 10, 6);
+    assert.deepStrictEqual(saturday.slice(0, 7).map(c => c.day), [31, 1, 2, 3, 4, 5, 6]);
+    assert.deepStrictEqual(sunday.filter(c => c.rowStart).length, 6);
 });
 
 test("paging months crosses years", () => {

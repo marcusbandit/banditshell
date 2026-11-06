@@ -44,6 +44,7 @@ LauncherConcept {
                 })]) : search.rows
     readonly property var detailStarts: Search.sharedStarts(root.results.map(r => r.header ? "" : String(r.detail ?? "")))
     property int selected: 0
+    property bool intoList: false
 
     readonly property real headerPitch: Appearance.font.line.small + Appearance.padding.normal + Appearance.padding.small
 
@@ -159,6 +160,7 @@ LauncherConcept {
 
     readonly property bool quick: !root.capture && !root.shownView && !query.text && root.tiles.length > 0
     property int tile: 0
+    property bool tileKeyed: false
 
     readonly property bool asking: sheet.open
 
@@ -179,10 +181,15 @@ LauncherConcept {
 
     readonly property real longestFrame: 1 / 60
 
-    onQuickChanged: root.tile = 0
+    onQuickChanged: {
+        root.tile = 0;
+        root.tileKeyed = false;
+    }
     onTilesChanged: root.tile = Math.min(root.tile, Math.max(0, root.tiles.length - 1))
 
     onShowing: {
+        root.intoList = false;
+        root.tileKeyed = false;
         root.unsized = true;
         root.symbolsOpen = false;
         FileSearch.forget();
@@ -244,20 +251,24 @@ LauncherConcept {
     }
 
     function move(delta: int): void {
-        root.answerHolds = false;
-        assistantCard.released = true;
         if (root.quick) {
+            root.answerHolds = false;
+            assistantCard.released = true;
             root.tile = (root.tile + delta + root.tiles.length) % root.tiles.length;
             return;
         }
-        const at = Search.nextPickable(root.results, root.selected + delta, delta < 0 ? -1 : 1);
-        if (at >= 0)
-            root.moveTo(at);
+        const at = Search.stepTarget(root.results, root.selected, delta, root.answerHolds || assistantCard.holds);
+        if (at < 0)
+            return;
+        root.intoList = true;
+        root.moveTo(at);
     }
 
     function page(rows: int): void {
-        if (!root.quick)
-            root.moveTo(root.selected + rows);
+        if (root.quick)
+            return;
+        root.intoList = true;
+        root.moveTo(root.selected + rows);
     }
 
     function stepRow(direction: int): void {
@@ -273,11 +284,12 @@ LauncherConcept {
 
     function shiftTile(step: int): void {
         const t = root.tiles[root.tile];
-        if (t?.pinned && Apps.moveStarred(t.entry, step))
+        if (t?.pinned && Search.shiftTarget(root.pinnedApps.indexOf(t.entry), step, root.pinnedApps.length) >= 0 && Apps.moveStarred(t.entry, step))
             root.tile += step;
     }
 
     function claimTileKey(event: var): bool {
+        root.tileKeyed = root.tileKeyed || [Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down, Qt.Key_Home, Qt.Key_End].includes(event.key);
         const held = event.modifiers & Qt.ControlModifier;
         switch (event.key) {
         case Qt.Key_Left:
@@ -333,6 +345,13 @@ LauncherConcept {
     function commitAlias(): void {
         const row = root.capture.row;
         const alias = Search.cleanAlias(query.text);
+        const holder = Search.aliasHolder(Config.values.launcher.aliases, alias, row.key, held => !!search.rowById(held));
+        if (holder) {
+            root.capture = Object.assign({}, root.capture, {
+                said: `taken by ${holder}`
+            });
+            return;
+        }
         Config.set("launcher.aliases", Search.withAlias(Config.values.launcher.aliases, row.key, alias, row.label));
         root.endCapture(alias || root.beforeCapture);
     }
@@ -416,7 +435,7 @@ LauncherConcept {
             return true;
         }
 
-        if (event.key === Qt.Key_Menu) {
+        if (Search.opensSheet(event.key, event.modifiers)) {
             const item = root.quick ? tileRepeater.itemAt(root.tile) : list.itemAtIndex(root.selected);
             if (item)
                 root.ask(item, root.quick ? root.tiles[root.tile].entry : root.results[root.selected], item.width / 2, item.height / 2);
@@ -425,6 +444,9 @@ LauncherConcept {
 
         if (root.quick)
             return root.claimTileKey(event);
+
+        if (Search.caretKey(event.key, query.text !== "", root.intoList))
+            return false;
 
         const row = root.results[root.selected];
         if (event.key === Qt.Key_Tab && (search.complete(row) || search.complete(root.results.find(r => r.kind === "suggest")) || search.complete(root.results.find(r => r.tab))))
@@ -516,11 +538,16 @@ LauncherConcept {
             }
         ];
 
+        const full = !kept && Config.values.launcher.list.pinned && Apps.starredApps.length >= root.pinnedLimit;
         acts.push({
             icon: "push_pin",
             fill: kept,
-            label: kept ? "Unpin" : "Pin",
-            run: () => Apps.setStarred(entry, !kept)
+            label: kept ? "Unpin" : full ? `Pinned grid is full (${root.pinnedLimit})` : "Pin",
+            short: full ? "Grid full" : undefined,
+            run: () => {
+                if (!full)
+                    Apps.setStarred(entry, !kept);
+            }
         });
 
         acts.push(...search.appActions(entry));
@@ -567,9 +594,12 @@ LauncherConcept {
     function ask(item: Item, entry: var, x: real, y: real): void {
         if (!entry || entry.header)
             return;
+        const acts = root.actionsFor(entry);
+        if (!acts.length)
+            return;
         root.answerHolds = false;
         const at = item.mapToItem(panel, x, y);
-        sheet.popup(at.x, at.y, root.actionsFor(entry));
+        sheet.popup(at.x, at.y, acts);
     }
 
     function chooseRow(index: int): void {
@@ -630,6 +660,11 @@ LauncherConcept {
         function onTextChanged(): void {
             if (root.retyping)
                 return;
+            root.intoList = false;
+            if (root.capture?.said && root.capture.kind === "alias")
+                root.capture = Object.assign({}, root.capture, {
+                    said: ""
+                });
             root.settled = false;
             settle.restart();
         }
@@ -1129,6 +1164,10 @@ LauncherConcept {
                                 required property int index
 
                                 readonly property bool chosen: cell.index === root.tile
+                                readonly property bool named: cell.chosen && root.quick && root.tileKeyed && !root.asking
+                                readonly property real drop: (cell.height + quickLaunch.icon) / 2 + Appearance.padding.card
+
+                                onNamedChanged: root.tip(cell, cell.modelData.entry.name ?? "", cell.drop, cell.named)
 
                                 x: quickLaunch.width / 2 + (cell.modelData.slot - 0.5) * quickLaunch.cell
                                 y: cell.modelData.row * quickLaunch.cell + (cell.modelData.pinned ? 0 : quickLaunch.gap)
@@ -1140,7 +1179,7 @@ LauncherConcept {
                                     width: quickLaunch.icon + Appearance.padding.card * 2
                                     height: width
                                     radius: Appearance.rounding.normal
-                                    color: Appearance.colour.fill
+                                    color: cell.chosen ? Appearance.colour.fillStrong : Appearance.colour.fill
                                     opacity: cell.chosen || pointer.containsMouse ? 1 : 0
 
                                     Behavior on opacity {
@@ -1182,9 +1221,23 @@ LauncherConcept {
                                     cursorShape: Qt.PointingHandCursor
                                     acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-                                    onContainsMouseChanged: root.tip(cell, cell.modelData.entry.name ?? "", (cell.height + quickLaunch.icon) / 2 + Appearance.padding.card, pointer.containsMouse)
+                                    property bool held: false
+
+                                    pressAndHoldInterval: Appearance.animation.longPress
+
+                                    onContainsMouseChanged: root.tip(cell, cell.modelData.entry.name ?? "", cell.drop, pointer.containsMouse)
+
+                                    onPressed: pointer.held = false
+
+                                    onPressAndHold: mouse => {
+                                        pointer.held = true;
+                                        root.tile = cell.index;
+                                        root.ask(cell, cell.modelData.entry, mouse.x, mouse.y);
+                                    }
 
                                     onClicked: mouse => {
+                                        if (pointer.held)
+                                            return;
                                         root.tile = cell.index;
                                         if (mouse.button === Qt.RightButton)
                                             root.ask(cell, cell.modelData.entry, mouse.x, mouse.y);
@@ -1334,7 +1387,7 @@ LauncherConcept {
 
                                             icon: button.modelData.icon
                                             iconFill: button.modelData.fill ? 1 : 0
-                                            text: button.modelData.short ?? button.modelData.label
+                                            text: line.modelData.armed ? "" : button.modelData.short ?? button.modelData.label
                                             style: "ring"
                                             alarm: button.modelData.alarm ?? false
                                             size: 0
@@ -1509,8 +1562,10 @@ LauncherConcept {
             id: peek
 
             readonly property real gap: Appearance.padding.large
-            readonly property bool roomRight: panel.x + panel.width + peek.gap + peek.fullWidth <= root.width - root.inset
-            readonly property bool roomLeft: panel.x - peek.gap - peek.fullWidth >= root.inset
+            readonly property real spaceRight: root.width - root.inset - (panel.x + panel.width + peek.gap)
+            readonly property real spaceLeft: panel.x - peek.gap - root.inset
+            readonly property bool roomRight: peek.spaceRight >= peek.naturalWidth || peek.spaceRight >= peek.spaceLeft
+            readonly property bool fits: peek.limit >= Appearance.sizes.launcherWidth * 0.3 && peek.fullWidth <= peek.limit + 1
 
             parent: root
             x: peek.roomRight ? panel.x + panel.width + peek.gap : panel.x - peek.gap - peek.width
@@ -1520,7 +1575,8 @@ LauncherConcept {
             row: root.shownView ? viewLoader.item?.peekRow ?? null : root.results[root.selected] ?? null
             colour: root.answerColour || (root.answerHolds || !peek.row?.peekColour ? "" : search.colourEdit?.key === peek.row.key ? search.colourEdit.hex : peek.row.peekColour)
             growsLeft: !peek.roomRight
-            wanted: root.open && panel.arrived && !root.quick && root.settled && !root.capture && (!root.shownView || !!viewLoader.item?.peekRow) && !root.asking && (!root.answerHolds || !!root.answerColour) && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
+            limit: peek.roomRight ? peek.spaceRight : peek.spaceLeft
+            wanted: root.open && panel.arrived && !root.quick && root.settled && !root.capture && (!root.shownView || !!viewLoader.item?.peekRow) && !root.asking && (!root.answerHolds || !!root.answerColour) && !assistantCard.holds && peek.fits
             longestFrame: root.longestFrame
 
             onColourPicked: (hex, done) => root.takeColour(hex, done)

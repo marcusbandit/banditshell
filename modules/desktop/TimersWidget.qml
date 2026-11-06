@@ -114,12 +114,12 @@ WidgetCard {
             spacing: Appearance.padding.small
 
             Repeater {
-                model: [5, 10, 25]
+                model: Clock.timerPresets
 
                 delegate: Pill {
                     required property int modelData
 
-                    text: `${modelData} min`
+                    text: Clock.presetText(modelData)
                     onClicked: Clock.startTimer(modelData * 60, "")
                 }
             }

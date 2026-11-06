@@ -2,11 +2,19 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import "../../services/weather.js" as Forecast
 
 WidgetCard {
     id: root
 
-    readonly property var today: Weather.forecastReady ? Weather.forecast[0] : null
+    readonly property var days: Weather.forecastReady ? Forecast.upcoming(Weather.forecast, clock.date.getTime()) : []
+    readonly property var today: root.days.length > 0 && Forecast.isToday(root.days[0], clock.date.getTime()) ? root.days[0] : null
+
+    WallClock {
+        id: clock
+
+        precision: WallClock.Minutes
+    }
 
     title: Weather.place
 

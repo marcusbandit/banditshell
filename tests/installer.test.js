@@ -249,3 +249,19 @@ test.describe("the charge limit", () => {
         assert.strictEqual(installer(dir, check).stdout, "0\n");
     });
 });
+
+test.describe("the Files desktop entry", () => {
+    test.it("links the entry into the user's applications folder and then counts as present", () => {
+        const dir = world();
+        fs.mkdirSync(path.join(dir, "assets/applications"), { recursive: true });
+        fs.writeFileSync(path.join(dir, "assets/applications/banditshell-files.desktop"), "[Desktop Entry]\n");
+        const out = installer(dir, 'files_entry_present; echo "$?"; install_files_entry; files_entry_present; echo "$?"; readlink "$HOME/.local/share/applications/banditshell-files.desktop"');
+        assert.strictEqual(out.stdout, `1\n0\n${dir}/assets/applications/banditshell-files.desktop\n`);
+    });
+
+    test.it("ships the entry claiming folders", () => {
+        const text = fs.readFileSync(path.join(ROOT, "assets/applications/banditshell-files.desktop"), "utf8");
+        assert.match(text, /^MimeType=inode\/directory;$/m);
+        assert.match(text, /^Exec=banditshell panel files open %f$/m);
+    });
+});

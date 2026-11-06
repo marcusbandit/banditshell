@@ -5,12 +5,13 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/files/keys.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Keys = new Function(src + "\nreturn { names, chordOf, NAMED };")();
+const Keys = new Function(src + "\nreturn { names, chordOf, NAMED, windowOwns, previewScroll, holder, moved, sameKeys };")();
 
 const Qt = {
     ShiftModifier: 0x02000000,
     ControlModifier: 0x04000000,
     AltModifier: 0x08000000,
+    MetaModifier: 0x10000000,
     Key_Escape: 0x01000000,
     Key_Tab: 0x01000001,
     Key_Backspace: 0x01000003,
@@ -88,5 +89,82 @@ test.describe("keys: one reading of a key press for the router and the recorder"
 
     test.it("gives nothing for a lone modifier", () => {
         assert.strictEqual(chord(Qt.Key_Control, Qt.ControlModifier), "");
+    });
+});
+
+test.describe("keys: what the window keeps while the terminal has focus", () => {
+    test.it("keeps Ctrl plus a digit and the terminal toggle", () => {
+        for (const digit of "0123456789")
+            assert.ok(Keys.windowOwns(`Ctrl+${digit}`, "focus:grid"), digit);
+        assert.ok(Keys.windowOwns("Ctrl+J", "terminal"));
+    });
+
+    test.it("keeps a chord the user rebound to move focus, whatever its keys", () => {
+        assert.ok(Keys.windowOwns("Ctrl+K", "focus:grid"));
+        assert.ok(Keys.windowOwns("Alt+P", "focus:preview"));
+    });
+
+    test.it("hands everything else to the shell inside, tmux prefix and word jumps included", () => {
+        for (const [key, action] of [["Ctrl+B", "sidebar"], ["Alt+Left", "back"], ["Alt+Right", "forward"], ["Alt+Up", "parent"], ["Alt+Home", "home"], ["Ctrl+,", "settings"], ["Ctrl+A", "all"]])
+            assert.ok(!Keys.windowOwns(key, action), key);
+    });
+});
+
+test.describe("keys: scrolling the preview from the keyboard", () => {
+    const scroll = (key, modifiers, action) => Keys.previewScroll(Qt, key, modifiers || 0, action || "", 300, 20);
+
+    test.it("moves a line on the arrows and a page on the page keys", () => {
+        assert.strictEqual(scroll(Qt.Key_Down), 20);
+        assert.strictEqual(scroll(Qt.Key_Up), -20);
+        assert.strictEqual(scroll(Qt.Key_PageDown), 300);
+        assert.strictEqual(scroll(Qt.Key_PageUp), -300);
+    });
+
+    test.it("jumps to either end on Home and End", () => {
+        assert.strictEqual(scroll(Qt.Key_Home), -Infinity);
+        assert.strictEqual(scroll(Qt.Key_End), Infinity);
+    });
+
+    test.it("pages on Space and back on Shift+Space", () => {
+        assert.strictEqual(scroll(Qt.Key_Space), 300);
+        assert.strictEqual(scroll(Qt.Key_Space, Qt.ShiftModifier), -300);
+    });
+
+    test.it("follows the vim letters of the grid map", () => {
+        assert.strictEqual(scroll(0x6a, 0, "down"), 20);
+        assert.strictEqual(scroll(0x6b, 0, "up"), -20);
+        assert.strictEqual(scroll(0x67, 0, "first"), -Infinity);
+        assert.strictEqual(scroll(0x47, 0, "last"), Infinity);
+    });
+
+    test.it("ignores chords and keys it has no scroll for", () => {
+        assert.strictEqual(scroll(Qt.Key_Down, Qt.ControlModifier), null);
+        assert.strictEqual(scroll(Qt.Key_Left), null);
+        assert.strictEqual(scroll(Qt.Key_Return), null);
+    });
+});
+
+test.describe("rebinding file browser keys", () => {
+    const map = {j: "down", k: "up", "Ctrl+F": "search", "/": "search"};
+
+    test.it("names the action that already holds the chord", () => {
+        assert.strictEqual(Keys.holder(map, "k", "j"), "down");
+        assert.strictEqual(Keys.holder(map, "k", "x"), "");
+        assert.strictEqual(Keys.holder(map, "k", "k"), "");
+    });
+
+    test.it("does not count a chord of the same action as taken", () => {
+        assert.strictEqual(Keys.holder(map, "/", "Ctrl+F"), "");
+    });
+
+    test.it("moves the action to the new chord and drops the one that held it", () => {
+        assert.deepStrictEqual(Keys.moved(map, "k", "j"), {"Ctrl+F": "search", "/": "search", j: "up"});
+        assert.deepStrictEqual(map, {j: "down", k: "up", "Ctrl+F": "search", "/": "search"});
+    });
+
+    test.it("compares a keymap to its defaults whatever the key order", () => {
+        assert.strictEqual(Keys.sameKeys({a: "x", b: "y"}, {b: "y", a: "x"}), true);
+        assert.strictEqual(Keys.sameKeys({a: "x"}, {a: "z"}), false);
+        assert.strictEqual(Keys.sameKeys({a: "x"}, {a: "x", b: "y"}), false);
     });
 });

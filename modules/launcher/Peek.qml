@@ -17,6 +17,7 @@ Item {
     property real longestFrame: Infinity
     property bool growsLeft: false
     property string colour: ""
+    property real limit: Infinity
 
     signal colourPicked(string hex, bool done)
 
@@ -97,10 +98,16 @@ Item {
     readonly property bool shown: root.wanted && (root.carded || root.picking || !!root.toplevel || !!root.pictureSource || !!root.listed) && (root.ready || (root.loading || root.reading) && root.visible)
 
     readonly property real frame: Appearance.padding.small
-    readonly property real span: Appearance.sizes.launcherWidth * 0.7
+    readonly property real widest: Appearance.sizes.launcherWidth * 0.7
+    readonly property real span: Math.max(0, Math.min(root.widest, root.limit - root.frame * 2))
     readonly property real tallest: Appearance.sizes.launcherWidth * 0.8
 
-    readonly property real fullWidth: root.carded ? Math.round(card.width + root.frame * 2) : root.paged ? Math.round(root.span + root.frame * 2) : Math.round(Math.min(root.span, root.tallest * root.aspect) + root.frame * 2)
+    function widthFor(across: real): real {
+        return root.carded ? Math.round(card.width + root.frame * 2) : root.paged ? Math.round(across + root.frame * 2) : Math.round(Math.min(across, root.tallest * root.aspect) + root.frame * 2);
+    }
+
+    readonly property real naturalWidth: root.widthFor(root.widest)
+    readonly property real fullWidth: root.widthFor(root.span)
     readonly property real fullHeight: root.carded ? Math.round(Math.min(root.tallest, card.height + root.frame * 2)) : root.picking ? Math.round(picker.implicitHeight + Appearance.padding.normal * 2) : root.listed ? Math.round(Math.min(root.tallest, page.implicitHeight + Appearance.padding.normal * 2)) : Math.round(Math.min(root.tallest, root.span / root.aspect) + root.frame * 2)
     readonly property size full: Qt.size(root.fullWidth, root.fullHeight)
 

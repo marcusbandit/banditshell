@@ -22,6 +22,7 @@ PanelWindow {
             launcher: win.shell?.launcher?.open ?? false,
             island: win.shell?.island?.expanded ?? false,
             sidebar: (win.shell?.menus?.open ?? false) || win.railWide,
+            files: Files.windowOpen,
             hotkeys: win.shell?.hotkeys?.open ?? false,
             settings: Panels.isOpen("settings")
         })
@@ -205,12 +206,26 @@ PanelWindow {
             win.shell.island.pinned = true;
         else if (id === "sidebar")
             win.shell?.openMenu("calendar", true);
+        else if (id === "files")
+            Files.show("");
         else if (id === "hotkeys")
             win.shell?.hotkeys?.show();
         else if (id === "settings")
             Panels.open("settings", {
                 screen: win.output
             });
+    }
+
+    function choose(id: string): void {
+        if (id === "place")
+            Panels.open("settings", {
+                screen: win.output,
+                row: "weather.location"
+            });
+        else if (id === "off")
+            Config.set("weather.show", false);
+        else if (id === "on")
+            Config.set("weather.show", true);
     }
 
     function primary(): void {
@@ -265,7 +280,9 @@ PanelWindow {
                 tailAt: win.tail.at
                 number: Tour.number
                 count: Tour.steps.length
+                choices: Logic.choices(Tour.step, Config.values.weather.show)
 
+                onChoicePicked: id => win.choose(id)
                 onPrimaryPressed: win.primary()
                 onSecondaryPressed: win.secondary()
                 onQuit: Tour.quit()

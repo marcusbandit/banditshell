@@ -80,7 +80,9 @@ function readSample(text) {
     };
 }
 
-function topProcesses(before, after, count) {
+var SESSION = ["quickshell", "qs", "Hyprland", "systemd", "(sd-pam)", "dbus-broker", "dbus-broker-lau", "dbus-daemon", "pipewire", "pipewire-pulse", "wireplumber"];
+
+function topProcesses(before, after, count, skip) {
     if (!before || !after || after.uptime <= before.uptime)
         return [];
     var elapsed = after.uptime - before.uptime;
@@ -88,7 +90,7 @@ function topProcesses(before, after, count) {
     for (var pid in after.processes) {
         var now = after.processes[pid];
         var was = before.processes[pid];
-        if (!was || was.name !== now.name || now.pages <= 0)
+        if (!was || was.name !== now.name || now.pages <= 0 || (skip || []).indexOf(now.name) >= 0)
             continue;
         out.push({
             pid: now.pid,

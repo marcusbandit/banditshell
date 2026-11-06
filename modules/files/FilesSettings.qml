@@ -20,12 +20,12 @@ Item {
 
     function close(): void {
         root.rebinding = "";
+        root.clash = null;
         root.up = false;
         root.dismissed();
     }
 
-    visible: root.up || fade.value > 0
-    opacity: fade.value
+    visible: root.up
     focus: root.up
 
     property string rebinding: ""
@@ -85,20 +85,52 @@ Item {
         return out.sort((a, b) => (root.labels[a.action] ?? a.action).localeCompare(root.labels[b.action] ?? b.action));
     }
 
+    property var clash: null
+
+    function mapOf(which: string): var {
+        return which === "keys" ? Files.chords : Files.gridKeys;
+    }
+
     function rebind(which: string, from: string, to: string): void {
         if (!to || to === from)
             return;
 
-        const map = which === "keys" ? Files.chords : Files.gridKeys;
-        const next = {};
-        for (const chord in map)
-            if (chord !== from && chord !== to)
-                next[chord] = map[chord];
-        next[to] = map[from];
-        Config.set(`files.${which}`, next);
+        const taken = Chords.holder(root.mapOf(which), from, to);
+        if (taken) {
+            root.clash = {
+                which: which,
+                from: from,
+                to: to,
+                taken: root.labels[taken] ?? taken
+            };
+            return;
+        }
+        Config.set(`files.${which}`, Chords.moved(root.mapOf(which), from, to));
+    }
+
+    function replace(): void {
+        const clash = root.clash;
+        root.clash = null;
+        if (clash)
+            Config.set(`files.${clash.which}`, Chords.moved(root.mapOf(clash.which), clash.from, clash.to));
+    }
+
+    function restore(which: string): void {
+        root.clash = null;
+        root.rebinding = "";
+        Config.set(`files.${which}`, Config.defaults.files[which]);
     }
 
     Keys.onPressed: event => {
+        if (root.clash) {
+            event.accepted = true;
+            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                root.replace();
+            else if (event.key === Qt.Key_Escape)
+                root.clash = null;
+            return;
+        }
+
         if (root.rebinding) {
             if (event.key === Qt.Key_Control || event.key === Qt.Key_Alt || event.key === Qt.Key_Shift || event.key === Qt.Key_Meta)
                 return;
@@ -119,15 +151,6 @@ Item {
             root.close();
             event.accepted = true;
         }
-    }
-
-    Follow {
-        id: fade
-
-        target: root.up ? 1 : 0
-        speed: Appearance.animation.revealSpeed
-        epsilon: Appearance.animation.fadeEpsilon
-        startsAtTarget: true
     }
 
     Rectangle {
@@ -384,10 +407,80 @@ Item {
                         width: body.width
                         spacing: Appearance.padding.small
 
-                        StyledText {
-                            text: group.modelData.title
-                            font.pixelSize: Files.zoomed(Appearance.font.size.normal)
-                            bottomPadding: Appearance.padding.small
+                        Item {
+                            width: group.width
+                            height: Math.max(heading.implicitHeight, restoring.implicitHeight)
+
+                            StyledText {
+                                id: heading
+
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: group.modelData.title
+                                font.pixelSize: Files.zoomed(Appearance.font.size.normal)
+                            }
+
+                            Button {
+                                id: restoring
+
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "Restore defaults"
+                                style: "bare"
+                                zoom: Files.magnification
+                                interactive: !Chords.sameKeys(root.mapOf(group.modelData.which), Config.defaults.files[group.modelData.which])
+                                onClicked: root.restore(group.modelData.which)
+                            }
+                        }
+
+                        SquircleRect {
+                            width: group.width
+                            height: clashRow.implicitHeight + Appearance.padding.normal * 2
+                            visible: !!root.clash && root.clash.which === group.modelData.which
+
+                            radius: Appearance.rounding.small
+                            color: Appearance.colour.accentFill
+                            stroke: Appearance.colour.accent
+                            strokeWidth: Appearance.stroke.ring
+
+                            Row {
+                                id: clashRow
+
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.margins: Appearance.padding.normal
+                                spacing: Appearance.padding.normal
+
+                                StyledText {
+                                    width: parent.width - clashButtons.width - parent.spacing
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    wrapMode: Text.Wrap
+                                    text: root.clash ? `${root.clash.to} already does "${root.clash.taken}". Replace it?` : ""
+                                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
+                                }
+
+                                Row {
+                                    id: clashButtons
+
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: Appearance.padding.small
+
+                                    Button {
+                                        text: "Cancel"
+                                        style: "ring"
+                                        zoom: Files.magnification
+                                        onClicked: root.clash = null
+                                    }
+
+                                    Button {
+                                        text: "Replace"
+                                        style: "accent"
+                                        zoom: Files.magnification
+                                        onClicked: root.replace()
+                                    }
+                                }
+                            }
                         }
 
                         Repeater {
@@ -445,6 +538,7 @@ Item {
                                     cursorShape: Qt.PointingHandCursor
 
                                     onClicked: {
+                                        root.clash = null;
                                         root.rebinding = binding.waiting ? "" : binding.id;
                                         root.forceActiveFocus();
                                     }

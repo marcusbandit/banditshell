@@ -63,3 +63,66 @@ function chordOf(qt, table, key, modifiers, text) {
     parts.push(label);
     return parts.join("+");
 }
+
+function windowOwns(chord, action) {
+    return /^Ctrl\+[0-9]$/.test(chord) || action === "terminal" || action.indexOf("focus:") === 0;
+}
+
+function previewScroll(qt, key, modifiers, action, page, line) {
+    if (modifiers & (qt.ControlModifier | qt.AltModifier | qt.MetaModifier))
+        return null;
+    var shift = (modifiers & qt.ShiftModifier) !== 0;
+    switch (key) {
+    case qt.Key_Up:
+        return -line;
+    case qt.Key_Down:
+        return line;
+    case qt.Key_PageUp:
+        return -page;
+    case qt.Key_PageDown:
+        return page;
+    case qt.Key_Home:
+        return -Infinity;
+    case qt.Key_End:
+        return Infinity;
+    case qt.Key_Space:
+        return shift ? -page : page;
+    }
+    switch (action) {
+    case "up":
+        return -line;
+    case "down":
+        return line;
+    case "first":
+        return -Infinity;
+    case "last":
+        return Infinity;
+    }
+    return null;
+}
+
+function holder(map, from, to) {
+    if (!to || to === from || !Object.prototype.hasOwnProperty.call(map, to))
+        return "";
+    return map[to] === map[from] ? "" : map[to];
+}
+
+function moved(map, from, to) {
+    var next = {};
+    for (var chord in map)
+        if (chord !== from && chord !== to)
+            next[chord] = map[chord];
+    next[to] = map[from];
+    return next;
+}
+
+function sameKeys(a, b) {
+    var left = Object.keys(a || {}).sort();
+    var right = Object.keys(b || {}).sort();
+    if (left.length !== right.length)
+        return false;
+    for (var i = 0; i < left.length; i++)
+        if (left[i] !== right[i] || a[left[i]] !== b[right[i]])
+            return false;
+    return true;
+}

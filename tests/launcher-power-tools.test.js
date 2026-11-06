@@ -13,7 +13,7 @@ function lib(file, names) {
 const Scripts = lib("services/script-commands.js", ["parseScript", "readScan", "argumentsFrom", "askFor", "missing", "commandFor", "outputLines", "lastLine", "runKey", "titleFromFile", "listAsk", "readItems", "readList", "itemAction", "selectCommand", "ambientScore", "linkRefusal", "fileRefusal", "refusalOf", "groupCommand", "stopGroupCommand"]);
 const Projects = lib("services/projects.js", ["listFrom", "readScan", "rank", "ago", "editorFor", "terminalLine", "shellLine", "projectAsk", "parentWithin", "scanCommand", "ambientScore", "quote"]);
 const Notes = lib("services/notes.js", ["withoutSkipped", "vaultsFrom", "defaultVault", "readIndex", "search", "openUri", "newUri", "fileNameFor", "notesAsk", "indexCommand", "ambientScore"]);
-const Monitor = lib("services/system-monitor.js", ["monitorAsk", "readSample", "topProcesses", "readDisks", "bytesText", "uptimeText", "cpuText"]);
+const Monitor = lib("services/system-monitor.js", ["monitorAsk", "readSample", "topProcesses", "SESSION", "readDisks", "bytesText", "uptimeText", "cpuText"]);
 const Pomodoro = lib("services/pomodoro.js", ["pomodoroAsk", "nextRound", "roundLabel", "notice", "readState"]);
 const Lorem = lib("services/lorem.js", ["loremAsk", "generate", "describe", "preview"]);
 const Picks = lib("services/colour-picks.js", ["colourAsk", "readPicked", "remember", "forget", "readHistory"]);
@@ -249,6 +249,14 @@ test.describe("system monitor", () => {
         assert.strictEqual(top[0].memory, 2560 * 4096);
         assert.strictEqual(top[0].own, true);
         assert.strictEqual(top[1].own, false);
+    });
+
+    test.it("leaves the shell and the compositor out of the busiest list", () => {
+        const before = Monitor.readSample(sample(100, 100));
+        const after = Monitor.readSample(sample(102, 200));
+        const top = Monitor.topProcesses(before, after, 5, ["fire fox"]);
+        assert.deepStrictEqual(top.map(p => p.name), ["sshd"]);
+        assert.ok(["quickshell", "Hyprland"].every(n => Monitor.SESSION.includes(n)));
     });
 
     test.it("reads disks and leaves out pseudo filesystems and repeats", () => {

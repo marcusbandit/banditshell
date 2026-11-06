@@ -12,8 +12,6 @@ Column {
 
     spacing: Appearance.padding.normal
 
-    readonly property var timerPresets: [1, 5, 10, 25]
-
     readonly property int dawnHour: 6
     readonly property int duskHour: 18
 
@@ -72,12 +70,9 @@ Column {
 
     readonly property var alarmRows: Clock.alarms.slice().sort((a, b) => (a.hour * 60 + a.minute) - (b.hour * 60 + b.minute))
 
-    readonly property var matches: {
-        if (!root.picking)
-            return [];
-        const q = root.query.toLowerCase();
-        return Clock.allZones.filter(z => z !== Clock.localZone && !Clock.places.includes(z) && z.toLowerCase().includes(q)).slice(0, root.zoneListMax);
-    }
+    readonly property var matches: root.picking ? Clock.matchZones(root.query, root.zoneListMax) : []
+
+    readonly property bool nothingFound: root.picking && Clock.allZones.length > 0 && root.query.trim() !== "" && root.matches.length === 0
 
     function clockText(ms: double): string {
         const total = Math.max(0, Math.ceil(ms / 1000));
@@ -103,6 +98,11 @@ Column {
             return "once";
         const next = Clock.nextFor(alarm, root.now);
         return next > 0 ? `in ${Clock.spanLabel(next - root.now)}` : "once";
+    }
+
+    function startTimer(seconds: int): void {
+        if (Clock.startTimer(seconds, timerName.value.trim()) !== "")
+            timerName.clear();
     }
 
     function addPlace(id: string): void {
@@ -235,6 +235,37 @@ Column {
     }
 
     Item {
+        width: parent.width
+        visible: !!Clock.removed
+        height: visible ? undo.height : 0
+
+        StyledText {
+            anchors.left: parent.left
+            anchors.leftMargin: Appearance.padding.normal
+            anchors.right: undo.left
+            anchors.rightMargin: Appearance.padding.normal
+            anchors.verticalCenter: parent.verticalCenter
+
+            text: Clock.removed?.text ?? ""
+            color: Appearance.colour.textDim
+            font.pixelSize: Appearance.font.size.small
+            elide: Text.ElideRight
+        }
+
+        Button {
+            id: undo
+
+            readonly property string focusGroup: "undo"
+
+            anchors.right: parent.right
+
+            interactive: Clock.canUndo
+            text: "Undo"
+            onClicked: Clock.undoRemove()
+        }
+    }
+
+    Item {
         id: here
 
         width: parent.width
@@ -307,7 +338,7 @@ Column {
                     width: zoneRows.width
                     rowHeight: Math.max(Appearance.sizes.rowHeight, names.implicitHeight + Appearance.padding.small * 2 + zoneBar.height + Appearance.padding.small)
 
-                    onDismissed: Clock.removeZone(zoneCard.modelData.id)
+                    onDismissed: Clock.dismiss("place", zoneCard.modelData.id)
 
                     Column {
                         id: names
@@ -416,6 +447,18 @@ Column {
                     onActivated: root.addPlace(modelData)
                 }
             }
+
+            StyledText {
+                width: zoneList.width
+                visible: root.nothingFound
+                topPadding: Appearance.padding.small
+                bottomPadding: Appearance.padding.small
+                leftPadding: Appearance.padding.normal
+                text: Clock.missingZoneText(root.query)
+                color: Appearance.colour.textFaint
+                font.pixelSize: Appearance.font.size.small
+                elide: Text.ElideRight
+            }
         }
     }
 
@@ -445,7 +488,7 @@ Column {
             tappable: true
 
             onTapped: Clock.toggleTimer(timerCard.modelData.id)
-            onDismissed: Clock.removeTimer(timerCard.modelData.id)
+            onDismissed: Clock.dismiss("timer", timerCard.modelData.id)
 
             StyledText {
                 id: remaining
@@ -462,6 +505,8 @@ Column {
             }
 
             Icon {
+                id: pauseMark
+
                 anchors.left: remaining.right
                 anchors.leftMargin: Appearance.padding.small
                 anchors.verticalCenter: remaining.verticalCenter
@@ -473,6 +518,8 @@ Column {
             }
 
             StyledText {
+                id: ofTotal
+
                 anchors.right: parent.right
                 anchors.rightMargin: timerCard.discSpace
                 anchors.baseline: remaining.baseline
@@ -480,6 +527,20 @@ Column {
                 text: `of ${root.clockText(timerCard.modelData.total)}`
                 color: Appearance.colour.textFaint
                 font.pixelSize: Appearance.font.size.small
+            }
+
+            StyledText {
+                anchors.left: pauseMark.visible ? pauseMark.right : remaining.right
+                anchors.leftMargin: Appearance.padding.normal
+                anchors.right: ofTotal.left
+                anchors.rightMargin: Appearance.padding.normal
+                anchors.baseline: remaining.baseline
+
+                visible: text !== ""
+                text: timerCard.modelData.label
+                color: Appearance.colour.textDim
+                font.pixelSize: Appearance.font.size.small
+                elide: Text.ElideRight
             }
 
             SquircleRect {
@@ -566,9 +627,23 @@ Column {
             anchors.verticalCenter: fields.verticalCenter
 
             visible: root.composedSeconds > 0
+            interactive: !Clock.timersFull
             text: "Start"
-            onClicked: Clock.startTimer(root.composedSeconds, "")
+            onClicked: root.startTimer(root.composedSeconds)
         }
+    }
+
+    ClockTextField {
+        id: timerName
+
+        readonly property string focusGroup: "timer"
+
+        width: parent.width
+
+        autoFocus: false
+        placeholder: "name (optional)"
+        onAccepted: if (root.composedSeconds > 0 && !Clock.timersFull)
+            root.startTimer(root.composedSeconds)
     }
 
     Item {
@@ -580,21 +655,31 @@ Column {
         height: childrenRect.height
 
         Repeater {
-            model: root.timerPresets
+            model: Clock.timerPresets
 
             delegate: Button {
                 required property int index
                 required property var modelData
 
-                readonly property int count: root.timerPresets.length
+                readonly property int count: Clock.timerPresets.length
 
                 x: count > 1 ? index * (presets.width - width) / (count - 1) : (presets.width - width) / 2
                 width: (presets.width - Appearance.padding.small * (count - 1)) / count
 
-                text: `${modelData}m`
-                onClicked: Clock.startTimer(modelData * 60, "")
+                interactive: !Clock.timersFull
+                text: Clock.presetText(modelData)
+                onClicked: root.startTimer(modelData * 60)
             }
         }
+    }
+
+    StyledText {
+        width: parent.width
+        visible: Clock.timersFull
+        text: Clock.fullNote("timer")
+        color: Appearance.colour.textFaint
+        font.pixelSize: Appearance.font.size.small
+        wrapMode: Text.WordWrap
     }
 
     Separator {
@@ -622,7 +707,7 @@ Column {
             tappable: true
 
             onTapped: root.editing = alarmCard.open ? "" : alarmCard.modelData.id
-            onDismissed: Clock.removeAlarm(alarmCard.modelData.id)
+            onDismissed: Clock.dismiss("alarm", alarmCard.modelData.id)
 
             Item {
                 id: head
@@ -644,10 +729,29 @@ Column {
 
                     spacing: 0
 
-                    StyledText {
+                    Item {
                         width: parent.width
-                        text: TimeFormat.clock(alarmCard.modelData.hour, alarmCard.modelData.minute)
-                        font.pixelSize: Appearance.font.size.normal
+                        height: alarmTime.implicitHeight
+
+                        StyledText {
+                            id: alarmTime
+
+                            text: TimeFormat.clock(alarmCard.modelData.hour, alarmCard.modelData.minute)
+                            font.pixelSize: Appearance.font.size.normal
+                        }
+
+                        StyledText {
+                            anchors.left: alarmTime.right
+                            anchors.leftMargin: Appearance.padding.normal
+                            anchors.right: parent.right
+                            anchors.baseline: alarmTime.baseline
+
+                            visible: text !== ""
+                            text: alarmCard.modelData.label
+                            color: Appearance.colour.textDim
+                            font.pixelSize: Appearance.font.size.small
+                            elide: Text.ElideRight
+                        }
                     }
 
                     StyledText {
@@ -688,13 +792,14 @@ Column {
                     spacing: Appearance.padding.small
 
                     ClockScrubField {
-                        value: alarmCard.modelData.hour
-                        to: 23
+                        value: TimeFormat.clock24 ? alarmCard.modelData.hour : Clock.hour12(alarmCard.modelData.hour)
+                        from: TimeFormat.clock24 ? 0 : 1
+                        to: TimeFormat.clock24 ? 23 : 12
                         detent: 1
 
                         zeroIsEmpty: false
                         onCommitted: v => Clock.setAlarm(alarmCard.modelData.id, {
-                                hour: v
+                                hour: TimeFormat.clock24 ? v : Clock.hour24(v, alarmCard.modelData.hour >= 12)
                             })
                     }
 
@@ -713,6 +818,16 @@ Column {
                                 minute: v
                             })
                     }
+
+                    Button {
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        visible: !TimeFormat.clock24
+                        text: alarmCard.modelData.hour < 12 ? "am" : "pm"
+                        onClicked: Clock.setAlarm(alarmCard.modelData.id, {
+                            hour: (alarmCard.modelData.hour + 12) % 24
+                        })
+                    }
                 }
 
                 Row {
@@ -722,24 +837,37 @@ Column {
                     spacing: Appearance.padding.small
 
                     Repeater {
-                        model: root.daysInWeek
+                        model: TimeFormat.weekOrder
 
                         delegate: Button {
-                            required property int index
+                            required property int modelData
+
+                            readonly property int stored: (modelData + 6) % 7
 
                             width: (days.width - days.spacing * (root.daysInWeek - 1)) / root.daysInWeek
 
-                            text: Qt.locale().dayName(index + 1, Locale.NarrowFormat).toUpperCase()
+                            text: TimeFormat.weekdayInitial(modelData)
                             checkable: true
-                            checked: alarmCard.modelData.days.includes(index)
+                            checked: alarmCard.modelData.days.includes(stored)
                             onToggled: {
                                 const was = alarmCard.modelData.days;
                                 Clock.setAlarm(alarmCard.modelData.id, {
-                                    days: was.includes(index) ? was.filter(d => d !== index) : [...was, index]
+                                    days: was.includes(stored) ? was.filter(d => d !== stored) : [...was, stored]
                                 });
                             }
                         }
                     }
+                }
+
+                ClockTextField {
+                    width: parent.width
+
+                    autoFocus: false
+                    seed: alarmCard.modelData.label
+                    placeholder: "name"
+                    onCommitted: text => Clock.setAlarm(alarmCard.modelData.id, {
+                            label: text.trim()
+                        })
                 }
 
                 Segments {
@@ -776,11 +904,21 @@ Column {
         readonly property string focusGroup: "alarm"
 
         width: parent.width
+        interactive: !Clock.alarmsFull
         text: "Add an alarm"
         onClicked: {
             const id = Clock.addAlarm();
             if (id)
                 root.editing = id;
         }
+    }
+
+    StyledText {
+        width: parent.width
+        visible: Clock.alarmsFull
+        text: Clock.fullNote("alarm")
+        color: Appearance.colour.textFaint
+        font.pixelSize: Appearance.font.size.small
+        wrapMode: Text.WordWrap
     }
 }

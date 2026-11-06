@@ -31,6 +31,10 @@ Item {
         }
     }
 
+    function clear(): void {
+        input.text = "";
+    }
+
     function cancel(): void {
         input.text = root.seed;
         input.focus = false;

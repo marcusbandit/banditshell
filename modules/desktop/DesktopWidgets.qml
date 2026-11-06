@@ -45,6 +45,14 @@ PanelWindow {
         item: column
     }
 
+    Timer {
+        interval: 60000
+        repeat: true
+        running: win.live && win.cfg.weather && Weather.wanted
+        triggeredOnStart: true
+        onTriggered: Weather.keepFresh()
+    }
+
     Follow {
         id: shown
 
