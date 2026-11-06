@@ -33,6 +33,8 @@ Item {
     readonly property int pageRows: Math.max(1, Math.floor((grid.height - grid.topMargin - grid.bottomMargin) / root.cellHeight))
     readonly property real cellHeight: root.list ? Appearance.sizes.filesRow + (FilesFind.active ? Files.zoomed(Appearance.font.line.small) : 0) : root.cell * 1.18
 
+    readonly property var failure: Listing.failure(Files.error)
+
     readonly property int target: root.dragging ? root.dropIndexAt(root.dragPoint) : -1
 
     function dropIndexAt(position: point): int {
@@ -273,9 +275,9 @@ Item {
         Icon {
             anchors.horizontalCenter: parent.horizontalCenter
 
-            name: Files.error ? "lock" : FilesFind.active ? "search" : "folder_open"
+            name: Files.error ? root.failure.icon : FilesFind.active ? "search" : "folder_open"
             size: Files.zoomed(Appearance.icon.huge)
-            color: Files.error ? Appearance.colour.alarm : Appearance.colour.textFaint
+            color: Files.error && root.failure.alarm ? Appearance.colour.alarm : Appearance.colour.textFaint
         }
 
         StyledText {
@@ -283,9 +285,33 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap
 
-            text: Files.error ? Files.error : FilesFind.active && FilesFind.running ? "searching home…" : FilesFind.active ? `nothing matching "${Files.search}" in home` : Files.search ? `nothing matching "${Files.search}"` : "empty"
+            text: Files.error ? root.failure.text : FilesFind.active && FilesFind.running ? "searching home…" : FilesFind.active ? `nothing matching "${Files.search}" in home` : Files.search ? `nothing matching "${Files.search}"` : "empty"
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
+        }
+
+        Row {
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: Appearance.padding.small
+            visible: !!Files.error
+
+            Button {
+                visible: Files.cwd !== "/"
+                style: "ring"
+                text: "Go up"
+                zoom: Files.magnification
+
+                onClicked: Files.go(Files.parentOf(Files.cwd))
+            }
+
+            Button {
+                visible: Files.cwd !== Files.home
+                style: "ring"
+                text: "Home"
+                zoom: Files.magnification
+
+                onClicked: Files.go(Files.home)
+            }
         }
 
         StyledText {
