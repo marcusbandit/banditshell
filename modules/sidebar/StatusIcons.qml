@@ -74,7 +74,7 @@ Item {
 
     function scrollBrightness(wheel: var): void {
         if (Display.levelKnown)
-            Display.setLevel(Scrolling.scrolled(Display.level, wheel.angleDelta.y, root.naturalScroll(wheel), Config.values.volume.step, 1));
+            Display.setLevel(Scrolling.scrolled(Display.level, wheel.angleDelta.y, root.naturalScroll(wheel), Scrolling.brightnessStep, 1, Display.floor));
     }
 
     readonly property var allGauges: [
@@ -209,6 +209,7 @@ Item {
         id: brightness
 
         readonly property string icon: "brightness_6"
+        readonly property string tip: Display.levelKnown ? `Brightness ${Math.round(Display.level * 100)}%, scroll to change` : "Brightness"
         readonly property bool active: Display.levelKnown
         readonly property bool available: Display.levelKnown
     }
@@ -289,6 +290,7 @@ Item {
                 alarm: modelData.reading.alarm ?? false
                 warning: modelData.reading.warning ?? false
                 available: modelData.reading.available ?? true
+                clickable: hasMenu || modelData.press !== undefined
 
                 onHoveredChanged: {
                     if (hovered) {
@@ -307,7 +309,7 @@ Item {
                 }
 
                 HoverTip {
-                    text: hasMenu ? "" : modelData.title
+                    text: hasMenu ? "" : modelData.reading.tip ?? modelData.title
                     asked: hovered
                 }
             }
