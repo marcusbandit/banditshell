@@ -22,6 +22,17 @@
       ]
     },
     {
+      "id": "2026-11-06-l795",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The lock screen unlocks with your password again"
+        }
+      ]
+    },
+    {
       "id": "2026-11-06-q91",
       "date": "2026-11-06",
       "changes": [
