@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-11-06-q90",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Each special workspace plate shows only its own windows"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The folded sidebar clock sits at the foot with the date under it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The folded sidebar rings the workspace mark while a special is open"
+        }
+      ]
+    },
+    {
       "id": "2026-11-06-l795",
       "date": "2026-11-06",
       "changes": [

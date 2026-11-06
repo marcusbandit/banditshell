@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import qs.config
+import "workspace-key.js" as WorkspaceKey
 
 Singleton {
     id: root
@@ -441,8 +442,8 @@ Singleton {
                 h: h,
                 focused: m.focused === true,
 
-                ws: Number(m.activeWorkspace?.id) || 0,
-                special: Number(m.specialWorkspace?.id) || 0
+                ws: WorkspaceKey.keyOf(m.activeWorkspace),
+                special: WorkspaceKey.keyOf(m.specialWorkspace)
             });
         }
 
@@ -511,8 +512,8 @@ Singleton {
             if (!c || c.mapped !== true || c.hidden === true)
                 continue;
 
-            const ws = Number(c.workspace?.id);
-            if (!isFinite(ws))
+            const ws = WorkspaceKey.keyOf(c.workspace);
+            if (ws === "")
                 continue;
 
             if (c.pinned !== true && shown[ws] !== true)

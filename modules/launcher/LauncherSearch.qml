@@ -877,7 +877,7 @@ QtObject {
         ];
     }
 
-    readonly property var openWindows: Hyprland.toplevels.values.filter(t => (t.workspace?.id ?? 0) !== 0)
+    readonly property var openWindows: Hyprland.toplevels.values.filter(t => Hypr.keyOf(t) !== "")
 
     readonly property bool airplane: !Network.enabled && !Bluetooth.enabled
 
@@ -1226,7 +1226,7 @@ QtObject {
 
     readonly property bool windowList: Search.windowListAsk(root.text)
 
-    readonly property var windowRows: root.text.length < 2 ? [] : Hyprland.toplevels.values.filter(t => (t.workspace?.id ?? 0) !== 0).map(t => {
+    readonly property var windowRows: root.text.length < 2 ? [] : Hyprland.toplevels.values.filter(t => Hypr.keyOf(t) !== "").map(t => {
         const o = t.lastIpcObject ?? {};
         const cls = o.class || o.initialClass || "";
         const app = Apps.nameFor(cls);
@@ -1782,7 +1782,7 @@ QtObject {
     function windowsOf(entry: var): var {
         return Hyprland.toplevels.values.filter(t => {
             const o = t.lastIpcObject ?? {};
-            return (t.workspace?.id ?? 0) !== 0 && Apps.entryFor(o.class || o.initialClass || "")?.id === entry.id;
+            return Hypr.keyOf(t) !== "" && Apps.entryFor(o.class || o.initialClass || "")?.id === entry.id;
         });
     }
 

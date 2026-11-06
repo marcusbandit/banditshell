@@ -264,6 +264,16 @@ test.describe("recording", () => {
         assert.strictEqual(Recording.windowBox(clients, ""), "");
     });
 
+    test.it("tells Hyprland 0.57 special workspaces apart by name", () => {
+        const clients = [
+            { address: "0xa", at: [0, 0], size: [800, 600], workspace: { id: 1, name: "1", type: "normal" }, focusHistoryID: 2 },
+            { address: "0xb", at: [1, 1], size: [300, 300], workspace: { name: "special:music", type: "special" }, focusHistoryID: 0 },
+            { address: "0xc", at: [2, 2], size: [200, 200], workspace: { name: "special:torrents", type: "special" }, focusHistoryID: 1 }
+        ];
+        const monitors = [{ activeWorkspace: { id: 1, name: "1", type: "normal" }, specialWorkspace: { name: "special:music", type: "special" } }];
+        assert.deepStrictEqual(Recording.windowBoxes(clients, monitors), ["1,1 300x300", "0,0 800x600"]);
+    });
+
     test.it("reads hyprctl output joined by a record separator", () => {
         const parts = Recording.splitDocuments('[{"a":1}]\u001e[{"b":2}]');
         assert.deepStrictEqual(parts, [[{ a: 1 }], [{ b: 2 }]]);

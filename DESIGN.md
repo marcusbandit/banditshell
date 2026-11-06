@@ -2110,10 +2110,9 @@ small time with the battery given a shape of its own, a level bar, beside other 
 the rail's width behind. Apple's iPhone Duo met the same problem in its side column and answered
 it the same way: a small time on top, the battery as a level rather than a battery icon. `sidebar.glance` picks where (Settings, Sidebar, "Clock and battery"):
 
-- `rail` (the default): near the rail's foot, the time, and under it the battery as an upright
-  level bar with a nub on top and its percent below. The time sits at the height of the open
-  sidebar's clock, centre on centre, so it stays put while the rail grows; it only rises when the
-  battery would otherwise fall off the foot. The resting clock (`sidebar.clock.style` and `size`)
+- `rail` (the default): at the rail's foot, the time, the date under it, and under that the
+  battery as an upright level bar with a nub on top and its percent below. The time and date read
+  sideways when the clock is one line. The resting clock (`sidebar.clock.style` and `size`)
   and the open one (`wideStyle` and `wideSize`) are chosen apart: stacked or one line, small or
   large. One line turns the time on its side so it reads as 14:32. The defaults are one line small
   at rest and stacked large when open, so the wide column is used for something.

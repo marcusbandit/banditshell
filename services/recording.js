@@ -84,16 +84,29 @@ function recorderCommand(backend, file, target, sound) {
     return [];
 }
 
+function workspaceKey(ws) {
+    if (!ws)
+        return "";
+    var name = String(ws.name || "");
+    if (ws.type === "special" || name.indexOf("special:") === 0 || (typeof ws.id === "number" && ws.id < 0))
+        return name || (typeof ws.id === "number" && ws.id < 0 ? "special#" + ws.id : "");
+    return typeof ws.id === "number" && ws.id !== 0 ? String(ws.id) : "";
+}
+
 function visibleWorkspaces(monitors) {
-    var ids = [];
+    var keys = [];
     for (var i = 0; i < (monitors || []).length; i++) {
         var m = monitors[i];
-        if (m && m.activeWorkspace)
-            ids.push(m.activeWorkspace.id);
-        if (m && m.specialWorkspace && m.specialWorkspace.id)
-            ids.push(m.specialWorkspace.id);
+        if (!m)
+            continue;
+        var active = workspaceKey(m.activeWorkspace);
+        var special = workspaceKey(m.specialWorkspace);
+        if (active)
+            keys.push(active);
+        if (special)
+            keys.push(special);
     }
-    return ids;
+    return keys;
 }
 
 function boxOf(client) {
@@ -107,7 +120,7 @@ function boxOf(client) {
 function windowBoxes(clients, monitors) {
     var visible = visibleWorkspaces(monitors);
     return (clients || []).filter(function (c) {
-        return c && c.mapped !== false && !c.hidden && c.workspace && visible.indexOf(c.workspace.id) >= 0 && boxOf(c);
+        return c && c.mapped !== false && !c.hidden && c.workspace && visible.indexOf(workspaceKey(c.workspace)) >= 0 && boxOf(c);
     }).sort(function (a, b) {
         return (a.focusHistoryID || 0) - (b.focusHistoryID || 0);
     }).map(boxOf);

@@ -1,0 +1,174 @@
+[
+  {
+    "address": "0x55c67355fff0",
+    "class": "org.qbittorrent.qBittorrent",
+    "title": "window",
+    "workspace": {
+      "address": "special:torrents",
+      "type": "special",
+      "name": "special:torrents"
+    },
+    "monitor": 0,
+    "at": [
+      2534,
+      262
+    ],
+    "size": [
+      2474,
+      1396
+    ],
+    "floating": false,
+    "mapped": true
+  },
+  {
+    "address": "0x55c6734a42c0",
+    "class": "Spotify",
+    "title": "window",
+    "workspace": {
+      "address": "special:music",
+      "type": "special",
+      "name": "special:music"
+    },
+    "monitor": 0,
+    "at": [
+      2534,
+      262
+    ],
+    "size": [
+      2474,
+      1396
+    ],
+    "floating": false,
+    "mapped": true
+  },
+  {
+    "address": "0x55c6743aad60",
+    "class": "Beeper",
+    "title": "window",
+    "workspace": {
+      "address": "special:communication",
+      "type": "special",
+      "name": "special:communication"
+    },
+    "monitor": 0,
+    "at": [
+      5022,
+      262
+    ],
+    "size": [
+      1276,
+      1396
+    ],
+    "floating": false,
+    "mapped": true
+  },
+  {
+    "address": "0x55c6741a4350",
+    "class": "com.marcusrosado.AniBeam",
+    "title": "window",
+    "workspace": {
+      "address": "2",
+      "id": 2,
+      "type": "normal",
+      "name": "2"
+    },
+    "monitor": 0,
+    "at": [
+      2534,
+      262
+    ],
+    "size": [
+      2474,
+      1396
+    ],
+    "floating": false,
+    "mapped": true
+  },
+  {
+    "address": "0x55c6747ec5d0",
+    "class": "foot",
+    "title": "window",
+    "workspace": {
+      "address": "1",
+      "id": 1,
+      "type": "normal",
+      "name": "1"
+    },
+    "monitor": 0,
+    "at": [
+      1244,
+      262
+    ],
+    "size": [
+      1276,
+      1396
+    ],
+    "floating": false,
+    "mapped": true
+  },
+  {
+    "address": "0x55c6734da430",
+    "class": "vesktop",
+    "title": "window",
+    "workspace": {
+      "address": "special:communication",
+      "type": "special",
+      "name": "special:communication"
+    },
+    "monitor": 0,
+    "at": [
+      2534,
+      262
+    ],
+    "size": [
+      2474,
+      1396
+    ],
+    "floating": false,
+    "mapped": true
+  },
+  {
+    "address": "0x55c674876690",
+    "class": "zen",
+    "title": "window",
+    "workspace": {
+      "address": "1",
+      "id": 1,
+      "type": "normal",
+      "name": "1"
+    },
+    "monitor": 0,
+    "at": [
+      2534,
+      262
+    ],
+    "size": [
+      2474,
+      1396
+    ],
+    "floating": false,
+    "mapped": true
+  },
+  {
+    "address": "0x55c6747b3610",
+    "class": "com.t3tools.T3Code",
+    "title": "window",
+    "workspace": {
+      "address": "1",
+      "id": 1,
+      "type": "normal",
+      "name": "1"
+    },
+    "monitor": 0,
+    "at": [
+      5022,
+      262
+    ],
+    "size": [
+      1276,
+      1396
+    ],
+    "floating": false,
+    "mapped": true
+  }
+]

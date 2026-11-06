@@ -3,7 +3,6 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
-import "placement.js" as Placement
 
 Item {
     id: root
@@ -11,8 +10,6 @@ Item {
     property real topInset: 0
     property real bottomInset: 0
     property real tabsReach: 0
-    property real timeCentre: -1
-    property real floor: 0
 
     readonly property string place: Config.values.sidebar.glance
     readonly property bool inRail: root.place === "rail" || root.place === "rail top"
@@ -20,7 +17,9 @@ Item {
     readonly property bool clockShown: Config.values.sidebar.clock.style !== "off"
     readonly property bool oneLine: Config.values.sidebar.clock.style === "one line"
     readonly property real timeSize: Config.values.sidebar.clock.size === "small" ? Appearance.font.size.small : Appearance.font.size.normal
-    readonly property bool aligned: root.clockShown && root.timeCentre >= 0
+    readonly property string dateStyle: Config.values.sidebar.clock.date
+    readonly property bool dateShown: root.clockShown && root.dateStyle !== "off"
+    readonly property bool dayOnly: root.dateStyle === "day"
 
     readonly property BatteryGlance battery: BatteryGlance {}
 
@@ -28,9 +27,8 @@ Item {
     readonly property real headEdge: stack.visible && root.atHead ? stack.y + stack.height : 0
     readonly property real topEdge: stack.visible && !root.atHead ? stack.y : wide.visible ? wide.y : root.height - root.tabsReach
 
-    function footY(column: Item, timeHeight: real): real {
-        const foot = root.height - root.bottomInset - column.height;
-        return root.aligned ? Placement.clockY(root.timeCentre - timeHeight / 2, foot, root.floor) : foot;
+    function footY(column: Item): real {
+        return root.height - root.bottomInset - column.height;
     }
 
     WallClock {
@@ -51,7 +49,7 @@ Item {
         id: stack
 
         x: Math.round((root.width - width) / 2)
-        y: Math.round(root.atHead ? root.topInset : root.footY(stack, root.oneLine ? sidewaysTime.height : stackedTime.height))
+        y: Math.round(root.atHead ? root.topInset : root.footY(stack))
         spacing: Appearance.padding.large
         visible: root.inRail && (root.clockShown || root.battery.shown)
 
@@ -89,6 +87,48 @@ Item {
                 anchors.centerIn: parent
                 text: TimeFormat.time(clock.date, false)
                 font.pixelSize: root.timeSize
+                rotation: -90
+            }
+        }
+
+        Column {
+            id: stackedDate
+
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: 0
+            visible: root.dateShown && !root.oneLine
+
+            StyledText {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: Qt.formatDateTime(clock.date, "d")
+                font.pixelSize: Appearance.font.size.small
+                color: Appearance.colour.textFaint
+            }
+
+            StyledText {
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: !root.dayOnly
+                text: Qt.formatDateTime(clock.date, "MMM").toUpperCase()
+                font.pixelSize: Appearance.font.size.small
+                color: Appearance.colour.textFaint
+            }
+        }
+
+        Item {
+            id: sidewaysDate
+
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: sidewaysDateText.implicitHeight
+            height: sidewaysDateText.implicitWidth
+            visible: root.dateShown && root.oneLine
+
+            StyledText {
+                id: sidewaysDateText
+
+                anchors.centerIn: parent
+                text: root.dayOnly ? Qt.formatDateTime(clock.date, "d") : Qt.formatDateTime(clock.date, "d MMM").toUpperCase()
+                font.pixelSize: Appearance.font.size.small
+                color: Appearance.colour.textFaint
                 rotation: -90
             }
         }
@@ -142,7 +182,7 @@ Item {
         id: wide
 
         x: Math.round((root.width - width) / 2)
-        y: Math.round(root.footY(wide, wideTime.height))
+        y: Math.round(root.footY(wide))
         spacing: Appearance.padding.normal
         visible: root.place === "wide" && (root.clockShown || root.battery.shown)
 
