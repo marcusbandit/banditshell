@@ -1,16 +1,35 @@
 ---
 title: v0.3.0, the small things
-date: 2026-11-06
+date: 2026-11-07
 release: v0.3.0
-draft: true
-summary: I went through the whole shell and wrote down 310 rough edges. v0.3.0 is the release that fixes them, from the launcher and Files to the island, the clock and the sidebar.
+summary: v0.3.0 brings desktop widgets, a floating Settings window and launcher answers without an API key. It also fixes the 310 rough edges I found going through the whole shell, from the launcher and Files to the island, the clock and the sidebar.
 ---
 
 Early in November I sat down with the shell and went through it screen by screen. I opened every menu, pressed every key I could think of and wrote down each thing that was off. A label cut in half. A key that did nothing. A row that said "charging" on a full battery.
 
 That came to 310 issues, numbered #455 to #764 on GitHub. None of them is a feature. Together they decide whether the shell feels finished, so v0.3.0 is the release where I fixed them.
 
-This post covers what has landed so far. A few more pull requests will join before the release, and the list below grows with them.
+A few real features landed first, so they come first here.
+
+## Two things to do after updating
+
+The launcher's Claude answers now run through Claude Code instead of an Anthropic API key. If you used them, the launcher asks you to sign in to Claude Code the first time you ask something. The key in Settings no longer does anything for Claude (#444).
+
+The clipboard panel searches as soon as you type. That took over the one-letter commands it used before: pin is now Ctrl+P, and Ctrl+J and Ctrl+K step down and up the list.
+
+## New since v0.2.0
+
+Settings is its own window now. It floats in the middle of the screen, you drag its top edge to move it, and it opens on a Home page with shortcuts to the things people change first. Every setting has a line under its name that says what it does (#435).
+
+The desktop got widgets: the time and date, a month calendar, what is playing, the weather, processor and memory load, and quick timers. Settings, Desktop, Widgets turns each card on or off and picks the side of the screen.
+
+![The desktop with Settings open in the middle and the widget column on the right](/images/blog-desktop.webp "Settings floating over the desktop, with the widget column on the right.")
+
+The launcher can answer questions through Claude Code or Codex, on the plan you already pay for, with no API key to paste. Type `ask` and a question. The answer streams in, and Copy and Continue in chat sit under it (#444).
+
+![The launcher answering a question through Claude Code](/images/blog-ask.webp "An answer from Claude Code, right in the launcher.")
+
+Plugins can draw richer rows: taller ones, tags, a preview, or their own QML. Their results lead your searches, and Settings can move them back down (#439, #442).
 
 ## The launcher
 
@@ -68,6 +87,8 @@ The workspace column grows for a busy workspace and shrinks again when it emptie
 
 Every workspace mark owns a slot at least 24 pixels tall, so the dots are easy to hit. Tray icons name their app on hover, and the icons past your limit sit behind a "+N" slot that lists them. The update mark on the rail follows every real state, and VPN and Keep awake have marks of their own.
 
+Hovering the folded sidebar unfolds it, its workspace marks included, and right-clicking it opens a small menu with Sidebar settings and Fold. The folded clock sits at the foot with the date under it (#794, #799).
+
 ## Wi-Fi, Bluetooth and power
 
 Bluetooth lists every paired and nearby device, and pairing a keyboard or a phone works from the menu. It shows the code to type or the number to confirm.
@@ -86,6 +107,6 @@ Settings opens its list when you search while the list is folded. Holding a step
 
 ## Trying it
 
-The update menu offers v0.3.0 when it ships. If you follow `main`, most of this is already on your machine.
+The update menu offers v0.3.0 now. If you follow `main`, all of this is already on your machine.
 
 Something still wrong? Open an [issue](https://github.com/marcusbandit/banditshell/issues).
