@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "readStatus", "statusLine", "notifyAllowed", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
+const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "readStatus", "statusLine", "coldLine", "notifyAllowed", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 const JIRA = {
@@ -172,6 +172,7 @@ test.describe("status items", () => {
         assert.strictEqual(P.readStatus({ id: "mic", click: "undo", actions: acts }, declared.status).item.click, "undo");
         assert.strictEqual(P.readStatus({ id: "mic", click: "nope" }, declared.status).item.click, "menu");
         assert.strictEqual(P.readStatus({ id: "held", click: "menu" }, declared.status).item.click, "rows");
+        assert.strictEqual(P.coldLine("PROJ-41"), '{"type":"activate","seq":0,"id":"PROJ-41","action":"","cold":true}');
         assert.strictEqual(P.statusLine("mic", "undo"), '{"type":"activate","seq":0,"id":"mic","action":"undo","status":true}');
     });
 });

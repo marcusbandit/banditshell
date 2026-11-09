@@ -270,6 +270,10 @@ function readStatus(raw, declared) {
     };
 }
 
+function coldLine(id) {
+    return JSON.stringify({ type: "activate", seq: 0, id: id, action: "", cold: true });
+}
+
 function statusLine(id, action) {
     return JSON.stringify({ type: "activate", seq: 0, id: id, action: action || "", status: true });
 }

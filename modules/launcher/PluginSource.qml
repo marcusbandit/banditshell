@@ -300,6 +300,10 @@ QtObject {
     }
 
     function activate(row: var): void {
+        if (row.cold) {
+            PluginHost.activateCold(root.pluginId, row.cold);
+            return;
+        }
         if (row.problem) {
             root.solve(row);
             return;
@@ -312,6 +316,8 @@ QtObject {
     }
 
     function actionsFor(row: var): var {
+        if (row.cold)
+            return [];
         if (row.problem)
             return row.problem === "waiting" ? [] : [
                 {
@@ -336,9 +342,19 @@ QtObject {
 
     function rowById(id: string): var {
         const prefix = `plugin:${root.pluginId}:`;
-        if (id.indexOf(prefix) !== 0)
+        if (id.indexOf(prefix) !== 0 || !root.plugin)
             return null;
-        const item = (root.answer?.items ?? []).find(i => i.id === id.slice(prefix.length));
-        return item ? root.rowOf(item, 1) : null;
+        const itemId = id.slice(prefix.length);
+        const item = (root.answer?.items ?? []).find(i => i.id === itemId);
+        if (item)
+            return root.rowOf(item, 1);
+        return itemId ? {
+            key: id,
+            kind: root.kind,
+            cold: itemId,
+            label: Config.values.launcher.hotkeys[id]?.label || itemId,
+            icon: root.plugin.icon.name ?? "extension",
+            score: 1
+        } : null;
     }
 }

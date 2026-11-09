@@ -330,6 +330,15 @@ Singleton {
         root.ensure(id).send(Protocol.activateLine(root.answers[id]?.seq ?? 0, item, action, view));
     }
 
+    function activateCold(id: string, item: string): void {
+        if (!root.usable(id))
+            return;
+        root.statusAsked = Object.assign({}, root.statusAsked, {
+            [id]: Date.now()
+        });
+        root.ensure(id).send(Protocol.coldLine(item));
+    }
+
     function submit(id: string, view: string, values: var, asker: var): void {
         if (!root.usable(id))
             return;
