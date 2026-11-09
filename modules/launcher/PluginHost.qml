@@ -28,6 +28,7 @@ Singleton {
     property var expecting: ({})
     property var page: null
     property var watchers: []
+    property var exiting: ({})
     readonly property bool open: root.watchers.length > 0
     readonly property var drawings: ({})
     readonly property var noted: ({})
@@ -198,7 +199,7 @@ Singleton {
     function keepAlive(): void {
         let wait = 0;
         for (const id of Object.keys(root.registered)) {
-            if (!root.pluginOf(id)?.background || root.processes[id])
+            if (!root.registered[id] || !root.pluginOf(id)?.background || root.processes[id] || root.exiting[id])
                 continue;
             const state = root.stateOf(id);
             if (state.off || root.missingOf(id).length)
@@ -225,6 +226,7 @@ Singleton {
                         icon: e.plugin?.icon ?? {},
                         prefix: e.plugin?.prefix ?? [],
                         global: !!e.plugin?.global,
+                        background: !!e.plugin?.background,
                         preferences: e.plugin?.preferences ?? [],
                         error: e.error ?? "",
                         crashed: root.stateOf(e.id).off,
@@ -267,6 +269,9 @@ Singleton {
         const next = Object.assign({}, root.processes);
         delete next[id];
         root.processes = next;
+        root.exiting = Object.assign({}, root.exiting, {
+            [id]: proc
+        });
         proc.stop();
     }
 
@@ -413,6 +418,11 @@ Singleton {
                 root.note(id, crashed.off ? "stopped after three crashes in a minute" : `exited, starting again ${root.pluginOf(id)?.background ? "" : "on the next query "}after ${crashed.delay / 1000} s`);
             }
         }
+        if (root.exiting[id] === proc) {
+            const left = Object.assign({}, root.exiting);
+            delete left[id];
+            root.exiting = left;
+        }
         proc.destroy();
         Qt.callLater(root.keepAlive);
     }
@@ -449,7 +459,7 @@ Singleton {
     onOpenChanged: {
         const line = root.open ? Protocol.openLine() : Protocol.closeLine();
         for (const proc of Object.values(root.processes))
-            proc.send(line);
+            proc.send(line, true);
     }
 
     onOffChanged: root.sync()

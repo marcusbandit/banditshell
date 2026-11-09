@@ -33,8 +33,9 @@ Process {
 
     onExited: root.ended(root.stopping)
 
-    function send(line: string): void {
-        idle.restart();
+    function send(line: string, passing: bool): void {
+        if (!passing)
+            idle.restart();
         if (root.running && root.processId)
             root.write(`${line}\n`);
         else

@@ -91,7 +91,7 @@ plugin can reach before it lists any.
 | `prefix` | no | Words that send the rest of the query to this plugin alone, the way `gh` and `pkg` work. They are listed on the `?` page. |
 | `global` | no | Lets the plugin add rows to plain searches. `minLength` is how many characters a query needs first, 3 by default. `cap` is how many of its rows a plain search shows at most, 3 by default and up to 50. Without `global` the plugin only answers after its prefix. |
 | `preferences` | no | Settings the plugin needs, drawn by Settings so a plugin never ships its own settings window. |
-| `background` | no | `true` starts the program with the shell and keeps it running while the launcher is closed, so it can keep its rows fresh or work on its own. It is never stopped for being idle, and after a crash it starts again by itself. |
+| `background` | no | `true` starts the program with the shell and keeps it running while the launcher is closed, so it can keep its rows fresh or work on its own. It is never stopped for being idle, and after a crash it starts again by itself, until three crashes in a minute switch it off. |
 
 A manifest needs `prefix`, `global` or both; with neither, nothing would ever
 reach the plugin.

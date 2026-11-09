@@ -44,7 +44,8 @@ Order, each one PR, smallest first so the Voice plugin can drop its
 workarounds as they land:
 
 1. `04` open and close, with refresh while closed through a manifest
-   `interval`
+   `background` flag: the program keeps running and times its own refresh,
+   so the shell needs no `interval`
 2. `02` action shortcuts
 3. `01` status items in the rail and the island; the program stays running
    for them
