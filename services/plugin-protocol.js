@@ -385,6 +385,10 @@ function propsOf(raw) {
     return text.length > PROPS_LIMIT ? {} : JSON.parse(text);
 }
 
+function factsOf(raw) {
+    return (Array.isArray(raw) ? raw : []).filter(f => f && typeof f === "object").map(f => ({ label: textOf(f.label, 80).trim(), value: textOf(f.value, 500) })).filter(f => f.label && f.value).slice(0, 30);
+}
+
 function readPreview(raw, folder) {
     if (typeof raw === "string")
         return raw.trim() ? { text: textOf(raw, 20000) } : null;
@@ -400,6 +404,9 @@ function readPreview(raw, folder) {
         var file = textOf(raw.file, 4096);
         return file.charAt(0) === "/" ? { file: file } : null;
     }
+    var facts = factsOf(raw.facts);
+    if (facts.length)
+        return { facts: facts, text: textOf(raw.text, 20000) };
     return given(raw.text) ? { text: textOf(raw.text, 20000) } : null;
 }
 
@@ -485,7 +492,7 @@ function readView(raw, folder) {
     };
     if (raw.kind === "detail") {
         view.text = textOf(raw.text, 20000);
-        view.facts = (Array.isArray(raw.facts) ? raw.facts : []).filter(f => f && typeof f === "object").map(f => ({ label: textOf(f.label, 80).trim(), value: textOf(f.value, 500) })).filter(f => f.label).slice(0, 30);
+        view.facts = factsOf(raw.facts);
     } else if (raw.kind === "list") {
         view.placeholder = textOf(raw.placeholder) || "Filter";
         view.items = readItems(raw.items, folder);

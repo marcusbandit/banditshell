@@ -12,6 +12,7 @@ LauncherSearch 1.0 LauncherSearch.qml
 ListLauncher 1.0 ListLauncher.qml
 Peek 1.0 Peek.qml
 PluginContext 1.0 PluginContext.qml
+PluginFacts 1.0 PluginFacts.qml
 singleton PluginHost 1.0 PluginHost.qml
 PluginPreview 1.0 PluginPreview.qml
 PluginProcess 1.0 PluginProcess.qml

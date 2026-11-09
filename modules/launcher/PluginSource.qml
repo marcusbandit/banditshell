@@ -80,6 +80,7 @@ QtObject {
     function rowOf(item: var, score: real): var {
         const span = item.height;
         const preview = item.preview;
+        const facts = preview?.facts ? preview : null;
         return Object.assign({
             key: `plugin:${root.pluginId}:${item.id}`,
             kind: root.kind,
@@ -91,15 +92,15 @@ QtObject {
             span: span,
             tags: item.tags,
             card: item.qml || span !== 1 ? root.rowCard : null,
-            peekText: preview?.text ?? "",
+            peekText: facts ? "" : preview?.text ?? "",
             peekImage: preview?.image ?? "",
             peekPath: preview?.file ?? "",
-            peekCard: preview?.qml ? root.previewCard : null,
+            peekCard: preview?.qml ? root.previewCard : facts ? root.factsCard : null,
             entry: preview?.qml ? {
                 owner: root,
                 item: item,
                 qml: preview.qml
-            } : null
+            } : facts
         }, root.iconOf(item.icon), item.image && span === 1 && !item.qml ? {
             iconSource: item.image
         } : {});
@@ -190,6 +191,10 @@ QtObject {
 
     property Component previewCard: Component {
         PluginPreview {}
+    }
+
+    property Component factsCard: Component {
+        PluginFacts {}
     }
 
     function handle(message: var): void {

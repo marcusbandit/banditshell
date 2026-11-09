@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-09-p810",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugin rows can list facts in the preview beside the launcher"
+        }
+      ]
+    },
+    {
       "id": "2026-11-09-p809",
       "date": "2026-11-09",
       "changes": [
