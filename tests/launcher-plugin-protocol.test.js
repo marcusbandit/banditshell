@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
+const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 const JIRA = {
@@ -99,6 +99,31 @@ test.describe("plugin queries", () => {
         assert.strictEqual(P.cancelLine(12), '{"type":"cancel","seq":12}');
         assert.deepStrictEqual([P.openLine(), P.closeLine()], ['{"type":"open"}', '{"type":"close"}']);
         assert.ok(!P.queryLine(1, "a\nb", false).includes("\n"));
+    });
+});
+
+test.describe("action shortcuts", () => {
+    test.it("reads a chord in any order and case, and draws it the way a person reads it", () => {
+        assert.deepStrictEqual([P.readShortcut("ctrl+d"), P.readShortcut("Shift + Ctrl + X"), P.readShortcut("alt+enter"), P.readShortcut("ctrl+f5"), P.readShortcut("")], [{ chord: "CTRL+D" }, { chord: "CTRL+SHIFT+X" }, { chord: "ALT+RETURN" }, { chord: "CTRL+F5" }, { chord: "" }]);
+        assert.deepStrictEqual([P.chordLabel("CTRL+SHIFT+X"), P.chordLabel("ALT+RETURN"), P.chordLabel("")], ["Ctrl Shift X", "Alt Enter", ""]);
+    });
+
+    test.it("refuses chords that would type, that the launcher uses, or that it cannot read", () => {
+        for (const [chord, why] of [["d", /ctrl or alt/], ["shift+d", /ctrl or alt/], ["ctrl+k", /already uses/], ["ctrl+enter", /already uses/], ["ctrl+backspace", /already uses/], ["ctrl+v", /already uses/], ["super+d", /modifiers/], ["ctrl+ctrl+d", /modifiers/], ["ctrl+banana", /not a key/]])
+            assert.match(P.readShortcut(chord).refusal, why, chord);
+    });
+
+    test.it("keeps the first action that claims a chord, logs the rest, and finds an action by its chord", () => {
+        const [item] = P.readItems([{ id: "r", title: "Rule", actions: [
+            { id: "dim", title: "Dim", shortcut: "ctrl+d" },
+            { id: "drop", title: "Drop", shortcut: "ctrl+d" },
+            { id: "copy", title: "Copy", shortcut: "ctrl+c" }
+        ] }]);
+        assert.deepStrictEqual(item.actions.map(a => a.chord), ["CTRL+D", "", ""]);
+        assert.strictEqual(item.notes.length, 2);
+        assert.match(item.notes.join("\n"), /Ctrl D on Drop: Dim has it/);
+        assert.strictEqual(P.actionOf(item.actions, "CTRL+D").id, "dim");
+        assert.strictEqual(P.actionOf(item.actions, ""), null);
     });
 });
 

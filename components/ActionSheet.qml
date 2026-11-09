@@ -143,11 +143,20 @@ Item {
         Repeater {
             model: root.actions
 
-            StyledText {
+            Row {
                 required property var modelData
 
-                text: modelData.label
-                font.pixelSize: root.textSize
+                spacing: modelData.keys ? root.inset * 2 : 0
+
+                StyledText {
+                    text: parent.modelData.label
+                    font.pixelSize: root.textSize
+                }
+
+                StyledText {
+                    text: parent.modelData.keys ?? ""
+                    font.pixelSize: root.textSize
+                }
             }
         }
     }
@@ -276,6 +285,18 @@ Item {
                                 speed: Appearance.animation.trackSpeed
                             }
                         }
+                    }
+
+                    StyledText {
+                        y: cell.lead
+                        height: root.rowHeight
+                        anchors.right: parent.right
+                        anchors.rightMargin: root.inset
+                        verticalAlignment: Text.AlignVCenter
+                        visible: text !== ""
+                        text: cell.modelData.keys ?? ""
+                        font.pixelSize: root.textSize
+                        color: Appearance.colour.textFaint
                     }
 
                     MouseArea {

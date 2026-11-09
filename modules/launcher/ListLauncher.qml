@@ -453,6 +453,12 @@ LauncherConcept {
             return true;
         if (row?.card && !root.answerHolds && !assistantCard.holds && Search.rowMayClaim(event.key, event.modifiers) && list.itemAtIndex(root.selected)?.claimRowKey(event))
             return true;
+        const chord = row && !row.header && !root.answerHolds ? LauncherHotkeys.pressedChord(event) : "";
+        const bound = chord ? root.actionsFor(row).find(a => a.chord && Chords.sameChord(a.chord, chord)) : null;
+        if (bound) {
+            bound.run();
+            return true;
+        }
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
             root.actionsFor(row).slice(1).find(a => !a.tucked)?.run();
             return true;

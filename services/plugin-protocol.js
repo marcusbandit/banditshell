@@ -227,6 +227,47 @@ function cancelLine(seq) {
     return JSON.stringify({ type: "cancel", seq: seq });
 }
 
+var SHORTCUT_MODS = { ctrl: "CTRL", control: "CTRL", alt: "ALT", shift: "SHIFT" };
+
+var SHORTCUT_KEYS = { enter: "RETURN", return: "RETURN", backspace: "BACKSPACE", delete: "DELETE", del: "DELETE", space: "SPACE", insert: "INSERT", comma: "COMMA", ",": "COMMA", period: "PERIOD", ".": "PERIOD", minus: "MINUS", "-": "MINUS", equal: "EQUAL", "=": "EQUAL", slash: "SLASH", "/": "SLASH", semicolon: "SEMICOLON", ";": "SEMICOLON", "[": "BRACKETLEFT", "]": "BRACKETRIGHT", pageup: "PRIOR", pagedown: "NEXT", home: "HOME", end: "END" };
+
+var TAKEN_CHORDS = ["CTRL+K", "CTRL+RETURN", "CTRL+A", "CTRL+C", "CTRL+V", "CTRL+X", "CTRL+Z", "CTRL+Y", "CTRL+SHIFT+Z", "CTRL+BACKSPACE", "CTRL+DELETE", "CTRL+HOME", "CTRL+END", "CTRL+SHIFT+HOME", "CTRL+SHIFT+END", "CTRL+INSERT", "SHIFT+INSERT", "SHIFT+DELETE", "CTRL+SHIFT+V"];
+
+function chordKey(chord) {
+    var parts = chord.split("+").map(p => p.trim()).filter(Boolean);
+    var key = parts.pop();
+    return ["CTRL", "ALT", "SHIFT"].filter(m => parts.indexOf(m) >= 0).concat([key]).join("+");
+}
+
+function readShortcut(raw) {
+    var text = textOf(raw, 60).trim().toLowerCase();
+    if (!text)
+        return { chord: "" };
+    var parts = text.split("+").map(p => p.trim());
+    var key = parts.pop();
+    var mods = [];
+    for (var p of parts) {
+        var mod = SHORTCUT_MODS[p];
+        if (!mod || mods.indexOf(mod) >= 0)
+            return { refusal: `refused the shortcut ${text}: modifiers are ctrl, alt and shift` };
+        mods.push(mod);
+    }
+    var name = /^[a-z0-9]$/.test(key) ? key.toUpperCase() : /^f([1-9]|1[0-9]|2[0-4])$/.test(key) ? key.toUpperCase() : SHORTCUT_KEYS[key];
+    if (!name)
+        return { refusal: `refused the shortcut ${text}: ${key || "nothing"} is not a key it can use` };
+    if (mods.indexOf("CTRL") < 0 && mods.indexOf("ALT") < 0)
+        return { refusal: `refused the shortcut ${text}: it needs ctrl or alt, or it would type into the search` };
+    var chord = chordKey(mods.concat([name]).join("+"));
+    if (TAKEN_CHORDS.indexOf(chord) >= 0)
+        return { refusal: `refused the shortcut ${text}: the launcher already uses it` };
+    return { chord: chord };
+}
+
+function chordLabel(chord) {
+    var names = { CTRL: "Ctrl", ALT: "Alt", SHIFT: "Shift", RETURN: "Enter", BACKSPACE: "Backspace", DELETE: "Delete", SPACE: "Space", INSERT: "Insert", COMMA: ",", PERIOD: ".", MINUS: "-", EQUAL: "=", SLASH: "/", SEMICOLON: ";", BRACKETLEFT: "[", BRACKETRIGHT: "]", PRIOR: "Page Up", NEXT: "Page Down", HOME: "Home", END: "End" };
+    return chord ? chord.split("+").map(p => names[p] || p).join(" ") : "";
+}
+
 function readAction(raw) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw))
         return null;
@@ -234,7 +275,26 @@ function readAction(raw) {
     var title = textOf(raw.title).trim();
     if (!id || !title)
         return null;
-    return Object.assign(readDoing(raw), { id: id, title: title, icon: textOf(raw.icon, 64) });
+    var shortcut = readShortcut(raw.shortcut);
+    return Object.assign(readDoing(raw), { id: id, title: title, icon: textOf(raw.icon, 64), chord: shortcut.chord || "", notes: shortcut.refusal ? [shortcut.refusal] : [] });
+}
+
+function chordsOf(actions) {
+    var seen = {};
+    for (var a of actions) {
+        if (!a.chord)
+            continue;
+        if (seen[a.chord]) {
+            a.notes = a.notes.concat([`refused the shortcut ${chordLabel(a.chord)} on ${a.title}: ${seen[a.chord]} has it already`]);
+            a.chord = "";
+        } else
+            seen[a.chord] = a.title;
+    }
+    return actions;
+}
+
+function actionOf(actions, chord) {
+    return chord ? actions.find(a => a.chord === chord) || null : null;
 }
 
 function imageOf(raw, folder) {
@@ -290,10 +350,10 @@ function readItem(raw, folder) {
     if (!id || !title)
         return null;
     var keywords = Array.isArray(raw.keywords) ? raw.keywords.filter(w => typeof w === "string").map(w => w.slice(0, 64)).slice(0, 32) : [];
-    var actions = (Array.isArray(raw.actions) ? raw.actions : []).map(readAction).filter(Boolean).slice(0, 12);
+    var actions = chordsOf((Array.isArray(raw.actions) ? raw.actions : []).map(readAction).filter(Boolean).slice(0, 12));
     var drawn = qmlOf(raw.qml, folder);
     var preview = readPreview(raw.preview, folder);
-    var notes = [drawn.note, preview?.note].filter(Boolean);
+    var notes = [drawn.note, preview?.note].filter(Boolean).concat(actions.reduce((out, a) => out.concat(a.notes), []));
     return Object.assign(readDoing(raw), {
         id: id,
         title: title,
@@ -360,7 +420,7 @@ function readView(raw, folder) {
         kind: raw.kind,
         id: id,
         title: title,
-        actions: (Array.isArray(raw.actions) ? raw.actions : []).map(readAction).filter(Boolean).slice(0, 8)
+        actions: chordsOf((Array.isArray(raw.actions) ? raw.actions : []).map(readAction).filter(Boolean).slice(0, 8))
     };
     if (raw.kind === "detail") {
         view.text = textOf(raw.text, 20000);
