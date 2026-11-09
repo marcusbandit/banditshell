@@ -1,0 +1,20 @@
+{
+  "name": "plugin-status",
+  "summary": "the live items launcher plugins put in the rail and the island",
+  "layer": 2,
+  "owns": {
+    "services": ["PluginStatus"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["PluginStatus"],
+    "ipc": []
+  },
+  "config": {
+    "namespace": [],
+    "reads": []
+  }
+}

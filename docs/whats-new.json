@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-09-p805",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugins can show a live icon in the sidebar or a row in the island"
+        }
+      ]
+    },
+    {
       "id": "2026-11-09-p806",
       "date": "2026-11-09",
       "changes": [

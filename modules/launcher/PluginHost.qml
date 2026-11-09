@@ -29,6 +29,7 @@ Singleton {
     property var page: null
     property var watchers: []
     property var exiting: ({})
+    property var statusAsked: ({})
     readonly property bool open: root.watchers.length > 0
     readonly property var drawings: ({})
     readonly property var noted: ({})
@@ -263,6 +264,7 @@ Singleton {
     }
 
     function stop(id: string): void {
+        PluginStatus.drop(id);
         const proc = root.processes[id];
         if (!proc)
             return;
@@ -353,12 +355,12 @@ Singleton {
     function heard(id: string, proc: var, line: string): void {
         if (root.processes[id] !== proc || !line.trim())
             return;
-        const message = Protocol.readMessage(line, root.pluginOf(id)?.folder ?? "");
+        const message = Protocol.readMessage(line, root.pluginOf(id)?.folder ?? "", root.pluginOf(id)?.status ?? []);
         if (message.error) {
             root.note(id, `skipped ${message.error}`);
             return;
         }
-        const items = message.type === "results" ? message.items : message.type === "update" ? [message.item] : message.type === "view" ? message.view.items ?? [] : [];
+        const items = message.type === "results" ? message.items : message.type === "update" || message.type === "status" ? [message.item] : message.type === "view" ? message.view.items ?? [] : [];
         for (const problem of items.concat(message.view?.actions ?? []).reduce((out, item) => out.concat(item.notes), [])) {
             if (root.noted[`${id}\n${problem}`])
                 continue;
@@ -376,6 +378,15 @@ Singleton {
                 }));
             return;
         }
+        if (message.type === "status") {
+            PluginStatus.set(Object.assign({
+                key: `plugin:${id}:${message.item.id}`,
+                pluginId: id,
+                name: root.pluginOf(id).name,
+                rows: root.pluginOf(id).prefix.length > 0
+            }, message.item));
+            return;
+        }
         if (message.type === "update") {
             const had = root.answers[id];
             const items = had ? Protocol.updated(had.items, message.item) : null;
@@ -385,6 +396,13 @@ Singleton {
                 }));
             else
                 root.note(id, `skipped an update for ${message.item.id}, which is not on screen`);
+            return;
+        }
+        if (message.type === "effect" && !root.expecting[id] && Date.now() - (root.statusAsked[id] ?? 0) < 10000) {
+            const left = Object.assign({}, root.statusAsked);
+            delete left[id];
+            root.statusAsked = left;
+            root.statusAsker.handle(message);
             return;
         }
         const asked = root.expecting[id] ?? 0;
@@ -401,6 +419,7 @@ Singleton {
 
     function ended(id: string, proc: var, wanted: bool): void {
         if (root.processes[id] === proc) {
+            PluginStatus.drop(id);
             const next = Object.assign({}, root.processes);
             delete next[id];
             root.processes = next;
@@ -450,6 +469,40 @@ Singleton {
         });
     }
 
+    function pressStatus(id: string, statusId: string, action: string): void {
+        const plugin = root.pluginOf(id);
+        const item = PluginStatus.items.find(i => i.key === `plugin:${id}:${statusId}`);
+        if (!plugin || !item)
+            return;
+        const wanted = action || (item.click === "rows" || item.click === "menu" ? "#rows" : item.click);
+        if (wanted === "#rows" && plugin.prefix.length) {
+            Panels.open("launcher", {
+                text: `${plugin.prefix[0]} `
+            });
+            return;
+        }
+        const listed = item.actions.find(a => a.id === wanted);
+        if (listed?.refusal) {
+            root.note(id, `status ${statusId}: ${listed.refusal}`);
+            return;
+        }
+        if (listed && Protocol.local(listed)) {
+            if (listed.open)
+                System.openWith(listed.open);
+            else if (listed.copy)
+                System.copyText(listed.copy);
+            else if (listed.run.length)
+                Quickshell.execDetached(listed.run);
+            return;
+        }
+        if (!root.usable(id))
+            return;
+        root.statusAsked = Object.assign({}, root.statusAsked, {
+            [id]: Date.now()
+        });
+        root.ensure(id).send(Protocol.statusLine(statusId, wanted === "#rows" ? "" : wanted));
+    }
+
     function note(id: string, text: string): void {
         noter.createObject(root, {
             command: ["sh", "-c", 'mkdir -p "${1%/*}" && printf "banditshell: %s\\n" "$2" >>"$1"', "sh", root.logOf(id), text]
@@ -467,6 +520,33 @@ Singleton {
     onSecretsChanged: root.sync()
 
     Component.onCompleted: root.refresh()
+
+    property Connections statusPresses: Connections {
+        target: PluginStatus
+
+        function onPressed(pluginId: string, statusId: string, action: string): void {
+            root.pressStatus(pluginId, statusId, action);
+        }
+    }
+
+    property QtObject statusAsker: QtObject {
+        function handle(message: var): void {
+            switch (message.do) {
+            case "copy":
+                System.copyText(message.text);
+                return;
+            case "open":
+                System.openWith(message.target);
+                return;
+            case "notify":
+                Notify.post({
+                    summary: message.title,
+                    body: message.body
+                });
+                return;
+            }
+        }
+    }
 
     property Component source: Component {
         PluginSource {}

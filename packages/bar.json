@@ -8,7 +8,7 @@
     "tests": ["tests/sidebar-anomalies.test.js", "tests/sidebar-placement.test.js", "tests/sidebar-workspaces.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor", "apps", "audio", "network", "display"],
+    "packages": ["core", "compositor", "apps", "audio", "network", "display", "plugin-status"],
     "optional": []
   },
   "provides": {
