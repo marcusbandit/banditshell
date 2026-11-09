@@ -1,6 +1,7 @@
 # Actions can declare their own key chords
 
-Status: needs-triage
+Status: ready-for-agent
+GitHub: #806
 
 Today Ctrl+Enter runs the first alternate action (`ListLauncher.qml`) and
 Ctrl+K opens the actions sheet. An action has no `shortcut` field

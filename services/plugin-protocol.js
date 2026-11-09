@@ -1,8 +1,8 @@
 .pragma library
 
-var API = 2;
+var API = 3;
 
-var APIS = [1, 2];
+var APIS = [1, 2, 3];
 
 var ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
@@ -113,7 +113,7 @@ function readManifest(text, folder, loose) {
     if (!title)
         return { error: "plugin.json has no name", id: name };
     if (APIS.indexOf(raw.api) < 0)
-        return { error: `asks for api ${raw.api === undefined ? "nothing" : textOf(raw.api)}, the shell speaks ${APIS.join(" and ")}`, id: name, name: title };
+        return { error: `asks for api ${raw.api === undefined ? "nothing" : textOf(raw.api)}, the shell speaks ${APIS.slice(0, -1).join(", ")} and ${APIS[APIS.length - 1]}`, id: name, name: title };
     if (!Array.isArray(raw.exec) || !raw.exec.length || raw.exec.some(a => typeof a !== "string") || !raw.exec[0])
         return { error: "exec is a list of strings, the program first", id: name, name: title };
     var prefix = (Array.isArray(raw.prefix) ? raw.prefix : typeof raw.prefix === "string" ? [raw.prefix] : []).filter(w => typeof w === "string" && /^\S+$/.test(w)).map(w => w.toLowerCase()).slice(0, 8);
@@ -150,7 +150,8 @@ function readManifest(text, folder, loose) {
             folder: folder,
             prefix: prefix,
             global: global,
-            preferences: preferences
+            preferences: preferences,
+            background: raw.background === true
         }
     };
 }
@@ -212,6 +213,14 @@ function submitLine(view, values) {
 
 function completeLine(id) {
     return JSON.stringify({ type: "complete", id: id });
+}
+
+function openLine() {
+    return JSON.stringify({ type: "open" });
+}
+
+function closeLine() {
+    return JSON.stringify({ type: "close" });
 }
 
 function cancelLine(seq) {

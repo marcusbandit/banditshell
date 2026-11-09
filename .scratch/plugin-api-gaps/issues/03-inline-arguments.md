@@ -1,6 +1,7 @@
 # Commands take typed arguments in plain search
 
-Status: needs-triage
+Status: ready-for-agent
+GitHub: #807
 
 A plugin command cannot ask for a value inline. The query is free text
 (`services/plugin-protocol.js`), and the nearest thing, a form page, opens

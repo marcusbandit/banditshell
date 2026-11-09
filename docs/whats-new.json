@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-09-p808",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugins can run in the background and hear the launcher open and close"
+        }
+      ]
+    },
+    {
       "id": "2026-11-06-s797",
       "date": "2026-11-06",
       "changes": [

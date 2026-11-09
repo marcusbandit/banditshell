@@ -1,6 +1,7 @@
 # A plugin can own a live item in the bar or island
 
-Status: needs-triage
+Status: ready-for-agent
+GitHub: #805
 
 A plugin cannot put anything outside the launcher. The island takes live
 items only over IPC (`modules/island/ActivityIpc.qml`), so a plugin would have

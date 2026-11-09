@@ -95,10 +95,10 @@ test("plugin install never installs without a yes", () => {
 
 test("plugin install refuses a folder whose manifest the shell would refuse", () => {
     const folder = directory("broken");
-    fs.writeFileSync(path.join(folder, "plugin.json"), '{"api":3,"id":"broken","name":"Broken","exec":["x"],"prefix":["b"]}');
+    fs.writeFileSync(path.join(folder, "plugin.json"), '{"api":4,"id":"broken","name":"Broken","exec":["x"],"prefix":["b"]}');
     const run = shell(["plugin", "install", folder, "--yes"], dry);
     assert.strictEqual(run.code, 1);
-    assert.match(run.err, /api 3/);
+    assert.match(run.err, /api 4/);
 });
 
 test("plugin install lists links, survives a dangling one and refuses one that leaves the plugin", () => {
