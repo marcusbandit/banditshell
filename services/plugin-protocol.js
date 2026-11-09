@@ -219,11 +219,20 @@ function queryLine(seq, text, prefixed) {
     return JSON.stringify({ type: "query", seq: seq, text: text, prefixed: prefixed });
 }
 
-function activateLine(seq, id, action, view) {
+function activateLine(seq, id, action, view, flag) {
     var out = { type: "activate", seq: seq, id: id, action: action || "" };
     if (view)
         out.view = view;
+    if (flag)
+        out[flag] = true;
     return JSON.stringify(out);
+}
+
+function coldId(prefix, id) {
+    if (id.indexOf(prefix) !== 0)
+        return "";
+    var item = id.slice(prefix.length);
+    return item && item.charAt(0) !== "!" ? item : "";
 }
 
 function submitLine(view, values) {
@@ -271,11 +280,11 @@ function readStatus(raw, declared) {
 }
 
 function coldLine(id) {
-    return JSON.stringify({ type: "activate", seq: 0, id: id, action: "", cold: true });
+    return activateLine(0, id, "", "", "cold");
 }
 
 function statusLine(id, action) {
-    return JSON.stringify({ type: "activate", seq: 0, id: id, action: action || "", status: true });
+    return activateLine(0, id, action, "", "status");
 }
 
 function openLine() {
