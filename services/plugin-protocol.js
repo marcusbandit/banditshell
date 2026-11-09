@@ -479,6 +479,23 @@ function readField(raw) {
     };
 }
 
+function readDropdown(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+        return null;
+    var choices = (Array.isArray(raw.choices) ? raw.choices : []).map(c => c && typeof c === "object" ? { value: textOf(c.value, 200), title: textOf(c.title, 60).trim() || textOf(c.value, 60) } : { value: textOf(c, 200), title: textOf(c, 60) }).filter(c => c.value).slice(0, 30);
+    if (!choices.length)
+        return null;
+    return {
+        title: textOf(raw.title, 40).trim(),
+        choices: choices,
+        value: choices.some(c => c.value === raw.value) ? raw.value : choices[0].value
+    };
+}
+
+function dropdownLine(view, value) {
+    return JSON.stringify({ type: "dropdown", view: view, value: value });
+}
+
 function readView(raw, folder) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw))
         return { error: "a view that is not an object" };
@@ -500,6 +517,7 @@ function readView(raw, folder) {
     } else if (raw.kind === "list") {
         view.placeholder = textOf(raw.placeholder) || "Filter";
         view.items = readItems(raw.items, folder);
+        view.dropdown = readDropdown(raw.dropdown);
     } else {
         var fields = [];
         for (var f of Array.isArray(raw.fields) ? raw.fields : []) {

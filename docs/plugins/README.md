@@ -413,6 +413,18 @@ the `activate`.
  "items": [{"id": "c1", "title": "Seen it on staging too", "copy": "Seen it on staging too"}]}
 ```
 
+A list page can carry a `dropdown` beside its filter, such as a day or an app
+to filter by. Alt+Down or a click opens it.
+
+```json
+"dropdown": {"title": "App", "value": "all",
+ "choices": [{"value": "all", "title": "Every app"}, {"value": "spotify", "title": "Spotify"}]}
+```
+
+A pick sends `{"type":"dropdown","view":"history","value":"spotify"}`, and
+the plugin answers with the page again, its `items` filtered and its
+`dropdown.value` set to the pick. The dropdown shows the pick at once.
+
 `form` has fields and a submit button. Tab moves between fields, Space flips a
 toggle, Left and Right pick a choice, and Enter submits. A field marked
 `required` that is empty stops the submit and says so.

@@ -285,6 +285,10 @@ QtObject {
         PluginHost.activate(root.pluginId, item, action, root, view);
     }
 
+    function pick(view: string, value: string): void {
+        PluginHost.pick(root.pluginId, view, value, root);
+    }
+
     function submit(view: string, values: var): void {
         PluginHost.submit(root.pluginId, view, values, root);
     }

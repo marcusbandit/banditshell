@@ -330,6 +330,13 @@ Singleton {
         root.ensure(id).send(Protocol.activateLine(root.answers[id]?.seq ?? 0, item, action, view));
     }
 
+    function pick(id: string, view: string, value: string, asker: var): void {
+        if (!root.usable(id))
+            return;
+        root.expect(id, asker);
+        root.ensure(id).send(Protocol.dropdownLine(view, value));
+    }
+
     function activateCold(id: string, item: string): void {
         if (!root.usable(id))
             return;

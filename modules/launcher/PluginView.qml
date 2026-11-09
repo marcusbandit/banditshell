@@ -26,6 +26,9 @@ Item {
     readonly property string viewId: root.view?.id ?? ""
 
     property string filter: ""
+    readonly property var dropdown: root.kind === "list" ? root.view.dropdown ?? null : null
+    property string choice: root.dropdown?.value ?? ""
+    readonly property var chosen: root.dropdown?.choices.find(c => c.value === root.choice) ?? null
     property int selected: 0
     property int field: 0
     property int actionAt: -1
@@ -161,6 +164,43 @@ Item {
         root.actionAt = next >= count ? -1 : next < -1 ? count - 1 : next;
     }
 
+    function openDropdown(): void {
+        if (!root.dropdown)
+            return;
+        const at = pill.mapToItem(root, 0, pill.height);
+        sheet.popup(at.x, at.y, root.dropdown.choices.map(c => ({
+                    icon: c.value === root.choice ? "check" : "",
+                    label: c.title,
+                    run: () => root.pickChoice(c.value)
+                })), root.dropdown.choices.findIndex(c => c.value === root.choice));
+    }
+
+    function pickChoice(value: string): void {
+        if (value === root.choice)
+            return;
+        root.choice = value;
+        root.source?.pick(root.viewId, value);
+    }
+
+    function claimSheetKey(event: var): bool {
+        switch (event.key) {
+        case Qt.Key_Down:
+            sheet.move(1);
+            break;
+        case Qt.Key_Up:
+            sheet.move(-1);
+            break;
+        case Qt.Key_Return:
+        case Qt.Key_Enter:
+            sheet.activate(sheet.selected);
+            break;
+        default:
+            sheet.close();
+            break;
+        }
+        return true;
+    }
+
     function claimChord(event: var): bool {
         const chord = LauncherHotkeys.pressedChord(event);
         if (!chord)
@@ -179,6 +219,12 @@ Item {
     }
 
     function claimKey(event: var): bool {
+        if (sheet.open)
+            return root.claimSheetKey(event);
+        if (root.dropdown && event.key === Qt.Key_Down && event.modifiers & Qt.AltModifier) {
+            root.openDropdown();
+            return true;
+        }
         const page = scroller.height - Appearance.font.line.normal * 2;
         if (root.kind === "list" && root.actionAt < 0 && root.rows[root.selected]?.card && Search.rowMayClaim(event.key, event.modifiers) && listRepeater.itemAt(root.selected)?.claimRowKey(event))
             return true;
@@ -256,6 +302,18 @@ Item {
         width: root.width - Appearance.padding.normal * 2
         height: visible ? Appearance.sizes.rowHeight : 0
 
+        Button {
+            id: pill
+
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            visible: !!root.dropdown
+            size: 0
+            icon: "arrow_drop_down"
+            text: root.dropdown?.title ? `${root.dropdown.title}: ${root.chosen?.title ?? ""}` : root.chosen?.title ?? ""
+            onClicked: root.openDropdown()
+        }
+
         Icon {
             id: filterIcon
 
@@ -269,7 +327,8 @@ Item {
 
             anchors.left: filterIcon.right
             anchors.leftMargin: Appearance.padding.normal
-            anchors.right: parent.right
+            anchors.right: pill.visible ? pill.left : parent.right
+            anchors.rightMargin: pill.visible ? Appearance.padding.normal : 0
             anchors.verticalCenter: parent.verticalCenter
             text: root.filter
             font.family: Appearance.font.family
@@ -610,5 +669,15 @@ Item {
                 onToggled: root.runAction(act.index)
             }
         }
+    }
+
+    ActionSheet {
+        id: sheet
+
+        anchors.fill: parent
+        z: 10
+
+        Keys.onPressed: event => event.accepted = root.claimSheetKey(event)
+        onClosed: filterInput.forceActiveFocus()
     }
 }
