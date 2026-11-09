@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import qs.components
+import qs.services
 import qs.modules.controls
 import "../../services/plugin-protocol.js" as Protocol
 import "../../services/ranking.js" as Ranking
@@ -160,9 +161,28 @@ Item {
         root.actionAt = next >= count ? -1 : next < -1 ? count - 1 : next;
     }
 
+    function claimChord(event: var): bool {
+        const chord = LauncherHotkeys.pressedChord(event);
+        if (!chord)
+            return false;
+        const item = root.kind === "list" ? root.shown[root.selected] : null;
+        const own = item ? Protocol.actionOf(item.actions, chord) : null;
+        if (own) {
+            root.run(own, own.id, item.id);
+            return true;
+        }
+        const at = root.actions.indexOf(Protocol.actionOf(root.actions, chord));
+        if (at < 0)
+            return false;
+        root.runAction(at);
+        return true;
+    }
+
     function claimKey(event: var): bool {
         const page = scroller.height - Appearance.font.line.normal * 2;
         if (root.kind === "list" && root.actionAt < 0 && root.rows[root.selected]?.card && Search.rowMayClaim(event.key, event.modifiers) && listRepeater.itemAt(root.selected)?.claimRowKey(event))
+            return true;
+        if (root.claimChord(event))
             return true;
         switch (event.key) {
         case Qt.Key_Down:
@@ -583,7 +603,7 @@ Item {
 
                 size: 0
                 icon: act.modelData.icon
-                text: act.modelData.title
+                text: act.modelData.chord ? `${act.modelData.title} · ${Protocol.chordLabel(act.modelData.chord)}` : act.modelData.title
                 checkable: true
                 checked: act.index === root.actionAt
                 onClicked: root.runAction(act.index)

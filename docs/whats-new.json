@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-09-p806",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugin actions can have their own key chords, shown in the Ctrl+K menu"
+        }
+      ]
+    },
+    {
       "id": "2026-11-09-p808",
       "date": "2026-11-09",
       "changes": [

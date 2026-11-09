@@ -143,11 +143,20 @@ Item {
         Repeater {
             model: root.actions
 
-            StyledText {
+            Row {
                 required property var modelData
 
-                text: modelData.label
-                font.pixelSize: root.textSize
+                spacing: modelData.keys ? root.inset * 2 : 0
+
+                StyledText {
+                    text: parent.modelData.label
+                    font.pixelSize: root.textSize
+                }
+
+                StyledText {
+                    text: parent.modelData.keys ?? ""
+                    font.pixelSize: root.textSize
+                }
             }
         }
     }
@@ -260,9 +269,24 @@ Item {
                         }
 
                         StyledText {
+                            id: keys
+
+                            anchors.right: parent.right
+                            anchors.rightMargin: root.inset
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: text !== ""
+                            text: cell.modelData.keys ?? ""
+                            font.pixelSize: root.textSize
+                            color: Appearance.colour.textFaint
+                        }
+
+                        StyledText {
                             anchors.left: mark.right
                             anchors.leftMargin: root.inset
+                            anchors.right: keys.visible ? keys.left : parent.right
+                            anchors.rightMargin: keys.visible ? root.inset * 2 : root.inset
                             anchors.verticalCenter: parent.verticalCenter
+                            elide: Text.ElideRight
 
                             text: cell.modelData.label
                             font.pixelSize: root.textSize

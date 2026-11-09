@@ -359,7 +359,7 @@ Singleton {
             return;
         }
         const items = message.type === "results" ? message.items : message.type === "update" ? [message.item] : message.type === "view" ? message.view.items ?? [] : [];
-        for (const problem of items.reduce((out, item) => out.concat(item.notes), [])) {
+        for (const problem of items.concat(message.view?.actions ?? []).reduce((out, item) => out.concat(item.notes), [])) {
             if (root.noted[`${id}\n${problem}`])
                 continue;
             root.noted[`${id}\n${problem}`] = true;

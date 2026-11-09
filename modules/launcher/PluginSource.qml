@@ -285,10 +285,12 @@ QtObject {
         PluginHost.submit(root.pluginId, view, values, root);
     }
 
-    function choiceOf(row: var, doing: var, action: string, title: string, icon: string): var {
+    function choiceOf(row: var, doing: var, action: string, title: string, icon: string, chord: string): var {
         return {
             icon: icon || (doing?.open ? "open_in_new" : doing?.copy ? "content_copy" : doing?.run.length ? "play_arrow" : "chevron_right"),
             label: title,
+            chord: chord,
+            keys: Protocol.chordLabel(chord),
             run: () => doing ? root.doLocal(doing) : PluginHost.activate(root.pluginId, row.item.id, action, root, "")
         };
     }
@@ -315,10 +317,10 @@ QtObject {
                 }
             ];
         const item = row.item;
-        const own = Protocol.local(item) || item.refusal ? [root.choiceOf(row, item, "", item.open ? "Open" : item.copy ? "Copy" : "Run", "")] : [];
-        const listed = item.actions.map(a => root.choiceOf(row, Protocol.local(a) || a.refusal ? a : null, a.id, a.title, a.icon));
+        const own = Protocol.local(item) || item.refusal ? [root.choiceOf(row, item, "", item.open ? "Open" : item.copy ? "Copy" : "Run", "", "")] : [];
+        const listed = item.actions.map(a => root.choiceOf(row, Protocol.local(a) || a.refusal ? a : null, a.id, a.title, a.icon, a.chord));
         const out = own.concat(listed);
-        return out.length ? out : [root.choiceOf(row, null, "", "Open", "")];
+        return out.length ? out : [root.choiceOf(row, null, "", "Open", "", "")];
     }
 
     function complete(row: var): bool {

@@ -180,7 +180,7 @@ the shell knows it is done.
 | `open` | A link (`https://`, `http://`, `mailto:`, `file:///`) or an absolute file path, opened by the shell. |
 | `copy` | Text the shell copies. |
 | `run` | A program and its arguments, as a list, that the shell starts. Never passed through a shell. |
-| `actions` | More things the row can do, each `{ "id", "title", "icon" }` and optionally its own `open`, `copy` or `run`. |
+| `actions` | More things the row can do, each `{ "id", "title", "icon" }` and optionally its own `open`, `copy` or `run`, and a `shortcut`. See Shortcuts. |
 | `answer` | `true` when the row answers the query as typed, such as a sum or a conversion. A plain search then shows it even though its title and keywords do not match the typed words. |
 | `height` | How many rows tall it is, 1 to 12, 1 by default, in plain searches as after a prefix. `"auto"` lets the row's QML decide, see Rows drawn in QML. |
 | `pin` | `true` puts the row at the very top of a plain search, with the launcher's own pinned answers, whatever was typed. |
@@ -206,6 +206,27 @@ plugin can also answer with fresh `results` or a `fill`.
 
 Links with any other scheme, and files that are not absolute paths, are
 refused and the row says so, as for list scripts.
+
+### Shortcuts
+
+An action can carry `"shortcut": "ctrl+d"`. While its row is selected, that
+chord runs the action at once, and the actions menu shows it beside the
+action's title. The same works for a page's own actions and for the actions
+of the selected row on a list page.
+
+```json
+{ "id": "dim", "title": "Dim while dictating", "icon": "volume_down", "shortcut": "ctrl+d" }
+```
+
+A shortcut is `ctrl`, `alt` or both, optionally `shift`, then a key: a
+letter, a digit, `f1` to `f24`, or `enter`, `backspace`, `delete`, `space`,
+`insert`, `,`, `.`, `-`, `=`, `/`, `;`, `[` or `]`. Shift goes only with a
+letter, a digit or a named key, since it turns `/` into `?`. Chords the launcher or its search field already use are refused:
+`ctrl+k`, `ctrl+enter`, and the editing chords such as `ctrl+a`, `ctrl+c`,
+`ctrl+v`, `ctrl+x`, `ctrl+z`, `ctrl+u` and `ctrl+backspace`. A refused or repeated
+shortcut is written to the plugin's log, and the action still works from the
+menu. A row drawn in QML hears the keys first, so a chord its `claimKey`
+takes never reaches the actions.
 
 ### Tall rows
 
