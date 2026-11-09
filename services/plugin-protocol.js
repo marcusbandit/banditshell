@@ -40,6 +40,12 @@ var VIEW_KINDS = ["detail", "list", "form"];
 
 var FIELD_TYPES = ["text", "secret", "toggle", "choice"];
 
+var STATUS_PLACES = ["rail", "island"];
+
+var STATUS_TONES = ["plain", "active", "alert", "warning", "alarm"];
+
+var STATUS_LIMIT = 4;
+
 function textOf(value, limit) {
     if (typeof value === "number" && isFinite(value))
         return String(value);
@@ -121,8 +127,16 @@ function readManifest(text, folder, loose) {
         minLength: Math.max(1, Math.min(32, Math.round(Number(raw.global.minLength) || 3))),
         cap: Math.max(1, Math.min(ITEM_LIMIT, Math.round(Number(raw.global.cap) || 3)))
     } : null;
-    if (!prefix.length && !global)
-        return { error: "plugin.json needs a prefix, global or both", id: name, name: title };
+    var status = [];
+    for (var st of Array.isArray(raw.status) ? raw.status : []) {
+        if (!st || typeof st.id !== "string" || !ID.test(st.id) || STATUS_PLACES.indexOf(st.place) < 0 || status.some(x => x.id === st.id))
+            return { error: "a status item needs an id of lowercase letters, digits and -, and a place of rail or island", id: name, name: title };
+        status.push({ id: st.id, place: st.place, title: textOf(st.title).trim() || title, icon: statusIcon(st.icon) || statusIcon(raw.icon) || "extension" });
+    }
+    if (status.length > STATUS_LIMIT)
+        return { error: `a plugin has at most ${STATUS_LIMIT} status items`, id: name, name: title };
+    if (!prefix.length && !global && !status.length)
+        return { error: "plugin.json needs a prefix, global, status or a mix", id: name, name: title };
     var preferences = [];
     for (var p of Array.isArray(raw.preferences) ? raw.preferences : []) {
         if (!p || !PREF_KEY.test(p.key) || PREF_TYPES.indexOf(p.type) < 0 || preferences.some(q => q.key === p.key))
@@ -151,7 +165,8 @@ function readManifest(text, folder, loose) {
             prefix: prefix,
             global: global,
             preferences: preferences,
-            background: raw.background === true
+            background: raw.background === true || status.length > 0,
+            status: status
         }
     };
 }
@@ -213,6 +228,46 @@ function submitLine(view, values) {
 
 function completeLine(id) {
     return JSON.stringify({ type: "complete", id: id });
+}
+
+function statusIcon(raw) {
+    var t = textOf(raw, 64).trim();
+    return ICON_NAME.test(t) ? t : "";
+}
+
+function readStatus(raw, declared) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+        return { error: "status without an item" };
+    var decl = (declared || []).find(d => d.id === raw.id);
+    if (!decl)
+        return { error: `a status for ${textOf(raw.id, 64) || "nothing"}, which plugin.json does not declare` };
+    var actions = chordsOf((Array.isArray(raw.actions) ? raw.actions : []).map(readAction).filter(Boolean).slice(0, 4));
+    var click = textOf(raw.click, 200);
+    if (click !== "rows" && click !== "menu" && !actions.some(a => a.id === click))
+        click = decl.place === "rail" ? "menu" : "rows";
+    if (click === "menu" && decl.place === "island")
+        click = "rows";
+    var progress = raw.progress === undefined || raw.progress === null ? -1 : Number(raw.progress);
+    return {
+        item: {
+            id: decl.id,
+            place: decl.place,
+            shown: raw.shown !== false,
+            title: textOf(raw.title, 120).trim() || decl.title,
+            text: textOf(raw.text, 200).trim(),
+            icon: statusIcon(raw.icon) || decl.icon,
+            tone: STATUS_TONES.indexOf(raw.tone) >= 0 ? raw.tone : "plain",
+            lines: (Array.isArray(raw.lines) ? raw.lines : []).map(l => textOf(l, 120).trim()).filter(Boolean).slice(0, 8),
+            actions: actions,
+            click: click,
+            progress: isFinite(progress) && progress >= 0 ? Math.min(1, progress) : -1,
+            notes: actions.reduce((out, a) => out.concat(a.notes), [])
+        }
+    };
+}
+
+function statusLine(id, action) {
+    return JSON.stringify({ type: "activate", seq: 0, id: id, action: action || "", status: true });
 }
 
 function openLine() {
@@ -465,7 +520,7 @@ function listed(view, typed, place) {
     return view.items.map((item, i) => ({ item: item, i: i, score: plainScore(item, t, place) })).filter(m => m.score > 0).sort((a, b) => b.score - a.score || a.i - b.i).map(m => m.item);
 }
 
-function readMessage(line, folder) {
+function readMessage(line, folder, declared) {
     if (line.length > LINE_LIMIT)
         return { error: "a line longer than 1 MB" };
     var raw;
@@ -484,6 +539,9 @@ function readMessage(line, folder) {
     case "update":
         var item = readItem(raw.item, folder);
         return item ? { type: "update", item: item } : { error: "update without an item that has an id and a title" };
+    case "status":
+        var status = readStatus(raw.item, declared);
+        return status.error ? { error: status.error } : { type: "status", item: status.item };
     case "fill":
         return typeof raw.text === "string" ? { type: "fill", text: raw.text.slice(0, 1000) } : { error: "fill without text" };
     case "view":

@@ -6,7 +6,7 @@ IpcHandler {
 
     target: "activity"
 
-    readonly property var providers: [Moments, Privacy]
+    readonly property var providers: [Moments, Privacy, PluginActivities]
 
     function reply(error: string, done: string): string {
         return error ? `refused: ${error}` : done;

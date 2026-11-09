@@ -263,6 +263,7 @@ Singleton {
     }
 
     function stop(id: string): void {
+        PluginStatus.drop(id);
         const proc = root.processes[id];
         if (!proc)
             return;
@@ -353,12 +354,12 @@ Singleton {
     function heard(id: string, proc: var, line: string): void {
         if (root.processes[id] !== proc || !line.trim())
             return;
-        const message = Protocol.readMessage(line, root.pluginOf(id)?.folder ?? "");
+        const message = Protocol.readMessage(line, root.pluginOf(id)?.folder ?? "", root.pluginOf(id)?.status ?? []);
         if (message.error) {
             root.note(id, `skipped ${message.error}`);
             return;
         }
-        const items = message.type === "results" ? message.items : message.type === "update" ? [message.item] : message.type === "view" ? message.view.items ?? [] : [];
+        const items = message.type === "results" ? message.items : message.type === "update" || message.type === "status" ? [message.item] : message.type === "view" ? message.view.items ?? [] : [];
         for (const problem of items.concat(message.view?.actions ?? []).reduce((out, item) => out.concat(item.notes), [])) {
             if (root.noted[`${id}\n${problem}`])
                 continue;
@@ -374,6 +375,15 @@ Singleton {
                     answered: true,
                     late: false
                 }));
+            return;
+        }
+        if (message.type === "status") {
+            PluginStatus.set(Object.assign({
+                key: `plugin:${id}:${message.item.id}`,
+                pluginId: id,
+                name: root.pluginOf(id).name,
+                rows: root.pluginOf(id).prefix.length > 0
+            }, message.item));
             return;
         }
         if (message.type === "update") {
@@ -401,6 +411,7 @@ Singleton {
 
     function ended(id: string, proc: var, wanted: bool): void {
         if (root.processes[id] === proc) {
+            PluginStatus.drop(id);
             const next = Object.assign({}, root.processes);
             delete next[id];
             root.processes = next;
@@ -450,6 +461,34 @@ Singleton {
         });
     }
 
+    function pressStatus(id: string, statusId: string, action: string): void {
+        const plugin = root.pluginOf(id);
+        const item = PluginStatus.items.find(i => i.key === `plugin:${id}:${statusId}`);
+        if (!plugin || !item)
+            return;
+        const wanted = action || (item.click === "rows" || item.click === "menu" ? "#rows" : item.click);
+        if (wanted === "#rows" && plugin.prefix.length) {
+            Panels.open("launcher", {
+                text: `${plugin.prefix[0]} `
+            });
+            return;
+        }
+        const listed = item.actions.find(a => a.id === wanted);
+        if (listed && (Protocol.local(listed) || listed.refusal)) {
+            if (listed.open)
+                System.openWith(listed.open);
+            else if (listed.copy)
+                System.copyText(listed.copy);
+            else if (listed.run.length)
+                Quickshell.execDetached(listed.run);
+            return;
+        }
+        if (!root.usable(id))
+            return;
+        root.expect(id, root.statusAsker);
+        root.ensure(id).send(Protocol.statusLine(statusId, wanted === "#rows" ? "" : wanted));
+    }
+
     function note(id: string, text: string): void {
         noter.createObject(root, {
             command: ["sh", "-c", 'mkdir -p "${1%/*}" && printf "banditshell: %s\\n" "$2" >>"$1"', "sh", root.logOf(id), text]
@@ -467,6 +506,37 @@ Singleton {
     onSecretsChanged: root.sync()
 
     Component.onCompleted: root.refresh()
+
+    property Connections statusPresses: Connections {
+        target: PluginStatus
+
+        function onPressed(pluginId: string, statusId: string, action: string): void {
+            root.pressStatus(pluginId, statusId, action);
+        }
+    }
+
+    property QtObject statusAsker: QtObject {
+        readonly property var search: ({
+                active: true
+            })
+
+        function handle(message: var): void {
+            switch (message.do) {
+            case "copy":
+                System.copyText(message.text);
+                return;
+            case "open":
+                System.openWith(message.target);
+                return;
+            case "notify":
+                Notify.post({
+                    summary: message.title,
+                    body: message.body
+                });
+                return;
+            }
+        }
+    }
 
     property Component source: Component {
         PluginSource {}

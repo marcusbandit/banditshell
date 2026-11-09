@@ -70,7 +70,8 @@
     "packages": [
       "core",
       "compositor",
-      "apps"
+      "apps",
+      "plugin-status"
     ],
     "optional": []
   },

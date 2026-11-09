@@ -91,10 +91,11 @@ plugin can reach before it lists any.
 | `prefix` | no | Words that send the rest of the query to this plugin alone, the way `gh` and `pkg` work. They are listed on the `?` page. |
 | `global` | no | Lets the plugin add rows to plain searches. `minLength` is how many characters a query needs first, 3 by default. `cap` is how many of its rows a plain search shows at most, 3 by default and up to 50. Without `global` the plugin only answers after its prefix. |
 | `preferences` | no | Settings the plugin needs, drawn by Settings so a plugin never ships its own settings window. |
+| `status` | no | Live items the plugin owns outside the launcher, up to four, each `{ "id", "place", "title", "icon" }` with `place` either `rail` or `island`. See Status items. A plugin with status items runs in the background. |
 | `background` | no | `true` starts the program with the shell and keeps it running while the launcher is closed, so it can keep its rows fresh or work on its own. It is never stopped for being idle, and after a crash it starts again by itself, until three crashes in a minute switch it off. |
 
-A manifest needs `prefix`, `global` or both; with neither, nothing would ever
-reach the plugin.
+A manifest needs `prefix`, `global` or `status`, or a mix; with none of them,
+nothing would ever reach the plugin.
 
 ### Preferences
 
@@ -149,6 +150,7 @@ page's id.
 | `{"type":"fill","text":"jira PROJ-41 "}` | Replaces the query, the usual answer to `complete`. |
 | `{"type":"view","view":{...}}` | Opens a full page in place of the list. See Pages. |
 | `{"type":"effect","do":"copy","text":"..."}` | Does one thing for the plugin, so it needs neither `wl-copy` nor `xdg-open`. See Effects. |
+| `{"type":"status","item":{...}}` | Shows or changes one of the plugin's status items, at any time. See Status items. |
 
 The plugin answers every `query` with one `results`, even an empty one, so
 the shell knows it is done.
@@ -325,6 +327,47 @@ refused and logged.
 | `{"type":"effect","do":"open","target":"https://..."}` | Opens a link or an absolute path, as for `open` on an item, and closes the launcher. |
 | `{"type":"effect","do":"notify","title":"Assigned","body":"PROJ-41 is yours"}` | Posts a notification. The launcher stays open. |
 | `{"type":"effect","do":"close"}` | Closes the launcher. |
+
+## Status items
+
+A plugin can own a live item outside the launcher: an icon in the sidebar
+rail among the status icons, or a row in the island. The manifest declares
+each one, and the program fills it in with `status` messages whenever it
+likes. The program starts with the shell for them and keeps running.
+
+```json
+"status": [
+  { "id": "mic", "place": "rail", "title": "Voice", "icon": "mic" },
+  { "id": "held", "place": "island", "title": "Voice", "icon": "graphic_eq" }
+]
+```
+
+```json
+{"type": "status", "item": {"id": "mic", "title": "Listening", "text": "Spotify dimmed, Zen paused",
+ "tone": "alarm", "lines": ["Spotify dimmed to 15%", "Zen Browser paused"],
+ "actions": [{"id": "release", "title": "Give the sound back", "icon": "volume_up"}]}}
+```
+
+| field | meaning |
+|---|---|
+| `id` | One of the ids in the manifest's `status`. Required. |
+| `shown` | `false` takes the item away until the next message that shows it. Nothing is drawn before the first message. |
+| `title` | The rail icon's tooltip and its menu's title, or the island row's text. The manifest's `title` when left out. |
+| `text` | One line after the title: in the tooltip, at the top of the menu, or the island row's second line. |
+| `icon` | A Material Symbols name. The manifest's icon when left out. |
+| `tone` | `plain`, `active`, `alert` (the accent), `warning` or `alarm` (red). |
+| `lines` | Up to eight short lines listed in the rail menu. |
+| `actions` | Up to four, as on an item, with `open`, `copy`, `run` or a `shortcut`. The rail menu lists them, the island draws them as buttons. |
+| `click` | What a click on the icon or the row does: `menu` opens the rail menu (the rail's default), `rows` opens the plugin's prefix in the launcher (the island's default), or an action's id runs that action. |
+| `progress` | 0 to 1 draws a ring on the island row. |
+
+An action without its own `open`, `copy` or `run`, or a click on an action's
+id, reaches the program as
+`{"type":"activate","seq":0,"id":"mic","action":"release","status":true}`.
+It can answer with an effect: `copy`, `open` and `notify` work, and the
+launcher does not open for it. Its usual answer is a new `status`.
+
+The items go away when the program stops or the plugin is switched off.
 
 ## Pages
 

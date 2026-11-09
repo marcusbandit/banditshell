@@ -81,6 +81,8 @@ singleton PasswordRequest 1.0 PasswordRequest.qml
 singleton PenButtons 1.0 PenButtons.qml
 singleton PenMap 1.0 PenMap.qml
 singleton Phone 1.0 Phone.qml
+singleton PluginActivities 1.0 PluginActivities.qml
+singleton PluginStatus 1.0 PluginStatus.qml
 singleton Polkit 1.0 Polkit.qml
 singleton Pomodoro 1.0 Pomodoro.qml
 singleton Power 1.0 Power.qml

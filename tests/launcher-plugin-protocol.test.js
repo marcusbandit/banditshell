@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
+const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "readStatus", "statusLine", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 const JIRA = {
@@ -55,7 +55,7 @@ test.describe("plugin manifest", () => {
         assert.match(manifest({ api: 4 }).error, /api 4, the shell speaks 1, 2 and 3/);
         assert.strictEqual(manifest({ api: 3 }).plugin.api, 3);
         assert.match(manifest({ exec: "./jira-plugin" }).error, /exec/);
-        assert.match(manifest({ prefix: [], global: undefined }).error, /prefix, global/);
+        assert.match(manifest({ prefix: [], global: undefined }).error, /prefix, global, status/);
         assert.match(manifest({ preferences: [{ key: "a b", type: "text" }] }).error, /preference/);
         assert.match(manifest({ preferences: [{ key: "a", type: "colour" }] }).error, /preference/);
     });
@@ -124,6 +124,34 @@ test.describe("action shortcuts", () => {
         assert.match(item.notes.join("\n"), /Ctrl D on Drop: Dim has it/);
         assert.strictEqual(P.actionOf(item.actions, "CTRL+D").id, "dim");
         assert.strictEqual(P.actionOf(item.actions, ""), null);
+    });
+});
+
+test.describe("status items", () => {
+    const declared = manifest({ status: [{ id: "mic", place: "rail", icon: "mic" }, { id: "held", place: "island" }] }).plugin;
+
+    test.it("reads declared items from the manifest, keeps their programs running and needs no prefix", () => {
+        assert.deepStrictEqual(declared.status, [{ id: "mic", place: "rail", title: "Jira", icon: "mic" }, { id: "held", place: "island", title: "Jira", icon: "bug_report" }]);
+        assert.strictEqual(declared.background, true);
+        assert.strictEqual(manifest({ prefix: [], global: undefined, status: [{ id: "mic", place: "rail" }] }).plugin.id, "jira");
+        assert.match(manifest({ status: [{ id: "mic", place: "dock" }] }).error, /rail or island/);
+        assert.match(manifest({ status: [1, 2, 3, 4, 5].map(n => ({ id: `s${n}`, place: "rail" })) }).error, /at most 4/);
+    });
+
+    test.it("fills an update from its declaration and refuses one plugin.json never declared", () => {
+        const { item } = P.readStatus({ id: "mic", tone: "alarm", text: "Spotify dimmed", lines: ["Spotify dimmed", "", "Zen paused"], icon: "Not An Icon" }, declared.status);
+        assert.deepStrictEqual([item.title, item.icon, item.tone, item.lines, item.click, item.shown, item.progress], ["Jira", "mic", "alarm", ["Spotify dimmed", "Zen paused"], "menu", true, -1]);
+        assert.match(P.readStatus({ id: "other" }, declared.status).error, /does not declare/);
+        assert.strictEqual(P.readStatus({ id: "mic", tone: "loud" }, declared.status).item.tone, "plain");
+        assert.strictEqual(P.readStatus({ id: "mic", shown: false }, declared.status).item.shown, false);
+    });
+
+    test.it("clicks an action, the rows or the rail's menu, and never a menu in the island", () => {
+        const acts = [{ id: "undo", title: "Give back" }];
+        assert.strictEqual(P.readStatus({ id: "mic", click: "undo", actions: acts }, declared.status).item.click, "undo");
+        assert.strictEqual(P.readStatus({ id: "mic", click: "nope" }, declared.status).item.click, "menu");
+        assert.strictEqual(P.readStatus({ id: "held", click: "menu" }, declared.status).item.click, "rows");
+        assert.strictEqual(P.statusLine("mic", "undo"), '{"type":"activate","seq":0,"id":"mic","action":"undo","status":true}');
     });
 });
 

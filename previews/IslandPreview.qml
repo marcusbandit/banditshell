@@ -12,6 +12,7 @@ import "../services/privacy.js" as PrivacyLogic
 ShellRoot {
     id: preview
 
+    readonly property var pluginMirror: PluginActivities
     readonly property string shots: Quickshell.env("BANDITSHELL_SHOTS") ?? ""
 
     readonly property var levels: Levels
@@ -978,6 +979,56 @@ ShellRoot {
                 Activities.remove("privacy:camera");
                 Activities.remove("privacy:screen");
             },
+            wait: 600,
+            expect: "hidden"
+        },
+        {
+            name: "a plugin's island item: Listening, with Give back",
+            run: () => PluginStatus.set({
+                    key: "plugin:voice:held",
+                    pluginId: "voice",
+                    id: "held",
+                    place: "island",
+                    shown: true,
+                    title: "Listening",
+                    text: "Spotify dimmed, Zen paused",
+                    icon: "mic",
+                    tone: "alarm",
+                    lines: [],
+                    actions: [
+                        {
+                            id: "release",
+                            title: "Give back"
+                        }
+                    ],
+                    click: "rows",
+                    progress: -1
+                }),
+            wait: 600,
+            expect: "activity"
+        },
+        {
+            name: "the plugin takes its item away",
+            run: () => PluginStatus.set({
+                    key: "plugin:voice:held",
+                    pluginId: "voice",
+                    id: "held",
+                    place: "island",
+                    shown: false,
+                    title: "Listening",
+                    text: "Spotify dimmed, Zen paused",
+                    icon: "mic",
+                    tone: "alarm",
+                    lines: [],
+                    actions: [
+                        {
+                            id: "release",
+                            title: "Give back"
+                        }
+                    ],
+                    click: "rows",
+                    progress: -1
+                }),
             wait: 600,
             expect: "hidden"
         },
