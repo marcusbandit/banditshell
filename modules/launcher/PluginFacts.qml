@@ -12,10 +12,11 @@ Item {
     readonly property var facts: root.entry?.facts ?? []
     readonly property string text: root.entry?.text ?? ""
 
-    readonly property real labelWidth: Math.min(Math.round(body.width * 0.45), Math.ceil(labels.childrenRect.width))
+    readonly property real labelWidth: Math.min(Math.round(body.width * 0.45), Math.ceil(labels.implicitWidth))
 
     width: Math.round(Appearance.sizes.launcherWidth * 0.55)
-    height: body.implicitHeight + Appearance.padding.normal * 2
+    height: Math.min(body.implicitHeight + Appearance.padding.normal * 2, Math.round(Appearance.sizes.launcherWidth * 0.8))
+    clip: true
 
     Column {
         id: labels
@@ -50,7 +51,7 @@ Item {
             font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textDim
             wrapMode: Text.Wrap
-            maximumLineCount: 12
+            maximumLineCount: 32
             elide: Text.ElideRight
             textFormat: Text.PlainText
         }
