@@ -13,6 +13,7 @@ Singleton {
 
     readonly property string folder: `${Config.dir}/plugins`
     readonly property string logDir: `${Config.stateDir}/plugins`
+    readonly property string dataDir: `${Config.stateDir}/plugin-data`
     readonly property string listing: `${Config.stateDir}/plugins.json`
     readonly property string secretsPath: `${Config.stateDir}/plugin-secrets.json`
     readonly property var off: Config.values.launcher.plugins.off
@@ -30,6 +31,7 @@ Singleton {
     property var watchers: []
     property var exiting: ({})
     property var statusAsked: ({})
+    property var notified: ({})
     readonly property bool open: root.watchers.length > 0
     readonly property var drawings: ({})
     readonly property var noted: ({})
@@ -250,7 +252,7 @@ Singleton {
             folder: plugin.folder,
             log: root.logOf(id),
             lasting: plugin.background,
-            env: Protocol.environment(plugin, root.valuesOf(id), root.secretsOf(id))
+            env: Protocol.environment(plugin, root.valuesOf(id), root.secretsOf(id), root.dataDir)
         });
         proc.said.connect(line => root.heard(id, proc, line));
         proc.ended.connect(wanted => root.ended(id, proc, wanted));
@@ -396,6 +398,18 @@ Singleton {
                 }));
             else
                 root.note(id, `skipped an update for ${message.item.id}, which is not on screen`);
+            return;
+        }
+        if (message.type === "effect" && message.do === "notify" && !root.expecting[id]) {
+            if (!Protocol.notifyAllowed(root.notified[id] ?? 0, Date.now())) {
+                root.note(id, "skipped a notify, one every 3 s at most");
+                return;
+            }
+            root.notified[id] = Date.now();
+            Notify.post({
+                summary: message.title,
+                body: message.body
+            });
             return;
         }
         if (message.type === "effect" && !root.expecting[id] && Date.now() - (root.statusAsked[id] ?? 0) < 10000) {

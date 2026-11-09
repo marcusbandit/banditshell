@@ -188,12 +188,16 @@ function missing(plugin, values, secrets) {
     return plugin.preferences.filter(p => p.required && p.type !== "toggle" && !valueOf(p, values, secrets)).map(p => p.key);
 }
 
-function environment(plugin, values, secrets) {
+var NOTIFY_GAP = 3000;
+
+function environment(plugin, values, secrets, dataRoot) {
     var env = {
         BANDITSHELL_PLUGIN_ID: plugin.id,
         BANDITSHELL_PLUGIN_DIR: plugin.folder,
         BANDITSHELL_API: String(plugin.api || API)
     };
+    if (dataRoot)
+        env.BANDITSHELL_PLUGIN_DATA = `${dataRoot}/${plugin.id}`;
     for (var p of plugin.preferences)
         env[envKey(p.key)] = valueOf(p, values, secrets);
     return env;
@@ -597,6 +601,10 @@ function kept(answer, asked) {
 function updated(items, item) {
     var at = items.findIndex(i => i.id === item.id);
     return at < 0 ? null : items.slice(0, at).concat([item], items.slice(at + 1));
+}
+
+function notifyAllowed(last, now) {
+    return !last || now - last >= NOTIFY_GAP;
 }
 
 function crashes(times, now) {

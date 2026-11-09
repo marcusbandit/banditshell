@@ -116,8 +116,12 @@ switched off under `launcher.plugins.off`. A `secret` is never written there:
 it is kept in `~/.local/state/banditshell/plugin-secrets.json`, a file only
 you can read. Changing a preference restarts the program.
 
-The program also gets `BANDITSHELL_PLUGIN_ID`, `BANDITSHELL_PLUGIN_DIR` and
-`BANDITSHELL_API`, the api its manifest asked for.
+The program also gets `BANDITSHELL_PLUGIN_ID`, `BANDITSHELL_PLUGIN_DIR`,
+`BANDITSHELL_API`, the api its manifest asked for, and
+`BANDITSHELL_PLUGIN_DATA`, a folder of its own under
+`~/.local/state/banditshell/plugin-data/<id>` that only you can read. The
+shell makes it before the program starts. Keep state there rather than in
+the plugin's folder, which `plugin install` and `plugin dev` replace.
 
 ## The protocol
 
@@ -325,7 +329,7 @@ refused and logged.
 |---|---|
 | `{"type":"effect","do":"copy","text":"..."}` | Copies the text and closes the launcher. |
 | `{"type":"effect","do":"open","target":"https://..."}` | Opens a link or an absolute path, as for `open` on an item, and closes the launcher. |
-| `{"type":"effect","do":"notify","title":"Assigned","body":"PROJ-41 is yours"}` | Posts a notification. The launcher stays open. |
+| `{"type":"effect","do":"notify","title":"Assigned","body":"PROJ-41 is yours"}` | Posts a notification. The launcher stays open. A plugin may send this at any time, not only in answer to something, at most one every 3 seconds; more are skipped and logged. |
 | `{"type":"effect","do":"close"}` | Closes the launcher. |
 
 ## Status items
