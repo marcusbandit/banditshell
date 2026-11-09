@@ -109,7 +109,7 @@ test.describe("action shortcuts", () => {
     });
 
     test.it("refuses chords that would type, that the launcher uses, or that it cannot read", () => {
-        for (const [chord, why] of [["d", /ctrl or alt/], ["shift+d", /ctrl or alt/], ["ctrl+k", /already uses/], ["ctrl+enter", /already uses/], ["ctrl+backspace", /already uses/], ["ctrl+v", /already uses/], ["super+d", /modifiers/], ["ctrl+ctrl+d", /modifiers/], ["ctrl+banana", /not a key/]])
+        for (const [chord, why] of [["d", /ctrl or alt/], ["shift+d", /ctrl or alt/], ["ctrl+k", /already uses/], ["ctrl+enter", /already uses/], ["ctrl+backspace", /already uses/], ["ctrl+v", /already uses/], ["super+d", /modifiers/], ["ctrl+ctrl+d", /modifiers/], ["ctrl+banana", /not a key/], ["ctrl+shift+/", /shift changes/], ["alt+home", /not a key/], ["ctrl+u", /already uses/], ["ctrl+shift+enter", /already uses/]])
             assert.match(P.readShortcut(chord).refusal, why, chord);
     });
 

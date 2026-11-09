@@ -220,10 +220,10 @@ of the selected row on a list page.
 
 A shortcut is `ctrl`, `alt` or both, optionally `shift`, then a key: a
 letter, a digit, `f1` to `f24`, or `enter`, `backspace`, `delete`, `space`,
-`insert`, `home`, `end`, `pageup`, `pagedown`, `,`, `.`, `-`, `=`, `/`, `;`,
-`[` or `]`. Chords the launcher or its search field already use are refused:
+`insert`, `,`, `.`, `-`, `=`, `/`, `;`, `[` or `]`. Shift goes only with a
+letter, a digit or a named key, since it turns `/` into `?`. Chords the launcher or its search field already use are refused:
 `ctrl+k`, `ctrl+enter`, and the editing chords such as `ctrl+a`, `ctrl+c`,
-`ctrl+v`, `ctrl+x`, `ctrl+z` and `ctrl+backspace`. A refused or repeated
+`ctrl+v`, `ctrl+x`, `ctrl+z`, `ctrl+u` and `ctrl+backspace`. A refused or repeated
 shortcut is written to the plugin's log, and the action still works from the
 menu. A row drawn in QML hears the keys first, so a chord its `claimKey`
 takes never reaches the actions.

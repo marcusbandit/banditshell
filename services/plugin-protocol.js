@@ -229,9 +229,9 @@ function cancelLine(seq) {
 
 var SHORTCUT_MODS = { ctrl: "CTRL", control: "CTRL", alt: "ALT", shift: "SHIFT" };
 
-var SHORTCUT_KEYS = { enter: "RETURN", return: "RETURN", backspace: "BACKSPACE", delete: "DELETE", del: "DELETE", space: "SPACE", insert: "INSERT", comma: "COMMA", ",": "COMMA", period: "PERIOD", ".": "PERIOD", minus: "MINUS", "-": "MINUS", equal: "EQUAL", "=": "EQUAL", slash: "SLASH", "/": "SLASH", semicolon: "SEMICOLON", ";": "SEMICOLON", "[": "BRACKETLEFT", "]": "BRACKETRIGHT", pageup: "PRIOR", pagedown: "NEXT", home: "HOME", end: "END" };
+var SHORTCUT_KEYS = { enter: "RETURN", return: "RETURN", backspace: "BACKSPACE", delete: "DELETE", del: "DELETE", space: "SPACE", insert: "INSERT", comma: "COMMA", ",": "COMMA", period: "PERIOD", ".": "PERIOD", minus: "MINUS", "-": "MINUS", equal: "EQUAL", "=": "EQUAL", slash: "SLASH", "/": "SLASH", semicolon: "SEMICOLON", ";": "SEMICOLON", "[": "BRACKETLEFT", "]": "BRACKETRIGHT" };
 
-var TAKEN_CHORDS = ["CTRL+K", "CTRL+RETURN", "CTRL+A", "CTRL+C", "CTRL+V", "CTRL+X", "CTRL+Z", "CTRL+Y", "CTRL+SHIFT+Z", "CTRL+BACKSPACE", "CTRL+DELETE", "CTRL+HOME", "CTRL+END", "CTRL+SHIFT+HOME", "CTRL+SHIFT+END", "CTRL+INSERT", "SHIFT+INSERT", "SHIFT+DELETE", "CTRL+SHIFT+V"];
+var TAKEN_CHORDS = ["CTRL+K", "CTRL+RETURN", "CTRL+A", "CTRL+C", "CTRL+V", "CTRL+X", "CTRL+Z", "CTRL+Y", "CTRL+SHIFT+Z", "CTRL+BACKSPACE", "CTRL+DELETE", "CTRL+INSERT", "CTRL+SHIFT+V", "CTRL+U", "CTRL+SHIFT+RETURN"];
 
 function chordKey(chord) {
     var parts = chord.split("+").map(p => p.trim()).filter(Boolean);
@@ -255,6 +255,8 @@ function readShortcut(raw) {
     var name = /^[a-z0-9]$/.test(key) ? key.toUpperCase() : /^f([1-9]|1[0-9]|2[0-4])$/.test(key) ? key.toUpperCase() : SHORTCUT_KEYS[key];
     if (!name)
         return { refusal: `refused the shortcut ${text}: ${key || "nothing"} is not a key it can use` };
+    if (mods.indexOf("SHIFT") >= 0 && !/^[A-Z0-9]$|^F\d+$|^(RETURN|BACKSPACE|DELETE|SPACE|INSERT)$/.test(name))
+        return { refusal: `refused the shortcut ${text}: shift changes what ${key} types, so the chord could never be pressed` };
     if (mods.indexOf("CTRL") < 0 && mods.indexOf("ALT") < 0)
         return { refusal: `refused the shortcut ${text}: it needs ctrl or alt, or it would type into the search` };
     var chord = chordKey(mods.concat([name]).join("+"));
@@ -264,7 +266,7 @@ function readShortcut(raw) {
 }
 
 function chordLabel(chord) {
-    var names = { CTRL: "Ctrl", ALT: "Alt", SHIFT: "Shift", RETURN: "Enter", BACKSPACE: "Backspace", DELETE: "Delete", SPACE: "Space", INSERT: "Insert", COMMA: ",", PERIOD: ".", MINUS: "-", EQUAL: "=", SLASH: "/", SEMICOLON: ";", BRACKETLEFT: "[", BRACKETRIGHT: "]", PRIOR: "Page Up", NEXT: "Page Down", HOME: "Home", END: "End" };
+    var names = { CTRL: "Ctrl", ALT: "Alt", SHIFT: "Shift", RETURN: "Enter", BACKSPACE: "Backspace", DELETE: "Delete", SPACE: "Space", INSERT: "Insert", COMMA: ",", PERIOD: ".", MINUS: "-", EQUAL: "=", SLASH: "/", SEMICOLON: ";", BRACKETLEFT: "[", BRACKETRIGHT: "]" };
     return chord ? chord.split("+").map(p => names[p] || p).join(" ") : "";
 }
 

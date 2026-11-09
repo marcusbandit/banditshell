@@ -64,7 +64,7 @@ Singleton {
     function pressedChord(event: var): string {
         const m = event.modifiers;
         const key = root.keyName(event);
-        return key && m & (Qt.ControlModifier | Qt.AltModifier) ? [m & Qt.ControlModifier ? "CTRL" : "", m & Qt.AltModifier ? "ALT" : "", m & Qt.ShiftModifier ? "SHIFT" : "", key].filter(Boolean).join("+") : "";
+        return key && m & (Qt.ControlModifier | Qt.AltModifier) && !(m & Qt.MetaModifier) ? [m & Qt.ControlModifier ? "CTRL" : "", m & Qt.AltModifier ? "ALT" : "", m & Qt.ShiftModifier ? "SHIFT" : "", key].filter(Boolean).join("+") : "";
     }
 
     function chordFrom(event: var): var {

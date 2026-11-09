@@ -453,7 +453,7 @@ LauncherConcept {
             return true;
         if (row?.card && !root.answerHolds && !assistantCard.holds && Search.rowMayClaim(event.key, event.modifiers) && list.itemAtIndex(root.selected)?.claimRowKey(event))
             return true;
-        const chord = row && !row.header && !root.answerHolds ? LauncherHotkeys.pressedChord(event) : "";
+        const chord = row && !row.header && !root.answerHolds && !assistantCard.holds ? LauncherHotkeys.pressedChord(event) : "";
         const bound = chord ? root.actionsFor(row).find(a => a.chord && Chords.sameChord(a.chord, chord)) : null;
         if (bound) {
             bound.run();

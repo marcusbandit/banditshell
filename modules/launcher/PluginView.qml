@@ -171,7 +171,7 @@ Item {
             root.run(own, own.id, item.id);
             return true;
         }
-        const at = root.actions.findIndex(a => a.chord === chord);
+        const at = root.actions.indexOf(Protocol.actionOf(root.actions, chord));
         if (at < 0)
             return false;
         root.runAction(at);

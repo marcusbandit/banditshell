@@ -269,9 +269,24 @@ Item {
                         }
 
                         StyledText {
+                            id: keys
+
+                            anchors.right: parent.right
+                            anchors.rightMargin: root.inset
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: text !== ""
+                            text: cell.modelData.keys ?? ""
+                            font.pixelSize: root.textSize
+                            color: Appearance.colour.textFaint
+                        }
+
+                        StyledText {
                             anchors.left: mark.right
                             anchors.leftMargin: root.inset
+                            anchors.right: keys.visible ? keys.left : parent.right
+                            anchors.rightMargin: keys.visible ? root.inset * 2 : root.inset
                             anchors.verticalCenter: parent.verticalCenter
+                            elide: Text.ElideRight
 
                             text: cell.modelData.label
                             font.pixelSize: root.textSize
@@ -285,18 +300,6 @@ Item {
                                 speed: Appearance.animation.trackSpeed
                             }
                         }
-                    }
-
-                    StyledText {
-                        y: cell.lead
-                        height: root.rowHeight
-                        anchors.right: parent.right
-                        anchors.rightMargin: root.inset
-                        verticalAlignment: Text.AlignVCenter
-                        visible: text !== ""
-                        text: cell.modelData.keys ?? ""
-                        font.pixelSize: root.textSize
-                        color: Appearance.colour.textFaint
                     }
 
                     MouseArea {
