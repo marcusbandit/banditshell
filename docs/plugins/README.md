@@ -141,6 +141,12 @@ skipped, so a stray `print` cannot break anything.
 | `{"type":"open"}` | The launcher opened, or the program started while it is open. |
 | `{"type":"close"}` | The launcher closed. A plugin that keeps rows live with `update` stops here and starts again at the next `open`. |
 
+A hotkey or `banditshell panel launcher run plugin:<id>:<item>` on a row that
+is not among the plugin's last results, after a restart for instance, sends
+`{"type":"activate","seq":0,"id":"PROJ-41","action":"","cold":true}`: the
+shell no longer has the row, so the plugin does what Enter on it would. Its
+answer may be an effect, as for a status item; the launcher stays closed.
+
 `seq` grows with every query. An `activate` carries the `seq` of the results
 its row came from. An `activate` from inside a page also carries `"view"`, the
 page's id.

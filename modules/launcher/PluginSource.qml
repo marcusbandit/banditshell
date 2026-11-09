@@ -301,6 +301,10 @@ QtObject {
     }
 
     function activate(row: var): void {
+        if (row.cold) {
+            PluginHost.activateCold(root.pluginId, row.cold, root);
+            return;
+        }
         if (row.problem) {
             root.solve(row);
             return;
@@ -313,6 +317,8 @@ QtObject {
     }
 
     function actionsFor(row: var): var {
+        if (row.cold)
+            return [];
         if (row.problem)
             return row.problem === "waiting" ? [] : [
                 {
@@ -329,7 +335,7 @@ QtObject {
     }
 
     function complete(row: var): bool {
-        if (row.problem)
+        if (row.problem || row.cold)
             return false;
         PluginHost.complete(root.pluginId, row.item.id, root);
         return true;
@@ -337,9 +343,18 @@ QtObject {
 
     function rowById(id: string): var {
         const prefix = `plugin:${root.pluginId}:`;
-        if (id.indexOf(prefix) !== 0)
+        if (id.indexOf(prefix) !== 0 || !root.plugin)
             return null;
         const item = (root.answer?.items ?? []).find(i => i.id === id.slice(prefix.length));
-        return item ? root.rowOf(item, 1) : null;
+        if (item)
+            return root.rowOf(item, 1);
+        const cold = Protocol.coldId(prefix, id);
+        return cold ? Object.assign({
+            key: id,
+            kind: root.kind,
+            cold: cold,
+            label: Config.values.launcher.hotkeys[id]?.label || cold,
+            score: 1
+        }, root.iconOf(null)) : null;
     }
 }

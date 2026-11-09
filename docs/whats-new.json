@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-09-p811",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Hotkeys on plugin rows work even when the launcher is closed"
+        }
+      ]
+    },
+    {
       "id": "2026-11-09-p810",
       "date": "2026-11-09",
       "changes": [
