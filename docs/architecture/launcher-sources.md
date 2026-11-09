@@ -59,6 +59,7 @@ members instead: `WorkshopSource` only adds commands.
 | `rowById(id)` | no | function | Rebuilds a row from its key without a query. Rows a source can rebuild can be run by id, get aliases and get hotkeys. |
 | `complete(row)` | no | function | Tab on one of its rows. Returns true when it handled it, usually by retyping the query through `search.retype`. |
 | `confirmActionsFor(row)` | no | function | The choices shown while one of its rows is armed and waiting for a second Enter. The launcher adds Cancel. |
+| `commandOf(text)` | no | function | Claims a typed command word that takes arguments: returns `{ source, command, rest }` and the launcher draws one box per argument, or null. The source needs `runCommand(word, values)` for Enter. Plugins use it, see `docs/plugins/README.md`. |
 | `listsWifi` | no | bool | True while this source shows networks itself, so the plain search leaves them out. |
 
 ## Groups

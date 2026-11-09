@@ -42,9 +42,11 @@ LauncherConcept {
     property int argAt: 0
     property var argMissing: []
 
+    onOpenChanged: root.argWord = ""
+
     onArgCommandChanged: {
         const word = root.argCommand?.command.word ?? "";
-        if (word === root.argWord)
+        if (word === root.argWord && !root.argCommand?.rest)
             return;
         root.argWord = word;
         root.argMissing = [];
