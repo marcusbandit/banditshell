@@ -16,6 +16,7 @@
       "modules/launcher/ListLauncher.qml",
       "modules/launcher/Peek.qml",
       "modules/launcher/PluginContext.qml",
+      "modules/launcher/PluginFacts.qml",
       "modules/launcher/PluginHost.qml",
       "modules/launcher/PluginPreview.qml",
       "modules/launcher/PluginProcess.qml",
