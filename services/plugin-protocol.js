@@ -386,7 +386,7 @@ function propsOf(raw) {
 }
 
 function factsOf(raw) {
-    return (Array.isArray(raw) ? raw : []).filter(f => f && typeof f === "object").map(f => ({ label: textOf(f.label, 80).trim(), value: textOf(f.value, 500) })).filter(f => f.label).slice(0, 30);
+    return (Array.isArray(raw) ? raw : []).filter(f => f && typeof f === "object").map(f => ({ label: textOf(f.label, 80).trim(), value: textOf(f.value, 500) })).filter(f => f.label && f.value).slice(0, 30);
 }
 
 function readPreview(raw, folder) {
@@ -398,15 +398,15 @@ function readPreview(raw, folder) {
         var drawn = qmlOf(raw.qml, folder);
         return drawn.file ? { qml: drawn.file } : { note: drawn.note };
     }
-    var facts = factsOf(raw.facts);
-    if (facts.length)
-        return { facts: facts, text: textOf(raw.text, 20000) };
     if (given(raw.image))
         return imageOf(raw.image, folder) ? { image: imageOf(raw.image, folder) } : null;
     if (given(raw.file)) {
         var file = textOf(raw.file, 4096);
         return file.charAt(0) === "/" ? { file: file } : null;
     }
+    var facts = factsOf(raw.facts);
+    if (facts.length)
+        return { facts: facts, text: textOf(raw.text, 20000) };
     return given(raw.text) ? { text: textOf(raw.text, 20000) } : null;
 }
 
