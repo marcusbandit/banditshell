@@ -161,14 +161,16 @@ QtObject {
 
     readonly property var commandWords: (root.plugin?.commands ?? []).map(c => c.word)
 
-    readonly property var prefixes: (root.plugin?.prefix.filter(w => !root.commandWords.includes(w)).length ? [
+    readonly property var plainWords: (root.plugin?.prefix ?? []).filter(w => !root.commandWords.includes(w))
+
+    readonly property var prefixes: (root.plainWords.length ? [
             {
                 section: "Plugins",
-                word: root.plugin.prefix.find(w => !root.commandWords.includes(w)),
-                example: `${root.plugin.prefix.find(w => !root.commandWords.includes(w))} …`,
+                word: root.plainWords[0],
+                example: `${root.plainWords[0]} …`,
                 about: root.plugin.about || root.plugin.name,
                 icon: root.plugin.icon.name ?? "extension",
-                also: root.plugin.prefix.filter(w => !root.commandWords.includes(w)).slice(1)
+                also: root.plainWords.slice(1)
             }
         ] : []).concat((root.plugin?.commands ?? []).map(c => ({
                 section: "Plugins",
@@ -185,7 +187,6 @@ QtObject {
         const found = Protocol.commandOf(root.plugin, text);
         if (!found)
             return null;
-        void PluginHost.choiceSets;
         const command = Object.assign({}, found.command, {
             arguments: found.command.arguments.map(a => Object.assign({}, a, {
                         choices: PluginHost.choicesOf(root.pluginId, found.command.word, a.key) ?? a.choices

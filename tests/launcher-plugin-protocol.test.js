@@ -141,8 +141,10 @@ test.describe("command arguments", () => {
     test.it("splits what follows the word over the arguments, the last one taking the rest", () => {
         const found = P.commandOf(plugin, "dim spotify 15");
         assert.deepStrictEqual([found.rest, P.argumentsFrom(found.command, found.rest)], ["spotify 15", ["spotify", "15"]]);
-        assert.deepStrictEqual(P.argumentsFrom(found.command, "zen browser twenty  percent "), ["zen", "browser twenty  percent"]);
+        assert.deepStrictEqual(P.argumentsFrom(found.command, "zen browser twenty  percent "), ["zen browser", "twenty  percent"]);
         assert.deepStrictEqual(P.argumentsFrom(found.command, ""), ["", ""]);
+        assert.deepStrictEqual(P.argumentsFrom(found.command, "zen browser 30"), ["zen browser", "30"]);
+        assert.match(manifest({ commands: [{ word: "dim", arguments: [{ placeholder: "Level" }] }] }).error, /key/);
         assert.strictEqual(P.commandOf(plugin, "dim"), null);
     });
 
@@ -152,6 +154,9 @@ test.describe("command arguments", () => {
         assert.strictEqual(P.completionOf(app, ""), null);
         assert.deepStrictEqual(P.argumentValues(plugin.commands[0], ["Zen Browser", "15"]), { values: { app: "firefox", level: "15" }, missing: [] });
         assert.deepStrictEqual(P.argumentValues(plugin.commands[0], ["winamp", ""]), { values: { app: "", level: "" }, missing: ["app"] });
+        assert.deepStrictEqual(P.argumentValues(plugin.commands[0], ["sp", ""]).values.app, "spotify");
+        const steam = { key: "app", type: "choice", choices: [{ value: "spotify", title: "Spotify" }, { value: "steam", title: "Steam" }] };
+        assert.deepStrictEqual(P.argumentValues({ arguments: [steam] }, ["s"]).missing, ["app"]);
         assert.strictEqual(P.commandLine("dim", { app: "spotify" }), '{"type":"command","word":"dim","arguments":{"app":"spotify"}}');
     });
 });

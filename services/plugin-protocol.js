@@ -149,7 +149,7 @@ function readManifest(text, folder, loose) {
         var args = [];
         for (var a of Array.isArray(c.arguments) ? c.arguments : []) {
             var type = a && a.type !== undefined ? a.type : "text";
-            if (!a || !PREF_KEY.test(a.key) || ARG_TYPES.indexOf(type) < 0 || args.some(b => b.key === a.key))
+            if (!a || typeof a.key !== "string" || !PREF_KEY.test(a.key) || ARG_TYPES.indexOf(type) < 0 || args.some(b => b.key === a.key))
                 return { error: "an argument needs a key of letters, digits and _, and a type of text or choice", id: name, name: title };
             var choices = readChoices(a.choices, 60, 30);
             if (type === "choice" && !choices.length)
@@ -333,7 +333,9 @@ function argumentsFrom(command, rest) {
             out.push(left.trim());
             return;
         }
-        var cut = left.search(/\s/);
+        var lower = left.toLowerCase();
+        var named = arg.choices.map(c => c.title).filter(t => /\s/.test(t) && lower.indexOf(t.toLowerCase()) === 0 && /^(\s|$)/.test(left.slice(t.length))).sort((a, b) => b.length - a.length)[0];
+        var cut = named ? named.length : left.search(/\s/);
         out.push(cut < 0 ? left : left.slice(0, cut));
         left = cut < 0 ? "" : left.slice(cut).replace(/^\s+/, "");
     });
@@ -352,8 +354,10 @@ function argumentValues(command, texts) {
     var missing = [];
     command.arguments.forEach((arg, i) => {
         var typed = (texts[i] || "").trim();
-        var exact = arg.choices.find(c => c.title.toLowerCase() === typed.toLowerCase() || c.value.toLowerCase() === typed.toLowerCase());
-        var value = exact ? exact.value : arg.type === "choice" ? "" : typed;
+        var t = typed.toLowerCase();
+        var exact = arg.choices.find(c => c.title.toLowerCase() === t || c.value.toLowerCase() === t);
+        var starts = t ? arg.choices.filter(c => c.title.toLowerCase().indexOf(t) === 0 || c.value.toLowerCase().indexOf(t) === 0) : [];
+        var value = exact ? exact.value : arg.type !== "choice" ? typed : starts.length === 1 ? starts[0].value : "";
         values[arg.key] = value;
         if ((arg.required || (arg.type === "choice" && typed)) && !value)
             missing.push(arg.key);
@@ -681,7 +685,7 @@ function readMessage(line, folder, declared) {
         var status = readStatus(raw.item, declared);
         return status.error ? { error: status.error } : { type: "status", item: status.item };
     case "choices":
-        if (typeof raw.word !== "string" || !PREF_KEY.test(raw.key))
+        if (typeof raw.word !== "string" || typeof raw.key !== "string" || !PREF_KEY.test(raw.key))
             return { error: "choices without a word and a key" };
         return { type: "choices", word: raw.word.toLowerCase(), key: raw.key, choices: readChoices(raw.choices, 60, 30) };
     case "fill":

@@ -268,6 +268,13 @@ Singleton {
 
     function stop(id: string): void {
         PluginStatus.drop(id);
+        if (Object.keys(root.choiceSets).some(k => k.indexOf(`${id}\n`) === 0)) {
+            const kept = {};
+            for (const k of Object.keys(root.choiceSets))
+                if (k.indexOf(`${id}\n`) !== 0)
+                    kept[k] = root.choiceSets[k];
+            root.choiceSets = kept;
+        }
         const proc = root.processes[id];
         if (!proc)
             return;
