@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-09-p807",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugin commands take arguments in boxes right in the launcher search"
+        }
+      ]
+    },
+    {
       "id": "2026-11-09-p812",
       "date": "2026-11-09",
       "changes": [

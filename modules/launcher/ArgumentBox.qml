@@ -15,7 +15,7 @@ Item {
     signal edited(string text)
     signal pressed(var event)
 
-    implicitWidth: Math.max(placeholder.implicitWidth, input.contentWidth + ghost.implicitWidth) + Appearance.padding.normal * 2
+    implicitWidth: Math.max(placeholder.implicitWidth, input.contentWidth + (ghost.visible ? ghost.implicitWidth : 0)) + Appearance.padding.normal * 2
     implicitHeight: input.implicitHeight + Appearance.padding.small * 2
 
     function focusEnd(): void {

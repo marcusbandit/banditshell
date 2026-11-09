@@ -7,6 +7,7 @@
       "modules/launcher/AlphabetLauncher.qml",
       "modules/launcher/AlphabetRow.qml",
       "modules/launcher/AnswerRow.qml",
+      "modules/launcher/ArgumentBox.qml",
       "modules/launcher/ColourPicker.qml",
       "modules/launcher/LaunchEdge.qml",
       "modules/launcher/Launcher.qml",

@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "readStatus", "statusLine", "coldLine", "dropdownLine", "notifyAllowed", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated", "coldId"]);
+const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "readStatus", "statusLine", "coldLine", "dropdownLine", "notifyAllowed", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated", "coldId", "commandOf", "argumentsFrom", "completionOf", "argumentValues", "commandLine"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 const JIRA = {
@@ -124,6 +124,35 @@ test.describe("action shortcuts", () => {
         assert.match(item.notes.join("\n"), /Ctrl D on Drop: Dim has it/);
         assert.strictEqual(P.actionOf(item.actions, "CTRL+D").id, "dim");
         assert.strictEqual(P.actionOf(item.actions, ""), null);
+    });
+});
+
+test.describe("command arguments", () => {
+    const app = { key: "app", type: "choice", placeholder: "App", required: true, choices: [{ value: "spotify", title: "Spotify" }, { value: "firefox", title: "Zen Browser" }] };
+    const { plugin } = manifest({ commands: [{ word: "Dim", title: "Dim an app", arguments: [app, { key: "level", placeholder: "Level" }] }] });
+
+    test.it("reads commands, adds their words to the prefixes and refuses broken ones", () => {
+        assert.deepStrictEqual([plugin.commands[0].word, plugin.commands[0].arguments[1].type, plugin.prefix], ["dim", "text", ["jira", "j", "dim"]]);
+        assert.match(manifest({ commands: [{ word: "dim", arguments: [] }] }).error, /one to 3/);
+        assert.match(manifest({ commands: [{ word: "dim", arguments: [{ key: "a", type: "choice" }] }] }).error, /no choices/);
+        assert.match(manifest({ commands: [{ word: "two words", arguments: [{ key: "a" }] }] }).error, /a word/);
+    });
+
+    test.it("splits what follows the word over the arguments, the last one taking the rest", () => {
+        const found = P.commandOf(plugin, "dim spotify 15");
+        assert.deepStrictEqual([found.rest, P.argumentsFrom(found.command, found.rest)], ["spotify 15", ["spotify", "15"]]);
+        assert.deepStrictEqual(P.argumentsFrom(found.command, "zen browser twenty  percent "), ["zen", "browser twenty  percent"]);
+        assert.deepStrictEqual(P.argumentsFrom(found.command, ""), ["", ""]);
+        assert.strictEqual(P.commandOf(plugin, "dim"), null);
+    });
+
+    test.it("completes a choice by title, then by value, and sends a choice's value", () => {
+        assert.strictEqual(P.completionOf(app, "ze").value, "firefox");
+        assert.strictEqual(P.completionOf(app, "fire").title, "Zen Browser");
+        assert.strictEqual(P.completionOf(app, ""), null);
+        assert.deepStrictEqual(P.argumentValues(plugin.commands[0], ["Zen Browser", "15"]), { values: { app: "firefox", level: "15" }, missing: [] });
+        assert.deepStrictEqual(P.argumentValues(plugin.commands[0], ["winamp", ""]), { values: { app: "", level: "" }, missing: ["app"] });
+        assert.strictEqual(P.commandLine("dim", { app: "spotify" }), '{"type":"command","word":"dim","arguments":{"app":"spotify"}}');
     });
 });
 

@@ -11,6 +11,7 @@ import "search.js" as Search
 import "placement.js" as Placement
 import "../../services/chords.js" as Chords
 import "../../services/colours.js" as Colours
+import "../../services/plugin-protocol.js" as Protocol
 
 LauncherConcept {
     id: root
@@ -33,6 +34,138 @@ LauncherConcept {
 
 
     property var capture: null
+
+    readonly property var argCommand: !root.capture && !root.shownView ? search.commandFor(root.input?.text ?? "") : null
+    readonly property var argList: root.argCommand?.command.arguments ?? []
+    property string argWord: ""
+    property var argTexts: []
+    property int argAt: 0
+    property var argMissing: []
+
+    onArgCommandChanged: {
+        const word = root.argCommand?.command.word ?? "";
+        if (word === root.argWord)
+            return;
+        root.argWord = word;
+        root.argMissing = [];
+        if (!word)
+            return;
+        const rest = root.argCommand.rest;
+        root.argTexts = Protocol.argumentsFrom(root.argCommand.command, rest);
+        const empty = root.argTexts.findIndex(t => !t);
+        root.argAt = empty < 0 ? root.argTexts.length - 1 : empty;
+        Qt.callLater(root.enterArgs, rest ? `${word} ` : "");
+    }
+
+    function enterArgs(text: string): void {
+        if (text)
+            query.text = text;
+        root.focusArg(root.argAt);
+    }
+
+    function argBox(index: int): var {
+        return argRepeater.itemAt(index);
+    }
+
+    function focusArg(index: int): void {
+        if (!root.argCommand || index < 0 || index >= root.argList.length)
+            return;
+        root.argAt = index;
+        root.argBox(index)?.focusEnd();
+    }
+
+    function argCompletion(index: int): var {
+        const arg = root.argList[index];
+        return arg ? Protocol.completionOf(arg, root.argTexts[index] ?? "") : null;
+    }
+
+    function setArg(index: int, text: string): void {
+        const next = root.argTexts.slice();
+        next[index] = text;
+        root.argTexts = next;
+        root.argMissing = root.argMissing.filter(k => k !== root.argList[index]?.key);
+    }
+
+    function acceptArg(index: int): void {
+        const hit = root.argCompletion(index);
+        if (hit && hit.title.toLowerCase() !== (root.argTexts[index] ?? "").trim().toLowerCase())
+            root.setArg(index, hit.title);
+    }
+
+    function leaveArgs(keepWord: bool): void {
+        const word = root.argWord;
+        query.text = keepWord ? word : "";
+        query.cursorPosition = query.text.length;
+        query.forceActiveFocus();
+    }
+
+    function runArgs(): void {
+        const cmd = root.argCommand;
+        if (!cmd)
+            return;
+        for (let i = 0; i < root.argList.length; i++)
+            root.acceptArg(i);
+        const read = Protocol.argumentValues(cmd.command, root.argTexts);
+        root.argMissing = read.missing;
+        if (read.missing.length) {
+            root.focusArg(root.argList.findIndex(a => a.key === read.missing[0]));
+            return;
+        }
+        cmd.source.runCommand(cmd.command.word, read.values);
+    }
+
+    function argKey(index: int, event: var): void {
+        const box = root.argBox(index);
+        const last = index === root.argList.length - 1;
+        const plain = !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier));
+        switch (event.key) {
+        case Qt.Key_Tab:
+            root.acceptArg(index);
+            root.focusArg(last ? index : index + 1);
+            break;
+        case Qt.Key_Backtab:
+            root.focusArg(index - 1);
+            break;
+        case Qt.Key_Space:
+            if (last || !plain)
+                return;
+            root.acceptArg(index);
+            root.focusArg(index + 1);
+            break;
+        case Qt.Key_Right:
+            if (box.input.cursorPosition < box.input.text.length || last)
+                return;
+            root.acceptArg(index);
+            root.focusArg(index + 1);
+            break;
+        case Qt.Key_Left:
+            if (box.input.cursorPosition > 0)
+                return;
+            if (index > 0)
+                root.focusArg(index - 1);
+            else
+                root.leaveArgs(true);
+            break;
+        case Qt.Key_Backspace:
+            if (box.input.text)
+                return;
+            if (index > 0)
+                root.focusArg(index - 1);
+            else
+                root.leaveArgs(true);
+            break;
+        case Qt.Key_Return:
+        case Qt.Key_Enter:
+            root.runArgs();
+            break;
+        case Qt.Key_Escape:
+            root.leaveArgs(false);
+            break;
+        default:
+            return;
+        }
+        event.accepted = true;
+    }
     property string beforeCapture: ""
 
     property var shownView: null
@@ -402,6 +535,14 @@ LauncherConcept {
         search.arrangeNow();
         if (root.capture)
             return root.claimCaptureKey(event);
+
+        if (root.argCommand && [Qt.Key_Tab, Qt.Key_Return, Qt.Key_Enter].includes(event.key)) {
+            if (event.key === Qt.Key_Tab)
+                root.focusArg(root.argAt);
+            else
+                root.runArgs();
+            return true;
+        }
 
         if (root.shownView && !sheet.open) {
             if (event.key === Qt.Key_Escape && !(event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier))) {
@@ -998,6 +1139,36 @@ LauncherConcept {
                             text: !root.capture ? "Search, or ? for help" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
+                        }
+                    }
+
+                    Row {
+                        x: query.x + query.contentWidth + Appearance.padding.small
+                        z: 1
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: !!root.argCommand
+                        spacing: Appearance.padding.small
+
+                        Repeater {
+                            id: argRepeater
+
+                            model: root.argList
+
+                            ArgumentBox {
+                                required property var modelData
+                                required property int index
+
+                                argument: modelData
+                                text: root.argTexts[index] ?? ""
+                                completion: {
+                                    const hit = root.argCompletion(index);
+                                    const typed = root.argTexts[index] ?? "";
+                                    return hit && hit.title.toLowerCase().indexOf(typed.toLowerCase()) === 0 ? hit.title.slice(typed.length) : "";
+                                }
+                                missing: root.argMissing.includes(modelData.key)
+                                onEdited: text => root.setArg(index, text)
+                                onPressed: event => root.argKey(index, event)
+                            }
                         }
                     }
 

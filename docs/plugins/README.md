@@ -91,6 +91,7 @@ plugin can reach before it lists any.
 | `prefix` | no | Words that send the rest of the query to this plugin alone, the way `gh` and `pkg` work. They are listed on the `?` page. |
 | `global` | no | Lets the plugin add rows to plain searches. `minLength` is how many characters a query needs first, 3 by default. `cap` is how many of its rows a plain search shows at most, 3 by default and up to 50. Without `global` the plugin only answers after its prefix. |
 | `preferences` | no | Settings the plugin needs, drawn by Settings so a plugin never ships its own settings window. |
+| `commands` | no | Commands that take arguments in the search field, such as `dim spotify 15`. See Commands. Each command's word works as a prefix too. |
 | `status` | no | Live items the plugin owns outside the launcher, up to four, each `{ "id", "place", "title", "icon" }` with `place` either `rail` or `island`. See Status items. A plugin with status items runs in the background. |
 | `background` | no | `true` starts the program with the shell and keeps it running while the launcher is closed, so it can keep its rows fresh or work on its own. It is never stopped for being idle, and after a crash it starts again by itself, until three crashes in a minute switch it off. |
 
@@ -138,6 +139,7 @@ skipped, so a stray `print` cannot break anything.
 | `{"type":"complete","id":"PROJ-41"}` | Tab on a row. |
 | `{"type":"cancel","seq":12}` | The query moved on before the answer to `seq` came. The plugin can stop working on it. |
 | `{"type":"submit","view":"new-issue","values":{...}}` | The person submitted a form page. `values` has every field's key. |
+| `{"type":"command","word":"dim","arguments":{"app":"spotify","level":"15"}}` | Enter in a command's argument boxes. See Commands. |
 | `{"type":"open"}` | The launcher opened, or the program started while it is open. |
 | `{"type":"dropdown","view":"history","value":"spotify"}` | The person picked from a list page's dropdown. See Pages. |
 | `{"type":"close"}` | The launcher closed. A plugin that keeps rows live with `update` stops here and starts again at the next `open`. |
@@ -161,6 +163,7 @@ page's id.
 | `{"type":"fill","text":"jira PROJ-41 "}` | Replaces the query, the usual answer to `complete`. |
 | `{"type":"view","view":{...}}` | Opens a full page in place of the list. See Pages. |
 | `{"type":"effect","do":"copy","text":"..."}` | Does one thing for the plugin, so it needs neither `wl-copy` nor `xdg-open`. See Effects. |
+| `{"type":"choices","word":"dim","key":"app","choices":[...]}` | Replaces a choice argument's choices, such as the apps that are playing now. See Commands. |
 | `{"type":"status","item":{...}}` | Shows or changes one of the plugin's status items, at any time. See Status items. |
 
 The plugin answers every `query` with one `results`, even an empty one, so
@@ -339,6 +342,43 @@ refused and logged.
 | `{"type":"effect","do":"open","target":"https://..."}` | Opens a link or an absolute path, as for `open` on an item, and closes the launcher. |
 | `{"type":"effect","do":"notify","title":"Assigned","body":"PROJ-41 is yours"}` | Posts a notification. The launcher stays open. A plugin may send this at any time, not only in answer to something, at most one every 3 seconds; more are skipped and logged. |
 | `{"type":"effect","do":"close"}` | Closes the launcher. |
+
+## Commands
+
+A command is a word followed by up to three arguments, typed straight into
+the search field. Typing the word and a space turns the rest of the field
+into one box per argument; the words typed after it fill them in order, so
+`dim spotify 15` lands as `spotify` and `15`.
+
+```json
+"commands": [
+  {"word": "dim", "title": "Dim an app while you dictate", "icon": "volume_down",
+   "arguments": [
+     {"key": "app", "type": "choice", "placeholder": "App", "required": true,
+      "choices": [{"value": "spotify", "title": "Spotify"}, {"value": "firefox", "title": "Zen Browser"}]},
+     {"key": "level", "placeholder": "Level"}
+   ]}
+]
+```
+
+| field | meaning |
+|---|---|
+| `word` | Lowercase letters, digits and `-`. |
+| `title`, `icon` | How the `?` page lists the command. |
+| `arguments` | One to three, each with a `key` of letters, digits and `_`, a `type` of `text` (the default) or `choice`, a `placeholder` drawn in the empty box, `required`, and `choices` for a choice. A text argument may carry `choices` too, as suggestions. |
+
+In the boxes, a choice completes as you type and Tab or Space takes the
+completion and moves on. Tab and Shift+Tab move between boxes, Space moves on
+from every box but the last, which takes the rest of what you type,
+Backspace in an empty first box goes back to the plain search, and Escape
+clears it. Enter sends
+`{"type":"command","word":"dim","arguments":{"app":"spotify","level":"15"}}`,
+with every key present and a choice's `value`. A required box that is empty,
+or a choice that matches none of its choices, is marked and Enter waits. The
+plugin answers as it would an `activate`.
+
+Choices that change, such as the apps playing right now, can be replaced at
+any time with `{"type":"choices","word":"dim","key":"app","choices":[...]}`.
 
 ## Status items
 
