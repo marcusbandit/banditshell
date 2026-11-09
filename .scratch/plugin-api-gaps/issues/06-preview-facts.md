@@ -1,6 +1,7 @@
 # The side preview can show facts
 
-Status: ready-for-agent
+Status: resolved
+PR: #817
 GitHub: #810
 
 Label and value facts only show on a full detail page. Raycast's list items

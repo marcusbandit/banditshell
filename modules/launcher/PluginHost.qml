@@ -32,6 +32,7 @@ Singleton {
     property var exiting: ({})
     property var statusAsked: ({})
     property var notified: ({})
+    property var choiceSets: ({})
     readonly property bool open: root.watchers.length > 0
     readonly property var drawings: ({})
     readonly property var noted: ({})
@@ -267,6 +268,13 @@ Singleton {
 
     function stop(id: string): void {
         PluginStatus.drop(id);
+        if (Object.keys(root.choiceSets).some(k => k.indexOf(`${id}\n`) === 0)) {
+            const kept = {};
+            for (const k of Object.keys(root.choiceSets))
+                if (k.indexOf(`${id}\n`) !== 0)
+                    kept[k] = root.choiceSets[k];
+            root.choiceSets = kept;
+        }
         const proc = root.processes[id];
         if (!proc)
             return;
@@ -328,6 +336,17 @@ Singleton {
             return;
         root.expect(id, asker);
         root.ensure(id).send(Protocol.activateLine(root.answers[id]?.seq ?? 0, item, action, view));
+    }
+
+    function command(id: string, word: string, values: var, asker: var): void {
+        if (!root.usable(id))
+            return;
+        root.expect(id, asker);
+        root.ensure(id).send(Protocol.commandLine(word, values));
+    }
+
+    function choicesOf(id: string, word: string, key: string): var {
+        return root.choiceSets[`${id}\n${word}\n${key}`] ?? null;
     }
 
     function pick(id: string, view: string, value: string, asker: var): void {
@@ -400,6 +419,12 @@ Singleton {
                     answered: true,
                     late: false
                 }));
+            return;
+        }
+        if (message.type === "choices") {
+            root.choiceSets = Object.assign({}, root.choiceSets, {
+                [`${id}\n${message.word}\n${message.key}`]: message.choices
+            });
             return;
         }
         if (message.type === "status") {

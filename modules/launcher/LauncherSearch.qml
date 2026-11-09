@@ -1026,6 +1026,15 @@ QtObject {
         return null;
     }
 
+    function commandFor(text: string): var {
+        for (const s of root.sources) {
+            const found = s.commandOf?.(text) ?? null;
+            if (found)
+                return found;
+        }
+        return null;
+    }
+
     function runnable(row: var): bool {
         return (["app", "command", "setting"].includes(row?.kind) || !!root.sourceOf(row)?.rowById);
     }

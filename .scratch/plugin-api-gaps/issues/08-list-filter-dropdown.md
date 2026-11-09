@@ -1,6 +1,7 @@
 # A list page can have a dropdown beside its filter
 
-Status: ready-for-agent
+Status: resolved
+PR: #819
 GitHub: #812
 
 Raycast's search bar accessory: a choice beside the filter field that the

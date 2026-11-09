@@ -1,6 +1,7 @@
 # Plugins hear when the launcher opens and closes
 
-Status: ready-for-agent
+Status: resolved
+PR: #813
 GitHub: #808
 
 A plugin is never told the launcher closed. Plugins that keep rows live with

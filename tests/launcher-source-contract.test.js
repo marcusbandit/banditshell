@@ -9,8 +9,8 @@ const SEARCH = fs.readFileSync(path.join(ROOT, "modules/launcher/LauncherSearch.
 const DOC = fs.readFileSync(path.join(ROOT, "docs/architecture/launcher-sources.md"), "utf8");
 
 const ROWS = ["kinds", "groups", "activate", "actionsFor"];
-const OPTIONAL = ["intent", "alone", "caps", "commands", "prefixes", "phrases", "rowById", "complete", "confirmActionsFor", "listsWifi"];
-const FUNCTIONS = ["activate", "actionsFor", "rowById", "complete", "confirmActionsFor"];
+const OPTIONAL = ["intent", "alone", "caps", "commands", "prefixes", "phrases", "rowById", "complete", "confirmActionsFor", "listsWifi", "commandOf"];
+const FUNCTIONS = ["activate", "actionsFor", "rowById", "complete", "confirmActionsFor", "commandOf"];
 const CONTRACT = ["search"].concat(ROWS, OPTIONAL);
 
 function members(text) {
@@ -111,6 +111,6 @@ test.describe("launcher source contract", () => {
 
     test.it("describes every member on the contract page", () => {
         for (const m of CONTRACT)
-            assert.match(DOC, new RegExp("^\\| `" + m + "(?:\\(row\\)|\\(id\\))?` \\| " + (m === "search" ? "yes" : ROWS.includes(m) ? "rows" : "no") + " \\|", "m"), m);
+            assert.match(DOC, new RegExp("^\\| `" + m + "(?:\\((?:row|id|text)\\))?` \\| " + (m === "search" ? "yes" : ROWS.includes(m) ? "rows" : "no") + " \\|", "m"), m);
     });
 });

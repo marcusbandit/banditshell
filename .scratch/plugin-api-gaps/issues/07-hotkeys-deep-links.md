@@ -1,6 +1,7 @@
 # Hotkeys and deep links reach plugin rows that are not on screen
 
-Status: ready-for-agent
+Status: resolved
+PR: #818
 GitHub: #811
 
 `banditshell panel launcher run plugin:<id>:<item>` and a hotkey on a plugin

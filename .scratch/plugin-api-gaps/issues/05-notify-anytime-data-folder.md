@@ -1,6 +1,7 @@
 # A plugin can notify at any time, and has a folder of its own
 
-Status: ready-for-agent
+Status: resolved
+PR: #816
 GitHub: #809
 
 Every message but `results` and `update` is dropped unless it answers
