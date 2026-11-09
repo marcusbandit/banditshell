@@ -134,6 +134,8 @@ test.describe("list dropdown", () => {
         assert.deepStrictEqual(page.view.dropdown, { title: "App", choices: [{ value: "all", title: "Every app" }, { value: "spotify", title: "spotify" }], value: "all" });
         const none = P.readMessage(JSON.stringify({ type: "view", view: { kind: "list", id: "h", title: "H", items: [], dropdown: { choices: [] } } }), "/p");
         assert.strictEqual(none.view.dropdown, null);
+        const numbered = P.readMessage(JSON.stringify({ type: "view", view: { kind: "list", id: "d", title: "D", items: [], dropdown: { value: 7, choices: [1, 7, 7, 30] } } }), "/p");
+        assert.deepStrictEqual([numbered.view.dropdown.value, numbered.view.dropdown.choices.length], ["7", 3]);
         assert.strictEqual(P.dropdownLine("history", "spotify"), '{"type":"dropdown","view":"history","value":"spotify"}');
     });
 });

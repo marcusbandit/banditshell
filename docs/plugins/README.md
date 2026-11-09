@@ -139,6 +139,7 @@ skipped, so a stray `print` cannot break anything.
 | `{"type":"cancel","seq":12}` | The query moved on before the answer to `seq` came. The plugin can stop working on it. |
 | `{"type":"submit","view":"new-issue","values":{...}}` | The person submitted a form page. `values` has every field's key. |
 | `{"type":"open"}` | The launcher opened, or the program started while it is open. |
+| `{"type":"dropdown","view":"history","value":"spotify"}` | The person picked from a list page's dropdown. See Pages. |
 | `{"type":"close"}` | The launcher closed. A plugin that keeps rows live with `update` stops here and starts again at the next `open`. |
 
 A hotkey or `banditshell panel launcher run plugin:<id>:<item>` on a row that
@@ -414,7 +415,7 @@ the `activate`.
 ```
 
 A list page can carry a `dropdown` beside its filter, such as a day or an app
-to filter by. Alt+Down or a click opens it.
+to filter by, with up to 12 choices. Alt+Down or a click opens it.
 
 ```json
 "dropdown": {"title": "App", "value": "all",
