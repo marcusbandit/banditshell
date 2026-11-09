@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "readStatus", "statusLine", "coldLine", "coldId", "notifyAllowed", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
+const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "readStatus", "statusLine", "coldLine", "dropdownLine", "notifyAllowed", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated", "coldId"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 const JIRA = {
@@ -124,6 +124,19 @@ test.describe("action shortcuts", () => {
         assert.match(item.notes.join("\n"), /Ctrl D on Drop: Dim has it/);
         assert.strictEqual(P.actionOf(item.actions, "CTRL+D").id, "dim");
         assert.strictEqual(P.actionOf(item.actions, ""), null);
+    });
+});
+
+test.describe("list dropdown", () => {
+    test.it("reads a dropdown on a list page, falls back to the first choice, and sends picks", () => {
+        const page = P.readMessage(JSON.stringify({ type: "view", view: { kind: "list", id: "history", title: "History", items: [],
+            dropdown: { title: "App", value: "zen", choices: [{ value: "all", title: "Every app" }, "spotify", { title: "no value" }] } } }), "/p");
+        assert.deepStrictEqual(page.view.dropdown, { title: "App", choices: [{ value: "all", title: "Every app" }, { value: "spotify", title: "spotify" }], value: "all" });
+        const none = P.readMessage(JSON.stringify({ type: "view", view: { kind: "list", id: "h", title: "H", items: [], dropdown: { choices: [] } } }), "/p");
+        assert.strictEqual(none.view.dropdown, null);
+        const numbered = P.readMessage(JSON.stringify({ type: "view", view: { kind: "list", id: "d", title: "D", items: [], dropdown: { value: 7, choices: [1, 7, 7, 30] } } }), "/p");
+        assert.deepStrictEqual([numbered.view.dropdown.value, numbered.view.dropdown.choices.length], ["7", 3]);
+        assert.strictEqual(P.dropdownLine("history", "spotify"), '{"type":"dropdown","view":"history","value":"spotify"}');
     });
 });
 

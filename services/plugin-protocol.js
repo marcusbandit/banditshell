@@ -470,13 +470,31 @@ function readItems(list, folder) {
     return out;
 }
 
+function readChoices(raw, titleLimit, cap) {
+    var out = [];
+    for (var c of Array.isArray(raw) ? raw : []) {
+        var value = textOf(c && typeof c === "object" ? c.value : c, 200);
+        if (!value || out.some(o => o.value === value))
+            continue;
+        out.push({ value: value, title: (c && typeof c === "object" ? textOf(c.title, titleLimit).trim() : "") || textOf(value, titleLimit) });
+        if (out.length >= cap)
+            break;
+    }
+    return out;
+}
+
+function pickedOf(choices, raw) {
+    var value = textOf(raw, 200);
+    return choices.some(c => c.value === value) ? value : choices[0].value;
+}
+
 function readField(raw) {
     if (!raw || typeof raw !== "object" || !PREF_KEY.test(raw.key) || FIELD_TYPES.indexOf(raw.type) < 0)
         return null;
-    var choices = raw.type === "choice" ? (Array.isArray(raw.choices) ? raw.choices : []).map(c => c && typeof c === "object" ? { value: textOf(c.value, 200), title: textOf(c.title).trim() || textOf(c.value, 200) } : { value: textOf(c, 200), title: textOf(c, 200) }).filter(c => c.value).slice(0, 20) : [];
+    var choices = raw.type === "choice" ? readChoices(raw.choices, 300, 20) : [];
     if (raw.type === "choice" && !choices.length)
         return null;
-    var value = raw.type === "toggle" ? raw.value === true : raw.type === "choice" ? (choices.some(c => c.value === raw.value) ? raw.value : choices[0].value) : textOf(raw.value, 4096);
+    var value = raw.type === "toggle" ? raw.value === true : raw.type === "choice" ? pickedOf(choices, raw.value) : textOf(raw.value, 4096);
     return {
         key: raw.key,
         type: raw.type,
@@ -486,6 +504,23 @@ function readField(raw) {
         choices: choices,
         value: value
     };
+}
+
+function readDropdown(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+        return null;
+    var choices = readChoices(raw.choices, 60, 12);
+    if (!choices.length)
+        return null;
+    return {
+        title: textOf(raw.title, 40).trim(),
+        choices: choices,
+        value: pickedOf(choices, raw.value)
+    };
+}
+
+function dropdownLine(view, value) {
+    return JSON.stringify({ type: "dropdown", view: view, value: value });
 }
 
 function readView(raw, folder) {
@@ -509,6 +544,7 @@ function readView(raw, folder) {
     } else if (raw.kind === "list") {
         view.placeholder = textOf(raw.placeholder) || "Filter";
         view.items = readItems(raw.items, folder);
+        view.dropdown = readDropdown(raw.dropdown);
     } else {
         var fields = [];
         for (var f of Array.isArray(raw.fields) ? raw.fields : []) {

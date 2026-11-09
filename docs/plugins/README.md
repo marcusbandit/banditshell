@@ -139,6 +139,7 @@ skipped, so a stray `print` cannot break anything.
 | `{"type":"cancel","seq":12}` | The query moved on before the answer to `seq` came. The plugin can stop working on it. |
 | `{"type":"submit","view":"new-issue","values":{...}}` | The person submitted a form page. `values` has every field's key. |
 | `{"type":"open"}` | The launcher opened, or the program started while it is open. |
+| `{"type":"dropdown","view":"history","value":"spotify"}` | The person picked from a list page's dropdown. See Pages. |
 | `{"type":"close"}` | The launcher closed. A plugin that keeps rows live with `update` stops here and starts again at the next `open`. |
 
 A hotkey or `banditshell panel launcher run plugin:<id>:<item>` on a row that
@@ -412,6 +413,18 @@ the `activate`.
 {"kind": "list", "id": "comments", "title": "Comments on PROJ-41", "placeholder": "Filter comments",
  "items": [{"id": "c1", "title": "Seen it on staging too", "copy": "Seen it on staging too"}]}
 ```
+
+A list page can carry a `dropdown` beside its filter, such as a day or an app
+to filter by, with up to 12 choices. Alt+Down or a click opens it.
+
+```json
+"dropdown": {"title": "App", "value": "all",
+ "choices": [{"value": "all", "title": "Every app"}, {"value": "spotify", "title": "Spotify"}]}
+```
+
+A pick sends `{"type":"dropdown","view":"history","value":"spotify"}`, and
+the plugin answers with the page again, its `items` filtered and its
+`dropdown.value` set to the pick. The dropdown shows the pick at once.
 
 `form` has fields and a submit button. Tab moves between fields, Space flips a
 toggle, Left and Right pick a choice, and Enter submits. A field marked
