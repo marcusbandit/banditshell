@@ -260,6 +260,7 @@ when the screen has room for it.
 | preview | what the card shows |
 |---|---|
 | `"Some text"` or `{"text": "..."}` | The text, its first 32 lines. |
+| `{"facts": [{"label": "Status", "value": "In progress"}], "text": "..."}` | Label and value pairs, up to 30, the way a detail page lists them, under the text when there is one. |
 | `{"image": "..."}` | A picture: an absolute path, a path in the plugin's folder or an `https://` link. |
 | `{"file": "/abs/path"}` | The file the way the launcher previews files: the start of a text file, a picture, or a folder's listing. |
 | `{"qml": "Preview.qml"}` | A QML file in the plugin's folder, drawn like a row's QML. Its `implicitWidth` and `implicitHeight` size the card. |

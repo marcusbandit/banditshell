@@ -91,15 +91,15 @@ QtObject {
             span: span,
             tags: item.tags,
             card: item.qml || span !== 1 ? root.rowCard : null,
-            peekText: preview?.text ?? "",
+            peekText: preview?.facts ? "" : preview?.text ?? "",
             peekImage: preview?.image ?? "",
             peekPath: preview?.file ?? "",
-            peekCard: preview?.qml ? root.previewCard : null,
+            peekCard: preview?.qml ? root.previewCard : preview?.facts ? root.factsCard : null,
             entry: preview?.qml ? {
                 owner: root,
                 item: item,
                 qml: preview.qml
-            } : null
+            } : preview?.facts ? preview : null
         }, root.iconOf(item.icon), item.image && span === 1 && !item.qml ? {
             iconSource: item.image
         } : {});
@@ -190,6 +190,10 @@ QtObject {
 
     property Component previewCard: Component {
         PluginPreview {}
+    }
+
+    property Component factsCard: Component {
+        PluginFacts {}
     }
 
     function handle(message: var): void {

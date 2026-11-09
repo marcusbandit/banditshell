@@ -127,6 +127,15 @@ test.describe("action shortcuts", () => {
     });
 });
 
+test.describe("preview facts", () => {
+    test.it("reads facts into the preview, text above them, and drops facts with no label", () => {
+        const [item] = P.readItems([{ id: "r", title: "Rule", preview: { text: "Spotify", facts: [{ label: "Does", value: "Dims to 15%" }, { value: "no label" }, { label: "Playing", value: 3 }] } }]);
+        assert.deepStrictEqual(item.preview, { facts: [{ label: "Does", value: "Dims to 15%" }, { label: "Playing", value: "3" }], text: "Spotify" });
+        const [plain] = P.readItems([{ id: "p", title: "Plain", preview: { text: "Only text", facts: [] } }]);
+        assert.deepStrictEqual(plain.preview, { text: "Only text" });
+    });
+});
+
 test.describe("notify and data", () => {
     test.it("gives the program a data folder of its own only when the shell names a root", () => {
         const { plugin } = manifest({});
