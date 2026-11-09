@@ -159,16 +159,48 @@ QtObject {
             [`plugin:${root.pluginId}`]: root.asked?.prefixed ? Protocol.ITEM_LIMIT : root.plugin?.global?.cap ?? 0
         })
 
-    readonly property var prefixes: root.plugin?.prefix.length ? [
-        {
-            section: "Plugins",
-            word: root.plugin.prefix[0],
-            example: `${root.plugin.prefix[0]} …`,
-            about: root.plugin.about || root.plugin.name,
-            icon: root.plugin.icon.name ?? "extension",
-            also: root.plugin.prefix.slice(1)
-        }
-    ] : []
+    readonly property var commandWords: (root.plugin?.commands ?? []).map(c => c.word)
+
+    readonly property var prefixes: (root.plugin?.prefix.filter(w => !root.commandWords.includes(w)).length ? [
+            {
+                section: "Plugins",
+                word: root.plugin.prefix.find(w => !root.commandWords.includes(w)),
+                example: `${root.plugin.prefix.find(w => !root.commandWords.includes(w))} …`,
+                about: root.plugin.about || root.plugin.name,
+                icon: root.plugin.icon.name ?? "extension",
+                also: root.plugin.prefix.filter(w => !root.commandWords.includes(w)).slice(1)
+            }
+        ] : []).concat((root.plugin?.commands ?? []).map(c => ({
+                section: "Plugins",
+                word: c.word,
+                example: `${c.word} ${c.arguments.map(a => `‹${a.placeholder}›`).join(" ")}`,
+                about: c.title,
+                icon: c.icon || (root.plugin.icon.name ?? "extension"),
+                also: []
+            })))
+
+    function commandOf(text: string): var {
+        if (!root.plugin || !root.search.presents)
+            return null;
+        const found = Protocol.commandOf(root.plugin, text);
+        if (!found)
+            return null;
+        void PluginHost.choiceSets;
+        const command = Object.assign({}, found.command, {
+            arguments: found.command.arguments.map(a => Object.assign({}, a, {
+                        choices: PluginHost.choicesOf(root.pluginId, found.command.word, a.key) ?? a.choices
+                    }))
+        });
+        return {
+            source: root,
+            command: command,
+            rest: found.rest
+        };
+    }
+
+    function runCommand(word: string, values: var): void {
+        PluginHost.command(root.pluginId, word, values, root);
+    }
 
     function doLocal(doing: var): void {
         if (doing.refusal)

@@ -46,6 +46,12 @@ var STATUS_TONES = ["plain", "active", "alert", "warning", "alarm"];
 
 var STATUS_LIMIT = 4;
 
+var ARG_TYPES = ["text", "choice"];
+
+var ARG_LIMIT = 3;
+
+var COMMAND_WORD = /^[a-z0-9][a-z0-9-]{0,31}$/;
+
 function textOf(value, limit) {
     if (typeof value === "number" && isFinite(value))
         return String(value);
@@ -135,6 +141,28 @@ function readManifest(text, folder, loose) {
     }
     if (status.length > STATUS_LIMIT)
         return { error: `a plugin has at most ${STATUS_LIMIT} status items`, id: name, name: title };
+    var commands = [];
+    for (var c of Array.isArray(raw.commands) ? raw.commands : []) {
+        var word = c && typeof c.word === "string" ? c.word.toLowerCase() : "";
+        if (!COMMAND_WORD.test(word) || commands.some(x => x.word === word))
+            return { error: "a command needs a word of lowercase letters, digits and -, used once", id: name, name: title };
+        var args = [];
+        for (var a of Array.isArray(c.arguments) ? c.arguments : []) {
+            var type = a && a.type !== undefined ? a.type : "text";
+            if (!a || !PREF_KEY.test(a.key) || ARG_TYPES.indexOf(type) < 0 || args.some(b => b.key === a.key))
+                return { error: "an argument needs a key of letters, digits and _, and a type of text or choice", id: name, name: title };
+            var choices = readChoices(a.choices, 60, 30);
+            if (type === "choice" && !choices.length)
+                return { error: `the argument ${a.key} is a choice with no choices`, id: name, name: title };
+            args.push({ key: a.key, type: type, placeholder: textOf(a.placeholder, 40).trim() || a.key, required: a.required === true, choices: choices });
+        }
+        if (!args.length || args.length > ARG_LIMIT)
+            return { error: `the command ${word} takes one to ${ARG_LIMIT} arguments`, id: name, name: title };
+        commands.push({ word: word, title: textOf(c.title).trim() || word, icon: statusIcon(c.icon), arguments: args });
+    }
+    for (var cw of commands)
+        if (prefix.indexOf(cw.word) < 0)
+            prefix.push(cw.word);
     if (!prefix.length && !global && !status.length)
         return { error: "plugin.json needs a prefix, global, status or a mix", id: name, name: title };
     var preferences = [];
@@ -166,7 +194,8 @@ function readManifest(text, folder, loose) {
             global: global,
             preferences: preferences,
             background: raw.background === true || status.length > 0,
-            status: status
+            status: status,
+            commands: commands
         }
     };
 }
@@ -285,6 +314,55 @@ function coldLine(id) {
 
 function statusLine(id, action) {
     return activateLine(0, id, action, "", "status");
+}
+
+function commandOf(plugin, text) {
+    var typed = text.replace(/^\s+/, "");
+    var lower = typed.toLowerCase();
+    for (var command of plugin.commands || [])
+        if (lower.indexOf(`${command.word} `) === 0)
+            return { command: command, rest: typed.slice(command.word.length + 1) };
+    return null;
+}
+
+function argumentsFrom(command, rest) {
+    var out = [];
+    var left = rest.replace(/^\s+/, "");
+    command.arguments.forEach((arg, i) => {
+        if (i === command.arguments.length - 1) {
+            out.push(left.trim());
+            return;
+        }
+        var cut = left.search(/\s/);
+        out.push(cut < 0 ? left : left.slice(0, cut));
+        left = cut < 0 ? "" : left.slice(cut).replace(/^\s+/, "");
+    });
+    return out;
+}
+
+function completionOf(arg, typed) {
+    var t = typed.trim().toLowerCase();
+    if (!t)
+        return null;
+    return arg.choices.find(c => c.title.toLowerCase().indexOf(t) === 0) || arg.choices.find(c => c.value.toLowerCase().indexOf(t) === 0) || null;
+}
+
+function argumentValues(command, texts) {
+    var values = {};
+    var missing = [];
+    command.arguments.forEach((arg, i) => {
+        var typed = (texts[i] || "").trim();
+        var exact = arg.choices.find(c => c.title.toLowerCase() === typed.toLowerCase() || c.value.toLowerCase() === typed.toLowerCase());
+        var value = exact ? exact.value : arg.type === "choice" ? "" : typed;
+        values[arg.key] = value;
+        if ((arg.required || (arg.type === "choice" && typed)) && !value)
+            missing.push(arg.key);
+    });
+    return { values: values, missing: missing };
+}
+
+function commandLine(word, values) {
+    return JSON.stringify({ type: "command", word: word, arguments: values });
 }
 
 function openLine() {
@@ -584,6 +662,10 @@ function readMessage(line, folder, declared) {
     case "status":
         var status = readStatus(raw.item, declared);
         return status.error ? { error: status.error } : { type: "status", item: status.item };
+    case "choices":
+        if (typeof raw.word !== "string" || !PREF_KEY.test(raw.key))
+            return { error: "choices without a word and a key" };
+        return { type: "choices", word: raw.word.toLowerCase(), key: raw.key, choices: readChoices(raw.choices, 60, 30) };
     case "fill":
         return typeof raw.text === "string" ? { type: "fill", text: raw.text.slice(0, 1000) } : { error: "fill without text" };
     case "view":
