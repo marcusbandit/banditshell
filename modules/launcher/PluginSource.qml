@@ -18,6 +18,14 @@ QtObject {
 
     readonly property var kinds: [root.kind]
 
+    readonly property bool watching: root.search.active && root.search.presents
+
+    onWatchingChanged: PluginHost.watch(root, root.watching)
+
+    Component.onCompleted: PluginHost.watch(root, root.watching)
+
+    Component.onDestruction: PluginHost.watch(root, false)
+
     readonly property var asked: root.plugin && root.search.active ? Protocol.asked(root.plugin, root.search.query) : null
 
     readonly property string askKey: root.asked ? `${root.asked.prefixed}\n${root.asked.text}` : ""

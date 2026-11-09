@@ -1,6 +1,7 @@
 # Plugins hear when the launcher opens and closes
 
-Status: needs-triage
+Status: ready-for-agent
+GitHub: #808
 
 A plugin is never told the launcher closed. Plugins that keep rows live with
 `update` messages (Voice polls what is playing every second) have to guess;

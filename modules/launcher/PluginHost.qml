@@ -27,6 +27,8 @@ Singleton {
     property var registered: ({})
     property var expecting: ({})
     property var page: null
+    property var watchers: []
+    readonly property bool open: root.watchers.length > 0
     readonly property var drawings: ({})
     readonly property var noted: ({})
     property var generations: ({})
@@ -182,6 +184,35 @@ Singleton {
         }
         root.registered = next;
         root.writeListing();
+        root.keepAlive();
+    }
+
+    function watch(source: var, on: bool): void {
+        const had = root.watchers.includes(source);
+        if (on && !had)
+            root.watchers = root.watchers.concat([source]);
+        else if (!on && had)
+            root.watchers = root.watchers.filter(w => w !== source);
+    }
+
+    function keepAlive(): void {
+        let wait = 0;
+        for (const id of Object.keys(root.registered)) {
+            if (!root.pluginOf(id)?.background || root.processes[id])
+                continue;
+            const state = root.stateOf(id);
+            if (state.off || root.missingOf(id).length)
+                continue;
+            const left = state.until - Date.now();
+            if (left > 0)
+                wait = wait ? Math.min(wait, left) : left;
+            else
+                root.ensure(id);
+        }
+        if (wait > 0) {
+            revival.interval = wait + 50;
+            revival.restart();
+        }
     }
 
     function writeListing(): void {
@@ -215,6 +246,7 @@ Singleton {
             exec: plugin.exec,
             folder: plugin.folder,
             log: root.logOf(id),
+            lasting: plugin.background,
             env: Protocol.environment(plugin, root.valuesOf(id), root.secretsOf(id))
         });
         proc.said.connect(line => root.heard(id, proc, line));
@@ -222,6 +254,8 @@ Singleton {
         root.processes = Object.assign({}, root.processes, {
             [id]: proc
         });
+        if (root.open)
+            proc.send(Protocol.openLine());
         proc.running = true;
         return proc;
     }
@@ -376,10 +410,11 @@ Singleton {
                     off: crashed.off,
                     until: now + crashed.delay
                 });
-                root.note(id, crashed.off ? "stopped after three crashes in a minute" : `exited, starting again on the next query after ${crashed.delay / 1000} s`);
+                root.note(id, crashed.off ? "stopped after three crashes in a minute" : `exited, starting again ${root.pluginOf(id)?.background ? "" : "on the next query "}after ${crashed.delay / 1000} s`);
             }
         }
         proc.destroy();
+        Qt.callLater(root.keepAlive);
     }
 
     function reload(id: string): string {
@@ -411,6 +446,12 @@ Singleton {
         });
     }
 
+    onOpenChanged: {
+        const line = root.open ? Protocol.openLine() : Protocol.closeLine();
+        for (const proc of Object.values(root.processes))
+            proc.send(line);
+    }
+
     onOffChanged: root.sync()
     onValuesChanged: root.sync()
     onSecretsChanged: root.sync()
@@ -430,6 +471,10 @@ Singleton {
             running: true
             onExited: destroy()
         }
+    }
+
+    property Timer revival: Timer {
+        onTriggered: root.keepAlive()
     }
 
     property Timer patience: Timer {

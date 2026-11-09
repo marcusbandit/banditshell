@@ -65,7 +65,7 @@ plugin can reach before it lists any.
 
 ```json
 {
-  "api": 2,
+  "api": 3,
   "id": "jira",
   "name": "Jira",
   "about": "Search your Jira issues",
@@ -82,7 +82,7 @@ plugin can reach before it lists any.
 
 | field | required | meaning |
 |---|---|---|
-| `api` | yes | The protocol version, `2`. The shell still runs plugins that say `1`, and they can use everything below too; `2` makes an older shell, which cannot draw what api 2 adds, refuse the plugin instead of drawing it wrong. A plugin asking for a version the shell does not speak is listed but not started. |
+| `api` | yes | The protocol version, `3`. The shell still runs plugins that say `1` or `2`, and they can use everything below too; a newer number makes an older shell, which cannot do what that version adds, refuse the plugin instead of running it wrong. A plugin asking for a version the shell does not speak is listed but not started. |
 | `id` | yes | Lowercase letters, digits and `-`, the same as the folder name. |
 | `name` | yes | Shown in Settings and as the title of the plugin's group. |
 | `about` | no | One line for Settings and the `?` page. |
@@ -91,6 +91,7 @@ plugin can reach before it lists any.
 | `prefix` | no | Words that send the rest of the query to this plugin alone, the way `gh` and `pkg` work. They are listed on the `?` page. |
 | `global` | no | Lets the plugin add rows to plain searches. `minLength` is how many characters a query needs first, 3 by default. `cap` is how many of its rows a plain search shows at most, 3 by default and up to 50. Without `global` the plugin only answers after its prefix. |
 | `preferences` | no | Settings the plugin needs, drawn by Settings so a plugin never ships its own settings window. |
+| `background` | no | `true` starts the program with the shell and keeps it running while the launcher is closed, so it can keep its rows fresh or work on its own. It is never stopped for being idle, and after a crash it starts again by itself. |
 
 A manifest needs `prefix`, `global` or both; with neither, nothing would ever
 reach the plugin.
@@ -132,6 +133,8 @@ skipped, so a stray `print` cannot break anything.
 | `{"type":"complete","id":"PROJ-41"}` | Tab on a row. |
 | `{"type":"cancel","seq":12}` | The query moved on before the answer to `seq` came. The plugin can stop working on it. |
 | `{"type":"submit","view":"new-issue","values":{...}}` | The person submitted a form page. `values` has every field's key. |
+| `{"type":"open"}` | The launcher opened, or the program started while it is open. |
+| `{"type":"close"}` | The launcher closed. A plugin that keeps rows live with `update` stops here and starts again at the next `open`. |
 
 `seq` grows with every query. An `activate` carries the `seq` of the results
 its row came from. An `activate` from inside a page also carries `"view"`, the
@@ -388,7 +391,8 @@ A broken plugin costs one row, never the shell.
 - A QML file that does not compile, or names a path outside the plugin, is
   logged there once, and its rows are drawn plainly.
 - After 10 minutes without a query the program is stopped. The next query
-  starts it again.
+  starts it again. A `background` program is never stopped this way, and
+  after a crash it starts again by itself after the same wait.
 
 ## What runs where
 

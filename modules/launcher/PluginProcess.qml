@@ -10,6 +10,7 @@ Process {
     property string log: ""
     property var env: ({})
     property bool stopping: false
+    property bool lasting: false
     property var queued: []
 
     signal said(string line)
@@ -47,6 +48,9 @@ Process {
 
     property Timer idle: Timer {
         interval: 600000
-        onTriggered: root.stop()
+        onTriggered: {
+            if (!root.lasting)
+                root.stop();
+        }
     }
 }

@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "readMessage", "readItems", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
+const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 const JIRA = {
@@ -38,6 +38,10 @@ test.describe("plugin manifest", () => {
         assert.deepStrictEqual([plugin.id, plugin.name, plugin.exec, plugin.prefix, plugin.icon], ["jira", "Jira", ["/p/jira/jira-plugin", "--quiet"], ["jira", "j"], { name: "bug_report" }]);
     });
 
+    test.it("keeps a program running with the shell only when its manifest asks for background", () => {
+        assert.deepStrictEqual([manifest({}).plugin.background, manifest({ background: true }).plugin.background, manifest({ background: "yes" }).plugin.background], [false, true, false]);
+    });
+
     test.it("lets a plugin add up to fifty rows to a plain search, three when it does not say", () => {
         assert.deepStrictEqual(manifest({}).plugin.global, { minLength: 3, cap: 9 });
         assert.deepStrictEqual(manifest({ global: { cap: 80 } }).plugin.global, { minLength: 3, cap: 50 });
@@ -48,8 +52,8 @@ test.describe("plugin manifest", () => {
         assert.match(P.readManifest("{", "/p/jira").error, /not JSON/);
         assert.match(manifest({ id: "other" }).error, /folder's name/);
         assert.match(manifest({}, "/p/Jira").error, /folder's name/);
-        assert.match(manifest({ api: 3 }).error, /api 3, the shell speaks 1 and 2/);
-        assert.strictEqual(manifest({ api: 2 }).plugin.api, 2);
+        assert.match(manifest({ api: 4 }).error, /api 4, the shell speaks 1, 2 and 3/);
+        assert.strictEqual(manifest({ api: 3 }).plugin.api, 3);
         assert.match(manifest({ exec: "./jira-plugin" }).error, /exec/);
         assert.match(manifest({ prefix: [], global: undefined }).error, /prefix, global/);
         assert.match(manifest({ preferences: [{ key: "a b", type: "text" }] }).error, /preference/);
@@ -93,6 +97,7 @@ test.describe("plugin queries", () => {
         assert.strictEqual(P.activateLine(12, "PROJ-41", "open"), '{"type":"activate","seq":12,"id":"PROJ-41","action":"open"}');
         assert.strictEqual(P.completeLine("PROJ-41"), '{"type":"complete","id":"PROJ-41"}');
         assert.strictEqual(P.cancelLine(12), '{"type":"cancel","seq":12}');
+        assert.deepStrictEqual([P.openLine(), P.closeLine()], ['{"type":"open"}', '{"type":"close"}']);
         assert.ok(!P.queryLine(1, "a\nb", false).includes("\n"));
     });
 });
