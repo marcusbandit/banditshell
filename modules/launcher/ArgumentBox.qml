@@ -9,6 +9,7 @@ Item {
     property string text: ""
     property string completion: ""
     property bool missing: false
+    property real widest: 0
     readonly property alias input: input
     readonly property bool focused: input.activeFocus
 
@@ -16,6 +17,8 @@ Item {
     signal pressed(var event)
 
     implicitWidth: Math.max(placeholder.implicitWidth, input.contentWidth + (ghost.visible ? ghost.implicitWidth : 0)) + Appearance.padding.normal * 2
+    width: root.widest > 0 ? Math.min(root.implicitWidth, root.widest) : root.implicitWidth
+    clip: true
     implicitHeight: input.implicitHeight + Appearance.padding.small * 2
 
     function focusEnd(): void {
@@ -36,7 +39,7 @@ Item {
 
         x: Appearance.padding.normal
         anchors.verticalCenter: parent.verticalCenter
-        width: Math.max(1, contentWidth)
+        width: Math.max(1, Math.min(contentWidth, root.width - Appearance.padding.normal * 2))
         text: root.text
         font.family: Appearance.font.family
         font.pixelSize: Appearance.font.size.normal
@@ -67,9 +70,10 @@ Item {
         x: Appearance.padding.normal
         anchors.verticalCenter: parent.verticalCenter
         visible: !input.text
+        width: root.width - Appearance.padding.normal * 2
         text: root.argument?.placeholder ?? ""
         font.pixelSize: Appearance.font.size.normal
         color: Appearance.colour.textFaint
-        rightPadding: Appearance.padding.normal
+        elide: Text.ElideRight
     }
 }

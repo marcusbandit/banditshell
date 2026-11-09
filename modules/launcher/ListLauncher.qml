@@ -1157,6 +1157,8 @@ LauncherConcept {
                     }
 
                     Row {
+                        id: argRow
+
                         x: query.x + query.contentWidth + Appearance.padding.small
                         z: 1
                         anchors.verticalCenter: parent.verticalCenter
@@ -1172,6 +1174,7 @@ LauncherConcept {
                                 required property int index
 
                                 argument: root.argList[index] ?? null
+                                widest: Math.max(Appearance.sizes.rowHeight * 2, (field.width - argRow.x) / Math.max(1, root.argList.length) - argRow.spacing)
                                 text: root.argTexts[index] ?? ""
                                 completion: {
                                     const hit = root.argCompletion(index);
