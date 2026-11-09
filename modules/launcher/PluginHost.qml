@@ -400,15 +400,23 @@ Singleton {
                 root.note(id, `skipped an update for ${message.item.id}, which is not on screen`);
             return;
         }
-        if (message.type === "effect" && message.do === "notify" && !root.expecting[id]) {
-            if (!Protocol.notifyAllowed(root.notified[id] ?? 0, Date.now())) {
+        if (message.type === "effect" && message.do === "notify") {
+            const now = Date.now();
+            const answering = now - (root.expecting[id] ?? 0) < 10000 || now - (root.statusAsked[id] ?? 0) < 10000;
+            if (!answering && !Protocol.notifyAllowed(root.notified[id] ?? 0, now)) {
                 root.note(id, "skipped a notify, one every 3 s at most");
                 return;
             }
-            root.notified[id] = Date.now();
+            root.notified[id] = now;
+            if (root.statusAsked[id]) {
+                const left = Object.assign({}, root.statusAsked);
+                delete left[id];
+                root.statusAsked = left;
+            }
             Notify.post({
                 summary: message.title,
-                body: message.body
+                body: message.body,
+                app: root.pluginOf(id)?.name ?? id
             });
             return;
         }
@@ -461,6 +469,7 @@ Singleton {
     }
 
     function reload(id: string): string {
+        delete root.notified[id];
         root.forgetDrawings(id);
         root.stop(id);
         const answers = Object.assign({}, root.answers);
@@ -551,12 +560,6 @@ Singleton {
                 return;
             case "open":
                 System.openWith(message.target);
-                return;
-            case "notify":
-                Notify.post({
-                    summary: message.title,
-                    body: message.body
-                });
                 return;
             }
         }
