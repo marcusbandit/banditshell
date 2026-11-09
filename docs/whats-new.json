@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-09-p809",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugins can notify you at any time and keep state in their own folder"
+        }
+      ]
+    },
+    {
       "id": "2026-11-09-p805",
       "date": "2026-11-09",
       "changes": [

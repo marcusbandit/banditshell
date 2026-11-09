@@ -16,7 +16,7 @@ Process {
     signal said(string line)
     signal ended(bool wanted)
 
-    command: ["sh", "-c", 'mkdir -p "${1%/*}" && exec 2>>"$1" && shift && exec "$@"', "sh", root.log].concat(root.exec)
+    command: ["sh", "-c", 'mkdir -p "${1%/*}" && exec 2>>"$1" && { [ -z "$BANDITSHELL_PLUGIN_DATA" ] || { mkdir -p "$BANDITSHELL_PLUGIN_DATA" && chmod 700 "$BANDITSHELL_PLUGIN_DATA"; }; } && shift && exec "$@"', "sh", root.log].concat(root.exec)
     workingDirectory: root.folder
     environment: root.env
     stdinEnabled: true

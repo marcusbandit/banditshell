@@ -13,6 +13,7 @@ Singleton {
 
     readonly property string folder: `${Config.dir}/plugins`
     readonly property string logDir: `${Config.stateDir}/plugins`
+    readonly property string dataDir: `${Config.stateDir}/plugin-data`
     readonly property string listing: `${Config.stateDir}/plugins.json`
     readonly property string secretsPath: `${Config.stateDir}/plugin-secrets.json`
     readonly property var off: Config.values.launcher.plugins.off
@@ -30,6 +31,7 @@ Singleton {
     property var watchers: []
     property var exiting: ({})
     property var statusAsked: ({})
+    property var notified: ({})
     readonly property bool open: root.watchers.length > 0
     readonly property var drawings: ({})
     readonly property var noted: ({})
@@ -250,7 +252,7 @@ Singleton {
             folder: plugin.folder,
             log: root.logOf(id),
             lasting: plugin.background,
-            env: Protocol.environment(plugin, root.valuesOf(id), root.secretsOf(id))
+            env: Protocol.environment(plugin, root.valuesOf(id), root.secretsOf(id), root.dataDir)
         });
         proc.said.connect(line => root.heard(id, proc, line));
         proc.ended.connect(wanted => root.ended(id, proc, wanted));
@@ -398,6 +400,26 @@ Singleton {
                 root.note(id, `skipped an update for ${message.item.id}, which is not on screen`);
             return;
         }
+        if (message.type === "effect" && message.do === "notify") {
+            const now = Date.now();
+            const answering = now - (root.expecting[id] ?? 0) < 10000 || now - (root.statusAsked[id] ?? 0) < 10000;
+            if (!answering && !Protocol.notifyAllowed(root.notified[id] ?? 0, now)) {
+                root.note(id, "skipped a notify, one every 3 s at most");
+                return;
+            }
+            root.notified[id] = now;
+            if (root.statusAsked[id]) {
+                const left = Object.assign({}, root.statusAsked);
+                delete left[id];
+                root.statusAsked = left;
+            }
+            Notify.post({
+                summary: message.title,
+                body: message.body,
+                app: root.pluginOf(id)?.name ?? id
+            });
+            return;
+        }
         if (message.type === "effect" && !root.expecting[id] && Date.now() - (root.statusAsked[id] ?? 0) < 10000) {
             const left = Object.assign({}, root.statusAsked);
             delete left[id];
@@ -447,6 +469,7 @@ Singleton {
     }
 
     function reload(id: string): string {
+        delete root.notified[id];
         root.forgetDrawings(id);
         root.stop(id);
         const answers = Object.assign({}, root.answers);
@@ -537,12 +560,6 @@ Singleton {
                 return;
             case "open":
                 System.openWith(message.target);
-                return;
-            case "notify":
-                Notify.post({
-                    summary: message.title,
-                    body: message.body
-                });
                 return;
             }
         }

@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "readStatus", "statusLine", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
+const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "readStatus", "statusLine", "notifyAllowed", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 const JIRA = {
@@ -124,6 +124,18 @@ test.describe("action shortcuts", () => {
         assert.match(item.notes.join("\n"), /Ctrl D on Drop: Dim has it/);
         assert.strictEqual(P.actionOf(item.actions, "CTRL+D").id, "dim");
         assert.strictEqual(P.actionOf(item.actions, ""), null);
+    });
+});
+
+test.describe("notify and data", () => {
+    test.it("gives the program a data folder of its own only when the shell names a root", () => {
+        const { plugin } = manifest({});
+        assert.strictEqual(P.environment(plugin, {}, {}, "/s/plugin-data").BANDITSHELL_PLUGIN_DATA, "/s/plugin-data/jira");
+        assert.strictEqual(P.environment(plugin, {}, {}).BANDITSHELL_PLUGIN_DATA, undefined);
+    });
+
+    test.it("lets a notify through at most once every three seconds", () => {
+        assert.deepStrictEqual([P.notifyAllowed(0, 5000), P.notifyAllowed(5000, 7999), P.notifyAllowed(5000, 8000)], [true, false, true]);
     });
 });
 
