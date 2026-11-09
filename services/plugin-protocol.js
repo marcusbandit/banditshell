@@ -219,11 +219,20 @@ function queryLine(seq, text, prefixed) {
     return JSON.stringify({ type: "query", seq: seq, text: text, prefixed: prefixed });
 }
 
-function activateLine(seq, id, action, view) {
+function activateLine(seq, id, action, view, flag) {
     var out = { type: "activate", seq: seq, id: id, action: action || "" };
     if (view)
         out.view = view;
+    if (flag)
+        out[flag] = true;
     return JSON.stringify(out);
+}
+
+function coldId(prefix, id) {
+    if (id.indexOf(prefix) !== 0)
+        return "";
+    var item = id.slice(prefix.length);
+    return item && item.charAt(0) !== "!" ? item : "";
 }
 
 function submitLine(view, values) {
@@ -271,11 +280,11 @@ function readStatus(raw, declared) {
 }
 
 function coldLine(id) {
-    return JSON.stringify({ type: "activate", seq: 0, id: id, action: "", cold: true });
+    return activateLine(0, id, "", "", "cold");
 }
 
 function statusLine(id, action) {
-    return JSON.stringify({ type: "activate", seq: 0, id: id, action: action || "", status: true });
+    return activateLine(0, id, action, "", "status");
 }
 
 function openLine() {
@@ -390,7 +399,7 @@ function propsOf(raw) {
 }
 
 function factsOf(raw) {
-    return (Array.isArray(raw) ? raw : []).filter(f => f && typeof f === "object").map(f => ({ label: textOf(f.label, 80).trim(), value: textOf(f.value, 500) })).filter(f => f.label).slice(0, 30);
+    return (Array.isArray(raw) ? raw : []).filter(f => f && typeof f === "object").map(f => ({ label: textOf(f.label, 80).trim(), value: textOf(f.value, 500) })).filter(f => f.label && f.value).slice(0, 30);
 }
 
 function readPreview(raw, folder) {
@@ -402,15 +411,15 @@ function readPreview(raw, folder) {
         var drawn = qmlOf(raw.qml, folder);
         return drawn.file ? { qml: drawn.file } : { note: drawn.note };
     }
-    var facts = factsOf(raw.facts);
-    if (facts.length)
-        return { facts: facts, text: textOf(raw.text, 20000) };
     if (given(raw.image))
         return imageOf(raw.image, folder) ? { image: imageOf(raw.image, folder) } : null;
     if (given(raw.file)) {
         var file = textOf(raw.file, 4096);
         return file.charAt(0) === "/" ? { file: file } : null;
     }
+    var facts = factsOf(raw.facts);
+    if (facts.length)
+        return { facts: facts, text: textOf(raw.text, 20000) };
     return given(raw.text) ? { text: textOf(raw.text, 20000) } : null;
 }
 

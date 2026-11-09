@@ -80,6 +80,7 @@ QtObject {
     function rowOf(item: var, score: real): var {
         const span = item.height;
         const preview = item.preview;
+        const facts = preview?.facts ? preview : null;
         return Object.assign({
             key: `plugin:${root.pluginId}:${item.id}`,
             kind: root.kind,
@@ -91,15 +92,15 @@ QtObject {
             span: span,
             tags: item.tags,
             card: item.qml || span !== 1 ? root.rowCard : null,
-            peekText: preview?.facts ? "" : preview?.text ?? "",
+            peekText: facts ? "" : preview?.text ?? "",
             peekImage: preview?.image ?? "",
             peekPath: preview?.file ?? "",
-            peekCard: preview?.qml ? root.previewCard : preview?.facts ? root.factsCard : null,
+            peekCard: preview?.qml ? root.previewCard : facts ? root.factsCard : null,
             entry: preview?.qml ? {
                 owner: root,
                 item: item,
                 qml: preview.qml
-            } : preview?.facts ? preview : null
+            } : facts
         }, root.iconOf(item.icon), item.image && span === 1 && !item.qml ? {
             iconSource: item.image
         } : {});
@@ -305,7 +306,7 @@ QtObject {
 
     function activate(row: var): void {
         if (row.cold) {
-            PluginHost.activateCold(root.pluginId, row.cold);
+            PluginHost.activateCold(root.pluginId, row.cold, root);
             return;
         }
         if (row.problem) {
@@ -338,7 +339,7 @@ QtObject {
     }
 
     function complete(row: var): bool {
-        if (row.problem)
+        if (row.problem || row.cold)
             return false;
         PluginHost.complete(root.pluginId, row.item.id, root);
         return true;
@@ -348,17 +349,16 @@ QtObject {
         const prefix = `plugin:${root.pluginId}:`;
         if (id.indexOf(prefix) !== 0 || !root.plugin)
             return null;
-        const itemId = id.slice(prefix.length);
-        const item = (root.answer?.items ?? []).find(i => i.id === itemId);
+        const item = (root.answer?.items ?? []).find(i => i.id === id.slice(prefix.length));
         if (item)
             return root.rowOf(item, 1);
-        return itemId ? {
+        const cold = Protocol.coldId(prefix, id);
+        return cold ? Object.assign({
             key: id,
             kind: root.kind,
-            cold: itemId,
-            label: Config.values.launcher.hotkeys[id]?.label || itemId,
-            icon: root.plugin.icon.name ?? "extension",
+            cold: cold,
+            label: Config.values.launcher.hotkeys[id]?.label || cold,
             score: 1
-        } : null;
+        }, root.iconOf(null)) : null;
     }
 }

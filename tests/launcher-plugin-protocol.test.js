@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "readStatus", "statusLine", "coldLine", "dropdownLine", "notifyAllowed", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
+const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "readStatus", "statusLine", "coldLine", "dropdownLine", "notifyAllowed", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated", "coldId"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 const JIRA = {
@@ -140,10 +140,12 @@ test.describe("list dropdown", () => {
 
 test.describe("preview facts", () => {
     test.it("reads facts into the preview, text above them, and drops facts with no label", () => {
-        const [item] = P.readItems([{ id: "r", title: "Rule", preview: { text: "Spotify", facts: [{ label: "Does", value: "Dims to 15%" }, { value: "no label" }, { label: "Playing", value: 3 }] } }]);
+        const [item] = P.readItems([{ id: "r", title: "Rule", preview: { text: "Spotify", facts: [{ label: "Does", value: "Dims to 15%" }, { value: "no label" }, { label: "Empty" }, { label: "Playing", value: 3 }] } }]);
         assert.deepStrictEqual(item.preview, { facts: [{ label: "Does", value: "Dims to 15%" }, { label: "Playing", value: "3" }], text: "Spotify" });
         const [plain] = P.readItems([{ id: "p", title: "Plain", preview: { text: "Only text", facts: [] } }]);
         assert.deepStrictEqual(plain.preview, { text: "Only text" });
+        const [pictured] = P.readItems([{ id: "i", title: "Pic", preview: { image: "/a.png", facts: [{ label: "A", value: "b" }] } }]);
+        assert.deepStrictEqual(pictured.preview, { image: "file:///a.png" });
     });
 });
 
@@ -183,6 +185,7 @@ test.describe("status items", () => {
         assert.strictEqual(P.readStatus({ id: "mic", click: "undo", actions: acts }, declared.status).item.click, "undo");
         assert.strictEqual(P.readStatus({ id: "mic", click: "nope" }, declared.status).item.click, "menu");
         assert.strictEqual(P.readStatus({ id: "held", click: "menu" }, declared.status).item.click, "rows");
+        assert.deepStrictEqual([P.coldId("plugin:jira:", "plugin:jira:PROJ-41"), P.coldId("plugin:jira:", "plugin:jira:"), P.coldId("plugin:jira:", "plugin:jira:!waiting"), P.coldId("plugin:jira:", "plugin:other:x")], ["PROJ-41", "", "", ""]);
         assert.strictEqual(P.coldLine("PROJ-41"), '{"type":"activate","seq":0,"id":"PROJ-41","action":"","cold":true}');
         assert.strictEqual(P.statusLine("mic", "undo"), '{"type":"activate","seq":0,"id":"mic","action":"undo","status":true}');
     });

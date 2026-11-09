@@ -337,13 +337,19 @@ Singleton {
         root.ensure(id).send(Protocol.dropdownLine(view, value));
     }
 
-    function activateCold(id: string, item: string): void {
-        if (!root.usable(id))
-            return;
-        root.statusAsked = Object.assign({}, root.statusAsked, {
-            [id]: Date.now()
-        });
+    function activateCold(id: string, item: string, asker: var): bool {
+        if (!root.usable(id)) {
+            root.note(id, `could not run ${item}: the plugin is off, restarting or missing a setting`);
+            return false;
+        }
+        if (asker?.search?.presents && asker.search.active)
+            root.expect(id, asker);
+        else
+            root.statusAsked = Object.assign({}, root.statusAsked, {
+                [id]: Date.now()
+            });
         root.ensure(id).send(Protocol.coldLine(item));
+        return true;
     }
 
     function submit(id: string, view: string, values: var, asker: var): void {
@@ -416,19 +422,27 @@ Singleton {
                 root.note(id, `skipped an update for ${message.item.id}, which is not on screen`);
             return;
         }
-        if (message.type === "effect" && message.do === "notify" && !root.expecting[id]) {
-            if (!Protocol.notifyAllowed(root.notified[id] ?? 0, Date.now())) {
+        if (message.type === "effect" && message.do === "notify") {
+            const now = Date.now();
+            const answering = now - (root.expecting[id] ?? 0) < 10000 || now - (root.statusAsked[id] ?? 0) < 10000;
+            if (!answering && !Protocol.notifyAllowed(root.notified[id] ?? 0, now)) {
                 root.note(id, "skipped a notify, one every 3 s at most");
                 return;
             }
-            root.notified[id] = Date.now();
+            root.notified[id] = now;
+            if (root.statusAsked[id]) {
+                const left = Object.assign({}, root.statusAsked);
+                delete left[id];
+                root.statusAsked = left;
+            }
             Notify.post({
                 summary: message.title,
-                body: message.body
+                body: message.body,
+                app: root.pluginOf(id)?.name ?? id
             });
             return;
         }
-        if (message.type === "effect" && !root.expecting[id] && Date.now() - (root.statusAsked[id] ?? 0) < 10000) {
+        if (message.type === "effect" && (root.statusAsked[id] ?? 0) > (root.expecting[id] ?? 0) && Date.now() - root.statusAsked[id] < 10000) {
             const left = Object.assign({}, root.statusAsked);
             delete left[id];
             root.statusAsked = left;
@@ -477,6 +491,7 @@ Singleton {
     }
 
     function reload(id: string): string {
+        delete root.notified[id];
         root.forgetDrawings(id);
         root.stop(id);
         const answers = Object.assign({}, root.answers);
@@ -567,12 +582,6 @@ Singleton {
                 return;
             case "open":
                 System.openWith(message.target);
-                return;
-            case "notify":
-                Notify.post({
-                    summary: message.title,
-                    body: message.body
-                });
                 return;
             }
         }
