@@ -150,7 +150,7 @@ Item {
             shown: Config.values.sidebar.status.brightness,
             scroll: root.scrollBrightness
         }
-    ].concat(PluginStatus.placed("rail").map(i => ({
+    ].concat(PluginStatus.rail.map(i => ({
                 key: i.key,
                 title: i.title,
                 reading: {

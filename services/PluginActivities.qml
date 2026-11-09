@@ -6,17 +6,27 @@ import Quickshell
 Singleton {
     id: root
 
-    property var shown: []
+    property var pushed: ({})
+
+    function idOf(key: string): string {
+        if (key.length <= 64)
+            return key;
+        let hash = 5381;
+        for (let i = 0; i < key.length; i++)
+            hash = (hash * 33 + key.charCodeAt(i)) >>> 0;
+        return `plugin:${hash.toString(36)}`;
+    }
 
     function entryOf(item: var): var {
         return {
-            id: item.key,
+            id: root.idOf(item.key),
             kind: "external",
             style: "plugin",
             text: item.title,
-            detail: item.text || item.lines.join(", "),
+            detail: (item.text || item.lines.join(", ")).slice(0, 200),
             icon: item.icon,
             progress: item.progress,
+            pressable: true,
             data: {
                 tone: item.tone
             },
@@ -30,22 +40,27 @@ Singleton {
     }
 
     function mirror(): void {
-        const now = PluginStatus.placed("island");
-        for (const key of root.shown)
+        const now = PluginStatus.island;
+        const next = {};
+        for (const key of Object.keys(root.pushed))
             if (!now.some(i => i.key === key))
-                Activities.remove(key);
+                Activities.remove(root.idOf(key));
         for (const item of now) {
+            const text = JSON.stringify(item);
+            next[item.key] = text;
+            if (root.pushed[item.key] === text)
+                continue;
             const refused = Activities.push(root.entryOf(item));
             if (refused)
                 console.warn("PluginActivities:", item.key, refused);
         }
-        root.shown = now.map(i => i.key);
+        root.pushed = next;
     }
 
     Connections {
         target: PluginStatus
 
-        function onItemsChanged(): void {
+        function onIslandChanged(): void {
             root.mirror();
         }
     }

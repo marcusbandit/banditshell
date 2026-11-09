@@ -29,6 +29,7 @@ Singleton {
     property var page: null
     property var watchers: []
     property var exiting: ({})
+    property var statusAsked: ({})
     readonly property bool open: root.watchers.length > 0
     readonly property var drawings: ({})
     readonly property var noted: ({})
@@ -397,6 +398,13 @@ Singleton {
                 root.note(id, `skipped an update for ${message.item.id}, which is not on screen`);
             return;
         }
+        if (message.type === "effect" && !root.expecting[id] && Date.now() - (root.statusAsked[id] ?? 0) < 10000) {
+            const left = Object.assign({}, root.statusAsked);
+            delete left[id];
+            root.statusAsked = left;
+            root.statusAsker.handle(message);
+            return;
+        }
         const asked = root.expecting[id] ?? 0;
         const asker = root.askers[id];
         if (!asked || Date.now() - asked > 10000 || !asker?.search?.active) {
@@ -474,7 +482,11 @@ Singleton {
             return;
         }
         const listed = item.actions.find(a => a.id === wanted);
-        if (listed && (Protocol.local(listed) || listed.refusal)) {
+        if (listed?.refusal) {
+            root.note(id, `status ${statusId}: ${listed.refusal}`);
+            return;
+        }
+        if (listed && Protocol.local(listed)) {
             if (listed.open)
                 System.openWith(listed.open);
             else if (listed.copy)
@@ -485,7 +497,9 @@ Singleton {
         }
         if (!root.usable(id))
             return;
-        root.expect(id, root.statusAsker);
+        root.statusAsked = Object.assign({}, root.statusAsked, {
+            [id]: Date.now()
+        });
         root.ensure(id).send(Protocol.statusLine(statusId, wanted === "#rows" ? "" : wanted));
     }
 
@@ -516,10 +530,6 @@ Singleton {
     }
 
     property QtObject statusAsker: QtObject {
-        readonly property var search: ({
-                active: true
-            })
-
         function handle(message: var): void {
             switch (message.do) {
             case "copy":

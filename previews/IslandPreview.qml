@@ -984,51 +984,13 @@ ShellRoot {
         },
         {
             name: "a plugin's island item: Listening, with Give back",
-            run: () => PluginStatus.set({
-                    key: "plugin:voice:held",
-                    pluginId: "voice",
-                    id: "held",
-                    place: "island",
-                    shown: true,
-                    title: "Listening",
-                    text: "Spotify dimmed, Zen paused",
-                    icon: "mic",
-                    tone: "alarm",
-                    lines: [],
-                    actions: [
-                        {
-                            id: "release",
-                            title: "Give back"
-                        }
-                    ],
-                    click: "rows",
-                    progress: -1
-                }),
+            run: () => PluginStatus.set(preview.pluginItem(true)),
             wait: 600,
             expect: "activity"
         },
         {
             name: "the plugin takes its item away",
-            run: () => PluginStatus.set({
-                    key: "plugin:voice:held",
-                    pluginId: "voice",
-                    id: "held",
-                    place: "island",
-                    shown: false,
-                    title: "Listening",
-                    text: "Spotify dimmed, Zen paused",
-                    icon: "mic",
-                    tone: "alarm",
-                    lines: [],
-                    actions: [
-                        {
-                            id: "release",
-                            title: "Give back"
-                        }
-                    ],
-                    click: "rows",
-                    progress: -1
-                }),
+            run: () => PluginStatus.set(preview.pluginItem(false)),
             wait: 600,
             expect: "hidden"
         },
@@ -1535,6 +1497,29 @@ ShellRoot {
         });
         Notifications.popups = [entry, ...Notifications.popups];
         Notifications.history = [entry, ...Notifications.history];
+    }
+
+    function pluginItem(shown: bool): var {
+        return {
+            key: "plugin:voice:held",
+            pluginId: "voice",
+            id: "held",
+            place: "island",
+            shown: shown,
+            title: "Listening",
+            text: "Spotify dimmed, Zen paused",
+            icon: "mic",
+            tone: "alarm",
+            lines: [],
+            actions: [
+                {
+                    id: "release",
+                    title: "Give back"
+                }
+            ],
+            click: "rows",
+            progress: -1
+        };
     }
 
     function shoot(name: string): void {
