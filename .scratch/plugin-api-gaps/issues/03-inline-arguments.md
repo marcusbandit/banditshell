@@ -1,6 +1,7 @@
 # Commands take typed arguments in plain search
 
-Status: ready-for-agent
+Status: resolved
+PR: #821
 GitHub: #807
 
 A plugin command cannot ask for a value inline. The query is free text

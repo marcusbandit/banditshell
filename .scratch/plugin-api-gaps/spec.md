@@ -1,6 +1,6 @@
 # Plugin API gaps, measured against Raycast
 
-Status: ready-for-agent
+Status: resolved
 
 Asked 2026-11-09 while building the Voice launcher plugin
 (`~/Projects/voice/banditshell-plugin`): what would the ideal version of that
@@ -55,3 +55,12 @@ workarounds as they land:
 7. `08` a dropdown beside a list page's filter
 8. `03` inline arguments, last because it is the largest change to the
    search field
+
+## Outcome
+
+All eight landed as PRs #813 to #821, one per ticket. The Voice plugin uses
+them: a mic in the rail, red while you dictate, with what it held; open and
+close in place of its 60 second guess; Ctrl chords on rule rows; facts beside
+rows; history filtered by day; and `rule <app> <effect> <level>` as a
+command. It names the command `rule`, not `dim`, so typing `dim` keeps
+reaching the shell's own brightness rows. #820 is the one follow-up.

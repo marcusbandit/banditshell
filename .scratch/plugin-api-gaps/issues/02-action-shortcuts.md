@@ -1,6 +1,7 @@
 # Actions can declare their own key chords
 
-Status: ready-for-agent
+Status: resolved
+PR: #814
 GitHub: #806
 
 Today Ctrl+Enter runs the first alternate action (`ListLauncher.qml`) and

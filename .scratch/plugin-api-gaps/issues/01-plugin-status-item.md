@@ -1,6 +1,7 @@
 # A plugin can own a live item in the bar or island
 
-Status: ready-for-agent
+Status: resolved
+PR: #815
 GitHub: #805
 
 A plugin cannot put anything outside the launcher. The island takes live
