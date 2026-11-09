@@ -27,7 +27,8 @@ Item {
 
     property string filter: ""
     readonly property var dropdown: root.kind === "list" ? root.view.dropdown ?? null : null
-    property string choice: root.dropdown?.value ?? ""
+    property string picked: ""
+    readonly property string choice: root.picked || (root.dropdown?.value ?? "")
     readonly property var chosen: root.dropdown?.choices.find(c => c.value === root.choice) ?? null
     property int selected: 0
     property int field: 0
@@ -44,6 +45,7 @@ Item {
     readonly property real rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
 
     onViewChanged: {
+        root.picked = "";
         if (!root.view)
             return;
         root.retitle(root.view.title);
@@ -178,7 +180,7 @@ Item {
     function pickChoice(value: string): void {
         if (value === root.choice)
             return;
-        root.choice = value;
+        root.picked = value;
         root.source?.pick(root.viewId, value);
     }
 
@@ -194,8 +196,18 @@ Item {
         case Qt.Key_Enter:
             sheet.activate(sheet.selected);
             break;
+        case Qt.Key_Shift:
+        case Qt.Key_Control:
+        case Qt.Key_Alt:
+        case Qt.Key_Meta:
+            break;
         default:
             sheet.close();
+            if (event.text && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) && event.text.charCodeAt(0) >= 32) {
+                filterInput.insert(filterInput.cursorPosition, event.text);
+                root.filter = filterInput.text;
+                root.selected = 0;
+            }
             break;
         }
         return true;
@@ -308,6 +320,7 @@ Item {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             visible: !!root.dropdown
+            width: Math.min(implicitWidth, Math.round(filterLine.width * 0.4))
             size: 0
             icon: "arrow_drop_down"
             text: root.dropdown?.title ? `${root.dropdown.title}: ${root.chosen?.title ?? ""}` : root.chosen?.title ?? ""
