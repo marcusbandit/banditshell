@@ -87,3 +87,27 @@ test.describe("readable surface", () => {
         assert.ok(Scheme.worstContrast(paper, dark, 0.7, 0, floor) < Scheme.worstContrast(paper, dark, 0.7, 0, 1));
     });
 });
+
+test.describe("light mode", () => {
+    const Light = lib(path.join(ROOT, "config/scheme.js"), ["lightRamp", "lightAccent", "toLch"]);
+    const slate = ["#08090B", "#0F1114", "#181B1F", "#1D2126", "#262B31", "#3A4149", "#545D67", "#78838F", "#A5AEB8", "#D0D7DD", "#EEF2F5"];
+
+    test.it("never reaches white: the lightest stop stays at a soft grey and the page sits below it", () => {
+        const ramp = Light.lightRamp(slate);
+        assert.ok(Math.max(...ramp.map(c => Light.toLch(c).l)) <= 0.961, ramp[0]);
+        assert.ok(Math.abs(Light.toLch(ramp[1]).l - 0.936) < 0.01, ramp[1]);
+    });
+
+    test.it("matches the theme repo's theme-set, so the shell and the apps agree", () => {
+        assert.deepStrictEqual(Light.lightRamp(slate).map(c => c.toUpperCase()), ["#F0F2F5", "#E7EAEE", "#DBDFE5", "#D3D9DF", "#C7CED6", "#AEB7C0", "#919BA6", "#6C7782", "#485059", "#2A2F34", "#181B1D"]);
+    });
+
+    test.it("puts every pastel hue at the same darker lightness with more chroma", () => {
+        for (const hex of ["#F29BA8", "#85CB94", "#72C2F2", "#DAA0DD"]) {
+            const dark = Light.toLch(hex);
+            const light = Light.toLch(Light.lightAccent(hex));
+            assert.ok(Math.abs(light.l - 0.52) < 0.01, hex);
+            assert.ok(light.c > dark.c * 0.99, hex);
+        }
+    });
+});
