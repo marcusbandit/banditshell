@@ -225,7 +225,10 @@ LauncherConcept {
     property bool backCloses: false
 
     function present(view: var): void {
-        Appearance.instant = false;
+        if (view.filters)
+            Appearance.instantly();
+        else
+            Appearance.instant = false;
         root.morph();
         if (view.filters)
             root.queryBeforeView = view.restore ?? query.text;
@@ -247,6 +250,8 @@ LauncherConcept {
             root.hide();
             return;
         }
+        if (root.filtering)
+            Appearance.instantly();
         root.morph();
         if (root.filtering) {
             query.text = root.queryBeforeView;

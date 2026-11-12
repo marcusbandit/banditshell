@@ -1,4 +1,5 @@
 import Quickshell.Io
+import qs.config
 import qs.services
 import qs.modules.panel
 
@@ -6,6 +7,7 @@ IpcHandler {
     target: "clipboard"
 
     function toggle(): string {
+        Appearance.instantly();
         const win = Shell.showing(w => w.launcher.open) ?? Shell.forScreen("");
         if (!win)
             return PanelWindows.missing("");
@@ -18,6 +20,7 @@ IpcHandler {
     }
 
     function open(): string {
+        Appearance.instantly();
         const win = Shell.forScreen("");
         if (!win)
             return PanelWindows.missing("");
@@ -27,6 +30,7 @@ IpcHandler {
     }
 
     function close(): string {
+        Appearance.instantly();
         for (const win of Shell.windows)
             if (win.launcher.open && win.launcher.page === "clipboard")
                 win.launcher.hide();

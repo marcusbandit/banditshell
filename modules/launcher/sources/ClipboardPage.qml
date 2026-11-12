@@ -558,6 +558,7 @@ Item {
                 label: line.shaped?.shape === "image" ? `Image${line.shaped.entry.w > 0 ? ` (${line.shaped.entry.w}×${line.shaped.entry.h})` : ""}` : line.made?.label ?? ""
                 selected: line.index === root.selected
                 askable: true
+                tips: false
                 onActivated: root.clicked(line.index)
                 onAsked: (x, y) => {
                     root.select(line.index);
