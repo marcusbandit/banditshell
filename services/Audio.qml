@@ -172,6 +172,12 @@ Singleton {
             node.audio.muted = !node.audio.muted;
     }
 
+    function setStreamsMuted(nodes: var, muted: bool): void {
+        for (const node of nodes)
+            if (node?.audio)
+                node.audio.muted = muted;
+    }
+
     function setSink(node: PwNode): void {
         if (node)
             Pipewire.preferredDefaultAudioSink = node;
