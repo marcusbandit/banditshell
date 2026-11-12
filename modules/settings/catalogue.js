@@ -422,7 +422,7 @@ const PAGES_SOURCE = {
                 { n: [], icon: "desktop_windows", label: "Open on", k: "launcherScreen", kind: "choice", o: s => [["", "The focused screen"]].concat(s.monitorNames.map(m => [m, m])), cfg: "launcher.screen", kw: "launcher screen monitor display open on primary multi monitor pin",
                     why: "The focused screen opens the launcher wherever you are working. A named screen always opens it there. If that screen is unplugged, the focused one is used." },
                 { n: [], icon: "keyboard_return", label: "Escape", k: "launcherEscape", kind: "seg", o: [["back", "step back"], ["close", "close"]], cfg: "launcher.escape", kw: "escape esc key close step back launcher",
-                    why: "Step back leaves a page, clears the search, then closes. Close shuts the launcher at once." },
+                    why: "Step back leaves a page, the symbol picker or a confirmation first, then closes the launcher. Close shuts it at once." },
                 { n: [], icon: "push_pin", label: "Show pinned", k: "listPinned", kind: "toggle", cfg: "launcher.list.pinned", dis: s => s.v("concept") !== "list", kw: "pinned favourites quick launch grid icons",
                     why: "Pick an app in the list and press Pin to put it here." },
                 { n: [], icon: "schedule", label: "Show recents", k: "listRecents", kind: "toggle", cfg: "launcher.list.recents", dis: s => s.v("concept") !== "list", kw: "recent apps launcher icons" },
