@@ -60,7 +60,7 @@ WidgetCard {
                     width: parent.width
                     visible: text !== ""
                     text: line.modelData.paused ? "paused" : line.modelData.label
-                    color: Appearance.colour.textFaint
+                    color: Appearance.colour.textDim
                     elide: Text.ElideRight
                 }
             }

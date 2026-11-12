@@ -61,7 +61,7 @@ WidgetCard {
                 width: parent.width
                 visible: !!root.today
                 text: root.today ? `${root.today.high}° high, ${root.today.low}° low` : ""
-                color: Appearance.colour.textFaint
+                color: Appearance.colour.textDim
                 elide: Text.ElideRight
             }
         }

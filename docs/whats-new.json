@@ -8,6 +8,11 @@
           "type": "issues",
           "severity": "minor",
           "text": "Desktop widgets in a second column are no longer cut off"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Small grey labels on the desktop widgets are easier to read"
         }
       ]
     },
