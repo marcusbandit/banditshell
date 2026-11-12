@@ -11,10 +11,32 @@ Singleton {
 
     property bool switching: false
 
-    readonly property string modeTheme: ThemeModes.wantedTheme(Config.values.colour, Appearance.light, Config.values.themeFromWallpaper, Themes.activeName, Themes.availableNames)
+    property string target: ""
+    property string neutral: Themes.activeName
 
-    onModeThemeChanged: if (root.modeTheme !== "" && !root.switching)
-        root.apply(root.modeTheme)
+    readonly property bool light: Appearance.light
+    readonly property string modeSlot: ThemeModes.slotOf(Config.values.colour, root.light)
+
+    signal finished(string name, bool ok)
+
+    function follow(): void {
+        if (Config.values.themeFromWallpaper)
+            return;
+        const name = ThemeModes.targetFor(Config.values.colour, root.light, root.neutral || Config.values.theme, Themes.activeName, Themes.availableNames);
+        if (name !== "")
+            root.apply(name);
+    }
+
+    onLightChanged: root.follow()
+    onModeSlotChanged: root.follow()
+
+    Connections {
+        target: Themes
+
+        function onActiveNameChanged(): void {
+            root.neutral = ThemeModes.neutralAfter(Config.values.colour, root.light, root.neutral, Themes.activeName);
+        }
+    }
 
     function remember(name: string): void {
         const keep = ThemeModes.slotToKeep(Config.values.colour, Appearance.light, name);
@@ -25,7 +47,7 @@ Singleton {
     readonly property bool available: !ToolInstaller.probed || ToolInstaller.has("theme-set")
     readonly property string unavailableWhy: "themes are switched by theme-set, which is not installed on this machine"
 
-    function apply(name: string): void {
+    function apply(name: string, fresh: bool): void {
         if (root.switching || name === Themes.activeName)
             return;
 
@@ -34,12 +56,13 @@ Singleton {
             return;
         }
 
-        if (!Themes.availableNames.includes(name)) {
+        if (!fresh && !Themes.availableNames.includes(name)) {
             console.warn(`ThemeSwitcher: nothing on this machine renders a theme called ${name}.`);
             return;
         }
 
         root.switching = true;
+        root.target = name;
         switcher.exec(["theme-set", name]);
     }
 
@@ -48,6 +71,7 @@ Singleton {
 
         onExited: (code, status) => {
             root.switching = false;
+            root.finished(root.target, code === 0);
             if (code !== 0)
                 console.warn(`ThemeSwitcher: theme-set exited ${code}, so the machine kept the theme it had.`);
         }
