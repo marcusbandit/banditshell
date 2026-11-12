@@ -141,11 +141,11 @@ function tier(entry, want, exact, parts, least) {
     return 2;
 }
 
-function bonus(entry, want, found, used) {
+function bonus(entry, want, found, used, pins) {
     var record = used && used[entry.char];
     var recent = record ? 3 + Math.min(1, (record.count || 0) / 20) : 0;
     var leading = found <= 8 && want && entry.title.indexOf(want) === 0 ? 0.5 : 0;
-    return recent + leading + (entry.popular ? 1.5 : 0);
+    return (pins && pins[entry.char] ? 20 : 0) + recent + leading + (entry.popular ? 1.5 : 0);
 }
 
 function lowest(exact, explicit) {
@@ -156,13 +156,34 @@ function lowest(exact, explicit) {
     return exact.length >= 3 ? 6 : 99;
 }
 
-function recentFirst(entries, byChar, used, limit) {
+function pinLookup(pinned) {
+    var out = {};
+    for (var i = 0; i < (pinned || []).length; i++)
+        out[pinned[i]] = true;
+    return out;
+}
+
+function pin(pinned, glyph) {
+    var list = (pinned || []).filter(function (c) {
+        return c !== glyph;
+    });
+    list.push(glyph);
+    return list.slice(-40);
+}
+
+function unpin(pinned, glyph) {
+    return (pinned || []).filter(function (c) {
+        return c !== glyph;
+    });
+}
+
+function recentFirst(entries, byChar, used, limit, pinned) {
     var chars = Object.keys(used || {}).sort(function (a, b) {
         return (used[b].last || 0) - (used[a].last || 0);
     });
     var out = [];
     var seen = {};
-    var pool = chars.concat(POPULAR);
+    var pool = (pinned || []).concat(chars, POPULAR);
     for (var i = 0; i < pool.length && out.length < limit; i++) {
         var entry = byChar[pool[i]];
         if (entry && !seen[entry.char]) {
@@ -193,15 +214,16 @@ function couldMatch(entry, want, exact, parts) {
     return true;
 }
 
-function search(entries, byChar, query, used, explicit, limit) {
+function search(entries, byChar, query, used, explicit, limit, pinned) {
     var exact = foldWord(query);
     var want = fold(query);
     if (!exact)
-        return explicit ? recentFirst(entries, byChar, used, limit) : [];
+        return explicit ? recentFirst(entries, byChar, used, limit, pinned) : [];
     var least = lowest(exact, explicit);
     if (least > 10)
         return [];
     var parts = want.split(" ");
+    var pins = pinLookup(pinned);
     var hits = [];
     var narrowed = narrowing.from === entries && narrowing.want && want.indexOf(narrowing.want) === 0;
     var pool = narrowed ? narrowing.pool : entries;
@@ -214,7 +236,7 @@ function search(entries, byChar, query, used, explicit, limit) {
         if (found >= least)
             hits.push({
                 entry: pool[i],
-                score: found + bonus(pool[i], want, found, used)
+                score: found + bonus(pool[i], want, found, used, pins)
             });
     }
     narrowing.from = entries;
