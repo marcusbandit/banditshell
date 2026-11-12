@@ -113,23 +113,12 @@ Singleton {
         Config.set("launcher.hotkeys", next);
     }
 
-    function setOff(id: string, off: bool): void {
-        const held = root.keys[id];
-        if (!held)
-            return;
-        const next = Object.assign({}, root.keys);
-        next[id] = Object.assign({}, held, {
-            off: off
-        });
-        Config.set("launcher.hotkeys", next);
-    }
-
     function ownHolderOf(chord: string, id: string): string {
         return Object.keys(root.keys).find(other => other !== id && Chords.sameChord(root.keys[other].chord, chord)) ?? "";
     }
 
     function holderOf(chord: string, id: string): string {
-        const mine = Object.keys(root.keys).find(other => other !== id && Chords.sameChord(root.keys[other].chord, chord));
+        const mine = root.ownHolderOf(chord, id);
         if (mine)
             return root.keys[mine].label || mine;
         const bind = HyprConfig.holderOf(chord);
@@ -141,19 +130,19 @@ Singleton {
         const from = root.ownHolderOf(chord, id);
         if (from)
             delete next[from];
-        next[id] = {
+        next[id] = Object.assign({}, root.keys[id], {
             chord: chord,
             label: label
-        };
+        });
         Config.set("launcher.hotkeys", next);
     }
 
     function set(id: string, chord: string, label: string): void {
         const next = Object.assign({}, root.keys);
-        next[id] = {
+        next[id] = Object.assign({}, root.keys[id], {
             chord: chord,
             label: label
-        };
+        });
         Config.set("launcher.hotkeys", next);
     }
 
