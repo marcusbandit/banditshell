@@ -5,6 +5,10 @@ var PLACEHOLDERS = /\{(date|time|clipboard|cursor)\}/gi;
 var SPACES = /\s+/g;
 var AMBIENT = 0.35;
 var AMBIENT_STEP = 0.035;
+var PIN_BONUS = 1;
+var PIN_BONUS_AMBIENT = 0.05;
+var BOUNDARY = /^[\s.,;:!?()\[\]{}"'<>\/\\-]$/;
+var KEYWORD_ROOM = 48;
 
 function ask(text) {
     var typed = String(text || "").trim();
@@ -39,11 +43,12 @@ function find(list, term, explicit) {
         var item = list[i];
         if (!item)
             continue;
+        var bonus = item.pinned ? (explicit ? PIN_BONUS : PIN_BONUS_AMBIENT) : 0;
         if (!want) {
             if (explicit)
                 out.push({
                     snippet: item,
-                    score: 0,
+                    score: bonus,
                     keyed: false
                 });
             continue;
@@ -56,7 +61,7 @@ function find(list, term, explicit) {
         if (keyed || best >= (explicit ? 1 : 2))
             out.push({
                 snippet: item,
-                score: keyed ? Infinity : explicit ? best : AMBIENT + best * AMBIENT_STEP,
+                score: keyed ? Infinity : (explicit ? best : AMBIENT + best * AMBIENT_STEP) + bonus,
                 keyed: keyed
             });
     }
@@ -173,4 +178,47 @@ function keywordHolder(list, keyword, id) {
         if (list[i] && list[i].id !== id && String(list[i].keyword || "").toLowerCase() === want)
             return list[i];
     return null;
+}
+
+function copyName(list, name) {
+    var base = String(name || "snippet").trim() + " copy";
+    var taken = {};
+    for (var i = 0; i < (list || []).length; i++)
+        if (list[i])
+            taken[String(list[i].name || "").toLowerCase()] = true;
+    var out = base;
+    for (var n = 2; taken[out.toLowerCase()]; n++)
+        out = base + " " + n;
+    return out;
+}
+
+function keywordRoom(list) {
+    var most = 0;
+    for (var i = 0; i < (list || []).length; i++) {
+        var keyword = list[i] && list[i].keyword ? countPoints(String(list[i].keyword)) : 0;
+        if (keyword > most)
+            most = keyword;
+    }
+    return Math.min(most, KEYWORD_ROOM);
+}
+
+function keywordBefore(list, before) {
+    var tail = String(before || "");
+    var best = null;
+    for (var i = 0; i < (list || []).length; i++) {
+        var item = list[i];
+        var keyword = item && item.keyword ? String(item.keyword) : "";
+        if (!keyword || tail.length < keyword.length || tail.slice(tail.length - keyword.length) !== keyword)
+            continue;
+        var prior = tail.slice(0, tail.length - keyword.length);
+        if (prior && !BOUNDARY.test(prior.slice(-1)))
+            continue;
+        if (!best || keyword.length > best.keyword.length)
+            best = {
+                snippet: item,
+                keyword: keyword,
+                length: countPoints(keyword)
+            };
+    }
+    return best;
 }

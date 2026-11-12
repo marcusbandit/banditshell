@@ -9,6 +9,7 @@ import qs.modules.ipc
 import qs.modules.island
 import qs.modules.keyboard
 import qs.modules.launcher
+import qs.modules.launcher.snippets
 import qs.modules.media
 import qs.modules.menu
 import qs.modules.password
@@ -87,6 +88,7 @@ Scope {
         id: sessionIpc
     }
     SettingsIpc {}
+    SnippetsIpc {}
     SidebarIpc {}
     StreamIpc {}
     TraceIpc {}

@@ -213,6 +213,9 @@
     "status(): string",
     "toggle(screen: string): string"
   ],
+  "snippets": [
+    "expand(): string"
+  ],
   "stream": [
     "off(): string",
     "on(screen: string): string",

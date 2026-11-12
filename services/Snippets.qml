@@ -58,9 +58,35 @@ Singleton {
             id: id,
             name: String(snippet.name ?? "").trim(),
             keyword: SnippetLogic.cleanKeyword(snippet.keyword),
-            text: String(snippet.text ?? "")
+            text: String(snippet.text ?? ""),
+            pinned: !!(snippet.pinned ?? root.byId(id)?.pinned)
         }));
         return id;
+    }
+
+    function pin(id: string, pinned: bool): void {
+        const snippet = root.byId(id);
+        if (snippet)
+            root.save(Object.assign({}, snippet, {
+                pinned: pinned
+            }));
+    }
+
+    function duplicate(id: string): var {
+        const snippet = root.byId(id);
+        if (!snippet)
+            return null;
+        const name = SnippetLogic.copyName(root.list, snippet.name || root.preview(snippet));
+        root.add(name, "", snippet.text);
+        return name;
+    }
+
+    function keywordBefore(before: string): var {
+        return SnippetLogic.keywordBefore(root.list, before);
+    }
+
+    function keywordRoom(): int {
+        return SnippetLogic.keywordRoom(root.list);
     }
 
     function add(name: string, keyword: string, text: string): string {

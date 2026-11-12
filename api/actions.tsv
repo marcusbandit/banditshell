@@ -3,6 +3,7 @@
 launcher.toggle	stable	1	panel launcher toggle	Open or close the launcher
 launcher.open	stable	1	panel launcher open	Open the launcher (optional argument: query)
 launcher.close	stable	1	panel launcher close	Close the launcher
+snippets.expand	stable	1	launcher expand	Type out the snippet whose keyword sits just before the cursor
 launcher.run	stable	1	panel launcher run	Run an app or a launcher row (argument: app or row id)
 panel.close	stable	1	panel close	Close every panel and menu
 panel.*.toggle	stable	1	panel $1 toggle	Open or close a panel or menu (optional argument: screen)

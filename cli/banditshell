@@ -52,6 +52,11 @@
 #                                docs/plugins/push.md
 #   banditshell launcher remove <tool> [<row>]
 #                                take one row away, or every row of the tool
+#   banditshell launcher expand
+#                                replace the snippet keyword just before the
+#                                cursor in the focused window with its text;
+#                                bind it to a key, it selects and copies the
+#                                last few characters to read them
 #
 # plugin                         launcher plugins: start one, try one, install one
 #   banditshell plugin           every plugin in the plugins folder
@@ -1854,6 +1859,9 @@ route_launcher() {
     "" | list)
         [ $# -le 2 ] || say_usage "launcher list [<tool>]"
         ipc launcher list "${2:-}" ;;
+    expand)
+        [ $# -eq 1 ] || say_usage "launcher expand"
+        ipc snippets expand ;;
     remove)
         [ $# -ge 2 ] && [ $# -le 3 ] || say_usage "launcher remove <tool> [<row>]"
         ipc launcher remove "$2" "${3:-}" ;;

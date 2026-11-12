@@ -11,7 +11,7 @@
     "optional": []
   },
   "provides": {
-    "singletons": [],
+    "singletons": ["Keystrokes"],
     "ipc": ["keyboard"]
   },
   "config": {
