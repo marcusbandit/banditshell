@@ -16,17 +16,22 @@ function problem(name, colours, taken) {
         return `${id} already exists`;
     for (var i = 0; i < KEYS.length; i++) {
         if (!isHex(colours[KEYS[i]]))
-            return `${KEYS[i]} needs a colour like #7fb3d4`;
+            return `${KEYS[i]} needs a six digit hex colour`;
     }
     return "";
 }
 
 function setKey(text, key, value) {
-    var line = new RegExp(`^(${key}\\s*=\\s*)"[^"]*"`, "m");
     var quoted = `"${value.trim().toUpperCase()}"`;
-    if (line.test(text))
-        return text.replace(line, (all, head) => head + quoted);
-    return `${text}${text.endsWith("\n") ? "" : "\n"}${key} = ${quoted}\n`;
+    var line = new RegExp(`^(${key}\\s*=\\s*)(?:"[^"]*"|'[^']*')`, "m");
+    var table = text.search(/^\s*\[/m);
+    var topEnd = table < 0 ? text.length : table;
+    var found = line.exec(text);
+    if (found && found.index < topEnd)
+        return text.slice(0, found.index) + found[1] + quoted + text.slice(found.index + found[0].length);
+    var head = text.slice(0, topEnd);
+    var glue = head.length === 0 || head.endsWith("\n") ? "" : "\n";
+    return `${head}${glue}${key} = ${quoted}\n${text.slice(topEnd)}`;
 }
 
 function editedToml(text, colours) {
@@ -39,11 +44,15 @@ function editedToml(text, colours) {
     return out;
 }
 
-function previewFrom(current, colours) {
-    var next = Object.assign({}, current);
+function overridesFrom(colours, current) {
+    var next = {};
+    var any = false;
     for (var i = 0; i < KEYS.length; i++) {
-        if (isHex(colours[KEYS[i]]))
-            next[KEYS[i]] = colours[KEYS[i]].trim();
+        var value = String(colours[KEYS[i]] || "").trim();
+        if (isHex(value) && value.toLowerCase() !== String(current[KEYS[i]] || "").toLowerCase()) {
+            next[KEYS[i]] = value;
+            any = true;
+        }
     }
-    return next;
+    return any ? next : null;
 }

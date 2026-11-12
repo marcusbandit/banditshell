@@ -17,6 +17,15 @@ Column {
 
     width: parent ? parent.width : 0
 
+    Connections {
+        target: ThemeEditor
+
+        function onSaved(name: string): void {
+            root.editing = false;
+            SettingsView.drop(`${name} saved`, "palette", null);
+        }
+    }
+
     function close(): void {
         root.editing = false;
         ThemeEditor.cancel();
@@ -123,16 +132,13 @@ Column {
                     style: "accent"
                     size: 0
                     interactive: form.problem === "" && !ThemeEditor.saving
-                    onClicked: {
-                        ThemeEditor.save(nameField.draft, form.colours);
-                        SettingsView.drop(`${nameField.draft.trim()} saved`, "palette", null);
-                        root.editing = false;
-                    }
+                    onClicked: ThemeEditor.save(nameField.draft, form.colours)
                 }
             }
         }
 
-        Component.onDestruction: ThemeEditor.cancel()
+        Component.onDestruction: if (!ThemeEditor.saving)
+            ThemeEditor.cancel()
     }
 
     SettingsRowFrame {

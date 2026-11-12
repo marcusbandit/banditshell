@@ -10,8 +10,11 @@ Singleton {
     id: root
 
     property string saving: ""
+    property string awaiting: ""
     property var pending: null
     property string failure: ""
+
+    signal saved(string name)
 
     readonly property string sourcePath: `${Themes.themeRoot}/themes/${Themes.activeName}/colors.toml`
 
@@ -27,12 +30,14 @@ Singleton {
     }
 
     function preview(colours: var): void {
-        if (Themes.parsed)
-            Themes.previewing = Editor.previewFrom(Themes.parsed, colours);
+        const next = Editor.overridesFrom(colours, root.current);
+        if (JSON.stringify(next) !== JSON.stringify(Themes.previewing))
+            Themes.previewing = next;
     }
 
     function cancel(): void {
-        Themes.previewing = null;
+        if (Themes.previewing !== null)
+            Themes.previewing = null;
     }
 
     function save(name: string, colours: var): void {
@@ -44,6 +49,22 @@ Singleton {
         reader.running = true;
     }
 
+    function settle(): void {
+        const name = root.awaiting;
+        root.awaiting = "";
+        root.cancel();
+        root.saving = "";
+        root.saved(name);
+    }
+
+    function fail(message: string): void {
+        root.failure = message;
+        console.warn(`ThemeEditor: ${message}.`);
+        root.saving = "";
+        root.awaiting = "";
+        root.pending = null;
+    }
+
     Process {
         id: reader
 
@@ -52,17 +73,12 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.length === 0 || !root.pending) {
-                    root.finish("the current theme has no colours file to copy");
+                    root.fail("the current theme has no colours file to copy");
                     return;
                 }
                 writer.text = Editor.editedToml(text, root.pending);
                 writer.running = true;
             }
-        }
-
-        onExited: code => {
-            if (code !== 0)
-                root.finish("the current theme has no colours file to copy");
         }
     }
 
@@ -71,7 +87,7 @@ Singleton {
 
         property string text: ""
 
-        command: ["sh", "-c", 'mkdir -p -- "$1" && cat > "$1/colors.toml" && theme-set "$2"', "sh", `${Themes.themeRoot}/themes/${root.saving}`, root.saving]
+        command: ["sh", "-c", 'mkdir -p -- "$1" && cat > "$1/colors.toml"', "sh", `${Themes.themeRoot}/themes/${root.saving}`]
         stdinEnabled: true
 
         onStarted: {
@@ -81,17 +97,39 @@ Singleton {
 
         onExited: code => {
             writer.stdinEnabled = true;
-            root.finish(code === 0 ? "" : "theme-set could not use the new theme");
+            if (code !== 0) {
+                root.fail("the new theme could not be written");
+                return;
+            }
+            root.awaiting = root.saving;
+            ThemeSwitcher.apply(root.saving, true);
+            if (!ThemeSwitcher.switching)
+                root.fail("themes cannot be switched right now");
         }
     }
 
-    function finish(failure: string): void {
-        root.failure = failure;
-        if (failure !== "")
-            console.warn(`ThemeEditor: ${failure}.`);
-        if (failure === "")
-            Themes.previewing = null;
-        root.saving = "";
-        root.pending = null;
+    Connections {
+        target: ThemeSwitcher
+
+        function onFinished(name: string, ok: bool): void {
+            if (name !== root.awaiting)
+                return;
+            if (!ok) {
+                root.fail("theme-set could not use the new theme");
+                return;
+            }
+            ThemeSwitcher.remember(name);
+            if (Themes.activeName === name)
+                root.settle();
+        }
+    }
+
+    Connections {
+        target: Themes
+
+        function onActiveNameChanged(): void {
+            if (root.awaiting !== "" && Themes.activeName === root.awaiting && !ThemeSwitcher.switching)
+                root.settle();
+        }
     }
 }

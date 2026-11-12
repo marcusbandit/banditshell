@@ -34,8 +34,6 @@ Singleton {
     }
 
     function get(name: string): Theme {
-        if (root.previewing)
-            return root.rendered;
         return root.all[name] ?? (root.live ? root.rendered : root.literals[root.fallback]);
     }
 
@@ -161,14 +159,15 @@ Singleton {
     Component.onCompleted: root.adopt(file.text())
 
     readonly property Theme rendered: Theme {
-        readonly property var p: root.previewing ?? root.parsed
+        readonly property var p: root.parsed
+        readonly property var o: root.previewing ?? ({})
 
         name: p ? p.name : root.slate.name
         ramp: p ? p.ramp : root.slate.ramp
-        dim: p ? p.dim : root.slate.dim
-        mid: p ? p.mid : root.slate.mid
-        bright: p ? p.bright : root.slate.bright
-        alarm: p ? p.alarm : root.slate.alarm
+        dim: o.dim ?? (p ? p.dim : root.slate.dim)
+        mid: o.mid ?? (p ? p.mid : root.slate.mid)
+        bright: o.bright ?? (p ? p.bright : root.slate.bright)
+        alarm: o.alarm ?? (p ? p.alarm : root.slate.alarm)
         brass: p ? p.brass : root.slate.brass
         error: p ? p.error : root.slate.error
     }
