@@ -439,7 +439,8 @@ QtObject {
             icon: "content_paste",
             label: "Clipboard history",
             words: "clipboard paste copied history",
-            run: () => Panels.open("clipboard", {
+            stay: root.presents,
+            run: () => root.presents ? root.retype("clip ") : Panels.open("clipboard", {
                 screen: root.screenName
             })
         },

@@ -243,6 +243,7 @@ Singleton {
             types: ev.types ?? [],
             paths: ev.paths ?? [],
             mimes: ev.mimes ?? [],
+            app: Hypr.classOf(Hypr.activeClient),
             pinned: false
         };
         entry.kind = root.classify(entry);

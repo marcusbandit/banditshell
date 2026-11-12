@@ -15,7 +15,7 @@ QtObject {
 
     readonly property bool listening: root.explicit || Config.values.launcher.typing.clipboard
 
-    readonly property bool active: root.listening && root.search.text.length > 0
+    readonly property bool active: root.listening && root.search.text.length > 0 && !root.paged
 
     readonly property var indexed: root.active ? ClipboardSearch.index(Clipboard.entries, e => Clipboard.summarise(e)) : []
 
@@ -52,7 +52,35 @@ QtObject {
     onActiveChanged: if (!root.active)
         root.revealed = ""
 
+    readonly property bool paged: root.search.presents && root.explicit
+
+    readonly property bool opening: root.paged && /^\s*\S+\s/.test(root.search.query)
+
+    onOpeningChanged: if (root.opening && !root.search.presenting)
+        Qt.callLater(root.openPage)
+
+    readonly property Component page: Component {
+        ClipboardPage {}
+    }
+
+    function openPage(): void {
+        if (!root.search.presents || root.search.presenting)
+            return;
+        root.search.present({
+            component: root.page,
+            name: "clipboard",
+            text: "Clipboard history",
+            filters: true,
+            placeholder: "Filter what you copied",
+            filter: root.asked.term,
+            restore: root.search.query.trim().split(/\s+/)[0] ?? "",
+            source: root
+        });
+    }
+
     readonly property var rows: {
+        if (root.paged)
+            return root.offersUndo ? [root.undoRow()] : [];
         const rows = root.found.map(entry => root.row(entry));
         if (root.offersUndo)
             return [root.undoRow()].concat(rows);
