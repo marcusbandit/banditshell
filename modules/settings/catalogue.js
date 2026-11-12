@@ -434,6 +434,8 @@ const PAGES_SOURCE = {
             { t: "Search results", rows: [
                 { n: [], icon: "visibility", label: "Hidden files", k: "hiddenFiles", kind: "seg", o: ["off", ".config", "all"], cfg: "launcher.hiddenFiles", kw: "hidden files dotfiles .config search results",
                     why: "Which hidden files the launcher finds by name. .config is where most apps keep their settings." },
+                { n: [], icon: "filter_alt_off", label: "Skip ignored files", k: "ignoredFiles", kind: "toggle", cfg: "launcher.ignoredFiles", kw: "gitignore ignore ignored files build node_modules search names",
+                    why: "Off by default. When on, names listed in a git project's own .gitignore, such as build folders and dependencies, stay out of the results. A repository kept in your home folder with a broad .gitignore would hide most files, so turn it on only if you have none." },
                 { n: [], icon: "currency_exchange", label: "Currency", k: "currency", kind: "choice", o: s => s.currencies, cfg: "launcher.currency", state: s => s.ratesNote, kw: "currency money exchange rates convert",
                     why: "Typing an amount like 5 eur shows it in this currency. Rates come from the European Central Bank once a day and are kept for when you are offline." },
                 { n: [], icon: "find_in_page", label: "Inside files", k: "contents", kind: "toggle", cfg: "launcher.contents", kw: "search inside files contents text ripgrep grep",
@@ -499,6 +501,8 @@ const PAGES_SOURCE = {
                 { n: [], icon: "translate", label: "Translate", k: "onlineTranslate", kind: "toggle", cfg: "launcher.online.translate", kw: "translate translation language google",
                     why: "Type hello in german, translate bonjour or tr hola. The text goes to Google Translate." },
                 { n: [], icon: "language", label: "Translate into", k: "onlineTranslateTo", kind: "choice", o: [["", "System language"], ["en", "English"], ["da", "Danish"], ["de", "German"], ["fr", "French"], ["es", "Spanish"], ["it", "Italian"], ["nl", "Dutch"], ["sv", "Swedish"], ["no", "Norwegian"], ["fi", "Finnish"], ["pl", "Polish"], ["pt", "Portuguese"], ["ja", "Japanese"], ["zh-CN", "Chinese"], ["ko", "Korean"]], cfg: "launcher.online.translateTo", dis: s => !s.v("onlineTranslate"), kw: "translate target language default" },
+                { n: [], icon: "partly_cloudy_day", label: "Weather", k: "onlineWeather", kind: "toggle", cfg: "launcher.online.weather", kw: "weather forecast temperature rain city place",
+                    why: "Type weather paris or weather for the place you set. The place name goes to wttr.in." },
                 { n: [], icon: "menu_book", label: "Wiktionary definitions", k: "onlineDefine", kind: "toggle", cfg: "launcher.online.define", kw: "define dictionary meaning word",
                     why: "Type define and a word. The offline dictionary answers at once; this adds Wiktionary's entry beside it." },
                 { n: [], icon: "package_2", label: "Packages", k: "onlinePackages", kind: "toggle", cfg: "launcher.online.packages", kw: "install package pacman aur flatpak apt dnf software",
@@ -845,6 +849,7 @@ const PAGES_SOURCE = {
         groups: [
             { t: "Screenshots", rows: [
                 { n: 89, icon: "folder", label: "Saved to", k: "shotDir", kind: "path", cfg: "picker.dir", kw: "screenshots folder" },
+                { n: 89, icon: "folder_copy", label: "Also search in", k: "shotFolders", kind: "text", mono: true, cfg: "launcher.latest.screenshotFolders", placeholder: "~/Pictures/Shots, ~/Documents/Captures", why: "More folders for the launcher's screenshots search, separated by commas.", kw: "screenshots folders search more" },
                 { n: 89, icon: "edit", label: "Edit with", k: "shotEditor", kind: "text", mono: true, cfg: "picker.editor", placeholder: "just save it", kw: "screenshots editor" },
                 { n: 89, icon: "highlight_alt", label: "Outline", k: "outline", kind: "step", min: 0, max: 6, unit: " px", cfg: "picker.outline", why: "A line around the selection. 0 draws none.", kw: "screenshots outline" }
             ] },

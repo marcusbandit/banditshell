@@ -11,7 +11,7 @@ function lib(file, names) {
 }
 
 const Table = lib("services/emoji-table.js", ["TABLE", "GROUPS", "FIRST_SYMBOL_GROUP"]);
-const Emoji = lib("services/emoji.js", ["parse", "index", "ask", "search", "toned", "modifierFor", "remember", "codeOf", "TONES", "POPULAR"]);
+const Emoji = lib("services/emoji.js", ["parse", "index", "ask", "search", "toned", "modifierFor", "remember", "codeOf", "pin", "unpin", "TONES", "POPULAR"]);
 const Snippets = lib("services/snippets.js", ["ask", "find", "expand", "preview", "previewText", "suggestName", "newId", "cleanKeyword", "withSnippet", "withoutSnippet", "keywordHolder"]);
 const Quicklinks = lib("services/quicklinks.js", ["KEYWORD_SCORE", "match", "resolve", "hostOf", "takes", "cleanKeyword", "withLink", "keywordHolder", "problem", "prefixes"]);
 const ClipboardSearch = lib("services/clipboard-search.js", ["ask", "index", "find", "firstLine"]);
@@ -415,5 +415,24 @@ test.describe("emoji search while typing", () => {
             }
             assert.deepStrictEqual(typed, once, word);
         }
+    });
+});
+
+test.describe("pinned emoji", () => {
+    test.it("a pinned emoji leads the results whatever was used last", () => {
+        const plain = Emoji.search(ALL, BY_CHAR, "heart", {}, true, 5).map(e => e.char);
+        const last = plain[plain.length - 1];
+        const pinned = Emoji.search(ALL, BY_CHAR, "heart", {}, true, 5, [last]).map(e => e.char);
+        assert.strictEqual(pinned[0], last);
+    });
+
+    test.it("pinned emoji come first when nothing is typed", () => {
+        const got = Emoji.search(ALL, BY_CHAR, "", { "\u2764\uFE0F": { count: 9, last: 9 } }, true, 5, ["\ud83d\udd25"]).map(e => e.char);
+        assert.strictEqual(got[0], "\ud83d\udd25");
+    });
+
+    test.it("pin adds once at the end and unpin removes", () => {
+        assert.deepStrictEqual(Emoji.pin(["a", "b"], "a"), ["b", "a"]);
+        assert.deepStrictEqual(Emoji.unpin(["a", "b"], "a"), ["b"]);
     });
 });

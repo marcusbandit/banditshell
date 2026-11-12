@@ -303,6 +303,7 @@ Singleton {
                 },
 
                 contents: true,
+                ignoredFiles: false,
 
                 aliases: ({}),
 
@@ -336,9 +337,14 @@ Singleton {
                     openaiAddress: "https://api.openai.com/v1"
                 },
 
+                latest: {
+                    screenshotFolders: ""
+                },
+
                 online: {
                     translate: true,
                     translateTo: "",
+                    weather: true,
                     define: true,
                     packages: true,
                     github: true,
