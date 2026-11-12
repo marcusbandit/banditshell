@@ -278,6 +278,10 @@ Singleton {
             launcher: {
                 width: 840,
 
+                screen: "",
+
+                escape: "back",
+
                 iconSize: 36,
 
                 halfLifeDays: 14,
@@ -303,6 +307,7 @@ Singleton {
                 },
 
                 contents: true,
+                ignoredFiles: false,
 
                 aliases: ({}),
 
@@ -310,6 +315,8 @@ Singleton {
 
                 plugins: {
                     off: [],
+
+                    commandsOff: [],
 
                     values: ({}),
 
@@ -334,9 +341,14 @@ Singleton {
                     openaiAddress: "https://api.openai.com/v1"
                 },
 
+                latest: {
+                    screenshotFolders: ""
+                },
+
                 online: {
                     translate: true,
                     translateTo: "",
+                    weather: true,
                     define: true,
                     packages: true,
                     github: true,

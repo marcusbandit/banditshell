@@ -36,6 +36,7 @@ RecentSource 1.0 RecentSource.qml
 RecordSource 1.0 RecordSource.qml
 RewriteSource 1.0 RewriteSource.qml
 ScriptSource 1.0 ScriptSource.qml
+SelectionReader 1.0 SelectionReader.qml
 ServiceSource 1.0 ServiceSource.qml
 SnippetSource 1.0 SnippetSource.qml
 SoundSource 1.0 SoundSource.qml
@@ -46,6 +47,7 @@ TranslateSource 1.0 TranslateSource.qml
 TraySource 1.0 TraySource.qml
 VideoDownloadSource 1.0 VideoDownloadSource.qml
 VpnSource 1.0 VpnSource.qml
+WeatherSource 1.0 WeatherSource.qml
 WifiSource 1.0 WifiSource.qml
 WordView 1.0 WordView.qml
 WorkshopSource 1.0 WorkshopSource.qml

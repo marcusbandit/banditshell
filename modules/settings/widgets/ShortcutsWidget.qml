@@ -14,13 +14,25 @@ Column {
 
     readonly property bool aliases: root.row.list === "aliases"
     readonly property var map: root.aliases ? Config.values.launcher.aliases : Config.values.launcher.hotkeys
-    readonly property var names: Object.keys(root.map)
+    property int shown: 0
+
+    readonly property var everyName: Object.keys(root.map)
+    readonly property var names: root.everyName.filter(n => root.shown === 0 || (root.shown === 1) === !root.map[n].off)
+    readonly property int disabledCount: root.everyName.filter(n => root.map[n].off).length
 
     width: parent ? parent.width : 0
 
     function textOf(name: string): string {
         const item = root.map[name];
         return root.aliases ? `${name} · ${(item.label || item.id).toLowerCase()}` : `${Chords.chordText(item.chord).toLowerCase()} · ${(item.label || name).toLowerCase()}`;
+    }
+
+    function toggle(name: string): void {
+        const next = Object.assign({}, root.map);
+        next[name] = Object.assign({}, root.map[name], {
+            off: !root.map[name].off
+        });
+        Config.set(root.aliases ? "launcher.aliases" : "launcher.hotkeys", next);
     }
 
     function drop(name: string): void {
@@ -44,8 +56,18 @@ Column {
         interactive: false
         icon: root.aliases ? "label" : "keyboard"
         label: root.aliases ? "Aliases" : "Hotkeys"
-        detail: root.names.length ? `${root.names.length} set` : "none yet"
+        detail: root.everyName.length ? (root.disabledCount ? `${root.everyName.length} set, ${root.disabledCount} off` : `${root.everyName.length} set`) : "none yet"
         onPointed: SettingsView.hovered = root.row
+
+        Segments {
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.everyName.length > 0
+            width: 200
+            height: implicitHeight
+            options: ["All", "On", "Off"]
+            current: root.shown
+            onPicked: i => root.shown = i
+        }
     }
 
     Flow {
@@ -63,6 +85,9 @@ Column {
 
                 text: root.textOf(modelData)
                 tip: "remove"
+                toggles: true
+                dimmed: !!root.map[modelData]?.off
+                onClicked: root.toggle(modelData)
                 onRemoved: root.drop(modelData)
             }
         }

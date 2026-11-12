@@ -13,6 +13,7 @@
       "modules/launcher/sources/SpeedtestSource.qml",
       "modules/launcher/sources/TranslateSource.qml",
       "modules/launcher/sources/VideoDownloadSource.qml",
+      "modules/launcher/sources/WeatherSource.qml",
       "modules/launcher/sources/WordView.qml"
     ],
     "services": [
@@ -46,7 +47,7 @@
     "tests": ["tests/dictionary-helper.test.js", "tests/install-package.test.js", "tests/launcher-online.test.js", "tests/online-scripts.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor", "launcher", "files", "apps"],
+    "packages": ["core", "compositor", "launcher", "files", "apps", "clock", "launcher-ai"],
     "optional": []
   },
   "provides": {

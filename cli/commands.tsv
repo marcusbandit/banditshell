@@ -6,7 +6,7 @@ rule	panel files toggle,open @dir
 rule	panel settings open @page @screen
 rule	panel settings page @page
 rule	panel launcher open *
-rule	panel launcher run app,row
+rule	panel launcher run app,row toggle
 rule	panel keyboard dock,float
 rule	panel keyboard page @layer @screen
 rule	panel clipboard list

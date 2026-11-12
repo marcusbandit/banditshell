@@ -24,15 +24,29 @@ Singleton {
         return root.windows.find(w => w.screen?.name === Hypr.focusedScreen) ?? root.windows[0] ?? null;
     }
 
+    property string launcherScreen: ""
+
+    function homeFor(name: string, screen: string): var {
+        return !screen && name === "launcher" ? root.launcherHome() : root.forScreen(screen);
+    }
+
+    function launcherHome(): var {
+        const pinned = root.launcherScreen;
+        return (pinned ? root.windows.find(w => w.screen?.name === pinned) : null) ?? root.forScreen("");
+    }
+
     function showing(pick: var): var {
-        const here = root.forScreen("");
+        return root.showingFrom(pick, root.forScreen(""));
+    }
+
+    function showingFrom(pick: var, here: var): var {
         if (here && pick(here))
             return here;
         return root.windows.find(w => pick(w)) ?? here;
     }
 
     function openPanel(name: string, args: var): void {
-        const panel = root.forScreen(args.screen ?? "")?.named[name] ?? null;
+        const panel = root.homeFor(name, args.screen ?? "")?.named[name] ?? null;
         if (!panel)
             return;
         panel.show();
@@ -49,7 +63,7 @@ Singleton {
 
     function togglePanel(name: string, args: var): void {
         const screen = args.screen ?? "";
-        const win = screen ? root.forScreen(screen) : root.showing(w => w.named[name]?.open);
+        const win = screen ? root.forScreen(screen) : root.showingFrom(w => w.named[name]?.open, root.homeFor(name, ""));
         win?.named[name]?.toggle();
     }
 
