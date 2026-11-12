@@ -106,6 +106,15 @@ function colourOf(entry, parseColour) {
     return BARE_HEX.test(text) && /[a-f]/i.test(text) ? parseColour("#" + text) : null;
 }
 
+function swatchOf(c) {
+    if (!c)
+        return "transparent";
+    var two = function (n) {
+        return Math.round(Math.min(255, Math.max(0, n))).toString(16).padStart(2, "0");
+    };
+    return "#" + (c.a < 1 ? two(c.a * 255) : "") + two(c.r) + two(c.g) + two(c.b);
+}
+
 function shapeOf(entry, parseColour) {
     var kind = entry.kind || "text";
     var text = String(entry.text || "").trim();

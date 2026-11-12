@@ -454,7 +454,7 @@ Item {
                     width: Appearance.sizes.launcherIcon
                     height: Appearance.sizes.launcherIcon
                     radius: Appearance.rounding.small
-                    color: line.swatch ? Qt.rgba(line.swatch.r / 255, line.swatch.g / 255, line.swatch.b / 255, line.swatch.a) : "transparent"
+                    color: Page.swatchOf(line.swatch)
                     stroke: Appearance.colour.seam
                     strokeWidth: Appearance.stroke.line
                 }
@@ -512,7 +512,7 @@ Item {
                     width: Math.round(stage.height * 0.62)
                     height: width
                     radius: Appearance.rounding.large
-                    color: root.colour ? Qt.rgba(root.colour.r / 255, root.colour.g / 255, root.colour.b / 255, root.colour.a) : "transparent"
+                    color: Page.swatchOf(root.colour)
                     stroke: Appearance.colour.seam
                     strokeWidth: Appearance.stroke.line
                 }

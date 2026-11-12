@@ -151,40 +151,27 @@ Item {
                 width: root.half
                 spacing: Appearance.padding.normal
 
-                Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Appearance.padding.normal
-
-                    SquircleRect {
-                        visible: side.modelData.swatch !== ""
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: Appearance.font.size.display
-                        height: width
-                        radius: Appearance.rounding.small
-                        color: side.modelData.swatch || "transparent"
-                        stroke: Appearance.colour.seam
-                        strokeWidth: Appearance.stroke.line
-                    }
-
-                    StyledText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: Math.min(implicitWidth, side.width - (side.modelData.swatch ? Appearance.font.size.display + Appearance.padding.normal : 0))
-                        text: side.modelData.big
-                        font.pixelSize: Appearance.font.size.display
-                        font.weight: Font.DemiBold
-                        fontSizeMode: Text.HorizontalFit
-                        minimumPixelSize: Appearance.font.size.large
-                        horizontalAlignment: Text.AlignHCenter
-                        color: side.modelData.dim ? Appearance.colour.textDim : Appearance.colour.text
-                        elide: Text.ElideRight
-                        maximumLineCount: 1
-                    }
+                StyledText {
+                    width: side.width
+                    text: side.modelData.big
+                    font.pixelSize: Appearance.font.size.display
+                    font.weight: Font.DemiBold
+                    fontSizeMode: Text.HorizontalFit
+                    minimumPixelSize: Appearance.font.size.normal
+                    horizontalAlignment: Text.AlignHCenter
+                    color: side.modelData.dim ? Appearance.colour.textDim : Appearance.colour.text
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
                 }
 
                 Item {
+                    id: chip
+
+                    readonly property real dot: side.modelData.swatch ? captionText.implicitHeight + Appearance.padding.small : 0
+
                     visible: side.modelData.caption !== ""
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: Math.min(side.width, captionText.implicitWidth + Appearance.padding.normal * 2)
+                    width: Math.min(side.width, captionText.implicitWidth + chip.dot + Appearance.padding.normal * 2)
                     height: captionText.implicitHeight + Appearance.padding.small * 2
 
                     SquircleRect {
@@ -193,16 +180,30 @@ Item {
                         color: Appearance.colour.fill
                     }
 
-                    StyledText {
-                        id: captionText
-
+                    Row {
                         anchors.centerIn: parent
-                        width: Math.min(implicitWidth, side.width - Appearance.padding.normal * 2)
-                        horizontalAlignment: Text.AlignHCenter
-                        text: side.modelData.caption
-                        font.pixelSize: Appearance.font.size.small
-                        color: Appearance.colour.textDim
-                        elide: Text.ElideRight
+                        spacing: Appearance.padding.small
+
+                        SquircleRect {
+                            visible: side.modelData.swatch !== ""
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: captionText.implicitHeight
+                            height: width
+                            radius: Appearance.rounding.small / 2
+                            color: side.modelData.swatch || "transparent"
+                            stroke: Appearance.colour.seam
+                            strokeWidth: Appearance.stroke.line
+                        }
+
+                        StyledText {
+                            id: captionText
+
+                            width: Math.min(implicitWidth, side.width - Appearance.padding.normal * 2 - chip.dot)
+                            text: side.modelData.caption
+                            font.pixelSize: Appearance.font.size.small
+                            color: Appearance.colour.textDim
+                            elide: Text.ElideRight
+                        }
                     }
                 }
             }

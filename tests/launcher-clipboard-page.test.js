@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Page = lib("services/clipboard-page.js", ["FILTERS", "SHAPES", "shapeOf", "passes", "dayOf", "sections", "counts", "linkParts", "emailOf", "facts", "colourOf"]);
+const Page = lib("services/clipboard-page.js", ["FILTERS", "SHAPES", "shapeOf", "passes", "dayOf", "sections", "counts", "linkParts", "emailOf", "facts", "colourOf", "swatchOf"]);
 const Colours = lib("services/colours.js", ["parseColour", "FORMS"]);
 
 const NOW = new Date(2026, 10, 12, 15, 0).getTime();
@@ -113,4 +113,9 @@ test("a link lists the site it goes to and its scheme", () => {
     const rows = Page.facts(entry("url", "https://www.example.com/path?q=1"), "link");
     assert.strictEqual(row(rows, "Site"), "example.com");
     assert.strictEqual(row(rows, "Scheme"), "https");
+});
+test("a colour swatch is drawn in Qt's order, alpha first, and nothing draws as transparent", () => {
+    assert.strictEqual(Page.swatchOf(Colours.parseColour("#ff6363")), "#ff6363");
+    assert.strictEqual(Page.swatchOf(Colours.parseColour("rgba(255, 99, 99, 0.5)")), "#80ff6363");
+    assert.strictEqual(Page.swatchOf(null), "transparent");
 });
