@@ -76,7 +76,7 @@ test.describe("colours", () => {
     test.it("turns hex into rgb and names the hsl too", () => {
         assert.deepStrictEqual(Colours.colourAnswer("#ff8800"), {
             text: "rgb(255, 136, 0)",
-            detail: "hsl(32, 100%, 50%)",
+            detail: "hsl(32, 100%, 50%) · oklch(0.744 0.181 56.5)",
             swatch: "#ff8800"
         });
         assert.strictEqual(Colours.colourAnswer("#f80").text, "rgb(255, 136, 0)");
@@ -104,8 +104,26 @@ test.describe("colours", () => {
         assert.strictEqual(Colours.withColour("hello", "#336699"), "");
     });
 
+    test.it("converts to hwb, lab, lch, oklab and oklch", () => {
+        assert.strictEqual(Colours.colourAnswer("#ff8800 to hwb").text, "hwb(32 0% 0%)");
+        assert.strictEqual(Colours.colourAnswer("#ff0000 to lab").text, "lab(54.29% 80.81 69.89)");
+        assert.strictEqual(Colours.colourAnswer("#ff0000 in lch").text, "lch(54.29% 106.84 40.85)");
+        assert.strictEqual(Colours.colourAnswer("#ff0000 to oklab").text, "oklab(0.628 0.225 0.126)");
+        assert.strictEqual(Colours.colourAnswer("#ff0000 to oklch").text, "oklch(0.628 0.258 29.2)");
+        assert.strictEqual(Colours.colourAnswer("#ff000080 to oklch").text, "oklch(0.628 0.258 29.2 / 0.5)");
+    });
+
+    test.it("reads hwb, lab, lch, oklab and oklch back into hex", () => {
+        assert.strictEqual(Colours.colourAnswer("oklch(0.628 0.258 29.2)").text, "#ff0000");
+        assert.strictEqual(Colours.colourAnswer("lch(54.29% 106.84 40.85)").text, "#ff0000");
+        assert.strictEqual(Colours.colourAnswer("oklab(0.628 0.225 0.126)").text, "#ff0000");
+        assert.strictEqual(Colours.colourAnswer("hwb(32 0% 0%)").text, "#ff8800");
+        assert.strictEqual(Colours.colourAnswer("hwb(0 50% 50%)").text, "#808080");
+        assert.strictEqual(Colours.withColour("oklch(0.628 0.258 29.2)", "#336699"), "oklch(0.499 0.099 250.4)");
+    });
+
     test.it("refuses what is not a colour", () => {
-        for (const text of ["#ff88f", "#ggg", "rgb(300, 0, 0)", "ff8800", "hsl(10, 200%, 50%)", "#ff8800 to cmyk"])
+        for (const text of ["#ff88f", "#ggg", "rgb(300, 0, 0)", "ff8800", "hsl(10, 200%, 50%)", "#ff8800 to cmyk", "lab(120% 0 0)", "hwb(10 200% 0%)"])
             assert.strictEqual(Colours.colourAnswer(text), null, text);
     });
 });
