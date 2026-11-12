@@ -20,6 +20,7 @@ Singleton {
     readonly property int grace: 400
     readonly property int settle: 50
     readonly property int least: 90
+    readonly property int reask: 250
 
     property var job: null
 
@@ -45,14 +46,22 @@ Singleton {
             root.askWay(job);
     }
 
+    property int serial: 0
+
+    function settleWay(id: int, way: string): void {
+        if (root.job && root.job.id === id && !root.job.way)
+            root.job.way = way;
+    }
+
     function askWay(job: var): void {
         const pid = Hypr.toplevelFor(job.address)?.lastIpcObject?.pid ?? 0;
         if (!pid) {
             job.way = "keys";
             return;
         }
+        job.id = ++root.serial;
         wayProber.createObject(root, {
-            job: job,
+            jobId: job.id,
             command: ["sh", "-c", 'd=$(dirname "$(readlink "/proc/$1/exe")") && { [ -e "$d/v8_context_snapshot.bin" ] || [ -e "$d/snapshot_blob.bin" ]; }', "sh", String(pid)],
             running: true
         });
@@ -112,6 +121,10 @@ Singleton {
             return;
         }
         job.calm = 0;
+        if (!focused && now - (job.asked ?? 0) >= root.reask) {
+            job.asked = now;
+            Hypr.restoreFocus(job.address);
+        }
         if (now - job.at >= root.patience) {
             watch.stop();
             root.job = null;
@@ -214,12 +227,10 @@ Singleton {
         Process {
             id: probe
 
-            property var job: null
+            property int jobId: 0
 
             onExited: code => {
-                if (probe.job && !probe.job.way)
-                    probe.job.way = code === 0 ? "paste" : "keys";
-                probe.job = null;
+                root.settleWay(probe.jobId, code === 0 ? "paste" : "keys");
                 probe.destroy();
             }
         }

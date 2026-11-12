@@ -439,9 +439,8 @@ QtObject {
             icon: "content_paste",
             label: "Clipboard history",
             words: "clipboard paste copied history",
-            run: () => Panels.open("clipboard", {
-                screen: root.screenName
-            })
+            stay: true,
+            run: () => root.retype("clip ")
         },
         {
             id: "wallpapers",
@@ -1403,6 +1402,43 @@ QtObject {
         ];
     }
 
+    readonly property var timeAnswer: {
+        const c = root.conversion;
+        const got = root.converted;
+        if (c && got?.key === c.key && root.convertRows.length) {
+            const there = new Date(`${got.day}T12:00:00`);
+            const here = new Date(there.getTime() - got.shift * 86400000);
+            const delta = got.hour * 60 + got.minute + got.shift * 1440 - (c.ask.clock.hour * 60 + c.ask.clock.minute);
+            return {
+                section: "Time",
+                question: TimeFormat.clock(c.ask.clock.hour, c.ask.clock.minute),
+                asked: `${root.placeName(c.ask.from, c.from)} · ${TimeFormat.dateText(here, "brief")}`,
+                text: TimeFormat.clock(got.hour, got.minute),
+                detail: `${root.placeName(c.ask.to, c.to)} · ${TimeFormat.dateText(there, "brief")}${delta ? ` · ${Clock.offsetLabel(delta)}` : ""}`,
+                row: root.convertRows[0],
+                work: 1,
+                firm: true
+            };
+        }
+        const zone = root.zoneRows[0];
+        if (!zone)
+            return null;
+        const offset = root.zoneOffsets[zone.zone];
+        const now = new Date();
+        const there = new Date(now.getTime() + (offset + now.getTimezoneOffset()) * 60000);
+        const delta = offset + now.getTimezoneOffset();
+        return {
+            section: "Time",
+            question: TimeFormat.clock(now.getHours(), now.getMinutes()),
+            asked: `${Clock.localCity || "Here"} · ${TimeFormat.dateText(now, "brief")}`,
+            text: zone.time,
+            detail: `${Search.placeLabel(root.place, zone.zone, Clock.cityOf)} · ${TimeFormat.dateText(there, "brief")}${delta ? ` · ${Clock.offsetLabel(delta)}` : ""}`,
+            row: zone,
+            work: 1,
+            firm: true
+        };
+    }
+
     readonly property int reminderHour: Config.values.launcher.utilities.reminderHour
     readonly property bool alarmsFull: Clock.alarmsFull
     readonly property bool timersFull: Clock.timersFull
@@ -1586,6 +1622,14 @@ QtObject {
         root.syncAdded();
         root.arrangePending = true;
         root.arrangeNow();
+    }
+
+    function openPending(): void {
+        if (!root.presents || root.presenting)
+            return;
+        const source = root.sources.find(s => s.opening && typeof s.openPage === "function");
+        if (source)
+            source.openPage();
     }
 
     function arrangeNow(): void {

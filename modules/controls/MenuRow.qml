@@ -29,6 +29,7 @@ Item {
     property bool interactive: true
 
     property string tip: ""
+    property bool tips: true
 
     default property alias trailing: trailingSlot.data
 
@@ -89,7 +90,7 @@ Item {
 
     HoverTip {
         host: root
-        asked: pointer.containsMouse
+        asked: root.tips && pointer.containsMouse
         text: pointer.containsMouse ? root.hoverText : ""
     }
 

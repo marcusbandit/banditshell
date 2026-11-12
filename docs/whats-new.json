@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-11-12-p829",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Calculator answers show as a card: what you asked beside the answer"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Times convert when you say here, as in 12pm here in london"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Clipboard history opens in the launcher, with a preview of each copy"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "SUPER+V opens clipboard history in the launcher; the old panel is gone"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Copied colours, links, emails, code and files get their own actions"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Emoji open as a grid of big tiles you move through with the arrows"
+        }
+      ]
+    },
+    {
       "id": "2026-11-12-p832",
       "date": "2026-11-12",
       "changes": [

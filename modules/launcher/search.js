@@ -235,6 +235,12 @@ function arrange(groups, caps) {
     return out;
 }
 
+function withoutRow(rows, key) {
+    const kept = (rows || []).filter(r => r.key !== key);
+    const filled = kept.filter((r, i) => !r.header || (i + 1 < kept.length && !kept[i + 1].header));
+    return filled.filter(r => r.header).length > 1 ? filled : filled.filter(r => !r.header);
+}
+
 var SPAN_HEAD = /^(\d+(?:[.,]\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)(?![a-z])\s*(?:and\s+)?/i;
 
 var NUMBER_WORDS = {
@@ -988,6 +994,7 @@ var ZONE_NOT_MERIDIEM = "(?!(?:am|pm|a\\.m\\.|p\\.m\\.)(?: |$))";
 var ZONE_BETWEEN = new RegExp(`^${ZONE_TIME} ${ZONE_NOT_MERIDIEM}(?:in )?(.+?) (?:in|to|->|→) (.+)$`);
 var ZONE_TO = new RegExp(`^${ZONE_TIME} ${ZONE_NOT_MERIDIEM}(?:in|to) (.+)$`);
 var ZONE_AT = new RegExp(`^${ZONE_TIME} ${ZONE_NOT_MERIDIEM}(.+?)(?: time)?$`);
+var ZONE_HERE = /^(?:here|local|locally|my time|local time|home|my place)$/;
 
 function zoneConvertAsk(text) {
     const t = String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -1003,6 +1010,10 @@ function zoneConvertAsk(text) {
     } else {
         return null;
     }
+    if (ZONE_HERE.test(from))
+        from = "";
+    if (ZONE_HERE.test(to))
+        to = "";
     const clock = m[1] === "noon" ? {
         hour: 12,
         minute: 0

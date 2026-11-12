@@ -6,13 +6,50 @@ QtObject {
 
     required property var search
 
-    readonly property var kinds: ["emoji"]
+    readonly property var kinds: ["emoji", "emojipage"]
 
     readonly property var asked: Emoji.ask(root.search.text)
     readonly property bool explicit: root.asked.explicit
     readonly property string typed: String(root.asked.term || "").toLowerCase()
 
-    readonly property var found: root.search.text ? Emoji.search(root.asked.term, root.explicit, root.explicit ? 40 : 3) : []
+    readonly property bool paged: root.search.presents && root.explicit && /^\s*[a-z]/i.test(root.search.query)
+
+    readonly property bool opening: root.paged && /^\s*\S+\s/.test(root.search.query)
+
+    onOpeningChanged: if (root.opening && !root.search.presenting)
+        Qt.callLater(root.openPage)
+
+    readonly property Component page: Component {
+        EmojiPage {}
+    }
+
+    function openPage(): void {
+        if (!root.search.presents || root.search.presenting)
+            return;
+        root.search.present({
+            component: root.page,
+            name: "emoji",
+            text: "Emoji and symbols",
+            filters: true,
+            placeholder: "Search emoji and symbols",
+            filter: root.asked.term,
+            restore: root.search.query.trim().split(/\s+/)[0] ?? "",
+            source: root
+        });
+    }
+
+    function pageRow(): var {
+        return {
+            key: "emojipage",
+            kind: "emojipage",
+            label: "Emoji and symbols",
+            detail: "pick from a grid",
+            icon: "mood",
+            score: Infinity
+        };
+    }
+
+    readonly property var found: root.search.text && !root.paged ? Emoji.search(root.asked.term, root.explicit, root.explicit ? 40 : 3) : []
 
     readonly property bool intent: root.explicit
 
@@ -31,7 +68,7 @@ QtObject {
         {
             key: "emoji",
             title: "Emoji and symbols",
-            items: root.found.map(entry => root.row(entry))
+            items: root.paged ? [root.pageRow()] : root.found.map(entry => root.row(entry))
         }
     ]
 
@@ -56,6 +93,8 @@ QtObject {
     }
 
     function rowById(id: string): var {
+        if (id === "emojipage")
+            return root.pageRow();
         if (!id.startsWith("emoji:"))
             return null;
         const entry = Emoji.byChar[id.slice(6)];
@@ -76,6 +115,13 @@ QtObject {
     }
 
     function activate(row: var): void {
+        if (row.kind === "emojipage") {
+            if (root.search.presents)
+                root.openPage();
+            else
+                root.search.retype("emoji ");
+            return;
+        }
         if (Typist.found)
             root.type(row, row.glyph);
         else
@@ -83,6 +129,14 @@ QtObject {
     }
 
     function actionsFor(row: var): var {
+        if (row.kind === "emojipage")
+            return [
+                {
+                    icon: "mood",
+                    label: "Open",
+                    run: () => root.activate(row)
+                }
+            ];
         const typing = Typist.found;
         const acts = [
             {

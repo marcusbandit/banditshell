@@ -4,14 +4,18 @@
   "layer": 4,
   "owns": {
     "qml": [
+      "modules/launcher/sources/ClipboardPage.qml",
       "modules/launcher/sources/ClipboardSource.qml",
       "modules/launcher/sources/ColourSource.qml",
       "modules/launcher/sources/DevSource.qml",
+      "modules/launcher/sources/EmojiPage.qml",
       "modules/launcher/sources/EmojiSource.qml",
+      "modules/launcher/sources/Keycap.qml",
       "modules/launcher/sources/LatestSource.qml",
       "modules/launcher/sources/LoremSource.qml",
       "modules/launcher/sources/NotesSource.qml",
       "modules/launcher/sources/NotificationSource.qml",
+      "modules/launcher/sources/PageFooter.qml",
       "modules/launcher/sources/PomodoroSource.qml",
       "modules/launcher/sources/ProjectSource.qml",
       "modules/launcher/sources/QuicklinkSource.qml",
@@ -25,6 +29,7 @@
       "Emoji",
       "FileSearch",
       "LatestFiles",
+      "LinkPreviews",
       "Notes",
       "Pomodoro",
       "Projects",
@@ -32,11 +37,14 @@
       "Snippets"
     ],
     "js": [
+      "services/clipboard-page.js",
       "services/colour-picks.js",
       "services/dev-utilities.js",
+      "services/emoji-grid.js",
       "services/emoji-table.js",
       "services/emoji.js",
       "services/latest-files.js",
+      "services/link-facts.js",
       "services/lorem.js",
       "services/narrowing.js",
       "services/notes.js",
@@ -50,8 +58,11 @@
       "scripts/emoji-table.py"
     ],
     "tests": [
+      "tests/launcher-clipboard-page.test.js",
       "tests/launcher-dev-utilities.test.js",
+      "tests/launcher-emoji-grid.test.js",
       "tests/launcher-latest-files.test.js",
+      "tests/launcher-link-facts.test.js",
       "tests/launcher-power-tools.test.js",
       "tests/launcher-typing.test.js",
       "tests/narrowing.test.js"
@@ -59,6 +70,7 @@
   },
   "requires": {
     "packages": [
+      "apps",
       "clipboard",
       "clock",
       "compositor",

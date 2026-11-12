@@ -55,6 +55,7 @@ singleton LayoutDraft 1.0 LayoutDraft.qml
 LevelCover 1.0 LevelCover.qml
 singleton Levels 1.0 Levels.qml
 singleton Lid 1.0 Lid.qml
+singleton LinkPreviews 1.0 LinkPreviews.qml
 singleton ListeningPorts 1.0 ListeningPorts.qml
 singleton Localisation 1.0 Localisation.qml
 singleton Lock 1.0 Lock.qml

@@ -1,8 +1,41 @@
+import Quickshell.Io
+import qs.config
 import qs.services
 import qs.modules.panel
 
-PanelIpc {
+IpcHandler {
     target: "clipboard"
+
+    function toggle(): string {
+        Appearance.instantly();
+        const win = Shell.showing(w => w.launcher.open) ?? Shell.forScreen("");
+        if (!win)
+            return PanelWindows.missing("");
+        if (win.launcher.open && win.launcher.page === "clipboard") {
+            win.launcher.hide();
+            return "closed";
+        }
+        win.launcher.showPage("clip ");
+        return "open";
+    }
+
+    function open(): string {
+        Appearance.instantly();
+        const win = Shell.forScreen("");
+        if (!win)
+            return PanelWindows.missing("");
+        if (!(win.launcher.open && win.launcher.page === "clipboard"))
+            win.launcher.showPage("clip ");
+        return "open";
+    }
+
+    function close(): string {
+        Appearance.instantly();
+        for (const win of Shell.windows)
+            if (win.launcher.open && win.launcher.page === "clipboard")
+                win.launcher.hide();
+        return "closed";
+    }
 
     function list(): string {
         const rows = Clipboard.entries.map((e, i) => {
@@ -46,11 +79,11 @@ PanelIpc {
     }
 
     function status(): string {
-        const win = Shell.showing(w => w.clipboard.open);
+        const shown = Shell.windows.some(w => w.launcher.open && w.launcher.page === "clipboard");
         const kinds = {};
         for (const e of Clipboard.entries)
             kinds[e.kind] = (kinds[e.kind] ?? 0) + 1;
         const tally = Object.keys(kinds).sort().map(k => `${k}=${kinds[k]}`).join(" ");
-        return `recording=${Clipboard.recording} entries=${Clipboard.entries.length} pinned=${Clipboard.entries.filter(e => e.pinned).length} open=${win?.clipboard.open ?? false} ${tally}`;
+        return `recording=${Clipboard.recording} entries=${Clipboard.entries.length} pinned=${Clipboard.entries.filter(e => e.pinned).length} open=${shown} ${tally}`;
     }
 }

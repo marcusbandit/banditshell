@@ -243,6 +243,7 @@ Singleton {
             types: ev.types ?? [],
             paths: ev.paths ?? [],
             mimes: ev.mimes ?? [],
+            app: Date.now() - root.offeredAt < 3000 ? "" : Hypr.classOf(Hypr.activeClient),
             pinned: false
         };
         entry.kind = root.classify(entry);
@@ -257,6 +258,7 @@ Singleton {
         if (had) {
             entry.id = had.id;
             entry.pinned = had.pinned;
+            entry.app = had.app || entry.app;
         }
 
         const rest = root.entries.filter(e => root.identity(e) !== key);
@@ -298,7 +300,10 @@ Singleton {
 
     signal copied(var command, string input, bool secret)
 
+    property double offeredAt: 0
+
     function offer(command: var, input: string, secret: bool): void {
+        root.offeredAt = Date.now();
         root.copied(command, input, secret);
         root.offered = {
             command: command,
