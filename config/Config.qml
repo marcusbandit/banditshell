@@ -398,6 +398,7 @@ Singleton {
                     noteFolders: "~/Obsidian",
                     noteVault: "",
                     noteSkip: "",
+                    quickNoteFolder: "",
 
                     focusMinutes: 25,
                     breakMinutes: 5,

@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-11-13-p835-notes-focus",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "jot saves a quick note, with or without an Obsidian vault"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Note search also finds words inside notes"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Focus rounds take a goal, and focus until 16:30 sets the end"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "dnd until 16:30 keeps notifications quiet until then"
+        }
+      ]
+    },
+    {
       "id": "2026-11-13-p835-scripts-themes",
       "date": "2026-11-13",
       "changes": [

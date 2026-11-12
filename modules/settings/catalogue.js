@@ -479,6 +479,8 @@ const PAGES_SOURCE = {
                 { n: [], icon: "visibility_off", label: "Leave out vaults", k: "noteSkip", kind: "text", mono: true, cfg: "launcher.powerTools.noteSkip", placeholder: "Archive, ~/Obsidian/Work", kw: "notes obsidian vaults hide skip private exclude",
                     why: "Vaults named here, by name or folder and separated by commas, are never searched and never get new notes." },
                 { n: [], icon: "note_add", label: "New notes go to", k: "noteVault", kind: "choice", o: s => s.noteVaults, cfg: "launcher.powerTools.noteVault", kw: "notes obsidian vault new note default" },
+                { n: [], icon: "edit_note", label: "Quick notes folder", k: "quickNoteFolder", kind: "text", mono: true, cfg: "launcher.powerTools.quickNoteFolder", placeholder: "~/Notes", kw: "quick notes capture jot folder markdown",
+                    why: "Quick notes are saved here as plain Markdown files. Left empty, they go in the vault new notes use, or ~/Notes when there is none." },
                 { n: [], icon: "timer", label: "Focus round", k: "focusMinutes", kind: "step", min: 5, max: 120, step: 5, unit: " min", cfg: "launcher.powerTools.focusMinutes", kw: "pomodoro focus work minutes" },
                 { n: [], icon: "coffee", label: "Break", k: "breakMinutes", kind: "step", min: 1, max: 30, unit: " min", cfg: "launcher.powerTools.breakMinutes", kw: "pomodoro short break minutes" },
                 { n: [], icon: "self_improvement", label: "Long break", k: "longBreakMinutes", kind: "step", min: 5, max: 60, step: 5, unit: " min", cfg: "launcher.powerTools.longBreakMinutes", kw: "pomodoro long break minutes" },

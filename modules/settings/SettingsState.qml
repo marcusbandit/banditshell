@@ -245,6 +245,7 @@ Singleton {
             noteFolders: "launcher.powerTools.noteFolders",
             noteVault: "launcher.powerTools.noteVault",
             noteSkip: "launcher.powerTools.noteSkip",
+            quickNoteFolder: "launcher.powerTools.quickNoteFolder",
             focusMinutes: "launcher.powerTools.focusMinutes",
             breakMinutes: "launcher.powerTools.breakMinutes",
             longBreakMinutes: "launcher.powerTools.longBreakMinutes",
