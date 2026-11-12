@@ -15,9 +15,10 @@
 #   banditshell panel launcher open [<query>]
 #                                the launcher with the query already typed, like
 #                                notifications unread
-#   banditshell panel launcher run <app|row>
+#   banditshell panel launcher run <app|row> [toggle|]
 #                                start an app the way the launcher does, or run
-#                                any launcher row by its id, like command:lock
+#                                any launcher row by its id, like command:lock;
+#                                toggle hides a focused app and brings it back
 #   banditshell panel keyboard [dock|float]
 #   banditshell panel keyboard page <layer> [screen]
 #                                dock or float the on-screen keyboard, or show one
@@ -1570,7 +1571,7 @@ route_panel() {
     if [ $# -gt 0 ]; then shift; fi
 
     case "$name:$action" in
-    launcher:run) [ $# -ge 1 ] || say_usage "panel launcher run <app|row>"; ipc launcher run "$1" ;;
+    launcher:run) [ $# -ge 1 ] || say_usage "panel launcher run <app|row> [toggle]"; ipc launcher run "$1" "${2:-}" ;;
     settings:page) [ $# -ge 1 ] || say_usage "panel settings page <page>"; ipc settings page "$1" ;;
     keyboard:dock) ipc keyboard dock ;;
     keyboard:float) ipc keyboard undock ;;

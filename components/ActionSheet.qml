@@ -58,15 +58,24 @@ Item {
 
     property real zoom: 1
 
-    readonly property int breaks: {
-        let count = 0;
-        for (let i = 1; i < root.actions.length; i++)
-            if (root.apart(i))
-                count += 1;
-        return count;
+    function headed(index: int): bool {
+        const action = root.actions[index];
+        return !!action && !!action.section && (index === 0 || root.actions[index - 1].section !== action.section);
     }
+
+    function lead(index: int, split: real, head: real): real {
+        return (root.apart(index) && !root.headed(index) ? split : 0) + (root.headed(index) ? head : 0);
+    }
+
+    function leads(upTo: int, split: real, head: real): real {
+        let total = 0;
+        for (let i = 0; i <= upTo && i < root.actions.length; i++)
+            total += root.lead(i, split, head);
+        return total;
+    }
+
     readonly property real plainRow: Math.max(Appearance.sizes.rowHeight, Appearance.font.iconSize + Appearance.padding.normal * 2)
-    readonly property real plainHeight: root.actions.length * (root.plainRow + Appearance.padding.small) + root.breaks * (Appearance.padding.small * 2 + 1) + Appearance.padding.small
+    readonly property real plainHeight: root.actions.length * (root.plainRow + Appearance.padding.small) + root.leads(root.actions.length - 1, Appearance.padding.small * 2 + 1, Math.round(Appearance.font.size.small * 1.6) + Appearance.padding.small) + Appearance.padding.small
     readonly property real sized: Math.min(root.zoom, Math.max(1, (root.height - root.edge * 2) / Math.max(1, root.plainHeight)))
 
     readonly property real gap: Math.round(Appearance.padding.small * root.sized)
@@ -77,6 +86,7 @@ Item {
     readonly property real rowHeight: Math.max(Math.round(Appearance.sizes.rowHeight * root.sized), root.iconSize + root.inset * 2)
     readonly property real step: root.rowHeight + root.gap
     readonly property real split: root.gap * 2 + 1
+    readonly property real headRow: Math.round(root.textSize * 1.6) + root.gap
 
     function apart(index: int): bool {
         const action = root.actions[index];
@@ -84,11 +94,7 @@ Item {
     }
 
     function rowTop(index: int): real {
-        let breaks = 0;
-        for (let i = 1; i <= index && i < root.actions.length; i++)
-            if (root.apart(i))
-                breaks += 1;
-        return index * root.step + breaks * root.split;
+        return index * root.step + root.leads(index, root.split, root.headRow);
     }
 
     readonly property real rowWidth: Math.min(root.width - root.edge * 2 - root.gap * 2, root.inset * 3 + root.iconSize + measure.childrenRect.width)
@@ -221,15 +227,25 @@ Item {
                     readonly property bool chosen: root.selected === cell.index
                     readonly property bool worn: root.worn === cell.index
 
-                    readonly property real lead: root.apart(cell.index) ? root.split : 0
+                    readonly property real lead: root.lead(cell.index, root.split, root.headRow)
+                    readonly property bool headed: root.headed(cell.index)
 
                     width: root.rowWidth
                     height: root.rowHeight + cell.lead
 
                     Separator {
-                        visible: cell.lead > 0
+                        visible: cell.lead > 0 && !cell.headed && cell.index > 0
                         width: parent.width
                         y: (cell.lead - root.gap - height) / 2
+                    }
+
+                    StyledText {
+                        visible: cell.headed
+                        x: root.inset
+                        y: Math.round(root.gap / 2)
+                        text: cell.modelData.section ?? ""
+                        font.pixelSize: root.textSize
+                        color: Appearance.colour.textFaint
                     }
 
                     Item {

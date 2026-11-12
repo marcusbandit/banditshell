@@ -1240,11 +1240,27 @@ Singleton {
         System.openWith(path);
     }
 
-    signal openersFound(string path, string kind, var apps)
+    signal openersFound(string path, string kind, var apps, string who)
 
-    function offerOpeners(path: string): void {
+    function openerRows(path: string, kind: string, apps: var, wrap: var): var {
+        const rows = apps.map(app => ({
+                    icon: "open_in_new",
+                    label: app.name,
+                    run: () => wrap(() => root.openIn(app.id, path))
+                }));
+        if (rows.length === 0)
+            rows.push({
+                icon: "open_in_new",
+                label: kind ? `No app lists ${kind}, try the default` : "Try the default app",
+                run: () => wrap(() => root.openWith(path))
+            });
+        return rows;
+    }
+
+    function offerOpeners(path: string, who: string): void {
         asker.running = false;
         asker.path = path;
+        asker.who = who;
         asker.command = FilesCommands.openersCommand(path);
         asker.running = true;
     }
@@ -1257,13 +1273,14 @@ Singleton {
         id: asker
 
         property string path: ""
+        property string who: ""
 
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text === "")
                     return;
                 const found = FilesCommands.openers(text);
-                root.openersFound(asker.path, found.kind, found.apps);
+                root.openersFound(asker.path, found.kind, found.apps, asker.who);
             }
         }
     }

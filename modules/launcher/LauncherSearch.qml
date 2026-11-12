@@ -490,6 +490,13 @@ QtObject {
                 }))
         },
         {
+            id: "manual",
+            icon: "menu_book",
+            label: "Open the manual",
+            words: "manual user guide docs documentation readme help how to",
+            run: () => root.leave(() => Quickshell.execDetached(["xdg-open", "https://github.com/marcusbandit/banditshell#readme"]))
+        },
+        {
             id: "playpause",
             icon: Media.playing ? "pause" : "play_arrow",
             label: Media.playing ? "Pause" : "Play",
@@ -2009,6 +2016,13 @@ QtObject {
             });
     }
 
+    property string openersFor: ""
+
+    function askOpeners(path: string): void {
+        root.openersFor = path;
+        Files.offerOpeners(path, "launcher");
+    }
+
     function complete(row: var): bool {
         const owner = root.sourceOf(row);
         if (owner)
@@ -2045,7 +2059,20 @@ QtObject {
                     label: "Copy path",
                     run: () => root.leave(() => System.copyText(row.path))
                 }
-            ];
+            ].concat(row.dir ? [] : [
+                    {
+                        icon: "apps",
+                        label: "Open with…",
+                        run: () => root.askOpeners(row.path)
+                    }
+                ], [
+                    {
+                        icon: "delete",
+                        label: "Move to trash",
+                        alarm: true,
+                        run: () => root.leave(() => Files.trash([row.path]))
+                    }
+                ]);
         case "setting":
             return row.toggle === undefined ? [
                 {

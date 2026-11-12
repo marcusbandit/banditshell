@@ -196,6 +196,8 @@ Singleton {
             dropMode: "windows.mode",
             followSent: "windows.follow",
             launcherW: "launcher.width",
+            launcherScreen: "launcher.screen",
+            launcherEscape: "launcher.escape",
             menuW: "menu.width",
             settingsW: "settings.width",
             concept: "launcher.concept",
