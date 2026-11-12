@@ -14,6 +14,7 @@ import "shellcli.js" as ShellCli
 import "../files/marks.js" as Marks
 import "../settings/catalogue.js" as Catalogue
 import "../../services/ranking.js" as Ranking
+import "../../services/window-moves.js" as Moves
 import "../../services/system-monitor.js" as ProcessNames
 
 QtObject {
@@ -327,7 +328,7 @@ QtObject {
 
     readonly property var prefixes: Prefixes.OWN.concat(root.parsedHere, root.sources.reduce((out, s) => out.concat(s.prefixes ?? []), []))
 
-    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || root.windowList || root.commandRows.some(r => r.score === Infinity)
+    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || root.presetRows.length > 0 || root.windowList || root.commandRows.some(r => r.score === Infinity)
 
     property bool started: false
 
@@ -580,6 +581,32 @@ QtObject {
             run: () => Quickshell.execDetached(["gio", "trash", "--empty"])
         },
         {
+            id: "opentrash",
+            icon: "delete",
+            label: "Open trash",
+            words: "open trash bin rubbish show deleted files",
+            run: () => Files.show(Files.trashFiles)
+        },
+        {
+            id: "hiddenfiles",
+            icon: "visibility",
+            label: "Show hidden files",
+            words: "hidden files dotfiles show hide toggle file manager",
+            toggle: Files.showHidden,
+            stay: true,
+            run: () => Files.setShowHidden(!Files.showHidden)
+        },
+        {
+            id: "bluetooth",
+            icon: Bluetooth.enabled ? "bluetooth" : "bluetooth_disabled",
+            label: "Bluetooth",
+            words: "bluetooth on off toggle turn on turn off enable disable switch",
+            toggle: Bluetooth.enabled,
+            hidden: !Bluetooth.available,
+            stay: true,
+            run: () => Bluetooth.setEnabled(!Bluetooth.enabled)
+        },
+        {
             id: "nightlight",
             icon: "nightlight",
             label: "Night light",
@@ -645,7 +672,7 @@ QtObject {
             confirm: true,
             run: () => root.openWindows.forEach(t => Hypr.closeWindow(Hypr.windowAddress(t.address)))
         }
-    ].concat(root.windowCommands, root.layoutCommands, root.sourceCommands, Files.drives.map(d => ({
+    ].concat(root.windowCommands, root.layoutCommands, root.presetCommands, root.sourceCommands, Files.drives.map(d => ({
                 id: `eject:${d.path}`,
                 icon: "eject",
                 label: `Eject ${d.name}`,
@@ -795,8 +822,8 @@ QtObject {
                     id: `move-${d.name}`,
                     icon: d.icon,
                     label: `Move window ${d.name}`,
-                    words: `move window ${d.name}`,
-                    run: () => Hypr.moveWindowToward(root.windowTarget(), d.short)
+                    words: `move window ${d.name} nudge`,
+                    run: () => floating ? Hypr.nudgeWindow(root.windowTarget(), d.short, Moves.NUDGE_STEP) : Hypr.moveWindowToward(root.windowTarget(), d.short)
                 })), [
             {
                 id: "nextworkspace",
@@ -841,6 +868,56 @@ QtObject {
                 stay: true,
                 run: () => WindowLayouts.use(name)
             }))
+
+    readonly property var presets: Config.values.launcher.windowPresets ?? []
+
+    readonly property var presetCommands: root.presets.map(p => ({
+                id: `preset:${p.id}`,
+                icon: "view_quilt",
+                label: `Apply preset ${p.name}`,
+                words: `window preset arrangement setup apply ${p.name}`,
+                detail: `${p.windows.length} windows`,
+                run: () => {
+                    if (p.layout && p.layout !== WindowLayouts.current)
+                        WindowLayouts.use(p.layout, () => Hypr.applyPreset(p));
+                    else
+                        Hypr.applyPreset(p);
+                }
+            })).concat(root.presets.map(p => ({
+                    id: `presetdelete:${p.id}`,
+                    icon: "delete",
+                    label: `Delete preset ${p.name}`,
+                    words: `window preset arrangement setup delete remove ${p.name}`,
+                    confirm: true,
+                    run: () => Config.set("launcher.windowPresets", Moves.withoutPreset(root.presets, p.id))
+                })))
+
+    readonly property var presetRows: {
+        const name = Search.presetAsk(root.text);
+        if (!name)
+            return [];
+        const label = `Save window preset ${name}`;
+        return [
+            {
+                key: "command:savepreset",
+                kind: "command",
+                command: {
+                    id: "savepreset",
+                    label: label,
+                    run: () => Hypr.capturePreset(name, WindowLayouts.current, preset => {
+                        if (preset.windows.length)
+                            Config.set("launcher.windowPresets", Moves.withPreset(root.presets, preset));
+                        else
+                            Quickshell.execDetached(["notify-send", "Window preset", "No windows on this workspace to save"]);
+                    })
+                },
+                label: label,
+                detail: "windows on this workspace",
+                icon: "save",
+                score: Infinity
+            }
+        ];
+    }
 
     readonly property int workspaceWanted: Search.workspaceAsk(root.text)
     readonly property int workspaceShown: Search.focusWorkspaceAsk(root.text)
@@ -1296,7 +1373,16 @@ QtObject {
                     icon: Audio.deviceIcon(n),
                     score: root.kindScore(Audio.deviceLabel(n), "sound output speakers headphones audio")
                 }));
-        return bluetooth.concat(wifi, outputs).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
+        const inputs = Audio.sources.map(n => ({
+                    key: `input:${n.id}`,
+                    kind: "input",
+                    node: n,
+                    label: Audio.deviceLabel(n),
+                    detail: n === Audio.source ? "in use" : "",
+                    icon: Audio.deviceIcon(n),
+                    score: root.kindScore(Audio.deviceLabel(n), "microphone mic input sound audio")
+                }));
+        return bluetooth.concat(wifi, outputs, inputs).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
     }
 
     property var zoneOffsets: ({})
@@ -1613,7 +1699,7 @@ QtObject {
         });
     }
 
-    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, FileSearch.grepAnswered, FileSearch.found, root.sourceGroupLists, root.aloneSource, root.limits]
+    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.presetRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, FileSearch.grepAnswered, FileSearch.found, root.sourceGroupLists, root.aloneSource, root.limits]
 
     property var arranged: []
     property bool arrangePending: false
@@ -1702,7 +1788,7 @@ QtObject {
         }, {
             key: "commands",
             title: "Commands",
-            items: root.withAlias("command", root.awakeRows.concat(root.workspaceRows, root.commandRows))
+            items: root.withAlias("command", root.awakeRows.concat(root.workspaceRows, root.presetRows, root.commandRows))
         }, {
             key: "settings",
             title: "Settings",
@@ -1795,6 +1881,9 @@ QtObject {
             return;
         case "output":
             Audio.setSink(row.node);
+            return;
+        case "input":
+            Audio.setSource(row.node);
             return;
         case "timer":
             if (!row.full)
@@ -2088,6 +2177,7 @@ QtObject {
                 }
             ];
         case "output":
+        case "input":
         case "timer":
         case "reminder":
         case "command":
