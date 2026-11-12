@@ -24,8 +24,18 @@ Singleton {
         return root.windows.find(w => w.screen?.name === Hypr.focusedScreen) ?? root.windows[0] ?? null;
     }
 
+    property string launcherScreen: ""
+
+    function launcherHome(): var {
+        const pinned = root.launcherScreen;
+        return (pinned ? root.windows.find(w => w.screen?.name === pinned) : null) ?? root.forScreen("");
+    }
+
     function showing(pick: var): var {
-        const here = root.forScreen("");
+        return root.showingFrom(pick, root.forScreen(""));
+    }
+
+    function showingFrom(pick: var, here: var): var {
         if (here && pick(here))
             return here;
         return root.windows.find(w => pick(w)) ?? here;

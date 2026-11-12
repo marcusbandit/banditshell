@@ -573,9 +573,16 @@ LauncherConcept {
             return true;
         const row = root.capture.row;
         const holder = got.chord ? LauncherHotkeys.holderOf(got.chord, row.key) : "";
+        const own = got.chord ? LauncherHotkeys.ownHolderOf(got.chord, row.key) : "";
+        if (own && root.capture.overwrite === got.chord) {
+            LauncherHotkeys.take(row.key, got.chord, row.label);
+            root.endCapture(root.beforeCapture);
+            return true;
+        }
         if (got.said || holder) {
             root.capture = Object.assign({}, root.capture, {
-                said: got.said || `taken by ${holder}`
+                said: got.said || (own ? `taken by ${holder}, press it again to take it over` : `taken by ${holder}`),
+                overwrite: own ? got.chord : ""
             });
             return true;
         }
@@ -616,8 +623,12 @@ LauncherConcept {
 
         if (root.shownView && !sheet.open) {
             if (event.key === Qt.Key_Escape && !(event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier))) {
-                if (!viewLoader.item?.claimEscape?.())
-                    root.closeView();
+                if (!viewLoader.item?.claimEscape?.()) {
+                    if (Config.values.launcher.escape === "close")
+                        root.hide();
+                    else
+                        root.closeView();
+                }
                 return true;
             }
             if (viewLoader.item?.claimKey(event))
@@ -653,6 +664,11 @@ LauncherConcept {
             return true;
         }
 
+        if (event.key === Qt.Key_Escape && !(event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier)) && Config.values.launcher.escape === "close") {
+            root.hide();
+            return true;
+        }
+
         if (Search.opensSheet(event.key, event.modifiers) && root.answerHolds && root.answer?.row) {
             root.ask(answerCard, root.answer.row, answerCard.width / 2, answerCard.height / 2);
             return true;
@@ -669,6 +685,11 @@ LauncherConcept {
 
         if (Search.caretKey(event.key, query.text !== "", root.intoList))
             return false;
+
+        if (event.key === Qt.Key_Backtab && search.path) {
+            search.retype(Search.parentQuery(query.text, System.home));
+            return true;
+        }
 
         const row = root.results[root.selected];
         if (event.key === Qt.Key_Tab && (search.complete(row) || search.complete(root.results.find(r => r.kind === "suggest")) || search.complete(root.results.find(r => r.tab))))
@@ -725,6 +746,7 @@ LauncherConcept {
             {
                 icon: "label",
                 label: alias ? `Change alias · ${alias}` : "Add alias",
+                section: "Shortcuts",
                 tucked: true,
                 run: () => root.startCapture("alias", row)
             }
@@ -733,13 +755,23 @@ LauncherConcept {
             acts.push({
                 icon: "keyboard",
                 label: hotkey ? `Change hotkey · ${Chords.chordText(hotkey)}` : "Set hotkey",
+                section: "Shortcuts",
                 tucked: true,
                 run: () => root.startCapture("hotkey", row)
+            });
+        if (hotkey && row.kind === "app")
+            acts.push({
+                icon: "visibility_off",
+                label: LauncherHotkeys.toggles(id) ? "Hotkey only opens the app" : "Hotkey also hides the app",
+                section: "Shortcuts",
+                tucked: true,
+                run: () => LauncherHotkeys.setToggle(id, !LauncherHotkeys.toggles(id))
             });
         if (alias)
             acts.push({
                 icon: "label_off",
                 label: "Remove alias",
+                section: "Shortcuts",
                 tucked: true,
                 run: () => Config.set("launcher.aliases", Search.withAlias(Config.values.launcher.aliases, id, "", ""))
             });
@@ -747,6 +779,7 @@ LauncherConcept {
             acts.push({
                 icon: "keyboard_hide",
                 label: "Remove hotkey",
+                section: "Shortcuts",
                 tucked: true,
                 run: () => LauncherHotkeys.clear(id)
             });
@@ -769,6 +802,7 @@ LauncherConcept {
         const full = !kept && Config.values.launcher.list.pinned && Apps.starredApps.length >= root.pinnedLimit;
         acts.push({
             icon: "push_pin",
+            section: "Favorites",
             fill: kept,
             label: kept ? "Unpin" : full ? `Pinned grid is full (${root.pinnedLimit})` : "Pin",
             short: full ? "Grid full" : undefined,
@@ -792,12 +826,14 @@ LauncherConcept {
             acts.push({
                 icon: "arrow_back",
                 label: "Move left",
+                section: "Manage",
                 run: () => root.shiftTile(-1)
             });
         if (at >= 0 && at < root.pinnedApps.length - 1)
             acts.push({
                 icon: "arrow_forward",
                 label: "Move right",
+                section: "Manage",
                 run: () => root.shiftTile(1)
             });
 
@@ -819,6 +855,30 @@ LauncherConcept {
         return acts;
     }
 
+    property point askedAt: Qt.point(0, 0)
+
+    Connections {
+        target: Files
+
+        function onOpenersFound(path: string, kind: string, apps: var): void {
+            if (!root.open || path !== search.openersFor)
+                return;
+            search.openersFor = "";
+            const rows = apps.map(app => ({
+                        icon: "open_in_new",
+                        label: app.name,
+                        run: () => root.launch(() => Files.openIn(app.id, path))
+                    }));
+            if (rows.length === 0)
+                rows.push({
+                    icon: "open_in_new",
+                    label: kind ? `No app lists ${kind}, try the default` : "Try the default app",
+                    run: () => root.launch(() => Files.openWith(path))
+                });
+            sheet.popup(root.askedAt.x, root.askedAt.y, rows, 0);
+        }
+    }
+
     function ask(item: Item, entry: var, x: real, y: real): void {
         if (!entry || entry.header)
             return;
@@ -827,7 +887,8 @@ LauncherConcept {
             return;
         root.answerHolds = false;
         const at = item.mapToItem(panel, x, y);
-        sheet.popup(at.x, at.y, acts);
+        root.askedAt = at;
+        sheet.popup(at.x, at.y, Search.sectioned(acts));
     }
 
     function chooseRow(index: int): void {

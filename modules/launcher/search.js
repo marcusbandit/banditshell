@@ -39,6 +39,34 @@ function pathQuery(text, home) {
     };
 }
 
+function parentQuery(text, home) {
+    const at = pathQuery(text, home);
+    if (!at)
+        return "";
+    const trimmed = at.dir.length > 1 ? at.dir.replace(/\/+$/, "") : at.dir;
+    const cut = trimmed.lastIndexOf("/");
+    const parent = cut <= 0 ? "/" : trimmed.slice(0, cut + 1);
+    const named = shortPath(parent, home);
+    return named === "~" ? "~/" : named;
+}
+
+var SECTION_ORDER = ["Open", "Favorites", "Shortcuts", "Manage"];
+
+function sectioned(actions) {
+    const list = (actions || []).map((a, i) => ({
+        action: a,
+        at: i,
+        section: a.section || (a.tucked || a.alarm ? "Manage" : "Open")
+    }));
+    if (new Set(list.map(e => e.section)).size < 2)
+        return actions || [];
+    const rank = name => SECTION_ORDER.indexOf(name);
+    list.sort((a, b) => rank(a.section) - rank(b.section) || a.at - b.at);
+    return list.map(e => Object.assign({}, e.action, {
+        section: e.section
+    }));
+}
+
 var PICTURE = /\.(?:png|jpe?g|webp|gif|bmp|svg|avif|tiff?)$/i;
 
 function streamName(label) {
@@ -1205,7 +1233,7 @@ function cleanAlias(text) {
 
 function aliasTarget(aliases, text) {
     const said = cleanAlias(text);
-    return said && aliases && Object.prototype.hasOwnProperty.call(aliases, said) ? aliases[said].id || "" : "";
+    return said && aliases && Object.prototype.hasOwnProperty.call(aliases, said) && !aliases[said].off ? aliases[said].id || "" : "";
 }
 
 function aliasHolder(aliases, alias, id, exists) {
@@ -1221,7 +1249,8 @@ function aliasHolder(aliases, alias, id, exists) {
 function aliasesById(aliases) {
     const out = {};
     for (const alias of Object.keys(aliases || {}))
-        out[aliases[alias].id] = alias;
+        if (!aliases[alias].off)
+            out[aliases[alias].id] = alias;
     return out;
 }
 

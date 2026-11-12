@@ -11,7 +11,7 @@ Singleton {
 
     function toggle(part: string, screen: string): string {
         Appearance.instantly();
-        const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w[part].open);
+        const win = screen ? Shell.forScreen(screen) : part === "launcher" ? Shell.showingFrom(w => w.launcher.open, Shell.launcherHome()) : Shell.showing(w => w[part].open);
         if (!win)
             return "";
         win[part].toggle();
@@ -20,7 +20,7 @@ Singleton {
 
     function open(part: string, screen: string): string {
         Appearance.instantly();
-        const win = Shell.forScreen(screen);
+        const win = !screen && part === "launcher" ? Shell.launcherHome() : Shell.forScreen(screen);
         if (!win)
             return "";
         win[part].show();

@@ -14,6 +14,7 @@ Singleton {
     readonly property bool possible: Compositor.isHyprland
 
     property var applied: ({})
+    property var appliedToggle: ({})
 
     readonly property var named: ({
             [Qt.Key_Space]: "SPACE",
@@ -92,12 +93,59 @@ Singleton {
         return root.keys[id]?.chord ?? "";
     }
 
+    function liveChord(id: string): string {
+        const held = root.keys[id];
+        return held && !held.off ? held.chord ?? "" : "";
+    }
+
+    function toggles(id: string): bool {
+        return !!root.keys[id]?.toggle;
+    }
+
+    function setToggle(id: string, on: bool): void {
+        const held = root.keys[id];
+        if (!held)
+            return;
+        const next = Object.assign({}, root.keys);
+        next[id] = Object.assign({}, held, {
+            toggle: on
+        });
+        Config.set("launcher.hotkeys", next);
+    }
+
+    function setOff(id: string, off: bool): void {
+        const held = root.keys[id];
+        if (!held)
+            return;
+        const next = Object.assign({}, root.keys);
+        next[id] = Object.assign({}, held, {
+            off: off
+        });
+        Config.set("launcher.hotkeys", next);
+    }
+
+    function ownHolderOf(chord: string, id: string): string {
+        return Object.keys(root.keys).find(other => other !== id && Chords.sameChord(root.keys[other].chord, chord)) ?? "";
+    }
+
     function holderOf(chord: string, id: string): string {
         const mine = Object.keys(root.keys).find(other => other !== id && Chords.sameChord(root.keys[other].chord, chord));
         if (mine)
             return root.keys[mine].label || mine;
         const bind = HyprConfig.holderOf(chord);
         return bind ? bind.description || bind.action || "another bind" : "";
+    }
+
+    function take(id: string, chord: string, label: string): void {
+        const next = Object.assign({}, root.keys);
+        const from = root.ownHolderOf(chord, id);
+        if (from)
+            delete next[from];
+        next[id] = {
+            chord: chord,
+            label: label
+        };
+        Config.set("launcher.hotkeys", next);
     }
 
     function set(id: string, chord: string, label: string): void {
@@ -121,10 +169,12 @@ Singleton {
         const lua = [];
         const legacy = [];
         const now = {};
+        const toggled = {};
         for (const id of Object.keys(root.applied)) {
             const chord = root.applied[id];
-            if (root.keys[id]?.chord === chord) {
+            if (root.liveChord(id) === chord) {
                 now[id] = chord;
+                toggled[id] = root.appliedToggle[id];
                 continue;
             }
             lua.push(`hl.unbind("${HyprlandLua.luaString(chord)}")`);
@@ -132,9 +182,9 @@ Singleton {
         }
         for (const id of Object.keys(root.keys)) {
             const want = root.keys[id];
-            if (!want?.chord || now[id] === want.chord)
+            if (!want?.chord || want.off || now[id] === want.chord && root.appliedToggle[id] === !!want.toggle)
                 continue;
-            const command = Chords.hotkeyCommand(id);
+            const command = Chords.hotkeyCommand(id, want.toggle);
             lua.push(`hl.unbind("${HyprlandLua.luaString(want.chord)}")`);
             legacy.push(`keyword unbind ${Chords.legacyChord(want.chord)}`);
             lua.push(HyprlandLua.composeBind(want.chord, `hl.dsp.exec_cmd("${HyprlandLua.luaString(command)}")`, {
@@ -142,8 +192,10 @@ Singleton {
             }));
             legacy.push(`keyword bind ${Chords.legacyChord(want.chord)}, exec, ${command}`);
             now[id] = want.chord;
+            toggled[id] = !!want.toggle;
         }
         root.applied = now;
+        root.appliedToggle = toggled;
         if (!lua.length)
             return;
         Quickshell.execDetached(Hypr.lua ? ["hyprctl", "eval", lua.join("\n")] : ["hyprctl", "--batch", legacy.join(" ; ")]);

@@ -274,6 +274,10 @@ Singleton {
             launcher: {
                 width: 840,
 
+                screen: "",
+
+                escape: "back",
+
                 iconSize: 36,
 
                 halfLifeDays: 14,
@@ -306,6 +310,8 @@ Singleton {
 
                 plugins: {
                     off: [],
+
+                    commandsOff: [],
 
                     values: ({}),
 

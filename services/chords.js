@@ -19,6 +19,19 @@ function chordText(chord) {
     return chordParts(chord).map(p => p.length <= 1 ? p : p.charAt(0) + p.slice(1).toLowerCase()).join(" ");
 }
 
-function hotkeyCommand(id) {
-    return `banditshell action launcher.run '${String(id).replace(/'/g, "'\\''")}'`;
+function hotkeyCommand(id, toggle) {
+    return `banditshell action launcher.run '${String(id).replace(/'/g, "'\\''")}'${toggle ? " toggle" : ""}`;
+}
+
+var HIDING_PLACE = "special:hidden";
+
+function toggleStep(windows, focused) {
+    if (!windows.length)
+        return { step: "launch", addresses: [] };
+    if (windows.some(w => w.address === focused))
+        return { step: "hide", addresses: windows.map(w => w.address) };
+    var hidden = windows.filter(w => w.workspace === HIDING_PLACE);
+    if (hidden.length)
+        return { step: "bring", addresses: hidden.map(w => w.address) };
+    return { step: "focus", addresses: [windows[0].address] };
 }

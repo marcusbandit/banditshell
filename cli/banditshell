@@ -1570,7 +1570,7 @@ route_panel() {
     if [ $# -gt 0 ]; then shift; fi
 
     case "$name:$action" in
-    launcher:run) [ $# -ge 1 ] || say_usage "panel launcher run <app|row>"; ipc launcher run "$1" ;;
+    launcher:run) [ $# -ge 1 ] || say_usage "panel launcher run <app|row>"; ipc launcher run "$1" "${2:-}" ;;
     settings:page) [ $# -ge 1 ] || say_usage "panel settings page <page>"; ipc settings page "$1" ;;
     keyboard:dock) ipc keyboard dock ;;
     keyboard:float) ipc keyboard undock ;;
