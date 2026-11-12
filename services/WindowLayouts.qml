@@ -18,11 +18,31 @@ Singleton {
 
     readonly property var available: ["dwindle", "master", ...(root.scrolling ? ["scrolling"] : []), ...(root.plugins.some(p => /hy3/i.test(p)) ? ["hy3"] : []), ...root.configured, ...WorkshopLayouts.names.filter(name => !root.configured.includes(name))]
 
-    function use(name: string): void {
+    property var afterUse: null
+
+    function use(name: string, then: var): void {
         root.current = name;
         const bare = name.replace(/^lua:/, "");
-        Quickshell.execDetached(Hypr.lua ? ["hyprctl", "eval", `hl.config({ general = { layout = "${Lua.luaString(name)}" } }) if apply_layout_binds then apply_layout_binds("${Lua.luaString(bare)}") end`] : ["hyprctl", "keyword", "general:layout", name]);
+        const command = Hypr.lua ? ["hyprctl", "eval", `hl.config({ general = { layout = "${Lua.luaString(name)}" } }) if apply_layout_binds then apply_layout_binds("${Lua.luaString(bare)}") end`] : ["hyprctl", "keyword", "general:layout", name];
+        if (then) {
+            root.afterUse = then;
+            switcher.command = command;
+            switcher.running = false;
+            switcher.running = true;
+        } else
+            Quickshell.execDetached(command);
         reread.restart();
+    }
+
+    Process {
+        id: switcher
+
+        onExited: {
+            const done = root.afterUse;
+            root.afterUse = null;
+            if (done)
+                done();
+        }
     }
 
     function probe(): void {

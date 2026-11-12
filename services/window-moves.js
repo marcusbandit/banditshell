@@ -7,12 +7,33 @@ var DIRECTIONS = {
     d: { x: 0, y: 1 }
 };
 
-function nudgeTarget(client, direction, step) {
+function monitorArea(mon) {
+    var turned = (mon.transform || 0) % 2 === 1;
+    var scale = mon.scale || 1;
+    var w = (turned ? mon.height : mon.width) / scale;
+    var h = (turned ? mon.width : mon.height) / scale;
+    var r = mon.reserved || [0, 0, 0, 0];
+    return { x: mon.x + r[0], y: mon.y + r[1], w: w - r[0] - r[2], h: h - r[1] - r[3] };
+}
+
+function clamp(v, low, high) {
+    return Math.max(low, Math.min(high < low ? low : high, v));
+}
+
+function nudgeTarget(client, direction, step, mon) {
     var way = DIRECTIONS[direction];
-    if (!client || !client.floating || !way || !client.at)
+    if (!client || !client.floating || client.fullscreen || !way || !client.at || !client.size)
         return null;
-    var by = step > 0 ? step : NUDGE_STEP;
-    return { x: client.at[0] + way.x * by, y: client.at[1] + way.y * by };
+    var x = client.at[0] + way.x * step;
+    var y = client.at[1] + way.y * step;
+    if (mon) {
+        var area = monitorArea(mon);
+        x = clamp(x, area.x, area.x + area.w - client.size[0]);
+        y = clamp(y, area.y, area.y + area.h - client.size[1]);
+    }
+    if (x === client.at[0] && y === client.at[1])
+        return null;
+    return { x: x, y: y };
 }
 
 function remembered(client) {
@@ -77,16 +98,25 @@ function presetPlan(preset, mon, clients) {
     return plan;
 }
 
+function presetKey(name) {
+    return String(name || "").trim().toLowerCase();
+}
+
 function presetId(name) {
-    return String(name || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    var key = presetKey(name);
+    var hash = 5381;
+    for (var i = 0; i < key.length; i++)
+        hash = ((hash * 33) ^ key.charCodeAt(i)) >>> 0;
+    var slug = key.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return (slug ? slug + "-" : "") + hash.toString(36);
 }
 
 function withPreset(list, preset) {
-    var id = presetId(preset.name);
+    var key = presetKey(preset.name);
     var kept = (list || []).filter(function (p) {
-        return p && presetId(p.name) !== id;
+        return p && presetKey(p.name) !== key;
     });
-    return kept.concat([Object.assign({ id: id }, preset)]);
+    return kept.concat([Object.assign({ id: presetId(preset.name) }, preset)]);
 }
 
 function withoutPreset(list, id) {

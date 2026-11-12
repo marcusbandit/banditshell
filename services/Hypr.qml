@@ -285,19 +285,22 @@ Singleton {
         const w = root.windowAddress(addr);
         if (!w)
             return;
-        root.withLayout((mons, clients) => {
-            const saved = Moves.remembered(clients.find(c => root.windowAddress(c.address) === w));
+        const now = root.toplevelFor(w)?.lastIpcObject;
+        if (now?.fullscreen)
+            delete root.remembered[w];
+        else if (!root.remembered[w]) {
+            const saved = Moves.remembered(now);
             if (saved)
                 root.remembered[w] = saved;
-            root.send(`hl.dsp.window.fullscreen({ mode = "${mode}", action = "toggle", window = "address:${w}" })`, `fullscreen ${mode === "maximized" ? 1 : 0}`);
-        });
+        }
+        root.send(`hl.dsp.window.fullscreen({ mode = "${mode}", action = "toggle", window = "address:${w}" })`, `fullscreen ${mode === "maximized" ? 1 : 0}`);
     }
 
     function restoreWindow(addr: string): void {
         const w = root.windowAddress(addr);
         if (!w)
             return;
-        const rect = Moves.restoreRect(root.remembered[w]);
+        const rect = root.toplevelFor(w)?.lastIpcObject?.floating === false ? null : Moves.restoreRect(root.remembered[w]);
         delete root.remembered[w];
         if (rect) {
             root.placeWindow(w, rect);
@@ -402,7 +405,8 @@ Singleton {
         if (!w)
             return;
         root.withLayout((mons, clients) => {
-            const to = Moves.nudgeTarget(clients.find(c => root.windowAddress(c.address) === w), direction, step);
+            const client = clients.find(c => root.windowAddress(c.address) === w);
+            const to = Moves.nudgeTarget(client, direction, step, mons.find(m => m.id === client?.monitor));
             if (to)
                 root.send(`hl.dsp.window.move({ x = ${to.x}, y = ${to.y}, window = "address:${w}" })`, `movewindowpixel exact ${to.x} ${to.y},address:${w}`);
         });
@@ -726,6 +730,7 @@ Singleton {
             if (n === "closewindow") {
                 const gone = root.windowAddress(event.data);
                 if (gone) {
+                    delete root.remembered[gone];
                     if (root.focusedAddress === gone)
                         root.focusedAddress = "";
                     root.forgetFocus(gone);
