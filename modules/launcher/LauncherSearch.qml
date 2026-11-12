@@ -101,6 +101,9 @@ QtObject {
         TranslateSource {
             search: root
         },
+        WeatherSource {
+            search: root
+        },
         DefineSource {
             search: root
         },

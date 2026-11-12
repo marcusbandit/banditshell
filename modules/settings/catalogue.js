@@ -495,6 +495,8 @@ const PAGES_SOURCE = {
                 { n: [], icon: "translate", label: "Translate", k: "onlineTranslate", kind: "toggle", cfg: "launcher.online.translate", kw: "translate translation language google",
                     why: "Type hello in german, translate bonjour or tr hola. The text goes to Google Translate." },
                 { n: [], icon: "language", label: "Translate into", k: "onlineTranslateTo", kind: "choice", o: [["", "System language"], ["en", "English"], ["da", "Danish"], ["de", "German"], ["fr", "French"], ["es", "Spanish"], ["it", "Italian"], ["nl", "Dutch"], ["sv", "Swedish"], ["no", "Norwegian"], ["fi", "Finnish"], ["pl", "Polish"], ["pt", "Portuguese"], ["ja", "Japanese"], ["zh-CN", "Chinese"], ["ko", "Korean"]], cfg: "launcher.online.translateTo", dis: s => !s.v("onlineTranslate"), kw: "translate target language default" },
+                { n: [], icon: "partly_cloudy_day", label: "Weather", k: "onlineWeather", kind: "toggle", cfg: "launcher.online.weather", kw: "weather forecast temperature rain city place",
+                    why: "Type weather paris or weather for the place you set. The place name goes to wttr.in." },
                 { n: [], icon: "menu_book", label: "Wiktionary definitions", k: "onlineDefine", kind: "toggle", cfg: "launcher.online.define", kw: "define dictionary meaning word",
                     why: "Type define and a word. The offline dictionary answers at once; this adds Wiktionary's entry beside it." },
                 { n: [], icon: "package_2", label: "Packages", k: "onlinePackages", kind: "toggle", cfg: "launcher.online.packages", kw: "install package pacman aur flatpak apt dnf software",

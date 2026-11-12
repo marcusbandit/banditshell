@@ -217,6 +217,7 @@ Singleton {
             notificationsInSearch: "launcher.typing.notifications",
             onlineTranslate: "launcher.online.translate",
             onlineTranslateTo: "launcher.online.translateTo",
+            onlineWeather: "launcher.online.weather",
             onlineDefine: "launcher.online.define",
             onlinePackages: "launcher.online.packages",
             onlineGithub: "launcher.online.github",

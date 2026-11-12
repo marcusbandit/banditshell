@@ -331,6 +331,7 @@ Singleton {
                 online: {
                     translate: true,
                     translateTo: "",
+                    weather: true,
                     define: true,
                     packages: true,
                     github: true,

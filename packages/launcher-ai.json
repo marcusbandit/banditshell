@@ -18,7 +18,7 @@
     "optional": []
   },
   "provides": {
-    "singletons": [],
+    "singletons": ["Assistant"],
     "ipc": []
   },
   "config": {
