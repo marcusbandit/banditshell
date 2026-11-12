@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import qs.services
 import "../../../services/ranking.js" as Ranking
 import "../../../services/obs.js" as Durations
@@ -101,6 +102,7 @@ QtObject {
             minute: moved.getMinutes(),
             at: moved.getTime()
         });
+        Quickshell.execDetached(["notify-send", "-a", "banditshell", "-i", "update", alarm.label || "Reminder", `Moved to ${TimeFormat.clock(moved.getHours(), moved.getMinutes())}`]);
     }
 
     function activate(row: var): void {

@@ -18,26 +18,14 @@ QtObject {
 
     readonly property var kinds: ["ask", "assistantsetup"]
 
-    property bool counted: false
-
     property Connections opening: Connections {
         target: root.search
 
         function onStartedChanged(): void {
             if (root.search.started)
                 Assistant.refresh();
-            root.setWatching(root.search.started);
         }
     }
-
-    function setWatching(on: bool): void {
-        if (on === root.counted)
-            return;
-        root.counted = on;
-        Assistant.watching += on ? 1 : -1;
-    }
-
-    Component.onDestruction: root.setWatching(false)
 
     onExplicitChanged: if (root.explicit) {
         Assistant.refresh();

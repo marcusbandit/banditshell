@@ -58,14 +58,17 @@ Singleton {
         return (root.backend === "codex" ? root.codexModels.find(m => m[0] === model)?.[1] : "") || Logic.modelLabel(model);
     }
 
-    property string modelChoice: ""
+    property string oneShotModel: ""
+    readonly property var otherModels: Logic.chatModels(root.models)
+    readonly property string autoNote: root.backend === "claude" && !root.settings.model && root.models.length ? `${root.labelOf(Logic.askModel("claude", "", root.models, "", 0, false))} for short asks, ${root.labelOf(Logic.askModel("claude", "", root.models, "", 4, false))} for long ones` : ""
     property string usedModel: ""
     readonly property string usedModelName: root.usedModel ? root.labelOf(root.usedModel) : root.modelName
     readonly property bool web: !!root.settings.webSearch && root.agent
     property string summary: ""
     property var askContext: null
-    property int watching: 0
+    property bool watching: false
     property bool checking: false
+    property bool checkAfterProbe: false
     property string checkNote: ""
 
     property string setup: ""
@@ -269,8 +272,13 @@ Singleton {
     }
 
     function takeList(text: string, generation: int, listing: string, backend: string): void {
-        if (generation !== root.listGeneration || listing !== root.listing)
+        if (generation !== root.listGeneration || listing !== root.listing) {
+            if (root.checking && generation === root.listGeneration) {
+                root.checking = false;
+                root.checkNote = "the settings changed, press Check again";
+            }
             return;
+        }
         root.listRun = null;
         const got = Logic.splitStatus(text);
         const names = Logic.readModels(backend, got.body);
@@ -464,11 +472,16 @@ Singleton {
         root.actionId = "";
         root.source = "";
         root.usedModel = root.pickModel(question, root.turns.length, !!context);
-        root.begin("ask", topic, question, Logic.askPrompt(root.today(), root.summary, root.web), root.turns);
+        root.begin("ask", topic, question, Logic.askPrompt(root.today(), root.summary, root.webFor(root.turns)), root.turns);
+    }
+
+    function webFor(turns: var): bool {
+        return root.web && !Logic.hasContext(turns);
     }
 
     function pickModel(text: string, turnCount: int, withContext: bool): string {
-        const chosen = root.modelChoice && root.models.indexOf(root.modelChoice) >= 0 ? root.modelChoice : root.settings.model;
+        const chosen = root.oneShotModel || root.settings.model;
+        root.oneShotModel = "";
         return Logic.askModel(root.backend, chosen, root.models, text, turnCount, withContext);
     }
 
@@ -488,11 +501,13 @@ Singleton {
             });
             return;
         }
-        contextReader.kind = kind;
-        contextReader.question = question;
-        contextReader.topic = topic;
-        contextReader.command = ["sh", "-c", kind === "selection" ? "wl-paste --primary --list-types 2>/dev/null | grep -qx x-kde-passwordManagerHint && exit 0; wl-paste --primary --no-newline --type text 2>/dev/null | head -c 60001" : "wl-paste --list-types 2>/dev/null | grep -qx x-kde-passwordManagerHint && exit 0; wl-paste --no-newline --type text 2>/dev/null | head -c 60001"];
-        contextReader.running = true;
+        const reader = contextRequest.createObject(root, {
+            kind: kind,
+            question: question,
+            topic: topic,
+            command: ["sh", "-c", kind === "selection" ? "wl-paste --primary --list-types 2>/dev/null | grep -qx x-kde-passwordManagerHint && exit 0; wl-paste --primary --no-newline --type text 2>/dev/null | head -c 60001" : "wl-paste --list-types 2>/dev/null | grep -qx x-kde-passwordManagerHint && exit 0; wl-paste --no-newline --type text 2>/dev/null | head -c 60001"]
+        });
+        reader.running = true;
     }
 
     function retryWith(model: string): void {
@@ -501,8 +516,9 @@ Singleton {
         const question = root.question;
         const topic = root.topic;
         const context = root.askContext;
-        root.modelChoice = model;
+        root.oneShotModel = model;
         root.turns = root.turns.slice(0, -2);
+        root.following = root.turns.length > 0;
         root.ask(question, topic, context);
     }
 
@@ -515,6 +531,14 @@ Singleton {
             return;
         root.checking = true;
         root.checkNote = "checking";
+        root.checkAfterProbe = true;
+        checkTimeout.restart();
+        prober.running = true;
+    }
+
+    function continueCheck(): void {
+        if (!root.checking)
+            return;
         if (root.agent) {
             if (!root.tools[root.backend]) {
                 root.checking = false;
@@ -546,7 +570,11 @@ Singleton {
         signOutRun.running = true;
     }
 
-    function signedOutDone(backend: string): void {
+    function signedOutDone(backend: string, code: int): void {
+        if (code !== 0) {
+            root.checkNote = code === 124 ? `${Logic.AGENTS[backend].name} did not answer in time` : `could not sign out of ${Logic.AGENTS[backend].name}`;
+            return;
+        }
         root.setSignedIn(backend, false);
         root.checkNote = `signed out of ${Logic.AGENTS[backend].name}`;
     }
@@ -615,7 +643,7 @@ Singleton {
                     ANTHROPIC_API_KEY: null,
                     PATH: root.agentPath
                 },
-                command: ["sh", "-c", "mkdir -p -- \"$1\" && cd -- \"$1\" && shift && exec \"$@\"", "sh", root.sessionDir].concat(Logic.agentCommand(root.backend, root.usedModel || root.model, system, root.web))
+                command: ["sh", "-c", "mkdir -p -- \"$1\" && cd -- \"$1\" && shift && exec \"$@\"", "sh", root.sessionDir].concat(Logic.agentCommand(root.backend, root.usedModel || root.model, system, kind === "ask" && root.webFor(messages)))
             });
             root.talk.running = true;
             return;
@@ -723,6 +751,12 @@ Singleton {
         }
     }
 
+    function launcherClosed(): void {
+        if (root.streaming && root.kind === "ask")
+            return;
+        root.stop();
+    }
+
     function shownFor(text: string): bool {
         return root.kind !== "" && root.topic === text && (root.streaming || root.finished || !!root.error);
     }
@@ -735,7 +769,7 @@ Singleton {
         root.stop();
         root.summary = "";
         root.askContext = null;
-        root.modelChoice = "";
+        root.oneShotModel = "";
         root.following = false;
         root.turns = [];
         root.kind = "";
@@ -937,7 +971,11 @@ Singleton {
                 text.split("\n").filter(Boolean).forEach(tool => found[tool] = true);
                 root.tools = found;
                 root.probed = true;
-                root.checkSignIn();
+                if (root.checkAfterProbe) {
+                    root.checkAfterProbe = false;
+                    root.continueCheck();
+                } else
+                    root.checkSignIn();
             }
         }
     }
@@ -1048,15 +1086,33 @@ Singleton {
         }
     }
 
-    Process {
-        id: contextReader
+    Component {
+        id: contextRequest
 
-        property string kind: ""
-        property string question: ""
-        property string topic: ""
+        Process {
+            id: reader
 
-        stdout: StdioCollector {
-            onStreamFinished: root.contextRead(contextReader.kind, text, contextReader.question, contextReader.topic)
+            property string kind: ""
+            property string question: ""
+            property string topic: ""
+
+            stdout: StdioCollector {
+                onStreamFinished: root.contextRead(reader.kind, text, reader.question, reader.topic)
+            }
+
+            onRunningChanged: if (!reader.running)
+                reader.destroy(2000)
+        }
+    }
+
+    Timer {
+        id: checkTimeout
+
+        interval: 15000
+        onTriggered: if (root.checking) {
+            root.checking = false;
+            root.checkAfterProbe = false;
+            root.checkNote = "no answer, try again";
         }
     }
 
@@ -1068,7 +1124,7 @@ Singleton {
         environment: ({
                 PATH: root.agentPath
             })
-        onExited: root.signedOutDone(signOutRun.backend)
+        onExited: code => root.signedOutDone(signOutRun.backend, code)
     }
 
     Process {

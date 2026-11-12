@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Assistant = lib("services/assistant.js", ["askOf", "looksLikeQuestion", "chatRequest", "listRequest", "pullRequest", "readModels", "readChunk", "splitStatus", "failureText", "visibleText", "tidyRewrite", "readPull", "pullTotals", "sizeText", "snippet", "trimTurns", "undash", "keySafe", "keyFor", "keyless", "officialOpenai", "webLink", "lineBreaks", "typeBackRefusal", "modelFor", "isLocal", "actionOf", "ACTIONS", "STARTER", "rewriteMessage", "rewritePrompt", "agentCommand", "agentPrompt", "agentFailure", "readCodexModels", "signedOut", "modelLabel", "askPrompt", "withContext", "windowContext", "droppedTurns", "extendSummary", "transcript", "askModel", "nextModel"]);
+const Assistant = lib("services/assistant.js", ["askOf", "looksLikeQuestion", "chatRequest", "listRequest", "pullRequest", "readModels", "readChunk", "splitStatus", "failureText", "visibleText", "tidyRewrite", "readPull", "pullTotals", "sizeText", "snippet", "trimTurns", "undash", "keySafe", "keyFor", "keyless", "officialOpenai", "webLink", "lineBreaks", "typeBackRefusal", "modelFor", "isLocal", "actionOf", "ACTIONS", "STARTER", "rewriteMessage", "rewritePrompt", "agentCommand", "agentPrompt", "agentFailure", "readCodexModels", "signedOut", "modelLabel", "askPrompt", "withContext", "windowContext", "droppedTurns", "extendSummary", "transcript", "askModel", "nextModel", "hasContext", "chatModels"]);
 
 const settings = {
     model: "m",
@@ -364,15 +364,15 @@ test.describe("assistant: context, web search, long chats, models", () => {
         assert.strictEqual(off[off.indexOf("--tools") + 1], "");
         assert.ok(!off.includes("--allowedTools"));
         const on = Assistant.agentCommand("claude", "haiku", "sys", true);
-        assert.strictEqual(on[on.indexOf("--tools") + 1], "WebSearch,WebFetch");
-        assert.strictEqual(on[on.indexOf("--allowedTools") + 1], "WebSearch,WebFetch");
+        assert.strictEqual(on[on.indexOf("--tools") + 1], "WebSearch");
+        assert.strictEqual(on[on.indexOf("--allowedTools") + 1], "WebSearch");
         assert.ok(Assistant.agentCommand("codex", "", "sys", false).includes("web_search=\"disabled\""));
         assert.ok(Assistant.agentCommand("codex", "", "sys", true).includes("web_search=\"live\""));
     });
 
     test.it("mentions the summary and web search in the system prompt only when set", () => {
         assert.ok(!Assistant.askPrompt("2026-01-01", "", false).includes("Earlier in this chat"));
-        assert.ok(Assistant.askPrompt("2026-01-01", "I asked: a", false).includes("Earlier in this chat, before the messages below: I asked: a"));
+        assert.ok(Assistant.askPrompt("2026-01-01", "The user asked: a", false).includes("Earlier in this chat, before the messages below: The user asked: a"));
         assert.ok(Assistant.askPrompt("2026-01-01", "", true).includes("search the web"));
     });
 
@@ -384,8 +384,8 @@ test.describe("assistant: context, web search, long chats, models", () => {
         const dropped = Assistant.droppedTurns(turns, kept);
         assert.strictEqual(dropped.length, 4);
         const note = Assistant.extendSummary("", dropped);
-        assert.ok(note.startsWith("I asked: message 0 I answered: message 1"));
-        assert.ok(Assistant.extendSummary(note, [{ role: "user", content: "later" }]).endsWith("I asked: later"));
+        assert.ok(note.startsWith("The user asked: message 0 You answered: message 1"));
+        assert.ok(Assistant.extendSummary(note, [{ role: "user", content: "later" }]).endsWith("The user asked: later"));
         assert.ok(Assistant.extendSummary("", [{ role: "user", content: "x".repeat(5000) }]).length <= 700);
     });
 
@@ -411,6 +411,19 @@ test.describe("assistant: context, web search, long chats, models", () => {
         assert.strictEqual(Assistant.nextModel(["a", "b", "c"], "a"), "b");
         assert.strictEqual(Assistant.nextModel(["a", "b", "c"], "c"), "a");
         assert.strictEqual(Assistant.nextModel(["a"], "a"), "a");
+    });
+
+    test.it("skips embedding, speech and image models and the one in use when stepping", () => {
+        const models = ["gpt-5-mini", "text-embedding-3-small", "whisper-1", "gpt-5", "tts-1", "gpt-image-1"];
+        assert.strictEqual(Assistant.nextModel(models, "gpt-5-mini"), "gpt-5");
+        assert.strictEqual(Assistant.nextModel(models, "gpt-5"), "gpt-5-mini");
+        assert.strictEqual(Assistant.nextModel(["a", "b"], ""), "a");
+        assert.strictEqual(Assistant.nextModel(["a"], "a"), "a");
+    });
+
+    test.it("notices when an earlier turn carried attached text", () => {
+        assert.strictEqual(Assistant.hasContext([{ role: "user", content: "x", shown: "x" }]), false);
+        assert.strictEqual(Assistant.hasContext([{ role: "user", content: "ctx x", shown: "x" }]), true);
     });
 
     test.it("offers an improve rewrite that replaces the selection", () => {

@@ -1423,7 +1423,7 @@ Singleton {
             missing: `${Assistant.agentInfo.name} is not installed`
         })[Assistant.phase] ?? "" : ""
     readonly property string aiAddressNote: Assistant.keyHeld ? "plain http, so the key is not sent" : ""
-    readonly property string aiModelNote: Assistant.modelName ? `${Assistant.modelName} in use` : ""
+    readonly property string aiModelNote: Assistant.autoNote || (Assistant.modelName ? `${Assistant.modelName} in use` : "")
 
     readonly property string polkitNote: Polkit.serving ? "the shell asks" : "another program asks"
     readonly property string ratesNote: Currency.date ? `rates from ${Currency.date}` : "no rates yet"

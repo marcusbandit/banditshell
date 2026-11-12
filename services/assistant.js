@@ -220,7 +220,7 @@ function backendLabel(backend) {
     return found ? found[1] : "";
 }
 
-var CLAUDE_WEB_TOOLS = "WebSearch,WebFetch";
+var CLAUDE_WEB_TOOLS = "WebSearch";
 
 function agentCommand(backend, model, system, web) {
     if (backend === "claude")
@@ -640,7 +640,17 @@ function droppedTurns(turns, kept) {
 
 function summaryLine(turn) {
     const text = turn.shown !== undefined ? turn.shown : turn.content;
-    return turn.role === "assistant" ? `I answered: ${snippet(text, 100)}` : `I asked: ${snippet(text, 80)}`;
+    return turn.role === "assistant" ? `You answered: ${snippet(text, 100)}` : `The user asked: ${snippet(text, 80)}`;
+}
+
+function hasContext(turns) {
+    return (turns || []).some(t => t.shown !== undefined && t.shown !== t.content);
+}
+
+var NOT_CHAT = /embed|tts|whisper|image|moderation|dall-e|audio|transcribe|realtime|rerank/i;
+
+function chatModels(models) {
+    return (models || []).filter(m => !NOT_CHAT.test(m));
 }
 
 function extendSummary(previous, dropped) {
@@ -663,9 +673,12 @@ function askModel(backend, chosen, available, text, turnCount, withContext) {
 }
 
 function nextModel(models, current) {
-    const all = models || [];
-    if (all.length < 2)
-        return current || "";
+    const all = chatModels(models);
     const at = all.indexOf(current);
-    return all[(at + 1) % all.length];
+    for (let step = 1; step <= all.length; step++) {
+        const pick = all[(at + step + all.length) % all.length];
+        if (pick !== current)
+            return pick;
+    }
+    return current || "";
 }

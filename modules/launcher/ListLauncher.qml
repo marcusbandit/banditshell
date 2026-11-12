@@ -412,7 +412,7 @@ LauncherConcept {
         sheet.close();
         Assistant.following = false;
         if (!Assistant.inPlace)
-            Assistant.stop();
+            Assistant.launcherClosed();
         root.capture = null;
         if (root.filtering)
             root.input.text = "";
@@ -947,7 +947,10 @@ LauncherConcept {
 
     property bool unsized: false
 
-    onShownChanged: panel.unjudge()
+    onShownChanged: {
+        panel.unjudge();
+        Assistant.watching = root.shown;
+    }
     onDraggingChanged: {
         panel.unjudge();
         panel.follow();

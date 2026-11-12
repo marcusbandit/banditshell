@@ -225,7 +225,7 @@ Item {
             }
 
             Button {
-                visible: !root.rewriting && Assistant.finished && Assistant.models.length > 1
+                visible: !root.rewriting && Assistant.finished && Assistant.otherModels.length > 1
                 icon: "swap_horiz"
                 text: "Try another model"
                 style: "ring"
