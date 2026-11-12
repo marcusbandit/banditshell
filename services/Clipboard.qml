@@ -9,6 +9,7 @@ import "clipboard-sweep.js" as Sweep
 import "clipboard-shelf.js" as Shelf
 import "clipboard-secret.js" as Secret
 import "clipboard-age.js" as Age
+import "clipboard-rules.js" as Rules
 
 Singleton {
     id: root
@@ -231,6 +232,13 @@ Singleton {
         }
 
         const now = Date.now();
+        const app = now - root.offeredAt < 3000 ? "" : Hypr.classOf(Hypr.activeClient);
+        if (Rules.excluded(app, Config.values.clipboard.ignoreApps)) {
+            root.current = "";
+            if (ev.file)
+                root.sweep(false);
+            return;
+        }
         const entry = {
             id: `${now}-${root.entries.length}`,
             recorded: now,
@@ -243,7 +251,7 @@ Singleton {
             types: ev.types ?? [],
             paths: ev.paths ?? [],
             mimes: ev.mimes ?? [],
-            app: Date.now() - root.offeredAt < 3000 ? "" : Hypr.classOf(Hypr.activeClient),
+            app: app,
             pinned: false
         };
         entry.kind = root.classify(entry);
@@ -269,7 +277,19 @@ Singleton {
         root.save();
     }
 
+    function dropStale(): void {
+        const kept = Rules.withoutStale(root.entries, Date.now(), Config.values.clipboard.keepDays);
+        if (kept.length === root.entries.length)
+            return;
+        root.entries = kept;
+        if (kept.every(e => e.id !== root.current))
+            root.current = "";
+        root.save();
+        root.sweep(false);
+    }
+
     function prune(): void {
+        root.dropStale();
         const max = Math.max(1, Config.values.clipboard.maxEntries);
         const loose = root.entries.filter(e => !e.pinned);
         if (loose.length <= max)
@@ -516,6 +536,7 @@ Singleton {
     }
 
     function forgetSecrets(): void {
+        root.dropStale();
         const now = Date.now();
         if (!root.entries.some(e => Secret.lapsed(e, now)))
             return;

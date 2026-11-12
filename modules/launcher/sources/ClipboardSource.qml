@@ -49,6 +49,8 @@ QtObject {
 
     property string revealed: ""
 
+    readonly property bool pasting: Typist.found && Config.values.clipboard.enterAction !== "copy"
+
     onActiveChanged: if (!root.active)
         root.revealed = ""
 
@@ -204,10 +206,20 @@ QtObject {
             Clipboard.remove(row.entry);
             return;
         }
-        if (Typist.found)
+        if (root.pasting)
             root.paste(row);
         else
             root.copy(row);
+    }
+
+    function saveAsSnippet(entry: var): string {
+        const text = String(entry.text ?? "");
+        const had = Snippets.list.find(s => String(s.text ?? "") === text);
+        if (had)
+            return had.name;
+        const name = Snippets.suggestName(text);
+        Snippets.add(name, "", text);
+        return name;
     }
 
     function confirmActionsFor(row: var): var {
@@ -252,18 +264,23 @@ QtObject {
                 }
             ];
         const typing = Typist.found;
-        const acts = [
-            {
-                icon: typing ? "content_paste_go" : "content_copy",
-                label: typing ? "Paste" : "Copy",
-                run: () => typing ? root.paste(row) : root.copy(row)
-            }
-        ];
-        if (typing)
+        const pasteAct = {
+            icon: "content_paste_go",
+            label: "Paste",
+            run: () => root.paste(row)
+        };
+        const copyAct = {
+            icon: "content_copy",
+            label: "Copy",
+            run: () => root.copy(row)
+        };
+        const acts = root.pasting ? [pasteAct, copyAct] : typing ? [copyAct, pasteAct] : [copyAct];
+        if (!row.entry.file && !(row.entry.paths ?? []).length && !row.secret && String(row.entry.text ?? "").trim())
             acts.push({
-                icon: "content_copy",
-                label: "Copy",
-                run: () => root.copy(row)
+                icon: "bookmark_add",
+                label: "Save as snippet",
+                tucked: true,
+                run: () => root.saveAsSnippet(row.entry)
             });
         if (row.secret)
             acts.push({

@@ -92,6 +92,6 @@
       "launcher.typing",
       "launcher.utilities"
     ],
-    "reads": []
+    "reads": ["clipboard"]
   }
 }

@@ -295,7 +295,7 @@ Item {
                     Toggle {
                         zoom: Files.magnification
                         checked: Files.showHidden
-                        onToggled: Config.set("files.hidden", !Files.showHidden)
+                        onToggled: Files.setShowHidden(!Files.showHidden)
                     }
                 }
 
