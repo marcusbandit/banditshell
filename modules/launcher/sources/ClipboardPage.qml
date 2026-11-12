@@ -66,8 +66,10 @@ Item {
     }
 
     readonly property string note: {
+        if (root.savedSnippet)
+            return `Saved as snippet “${root.savedSnippet}”`;
         if (!root.undoable)
-            return root.savedSnippet ? `Saved as snippet “${root.savedSnippet}”` : "";
+            return "";
         const gone = Clipboard.shelfKind === "delete" ? Clipboard.shelved === 1 ? "Deleted" : `${Clipboard.shelved} deleted` : Clipboard.shelfKept > 0 ? `${Clipboard.shelved} cleared, ${Clipboard.shelfKept} pinned kept` : `${Clipboard.shelved} cleared`;
         return `${gone} · Ctrl Z or click to undo`;
     }
@@ -340,8 +342,8 @@ Item {
         if (root.dictating)
             return [
                 {
-                    icon: Typist.found ? "content_paste_go" : "content_copy",
-                    label: Typist.found ? "Paste" : "Copy",
+                    icon: root.source?.pasting ? "content_paste_go" : "content_copy",
+                    label: root.source?.pasting ? "Paste" : "Copy",
                     run: () => root.useIt()
                 },
                 {

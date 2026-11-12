@@ -43,3 +43,9 @@ test("a span of zero keeps everything", () => {
     const entries = [{ recorded: 1 }];
     assert.strictEqual(Rules.withoutStale(entries, NOW, 0), entries);
 });
+
+test("an entry with no copy time is never taken for an old one", () => {
+    const now = Date.UTC(2026, 10, 12);
+    assert.deepStrictEqual(Rules.withoutStale([{ id: "a", recorded: 0, pinned: false }], now, 30).map(e => e.id), ["a"]);
+});
+

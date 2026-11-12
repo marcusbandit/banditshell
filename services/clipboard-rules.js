@@ -23,7 +23,7 @@ function excluded(app, listText) {
 }
 
 function stale(entry, now, days) {
-    return days > 0 && !entry.pinned && now - entry.recorded > days * DAY;
+    return days > 0 && !entry.pinned && entry.recorded > 0 && now - entry.recorded > days * DAY;
 }
 
 function withoutStale(entries, now, days) {

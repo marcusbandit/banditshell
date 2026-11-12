@@ -235,6 +235,8 @@ Singleton {
         const app = now - root.offeredAt < 3000 ? "" : Hypr.classOf(Hypr.activeClient);
         if (Rules.excluded(app, Config.values.clipboard.ignoreApps)) {
             root.current = "";
+            if (ev.file)
+                root.sweep(false);
             return;
         }
         const entry = {
@@ -283,6 +285,7 @@ Singleton {
         if (kept.every(e => e.id !== root.current))
             root.current = "";
         root.save();
+        root.sweep(false);
     }
 
     function prune(): void {

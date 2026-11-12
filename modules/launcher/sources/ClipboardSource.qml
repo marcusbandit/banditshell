@@ -213,8 +213,12 @@ QtObject {
     }
 
     function saveAsSnippet(entry: var): string {
-        const name = Snippets.suggestName(String(entry.text ?? ""));
-        Snippets.add(name, "", String(entry.text ?? ""));
+        const text = String(entry.text ?? "");
+        const had = Snippets.list.find(s => String(s.text ?? "") === text);
+        if (had)
+            return had.name;
+        const name = Snippets.suggestName(text);
+        Snippets.add(name, "", text);
         return name;
     }
 
@@ -275,6 +279,7 @@ QtObject {
             acts.push({
                 icon: "bookmark_add",
                 label: "Save as snippet",
+                tucked: true,
                 run: () => root.saveAsSnippet(row.entry)
             });
         if (row.secret)
