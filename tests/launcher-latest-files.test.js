@@ -50,6 +50,8 @@ test.describe("searching screenshots by date and text", () => {
         assert.strictEqual(Latest.dateWindow("last week", NOW).from, at(10, 2, 0));
         assert.strictEqual(Latest.dateWindow("oct 12", NOW).from, at(9, 12, 0));
         assert.strictEqual(Latest.dateWindow("2026-10-12", NOW).to, at(9, 13, 0));
+        assert.strictEqual(Latest.dateWindow("last thursday", NOW).from, at(10, 5, 0));
+        assert.strictEqual(Latest.dateWindow("thursday", NOW).from, at(10, 12, 0));
         assert.strictEqual(Latest.dateWindow("hello world", NOW), null);
         assert.strictEqual(Latest.dateWindow("may", NOW), null);
     });

@@ -110,8 +110,10 @@ function dateWindow(words, now) {
     } else if ((m = new RegExp("\\s" + LEADERS + "(?:the )?(?:last|past) (\\d{1,3}) (day|days|week|weeks)(?=\\s)").exec(text))) {
         var n = +m[1] * (m[2].charAt(0) === "w" ? 7 : 1);
         cut(m, span(plusDays(today, 1 - n), plusDays(today, 1)));
-    } else if ((m = new RegExp("\\s" + LEADERS + "(?:last |on )?(" + DAYS.join("|") + ")(?=\\s)").exec(text))) {
-        var ago = (today.getDay() - dayIndex(m[1]) + 7) % 7;
+    } else if ((m = new RegExp("\\s" + LEADERS + "(?:(last|on) )?(" + DAYS.join("|") + ")(?=\\s)").exec(text))) {
+        var ago = (today.getDay() - dayIndex(m[2]) + 7) % 7;
+        if (m[1] === "last" && ago === 0)
+            ago = 7;
         cut(m, span(plusDays(today, -ago), plusDays(today, 1 - ago)));
     } else if ((m = new RegExp("\\s" + LEADERS + "([a-z]{3,9}) (\\d{1,2})(?:st|nd|rd|th)?(?=\\s)").exec(text)) && monthIndex(m[1]) >= 0 && +m[2] >= 1 && +m[2] <= 31) {
         var d1 = new Date(today.getFullYear(), monthIndex(m[1]), +m[2]);
