@@ -101,9 +101,9 @@ WidgetCard {
             x: clockMark.width + Appearance.padding.normal
             width: quick.x - x - Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
+            visible: width >= implicitWidth
             text: "Start"
             color: Appearance.colour.textDim
-            elide: Text.ElideRight
         }
 
         Row {

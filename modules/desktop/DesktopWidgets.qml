@@ -31,7 +31,7 @@ PanelWindow {
         right: win.cfg.side === "right"
     }
 
-    implicitWidth: Math.min((win.screen?.width ?? 1920) / 2, column.cardWidth * 3 + column.spacing * 2 + win.margin * 2)
+    implicitWidth: Math.min(win.screen?.width ?? 1920, Math.max(column.cardWidth, column.implicitWidth) + win.margin * 2)
 
     color: "transparent"
     visible: win.live
