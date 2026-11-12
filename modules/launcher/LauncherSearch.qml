@@ -280,6 +280,7 @@ QtObject {
     readonly property var reminder: Search.reminderAsk(root.text)
     readonly property string place: Search.zoneAsk(root.text)
     readonly property var convert: Search.zoneConvertAsk(root.text)
+    readonly property var zoneDiff: Search.zoneDiffAsk(root.text)
     readonly property var killing: Search.killAsk(root.text)
 
     readonly property var parsedHere: [
@@ -327,7 +328,7 @@ QtObject {
 
     readonly property var prefixes: Prefixes.OWN.concat(root.parsedHere, root.sources.reduce((out, s) => out.concat(s.prefixes ?? []), []))
 
-    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || root.windowList || root.commandRows.some(r => r.score === Infinity)
+    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.diffRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || root.windowList || root.commandRows.some(r => r.score === Infinity)
 
     property bool started: false
 
@@ -352,7 +353,7 @@ QtObject {
             Files.refreshPlaces();
             Hyprland.refreshToplevels();
         }
-        if (Search.zoneAsk(root.query.trim()) || Search.zoneConvertAsk(root.query.trim()))
+        if (Search.zoneAsk(root.query.trim()) || Search.zoneConvertAsk(root.query.trim()) || Search.zoneDiffAsk(root.query.trim()))
             Clock.loadZoneList();
         if (Search.killAsk(root.query.trim()) !== null)
             root.listProcesses();
@@ -1296,8 +1297,25 @@ QtObject {
 
     readonly property var zoneIds: root.place ? Search.zoneMatches(Clock.allZones, root.place, Clock.cityOf, Clock.localZone).slice(0, 4) : []
 
-    onZoneIdsChanged: {
-        const unknown = root.zoneIds.filter(id => root.zoneOffsets[id] === undefined && Clock.validZone(id));
+    readonly property var diffPair: {
+        const ask = root.zoneDiff;
+        if (!ask)
+            return null;
+        const from = root.zoneFor(ask.from);
+        const to = root.zoneFor(ask.to);
+        if (!from || !to || from === to || !Clock.validZone(from) || !Clock.validZone(to))
+            return null;
+        return {
+            ask: ask,
+            from: from,
+            to: to
+        };
+    }
+
+    readonly property var zoneWanted: root.diffPair ? root.zoneIds.concat([root.diffPair.from, root.diffPair.to]) : root.zoneIds
+
+    onZoneWantedChanged: {
+        const unknown = root.zoneWanted.filter(id => root.zoneOffsets[id] === undefined && Clock.validZone(id));
         if (!unknown.length)
             return;
         root.offsets.running = false;
@@ -1327,6 +1345,32 @@ QtObject {
             score: Infinity
         };
     })
+
+    readonly property var diffRows: {
+        const pair = root.diffPair;
+        if (!pair)
+            return [];
+        const a = root.zoneOffsets[pair.from];
+        const b = root.zoneOffsets[pair.to];
+        if (a === undefined || b === undefined)
+            return [];
+        const fromName = root.placeName(pair.ask.from, pair.from);
+        const toName = root.placeName(pair.ask.to, pair.to);
+        const now = Date.now();
+        const there = new Date(now + b * 60000);
+        return [
+            {
+                key: `diff:${pair.from}|${pair.to}`,
+                kind: "zone",
+                zone: pair.to,
+                time: TimeFormat.clock(there.getUTCHours(), there.getUTCMinutes()),
+                label: Search.diffSentence(b - a, fromName, toName),
+                detail: `${Clock.offsetLabel(b - a)} · ${TimeFormat.clock(there.getUTCHours(), there.getUTCMinutes())} in ${toName}`,
+                icon: "schedule",
+                score: Infinity
+            }
+        ];
+    }
 
     function zoneFor(place: string): string {
         if (!place)
@@ -1495,7 +1539,7 @@ QtObject {
             });
         if (root.reminder)
             out.push(root.reminderRow(root.reminder));
-        return out.concat(root.convertRows, root.zoneRows);
+        return out.concat(root.convertRows, root.diffRows, root.zoneRows);
     }
 
     property var processes: []

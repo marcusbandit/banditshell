@@ -166,3 +166,25 @@ test.describe("crypto", () => {
         assert.ok(!Money.coinsIn(null));
     });
 });
+
+const Diff = lib("modules/launcher/search.js", ["zoneDiffAsk", "diffSentence", "hoursText", "zoneAsk"]);
+
+test.describe("time difference", () => {
+    test.it("reads time diff with one or two places", () => {
+        assert.deepStrictEqual(Diff.zoneDiffAsk("time diff tokyo"), { from: "", to: "tokyo" });
+        assert.deepStrictEqual(Diff.zoneDiffAsk("time difference between london and new york"), { from: "london", to: "new york" });
+        assert.deepStrictEqual(Diff.zoneDiffAsk("sydney time difference"), { from: "", to: "sydney" });
+    });
+
+    test.it("ignores plain time questions and a place against itself", () => {
+        assert.strictEqual(Diff.zoneDiffAsk("time in tokyo"), null);
+        assert.strictEqual(Diff.zoneDiffAsk("time diff tokyo and tokyo"), null);
+        assert.strictEqual(Diff.zoneAsk("time diff tokyo"), "");
+    });
+
+    test.it("says who is ahead and by how much", () => {
+        assert.strictEqual(Diff.diffSentence(480, "Copenhagen", "Tokyo"), "Tokyo is 8 hours ahead of Copenhagen");
+        assert.strictEqual(Diff.diffSentence(-330, "Delhi", "London"), "London is 5 hours 30 min behind Delhi");
+        assert.strictEqual(Diff.diffSentence(0, "Oslo", "Rome"), "Rome and Oslo share a time");
+    });
+});
