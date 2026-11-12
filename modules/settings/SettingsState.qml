@@ -141,6 +141,8 @@ Singleton {
             fromWall: "themeFromWallpaper",
             scheme: "colour.mode",
             accent: "colour.accent",
+            lightTheme: "colour.lightTheme",
+            darkTheme: "colour.darkTheme",
             surface: "colour.surface",
             surfaceAlpha: "material.surfaceAlpha",
             wallOn: "wallpaper.enabled",
@@ -196,6 +198,8 @@ Singleton {
             dropMode: "windows.mode",
             followSent: "windows.follow",
             launcherW: "launcher.width",
+            launcherScreen: "launcher.screen",
+            launcherEscape: "launcher.escape",
             menuW: "menu.width",
             settingsW: "settings.width",
             concept: "launcher.concept",
@@ -207,6 +211,7 @@ Singleton {
             polkitAgent: "polkit.agent",
             webSearch: "launcher.webSearch",
             contents: "launcher.contents",
+            ignoredFiles: "launcher.ignoredFiles",
             fallbackWeb: "launcher.fallbacks.web",
             fallbackYoutube: "launcher.fallbacks.youtube",
             fallbackWikipedia: "launcher.fallbacks.wikipedia",
@@ -217,6 +222,7 @@ Singleton {
             notificationsInSearch: "launcher.typing.notifications",
             onlineTranslate: "launcher.online.translate",
             onlineTranslateTo: "launcher.online.translateTo",
+            onlineWeather: "launcher.online.weather",
             onlineDefine: "launcher.online.define",
             onlinePackages: "launcher.online.packages",
             onlineGithub: "launcher.online.github",
@@ -299,6 +305,7 @@ Singleton {
             weatherMinutes: "weather.minutes",
             shotDir: "picker.dir",
             shotEditor: "picker.editor",
+            shotFolders: "launcher.latest.screenshotFolders",
             outline: "picker.outline",
             stream: "stream.enabled",
             streamScreen: "stream.screen",
@@ -602,6 +609,7 @@ Singleton {
                 root.refused(ThemeSwitcher.unavailableWhy, "");
                 return;
             }
+            ThemeSwitcher.remember(value);
             return ThemeSwitcher.apply(value);
         case "sidebar":
             return SidebarState.setAll(value);
@@ -1387,6 +1395,7 @@ Singleton {
     readonly property int trayCount: Tray.items.length
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
     readonly property var currencies: Currency.codes
+    readonly property var themeChoices: [["", "the one picked above"]].concat(Themes.catalogue.map(t => [t.name, t.name]))
     readonly property var noteVaults: [["", "the one Obsidian opened last"]].concat(Notes.vaults.map(v => [v.path, v.name]))
 
     readonly property var aiModels: [["", "automatic"]].concat(Assistant.models.map(m => [m, Assistant.labelOf(m)]))

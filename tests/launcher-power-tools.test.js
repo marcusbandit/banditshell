@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Scripts = lib("services/script-commands.js", ["parseScript", "readScan", "argumentsFrom", "askFor", "missing", "commandFor", "outputLines", "lastLine", "runKey", "titleFromFile", "listAsk", "readItems", "readList", "itemAction", "selectCommand", "ambientScore", "linkRefusal", "fileRefusal", "refusalOf", "groupCommand", "stopGroupCommand"]);
+const Scripts = lib("services/script-commands.js", ["parseScript", "readScan", "argumentsFrom", "askFor", "missing", "commandFor", "outputLines", "lastLine", "runKey", "titleFromFile", "listAsk", "readItems", "readList", "itemAction", "selectCommand", "ambientScore", "linkRefusal", "fileRefusal", "refusalOf", "groupCommand", "stopGroupCommand", "foldersFrom", "workingFolder"]);
 const Projects = lib("services/projects.js", ["listFrom", "readScan", "rank", "ago", "editorFor", "terminalLine", "shellLine", "projectAsk", "parentWithin", "scanCommand", "ambientScore", "quote"]);
 const Notes = lib("services/notes.js", ["withoutSkipped", "vaultsFrom", "defaultVault", "readIndex", "search", "openUri", "newUri", "fileNameFor", "notesAsk", "indexCommand", "ambientScore", "contentCommand", "contentHits", "quickFileName", "quickBody", "quickCommand"]);
 const Monitor = lib("services/system-monitor.js", ["monitorAsk", "readSample", "topProcesses", "SESSION", "readDisks", "bytesText", "uptimeText", "cpuText"]);
@@ -103,6 +103,20 @@ test.describe("script commands", () => {
         assert.strictEqual(Scripts.listAsk("scripts"), true);
         assert.strictEqual(Scripts.listAsk("Script commands"), true);
         assert.strictEqual(Scripts.listAsk("scripted"), false);
+    });
+
+    test.it("reads several script folders and drops repeats", () => {
+        assert.deepStrictEqual(Scripts.foldersFrom("~/a, /b/\n~/a", "/home/u", "/fallback"), ["/home/u/a", "/b"]);
+        assert.deepStrictEqual(Scripts.foldersFrom("", "/home/u", "/fallback"), ["/fallback"]);
+    });
+
+    test.it("runs a script in its own folder unless a header says otherwise", () => {
+        const plain = Scripts.parseScript("/s/a.sh", "#!/bin/sh\n# @raycast.title A\n", true);
+        assert.strictEqual(Scripts.workingFolder(plain, "/home/u"), "/s");
+        const home = Scripts.parseScript("/s/a.sh", "# @raycast.currentDirectoryPath ~/Projects\n", true);
+        assert.strictEqual(Scripts.workingFolder(home, "/home/u"), "/home/u/Projects");
+        const relative = Scripts.parseScript("/s/a.sh", "# @raycast.currentDirectoryPath data\n", true);
+        assert.strictEqual(Scripts.workingFolder(relative, "/home/u"), "/s/data");
     });
 
     test.it("ships an example that reads as a Raycast script", () => {

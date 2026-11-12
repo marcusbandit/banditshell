@@ -8,7 +8,13 @@ function recent(used, byChar, limit) {
     }).filter(Boolean).slice(0, limit);
 }
 
-function sections(all, groups, group, found, recents) {
+function pinned(list, byChar) {
+    return (list || []).map(function (c) {
+        return byChar[c];
+    }).filter(Boolean);
+}
+
+function sections(all, groups, group, found, recents, pins) {
     if (found) {
         var kept = group ? found.filter(function (e) {
             return e.group === group;
@@ -21,6 +27,11 @@ function sections(all, groups, group, found, recents) {
         ];
     }
     var out = [];
+    if (!group && pins && pins.length)
+        out.push({
+            title: "Pinned",
+            items: pins
+        });
     if (!group && recents.length)
         out.push({
             title: "Recently used",

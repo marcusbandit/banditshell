@@ -20,6 +20,11 @@ QtObject {
     onAskedChanged: if (root.asked)
         LatestFiles.refresh(root.asked.shelf.key)
 
+    readonly property var unread: root.asked && root.asked.shelf.pictures ? Logic.needText(LatestFiles.lists[root.asked.shelf.key] ?? [], root.asked.words, LatestFiles.texts, new Date(), LatestFiles.textReach) : []
+
+    onUnreadChanged: if (root.unread.length)
+        LatestFiles.readTexts(root.unread)
+
     readonly property var caps: ({
             latest: 24
         })
@@ -34,7 +39,7 @@ QtObject {
             picture: picture,
             editable: shelf.pictures,
             label: file.name,
-            detail: Ages.ago(file.modified, Date.now()),
+            detail: file.snippet ? `${Ages.ago(file.modified, Date.now())} · ${file.snippet}` : Ages.ago(file.modified, Date.now()),
             iconSource: picture ? Search.fileUrl(file.path) : "",
             icon: Marks.iconFor(file.path, file.name, file.dir, System.home, UserFolders.byPath) || (file.dir ? "folder" : shelf.icon),
             peekPath: file.path,
@@ -66,7 +71,7 @@ QtObject {
         {
             key: "latest",
             title: root.asked?.shelf.title ?? "",
-            items: root.asked ? Logic.matching(LatestFiles.lists[root.asked.shelf.key] ?? [], root.asked.words, 24).map((file, i) => root.row(file, root.asked.shelf, i === 0)) : []
+            items: root.asked ? Logic.matching(LatestFiles.lists[root.asked.shelf.key] ?? [], root.asked.words, 24, root.asked.shelf.pictures ? LatestFiles.texts : null, new Date()).map((file, i) => root.row(file, root.asked.shelf, i === 0)) : []
         }
     ]
 
@@ -90,6 +95,15 @@ QtObject {
                 run: () => root.search.leave(() => LatestFiles.copy(path, picture))
             }
         ];
+        if (picture && Typist.found) {
+            const address = root.search.windowTarget();
+            acts.push({
+                icon: "content_paste_go",
+                label: "Paste into the window",
+                short: "Paste",
+                run: () => root.search.leave(() => LatestFiles.paste(path, address))
+            });
+        }
         if (row.editable && picture)
             acts.push({
                 icon: "edit",

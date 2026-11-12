@@ -10,7 +10,25 @@ QtObject {
 
     readonly property var kinds: ["translation"]
 
-    readonly property var asked: Translator.enabled ? Translation.ask(root.search.text) : null
+    readonly property var selectionAsked: Translator.enabled ? Translation.selectionAsk(root.search.text) : null
+    property SelectionReader reader: SelectionReader {
+        search: root.search
+        wanted: !!root.selectionAsked
+    }
+
+    readonly property string selected: root.reader.text.trim().slice(0, 1500)
+
+    readonly property var asked: {
+        if (!Translator.enabled)
+            return null;
+        if (root.selectionAsked)
+            return root.selected ? {
+                text: root.selected,
+                to: root.selectionAsked.to,
+                explicit: true
+            } : null;
+        return Translation.ask(root.search.text);
+    }
     readonly property string target: root.asked ? root.asked.to || Translator.preferred : ""
     readonly property string firstKey: root.asked ? Translation.keyOf(root.asked.text, root.target) : ""
     readonly property var first: root.firstKey ? Translator.lookup.answers[root.firstKey] : undefined
@@ -19,7 +37,7 @@ QtObject {
 
     onWantedChanged: Translator.lookup.want(root.wanted)
 
-    readonly property bool intent: !!root.asked
+    readonly property bool intent: !!root.asked || !!root.selectionAsked
 
     readonly property var answer: root.wanted ? Translator.lookup.answers[root.wanted] : undefined
     readonly property bool pending: !!root.wanted && root.answer === undefined && Translator.lookup.failures[root.wanted] === undefined
@@ -44,6 +62,18 @@ QtObject {
     ]
 
     readonly property var rows: {
+        if (root.selectionAsked && !root.asked)
+            return root.reader.nothing ? [
+                {
+                    key: "translation:nothing",
+                    kind: "translation",
+                    label: "Nothing selected",
+                    detail: "Select some text first",
+                    icon: "text_select_start",
+                    waiting: true,
+                    score: Infinity
+                }
+            ] : [];
         if (!root.wanted)
             return [];
         const to = Translation.splitKey(root.wanted).to;
@@ -94,6 +124,12 @@ QtObject {
                 icon: "content_copy",
                 label: "Copy",
                 run: () => root.activate(row)
+            },
+            {
+                icon: "text_snippet",
+                label: "Copy source text",
+                short: "Copy source",
+                run: () => root.search.leave(() => System.copyText(row.original))
             },
             {
                 icon: "open_in_new",

@@ -39,6 +39,34 @@ function pathQuery(text, home) {
     };
 }
 
+function parentQuery(text, home) {
+    const at = pathQuery(text, home);
+    if (!at)
+        return "";
+    const trimmed = at.dir.length > 1 ? at.dir.replace(/\/+$/, "") : at.dir;
+    const cut = trimmed.lastIndexOf("/");
+    const parent = cut <= 0 ? "/" : trimmed.slice(0, cut + 1);
+    const named = shortPath(parent, home);
+    return named === "~" ? "~/" : named;
+}
+
+var SECTION_ORDER = ["Open", "Favorites", "Shortcuts", "Manage"];
+
+function sectioned(actions) {
+    const list = (actions || []).map((a, i) => ({
+        action: a,
+        at: i,
+        section: a.section || (a.tucked || a.alarm ? "Manage" : "Open")
+    }));
+    if (new Set(list.map(e => e.section)).size < 2)
+        return actions || [];
+    const rank = name => SECTION_ORDER.indexOf(name);
+    list.sort((a, b) => rank(a.section) - rank(b.section) || a.at - b.at);
+    return list.map(e => Object.assign({}, e.action, {
+        section: e.section
+    }));
+}
+
 var PICTURE = /\.(?:png|jpe?g|webp|gif|bmp|svg|avif|tiff?)$/i;
 
 function streamName(label) {
@@ -1030,6 +1058,55 @@ function zoneConvertAsk(text) {
     };
 }
 
+var ZONE_DIFF_BETWEEN = /^(?:time\s+diff(?:erence)?|diff(?:erence)?\s+in\s+time)\s+(?:between\s+|from\s+)?(.+?)\s+(?:and|to|vs|versus|&|->|→)\s+(.+)$/;
+var ZONE_DIFF_AFTER = /^(?:time\s+diff(?:erence)?|diff(?:erence)?\s+in\s+time)\s+(?:(with|to|from|between|in|for)\s+)?(.+)$/;
+var ZONE_DIFF_BEFORE = /^(.+?)\s+time\s+diff(?:erence)?$/;
+
+function zoneDiffAsk(text) {
+    const t = String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
+    let m = ZONE_DIFF_BETWEEN.exec(t);
+    let from = "", to = "";
+    if (m) {
+        from = m[1];
+        to = m[2];
+    } else if ((m = ZONE_DIFF_AFTER.exec(t))) {
+        if (m[1] === "from")
+            from = m[2];
+        else
+            to = m[2];
+    } else if ((m = ZONE_DIFF_BEFORE.exec(t))) {
+        to = m[1];
+    } else {
+        return null;
+    }
+    if (ZONE_HERE.test(from))
+        from = "";
+    if (ZONE_HERE.test(to))
+        to = "";
+    if ((!from && !to) || (to && to.length < 2) || (from && from.length < 2) || from === to)
+        return null;
+    return {
+        from: from,
+        to: to
+    };
+}
+
+function hoursText(minutes) {
+    const abs = Math.abs(minutes);
+    const h = Math.floor(abs / 60);
+    const m = abs % 60;
+    const hours = `${h} ${h === 1 ? "hour" : "hours"}`;
+    if (!m)
+        return hours;
+    return h ? `${hours} ${m} min` : `${m} min`;
+}
+
+function diffSentence(minutes, fromName, toName) {
+    if (!minutes)
+        return `${toName} and ${fromName} share a time`;
+    return `${toName} is ${hoursText(minutes)} ${minutes > 0 ? "ahead of" : "behind"} ${fromName}`;
+}
+
 function readConversion(text) {
     const lines = String(text || "").trim().split("\n");
     const m = /^(\d{2}) (\d{2}) (\d{4}-\d{2}-\d{2})$/.exec((lines[0] || "").trim());
@@ -1044,7 +1121,7 @@ function readConversion(text) {
 }
 
 var ZONE_ASK = /^(?:what(?:'s|s|\s+is)\s+the\s+(?:current\s+|local\s+)?|what\s+|(?:the\s+)?(?:current|local)\s+)?(?:time|clock)\s+(?:is\s+it\s+)?(?:(?:right\s+)?now\s+)?in\s+(.+?)(?:\s+(?:right\s+)?now)?\??$/;
-var ZONE_LOOSE_AFTER = /^time\s+(?!in$)(?!(?:out|zone|zones|machine|lapse|line|travel|sheet|tracker|tracking|table|off|left|limit|signature|stamp|stamps|to|is|for|of|and|at|on|in|now)(?:\s|$))(.+)$/;
+var ZONE_LOOSE_AFTER = /^time\s+(?!in$)(?!(?:diff|difference|out|zone|zones|machine|lapse|line|travel|sheet|tracker|tracking|table|off|left|limit|signature|stamp|stamps|to|is|for|of|and|at|on|in|now)(?:\s|$))(.+)$/;
 var ZONE_LOOSE_BEFORE = /^(?!(?:current|local|lunch|bed|bedtime|prime|epoch|dinner|break|screen|run|real|play|free|over|part|full|tea|game|show|story|bath|nap|quality|spare|server|compile|load|response|boot|wake|what|same|next|last|first|this|every|any|some|long|short|a|the|my|your|our|unix|system|set|change)(?:\s|$))(.+?)\s+time(?:\s+now)?$/;
 
 function zoneAsk(text) {
@@ -1205,7 +1282,7 @@ function cleanAlias(text) {
 
 function aliasTarget(aliases, text) {
     const said = cleanAlias(text);
-    return said && aliases && Object.prototype.hasOwnProperty.call(aliases, said) ? aliases[said].id || "" : "";
+    return said && aliases && Object.prototype.hasOwnProperty.call(aliases, said) && !aliases[said].off ? aliases[said].id || "" : "";
 }
 
 function aliasHolder(aliases, alias, id, exists) {
@@ -1221,7 +1298,8 @@ function aliasHolder(aliases, alias, id, exists) {
 function aliasesById(aliases) {
     const out = {};
     for (const alias of Object.keys(aliases || {}))
-        out[aliases[alias].id] = alias;
+        if (!aliases[alias].off)
+            out[aliases[alias].id] = alias;
     return out;
 }
 

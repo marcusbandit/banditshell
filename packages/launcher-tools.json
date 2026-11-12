@@ -88,6 +88,7 @@
   },
   "config": {
     "namespace": [
+      "launcher.latest",
       "launcher.powerTools",
       "launcher.typing",
       "launcher.utilities"

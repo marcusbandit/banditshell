@@ -7,11 +7,13 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string themeDir: `${Quickshell.env("THEME_ROOT") || `${Quickshell.env("HOME")}/.config/theme`}/current`
+    readonly property string themeRoot: Quickshell.env("THEME_ROOT") || `${Quickshell.env("HOME")}/.config/theme`
+    readonly property string themeDir: `${root.themeRoot}/current`
     readonly property string palettePath: `${themeDir}/palette.json`
     readonly property string cataloguePath: `${themeDir}/themes.json`
 
     property var parsed: null
+    property var previewing: null
     readonly property bool live: root.parsed !== null
 
     property int retries: 0
@@ -158,13 +160,14 @@ Singleton {
 
     readonly property Theme rendered: Theme {
         readonly property var p: root.parsed
+        readonly property var o: root.previewing ?? ({})
 
         name: p ? p.name : root.slate.name
         ramp: p ? p.ramp : root.slate.ramp
-        dim: p ? p.dim : root.slate.dim
-        mid: p ? p.mid : root.slate.mid
-        bright: p ? p.bright : root.slate.bright
-        alarm: p ? p.alarm : root.slate.alarm
+        dim: o.dim ?? (p ? p.dim : root.slate.dim)
+        mid: o.mid ?? (p ? p.mid : root.slate.mid)
+        bright: o.bright ?? (p ? p.bright : root.slate.bright)
+        alarm: o.alarm ?? (p ? p.alarm : root.slate.alarm)
         brass: p ? p.brass : root.slate.brass
         error: p ? p.error : root.slate.error
     }
