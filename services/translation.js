@@ -209,6 +209,25 @@ function ask(input) {
     };
 }
 
+var SELECTION_ASK = /^(?:translate|tr)\s+(?:(?:the\s+)?(?:selection|selected(?:\s+text)?)\b\s*)?(?:(?:to|into|in)\s+(.+))?$/i;
+var SELECTION_WORDS = /\b(?:selection|selected)\b/i;
+
+function selectionAsk(input) {
+    var text = String(input || "").trim().replace(ENDING, "");
+    var m = SELECTION_ASK.exec(text);
+    if (!m)
+        return null;
+    var named = SELECTION_WORDS.test(text);
+    var to = m[1] ? languageCode(m[1].trim()) : "";
+    if (m[1] && !to)
+        return null;
+    if (!named && !to)
+        return null;
+    return {
+        to: to
+    };
+}
+
 function keyOf(text, to) {
     return to + "|" + text;
 }

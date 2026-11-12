@@ -10,7 +10,38 @@ QtObject {
 
     readonly property var kinds: ["translation"]
 
-    readonly property var asked: Translator.enabled ? Translation.ask(root.search.text) : null
+    readonly property var selectionAsked: Translator.enabled ? Translation.selectionAsk(root.search.text) : null
+    readonly property string selected: root.selectionAsked ? Assistant.selection.trim().slice(0, 1500) : ""
+
+    property bool readThisTime: false
+
+    onSelectionAskedChanged: {
+        if (!root.selectionAsked || root.readThisTime)
+            return;
+        root.readThisTime = true;
+        Assistant.readSelection();
+    }
+
+    property Connections opening: Connections {
+        target: root.search
+
+        function onStartedChanged(): void {
+            if (!root.search.started)
+                root.readThisTime = false;
+        }
+    }
+
+    readonly property var asked: {
+        if (!Translator.enabled)
+            return null;
+        if (root.selectionAsked)
+            return root.selected ? {
+                text: root.selected,
+                to: root.selectionAsked.to,
+                explicit: true
+            } : null;
+        return Translation.ask(root.search.text);
+    }
     readonly property string target: root.asked ? root.asked.to || Translator.preferred : ""
     readonly property string firstKey: root.asked ? Translation.keyOf(root.asked.text, root.target) : ""
     readonly property var first: root.firstKey ? Translator.lookup.answers[root.firstKey] : undefined
@@ -94,6 +125,12 @@ QtObject {
                 icon: "content_copy",
                 label: "Copy",
                 run: () => root.activate(row)
+            },
+            {
+                icon: "text_snippet",
+                label: "Copy source text",
+                short: "Copy source",
+                run: () => root.search.leave(() => System.copyText(row.original))
             },
             {
                 icon: "open_in_new",
