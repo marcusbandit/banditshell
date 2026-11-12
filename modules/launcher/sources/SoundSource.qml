@@ -13,15 +13,14 @@ QtObject {
     readonly property int masterLevel: root.asked > root.ceiling ? root.ceiling : Search.volumeAsk(root.text)
     readonly property var streamAsk: root.masterLevel < 0 ? Search.streamVolumeAsk(root.text) : null
     readonly property bool mixer: Search.mixerAsk(root.text)
-    readonly property bool inputs: Search.inputAsk(root.text)
     readonly property string named: root.masterLevel < 0 && !root.streamAsk ? Search.streamNameAsk(root.text) : ""
     readonly property int ceiling: Math.round(Audio.maxVolume * 100)
 
-    readonly property var kinds: ["stream", "input"]
+    readonly property var kinds: ["stream", "appmute"]
     readonly property var caps: ({
-            sound: root.mixer || root.inputs ? 12 : 5
+            sound: root.mixer ? 12 : 5
         })
-    readonly property bool intent: root.inputs || root.masterLevel >= 0 || root.rows.some(r => r.level >= 0)
+    readonly property bool intent: root.masterLevel >= 0 || root.rows.some(r => r.level >= 0)
 
     readonly property var groups: [
         {
@@ -77,33 +76,41 @@ QtObject {
         }) : null;
     }
 
-    function inputRow(node: var): var {
-        const current = node.name === Audio.source?.name;
+    function appMuteRow(): var {
+        const score = Math.max(Ranking.place("mute active app", root.text), Ranking.place("mute unmute focused current window application sound", root.text) - 0.5);
+        if (score <= 0)
+            return null;
+        const nodes = Search.streamsForWindow(Audio.playing.map(node => ({
+                    binary: Audio.streamBinary(node),
+                    name: Search.streamName(Audio.streamLabel(node)),
+                    node: node
+                })), root.search.targetState.class).map(s => s.node);
+        if (!nodes.length)
+            return null;
         return {
-            key: `input:${node.name}`,
-            kind: "input",
-            node: node,
-            label: Audio.deviceLabel(node),
-            detail: [Audio.deviceTransport(node), current ? "in use" : ""].filter(Boolean).join(" · "),
-            icon: Audio.deviceIcon(node),
-            toggle: current,
-            score: Infinity
+            key: "appmute",
+            kind: "appmute",
+            nodes: nodes,
+            label: "Mute active app",
+            detail: Search.streamName(Audio.streamLabel(nodes[0])),
+            icon: "graphic_eq",
+            toggle: nodes.every(n => Audio.streamMuted(n)),
+            score: score
         };
     }
 
     readonly property var rows: {
-        if (root.inputs)
-            return Audio.sources.map(node => root.inputRow(node));
         if (root.text.length < 3 || !Audio.ready)
             return [];
         const master = root.masterRow();
         const streams = root.masterLevel >= 0 ? [] : Audio.playing.map(node => root.streamRow(node)).filter(Boolean).sort((a, b) => b.score - a.score);
-        return master ? [master].concat(streams) : streams;
+        const app = root.appMuteRow();
+        return (master ? [master] : []).concat(streams, app ? [app] : []);
     }
 
     function activate(row: var): void {
-        if (row.kind === "input")
-            Audio.setSource(row.node);
+        if (row.kind === "appmute")
+            Audio.setStreamsMuted(row.nodes, !row.toggle);
         else if (row.level >= 0)
             Audio.setStreamVolume(row.node, row.level / 100);
         else
@@ -111,11 +118,11 @@ QtObject {
     }
 
     function actionsFor(row: var): var {
-        if (row.kind === "input")
+        if (row.kind === "appmute")
             return [
                 {
-                    icon: "mic",
-                    label: "Use as microphone",
+                    icon: row.toggle ? "volume_up" : "volume_off",
+                    label: row.toggle ? "Unmute" : "Mute",
                     run: () => root.activate(row)
                 }
             ];

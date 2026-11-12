@@ -587,36 +587,17 @@ QtObject {
             words: "hidden files dotfiles show hide toggle file manager",
             toggle: Files.showHidden,
             stay: true,
-            run: () => root.toggleHiddenFiles()
+            run: () => Files.setShowHidden(!Files.showHidden)
         },
         {
-            id: "bluetoothon",
-            icon: "bluetooth",
-            label: "Turn Bluetooth on",
-            words: "bluetooth on enable turn on switch on",
-            hidden: !Bluetooth.available || Bluetooth.enabled,
+            id: "bluetooth",
+            icon: Bluetooth.enabled ? "bluetooth" : "bluetooth_disabled",
+            label: "Bluetooth",
+            words: "bluetooth on off toggle turn on turn off enable disable switch",
+            toggle: Bluetooth.enabled,
+            hidden: !Bluetooth.available,
             stay: true,
-            run: () => Bluetooth.setEnabled(true)
-        },
-        {
-            id: "bluetoothoff",
-            icon: "bluetooth_disabled",
-            label: "Turn Bluetooth off",
-            words: "bluetooth off disable turn off switch off",
-            hidden: !Bluetooth.available || !Bluetooth.enabled,
-            stay: true,
-            run: () => Bluetooth.setEnabled(false)
-        },
-        {
-            id: "muteapp",
-            icon: root.activeStreamMuted ? "volume_off" : "graphic_eq",
-            label: "Mute active app",
-            words: "mute unmute active app focused window current application sound toggle",
-            detail: root.activeStream ? root.activeStream.name : "",
-            toggle: root.activeStreamMuted,
-            hidden: !root.activeStream,
-            stay: true,
-            run: () => Audio.toggleStreamMute(root.activeStream.node)
+            run: () => Bluetooth.setEnabled(!Bluetooth.enabled)
         },
         {
             id: "nightlight",
@@ -891,8 +872,9 @@ QtObject {
                 detail: `${p.windows.length} windows`,
                 run: () => {
                     if (p.layout && p.layout !== WindowLayouts.current)
-                        WindowLayouts.use(p.layout);
-                    Hypr.applyPreset(p);
+                        WindowLayouts.use(p.layout, () => Hypr.applyPreset(p));
+                    else
+                        Hypr.applyPreset(p);
                 }
             })).concat(root.presets.map(p => ({
                     id: `presetdelete:${p.id}`,
@@ -918,6 +900,8 @@ QtObject {
                     run: () => Hypr.capturePreset(name, WindowLayouts.current, preset => {
                         if (preset.windows.length)
                             Config.set("launcher.windowPresets", Moves.withPreset(root.presets, preset));
+                        else
+                            Quickshell.execDetached(["notify-send", "Window preset", "No windows on this workspace to save"]);
                     })
                 },
                 label: label,
@@ -926,23 +910,6 @@ QtObject {
                 score: Infinity
             }
         ];
-    }
-
-    readonly property var activeStream: {
-        const streams = Audio.playing.map(node => ({
-                    binary: Audio.streamBinary(node),
-                    name: Search.streamName(Audio.streamLabel(node)),
-                    node: node
-                }));
-        return Search.streamForWindow(streams, root.targetState.class);
-    }
-
-    readonly property bool activeStreamMuted: !!root.activeStream && Audio.streamMuted(root.activeStream.node)
-
-    function toggleHiddenFiles(): void {
-        const on = !Files.showHidden;
-        Files.setShowHidden(on);
-        Quickshell.execDetached(["sh", "-c", 'gsettings set org.gtk.Settings.FileChooser show-hidden "$1" 2>/dev/null; gsettings set org.gtk.gtk4.Settings.FileChooser show-hidden "$1" 2>/dev/null', "sh", String(on)]);
     }
 
     readonly property int workspaceWanted: Search.workspaceAsk(root.text)
@@ -1399,7 +1366,16 @@ QtObject {
                     icon: Audio.deviceIcon(n),
                     score: root.kindScore(Audio.deviceLabel(n), "sound output speakers headphones audio")
                 }));
-        return bluetooth.concat(wifi, outputs).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
+        const inputs = Audio.sources.map(n => ({
+                    key: `input:${n.id}`,
+                    kind: "input",
+                    node: n,
+                    label: Audio.deviceLabel(n),
+                    detail: n === Audio.source ? "in use" : "",
+                    icon: Audio.deviceIcon(n),
+                    score: root.kindScore(Audio.deviceLabel(n), "microphone mic input sound audio")
+                }));
+        return bluetooth.concat(wifi, outputs, inputs).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
     }
 
     property var zoneOffsets: ({})
@@ -1899,6 +1875,9 @@ QtObject {
         case "output":
             Audio.setSink(row.node);
             return;
+        case "input":
+            Audio.setSource(row.node);
+            return;
         case "timer":
             if (!row.full)
                 root.leave(() => Clock.startTimer(row.ask.seconds, row.ask.label));
@@ -2171,6 +2150,7 @@ QtObject {
                 }
             ];
         case "output":
+        case "input":
         case "timer":
         case "reminder":
         case "command":

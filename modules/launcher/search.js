@@ -1542,14 +1542,10 @@ function presetAsk(text) {
     return /^(?:as|named|called)$/i.test(name) ? "" : name;
 }
 
-function inputAsk(text) {
-    return /^(?:(?:switch|change|set|select|choose|pick)(?: the)? )?(?:mic|microphone|mics|microphones|input|inputs|sound input|audio input|input devices?|sound input devices?)(?: devices?)?$/i.test(String(text || "").trim());
-}
-
-function streamForWindow(streams, windowClass) {
+function streamsForWindow(streams, windowClass) {
     var want = String(windowClass || "").trim().toLowerCase();
     if (!want)
-        return null;
+        return [];
     var named = function (s) {
         return [s.binary, s.name].some(function (n) {
             return String(n || "").trim().toLowerCase() === want;
@@ -1561,5 +1557,6 @@ function streamForWindow(streams, windowClass) {
             return t.length >= 3 && (want.indexOf(t) >= 0 || t.indexOf(want) >= 0);
         });
     };
-    return (streams || []).find(named) || (streams || []).find(loose) || null;
+    var exact = (streams || []).filter(named);
+    return exact.length ? exact : (streams || []).filter(loose);
 }
