@@ -318,6 +318,8 @@ Singleton {
 
                 hiddenFiles: ".config",
 
+                windowPresets: [],
+
                 animatePreview: true,
 
                 currency: "DKK",
@@ -487,6 +489,12 @@ Singleton {
                 record: true,
 
                 maxEntries: 400,
+
+                keepDays: 0,
+
+                ignoreApps: "keepassxc, 1password, bitwarden, org.gnome.seahorse.application",
+
+                enterAction: "paste",
 
                 maxText: 1048576,
                 maxBlob: 33554432,

@@ -27,6 +27,58 @@
       ]
     },
     {
+      "id": "2026-11-12-p835-windows",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Floating windows nudge by a step, and Restore returns their old size"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Window arrangements save as named presets you can reapply"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher switches microphones and mutes the app you were in"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Open trash, hidden files and Bluetooth on or off are launcher rows"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-12-p835-clipboard",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Clipboard history can forget entries after a day, a week or a month"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Copies made in password managers are never recorded"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Enter on a clipboard entry can copy instead of paste"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Text in clipboard history can be saved as a snippet"
+        }
+      ]
+    },
+    {
       "id": "2026-11-12-p829",
       "date": "2026-11-12",
       "changes": [
