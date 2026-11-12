@@ -11,7 +11,7 @@ function lib(file, names) {
 }
 
 const Calculation = lib("services/calculation.js", ["looksLikeCalculation", "qalcExpression", "readQalc"]);
-const Search = lib("modules/launcher/search.js", ["pathQuery", "shortPath", "pathRows", "fileRows", "urlOf", "linkScore", "webSearchUrl", "arrange", "nextPickable", "matchesNothing", "armsFirst", "sharedStarts"]);
+const Search = lib("modules/launcher/search.js", ["withoutRow", "pathQuery", "shortPath", "pathRows", "fileRows", "urlOf", "linkScore", "webSearchUrl", "arrange", "nextPickable", "matchesNothing", "armsFirst", "sharedStarts"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 test.describe("looksLikeCalculation", () => {
@@ -374,4 +374,14 @@ test("rows whose details share a long start learn where the part that differs be
     assert.deepStrictEqual(Search.sharedStarts(details), [28, 28, 0, 0, 0]);
     assert.deepStrictEqual(Search.sharedStarts(["Open the file", "Open the folder"]), [0, 0]);
     assert.deepStrictEqual(Search.sharedStarts(["Settings page for sound", "Settings page for sound"]), [0, 0]);
+});
+
+test("taking the answer card's row out of the list drops the headers it leaves empty", () => {
+    const h = key => ({ header: true, key: `header:${key}` });
+    const r = key => ({ key: key });
+    const keys = rows => rows.map(x => x.key);
+    assert.deepStrictEqual(keys(Search.withoutRow([h("clock"), r("convert:a"), h("web"), r("web:x")], "convert:a")), ["web:x"]);
+    assert.deepStrictEqual(keys(Search.withoutRow([h("clock"), r("convert:a"), r("zone:b"), h("web"), r("web:x")], "convert:a")), ["header:clock", "zone:b", "header:web", "web:x"]);
+    assert.deepStrictEqual(keys(Search.withoutRow([h("a"), r("one"), h("b"), r("two"), h("c"), r("three")], "two")), ["header:a", "one", "header:c", "three"]);
+    assert.deepStrictEqual(keys(Search.withoutRow([r("one"), r("two")], "two")), ["one"]);
 });

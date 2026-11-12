@@ -43,7 +43,9 @@ Item {
 
     property bool answerless: false
 
-    readonly property var answer: root.answerless ? null : Calculator.answerFor(root.input?.text ?? "")
+    property var spokenAnswer: null
+
+    readonly property var answer: root.answerless ? root.spokenAnswer : Calculator.answerFor(root.input?.text ?? "") ?? root.spokenAnswer
 
     Connections {
         target: root.input

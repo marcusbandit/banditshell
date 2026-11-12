@@ -188,7 +188,7 @@ LauncherConcept {
 
     readonly property var results: root.capture ? search.keyed([Object.assign({}, root.capture.row, {
                     detail: root.capture.said || root.capture.row.detail
-                })]) : search.rows
+                })]) : root.answer?.row ? Search.withoutRow(search.rows, root.answer.row.key) : search.rows
     readonly property var detailStarts: Search.sharedStarts(root.results.map(r => r.header ? "" : String(r.detail ?? "")))
     property int selected: 0
     property bool intoList: false
@@ -255,6 +255,8 @@ LauncherConcept {
     }
 
     answerless: search.intent || !!root.capture || !!root.shownView || assistantCard.shown
+
+    spokenAnswer: root.capture || root.shownView || assistantCard.shown ? null : search.timeAnswer
 
     LauncherSearch {
         id: search
@@ -590,6 +592,10 @@ LauncherConcept {
             return true;
         }
 
+        if (Search.opensSheet(event.key, event.modifiers) && root.answerHolds && root.answer?.row) {
+            root.ask(answerCard, root.answer.row, answerCard.width / 2, answerCard.height / 2);
+            return true;
+        }
         if (Search.opensSheet(event.key, event.modifiers)) {
             const item = root.quick ? tileRepeater.itemAt(root.tile) : list.itemAtIndex(root.selected);
             if (item)
@@ -1069,7 +1075,7 @@ LauncherConcept {
 
         width: tabShapeWidth + (root.panelWidth / (1 + bodyStretch) - tabShapeWidth) * wide.value
 
-        implicitHeight: Math.min(root.shownView ? Math.round(root.height * 0.75) : tallest, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
+        implicitHeight: Math.min(root.shownView ? Math.round(root.height * 0.75) : tallest, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + answerCard.height + (answerCard.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
 
         height: Math.min(lift, tabShapeHeight + (fullHeight * (1 + bodyStretch) - tabShapeHeight) * wide.value)
 
@@ -1214,8 +1220,26 @@ LauncherConcept {
                     rowHeight: root.rowPitch
                     labelSize: Appearance.font.size.normal
 
-                    result: root.answer
+                    result: root.answer?.missing ? root.answer : null
                     expression: query.text
+                    holds: root.answerHolds
+
+                    offersSymbols: true
+                    symbolsOpen: root.symbolsOpen
+                    onSymbols: root.symbolsOpen = !root.symbolsOpen
+
+                    onCopied: {
+                        root.answerHolds = true;
+                        root.accept();
+                    }
+                }
+
+                AnswerCard {
+                    id: answerCard
+
+                    width: parent.width
+                    answer: root.answer?.missing ? null : root.answer
+                    typed: query.text
                     holds: root.answerHolds
 
                     offersSymbols: true

@@ -6,6 +6,7 @@
     "qml": [
       "modules/launcher/AlphabetLauncher.qml",
       "modules/launcher/AlphabetRow.qml",
+      "modules/launcher/AnswerCard.qml",
       "modules/launcher/AnswerRow.qml",
       "modules/launcher/ArgumentBox.qml",
       "modules/launcher/ColourPicker.qml",
