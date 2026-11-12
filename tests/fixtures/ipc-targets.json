@@ -142,6 +142,10 @@
   "panels": [
     "closeAll(): string"
   ],
+  "password": [
+    "refuse(): string",
+    "scene(name: string): string"
+  ],
   "penmap": [
     "aspect(): string",
     "cancel(): string",

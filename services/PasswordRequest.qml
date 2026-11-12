@@ -18,9 +18,10 @@ Singleton {
     property string warning: ""
     property string continueLabel: ""
 
-    readonly property string requester: ""
-    readonly property string description: ""
-    readonly property string choiceLabel: ""
+    property string secret: ""
+    property var facts: []
+    property string hint: ""
+
     readonly property bool choiceChosen: false
     readonly property string cancelLabel: "cancel"
     readonly property bool busy: false
@@ -34,6 +35,9 @@ Singleton {
         root.placeholder = request.placeholder ?? "password";
         root.warning = request.warning ?? "";
         root.continueLabel = request.continueLabel ?? "continue";
+        root.secret = request.secret ?? "";
+        root.facts = request.facts ?? [];
+        root.hint = request.hint ?? "";
         root.taker = request.take ?? null;
         root.dropper = request.cancel ?? null;
         const names = Quickshell.screens.map(screen => screen.name);
@@ -65,6 +69,22 @@ Singleton {
         root.taker = null;
         root.dropper = null;
         root.warning = "";
+    }
+
+    function scene(name: string): bool {
+        if (name !== "wifi")
+            return false;
+        root.ask({
+            title: "Join Cafe Corner",
+            message: "WPA2 network",
+            placeholder: "Password",
+            secret: "Wi-Fi password",
+            facts: [["Network", "Cafe Corner"], ["Security", "WPA2"]],
+            hint: "The network's own password, often printed on the router.",
+            continueLabel: "join",
+            screenName: Focus.offStageScreen
+        });
+        return true;
     }
 
     function confirm(): void {
