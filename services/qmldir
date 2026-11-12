@@ -97,6 +97,7 @@ singleton Relaunch 1.0 Relaunch.qml
 singleton ScreenRecorder 1.0 ScreenRecorder.qml
 singleton Screenshots 1.0 Screenshots.qml
 singleton ScriptCommands 1.0 ScriptCommands.qml
+singleton ScrollingGaps 1.0 ScrollingGaps.qml
 singleton SessionControl 1.0 SessionControl.qml
 singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml

@@ -53,7 +53,9 @@ Singleton {
             compositor: {
                 follow: true,
 
-                pushBorders: true
+                pushBorders: true,
+
+                scrollingGapsDeclined: false
             },
 
             rounding: {
