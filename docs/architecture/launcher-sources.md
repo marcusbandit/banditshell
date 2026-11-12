@@ -61,6 +61,8 @@ members instead: `WorkshopSource` only adds commands.
 | `confirmActionsFor(row)` | no | function | The choices shown while one of its rows is armed and waiting for a second Enter. The launcher adds Cancel. |
 | `commandOf(text)` | no | function | Claims a typed command word that takes arguments: returns `{ source, command, rest }` and the launcher draws one box per argument, or null. The source needs `runCommand(word, values)` for Enter. Plugins use it, see `docs/plugins/README.md`. |
 | `listsWifi` | no | bool | True while this source shows networks itself, so the plain search leaves them out. |
+| `opening` | no | bool | True when the query asks for this source's page, such as `clip ` with its space. The launcher then calls `openPage` in the same step, so the plain list never shows for a frame. |
+| `openPage` | no | function | Presents this source's page, see Pages. |
 
 ## Groups
 

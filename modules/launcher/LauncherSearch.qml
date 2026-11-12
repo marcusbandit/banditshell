@@ -1624,6 +1624,14 @@ QtObject {
         root.arrangeNow();
     }
 
+    function openPending(): void {
+        if (!root.presents || root.presenting)
+            return;
+        const source = root.sources.find(s => s.opening && typeof s.openPage === "function");
+        if (source)
+            source.openPage();
+    }
+
     function arrangeNow(): void {
         if (!root.arrangePending)
             return;

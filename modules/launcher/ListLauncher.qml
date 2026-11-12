@@ -241,6 +241,9 @@ LauncherConcept {
         if (view.filters) {
             query.text = view.filter ?? "";
             query.cursorPosition = query.text.length;
+            viewIn.snap();
+            widen.snap();
+            reshape.snap();
         }
         Qt.callLater(query.forceActiveFocus);
     }
@@ -267,6 +270,7 @@ LauncherConcept {
         root.show(text);
         root.backCloses = true;
         root.pageChoice = choice ?? "";
+        search.openPending();
     }
 
     function chooseFilter(): void {
@@ -1209,6 +1213,8 @@ LauncherConcept {
                         cursorVisible: (!root.shownView || root.filtering) && activeFocus
 
                         Keys.onPressed: event => root.pressKey(event)
+                        onTextChanged: if (!root.shownView && !root.capture)
+                            search.openPending()
 
                         StyledText {
                             anchors.verticalCenter: parent.verticalCenter
