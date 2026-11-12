@@ -36,6 +36,7 @@ RecentSource 1.0 RecentSource.qml
 RecordSource 1.0 RecordSource.qml
 RewriteSource 1.0 RewriteSource.qml
 ScriptSource 1.0 ScriptSource.qml
+SelectionReader 1.0 SelectionReader.qml
 ServiceSource 1.0 ServiceSource.qml
 SnippetSource 1.0 SnippetSource.qml
 SoundSource 1.0 SoundSource.qml

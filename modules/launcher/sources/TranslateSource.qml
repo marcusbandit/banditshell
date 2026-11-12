@@ -11,25 +11,12 @@ QtObject {
     readonly property var kinds: ["translation"]
 
     readonly property var selectionAsked: Translator.enabled ? Translation.selectionAsk(root.search.text) : null
-    readonly property string selected: root.selectionAsked ? Assistant.selection.trim().slice(0, 1500) : ""
-
-    property bool readThisTime: false
-
-    onSelectionAskedChanged: {
-        if (!root.selectionAsked || root.readThisTime)
-            return;
-        root.readThisTime = true;
-        Assistant.readSelection();
+    property SelectionReader reader: SelectionReader {
+        search: root.search
+        wanted: !!root.selectionAsked
     }
 
-    property Connections opening: Connections {
-        target: root.search
-
-        function onStartedChanged(): void {
-            if (!root.search.started)
-                root.readThisTime = false;
-        }
-    }
+    readonly property string selected: root.reader.text.trim().slice(0, 1500)
 
     readonly property var asked: {
         if (!Translator.enabled)
@@ -50,7 +37,7 @@ QtObject {
 
     onWantedChanged: Translator.lookup.want(root.wanted)
 
-    readonly property bool intent: !!root.asked
+    readonly property bool intent: !!root.asked || !!root.selectionAsked
 
     readonly property var answer: root.wanted ? Translator.lookup.answers[root.wanted] : undefined
     readonly property bool pending: !!root.wanted && root.answer === undefined && Translator.lookup.failures[root.wanted] === undefined
@@ -75,6 +62,18 @@ QtObject {
     ]
 
     readonly property var rows: {
+        if (root.selectionAsked && !root.asked)
+            return root.reader.nothing ? [
+                {
+                    key: "translation:nothing",
+                    kind: "translation",
+                    label: "Nothing selected",
+                    detail: "Select some text first",
+                    icon: "text_select_start",
+                    waiting: true,
+                    score: Infinity
+                }
+            ] : [];
         if (!root.wanted)
             return [];
         const to = Translation.splitKey(root.wanted).to;
