@@ -166,6 +166,47 @@ Singleton {
         root.run(["use", entry.id]);
     }
 
+    function clear(): void {
+        root.entries = [];
+        root.run(["drop", "all"]);
+    }
+
+    readonly property string settingsPath: Quickshell.env("GVOICE_SETTINGS") || `${Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`}/gvoice/settings.json`
+
+    property string output: "auto"
+    property string microphone: "default"
+    readonly property string languageCode: DictationEvents.languageCode(root.lang)
+
+    function setOutput(mode: string): void {
+        root.output = mode;
+        root.run(["option", "output", mode]);
+    }
+
+    function setMicrophone(name: string): void {
+        root.microphone = name;
+        root.run(["option", "microphone", name]);
+    }
+
+    function setLanguage(code: string): void {
+        root.run(["lang", code]);
+    }
+
+    FileView {
+        id: options
+
+        path: root.settingsPath
+
+        watchChanges: true
+        printErrors: false
+
+        onLoaded: {
+            const read = DictationEvents.dictationSettings(text());
+            root.output = read.output;
+            root.microphone = read.microphone;
+        }
+        onFileChanged: reload()
+    }
+
     function drop(entry: var): void {
         if (!entry?.id)
             return;

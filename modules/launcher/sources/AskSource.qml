@@ -1,7 +1,9 @@
 import QtQuick
 import Quickshell
 import qs.services
+import qs.config
 import "../../../services/assistant.js" as Logic
+import "../../../services/dictation-events.js" as DictationEvents
 import "../prefixes.js" as Prefixes
 
 QtObject {
@@ -24,6 +26,39 @@ QtObject {
         function onStartedChanged(): void {
             if (root.search.started)
                 Assistant.refresh();
+        }
+    }
+
+    property string spoken: ""
+    property string lastSpokenId: ""
+    property int spokenTries: 0
+
+    property Connections dictation: Connections {
+        target: Dictation
+
+        function onEntriesChanged(): void {
+            const newest = Dictation.entries[0];
+            if (!newest || newest.id === root.lastSpokenId)
+                return;
+            root.lastSpokenId = newest.id;
+            if (!root.search.active || !Config.values.launcher.dictateToAsk || !Assistant.enabled || Date.now() - newest.recorded > 8000)
+                return;
+            root.spoken = newest.text.trim();
+            root.spokenTries = 0;
+            spokenWatch.restart();
+        }
+    }
+
+    property Timer spokenWatch: Timer {
+        interval: 150
+        repeat: true
+        onTriggered: {
+            root.spokenTries++;
+            const asked = root.search.active ? DictationEvents.asking(root.search.query, root.spoken) : null;
+            if (asked !== null)
+                root.search.retype(asked);
+            if (asked !== null || !root.search.active || root.spokenTries >= 12)
+                stop();
         }
     }
 

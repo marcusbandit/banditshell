@@ -10,7 +10,7 @@
     "tests": ["tests/pointing-devices.test.js", "tests/restore.test.js", "tests/settings-floating.test.js", "tests/settings-summon.test.js", "tests/settings.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor", "display", "clock"],
+    "packages": ["core", "compositor", "display", "clock", "clipboard"],
     "optional": []
   },
   "provides": {

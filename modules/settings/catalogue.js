@@ -181,6 +181,15 @@ const PAGES_SOURCE = {
             { rows: [
                 { n: 16, icon: "mic", label: "Microphone", k: "input", kind: "choice", o: s => s.inputs, kw: "input device" },
                 { n: 16, icon: "graphic_eq", label: "Input level", k: "micLevel", kind: "slider", min: 0, max: 1, step: 0.01, fmt: pct }
+            ] },
+            { t: "Dictation", rows: [
+                { n: [], icon: "keyboard_voice", label: "Dictate with", k: "dictMic", kind: "choice", o: s => s.dictationInputs, kw: "dictation microphone voice input device system default",
+                    why: "System default follows whatever the microphone above is, so unplugging a headset needs no setup. Takes effect on the next dictation." },
+                { n: [], icon: "translate", label: "Language", k: "dictLang", kind: "choice", o: s => s.dictationLanguages, kw: "dictation language voice speech" },
+                { n: [], icon: "auto_awesome", label: "Speak to ask", k: "dictateAsk", kind: "toggle", cfg: "launcher.dictateToAsk", kw: "dictation ask assistant launcher voice",
+                    why: "Dictating while the launcher is open turns what you said into a question for the assistant." },
+                { n: [], icon: "input", label: "Text goes", k: "dictOutput", kind: "choice", o: s => s.dictationOutputs, kw: "dictation output type paste copy clipboard voice",
+                    why: "Automatic types into games and pastes elsewhere. Only copy leaves the text on the clipboard. Takes effect on the next dictation." }
             ] }
         ]
     },

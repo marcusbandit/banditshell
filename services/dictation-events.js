@@ -40,3 +40,41 @@ function startKey(binds) {
         return p.length <= 1 ? p : p.charAt(0) + p.slice(1).toLowerCase();
     }).join(" + ");
 }
+
+var OUTPUTS = [["auto", "Automatic"], ["type", "Type it"], ["paste", "Paste it"], ["copy", "Only copy it"]];
+
+var LANGUAGES = [["auto", "Detect it"], ["en-dk", "English (Denmark)"], ["en", "English (US)"], ["en-gb", "English (UK)"], ["da", "Danish"], ["ja", "Japanese"], ["de", "German"], ["sv", "Swedish"], ["no", "Norwegian"]];
+
+var LANGUAGE_TAGS = { "da-DK": "da", "en-DK": "en-dk", "en-US": "en", "en-GB": "en-gb", "de-DE": "de", "sv-SE": "sv", "nb-NO": "no" };
+
+function languageCode(tag) {
+    if (!tag)
+        return "auto";
+    return LANGUAGE_TAGS[tag] || String(tag).toLowerCase();
+}
+
+function dictationSettings(raw) {
+    var data = {};
+    try {
+        data = JSON.parse(raw);
+    } catch (e) {}
+    if (!data || typeof data !== "object" || Array.isArray(data))
+        data = {};
+    var out = OUTPUTS.some(function (o) {
+        return o[0] === data.output;
+    }) ? data.output : "auto";
+    return {
+        output: out,
+        microphone: typeof data.microphone === "string" && data.microphone ? data.microphone : "default"
+    };
+}
+
+function asking(text, spoken) {
+    var said = String(spoken || "").trim();
+    var typed = String(text || "").trim();
+    if (!said || typed.indexOf(said) < 0)
+        return null;
+    if (/^(\?+|ask(\s|$))/i.test(typed))
+        return null;
+    return "ask " + typed;
+}
