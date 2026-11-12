@@ -1,5 +1,6 @@
 import QtQuick
 import qs.services
+import "../search.js" as Search
 import "../../../services/pomodoro.js" as Logic
 
 QtObject {
@@ -11,16 +12,17 @@ QtObject {
 
     readonly property var typedAsk: Logic.pomodoroAsk(root.search.text)
 
-    readonly property var ask: {
-        const typed = root.typedAsk;
+    function resolved(typed: var): var {
         if (!typed?.until)
             return typed;
-        const now = Date.now();
-        const minutes = Logic.minutesUntil(Notifications.untilClock(typed.until, now), now);
+        const clock = Search.clockOf(typed.until, false);
+        const minutes = clock ? Logic.minutesToClock(clock, Date.now()) : 0;
         return minutes ? Object.assign({}, typed, {
             minutes: minutes
         }) : null;
     }
+
+    readonly property var ask: root.resolved(root.typedAsk)
 
     readonly property bool intent: !!root.ask
 
@@ -112,8 +114,9 @@ QtObject {
             Pomodoro.pause();
             return;
         }
-        const ask = row.ask;
-        root.search.leave(() => Pomodoro.start(ask));
+        const ask = root.resolved(row.ask.until ? root.typedAsk : row.ask);
+        if (ask)
+            root.search.leave(() => Pomodoro.start(ask));
     }
 
     function actionsFor(row: var): var {

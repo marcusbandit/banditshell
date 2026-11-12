@@ -196,14 +196,11 @@ function contentCommand(text, vaults, max) {
     return ["nice", "-n", "10", "sh", "-c", CONTENT, "sh", String(max || 40), String(text)].concat(vaults.map(v => v.path));
 }
 
-function contentHits(text, notes, skip, limit) {
+function contentHits(text, notes, limit) {
     var byPath = {};
     for (var i = 0; i < notes.length; i++)
         byPath[notes[i].path] = notes[i];
-    var gone = {};
-    for (var j = 0; j < skip.length; j++)
-        gone[skip[j]] = true;
-    var found = String(text || "").split("\n").map(l => l.trim()).filter(l => l && byPath[l] && !gone[l]).map(l => byPath[l]);
+    var found = String(text || "").split("\n").map(l => l.trim()).filter(l => l && byPath[l]).map(l => byPath[l]);
     found.sort((a, b) => b.modified - a.modified);
     return found.slice(0, limit || 10);
 }

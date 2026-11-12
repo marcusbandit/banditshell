@@ -14,7 +14,7 @@ const Scripts = lib("services/script-commands.js", ["parseScript", "readScan", "
 const Projects = lib("services/projects.js", ["listFrom", "readScan", "rank", "ago", "editorFor", "terminalLine", "shellLine", "projectAsk", "parentWithin", "scanCommand", "ambientScore", "quote"]);
 const Notes = lib("services/notes.js", ["withoutSkipped", "vaultsFrom", "defaultVault", "readIndex", "search", "openUri", "newUri", "fileNameFor", "notesAsk", "indexCommand", "ambientScore", "contentCommand", "contentHits", "quickFileName", "quickBody", "quickCommand"]);
 const Monitor = lib("services/system-monitor.js", ["monitorAsk", "readSample", "topProcesses", "SESSION", "readDisks", "bytesText", "uptimeText", "cpuText"]);
-const Pomodoro = lib("services/pomodoro.js", ["pomodoroAsk", "nextRound", "roundLabel", "notice", "readState", "minutesUntil"]);
+const Pomodoro = lib("services/pomodoro.js", ["pomodoroAsk", "nextRound", "roundLabel", "notice", "readState", "minutesToClock"]);
 const Lorem = lib("services/lorem.js", ["loremAsk", "generate", "describe", "preview"]);
 const Picks = lib("services/colour-picks.js", ["colourAsk", "readPicked", "remember", "forget", "readHistory"]);
 const Ranking = lib("services/ranking.js", ["place", "EXACT", "PREFIX", "WORD", "ANYWHERE"]);
@@ -754,7 +754,7 @@ test.describe("quick notes, content search and focus goals", () => {
         const command = Notes.contentCommand("oat milk", vaults, 10);
         const out = execFileSync(command[0], command.slice(1), { encoding: "utf8" });
         const notes = Notes.readIndex(`1\t${path.join(dir, "groceries.md")}\n2\t${path.join(dir, "other.md")}\n`, vaults);
-        assert.deepStrictEqual(Notes.contentHits(out, notes, [], 5).map(n => n.name), ["groceries"]);
+        assert.deepStrictEqual(Notes.contentHits(out, notes, 5).map(n => n.name), ["groceries"]);
     });
 
     test.it("a focus goal rides along with minutes or a clock time", () => {
@@ -768,9 +768,11 @@ test.describe("quick notes, content search and focus goals", () => {
         assert.strictEqual(Pomodoro.readState('{"timer":"t","phase":"focus","goal":"taxes"}').goal, "taxes");
     });
 
-    test.it("minutes until a deadline round up and stop at a day", () => {
-        assert.strictEqual(Pomodoro.minutesUntil(90001, 0), 2);
-        assert.strictEqual(Pomodoro.minutesUntil(0, 100), 0);
-        assert.strictEqual(Pomodoro.minutesUntil(1e12, 0), 1440);
+    test.it("minutes to a clock time round up, cap at a focus length and refuse a time that passed", () => {
+        const now = new Date(2026, 10, 12, 10, 0, 30).getTime();
+        assert.strictEqual(Pomodoro.minutesToClock({ hour: 10, minute: 30 }, now), 30);
+        assert.strictEqual(Pomodoro.minutesToClock({ hour: 9, minute: 0 }, now), 0);
+        assert.strictEqual(Pomodoro.minutesToClock({ hour: 10, minute: 0 }, now), 0);
+        assert.strictEqual(Pomodoro.minutesToClock({ hour: 23, minute: 59 }, now), 480);
     });
 });

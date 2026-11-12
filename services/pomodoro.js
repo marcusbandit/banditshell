@@ -69,10 +69,11 @@ function pomodoroAsk(text) {
     return null;
 }
 
-function minutesUntil(deadline, at) {
-    if (!(deadline > at))
-        return 0;
-    return Math.min(1440, Math.max(1, Math.ceil((deadline - at) / 60000)));
+function minutesToClock(clock, at) {
+    var target = new Date(at);
+    target.setHours(clock.hour, clock.minute, 0, 0);
+    var minutes = Math.ceil((target.getTime() - at) / 60000);
+    return minutes > 0 ? Math.min(480, minutes) : 0;
 }
 
 function nextRound(state, settings) {

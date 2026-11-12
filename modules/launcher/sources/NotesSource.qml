@@ -22,9 +22,9 @@ QtObject {
         QuickNotePage {}
     }
 
-    readonly property var quickAsk: /^(?:jot|quick ?note|scratch ?pad)$/i
+    readonly property var quickAsk: /^(?:jot|quick ?note|scratch ?pad)(?:\s+(.*))?$/i
 
-    function openPage(): void {
+    function openPage(text: string): void {
         if (!root.search.presents || root.search.presenting)
             return;
         root.search.present({
@@ -33,15 +33,18 @@ QtObject {
             text: "Quick note",
             filters: true,
             placeholder: "Write a note, Enter saves it",
-            filter: "",
+            filter: text ?? "",
             restore: "note",
             source: root
         });
     }
 
+    readonly property var quickMatch: root.quickAsk.exec(root.search.text.trim())
+
     readonly property var quickRow: ({
             key: "quicknote",
             kind: "quicknote",
+            text: root.quickMatch?.[1] ?? "",
             label: "Quick note",
             detail: "saved as Markdown in your notes folder",
             icon: "edit_note",
@@ -50,7 +53,7 @@ QtObject {
 
     readonly property var ask: Logic.notesAsk(root.search.text)
 
-    readonly property bool quickBare: root.quickAsk.test(root.search.text.trim())
+    readonly property bool quickBare: !!root.quickMatch
 
     readonly property bool intent: !!root.ask || root.bare || root.quickBare
 
@@ -162,7 +165,7 @@ QtObject {
 
     function activate(row: var): void {
         if (row.kind === "quicknote") {
-            root.openPage();
+            root.openPage(row.text);
             return;
         }
         if (row.kind === "newnote") {

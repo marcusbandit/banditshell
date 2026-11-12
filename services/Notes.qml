@@ -40,10 +40,11 @@ Singleton {
 
     property string contentTerm: ""
     property string contentText: ""
-    readonly property var contentNotes: Logic.contentHits(root.contentText, root.notes, [], 10)
+    readonly property var contentNotes: Logic.contentHits(root.contentText, root.notes, 10)
 
     property string pendingTerm: ""
-    property string lastSaved: ""
+    property int serial: 0
+    property var grep: null
 
     onVaultsChanged: {
         root.indexedAt = 0;
@@ -72,28 +73,85 @@ Singleton {
         indexer.running = true;
     }
 
+    function cancelContent(): void {
+        contentDelay.stop();
+        root.pendingTerm = "";
+        root.serial++;
+        if (root.grep)
+            root.grep.running = false;
+        root.grep = null;
+    }
+
     function findContent(term: string): void {
         const clean = term.trim();
         if (clean.length < 3 || !root.vaults.length) {
-            root.pendingTerm = "";
+            root.cancelContent();
             root.contentTerm = "";
             root.contentText = "";
             return;
         }
-        if (clean === root.contentTerm)
+        if (clean === root.contentTerm) {
+            root.cancelContent();
             return;
+        }
         root.pendingTerm = clean;
         contentDelay.restart();
     }
 
     function capture(text: string): void {
-        const body = Logic.quickBody(text);
         if (!text.trim())
             return;
         const name = Logic.quickFileName(text, Date.now());
-        root.lastSaved = `${root.quickFolder}/${name}.md`;
-        Quickshell.execDetached(Logic.quickCommand(root.quickFolder, name, body));
+        const folder = root.quickFolder;
+        const job = writer.createObject(root, {
+            command: Logic.quickCommand(folder, name, Logic.quickBody(text)),
+            folder: folder
+        });
+        job.running = true;
         root.indexedAt = 0;
+    }
+
+    Component {
+        id: writer
+
+        Process {
+            id: write
+
+            property string folder: ""
+
+            onExited: code => {
+                if (code !== 0)
+                    Notify.post({
+                        summary: "Quick note not saved",
+                        body: `Could not write to ${write.folder}`,
+                        urgency: "critical",
+                        kind: "notes"
+                    });
+                write.destroy();
+            }
+        }
+    }
+
+    Component {
+        id: grepper
+
+        Process {
+            id: search
+
+            property string term: ""
+            property int serial: 0
+
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    if (search.serial === root.serial) {
+                        root.contentTerm = search.term;
+                        root.contentText = text;
+                    }
+                }
+            }
+
+            onExited: search.destroy()
+        }
     }
 
     Timer {
@@ -101,25 +159,19 @@ Singleton {
 
         interval: 200
         onTriggered: {
-            if (!root.pendingTerm || root.pendingTerm === root.contentTerm)
+            const term = root.pendingTerm;
+            root.pendingTerm = "";
+            if (!term || term === root.contentTerm)
                 return;
-            grepper.running = false;
-            grepper.term = root.pendingTerm;
-            grepper.command = Logic.contentCommand(root.pendingTerm, root.vaults, 40);
-            grepper.running = true;
-        }
-    }
-
-    Process {
-        id: grepper
-
-        property string term: ""
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                root.contentTerm = grepper.term;
-                root.contentText = text;
-            }
+            if (root.grep)
+                root.grep.running = false;
+            root.serial++;
+            root.grep = grepper.createObject(root, {
+                term: term,
+                serial: root.serial,
+                command: Logic.contentCommand(term, root.vaults, 40)
+            });
+            root.grep.running = true;
         }
     }
 

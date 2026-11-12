@@ -64,7 +64,7 @@ Singleton {
             root.begin(longBreak ? "long" : "break", ask.minutes || (longBreak ? root.settings.longBreak : root.settings.breakMinutes), root.state?.round ?? 0, root.state?.focusMinutes ?? 0, root.state?.breakMinutes ?? 0, root.state?.goal ?? "");
             return;
         }
-        root.begin("focus", ask.minutes || root.settings.focus, 1, ask.minutes, ask.breakMinutes, ask.goal ?? "");
+        root.begin("focus", ask.minutes || root.settings.focus, 1, ask.until ? 0 : ask.minutes, ask.breakMinutes, ask.goal ?? "");
     }
 
     function pause(): void {
