@@ -31,7 +31,6 @@ PanelWindow {
     readonly property Menus menus: menuLayer
     readonly property Launcher launcher: launcherLayer
 
-    readonly property LazyPanel clipboard: clipLayer
     readonly property LazyPanel wallpapers: wallpaperLayer
     readonly property LazyPanel session: sessionLayer
 
@@ -58,7 +57,7 @@ PanelWindow {
     readonly property var usage: Usage
     readonly property var clipboardHistory: Clipboard
 
-    readonly property var panels: [launcherLayer, clipLayer, wallpaperLayer, sessionLayer, cheatLayer, calcLayer, mediaLayer]
+    readonly property var panels: [launcherLayer, wallpaperLayer, sessionLayer, cheatLayer, calcLayer, mediaLayer]
 
     readonly property bool panelOpen: win.panels.some(panel => panel.open)
     readonly property bool covering: win.panels.some(panel => panel.open && panel !== mediaLayer)
@@ -71,7 +70,7 @@ PanelWindow {
 
     onLauncherAboveChanged: if (!win.launcherAbove)
         Qt.callLater(() => {
-            launcherLayer.stackBefore(clipLayer);
+            launcherLayer.stackBefore(wallpaperLayer);
             if (launcherLayer.open)
                 launcherLayer.concept?.input?.forceActiveFocus();
         })
@@ -100,7 +99,6 @@ PanelWindow {
 
     readonly property var named: ({
             launcher: launcherLayer,
-            clipboard: clipLayer,
             wallpapers: wallpaperLayer,
             session: sessionLayer,
             calculator: calcLayer,
@@ -235,8 +233,7 @@ PanelWindow {
             return;
         case "dictation":
             islandLayer.close();
-            clipLayer.build().setTab(1);
-            clipLayer.show();
+            win.launcher.showPage("clip ", "speech");
             return;
         case "recording":
             ScreenRecorder.stop();
@@ -319,11 +316,6 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: launcherLayer.open ? launcherLayer.maskItem : null
-        }
-
-        Region {
-            intersection: Intersection.Combine
-            item: clipLayer.open ? clipLayer.maskItem : null
         }
 
         Region {
@@ -532,7 +524,7 @@ PanelWindow {
             railWanted: sidebar.railWanted
             readable: settingsLayer.open
 
-            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs, ...keyringLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs), ...body.lowered(glance.blobs)]
+            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs, ...keyringLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs), ...body.lowered(glance.blobs)]
         }
 
         BandProgress {
@@ -746,22 +738,6 @@ PanelWindow {
         }
 
         LazyPanel {
-            id: clipLayer
-
-            name: "clipboard"
-            anchors.fill: parent
-            anchors.topMargin: chassis.streamReach
-
-            onOpenChanged: if (open)
-                win.closeOthers(clipLayer)
-
-            panel: ClipboardPanel {
-                originX: chassis.barWidth
-                inset: win.border
-            }
-        }
-
-        LazyPanel {
             id: wallpaperLayer
 
             name: "wallpapers"
@@ -963,7 +939,7 @@ PanelWindow {
             holeWidth: chassis.holeWidth
             holeHeight: chassis.holeHeight
 
-            blocked: keyboardLayer.open || launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.open
+            blocked: keyboardLayer.open || launcherLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.open
         }
 
         Island {

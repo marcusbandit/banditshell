@@ -231,7 +231,10 @@ LauncherConcept {
             root.queryBeforeView = view.restore ?? query.text;
         root.viewWord = view.text ?? "";
         root.viewComponent = view.component;
-        root.shownView = view;
+        root.shownView = root.pageChoice ? Object.assign({}, view, {
+            choice: root.pageChoice
+        }) : view;
+        root.pageChoice = "";
         if (view.filters) {
             query.text = view.filter ?? "";
             query.cursorPosition = query.text.length;
@@ -253,9 +256,12 @@ LauncherConcept {
         Qt.callLater(query.forceActiveFocus);
     }
 
-    function showPage(text: string): void {
+    property string pageChoice: ""
+
+    function showPage(text: string, choice: string): void {
         root.show(text);
         root.backCloses = true;
+        root.pageChoice = choice ?? "";
     }
 
     function chooseFilter(): void {
@@ -373,6 +379,7 @@ LauncherConcept {
 
     onShowing: {
         root.backCloses = false;
+        root.pageChoice = "";
         root.intoList = false;
         root.tileKeyed = false;
         root.unsized = true;

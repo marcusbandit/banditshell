@@ -306,7 +306,6 @@
     "R3 shell.qml uses StartupApps of apps without requiring it",
     "R3 shell.qml uses UsageApps of screentime without requiring it",
     "R3 shell.qml uses UsageLimits of screentime without requiring it",
-    "R5 config/Appearance.qml reads clipboard of clipboard",
     "R5 config/Appearance.qml reads compositor of compositor",
     "R5 config/Appearance.qml reads corner of settings",
     "R5 config/Appearance.qml reads files of files",

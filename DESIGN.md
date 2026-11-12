@@ -1498,16 +1498,8 @@ banditshell/
 │   │   │                        the list. The alphabet concept draws it, and the
 │   │   │                        list concept only for "install qalc"
 │   │   └── LaunchEdge.qml       the bottom band as the way to pull it out
-│   ├── clipboard/               what you copied; the launcher's twin. Its
-│   │                            panel commands now open the launcher's
-│   │                            clipboard page instead of this panel
-│   │   ├── ClipboardPanel.qml   two tabs, a list, and `/` for the search that
-│   │   │                        is not there until it is asked for; the list and
-│   │   │                        the page are two halves of one strip
-│   │   ├── ClipRow.qml          one thing copied: its kind, or the picture
-│   │   │                        itself, which grows when it is the one you are on
-│   │   └── ClipDetail.qml       one thing properly: whole, formatted, coloured.
-│   │                            A right arrow or a swipe right away
+│   ├── clipboard/               what you copied: the history's IPC, whose panel
+│   │                            commands open the launcher's clipboard page
 │   ├── session/SessionMenu.qml  power, on the right edge, summoned by name
 │   ├── calculator/              the keypad, out of the sidebar's flank: the power
 │   │   └── CalculatorPanel.qml  panel's twin, mirrored. Summoned by name, so it

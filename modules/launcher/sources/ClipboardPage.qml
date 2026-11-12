@@ -132,6 +132,11 @@ Item {
     }
 
     onQueryChanged: root.keptId = ""
+    onViewChanged: {
+        const at = root.view?.choice ? root.choices.findIndex(c => c.key === root.view.choice) : -1;
+        if (at >= 0)
+            root.choose(at);
+    }
     onRowsChanged: root.settle()
     Component.onCompleted: root.settle()
 

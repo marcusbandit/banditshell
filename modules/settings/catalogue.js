@@ -405,7 +405,6 @@ const PAGES_SOURCE = {
             ] },
             { t: "Panel widths", rows: [
                 { n: 65, icon: "search", label: "Launcher", k: "launcherW", kind: "slider", min: 600, max: 1200, step: 20, fmt: v => `${v}`, cfg: "launcher.width", kw: "panel sizes" },
-                { n: 65, icon: "content_paste", label: "Clipboard", k: "clipW", kind: "slider", min: 600, max: 1400, step: 20, fmt: v => `${v}`, cfg: "clipboard.width", kw: "panel sizes" },
                 { n: 65, icon: "menu", label: "Menus", k: "menuW", kind: "slider", min: 320, max: 560, step: 10, fmt: v => `${v}`, cfg: "menu.width", kw: "panel sizes" },
                 { n: 65, icon: "tune", label: "Settings", k: "settingsW", kind: "slider", min: 1040, max: 1440, step: 20, fmt: v => `${v}`, cfg: "settings.width", why: "How wide this panel opens.", kw: "panel sizes settings window" }
             ] }

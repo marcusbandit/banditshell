@@ -20,6 +20,11 @@
           "text": "Clipboard history opens in the launcher, with a preview of each copy"
         },
         {
+          "type": "ui",
+          "severity": "minor",
+          "text": "SUPER+V opens clipboard history in the launcher; the old panel is gone"
+        },
+        {
           "type": "features",
           "severity": "minor",
           "text": "Copied colours, links, emails, code and files get their own actions"

@@ -43,11 +43,11 @@ Item {
         Trace.step("shown", span);
     }
 
-    function showPage(text: string): void {
+    function showPage(text: string, choice = ""): void {
         const span = root.open ? null : Trace.begin("launcher open", loader.active ? "" : "first");
         const concept = root.build(span);
         if (concept.showPage)
-            concept.showPage(text);
+            concept.showPage(text, choice);
         else
             concept.show(text);
         Trace.step("shown", span);
