@@ -416,6 +416,9 @@
 #                                the shell's polkit password prompt: whether the
 #                                shell is the agent, what it asks, a made-up
 #                                question, or refuse it
+#   banditshell dev password [ssh|agent|gpg|login|keyring|new|confirm|sudo|service|root|wrong|wifi]
+#                                a made-up password card of one kind, to look at
+#                                how each secret is asked for
 #
 # help                           this list; banditshell help <command> for one
 #   banditshell help [<command>]
@@ -3613,6 +3616,9 @@ route_dev() {
         close) ipc polkit refuse ;;
         *) nope dev "polkit $1" ;;
         esac ;;
+    password)
+        [ -n "${1:-}" ] || say_usage "dev password <scene>"
+        ipc password scene "$1" ;;
     *) nope dev "$what" ;;
     esac
 }

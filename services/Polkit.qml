@@ -19,7 +19,9 @@ Singleton {
 
     readonly property var flow: root.agent?.flow ?? null
 
-    property bool showing: false
+    property var shown: null
+
+    readonly property bool showing: root.shown !== null
 
     readonly property bool active: root.showing || !!root.agent?.isActive && !!root.flow && !root.flow.isCompleted
 
@@ -31,9 +33,19 @@ Singleton {
 
     readonly property bool ours: !!root.expected && root.message.includes(root.expected.program)
 
-    readonly property string title: root.showing ? "Uninstall Firefox" : root.ours ? root.expected.label : "Authentication"
-    readonly property string message: root.showing ? "Authentication is needed to run `/usr/bin/pacman -Rs --noconfirm firefox' as the super user" : root.flow?.message ?? ""
-    readonly property string warning: root.showing || !root.flow ? "" : root.flow.supplementaryIsError && root.flow.supplementaryMessage ? root.flow.supplementaryMessage : root.flow.failed ? "That password did not work" : ""
+    readonly property string label: root.showing ? root.shown.label ?? "" : root.ours ? root.expected.label : ""
+    readonly property string title: root.label || "Authentication"
+    readonly property string message: root.showing ? root.shown.message ?? "" : root.flow?.message ?? ""
+    readonly property string actionId: root.showing ? root.shown.actionId ?? "" : root.flow?.actionId ?? ""
+    readonly property var identity: {
+        const picked = root.showing ? root.shown.identity : root.flow?.selectedIdentity;
+        return picked ? {
+            name: picked.name ?? "",
+            displayName: picked.displayName ?? "",
+            isGroup: !!picked.isGroup
+        } : null;
+    }
+    readonly property string warning: root.showing ? root.shown.warning ?? "" : !root.flow ? "" : root.flow.supplementaryIsError && root.flow.supplementaryMessage ? root.flow.supplementaryMessage : root.flow.failed ? "That password did not work" : ""
     readonly property string placeholder: (root.flow?.inputPrompt ?? "").replace(/:\s*$/, "").trim().toLowerCase() || "password"
 
     readonly property string requester: ""
@@ -49,14 +61,14 @@ Singleton {
 
     function submit(secret: string): void {
         if (root.showing)
-            root.showing = false;
+            root.shown = null;
         else if (root.flow?.isResponseRequired)
             root.flow.submit(secret);
     }
 
     function refuse(): void {
         if (root.showing)
-            root.showing = false;
+            root.shown = null;
         else if (root.flow && !root.flow.isCompleted)
             root.flow.cancelAuthenticationRequest();
     }
@@ -72,10 +84,47 @@ Singleton {
         root.expected = null;
     }
 
+    readonly property var scenes: ({
+            sudo: {
+                label: "Uninstall Firefox",
+                actionId: "org.freedesktop.policykit.exec",
+                message: "Authentication is needed to run `/usr/bin/pacman -Rs --noconfirm firefox' as the super user"
+            },
+            service: {
+                actionId: "org.freedesktop.systemd1.manage-units",
+                message: "Authentication is required to restart 'tailscaled.service'."
+            },
+            root: {
+                actionId: "org.freedesktop.policykit.exec",
+                message: "Authentication is needed to run `/usr/bin/gparted' as the super user",
+                identity: {
+                    name: "unix-user:root"
+                }
+            },
+            wrong: {
+                label: "Install speedtest-cli",
+                actionId: "org.freedesktop.policykit.exec",
+                message: "Authentication is needed to run `/usr/bin/pacman -S --noconfirm speedtest-cli' as the super user",
+                warning: "That password did not work"
+            }
+        })
+
     function demo(): void {
+        root.scene("sudo");
+    }
+
+    function scene(name: string): bool {
+        const picked = root.scenes[name];
+        if (!picked)
+            return false;
         root.screenName = root.screenFor(Focus.offStageScreen);
         root.asked += 1;
-        root.showing = true;
+        root.shown = Object.assign({
+            identity: {
+                name: `unix-user:${Quickshell.env("USER") ?? ""}`
+            }
+        }, picked);
+        return true;
     }
 
     function confirm(): void {

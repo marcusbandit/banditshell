@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "keyring-windows.js" as KeyringWindows
+import "password-asks.js" as PasswordAsks
 
 Singleton {
     id: root
@@ -31,6 +32,12 @@ Singleton {
     property string cancelLabel: ""
 
     property string requester: ""
+
+    property int requesterPid: 0
+
+    property string cause: ""
+
+    property string callerCommand: ""
 
     property string screenName: ""
 
@@ -119,6 +126,9 @@ Singleton {
         root.continueLabel = "";
         root.cancelLabel = "";
         root.requester = "";
+        root.requesterPid = 0;
+        root.cause = "";
+        root.callerCommand = "";
     }
 
     function screenFor(wanted: string): string {
@@ -178,28 +188,133 @@ Singleton {
         root.continueLabel = event.continueLabel ?? "";
         root.cancelLabel = event.cancelLabel ?? "";
         root.requester = event.requester ?? "";
+        root.requesterPid = event.requesterPid ?? 0;
+        root.cause = "";
+        root.callerCommand = "";
 
         root.screenName = root.screenFor(Focus.offStageScreen);
         root.asked += 1;
         root.active = true;
+        root.traceCaller();
     }
 
+    function traceCaller(): void {
+        if (!(root.requesterPid > 0) || !/ssh|pinentry/.test(root.requester))
+            return;
+        trace.serial = root.serial;
+        trace.running = true;
+    }
+
+    readonly property var scenes: ({
+            login: {
+                title: "Unlock Login Keyring",
+                message: "Authentication required",
+                description: "The login keyring did not get unlocked when you logged into your computer.",
+                choiceLabel: "Automatically unlock this keyring whenever I’m logged in",
+                continueLabel: "Unlock",
+                requester: "gnome-keyring-daemon"
+            },
+            ssh: {
+                title: "Unlock private key",
+                message: "Enter password to unlock the private key",
+                description: `An application wants access to the private key “ Enter passphrase for ${Quickshell.env("HOME")}/.ssh/id_ed25519: ”, but it is locked`,
+                choiceLabel: "Automatically unlock this key whenever I’m logged in",
+                continueLabel: "Unlock",
+                requester: "gcr-ssh-agent",
+                cause: "git is pushing to github.com/marcusbandit/banditshell",
+                callerCommand: "/usr/bin/ssh -o SendEnv=GIT_PROTOCOL git@github.com git-receive-pack 'marcusbandit/banditshell.git'"
+            },
+            agent: {
+                title: "Unlock private key",
+                message: "Enter password to unlock the private key",
+                description: `An application wants access to the private key “ Enter passphrase for ${Quickshell.env("HOME")}/.ssh/id_ed25519: ”, but it is locked`,
+                choiceLabel: "Automatically unlock this key whenever I’m logged in",
+                continueLabel: "Unlock",
+                requester: "gcr-ssh-agent",
+                cause: "claude is pulling from github.com/marcusbandit/banditshell",
+                warning: "The unlock password was incorrect"
+            },
+            gpg: {
+                title: "Enter Passphrase",
+                message: "Passphrase:",
+                description: "Please enter the passphrase to unlock the OpenPGP secret key:\n\"Ada Example <ada@example.com>\"\n255-bit EDDSA key, ID 0123456789ABCDEF,\ncreated 2025-01-01.",
+                continueLabel: "OK",
+                requester: "pinentry-gnome3",
+                cause: "git is signing a commit"
+            },
+            keyring: {
+                title: "Unlock Keyring",
+                message: "Unlock password for: Work",
+                description: "An application wants access to the keyring “Work”, but it is locked",
+                choiceLabel: "Automatically unlock this keyring whenever I’m logged in",
+                continueLabel: "Unlock",
+                requester: "gnome-keyring-daemon"
+            },
+            new: {
+                title: "New Keyring Password",
+                message: "Choose password for new keyring",
+                description: "An application wants to create a new keyring called “Default keyring”. Choose the password you want to use for it.",
+                passwordNew: true,
+                continueLabel: "Continue",
+                requester: "gnome-keyring-daemon"
+            },
+            confirm: {
+                kind: "confirm",
+                title: "Store passwords unencrypted?",
+                description: "By choosing to use a blank password, your stored passwords will not be safely encrypted. They will be accessible by anyone with access to your files.",
+                continueLabel: "Continue",
+                requester: "gnome-keyring-daemon"
+            }
+        })
+
     function demo(): void {
+        root.scene("login");
+    }
+
+    function scene(name: string): bool {
+        const picked = root.scenes[name];
+        if (!picked)
+            return false;
         root.serial = -1;
-        root.kind = "password";
-        root.title = "Unlock Login Keyring";
-        root.message = "Authentication required";
-        root.description = "The login keyring did not get unlocked when you logged into your computer.";
-        root.warning = "";
-        root.choiceLabel = "Automatically unlock this keyring whenever I'm logged in";
+        root.kind = picked.kind ?? "password";
+        root.title = picked.title ?? "";
+        root.message = picked.message ?? "";
+        root.description = picked.description ?? "";
+        root.warning = picked.warning ?? "";
+        root.choiceLabel = picked.choiceLabel ?? "";
         root.choiceChosen = false;
-        root.passwordNew = false;
-        root.continueLabel = "Unlock";
+        root.passwordNew = picked.passwordNew ?? false;
+        root.continueLabel = picked.continueLabel ?? "";
         root.cancelLabel = "Cancel";
-        root.requester = "gnome-keyring-daemon";
+        root.requester = picked.requester ?? "";
+        root.requesterPid = 0;
+        root.cause = picked.cause ?? "";
+        root.callerCommand = picked.callerCommand ?? "";
         root.screenName = root.screenFor(Focus.offStageScreen);
         root.asked += 1;
         root.active = true;
+        return true;
+    }
+
+    Process {
+        id: trace
+
+        property int serial: 0
+
+        command: ["sh", "-c", "ss -xpH 2>/dev/null; echo '#ps'; ps -eo pid=,ppid=,etimes=,args="]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (trace.serial !== root.serial || !root.active)
+                    return;
+                const cut = text.indexOf("#ps\n");
+                if (cut < 0)
+                    return;
+                const chain = PasswordAsks.callerOf(text.slice(0, cut), text.slice(cut + 4), root.requesterPid, root.requester);
+                root.cause = PasswordAsks.causeOf(chain);
+                root.callerCommand = PasswordAsks.commandOf(chain);
+            }
+        }
     }
 
     Process {
