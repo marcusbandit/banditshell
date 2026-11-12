@@ -431,7 +431,7 @@ const PAGES_SOURCE = {
                 { n: [], icon: "visibility", label: "Hidden files", k: "hiddenFiles", kind: "seg", o: ["off", ".config", "all"], cfg: "launcher.hiddenFiles", kw: "hidden files dotfiles .config search results",
                     why: "Which hidden files the launcher finds by name. .config is where most apps keep their settings." },
                 { n: [], icon: "filter_alt_off", label: "Skip ignored files", k: "ignoredFiles", kind: "toggle", cfg: "launcher.ignoredFiles", kw: "gitignore ignore ignored files build node_modules search names",
-                    why: "File names in a git project's .gitignore, such as build folders and dependencies, stay out of the results, the same as when searching inside files." },
+                    why: "Off by default. When on, names listed in a git project's own .gitignore, such as build folders and dependencies, stay out of the results. A repository kept in your home folder with a broad .gitignore would hide most files, so turn it on only if you have none." },
                 { n: [], icon: "currency_exchange", label: "Currency", k: "currency", kind: "choice", o: s => s.currencies, cfg: "launcher.currency", state: s => s.ratesNote, kw: "currency money exchange rates convert",
                     why: "Typing an amount like 5 eur shows it in this currency. Rates come from the European Central Bank once a day and are kept for when you are offline." },
                 { n: [], icon: "find_in_page", label: "Inside files", k: "contents", kind: "toggle", cfg: "launcher.contents", kw: "search inside files contents text ripgrep grep",

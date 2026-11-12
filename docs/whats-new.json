@@ -37,7 +37,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "File search skips git-ignored files unless you turn it off"
+          "text": "File search can skip git-ignored files, in settings"
         }
       ]
     },

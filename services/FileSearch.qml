@@ -11,7 +11,7 @@ Singleton {
 
     readonly property int least: 3
 
-    readonly property bool ignoring: Config.values.launcher.ignoredFiles !== false
+    readonly property bool ignoring: Config.values.launcher.ignoredFiles === true
 
     readonly property string hidden: Config.values.launcher.hiddenFiles
 
@@ -33,7 +33,7 @@ Singleton {
     }
 
     function commands(text: string): var {
-        const base = ["nice", "-n", "10", root.fd, "--fixed-strings", "--ignore-case", ...(root.ignoring ? [] : ["--no-ignore-vcs"]), "--type", "f", "--type", "d", "--max-results", String(root.findLimit), ...(text.indexOf("/") >= 0 ? ["--full-path"] : []), ...root.excluding("--exclude", root.noise, "")];
+        const base = ["nice", "-n", "10", root.fd, "--fixed-strings", "--ignore-case", ...(root.ignoring ? ["--no-global-ignore-file"] : ["--no-ignore-vcs"]), "--type", "f", "--type", "d", "--max-results", String(root.findLimit), ...(text.indexOf("/") >= 0 ? ["--full-path"] : []), ...root.excluding("--exclude", root.noise, "")];
         const out = [base.concat(root.hidden === "all" ? ["--hidden", "--exclude", "/.config"] : [], ["--", text, System.home])];
         if (root.configSearched)
             out.push(base.concat(root.excluding("--exclude", root.appNoise, ""), ["--", text, root.configDir]));
