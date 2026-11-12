@@ -63,18 +63,19 @@ Item {
         return !!action && !!action.section && (index === 0 || root.actions[index - 1].section !== action.section);
     }
 
-    function lead(index: int): real {
-        return (root.apart(index) && !root.headed(index) ? root.split : 0) + (root.headed(index) ? root.headRow : 0);
+    function lead(index: int, split: real, head: real): real {
+        return (root.apart(index) && !root.headed(index) ? split : 0) + (root.headed(index) ? head : 0);
     }
 
-    function leads(upTo: int): real {
+    function leads(upTo: int, split: real, head: real): real {
         let total = 0;
         for (let i = 0; i <= upTo && i < root.actions.length; i++)
-            total += root.lead(i);
+            total += root.lead(i, split, head);
         return total;
     }
+
     readonly property real plainRow: Math.max(Appearance.sizes.rowHeight, Appearance.font.iconSize + Appearance.padding.normal * 2)
-    readonly property real plainHeight: root.actions.length * (root.plainRow + Appearance.padding.small) + root.leads(root.actions.length - 1) + Appearance.padding.small
+    readonly property real plainHeight: root.actions.length * (root.plainRow + Appearance.padding.small) + root.leads(root.actions.length - 1, Appearance.padding.small * 2 + 1, Math.round(Appearance.font.size.small * 1.6) + Appearance.padding.small) + Appearance.padding.small
     readonly property real sized: Math.min(root.zoom, Math.max(1, (root.height - root.edge * 2) / Math.max(1, root.plainHeight)))
 
     readonly property real gap: Math.round(Appearance.padding.small * root.sized)
@@ -93,7 +94,7 @@ Item {
     }
 
     function rowTop(index: int): real {
-        return index * root.step + root.leads(index);
+        return index * root.step + root.leads(index, root.split, root.headRow);
     }
 
     readonly property real rowWidth: Math.min(root.width - root.edge * 2 - root.gap * 2, root.inset * 3 + root.iconSize + measure.childrenRect.width)
@@ -226,7 +227,7 @@ Item {
                     readonly property bool chosen: root.selected === cell.index
                     readonly property bool worn: root.worn === cell.index
 
-                    readonly property real lead: root.lead(cell.index)
+                    readonly property real lead: root.lead(cell.index, root.split, root.headRow)
                     readonly property bool headed: root.headed(cell.index)
 
                     width: root.rowWidth

@@ -703,7 +703,7 @@ LauncherConcept {
             return true;
         }
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
-            root.actionsFor(row).slice(1).find(a => !a.tucked)?.run();
+            Search.sectioned(root.actionsFor(row)).slice(1).find(a => !a.tucked)?.run();
             return true;
         }
 
@@ -860,22 +860,11 @@ LauncherConcept {
     Connections {
         target: Files
 
-        function onOpenersFound(path: string, kind: string, apps: var): void {
-            if (!root.open || path !== search.openersFor)
+        function onOpenersFound(path: string, kind: string, apps: var, who: string): void {
+            if (who !== "launcher" || !root.open || path !== search.openersFor)
                 return;
             search.openersFor = "";
-            const rows = apps.map(app => ({
-                        icon: "open_in_new",
-                        label: app.name,
-                        run: () => root.launch(() => Files.openIn(app.id, path))
-                    }));
-            if (rows.length === 0)
-                rows.push({
-                    icon: "open_in_new",
-                    label: kind ? `No app lists ${kind}, try the default` : "Try the default app",
-                    run: () => root.launch(() => Files.openWith(path))
-                });
-            sheet.popup(root.askedAt.x, root.askedAt.y, rows, 0);
+            sheet.popup(root.askedAt.x, root.askedAt.y, Files.openerRows(path, kind, apps, what => root.launch(what)), 0);
         }
     }
 

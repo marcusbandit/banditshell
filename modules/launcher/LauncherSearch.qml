@@ -1931,7 +1931,7 @@ QtObject {
 
     function askOpeners(path: string): void {
         root.openersFor = path;
-        Files.offerOpeners(path);
+        Files.offerOpeners(path, "launcher");
     }
 
     function complete(row: var): bool {
