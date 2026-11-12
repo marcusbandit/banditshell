@@ -1031,7 +1031,7 @@ function zoneConvertAsk(text) {
 }
 
 var ZONE_DIFF_BETWEEN = /^(?:time\s+diff(?:erence)?|diff(?:erence)?\s+in\s+time)\s+(?:between\s+|from\s+)?(.+?)\s+(?:and|to|vs|versus|&|->|→)\s+(.+)$/;
-var ZONE_DIFF_AFTER = /^(?:time\s+diff(?:erence)?|diff(?:erence)?\s+in\s+time)\s+(?:with\s+|to\s+|from\s+|between\s+)?(.+)$/;
+var ZONE_DIFF_AFTER = /^(?:time\s+diff(?:erence)?|diff(?:erence)?\s+in\s+time)\s+(?:(with|to|from|between|in|for)\s+)?(.+)$/;
 var ZONE_DIFF_BEFORE = /^(.+?)\s+time\s+diff(?:erence)?$/;
 
 function zoneDiffAsk(text) {
@@ -1041,7 +1041,12 @@ function zoneDiffAsk(text) {
     if (m) {
         from = m[1];
         to = m[2];
-    } else if ((m = ZONE_DIFF_AFTER.exec(t) || ZONE_DIFF_BEFORE.exec(t))) {
+    } else if ((m = ZONE_DIFF_AFTER.exec(t))) {
+        if (m[1] === "from")
+            from = m[2];
+        else
+            to = m[2];
+    } else if ((m = ZONE_DIFF_BEFORE.exec(t))) {
         to = m[1];
     } else {
         return null;
@@ -1050,7 +1055,7 @@ function zoneDiffAsk(text) {
         from = "";
     if (ZONE_HERE.test(to))
         to = "";
-    if (to.length < 2 || (from && from.length < 2) || from === to)
+    if ((!from && !to) || (to && to.length < 2) || (from && from.length < 2) || from === to)
         return null;
     return {
         from: from,

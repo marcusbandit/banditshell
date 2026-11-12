@@ -192,6 +192,8 @@ test.describe("time difference", () => {
         assert.deepStrictEqual(Diff.zoneDiffAsk("time diff tokyo"), { from: "", to: "tokyo" });
         assert.deepStrictEqual(Diff.zoneDiffAsk("time difference between london and new york"), { from: "london", to: "new york" });
         assert.deepStrictEqual(Diff.zoneDiffAsk("sydney time difference"), { from: "", to: "sydney" });
+        assert.deepStrictEqual(Diff.zoneDiffAsk("time difference in tokyo"), { from: "", to: "tokyo" });
+        assert.deepStrictEqual(Diff.zoneDiffAsk("time diff from tokyo"), { from: "tokyo", to: "" });
     });
 
     test.it("ignores plain time questions and a place against itself", () => {
