@@ -188,3 +188,39 @@ function indexCommand(vaults, limit) {
 function findCommand(roots) {
     return ["sh", "-c", 'for r in "$@"; do for d in "$r"/*/.obsidian; do [ -d "$d" ] && printf "%s\\n" "$d"; done; done', "sh"].concat(roots);
 }
+
+var CONTENT = `max=$1; needle=$2; shift 2
+grep -rIl -i -F --include='*.md' --exclude-dir='.*' -- "$needle" "$@" 2>/dev/null | head -n "$max"`;
+
+function contentCommand(text, vaults, max) {
+    return ["nice", "-n", "10", "sh", "-c", CONTENT, "sh", String(max || 40), String(text)].concat(vaults.map(v => v.path));
+}
+
+function contentHits(text, notes, limit) {
+    var byPath = {};
+    for (var i = 0; i < notes.length; i++)
+        byPath[notes[i].path] = notes[i];
+    var found = String(text || "").split("\n").map(l => l.trim()).filter(l => l && byPath[l]).map(l => byPath[l]);
+    found.sort((a, b) => b.modified - a.modified);
+    return found.slice(0, limit || 10);
+}
+
+function quickStamp(at) {
+    var d = new Date(at);
+    var two = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}${two(d.getMinutes())}`;
+}
+
+function quickFileName(text, at) {
+    var first = String(text || "").trim().split("\n")[0];
+    var words = fileNameFor(first).split(" ").filter(Boolean).slice(0, 6).join(" ");
+    return words ? `${quickStamp(at)} ${words}` : quickStamp(at);
+}
+
+function quickBody(text) {
+    return String(text || "").trim() + "\n";
+}
+
+function quickCommand(folder, name, body) {
+    return ["sh", "-c", 'mkdir -p "$1" && f="$1/$2.md" && n=1 && while [ -e "$f" ]; do n=$((n+1)); f="$1/$2 $n.md"; done && printf "%s" "$3" > "$f"', "sh", folder, name, body];
+}

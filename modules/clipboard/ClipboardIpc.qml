@@ -8,7 +8,7 @@ IpcHandler {
 
     function toggle(): string {
         Appearance.instantly();
-        const win = Shell.showing(w => w.launcher.open) ?? Shell.forScreen("");
+        const win = Shell.showingFrom(w => w.launcher.open, Shell.launcherHome());
         if (!win)
             return PanelWindows.missing("");
         if (win.launcher.open && win.launcher.page === "clipboard") {
@@ -21,7 +21,7 @@ IpcHandler {
 
     function open(): string {
         Appearance.instantly();
-        const win = Shell.forScreen("");
+        const win = Shell.launcherHome();
         if (!win)
             return PanelWindows.missing("");
         if (!(win.launcher.open && win.launcher.page === "clipboard"))

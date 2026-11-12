@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/quiet-hours.js"), "utf8");
-const Quiet = new Function(src + "\nreturn { minutesOf, nightlyActive, holding, deadlineFor, endsLabel, clockTime, parseEnds, quietLine, hushUntil, endsAt, hushChoices };")();
+const Quiet = new Function(src + "\nreturn { minutesOf, nightlyActive, holding, deadlineFor, endsLabel, clockTime, parseEnds, quietLine, hushUntil, endsAt, hushChoices, quietClockPhrase, nextClockAt };")();
 
 function inZone(zone, body) {
     const before = process.env.TZ;
@@ -150,4 +150,17 @@ test("each choice leads with how long and ends with the time it stops", () => {
     assert.deepStrictEqual(late.map(c => c.until), [at(26, 0, 0), at(26, 7, 30)]);
     const early = Quiet.hushChoices(at(25, 7, 0), "07:30");
     assert.deepStrictEqual(early.map(c => c.choice), ["tomorrow", "hour"]);
+});
+
+test("a clock time lands on the next time it is that o'clock", () => {
+    assert.strictEqual(Quiet.nextClockAt(990, at(10, 0)), at(16, 30));
+    assert.strictEqual(Quiet.nextClockAt(540, at(10, 0)), at(9, 0, 15));
+    assert.strictEqual(Quiet.nextClockAt(0, at(23, 0)), at(0, 0, 15));
+});
+
+test("do not disturb phrases name their clock time, other phrases name none", () => {
+    assert.strictEqual(Quiet.quietClockPhrase("dnd until 4:30pm"), "4:30pm");
+    assert.strictEqual(Quiet.quietClockPhrase("do not disturb till midnight"), "midnight");
+    assert.strictEqual(Quiet.quietClockPhrase("dnd evening"), "");
+    assert.strictEqual(Quiet.quietClockPhrase("until 16:30"), "");
 });

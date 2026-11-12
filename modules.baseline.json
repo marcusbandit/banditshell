@@ -351,6 +351,7 @@
     "R5 modules/settings/catalogue.js reads launcher of launcher",
     "R5 modules/settings/catalogue.js reads launcher.ai of launcher-ai",
     "R5 modules/settings/catalogue.js reads launcher.devOps of launcher-devops",
+    "R5 modules/settings/catalogue.js reads launcher.latest of launcher-tools",
     "R5 modules/settings/catalogue.js reads launcher.online of launcher-online",
     "R5 modules/settings/catalogue.js reads launcher.powerTools of launcher-tools",
     "R5 modules/settings/catalogue.js reads launcher.systemControls of launcher-system",

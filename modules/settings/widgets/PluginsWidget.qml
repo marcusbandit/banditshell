@@ -25,6 +25,7 @@ Column {
     readonly property string folder: `${Config.dir}/plugins`
     readonly property var off: Config.values.launcher.plugins.off
     readonly property var values: Config.values.launcher.plugins.values
+    readonly property var commandsOff: Config.values.launcher.plugins.commandsOff
 
     width: parent ? parent.width : 0
 
@@ -56,6 +57,15 @@ Column {
 
     function setOn(id: string, on: bool): void {
         Config.set("launcher.plugins.off", on ? root.off.filter(o => o !== id) : root.off.concat([id]));
+    }
+
+    function commandOn(id: string, word: string): bool {
+        return !root.commandsOff.includes(`${id}:${word}`);
+    }
+
+    function setCommand(id: string, word: string, on: bool): void {
+        const key = `${id}:${word}`;
+        Config.set("launcher.plugins.commandsOff", on ? root.commandsOff.filter(o => o !== key) : root.commandsOff.concat([key]));
     }
 
     function detailOf(p: var): string {
@@ -266,6 +276,31 @@ Column {
                     visible: !plugin.modelData.error
                     checked: plugin.on
                     onToggled: root.setOn(plugin.modelData.id, !plugin.on)
+                }
+            }
+
+            Repeater {
+                model: plugin.on ? plugin.modelData.commands ?? [] : []
+
+                delegate: SettingsRowFrame {
+                    id: command
+
+                    required property var modelData
+
+                    readonly property bool commandOn: root.commandOn(plugin.modelData.id, command.modelData.word)
+
+                    width: root.width
+                    icon: command.modelData.icon || "terminal"
+                    label: command.modelData.title
+                    detail: `type ${command.modelData.word}`
+                    onActivated: root.setCommand(plugin.modelData.id, command.modelData.word, !command.commandOn)
+                    onPointed: SettingsView.hovered = root.row
+
+                    Toggle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        checked: command.commandOn
+                        onToggled: root.setCommand(plugin.modelData.id, command.modelData.word, !command.commandOn)
+                    }
                 }
             }
 

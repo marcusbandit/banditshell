@@ -130,6 +130,7 @@ Singleton {
     property string selection: ""
     property string selectionOrigin: ""
     property bool selectionRead: false
+    property double selectionAt: 0
 
     Component.onCompleted: root.refresh()
 
@@ -895,6 +896,7 @@ Singleton {
                 root.selection = text;
                 root.selectionOrigin = Hypr.focusedAddress;
                 root.selectionRead = true;
+                root.selectionAt = Date.now();
                 const then = selectionReader.then;
                 selectionReader.then = "";
                 if (then && root.selection.trim())

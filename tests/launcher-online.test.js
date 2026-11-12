@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Translation = lib("services/translation.js", ["ask", "languageCode", "languageName", "readAnswer", "keyOf", "splitKey", "pageUrl", "localeCode"]);
+const Translation = lib("services/translation.js", ["ask", "selectionAsk", "languageCode", "languageName", "readAnswer", "keyOf", "splitKey", "pageUrl", "localeCode"]);
 const Dictionary = lib("services/dictionary.js", ["ask", "modeOf", "waitingForWord", "readAnswer", "plain", "pageUrl", "senseLine", "onlineSensesOf"]);
 const Packages = lib("services/packages.js", ["ask", "readSystem", "readAur", "readFlatpakIndex", "readFlatpakInstalled", "searchFlatpaks", "rank", "installToken", "removalOf", "pageUrl", "detailOf"]);
 const Github = lib("services/github.js", ["ask", "readSummary", "matches", "ago", "numberUrl"]);
@@ -411,5 +411,19 @@ test.describe("video downloads", () => {
         assert.ok(!Videos.needsSignIn("Unable to download webpage: HTTP Error 404"));
         assert.strictEqual(Videos.shortError("ERROR: [youtube] jNQXAC9IVRw: Sign in to confirm you are not a bot. Use --cookies-from-browser or --cookies"), "Sign in to confirm you are not a bot");
         assert.strictEqual(Videos.shortError("ERROR: Unsupported URL: https://x.test/a"), "Unsupported URL: https://x.test/a");
+    });
+});
+
+test.describe("translate the selection", () => {
+    test.it("takes any target language and falls back to the preferred one", () => {
+        assert.deepStrictEqual(Translation.selectionAsk("translate to french"), { to: "fr" });
+        assert.deepStrictEqual(Translation.selectionAsk("tr selection into japanese"), { to: "ja" });
+        assert.deepStrictEqual(Translation.selectionAsk("translate selected text"), { to: "" });
+    });
+
+    test.it("leaves ordinary translate questions alone", () => {
+        assert.strictEqual(Translation.selectionAsk("translate hola to english"), null);
+        assert.strictEqual(Translation.selectionAsk("translate to klingon"), null);
+        assert.strictEqual(Translation.selectionAsk("translate hello"), null);
     });
 });

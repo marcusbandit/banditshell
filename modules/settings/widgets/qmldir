@@ -22,6 +22,7 @@ ShortcutsWidget 1.0 ShortcutsWidget.qml
 SnippetsWidget 1.0 SnippetsWidget.qml
 SpecialsWidget 1.0 SpecialsWidget.qml
 StartupWidget 1.0 StartupWidget.qml
+ThemeEditorWidget 1.0 ThemeEditorWidget.qml
 ThemesWidget 1.0 ThemesWidget.qml
 TunnelsWidget 1.0 TunnelsWidget.qml
 UpdateWidget 1.0 UpdateWidget.qml

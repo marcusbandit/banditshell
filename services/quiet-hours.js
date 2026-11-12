@@ -126,3 +126,14 @@ function quietLine(state, at) {
         return `Quiet until ${state.to}`;
     return "";
 }
+
+const QUIET_UNTIL = /^(?:dnd|do not disturb|quiet|silence|mute)\s+(?:until|till|til|to)\s+(.+)$/i;
+
+function quietClockPhrase(text) {
+    const m = QUIET_UNTIL.exec(String(text ?? "").trim());
+    return m ? m[1].trim() : "";
+}
+
+function nextClockAt(minutes, at) {
+    return nextOccurrence(at, minutes);
+}
