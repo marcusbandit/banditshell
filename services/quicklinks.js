@@ -1,17 +1,56 @@
 .pragma library
 
-var QUERY = /\{query\}/gi;
+var SLOT = /\{([a-z][a-z0-9_-]{0,23})\}/gi;
+var MOST_SLOTS = 3;
+var SAMPLES = ["cats", "dogs", "birds"];
 var HOST = /^[a-z][a-z0-9+.-]*:\/\/([^\/?#]+)/i;
 var ORIGIN = /^([a-z][a-z0-9+.-]*:\/\/[^\/?#]+)/i;
-var HAS_QUERY = /\{query\}/i;
 var LEADING = /^\s+/;
 var GAP = /\s/;
 var GAPS = /\s+/g;
 var WWW = /^www\./i;
 var KEYWORD_SCORE = 0.5;
 
+function slots(url) {
+    var found = [];
+    var source = String(url || "");
+    SLOT.lastIndex = 0;
+    var m;
+    while ((m = SLOT.exec(source)) !== null) {
+        var name = m[1].toLowerCase();
+        if (found.indexOf(name) < 0 && found.length < MOST_SLOTS)
+            found.push(name);
+    }
+    return found;
+}
+
 function takes(link) {
-    return HAS_QUERY.test(String(link && link.url || ""));
+    return slots(link && link.url).length > 0;
+}
+
+function sample(url) {
+    return SAMPLES.slice(0, slots(url).length).join(" ");
+}
+
+function values(url, typed) {
+    var count = slots(url).length;
+    var words = String(typed || "").trim();
+    var out = [];
+    while (out.length < count - 1 && words) {
+        var cut = words.search(GAP);
+        if (cut < 0)
+            break;
+        out.push(words.slice(0, cut));
+        words = words.slice(cut).replace(LEADING, "");
+    }
+    if (out.length < count && words)
+        out.push(words);
+    return out;
+}
+
+function missing(url, typed) {
+    var names = slots(url);
+    return names.length > 1 ? names[values(url, typed).length] || "" : "";
 }
 
 function hostOf(url) {
@@ -21,14 +60,44 @@ function hostOf(url) {
 
 function resolve(url, query) {
     var template = String(url || "");
-    var typed = String(query || "").trim();
-    if (!HAS_QUERY.test(template))
+    var names = slots(template);
+    if (!names.length)
         return template;
+    var typed = String(query || "").trim();
     if (!typed) {
         var origin = ORIGIN.exec(template);
-        return origin ? origin[1] + "/" : template.replace(QUERY, "");
+        return origin ? origin[1] + "/" : template.replace(SLOT, "");
     }
-    return template.replace(QUERY, encodeURIComponent(typed));
+    var given = values(template, typed);
+    return template.replace(SLOT, function (whole, name) {
+        var at = names.indexOf(name.toLowerCase());
+        return at < 0 ? whole : encodeURIComponent(given[at] || "");
+    });
+}
+
+function originOf(url) {
+    var m = ORIGIN.exec(String(url || ""));
+    return m ? m[1] + "/" : "";
+}
+
+function copyOf(list, link) {
+    var base = String(link && link.name || "Link").trim() + " copy";
+    var names = {};
+    for (var i = 0; i < (list || []).length; i++)
+        if (list[i])
+            names[String(list[i].name || "").toLowerCase()] = true;
+    var name = base;
+    for (var n = 2; names[name.toLowerCase()]; n++)
+        name = base + " " + n;
+    var keyword = cleanKeyword(link && link.keyword);
+    var next = keyword;
+    for (var k = 2; !next || keywordHolder(list, next, -1); k++)
+        next = keyword + k;
+    return {
+        name: name,
+        keyword: next,
+        url: String(link && link.url || "")
+    };
 }
 
 function cleanKeyword(text) {
