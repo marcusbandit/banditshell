@@ -43,6 +43,18 @@ Item {
         Trace.step("shown", span);
     }
 
+    function showPage(text: string): void {
+        const span = root.open ? null : Trace.begin("launcher open", loader.active ? "" : "first");
+        const concept = root.build(span);
+        if (concept.showPage)
+            concept.showPage(text);
+        else
+            concept.show(text);
+        Trace.step("shown", span);
+    }
+
+    readonly property string page: root.concept?.shownView?.name ?? ""
+
     function hide(): void {
         const span = root.open ? Trace.begin("launcher close") : null;
         root.concept?.hide();

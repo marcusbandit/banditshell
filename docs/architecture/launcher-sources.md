@@ -107,6 +107,29 @@ row stands for. The launcher passes the row back unchanged.
 | `launch(fn)` | Close the launcher, run `fn` and let the next window that opens take focus. |
 | `retype(text)` | Replace the query. |
 | `copyText(text)` | Copy and close. |
-| `present(view)`, `presents` | Open a full page in place of the list, where the launcher supports it. |
+| `present(view)`, `presents`, `presenting` | Open a full page in place of the list, where the launcher supports it, see Pages. `presenting` is true while one is open. |
 | `inquire(row)` | Ask the launcher to take a line of text for a row, the way the notification reply does. |
 | `windowTarget()` | The window the launcher's window commands act on. |
+
+## Pages
+
+`present(view)` takes `{ component, text }`: the page to draw and the title the
+search field shows. A page that filters as the person types, like the clipboard
+and emoji pages, adds:
+
+| field | what it does |
+|---|---|
+| `filters` | True to keep the search field editable. Its text goes to the page's `query` and no longer reaches the sources. |
+| `placeholder` | The field's grey hint while it is empty. |
+| `filter` | The text the field starts with. |
+| `restore` | What the field goes back to on Esc. The query from before the page when left out. |
+| `name` | A short name, so `launcher.page` can say which page is open. |
+| `source` | Anything the page needs back, usually the source itself. The page reads it as `view.source`. |
+
+The page is an `Item` that may declare `typed`, `query` and `view` for the
+launcher to fill, `claimKey(event)` to take keys before the field does, and
+the signals `leave(fn)`, `launch(fn)`, `back()`, `retitle(text)` and
+`asks(item, actions, x, y)`, the last one opening the actions sheet. A page
+with `choices` (a list of `{ label, icon }`), `choice` and `choose(index)`
+gets a dropdown at the right of the field, opened by a click or Ctrl+P.
+

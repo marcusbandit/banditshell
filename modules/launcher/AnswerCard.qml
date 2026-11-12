@@ -20,7 +20,7 @@ Item {
     readonly property string said: root.answer?.text ?? ""
     readonly property string told: root.answer?.detail ?? ""
     readonly property bool captioned: root.asked !== "" || root.told !== ""
-    readonly property real half: (card.width - Appearance.padding.large * 2 - arrow.width) / 2
+    readonly property real half: (card.width - Appearance.padding.large * 4 - arrow.width) / 2
 
     visible: !!root.answer
     implicitHeight: visible ? head.height + Appearance.padding.small + card.height : 0
@@ -36,7 +36,7 @@ Item {
             anchors.left: parent.left
             anchors.leftMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
-            text: root.answer?.section ?? (root.answer?.money ? "Currency" : root.answer?.swatch ? "Colour" : "Calculator")
+            text: root.answer?.section ?? (root.answer?.money ? "Currency" : root.answer?.swatch ? "Colour" : root.answer?.icon === "event" ? "Date" : "Calculator")
             font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textFaint
         }
@@ -65,12 +65,13 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Enter copies"
                 font.pixelSize: Appearance.font.size.small
-                color: root.holds ? Appearance.colour.accent : Appearance.colour.textFaint
+                color: hint.value
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                FollowColour {
+                    id: hint
+
+                    target: root.holds ? Appearance.colour.accent : Appearance.colour.textFaint
+                    speed: Appearance.animation.revealSpeed
                 }
             }
         }
@@ -166,12 +167,16 @@ Item {
                     }
 
                     StyledText {
+                        anchors.verticalCenter: parent.verticalCenter
                         width: Math.min(implicitWidth, side.width - (side.modelData.swatch ? Appearance.font.size.display + Appearance.padding.normal : 0))
                         text: side.modelData.big
                         font.pixelSize: Appearance.font.size.display
                         font.weight: Font.DemiBold
+                        fontSizeMode: Text.HorizontalFit
+                        minimumPixelSize: Appearance.font.size.large
+                        horizontalAlignment: Text.AlignHCenter
                         color: side.modelData.dim ? Appearance.colour.textDim : Appearance.colour.text
-                        elide: Text.ElideMiddle
+                        elide: Text.ElideRight
                         maximumLineCount: 1
                     }
                 }

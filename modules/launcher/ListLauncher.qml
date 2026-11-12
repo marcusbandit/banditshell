@@ -220,19 +220,54 @@ LauncherConcept {
         root.input.forceActiveFocus();
     }
 
+    readonly property bool filtering: !!root.shownView?.filters
+    property string queryBeforeView: ""
+    property bool backCloses: false
+
     function present(view: var): void {
         Appearance.instant = false;
         root.morph();
+        if (view.filters)
+            root.queryBeforeView = view.restore ?? query.text;
         root.viewWord = view.text ?? "";
         root.viewComponent = view.component;
         root.shownView = view;
+        if (view.filters) {
+            query.text = view.filter ?? "";
+            query.cursorPosition = query.text.length;
+        }
         Qt.callLater(query.forceActiveFocus);
     }
 
     function closeView(): void {
+        if (root.backCloses) {
+            root.hide();
+            return;
+        }
         root.morph();
+        if (root.filtering) {
+            query.text = root.queryBeforeView;
+            query.cursorPosition = query.text.length;
+        }
         root.shownView = null;
         Qt.callLater(query.forceActiveFocus);
+    }
+
+    function showPage(text: string): void {
+        root.show(text);
+        root.backCloses = true;
+    }
+
+    function chooseFilter(): void {
+        const page = viewLoader.item;
+        if (!page?.choices?.length)
+            return;
+        const at = choicePill.mapToItem(panel, choicePill.width / 2, choicePill.height);
+        sheet.popup(at.x, at.y, page.choices.map((c, i) => ({
+                    icon: c.icon,
+                    label: c.label,
+                    run: () => page.choose(i)
+                })), page.choice);
     }
 
     function morph(): void {
@@ -261,7 +296,7 @@ LauncherConcept {
     LauncherSearch {
         id: search
 
-        query: root.input?.text ?? ""
+        query: root.filtering ? root.queryBeforeView : root.input?.text ?? ""
         screenName: root.screenName
         quiet: !!root.capture || !!root.shownView
         active: root.open
@@ -337,6 +372,7 @@ LauncherConcept {
     onTilesChanged: root.tile = Math.min(root.tile, Math.max(0, root.tiles.length - 1))
 
     onShowing: {
+        root.backCloses = false;
         root.intoList = false;
         root.tileKeyed = false;
         root.unsized = true;
@@ -362,6 +398,8 @@ LauncherConcept {
         if (!Assistant.inPlace)
             Assistant.stop();
         root.capture = null;
+        if (root.filtering)
+            root.input.text = "";
         root.shownView = null;
         root.morphing = false;
         viewIn.snap();
@@ -563,6 +601,10 @@ LauncherConcept {
         if (root.shownView && !sheet.open) {
             if (event.key === Qt.Key_Escape && !(event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier))) {
                 root.closeView();
+                return true;
+            }
+            if (event.key === Qt.Key_P && (event.modifiers & Qt.ControlModifier) && viewLoader.item?.choices?.length) {
+                root.chooseFilter();
                 return true;
             }
             return !!viewLoader.item?.claimKey(event);
@@ -1135,7 +1177,8 @@ LauncherConcept {
 
                         anchors.left: searchGlyph.right
                         anchors.leftMargin: Appearance.padding.normal
-                        anchors.right: parent.right
+                        anchors.right: choicePill.visible ? choicePill.left : parent.right
+                        anchors.rightMargin: choicePill.visible ? Appearance.padding.normal : 0
                         anchors.verticalCenter: parent.verticalCenter
 
                         font.family: Appearance.font.family
@@ -1146,9 +1189,9 @@ LauncherConcept {
                         selectedTextColor: Appearance.colour.accentText
                         clip: true
 
-                        readOnly: !!root.shownView || !!root.argCommand
-                        opacity: viewIn.listShown
-                        cursorVisible: !root.shownView && activeFocus
+                        readOnly: !!root.shownView && !root.filtering || !!root.argCommand
+                        opacity: root.filtering ? 1 : viewIn.listShown
+                        cursorVisible: (!root.shownView || root.filtering) && activeFocus
 
                         Keys.onPressed: event => root.pressKey(event)
 
@@ -1156,7 +1199,7 @@ LauncherConcept {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
 
-                            text: !root.capture ? "Search, or ? for help" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
+                            text: root.filtering ? root.shownView.placeholder ?? "" : !root.capture ? "Search, or ? for help" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
                         }
@@ -1198,11 +1241,69 @@ LauncherConcept {
                         anchors.left: query.left
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        visible: viewIn.viewShown > 0
+                        visible: viewIn.viewShown > 0 && !root.filtering
                         opacity: viewIn.viewShown
                         text: root.viewWord
                         font.pixelSize: Appearance.font.size.normal
                         elide: Text.ElideRight
+                    }
+
+                    Item {
+                        id: choicePill
+
+                        readonly property var choices: root.shownView ? viewLoader.item?.choices ?? [] : []
+                        readonly property var chosen: choicePill.choices[viewLoader.item?.choice ?? 0] ?? null
+
+                        visible: choicePill.choices.length > 0
+                        opacity: viewIn.viewShown
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: choiceRow.implicitWidth + Appearance.padding.normal * 2
+                        height: choiceRow.implicitHeight + Appearance.padding.small * 2
+
+                        SquircleRect {
+                            anchors.fill: parent
+                            pill: "object"
+                            color: choiceHover.hovered ? Appearance.colour.fillStrong : Appearance.colour.fill
+                        }
+
+                        Row {
+                            id: choiceRow
+
+                            anchors.centerIn: parent
+                            spacing: Appearance.padding.small
+
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: choicePill.chosen?.icon ?? ""
+                                size: Appearance.icon.small
+                                color: Appearance.colour.textDim
+                            }
+
+                            StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: choicePill.chosen?.label ?? ""
+                                font.pixelSize: Appearance.font.size.small
+                                color: Appearance.colour.textDim
+                            }
+
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: "expand_more"
+                                size: Appearance.icon.small
+                                color: Appearance.colour.textFaint
+                            }
+                        }
+
+                        HoverHandler {
+                            id: choiceHover
+
+                            cursorShape: Qt.PointingHandCursor
+                        }
+
+                        TapHandler {
+                            onTapped: root.chooseFilter()
+                        }
                     }
                 }
 
@@ -1325,6 +1426,20 @@ LauncherConcept {
                             when: viewLoader.status === Loader.Ready
                         }
 
+                        Binding {
+                            target: viewLoader.item
+                            property: "query"
+                            value: query.text
+                            when: viewLoader.status === Loader.Ready && root.filtering
+                        }
+
+                        Binding {
+                            target: viewLoader.item
+                            property: "view"
+                            value: root.shownView
+                            when: viewLoader.status === Loader.Ready && root.filtering
+                        }
+
                         Connections {
                             target: viewLoader.item
                             ignoreUnknownSignals: true
@@ -1344,6 +1459,11 @@ LauncherConcept {
 
                             function onRetitle(text: string): void {
                                 root.viewWord = text;
+                            }
+
+                            function onAsks(item: Item, actions: var, x: real, y: real): void {
+                                const at = item.mapToItem(panel, x, y);
+                                sheet.popup(at.x, at.y, actions);
                             }
                         }
                     }
