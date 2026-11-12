@@ -481,7 +481,7 @@ Item {
         }, {
             icon: Files.showHidden ? "visibility_off" : "visibility",
             label: Files.showHidden ? "Hide hidden files" : "Show hidden files",
-            run: () => Config.set("files.hidden", !Files.showHidden)
+            run: () => Files.setShowHidden(!Files.showHidden)
         }, {
             icon: "terminal",
             label: Files.terminalOpen ? "Hide terminal" : "Terminal here",
