@@ -837,6 +837,7 @@ const PAGES_SOURCE = {
         groups: [
             { t: "Screenshots", rows: [
                 { n: 89, icon: "folder", label: "Saved to", k: "shotDir", kind: "path", cfg: "picker.dir", kw: "screenshots folder" },
+                { n: 89, icon: "folder_copy", label: "Also search in", k: "shotFolders", kind: "text", mono: true, cfg: "launcher.latest.screenshotFolders", placeholder: "~/Pictures/Shots, ~/Documents/Captures", why: "More folders for the launcher's screenshots search, separated by commas.", kw: "screenshots folders search more" },
                 { n: 89, icon: "edit", label: "Edit with", k: "shotEditor", kind: "text", mono: true, cfg: "picker.editor", placeholder: "just save it", kw: "screenshots editor" },
                 { n: 89, icon: "highlight_alt", label: "Outline", k: "outline", kind: "step", min: 0, max: 6, unit: " px", cfg: "picker.outline", why: "A line around the selection. 0 draws none.", kw: "screenshots outline" }
             ] },

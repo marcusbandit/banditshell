@@ -328,6 +328,10 @@ Singleton {
                     openaiAddress: "https://api.openai.com/v1"
                 },
 
+                latest: {
+                    screenshotFolders: ""
+                },
+
                 online: {
                     translate: true,
                     translateTo: "",

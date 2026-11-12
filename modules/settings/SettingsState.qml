@@ -296,6 +296,7 @@ Singleton {
             weatherMinutes: "weather.minutes",
             shotDir: "picker.dir",
             shotEditor: "picker.editor",
+            shotFolders: "launcher.latest.screenshotFolders",
             outline: "picker.outline",
             stream: "stream.enabled",
             streamScreen: "stream.screen",
