@@ -428,7 +428,7 @@ Singleton {
                     lostMs: 5000
                 },
 
-                dictateToAsk: true,
+                dictateToAsk: false,
 
                 typing: {
                     skinTone: "none",

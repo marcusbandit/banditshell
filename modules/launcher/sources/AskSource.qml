@@ -29,36 +29,35 @@ QtObject {
         }
     }
 
-    property string spoken: ""
-    property string lastSpokenId: ""
-    property int spokenTries: 0
+    property bool listening: false
+    property bool eligible: false
 
     property Connections dictation: Connections {
         target: Dictation
 
-        function onEntriesChanged(): void {
-            const newest = Dictation.entries[0];
-            if (!newest || newest.id === root.lastSpokenId)
-                return;
-            root.lastSpokenId = newest.id;
-            if (!root.search.active || !Config.values.launcher.dictateToAsk || !Assistant.enabled || Date.now() - newest.recorded > 8000)
-                return;
-            root.spoken = newest.text.trim();
-            root.spokenTries = 0;
-            spokenWatch.restart();
+        function onPhaseChanged(): void {
+            if (Dictation.phase !== "idle") {
+                if (root.listening)
+                    return;
+                root.listening = true;
+                root.eligible = root.search.active && root.search.query.trim() === "" && Config.values.launcher.dictateToAsk && Assistant.enabled;
+            } else if (root.listening) {
+                root.listening = false;
+                if (root.eligible)
+                    settle.restart();
+            }
         }
     }
 
-    property Timer spokenWatch: Timer {
+    property Timer settle: Timer {
         interval: 150
-        repeat: true
         onTriggered: {
-            root.spokenTries++;
-            const asked = root.search.active ? DictationEvents.asking(root.search.query, root.spoken) : null;
+            const typed = root.search.query;
+            if (!root.search.active || root.search.intent || Prefixes.asked(typed))
+                return;
+            const asked = DictationEvents.asking(typed);
             if (asked !== null)
                 root.search.retype(asked);
-            if (asked !== null || !root.search.active || root.spokenTries >= 12)
-                stop();
         }
     }
 

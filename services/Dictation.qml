@@ -167,7 +167,6 @@ Singleton {
     }
 
     function clear(): void {
-        root.entries = [];
         root.run(["drop", "all"]);
     }
 
@@ -215,13 +214,32 @@ Singleton {
         root.run(["drop", entry.id]);
     }
 
+    property var queued: []
+
     function run(args: var): void {
-        poke.command = ["sh", "-c", 'exec "$(command -v voice || printf %s "$HOME/bin/voice")" "$@"', "voice", ...args];
+        root.queued = root.queued.concat([args]);
+        root.advance();
+    }
+
+    function advance(): void {
+        if (poke.running || !root.queued.length)
+            return;
+        const next = root.queued[0];
+        root.queued = root.queued.slice(1);
+        poke.command = ["sh", "-c", 'exec "$(command -v voice || printf %s "$HOME/bin/voice")" "$@"', "voice", ...next];
         poke.running = true;
     }
 
     Process {
         id: poke
+
+        onExited: code => {
+            if (code !== 0) {
+                options.reload();
+                store.reload();
+            }
+            root.advance();
+        }
 
         stderr: SplitParser {
             onRead: line => console.warn("Dictation:", line)

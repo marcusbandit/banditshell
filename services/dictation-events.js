@@ -69,12 +69,9 @@ function dictationSettings(raw) {
     };
 }
 
-function asking(text, spoken) {
-    var said = String(spoken || "").trim();
+function asking(text) {
     var typed = String(text || "").trim();
-    if (!said || typed.indexOf(said) < 0)
-        return null;
-    if (/^(\?+|ask(\s|$))/i.test(typed))
+    if (!typed || /^(\?+|ask(\s|$))/i.test(typed))
         return null;
     return "ask " + typed;
 }

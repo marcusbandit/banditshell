@@ -1371,7 +1371,7 @@ Singleton {
 
     readonly property var outputs: Audio.sinks.map(n => [n.name, Audio.deviceLabel(n)])
     readonly property var inputs: Audio.sources.map(n => [n.name, Audio.deviceLabel(n)])
-    readonly property var dictationInputs: [["default", `System default, ${root.inputName}`]].concat(root.inputs)
+    readonly property var dictationInputs: [["default", `System default, ${root.inputName}`]].concat(root.inputs, Dictation.microphone !== "default" && !root.inputs.some(i => i[0] === Dictation.microphone) ? [[Dictation.microphone, `${Dictation.microphone} (not connected)`]] : [])
     readonly property var dictationOutputs: DictationEvents.OUTPUTS
     readonly property var dictationLanguages: DictationEvents.LANGUAGES
     readonly property string outputName: Audio.sink ? Audio.deviceLabel(Audio.sink) : "no output"

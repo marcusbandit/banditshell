@@ -69,14 +69,13 @@ test.describe("the key that starts dictation", () => {
     });
 
     test.it("turns what was dictated into a question for the assistant", () => {
-        assert.strictEqual(Events.asking("why is the sky blue", "why is the sky blue"), "ask why is the sky blue");
+        assert.strictEqual(Events.asking("why is the sky blue"), "ask why is the sky blue");
     });
 
-    test.it("leaves text alone that is already an ask or does not hold the dictation yet", () => {
-        assert.strictEqual(Events.asking("ask why is the sky blue", "why is the sky blue"), null);
-        assert.strictEqual(Events.asking("? why", "why"), null);
-        assert.strictEqual(Events.asking("firefox", "why is the sky blue"), null);
-        assert.strictEqual(Events.asking("anything", ""), null);
+    test.it("leaves text alone that is already an ask or empty", () => {
+        assert.strictEqual(Events.asking("ask why is the sky blue"), null);
+        assert.strictEqual(Events.asking("? why"), null);
+        assert.strictEqual(Events.asking("   "), null);
     });
 
     test.it("maps the daemon language tag back to the code the voice tool takes", () => {
