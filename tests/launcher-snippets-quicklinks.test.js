@@ -6,8 +6,14 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 
 function lib(file, names) {
-    const src = fs.readFileSync(path.join(ROOT, file), "utf8").replace(/^\.pragma .*$/m, "");
-    return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
+    let src = fs.readFileSync(path.join(ROOT, file), "utf8").replace(/^\.pragma .*$/m, "");
+    let head = "";
+    src = src.replace(/^\.import "([^"]+)" as (\w+)$/gm, (_, sibling, name) => {
+        const all = fs.readFileSync(path.join(ROOT, path.dirname(file), sibling), "utf8").match(/^function (\w+)/gm).map(f => f.slice(9));
+        head += `const ${name} = lib(${JSON.stringify(path.join(path.dirname(file), sibling))}, ${JSON.stringify(all)});\n`;
+        return "";
+    });
+    return new Function("lib", `${head}${src}\nreturn { ${names.join(", ")} };`)(lib);
 }
 
 const Snippets = lib("services/snippets.js", ["find", "copyName", "keywordRoom", "keywordBefore"]);
@@ -22,6 +28,15 @@ test.describe("snippet pins and copies", () => {
 
     test.it("lists a pinned snippet first when browsing", () => {
         assert.deepStrictEqual(Snippets.find(LIST, "", true).map(f => f.snippet.id), ["b", "a", "c"]);
+    });
+
+    test.it("lists a pinned snippet first once a term is typed", () => {
+        const list = [
+            { id: "x", name: "Agenda", keyword: "", text: "" },
+            { id: "y", name: "My agenda", keyword: "", text: "", pinned: true },
+            { id: "z", name: "Other", keyword: "", text: "agenda inside", pinned: true }
+        ];
+        assert.deepStrictEqual(Snippets.find(list, "ag", true).map(f => f.snippet.id), ["y", "z", "x"]);
     });
 
     test.it("names a copy so it never clashes with another snippet", () => {
@@ -46,6 +61,11 @@ test.describe("expanding a keyword typed before the cursor", () => {
         assert.strictEqual(Snippets.keywordBefore(LIST, "hello ;sig").snippet.id, "a");
         assert.strictEqual(Snippets.keywordBefore(LIST, "x ;longsig").snippet.id, "b");
         assert.strictEqual(Snippets.keywordBefore(LIST, "brb").length, 3);
+    });
+
+    test.it("matches the keyword whatever its capitals", () => {
+        assert.strictEqual(Snippets.keywordBefore(LIST, "Brb").snippet.id, "c");
+        assert.strictEqual(Snippets.keywordBefore(LIST, "x ;SIG").snippet.id, "a");
     });
 
     test.it("ignores a keyword that ends a longer word", () => {
@@ -77,6 +97,11 @@ test.describe("quicklink arguments", () => {
 
     test.it("takes at most three arguments", () => {
         assert.strictEqual(Quicklinks.slots("https://x.com/{a}{b}{c}{d}").length, 3);
+    });
+
+    test.it("refuses a link with a fourth argument", () => {
+        assert.strictEqual(Quicklinks.problem({ name: "n", keyword: "k", url: "https://x.com/{a}/{b}/{c}/{d}" }), "takes at most three arguments");
+        assert.strictEqual(Quicklinks.problem({ name: "n", keyword: "k", url: "https://x.com/{a}/{b}/{c}/{a}" }), "");
     });
 
     test.it("says which argument comes next", () => {

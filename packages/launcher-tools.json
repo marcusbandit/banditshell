@@ -41,6 +41,7 @@
     ],
     "js": [
       "services/clipboard-page.js",
+      "services/copy-name.js",
       "services/colour-picks.js",
       "services/dev-utilities.js",
       "services/emoji-grid.js",

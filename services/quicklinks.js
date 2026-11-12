@@ -1,5 +1,7 @@
 .pragma library
 
+.import "copy-name.js" as CopyName
+
 var SLOT = /\{([a-z][a-z0-9_-]{0,23})\}/gi;
 var MOST_SLOTS = 3;
 var SAMPLES = ["cats", "dogs", "birds"];
@@ -11,17 +13,21 @@ var GAPS = /\s+/g;
 var WWW = /^www\./i;
 var KEYWORD_SCORE = 0.5;
 
-function slots(url) {
+function allSlots(url) {
     var found = [];
     var source = String(url || "");
     SLOT.lastIndex = 0;
     var m;
     while ((m = SLOT.exec(source)) !== null) {
         var name = m[1].toLowerCase();
-        if (found.indexOf(name) < 0 && found.length < MOST_SLOTS)
+        if (found.indexOf(name) < 0)
             found.push(name);
     }
     return found;
+}
+
+function slots(url) {
+    return allSlots(url).slice(0, MOST_SLOTS);
 }
 
 function takes(link) {
@@ -81,14 +87,9 @@ function originOf(url) {
 }
 
 function copyOf(list, link) {
-    var base = String(link && link.name || "Link").trim() + " copy";
-    var names = {};
-    for (var i = 0; i < (list || []).length; i++)
-        if (list[i])
-            names[String(list[i].name || "").toLowerCase()] = true;
-    var name = base;
-    for (var n = 2; names[name.toLowerCase()]; n++)
-        name = base + " " + n;
+    var name = CopyName.next((list || []).map(function (item) {
+        return item && item.name;
+    }), String(link && link.name || "Link").trim() + " copy");
     var keyword = cleanKeyword(link && link.keyword);
     var next = keyword;
     for (var k = 2; !next || keywordHolder(list, next, -1); k++)
@@ -174,6 +175,8 @@ function problem(link) {
         return "needs a keyword";
     if (!HOST.test(String(link.url || "").trim()))
         return "needs a full address like https://…";
+    if (allSlots(link.url).length > MOST_SLOTS)
+        return "takes at most three arguments";
     return "";
 }
 

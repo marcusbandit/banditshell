@@ -1,11 +1,12 @@
 .pragma library
 
+.import "copy-name.js" as CopyName
+
 var EXPLICIT = /^(?:snippets?|snip)(?:\s+([\s\S]*))?$/i;
 var PLACEHOLDERS = /\{(date|time|clipboard|cursor)\}/gi;
 var SPACES = /\s+/g;
 var AMBIENT = 0.35;
 var AMBIENT_STEP = 0.035;
-var PIN_BONUS = 1;
 var PIN_BONUS_AMBIENT = 0.05;
 var BOUNDARY = /^[\s.,;:!?()\[\]{}"'<>\/\\-]$/;
 var KEYWORD_ROOM = 48;
@@ -43,7 +44,7 @@ function find(list, term, explicit) {
         var item = list[i];
         if (!item)
             continue;
-        var bonus = item.pinned ? (explicit ? PIN_BONUS : PIN_BONUS_AMBIENT) : 0;
+        var bonus = item.pinned && !explicit ? PIN_BONUS_AMBIENT : 0;
         if (!want) {
             if (explicit)
                 out.push({
@@ -66,7 +67,12 @@ function find(list, term, explicit) {
             });
     }
     return out.sort(function (a, b) {
-        return b.score - a.score || String(a.snippet.name).localeCompare(String(b.snippet.name));
+        var keyedA = a.score === Infinity;
+        var keyedB = b.score === Infinity;
+        if (keyedA !== keyedB)
+            return keyedA ? -1 : 1;
+        var pinned = (b.snippet.pinned ? 1 : 0) - (a.snippet.pinned ? 1 : 0);
+        return pinned || b.score - a.score || String(a.snippet.name).localeCompare(String(b.snippet.name));
     });
 }
 
@@ -181,15 +187,9 @@ function keywordHolder(list, keyword, id) {
 }
 
 function copyName(list, name) {
-    var base = String(name || "snippet").trim() + " copy";
-    var taken = {};
-    for (var i = 0; i < (list || []).length; i++)
-        if (list[i])
-            taken[String(list[i].name || "").toLowerCase()] = true;
-    var out = base;
-    for (var n = 2; taken[out.toLowerCase()]; n++)
-        out = base + " " + n;
-    return out;
+    return CopyName.next((list || []).map(function (item) {
+        return item && item.name;
+    }), String(name || "snippet").trim() + " copy");
 }
 
 function keywordRoom(list) {
@@ -208,7 +208,7 @@ function keywordBefore(list, before) {
     for (var i = 0; i < (list || []).length; i++) {
         var item = list[i];
         var keyword = item && item.keyword ? String(item.keyword) : "";
-        if (!keyword || tail.length < keyword.length || tail.slice(tail.length - keyword.length) !== keyword)
+        if (!keyword || tail.length < keyword.length || tail.slice(tail.length - keyword.length).toLowerCase() !== keyword.toLowerCase())
             continue;
         var prior = tail.slice(0, tail.length - keyword.length);
         if (prior && !BOUNDARY.test(prior.slice(-1)))

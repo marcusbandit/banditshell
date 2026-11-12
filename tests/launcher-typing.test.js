@@ -6,8 +6,14 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 
 function lib(file, names) {
-    const src = fs.readFileSync(path.join(ROOT, file), "utf8").replace(/^\.pragma .*$/m, "");
-    return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
+    let src = fs.readFileSync(path.join(ROOT, file), "utf8").replace(/^\.pragma .*$/m, "");
+    let head = "";
+    src = src.replace(/^\.import "([^"]+)" as (\w+)$/gm, (_, sibling, name) => {
+        const all = fs.readFileSync(path.join(ROOT, path.dirname(file), sibling), "utf8").match(/^function (\w+)/gm).map(f => f.slice(9));
+        head += `const ${name} = lib(${JSON.stringify(path.join(path.dirname(file), sibling))}, ${JSON.stringify(all)});\n`;
+        return "";
+    });
+    return new Function("lib", `${head}${src}\nreturn { ${names.join(", ")} };`)(lib);
 }
 
 const Table = lib("services/emoji-table.js", ["TABLE", "GROUPS", "FIRST_SYMBOL_GROUP"]);
