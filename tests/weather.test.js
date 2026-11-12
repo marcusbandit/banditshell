@@ -309,13 +309,13 @@ test("the type-ahead lists towns that start with what was typed, with the region
 });
 
 test("weather questions give a place, or none for here", () => {
-    assert.deepStrictEqual(Forecast.weatherAsk("weather"), { place: "" });
-    assert.deepStrictEqual(Forecast.weatherAsk("weather paris"), { place: "paris" });
-    assert.deepStrictEqual(Forecast.weatherAsk("weather in new york"), { place: "new york" });
-    assert.deepStrictEqual(Forecast.weatherAsk("what's the weather in tokyo?"), { place: "tokyo" });
-    assert.deepStrictEqual(Forecast.weatherAsk("oslo weather"), { place: "oslo" });
-    assert.deepStrictEqual(Forecast.weatherAsk("forecast for rome today"), { place: "rome" });
-    assert.deepStrictEqual(Forecast.weatherAsk("weather here"), { place: "" });
+    assert.deepStrictEqual(Forecast.weatherAsk("weather"), { place: "", loose: false });
+    assert.deepStrictEqual(Forecast.weatherAsk("weather paris"), { place: "paris", loose: false });
+    assert.deepStrictEqual(Forecast.weatherAsk("weather in new york"), { place: "new york", loose: false });
+    assert.deepStrictEqual(Forecast.weatherAsk("what's the weather in tokyo?"), { place: "tokyo", loose: false });
+    assert.deepStrictEqual(Forecast.weatherAsk("oslo weather"), { place: "oslo", loose: true });
+    assert.deepStrictEqual(Forecast.weatherAsk("forecast for rome today"), { place: "rome", loose: false });
+    assert.deepStrictEqual(Forecast.weatherAsk("weather here"), { place: "", loose: false });
 });
 
 test("weather leaves app names and other words alone", () => {
@@ -323,6 +323,11 @@ test("weather leaves app names and other words alone", () => {
     assert.strictEqual(Forecast.weatherAsk("weatherman"), null);
     assert.strictEqual(Forecast.weatherAsk("the weather widget"), null);
     assert.strictEqual(Forecast.weatherAsk("whether"), null);
+    assert.strictEqual(Forecast.weatherAsk("weather tomorrow"), null);
+    assert.strictEqual(Forecast.weatherAsk("weather in new york tomorrow"), null);
+    assert.strictEqual(Forecast.weatherAsk("gnome weather").loose, true);
+    assert.deepStrictEqual(Forecast.weatherAsk("what's the weather like"), { place: "", loose: false });
+    assert.deepStrictEqual(Forecast.weatherAsk("weather in paris today"), { place: "paris", loose: false });
 });
 
 test("current conditions read into a short line in either unit", () => {

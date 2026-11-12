@@ -385,23 +385,36 @@ function suggestPlace(location, results) {
 var WEATHER_BEFORE = /^(?:(?:what(?:'s|s| is)|how(?:'s| is)|show(?: me)?)\s+(?:the\s+)?)?(?:weather|forecast)(?:\s+(?:in|for|at|of|near))?(?:\s+(.+?))?\s*\??$/;
 var WEATHER_AFTER = /^(.+?)\s+(?:weather|forecast)\s*\??$/;
 var WEATHER_NOT_PLACES = /^(?:app|apps|widget|station|forecast|settings|setting|icon|icons|api|data|bar|panel|card|island)$/;
+var WEATHER_LATER = /\s+(?:tomorrow|tonight|next week|this week|this weekend|the weekend|next \w+|on (?:mon|tues|wednes|thurs|fri|satur|sun)day)$/;
+var WEATHER_FILLER = /(?:^|\s+)(?:today|now|right now|currently|outside|like|please|here|local|at the moment)$/;
 
 function weatherAsk(text) {
     var t = String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
+    var loose = false;
     var m = WEATHER_BEFORE.exec(t);
     var place = m ? (m[1] || "") : "";
     if (!m) {
         m = WEATHER_AFTER.exec(t);
         place = m ? m[1] : "";
+        loose = true;
     }
     if (!m)
         return null;
-    place = place.replace(/^(?:the|my)\s+/, "").replace(/\s+(?:today|now|right now|currently)$/, "").trim();
+    place = place.replace(/^(?:the|my)\s+/, "");
+    if (WEATHER_LATER.test(place) || place === "tomorrow" || place === "tonight")
+        return null;
+    while (WEATHER_FILLER.test(place))
+        place = place.replace(WEATHER_FILLER, "").trim();
     if (WEATHER_NOT_PLACES.test(place) || (place && place.length < 2))
         return null;
-    if (/^(?:here|local|home|my place|me)$/.test(place))
+    if (/^(?:home|my place|me)$/.test(place))
         place = "";
-    return { place: place };
+    if (loose && !place)
+        return null;
+    return {
+        place: place,
+        loose: loose
+    };
 }
 
 function nowOf(data) {
