@@ -7,9 +7,13 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property int release: 400
-    readonly property int selectWait: 150
-    readonly property int copyWait: 220
+    readonly property int armWait: 60
+    readonly property int keysWait: 90
+    readonly property int readWait: 120
+    readonly property int reads: 4
+    readonly property int restoreWait: 350
+    readonly property int limit: 6000
+    readonly property var letGo: ["-m", "ctrl", "-m", "alt", "-m", "altgr", "-m", "logo", "-m", "shift"]
 
     property var run: null
 
@@ -31,50 +35,128 @@ Singleton {
         root.run = {
             address: address,
             span: room + 1,
-            before: Clipboard.entries.find(e => e.id === Clipboard.current) ?? null
+            before: Clipboard.entries.find(e => e.id === Clipboard.current) ?? null,
+            token: `banditshell-snippet-probe-${Date.now()}`,
+            stage: "arm",
+            wait: "",
+            tries: 0,
+            selected: false,
+            hit: null
         };
-        stage.stepName = "select";
-        stage.interval = root.release;
-        stage.restart();
+        Clipboard.mute(true);
+        watchdog.restart();
+        root.guard(() => {
+            root.run.wait = "offer";
+            Clipboard.offer(["wl-copy"], root.run.token, false);
+        });
         return "expanding";
     }
 
-    function select(): void {
-        const keys = ["wtype", "-M", "shift"];
-        for (let i = 0; i < root.run.span; i++)
-            keys.push("-k", "Left");
-        keys.push("-m", "shift");
-        Keystrokes.send(keys);
-        stage.stepName = "copy";
-        stage.interval = root.selectWait;
-        stage.restart();
+    function guard(step: var): void {
+        try {
+            step();
+        } catch (e) {
+            console.warn("SnippetExpander:", e);
+            root.abort("Something went wrong, so nothing was typed.");
+        }
     }
 
-    function copySelection(): void {
-        Keystrokes.send(["wtype", "-M", "ctrl", "-k", "c", "-m", "ctrl"]);
-        stage.stepName = "read";
-        stage.interval = root.copyWait;
-        stage.restart();
+    function keys(argv: var): void {
+        Keystrokes.send([argv[0], ...root.letGo, ...argv.slice(1)]);
     }
 
-    function finish(copied: string): void {
+    function advance(from: string): void {
+        if (!root.run || root.run.wait !== from)
+            return;
+        root.run.wait = "";
+        settle.restart();
+    }
+
+    function next(): void {
         const job = root.run;
-        root.run = null;
-        Keystrokes.send(["wtype", "-k", "Right"]);
-        const unchanged = job.before && job.before.text === copied;
-        const hit = unchanged ? null : Snippets.keywordBefore(copied);
-        if (job.before && !unchanged)
-            Clipboard.copy(job.before);
-        if (!hit) {
-            root.fail("No snippet keyword sits before the cursor.");
+        if (!job)
+            return;
+        root.guard(() => {
+            if (job.stage === "arm") {
+                job.stage = "select";
+                const select = ["wtype", "-M", "shift"];
+                for (let i = 0; i < job.span; i++)
+                    select.push("-k", "Left");
+                select.push("-m", "shift");
+                job.wait = "keys";
+                root.keys(select);
+            } else if (job.stage === "select") {
+                job.stage = "copy";
+                job.wait = "keys";
+                root.keys(["wtype", "-M", "ctrl", "-k", "c", "-m", "ctrl"]);
+            } else if (job.stage === "copy") {
+                job.stage = "read";
+                root.read();
+            } else if (job.stage === "restore") {
+                job.stage = "act";
+                Clipboard.mute(false);
+                root.act();
+            }
+        });
+    }
+
+    function read(): void {
+        root.run.tries += 1;
+        reader.running = true;
+    }
+
+    function heard(text: string): void {
+        const job = root.run;
+        if (!job || job.stage !== "read")
+            return;
+        const fresh = text !== "" && text !== job.token;
+        if (!fresh && job.tries < root.reads) {
+            settle.restart();
             return;
         }
-        const keys = ["wtype"];
-        for (let i = 0; i < hit.length; i++)
-            keys.push("-k", "BackSpace");
-        Keystrokes.send(keys);
-        const done = Snippets.expand(hit.snippet);
+        job.selected = fresh;
+        job.hit = fresh ? Snippets.keywordBefore(text) : null;
+        job.stage = "restore";
+        root.guard(() => {
+            job.wait = "offer";
+            if (job.before)
+                Clipboard.copy(job.before);
+            else
+                Clipboard.offer(["wl-copy", "--clear"], "", false);
+        });
+    }
+
+    function act(): void {
+        const job = root.run;
+        root.run = null;
+        watchdog.stop();
+        if (job.selected)
+            root.keys(["wtype", "-k", "Right"]);
+        if (!job.hit) {
+            root.fail(job.selected ? "No snippet keyword sits before the cursor." : "Nothing could be read before the cursor.");
+            return;
+        }
+        const erase = ["wtype"];
+        for (let i = 0; i < job.hit.length; i++)
+            erase.push("-k", "BackSpace");
+        root.keys(erase);
+        const done = Snippets.expand(job.hit.snippet);
         Typist.type(done.text, done.back, job.address);
+    }
+
+    function abort(why: string): void {
+        const job = root.run;
+        root.run = null;
+        watchdog.stop();
+        settle.stop();
+        if (job) {
+            if (job.before)
+                Clipboard.copy(job.before);
+            else
+                Clipboard.offer(["wl-copy", "--clear"], "", false);
+        }
+        unmute.restart();
+        root.fail(why);
     }
 
     function fail(why: string): string {
@@ -83,21 +165,46 @@ Singleton {
         return why;
     }
 
-    Timer {
-        id: stage
+    Connections {
+        target: Keystrokes
 
-        property string stepName: ""
-
-        onTriggered: {
-            if (!root.run)
-                return;
-            if (stage.stepName === "select")
-                root.select();
-            else if (stage.stepName === "copy")
-                root.copySelection();
-            else
-                reader.running = true;
+        function onDrained(): void {
+            root.advance("keys");
         }
+    }
+
+    Connections {
+        target: Clipboard
+
+        function onOffersSettled(): void {
+            root.advance("offer");
+        }
+    }
+
+    Timer {
+        id: settle
+
+        interval: root.run?.stage === "restore" ? root.restoreWait : root.run?.stage === "read" ? root.readWait : root.run?.stage === "arm" ? root.armWait : root.keysWait
+        onTriggered: {
+            if (root.run?.stage === "read")
+                root.guard(() => root.read());
+            else
+                root.next();
+        }
+    }
+
+    Timer {
+        id: unmute
+
+        interval: root.restoreWait
+        onTriggered: Clipboard.mute(false)
+    }
+
+    Timer {
+        id: watchdog
+
+        interval: root.limit
+        onTriggered: root.abort("It took too long, so nothing was typed.")
     }
 
     Process {
@@ -106,8 +213,7 @@ Singleton {
         command: ["sh", "-c", "wl-paste -n -t text 2>/dev/null; true"]
 
         stdout: StdioCollector {
-            onStreamFinished: if (root.run)
-                root.finish(text)
+            onStreamFinished: root.heard(text)
         }
     }
 }

@@ -27,6 +27,14 @@ Singleton {
 
     property bool keep: true
 
+    property bool muted: false
+
+    function mute(on: bool): void {
+        root.muted = on;
+    }
+
+    signal offersSettled
+
     property var recovery: null
     property int salvaged: 0
     property int started: 0
@@ -208,6 +216,8 @@ Singleton {
     }
 
     function absorb(line: string): void {
+        if (root.muted)
+            return;
         let ev;
         try {
             ev = JSON.parse(line);
@@ -656,7 +666,13 @@ Singleton {
         }
 
         onRunningChanged: if (!running)
-            Qt.callLater(root.offerNext)
+            Qt.callLater(root.afterOffer)
+    }
+
+    function afterOffer(): void {
+        root.offerNext();
+        if (!paste.running && !root.offered)
+            root.offersSettled();
     }
 
     property bool sweepOwed: false
