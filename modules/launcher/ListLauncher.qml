@@ -1390,6 +1390,10 @@ LauncherConcept {
                         root.hide();
                         Assistant.replace();
                     }
+                    onChatCopied: {
+                        Assistant.copyChat();
+                        root.hide();
+                    }
                     onContinued: {
                         Assistant.followUp();
                         query.text = "? ";

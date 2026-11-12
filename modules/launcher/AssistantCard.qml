@@ -32,6 +32,7 @@ Item {
     signal copied
     signal replaced
     signal continued
+    signal chatCopied
 
     function primary(): void {
         if (root.replacing)
@@ -115,7 +116,7 @@ Item {
                 anchors.right: parent.right
                 anchors.rightMargin: Appearance.padding.normal
                 anchors.verticalCenter: parent.verticalCenter
-                text: root.waiting && root.waited > 0 ? `${Assistant.modelName} · ${root.waited} s` : Assistant.modelName
+                text: (root.waiting && root.waited > 0 ? `${Assistant.usedModelName} · ${root.waited} s` : Assistant.usedModelName) + (Assistant.contextNote && !root.rewriting ? ` · ${Assistant.contextNote}` : "")
                 font.pixelSize: Appearance.font.size.small
                 color: Appearance.colour.textFaint
             }
@@ -212,6 +213,24 @@ Item {
                 style: "ring"
                 size: 0
                 onClicked: root.continued()
+            }
+
+            Button {
+                visible: !root.rewriting && Assistant.finished && Assistant.answeredTurns > 1
+                icon: "forum"
+                text: "Copy chat"
+                style: "ring"
+                size: 0
+                onClicked: root.chatCopied()
+            }
+
+            Button {
+                visible: !root.rewriting && Assistant.finished && Assistant.models.length > 1
+                icon: "swap_horiz"
+                text: "Try another model"
+                style: "ring"
+                size: 0
+                onClicked: Assistant.cycleModel()
             }
 
             Button {
