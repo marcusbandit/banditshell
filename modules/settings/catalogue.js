@@ -554,6 +554,12 @@ const PAGES_SOURCE = {
             { rows: [
                 { n: 74, icon: "fiber_manual_record", label: "Record", k: "clip", kind: "toggle", cfg: "clipboard.record", keys: "shell:panel.clipboard.toggle", extra: { icon: "delete_sweep", tip: "clear it all", act: "clearClip" }, kw: "clipboard history on off" },
                 { n: 75, icon: "format_list_numbered", label: "Keep", k: "clipMax", kind: "step", min: 50, max: 2000, step: 50, cfg: "clipboard.maxEntries", fmt: v => `${v}`, dis: s => !s.v("clip"), kw: "clipboard limits" },
+                { n: 75, icon: "event_repeat", label: "Keep for", k: "clipDays", kind: "seg", o: [[0, "forever"], [1, "1 day"], [7, "1 week"], [30, "1 month"], [90, "3 months"]], cfg: "clipboard.keepDays", dis: s => !s.v("clip"), kw: "clipboard history time span days expire older",
+                    why: "Entries older than this are dropped, pinned ones stay. The count above still applies." },
+                { n: 75, icon: "block", label: "Never record from", k: "clipIgnore", kind: "text", mono: true, cfg: "clipboard.ignoreApps", placeholder: "keepassxc, 1password", dis: s => !s.v("clip"), kw: "clipboard disabled applications password manager exclude ignore apps window class",
+                    why: "Copies made in these apps are never stored. Separate window classes with commas; the app's name is enough." },
+                { n: 75, icon: "keyboard_return", label: "Enter on an entry", k: "clipEnter", kind: "seg", o: [["paste", "paste"], ["copy", "copy"]], cfg: "clipboard.enterAction", dis: s => !s.v("clip"), kw: "clipboard primary action paste copy enter wtype",
+                    why: "Paste types it into the app you were in. Copy only puts it back on the clipboard." },
                 { n: 75, icon: "notes", label: "Longest text", k: "clipText", kind: "seg", o: [[262144, "256 KB"], [1048576, "1 MB"], [8388608, "8 MB"]], cfg: "clipboard.maxText", dis: s => !s.v("clip"), kw: "clipboard limits" },
                 { n: 75, icon: "image", label: "Largest image", k: "clipBlob", kind: "seg", o: [[8388608, "8 MB"], [33554432, "32 MB"], [134217728, "128 MB"]], cfg: "clipboard.maxBlob", dis: s => !s.v("clip"), kw: "clipboard limits" }
             ] },
