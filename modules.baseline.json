@@ -144,7 +144,6 @@
     "R3 modules/launcher/ListLauncher.qml uses Assistant of launcher-ai without requiring it",
     "R3 modules/launcher/ListLauncher.qml uses FileSearch of launcher-tools without requiring it",
     "R3 modules/launcher/sources/AskSource.qml uses Settings of settings without requiring it",
-    "R3 modules/launcher/sources/EmojiSource.qml uses LauncherMemory of apps without requiring it",
     "R3 modules/launcher/sources/MediaSource.qml uses Media of media without requiring it",
     "R3 modules/launcher/sources/MonitorSource.qml uses Apps of apps without requiring it",
     "R3 modules/launcher/sources/MonitorSource.qml uses Battery of power without requiring it",

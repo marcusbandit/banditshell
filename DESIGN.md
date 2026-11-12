@@ -1472,7 +1472,14 @@ banditshell/
 │   │   │                        `action <words>` (every stable action id) and
 │   │   │                        `recent` (recently-used.xbel, secret names hidden).
 │   │   │                        Each answers below 0.5 for a plain word and
-│   │   │                        has a switch under `launcher.shell`
+│   │   │                        has a switch under `launcher.shell`.
+│   │   │                        ClipboardPage.qml and EmojiPage.qml are pages:
+│   │   │                        `clip ` (or SUPER + V) and `emoji ` turn the
+│   │   │                        field into their filter, with a kind or
+│   │   │                        category dropdown at its right and a footer
+│   │   │                        naming Enter and Ctrl K. The clipboard page is
+│   │   │                        a list by day beside a preview and facts that
+│   │   │                        fit the kind; the emoji page is a grid
 │   │   ├── search.js            the pure part of it: paths, links, sections,
 │   │   │                        reading timer, reminder, volume, zone and
 │   │   │                        kill phrases, a time moved between places
@@ -1482,11 +1489,18 @@ banditshell/
 │   │   │                        Folders live in the favourites, a row carries
 │   │   │                        its application's notifications, and a swipe
 │   │   │                        across one clears them or opens the folder
+│   │   ├── AnswerCard.qml       the list concept's answer: what you asked on the
+│   │   │                        left, the answer on the right, a caption under
+│   │   │                        each (zones and days, rates, other colour forms).
+│   │   │                        A time moved between places lands here too
 │   │   ├── AnswerRow.qml        the sum you typed, answered under the field.
 │   │   │                        Enter copies it; arrowing hands Return back to
-│   │   │                        the list. Both concepts draw the same row
+│   │   │                        the list. The alphabet concept draws it, and the
+│   │   │                        list concept only for "install qalc"
 │   │   └── LaunchEdge.qml       the bottom band as the way to pull it out
-│   ├── clipboard/               what you copied; the launcher's twin
+│   ├── clipboard/               what you copied; the launcher's twin. Its
+│   │                            panel commands now open the launcher's
+│   │                            clipboard page instead of this panel
 │   │   ├── ClipboardPanel.qml   two tabs, a list, and `/` for the search that
 │   │   │                        is not there until it is asked for; the list and
 │   │   │                        the page are two halves of one strip
