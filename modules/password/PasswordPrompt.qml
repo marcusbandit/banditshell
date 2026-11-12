@@ -51,7 +51,7 @@ Item {
         title: PasswordRequest.title,
         message: PasswordRequest.message,
         secret: PasswordRequest.secret,
-        body: PasswordRequest.body,
+        facts: PasswordRequest.facts,
         hint: PasswordRequest.hint,
         placeholder: PasswordRequest.placeholder,
         warning: PasswordRequest.warning
@@ -73,7 +73,9 @@ Item {
     readonly property bool asksForSecret: root.source.kind === "password"
 
     readonly property color tone: root.ask.family === "admin" ? Appearance.colour.warning : Appearance.colour.accent
-    readonly property color toneFill: root.ask.family === "admin" ? Appearance.colour.warningFill : Appearance.colour.accentFill
+
+    readonly property real factLabelWidth: Math.max(0, ...root.ask.facts.map(fact => factMetrics.advanceWidth(fact[0])))
+    readonly property real detailLabelWidth: Math.max(0, ...root.ask.details.map(detail => detailMetrics.advanceWidth(detail[0])))
 
     readonly property string goLabel: root.sentence(root.source.continueLabel || (root.asksForSecret ? "unlock" : "continue"))
     readonly property string stopLabel: root.sentence(root.source.cancelLabel || "cancel")
@@ -167,7 +169,7 @@ Item {
         y: panel.bandY + (panel.centredY - panel.bandY) * reveal.value
         width: Math.min(Appearance.sizes.launcherWidth, root.width - root.inset * 2)
 
-        implicitHeight: Appearance.padding.large + layout.implicitHeight
+        implicitHeight: Appearance.padding.large * 2 + layout.implicitHeight
         height: tall.value * reveal.value
 
         visible: panel.height > 0
@@ -187,71 +189,40 @@ Item {
                 x: Appearance.padding.large
                 y: Appearance.padding.large
                 width: panel.width - Appearance.padding.large * 2
-                spacing: Appearance.padding.large
+                spacing: Appearance.padding.normal
 
-                Column {
+                Item {
                     width: layout.width
-                    spacing: Appearance.padding.normal
+                    height: Math.max(glyph.implicitHeight, Appearance.font.line.normal)
 
-                    SquircleRect {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: Appearance.font.size.large + Appearance.padding.normal * 2
-                        height: width
-                        radius: Appearance.rounding.normal
-                        color: root.toneFill
+                    Icon {
+                        id: glyph
 
-                        Icon {
-                            anchors.centerIn: parent
-                            name: root.ask.glyph
-                            fallback: "password"
-                            size: Appearance.font.size.large
-                            fill: 1
-                            color: root.tone
-                        }
+                        anchors.left: parent.left
+                        anchors.leftMargin: Appearance.padding.normal
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Appearance.sizes.launcherIcon
+                        size: Appearance.font.size.normal
+                        name: root.ask.glyph
+                        fallback: "password"
+                        color: root.ask.warning ? Appearance.colour.alarm : root.tone
                     }
-
-                    Column {
-                        width: layout.width
-                        spacing: Appearance.padding.small
-
-                        StyledText {
-                            width: layout.width
-                            text: root.ask.secret
-                            font.pixelSize: Appearance.font.size.large
-                            font.bold: true
-                            horizontalAlignment: Text.AlignHCenter
-                            wrapMode: Text.Wrap
-                        }
-
-                        StyledText {
-                            width: layout.width
-                            visible: text !== ""
-                            text: root.ask.body
-                            font.pixelSize: Appearance.font.size.normal
-                            color: Appearance.colour.textDim
-                            horizontalAlignment: Text.AlignHCenter
-                            wrapMode: Text.Wrap
-                        }
-                    }
-                }
-
-                Column {
-                    width: layout.width
-                    spacing: Appearance.padding.small
-                    visible: root.asksForSecret || !!root.ask.choice
 
                     SecretField {
                         id: field
 
-                        width: layout.width
-                        height: Appearance.font.line.normal + Appearance.padding.normal * 2
+                        anchors.left: glyph.right
+                        anchors.leftMargin: Appearance.padding.normal
+                        anchors.right: parent.right
+                        anchors.rightMargin: Appearance.padding.normal
+                        height: parent.height
                         visible: root.asksForSecret
 
-                        framed: true
+                        framed: false
                         capsLock: Keymap.capsLock
                         onCapsAsked: Keymap.refresh()
                         textSize: Appearance.font.size.normal
-                        markSize: Appearance.font.size.small
+                        markSize: Appearance.font.size.normal
                         placeholder: root.ask.placeholder || "Password"
                         busy: root.source.busy ?? false
                         alarm: !!root.ask.warning
@@ -264,16 +235,85 @@ Item {
                     }
 
                     StyledText {
-                        width: layout.width
+                        anchors.left: glyph.right
+                        anchors.leftMargin: Appearance.padding.normal
+                        anchors.right: parent.right
+                        anchors.rightMargin: Appearance.padding.normal
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: !root.asksForSecret
+                        text: root.ask.secret
+                        font.pixelSize: Appearance.font.size.normal
+                        elide: Text.ElideRight
+                    }
+                }
+
+                Separator {
+                    width: layout.width
+                }
+
+                Column {
+                    id: page
+
+                    x: Appearance.padding.normal
+                    width: layout.width - Appearance.padding.normal * 2
+                    topPadding: Appearance.padding.small
+                    bottomPadding: Appearance.padding.small
+                    spacing: Appearance.padding.card
+
+                    StyledText {
+                        width: page.width
+                        visible: root.asksForSecret
+                        text: root.ask.secret
+                        font.pixelSize: Appearance.font.size.large
+                        font.bold: true
+                        wrapMode: Text.Wrap
+                    }
+
+                    Column {
+                        width: page.width
+                        visible: root.ask.facts.length > 0
+                        spacing: Appearance.padding.small
+
+                        Repeater {
+                            model: root.ask.facts
+
+                            Item {
+                                id: fact
+
+                                required property var modelData
+
+                                width: page.width
+                                height: factValue.implicitHeight
+
+                                StyledText {
+                                    text: fact.modelData[0]
+                                    font.pixelSize: Appearance.font.size.normal
+                                    color: Appearance.colour.textFaint
+                                }
+
+                                StyledText {
+                                    id: factValue
+
+                                    x: root.factLabelWidth + Appearance.padding.large
+                                    width: page.width - x
+                                    text: fact.modelData[1]
+                                    font.pixelSize: Appearance.font.size.normal
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+                        }
+                    }
+
+                    StyledText {
+                        width: page.width
                         visible: text !== ""
                         text: root.ask.warning || root.ask.hint
-                        color: root.ask.warning ? Appearance.colour.alarm : Appearance.colour.textDim
-                        horizontalAlignment: Text.AlignHCenter
+                        font.pixelSize: root.asksForSecret ? Appearance.font.size.small : Appearance.font.size.normal
+                        color: root.ask.warning ? Appearance.colour.alarm : root.asksForSecret ? Appearance.colour.textDim : Appearance.colour.text
                         wrapMode: Text.Wrap
                     }
 
                     Row {
-                        anchors.horizontalCenter: parent.horizontalCenter
                         visible: !!root.ask.choice
                         spacing: Appearance.padding.normal
 
@@ -287,7 +327,7 @@ Item {
                         }
 
                         StyledText {
-                            width: Math.min(implicitWidth, layout.width - choice.width - Appearance.padding.normal)
+                            width: Math.min(implicitWidth, page.width - choice.width - Appearance.padding.normal)
                             anchors.verticalCenter: parent.verticalCenter
                             text: root.ask.choice
                             color: Appearance.colour.textDim
@@ -298,111 +338,121 @@ Item {
                             }
                         }
                     }
-                }
 
-                Column {
-                    width: layout.width
-                    visible: root.detailed
-                    spacing: Appearance.padding.normal
+                    Column {
+                        width: page.width
+                        visible: root.detailed
+                        spacing: Appearance.padding.small
 
-                    Repeater {
-                        model: root.ask.details
+                        Repeater {
+                            model: root.ask.details
 
-                        Column {
-                            id: fact
+                            Item {
+                                id: detail
 
-                            required property var modelData
+                                required property var modelData
 
-                            width: layout.width
-                            spacing: Appearance.padding.hair
+                                width: page.width
+                                height: detailValue.implicitHeight
 
-                            StyledText {
-                                text: fact.modelData[0]
-                                color: Appearance.colour.textFaint
-                            }
+                                StyledText {
+                                    text: detail.modelData[0]
+                                    color: Appearance.colour.textFaint
+                                }
 
-                            StyledText {
-                                width: layout.width
-                                text: fact.modelData[1]
-                                color: Appearance.colour.textDim
-                                wrapMode: Text.WrapAnywhere
+                                StyledText {
+                                    id: detailValue
+
+                                    x: root.detailLabelWidth + Appearance.padding.large
+                                    width: page.width - x
+                                    text: detail.modelData[1]
+                                    color: Appearance.colour.textDim
+                                    wrapMode: Text.Wrap
+                                }
                             }
                         }
                     }
+                }
+
+                Separator {
+                    width: layout.width
                 }
 
                 Item {
                     width: layout.width
-                    height: footer.height
+                    height: Appearance.font.line.small + Appearance.padding.small
 
-                    Separator {
-                        width: parent.width
-                    }
+                    Row {
+                        anchors.left: parent.left
+                        anchors.leftMargin: Appearance.padding.normal
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Appearance.padding.small
+                        visible: root.ask.details.length > 0
 
-                    Item {
-                        id: footer
-
-                        width: parent.width
-                        height: actions.height + Appearance.padding.card * 2
-
-                        Row {
-                            anchors.left: parent.left
+                        Icon {
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: Appearance.padding.small
-                            visible: root.ask.details.length > 0
-
-                            Icon {
-                                anchors.verticalCenter: parent.verticalCenter
-                                name: root.detailed ? "expand_less" : "expand_more"
-                                size: Appearance.font.size.small
-                                color: moreHover.hovered ? Appearance.colour.text : Appearance.colour.textDim
-                            }
-
-                            StyledText {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: root.detailed ? "Hide details" : "Details"
-                                color: moreHover.hovered ? Appearance.colour.text : Appearance.colour.textDim
-                            }
-
-                            HoverHandler {
-                                id: moreHover
-
-                                cursorShape: Qt.PointingHandCursor
-                            }
-
-                            TapHandler {
-                                onTapped: root.detailed = !root.detailed
-                            }
+                            name: root.detailed ? "expand_less" : "expand_more"
+                            size: Appearance.font.size.normal
+                            color: moreHover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
                         }
 
-                        Row {
-                            id: actions
-
-                            anchors.right: parent.right
+                        StyledText {
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: Appearance.padding.normal
+                            text: root.detailed ? "Hide details" : "Details"
+                            color: moreHover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+                        }
 
-                            Action {
-                                label: root.goLabel
-                                cap: "↵"
-                                strong: true
+                        HoverHandler {
+                            id: moreHover
 
-                                onPressed: root.answer()
-                            }
+                            cursorShape: Qt.PointingHandCursor
+                        }
 
-                            Rule {}
+                        TapHandler {
+                            onTapped: root.detailed = !root.detailed
+                        }
+                    }
 
-                            Action {
-                                label: root.stopLabel
-                                cap: "Esc"
+                    Row {
+                        anchors.right: parent.right
+                        anchors.rightMargin: Appearance.padding.normal
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Appearance.padding.normal
 
-                                onPressed: root.source.refuse()
-                            }
+                        Action {
+                            label: root.goLabel
+                            cap: "↵"
+                            strong: true
+
+                            onPressed: root.answer()
+                        }
+
+                        Rule {}
+
+                        Action {
+                            label: root.stopLabel
+                            cap: "Esc"
+
+                            onPressed: root.source.refuse()
                         }
                     }
                 }
             }
         }
+    }
+
+    FontMetrics {
+        id: factMetrics
+
+        font.family: Appearance.font.family
+        font.pixelSize: Appearance.font.size.normal
+    }
+
+    FontMetrics {
+        id: detailMetrics
+
+        font.family: Appearance.font.family
+        font.pixelSize: Appearance.font.size.small
     }
 
     component Action: Row {

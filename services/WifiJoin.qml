@@ -66,9 +66,9 @@ Singleton {
         PasswordRequest.ask({
             title: `Join ${name}`,
             message: `${Network.securityLabel(n).toUpperCase()} network`,
-            placeholder: `Password for ${name}`,
+            placeholder: "Password",
             secret: "Wi-Fi password",
-            body: `Joins ${name}, a ${Network.securityLabel(n).toUpperCase()} network.`,
+            facts: [["Network", name], ["Security", Network.securityLabel(n).toUpperCase()]],
             hint: "The network's own password, often printed on the router.",
             continueLabel: "join",
             warning: warning,

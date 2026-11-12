@@ -19,7 +19,7 @@ Singleton {
     property string continueLabel: ""
 
     property string secret: ""
-    property string body: ""
+    property var facts: []
     property string hint: ""
 
     readonly property string requester: ""
@@ -39,7 +39,7 @@ Singleton {
         root.warning = request.warning ?? "";
         root.continueLabel = request.continueLabel ?? "continue";
         root.secret = request.secret ?? "";
-        root.body = request.body ?? "";
+        root.facts = request.facts ?? [];
         root.hint = request.hint ?? "";
         root.taker = request.take ?? null;
         root.dropper = request.cancel ?? null;
@@ -80,9 +80,9 @@ Singleton {
         root.ask({
             title: "Join Cafe Corner",
             message: "WPA2 network",
-            placeholder: "Password for Cafe Corner",
+            placeholder: "Password",
             secret: "Wi-Fi password",
-            body: "Joins Cafe Corner, a WPA2 network.",
+            facts: [["Network", "Cafe Corner"], ["Security", "WPA2"]],
             hint: "The network's own password, often printed on the router.",
             continueLabel: "join",
             screenName: Focus.offStageScreen

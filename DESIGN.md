@@ -1552,16 +1552,19 @@ banditshell/
 │   │                            for exactly those two moments, so a dead lock
 │   │                            client never shows what is behind it
 │   ├── password/PasswordPrompt.qml the keyring's, polkit's and Wi-Fi's password
-│   │                            question (redrawn 2026-11-12, #828). One centred
-│   │                            stack: the kind's glyph on a tinted plate, a
-│   │                            title naming WHICH secret in the owner's words
-│   │                            ("Your sudo password", "SSH key passphrase"),
-│   │                            one sentence on what it unlocks and who is
-│   │                            waiting ("Unlocks ~/.ssh/id_ed25519 so git can
-│   │                            push to ..."), the field, whose placeholder says
-│   │                            it again, and one line on what it is not. The
-│   │                            program's own words wait behind Details. Admin
-│   │                            asks take the warning
+│   │                            question, drawn as a page of the launcher
+│   │                            (2026-10-19, content redone 2026-11-12, #828):
+│   │                            the field where the search row would be, with
+│   │                            the kind's glyph, then a bold heading naming
+│   │                            WHICH secret in the owner's words ("Your sudo
+│   │                            password", "SSH key passphrase"), then a short
+│   │                            list of labelled facts (Key, Account, Keyring,
+│   │                            Network, Asked by, As root), one line on what
+│   │                            it is not, and the key-cap footer. The
+│   │                            program's own words wait behind Details, in
+│   │                            the same two columns. Left-aligned like every
+│   │                            launcher page; a centred stack was tried and
+│   │                            rejected. Admin asks take the warning
 │   │                            colour, since they hand out root. Still the
 │   │                            one panel nobody asks for: an application wants
 │   │                            a secret and is BLOCKED on the answer, so it

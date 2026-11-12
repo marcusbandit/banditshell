@@ -348,8 +348,8 @@ function keyringName(name) {
     return /keyring$/i.test(name) ? `“${name}”` : `the “${name}” keyring`;
 }
 
-function so(cause, fallback) {
-    return cause ? ` so ${cause.who} can ${cause.doing}.` : fallback;
+function askedBy(cause, fallback) {
+    return cause ? `${cause.who}, to ${cause.doing}` : fallback;
 }
 
 function card(fields) {
@@ -357,7 +357,7 @@ function card(fields) {
         family: "keyring",
         glyph: "password",
         secret: "Password",
-        body: "",
+        facts: [],
         hint: "",
         placeholder: "Password",
         warning: "",
@@ -371,28 +371,36 @@ function describePolkit(ask) {
     const root = who === "root";
     const run = pkexecRun(ask.message);
     const need = polkitNeed(ask.message);
-    const body = ask.label ? `banditshell needs it to ${lowerFirst(ask.label)}.` : run ? `A program needs it to run ${run.program} as ${run.as}.` : need ? `A program needs it to ${need}.` : ask.message || "A program wants to act as an administrator.";
-    const details = [];
+    const facts = [];
+    if (who)
+        facts.push(["Account", who]);
+    if (ask.label)
+        facts.push(["Asked by", `banditshell, to ${lowerFirst(ask.label)}`]);
+    else if (need && !run)
+        facts.push(["Wants to", need]);
     if (run)
-        details.push([`Runs as ${run.as}`, run.command]);
+        facts.push([`As ${run.as}`, run.command]);
+    if (!ask.label && !need && !run && ask.message)
+        facts.push(["Wants to", ask.message]);
+    const details = [];
     if (ask.actionId)
         details.push(["Polkit action", ask.actionId]);
-    if (ask.message && !run)
+    if (ask.message)
         details.push(["Polkit says", ask.message]);
     return card({
         family: "admin",
         glyph: "admin_panel_settings",
         secret: root ? "The root password" : self ? "Your sudo password" : `${who}'s password`,
-        body: body,
+        facts: facts,
         hint: root ? "This computer asks for root's password here, not yours." : self ? "" : `${who} is an administrator on this computer.`,
-        placeholder: root ? "Root password" : who ? `Password for ${who}` : "Your password",
+        placeholder: "Password",
         warning: wrong(ask.warning, "password"),
         details: details
     });
 }
 
 function waiting(ask) {
-    const details = [["Asked by", ask.requester || "an agent"]];
+    const details = [["Prompt from", ask.requester || "an agent"]];
     if (ask.command)
         details.push(["Command waiting", ask.command]);
     return details;
@@ -400,14 +408,13 @@ function waiting(ask) {
 
 function describeSshKey(ask, path, label) {
     const shown = path ? tilde(path, ask.home) : label;
-    const name = basename(path) || label || "this key";
     return card({
         family: "ssh",
         glyph: "vpn_key",
         secret: "SSH key passphrase",
-        body: `Unlocks ${shown || "your SSH key"}` + so(ask.cause, " for a program signing in over ssh."),
-        hint: "Set when the key was made. It is not your login password.",
-        placeholder: `Passphrase for ${name}`,
+        facts: [["Key", shown || "a key the ssh agent holds"], ["Asked by", askedBy(ask.cause, "a program signing in over ssh")]],
+        hint: "Not your login password. It was set when the key was made.",
+        placeholder: "Passphrase",
         warning: wrong(ask.warning, "passphrase"),
         details: waiting(ask)
     });
@@ -422,14 +429,14 @@ function describeGpg(ask) {
     const uid = (text.match(/"([^"]+)"/) ?? [])[1] ?? "";
     const person = uid.replace(/\s*<[^>]*>\s*/, "").replace(/\s*\([^)]*\)\s*/, "").trim();
     const id = ((text.match(/ID\s+([0-9A-F]{8,40})/i) ?? [])[1] ?? "").slice(-8);
-    const key = person ? `${person}'s key${id ? " " + id : ""}` : id ? `key ${id}` : "your GPG key";
+    const key = [person, id].filter(Boolean).join(", ");
     return card({
         family: "gpg",
         glyph: "signature",
         secret: fresh ? "New GPG passphrase" : "GPG key passphrase",
-        body: fresh ? "Protects a new GPG key." : `Unlocks ${key}` + so(ask.cause, " for gpg."),
-        hint: fresh ? "Choose one. You type it whenever the key is used." : "Set when the key was made. It is not your login password.",
-        placeholder: fresh ? "New passphrase" : "GPG passphrase",
+        facts: [["Key", fresh ? "a new GPG key" : key || "your GPG key"], ["Asked by", askedBy(ask.cause, "gpg")]],
+        hint: fresh ? "Choose one. You type it whenever the key is used." : "Not your login password. It was set when the key was made.",
+        placeholder: fresh ? "New passphrase" : "Passphrase",
         warning: wrong(ask.warning, "passphrase"),
         details: waiting(ask)
     });
@@ -439,8 +446,9 @@ function describeKeyring(ask) {
     const title = ask.title ?? "";
     const message = ask.message ?? "";
     const description = ask.description ?? "";
-    const details = [["Asked by", ask.requester || "the keyring"]];
+    const details = [["Prompt from", ask.requester || "the keyring"]];
     const name = quoted(description) || quoted(message);
+    const app = "an app that wants a saved password";
     if (/ssh/.test(ask.requester ?? "")) {
         const path = (description.match(/passphrase for (?:key )?['"]?(\S+?)['"]?:/) ?? [])[1] ?? "";
         return describeSshKey(ask, path, "");
@@ -451,7 +459,7 @@ function describeKeyring(ask) {
         return card({
             glyph: "lock_open",
             secret: title || "Allow this?",
-            body: description || message,
+            hint: description || message,
             placeholder: "",
             warning: ask.warning ?? "",
             details: details
@@ -460,9 +468,9 @@ function describeKeyring(ask) {
         const changed = /no longer matches/i.test(description);
         return card({
             secret: "Login keyring password",
-            body: "An app is waiting for a saved password, and this keyring is still locked.",
-            hint: changed ? "Your login password changed after this keyring was made. Type the old one." : "Usually your login password. Face unlock and auto-login leave it locked.",
-            placeholder: changed ? "Old login password" : "Login keyring password",
+            facts: [["Keyring", "login"], ["Asked by", app]],
+            hint: changed ? "Your login password changed after this keyring was made. Type the old one." : "Usually your login password. Face unlock leaves it locked.",
+            placeholder: changed ? "Old login password" : "Password",
             warning: wrong(ask.warning, "password"),
             details: details
         });
@@ -472,9 +480,9 @@ function describeKeyring(ask) {
         return card({
             glyph: "encrypted",
             secret: `${upperFirst(what)} password`,
-            body: `An app wants to use ${name ? `the ${what} “${name}”` : `a ${what} in your keyring`}.`,
+            facts: [[upperFirst(what.split(" ").pop()), name || `a ${what} in your keyring`], ["Asked by", "an app that wants to use it"]],
             hint: `Set when the ${what} was stored.`,
-            placeholder: `Password for the ${what}`,
+            placeholder: "Password",
             warning: wrong(ask.warning, "password"),
             details: details
         });
@@ -483,7 +491,7 @@ function describeKeyring(ask) {
         const changing = /change/i.test(title + description);
         return card({
             secret: changing ? "New keyring password" : "Password for a new keyring",
-            body: changing ? `An app is changing the password of ${name ? keyringName(name) : "a keyring"}.` : `An app wants a new keyring${name ? `, “${name}”,` : ""} for its passwords.`,
+            facts: [["Keyring", name ? (changing ? name : `${name}, new`) : "a new keyring"], ["Asked by", changing ? "an app changing its password" : "an app that wants somewhere to keep passwords"]],
             hint: "Choose one. You type it whenever this keyring is locked.",
             placeholder: "New password",
             warning: ask.warning ?? "",
@@ -493,7 +501,7 @@ function describeKeyring(ask) {
     if (/change/i.test(title))
         return card({
             secret: "Current keyring password",
-            body: `An app is changing the password of ${name ? keyringName(name) : "a keyring"}.`,
+            facts: [["Keyring", name || "a keyring"], ["Asked by", "an app changing its password"]],
             hint: "The password it has now, before the change.",
             placeholder: "Current password",
             warning: wrong(ask.warning, "password"),
@@ -502,17 +510,16 @@ function describeKeyring(ask) {
     if (/unlock keyring/i.test(title) || /keyring/i.test(description))
         return card({
             secret: "Keyring password",
-            body: `An app wants a saved password from ${name ? keyringName(name) : "a keyring"}.`,
+            facts: [["Keyring", name || "a locked keyring"], ["Asked by", app]],
             hint: name === "login" ? "Usually your login password." : "The password chosen when this keyring was made.",
-            placeholder: name ? `Password for “${name}”` : "Keyring password",
+            placeholder: "Password",
             warning: wrong(ask.warning, "password"),
             details: details
         });
     return card({
         family: "other",
-        glyph: "password",
         secret: title || "Password",
-        body: [message, description].filter(Boolean).join(" "),
+        hint: [message, description].filter(Boolean).join(" "),
         warning: ask.warning ?? "",
         details: details
     });
@@ -523,7 +530,7 @@ function describeRequest(ask) {
         family: ask.family || "wifi",
         glyph: ask.glyph || "wifi_password",
         secret: ask.secret || ask.title || "Password",
-        body: ask.body || ask.message || "",
+        facts: ask.facts || [],
         hint: ask.hint || "",
         placeholder: ask.placeholder || "Password",
         warning: ask.warning ?? ""

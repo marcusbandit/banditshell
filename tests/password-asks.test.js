@@ -88,9 +88,9 @@ test.describe("describe", () => {
     test.it("asks for the SSH key's passphrase, names the key by its path and who waits on it, and keeps gcr's words for later", () => {
         const told = Asks.describe(Object.assign({ cause: { who: "git", doing: "push to github.com/you/project" } }, SSH_ASK));
         assert.strictEqual(told.secret, "SSH key passphrase");
-        assert.strictEqual(told.body, "Unlocks ~/.ssh/id_ed25519 so git can push to github.com/you/project.");
-        assert.strictEqual(told.placeholder, "Passphrase for id_ed25519");
-        assert.match(told.hint, /not your login password/);
+        assert.deepStrictEqual(told.facts, [["Key", "~/.ssh/id_ed25519"], ["Asked by", "git, to push to github.com/you/project"]]);
+        assert.strictEqual(told.placeholder, "Passphrase");
+        assert.match(told.hint, /Not your login password/);
         assert.strictEqual(told.choice, "Unlock it on its own whenever I'm logged in");
         assert.ok(told.details.some(([label, text]) => label === "Their words" && text.includes("Enter passphrase for")));
     });
@@ -109,15 +109,14 @@ test.describe("describe", () => {
             label: "Uninstall Firefox"
         });
         assert.strictEqual(told.secret, "Your sudo password");
-        assert.strictEqual(told.body, "banditshell needs it to uninstall Firefox.");
-        assert.deepStrictEqual(told.details[0], ["Runs as root", "pacman -Rs --noconfirm firefox"]);
-        assert.strictEqual(told.placeholder, "Password for you");
+        assert.deepStrictEqual(told.facts, [["Account", "you"], ["Asked by", "banditshell, to uninstall Firefox"], ["As root", "pacman -Rs --noconfirm firefox"]]);
+        assert.strictEqual(told.placeholder, "Password");
     });
 
     test.it("asks for root's password when polkit picked root", () => {
         const told = Asks.describe({ source: "polkit", user: "you", identity: { name: "unix-user:root" }, message: "Authentication is required to restart 'sshd.service'." });
         assert.strictEqual(told.secret, "The root password");
-        assert.strictEqual(told.body, "A program needs it to restart 'sshd.service'.");
+        assert.deepStrictEqual(told.facts[1], ["Wants to", "restart 'sshd.service'"]);
     });
 
     test.it("tells a face-unlock login why the login keyring is still locked", () => {
@@ -134,19 +133,19 @@ test.describe("describe", () => {
     test.it("names another keyring by the name in quotes", () => {
         const told = Asks.describe({ source: "keyring", kind: "password", requester: "gnome-keyring-daemon", title: "Unlock Keyring", message: "Unlock password for: Work", description: "An application wants access to the keyring “Work”, but it is locked" });
         assert.strictEqual(told.secret, "Keyring password");
-        assert.strictEqual(told.body, "An app wants a saved password from the “Work” keyring.");
+        assert.deepStrictEqual(told.facts[0], ["Keyring", "Work"]);
     });
 
     test.it("asks a new keyring for a new password", () => {
         const told = Asks.describe({ source: "keyring", kind: "password", requester: "gnome-keyring-daemon", passwordNew: true, title: "New Keyring Password", message: "Choose password for new keyring", description: "An application wants to create a new keyring called “Default keyring”. Choose the password you want to use for it." });
         assert.strictEqual(told.secret, "Password for a new keyring");
-        assert.strictEqual(told.body, "An app wants a new keyring, “Default keyring”, for its passwords.");
+        assert.deepStrictEqual(told.facts[0], ["Keyring", "Default keyring, new"]);
     });
 
     test.it("reads a GPG prompt's owner and key id from pinentry's description", () => {
         const told = Asks.describe({ source: "keyring", kind: "password", requester: "pinentry-gnome3", title: "Enter Passphrase", message: "Passphrase:", description: "Please enter the passphrase to unlock the OpenPGP secret key:\n\"Ada Example (laptop) <ada@example.com>\"\n255-bit EDDSA key, ID 0123456789ABCDEF,\ncreated 2025-01-01." });
         assert.strictEqual(told.secret, "GPG key passphrase");
-        assert.strictEqual(told.body, "Unlocks Ada Example's key 89ABCDEF for gpg.");
+        assert.deepStrictEqual(told.facts, [["Key", "Ada Example, 89ABCDEF"], ["Asked by", "gpg"]]);
     });
 
     test.it("shows a yes-or-no keyring question by its title once", () => {
@@ -156,9 +155,9 @@ test.describe("describe", () => {
     });
 
     test.it("passes a shell request's own words through", () => {
-        const told = Asks.describe({ source: "request", secret: "Wi-Fi password", body: "Joins Cafe, a WPA2 network.", placeholder: "Password for Cafe" });
+        const told = Asks.describe({ source: "request", secret: "Wi-Fi password", facts: [["Network", "Cafe"]], placeholder: "Password for Cafe" });
         assert.strictEqual(told.secret, "Wi-Fi password");
-        assert.strictEqual(told.body, "Joins Cafe, a WPA2 network.");
+        assert.deepStrictEqual(told.facts, [["Network", "Cafe"]]);
         assert.deepStrictEqual(told.details, []);
     });
 });
