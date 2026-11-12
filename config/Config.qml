@@ -111,7 +111,11 @@ Singleton {
 
                 surface: 3,
 
-                accent: "mid"
+                accent: "mid",
+
+                lightTheme: "",
+
+                darkTheme: ""
             },
 
             edge: {

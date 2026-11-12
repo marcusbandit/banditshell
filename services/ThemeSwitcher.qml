@@ -4,11 +4,23 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "theme-modes.js" as ThemeModes
 
 Singleton {
     id: root
 
     property bool switching: false
+
+    readonly property string modeTheme: ThemeModes.wantedTheme(Config.values.colour, Appearance.light, Config.values.themeFromWallpaper, Themes.activeName, Themes.availableNames)
+
+    onModeThemeChanged: if (root.modeTheme !== "" && !root.switching)
+        root.apply(root.modeTheme)
+
+    function remember(name: string): void {
+        const keep = ThemeModes.slotToKeep(Config.values.colour, Appearance.light, name);
+        if (keep)
+            Config.set(`colour.${keep.key}`, keep.value);
+    }
 
     readonly property bool available: !ToolInstaller.probed || ToolInstaller.has("theme-set")
     readonly property string unavailableWhy: "themes are switched by theme-set, which is not installed on this machine"
