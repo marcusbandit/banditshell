@@ -275,6 +275,11 @@ const PAGES_SOURCE = {
                 { n: [], icon: "dark_mode", label: "Light or dark", k: "scheme", kind: "seg", o: ["light", "dark", "auto"], cfg: "colour.mode", state: s => s.schemeDetail, extra: { icon: "schedule", tip: "set night light’s schedule", act: "nightSchedule" }, kw: "dark mode dark apps light mode night theme colour scheme apps appearance auto",
                     why: "Sets the shell and every app that follows the system colour scheme. Auto goes dark while night light warms the screens, on its schedule under Light and warmth. If apps drift, pick the same choice again." },
                 { n: 42, kind: "w", w: "themes", kw: "theme palette" },
+                { n: [], kind: "w", w: "themeEditor", kw: "theme editor studio custom colours create own theme save" },
+                { n: [], icon: "light_mode", label: "Theme in light mode", k: "lightTheme", kind: "choice", o: s => s.themeChoices, cfg: "colour.lightTheme", kw: "theme light mode day set as light theme",
+                    why: "Light mode switches to this theme. Leave it on the picked theme to keep one theme for both." },
+                { n: [], icon: "bedtime", label: "Theme in dark mode", k: "darkTheme", kind: "choice", o: s => s.themeChoices, cfg: "colour.darkTheme", kw: "theme dark mode night set as dark theme",
+                    why: "Dark mode switches to this theme. Leave it on the picked theme to keep one theme for both." },
                 { n: 43, icon: "colorize", label: "Take it from the wallpaper", k: "fromWall", kind: "toggle", cfg: "themeFromWallpaper", state: s => s.v("fromWall") ? s.wallName : "", kw: "theme from wallpaper" },
                 { n: 44, icon: "format_color_fill", label: "Highlight colour", k: "accent", kind: "seg", o: [["dim", "soft"], ["mid", "normal"], ["bright", "strong"]], swatches: true, cfg: "colour.accent", kw: "accent strength dim mid bright",
                     why: "Which of the theme’s three highlight colours paints everything that’s on. Soft sits back, strong jumps out." },
@@ -464,8 +469,8 @@ const PAGES_SOURCE = {
                 { n: [], kind: "w", w: "quicklinks", kw: "quicklinks search shortcuts keywords urls youtube github wiki" }
             ] },
             { t: "Power tools", rows: [
-                { n: [], icon: "terminal", label: "Scripts folder", k: "scriptsFolder", kind: "text", mono: true, cfg: "launcher.powerTools.scriptsFolder", placeholder: "~/.config/banditshell/scripts", kw: "script commands raycast scripts folder",
-                    why: "Scripts in this folder show up by their file name, or by the Raycast style @raycast.title header. Type a script's name and press Enter to run it." },
+                { n: [], icon: "terminal", label: "Script folders", k: "scriptsFolder", kind: "text", mono: true, cfg: "launcher.powerTools.scriptsFolder", placeholder: "~/.config/banditshell/scripts", kw: "script commands raycast scripts folder folders directory",
+                    why: "Scripts in these folders, separated by commas, show up by their file name, or by the Raycast style @raycast.title header. Type a script's name and press Enter to run it." },
                 { n: [], icon: "folder_code", label: "Project folders", k: "projectFolders", kind: "text", mono: true, cfg: "launcher.powerTools.projectFolders", placeholder: "~/Projects", kw: "projects git repositories code folders",
                     why: "Git repositories in these folders, separated by commas, show up when you type their name or projects." },
                 { n: [], icon: "account_tree", label: "Project depth", k: "projectDepth", kind: "step", min: 1, max: 4, cfg: "launcher.powerTools.projectDepth", fmt: v => v === 1 ? "1 level" : `${v} levels`, kw: "projects search depth" },

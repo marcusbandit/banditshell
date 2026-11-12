@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-11-13-p835-scripts-themes",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Script commands load from more than one folder"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A script can say which folder it runs in"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Make your own theme from four colours, saved as a new theme"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Light and dark mode can each use their own theme"
+        }
+      ]
+    },
+    {
       "id": "2026-11-12-p835-tools",
       "date": "2026-11-12",
       "changes": [

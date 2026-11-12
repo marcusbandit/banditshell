@@ -141,6 +141,8 @@ Singleton {
             fromWall: "themeFromWallpaper",
             scheme: "colour.mode",
             accent: "colour.accent",
+            lightTheme: "colour.lightTheme",
+            darkTheme: "colour.darkTheme",
             surface: "colour.surface",
             surfaceAlpha: "material.surfaceAlpha",
             wallOn: "wallpaper.enabled",
@@ -606,6 +608,7 @@ Singleton {
                 root.refused(ThemeSwitcher.unavailableWhy, "");
                 return;
             }
+            ThemeSwitcher.remember(value);
             return ThemeSwitcher.apply(value);
         case "sidebar":
             return SidebarState.setAll(value);
@@ -1391,6 +1394,7 @@ Singleton {
     readonly property int trayCount: Tray.items.length
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
     readonly property var currencies: Currency.codes
+    readonly property var themeChoices: [["", "the one picked above"]].concat(Themes.catalogue.map(t => [t.name, t.name]))
     readonly property var noteVaults: [["", "the one Obsidian opened last"]].concat(Notes.vaults.map(v => [v.path, v.name]))
 
     readonly property var aiModels: [["", "automatic"]].concat(Assistant.models.map(m => [m, Assistant.labelOf(m)]))
