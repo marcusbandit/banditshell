@@ -183,6 +183,19 @@ Item {
         root.select(at);
     }
 
+    property int clickedAt: -1
+    property double clickedWhen: 0
+
+    function clicked(index: int): void {
+        const now = Date.now();
+        const twice = index === root.clickedAt && now - root.clickedWhen <= Qt.styleHints.mouseDoubleClickInterval;
+        root.clickedAt = twice ? -1 : index;
+        root.clickedWhen = now;
+        root.select(index);
+        if (twice)
+            root.useIt();
+    }
+
     function useIt(): void {
         if (!root.currentRow || !root.source)
             return;
@@ -451,6 +464,12 @@ Item {
 
     implicitHeight: root.rowPitch * 12 + footer.implicitHeight
 
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.AllButtons
+        onWheel: wheel => wheel.accepted = true
+    }
+
     Item {
         id: banner
 
@@ -539,10 +558,7 @@ Item {
                 label: line.shaped?.shape === "image" ? `Image${line.shaped.entry.w > 0 ? ` (${line.shaped.entry.w}×${line.shaped.entry.h})` : ""}` : line.made?.label ?? ""
                 selected: line.index === root.selected
                 askable: true
-                onActivated: {
-                    root.select(line.index);
-                    root.useIt();
-                }
+                onActivated: root.clicked(line.index)
                 onAsked: (x, y) => {
                     root.select(line.index);
                     root.openActions();

@@ -166,6 +166,12 @@ Item {
 
     implicitHeight: root.headerPitch * 2 + (root.tile + root.gap) * 5 + footer.implicitHeight
 
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.AllButtons
+        onWheel: wheel => wheel.accepted = true
+    }
+
     GlideList {
         id: grid
 
@@ -247,7 +253,9 @@ Item {
                                 root.selected = cell.at;
                                 if (mouse.button === Qt.RightButton)
                                     root.openActions(cell);
-                                else
+                            }
+                            onDoubleClicked: mouse => {
+                                if (mouse.button === Qt.LeftButton)
                                     root.useIt();
                             }
                         }

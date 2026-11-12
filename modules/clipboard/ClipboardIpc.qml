@@ -75,11 +75,11 @@ IpcHandler {
     }
 
     function status(): string {
-        const win = Shell.showing(w => w.launcher.open && w.launcher.page === "clipboard");
+        const shown = Shell.windows.some(w => w.launcher.open && w.launcher.page === "clipboard");
         const kinds = {};
         for (const e of Clipboard.entries)
             kinds[e.kind] = (kinds[e.kind] ?? 0) + 1;
         const tally = Object.keys(kinds).sort().map(k => `${k}=${kinds[k]}`).join(" ");
-        return `recording=${Clipboard.recording} entries=${Clipboard.entries.length} pinned=${Clipboard.entries.filter(e => e.pinned).length} open=${!!win} ${tally}`;
+        return `recording=${Clipboard.recording} entries=${Clipboard.entries.length} pinned=${Clipboard.entries.filter(e => e.pinned).length} open=${shown} ${tally}`;
     }
 }

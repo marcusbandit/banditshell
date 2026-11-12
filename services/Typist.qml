@@ -20,6 +20,7 @@ Singleton {
     readonly property int grace: 400
     readonly property int settle: 50
     readonly property int least: 90
+    readonly property int reask: 250
 
     property var job: null
 
@@ -112,6 +113,10 @@ Singleton {
             return;
         }
         job.calm = 0;
+        if (!focused && now - (job.asked ?? 0) >= root.reask) {
+            job.asked = now;
+            Hypr.restoreFocus(job.address);
+        }
         if (now - job.at >= root.patience) {
             watch.stop();
             root.job = null;
