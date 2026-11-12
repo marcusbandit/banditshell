@@ -13,14 +13,15 @@ QtObject {
     readonly property int masterLevel: root.asked > root.ceiling ? root.ceiling : Search.volumeAsk(root.text)
     readonly property var streamAsk: root.masterLevel < 0 ? Search.streamVolumeAsk(root.text) : null
     readonly property bool mixer: Search.mixerAsk(root.text)
+    readonly property bool inputs: Search.inputAsk(root.text)
     readonly property string named: root.masterLevel < 0 && !root.streamAsk ? Search.streamNameAsk(root.text) : ""
     readonly property int ceiling: Math.round(Audio.maxVolume * 100)
 
-    readonly property var kinds: ["stream"]
+    readonly property var kinds: ["stream", "input"]
     readonly property var caps: ({
-            sound: root.mixer ? 12 : 5
+            sound: root.mixer || root.inputs ? 12 : 5
         })
-    readonly property bool intent: root.masterLevel >= 0 || root.rows.some(r => r.level >= 0)
+    readonly property bool intent: root.inputs || root.masterLevel >= 0 || root.rows.some(r => r.level >= 0)
 
     readonly property var groups: [
         {
@@ -76,7 +77,23 @@ QtObject {
         }) : null;
     }
 
+    function inputRow(node: var): var {
+        const current = node.name === Audio.source?.name;
+        return {
+            key: `input:${node.name}`,
+            kind: "input",
+            node: node,
+            label: Audio.deviceLabel(node),
+            detail: [Audio.deviceTransport(node), current ? "in use" : ""].filter(Boolean).join(" · "),
+            icon: Audio.deviceIcon(node),
+            toggle: current,
+            score: Infinity
+        };
+    }
+
     readonly property var rows: {
+        if (root.inputs)
+            return Audio.sources.map(node => root.inputRow(node));
         if (root.text.length < 3 || !Audio.ready)
             return [];
         const master = root.masterRow();
@@ -85,13 +102,23 @@ QtObject {
     }
 
     function activate(row: var): void {
-        if (row.level >= 0)
+        if (row.kind === "input")
+            Audio.setSource(row.node);
+        else if (row.level >= 0)
             Audio.setStreamVolume(row.node, row.level / 100);
         else
             Audio.toggleStreamMute(row.node);
     }
 
     function actionsFor(row: var): var {
+        if (row.kind === "input")
+            return [
+                {
+                    icon: "mic",
+                    label: "Use as microphone",
+                    run: () => root.activate(row)
+                }
+            ];
         if (row.level >= 0)
             return [
                 {

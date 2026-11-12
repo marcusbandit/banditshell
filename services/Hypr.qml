@@ -7,6 +7,7 @@ import Quickshell.Io
 import qs.config
 import "workspace-span.js" as WorkspaceSpan
 import "workspace-key.js" as WorkspaceKey
+import "window-moves.js" as Moves
 
 Singleton {
     id: root
@@ -278,22 +279,31 @@ Singleton {
         return root.monitorOf(addr) !== "";
     }
 
+    property var remembered: ({})
+
     function fullscreenWindow(addr: string, mode: string): void {
         const w = root.windowAddress(addr);
-        if (w)
+        if (!w)
+            return;
+        root.withLayout((mons, clients) => {
+            const saved = Moves.remembered(clients.find(c => root.windowAddress(c.address) === w));
+            if (saved)
+                root.remembered[w] = saved;
             root.send(`hl.dsp.window.fullscreen({ mode = "${mode}", action = "toggle", window = "address:${w}" })`, `fullscreen ${mode === "maximized" ? 1 : 0}`);
+        });
     }
 
     function restoreWindow(addr: string): void {
         const w = root.windowAddress(addr);
         if (!w)
             return;
-        if (root.lua) {
-            Hyprland.dispatch(`(function() hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, action = "set", window = "address:${w}" })) return hl.dsp.window.float({ action = "off", window = "address:${w}" }) end)()`);
+        const rect = Moves.restoreRect(root.remembered[w]);
+        delete root.remembered[w];
+        if (rect) {
+            root.placeWindow(w, rect);
             return;
         }
-        Hyprland.dispatch("fullscreenstate 0 0");
-        Hyprland.dispatch(`settiled address:${w}`);
+        root.tileWindow(w);
     }
 
     function floatWindow(addr: string): void {
@@ -343,8 +353,12 @@ Singleton {
             root.withLayout((mons, clients) => {
                 const client = clients.find(c => root.windowAddress(c.address) === w);
                 const mon = mons.find(m => m.id === client?.monitor) ?? mons.find(m => m.focused);
-                if (client && mon)
+                if (client && mon) {
+                    const saved = Moves.remembered(client);
+                    if (saved && !root.remembered[w])
+                        root.remembered[w] = saved;
                     root.placeWindow(w, rectFor(mon));
+                }
             });
     }
 
@@ -381,6 +395,51 @@ Singleton {
         const w = root.windowAddress(addr);
         if (w)
             root.send(`hl.dsp.window.move({ direction = "${direction}", window = "address:${w}" })`, `movewindow ${direction}`);
+    }
+
+    function nudgeWindow(addr: string, direction: string, step: int): void {
+        const w = root.windowAddress(addr);
+        if (!w)
+            return;
+        root.withLayout((mons, clients) => {
+            const to = Moves.nudgeTarget(clients.find(c => root.windowAddress(c.address) === w), direction, step);
+            if (to)
+                root.send(`hl.dsp.window.move({ x = ${to.x}, y = ${to.y}, window = "address:${w}" })`, `movewindowpixel exact ${to.x} ${to.y},address:${w}`);
+        });
+    }
+
+    function applyPreset(preset: var): void {
+        root.withLayout((mons, clients) => {
+            const mon = mons.find(m => m.focused);
+            if (!mon)
+                return;
+            for (const step of Moves.presetPlan(preset, mon, clients)) {
+                if (step.rect)
+                    root.placeWindow(step.address, step.rect);
+                else
+                    root.tileWindow(step.address);
+            }
+        });
+    }
+
+    function capturePreset(name: string, layout: string, done: var): void {
+        root.withLayout((mons, clients) => {
+            const mon = mons.find(m => m.focused);
+            if (mon)
+                done(Moves.presetFrom(name, layout, mon, clients));
+        });
+    }
+
+    function tileWindow(addr: string): void {
+        const w = root.windowAddress(addr);
+        if (!w)
+            return;
+        if (root.lua) {
+            Hyprland.dispatch(`(function() hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, action = "set", window = "address:${w}" })) return hl.dsp.window.float({ action = "off", window = "address:${w}" }) end)()`);
+            return;
+        }
+        Hyprland.dispatch("fullscreenstate 0 0");
+        Hyprland.dispatch(`settiled address:${w}`);
     }
 
     function focusToward(direction: string, layout: string): void {

@@ -400,6 +400,10 @@ Singleton {
     property bool previewOpen: true
 
     readonly property bool showHidden: Config.values.files.hidden
+
+    function setShowHidden(on: bool): void {
+        Config.set("files.hidden", on);
+    }
     readonly property string sort: Config.values.files.sort
     readonly property bool reversed: Config.values.files.reversed
     readonly property var orderWords: FilesOrder.orderWords(root.sort)

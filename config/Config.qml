@@ -314,6 +314,8 @@ Singleton {
 
                 hiddenFiles: ".config",
 
+                windowPresets: [],
+
                 animatePreview: true,
 
                 currency: "DKK",

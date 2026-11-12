@@ -14,6 +14,7 @@ import "shellcli.js" as ShellCli
 import "../files/marks.js" as Marks
 import "../settings/catalogue.js" as Catalogue
 import "../../services/ranking.js" as Ranking
+import "../../services/window-moves.js" as Moves
 import "../../services/system-monitor.js" as ProcessNames
 
 QtObject {
@@ -327,7 +328,7 @@ QtObject {
 
     readonly property var prefixes: Prefixes.OWN.concat(root.parsedHere, root.sources.reduce((out, s) => out.concat(s.prefixes ?? []), []))
 
-    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || root.windowList || root.commandRows.some(r => r.score === Infinity)
+    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || root.presetRows.length > 0 || root.windowList || root.commandRows.some(r => r.score === Infinity)
 
     property bool started: false
 
@@ -573,6 +574,51 @@ QtObject {
             run: () => Quickshell.execDetached(["gio", "trash", "--empty"])
         },
         {
+            id: "opentrash",
+            icon: "delete",
+            label: "Open trash",
+            words: "open trash bin rubbish show deleted files",
+            run: () => Files.show(Files.trashFiles)
+        },
+        {
+            id: "hiddenfiles",
+            icon: "visibility",
+            label: "Show hidden files",
+            words: "hidden files dotfiles show hide toggle file manager",
+            toggle: Files.showHidden,
+            stay: true,
+            run: () => root.toggleHiddenFiles()
+        },
+        {
+            id: "bluetoothon",
+            icon: "bluetooth",
+            label: "Turn Bluetooth on",
+            words: "bluetooth on enable turn on switch on",
+            hidden: !Bluetooth.available || Bluetooth.enabled,
+            stay: true,
+            run: () => Bluetooth.setEnabled(true)
+        },
+        {
+            id: "bluetoothoff",
+            icon: "bluetooth_disabled",
+            label: "Turn Bluetooth off",
+            words: "bluetooth off disable turn off switch off",
+            hidden: !Bluetooth.available || !Bluetooth.enabled,
+            stay: true,
+            run: () => Bluetooth.setEnabled(false)
+        },
+        {
+            id: "muteapp",
+            icon: root.activeStreamMuted ? "volume_off" : "graphic_eq",
+            label: "Mute active app",
+            words: "mute unmute active app focused window current application sound toggle",
+            detail: root.activeStream ? root.activeStream.name : "",
+            toggle: root.activeStreamMuted,
+            hidden: !root.activeStream,
+            stay: true,
+            run: () => Audio.toggleStreamMute(root.activeStream.node)
+        },
+        {
             id: "nightlight",
             icon: "nightlight",
             label: "Night light",
@@ -638,7 +684,7 @@ QtObject {
             confirm: true,
             run: () => root.openWindows.forEach(t => Hypr.closeWindow(Hypr.windowAddress(t.address)))
         }
-    ].concat(root.windowCommands, root.layoutCommands, root.sourceCommands, Files.drives.map(d => ({
+    ].concat(root.windowCommands, root.layoutCommands, root.presetCommands, root.sourceCommands, Files.drives.map(d => ({
                 id: `eject:${d.path}`,
                 icon: "eject",
                 label: `Eject ${d.name}`,
@@ -788,8 +834,8 @@ QtObject {
                     id: `move-${d.name}`,
                     icon: d.icon,
                     label: `Move window ${d.name}`,
-                    words: `move window ${d.name}`,
-                    run: () => Hypr.moveWindowToward(root.windowTarget(), d.short)
+                    words: `move window ${d.name} nudge`,
+                    run: () => floating ? Hypr.nudgeWindow(root.windowTarget(), d.short, Moves.NUDGE_STEP) : Hypr.moveWindowToward(root.windowTarget(), d.short)
                 })), [
             {
                 id: "nextworkspace",
@@ -834,6 +880,70 @@ QtObject {
                 stay: true,
                 run: () => WindowLayouts.use(name)
             }))
+
+    readonly property var presets: Config.values.launcher.windowPresets ?? []
+
+    readonly property var presetCommands: root.presets.map(p => ({
+                id: `preset:${p.id}`,
+                icon: "view_quilt",
+                label: `Apply preset ${p.name}`,
+                words: `window preset arrangement setup apply ${p.name}`,
+                detail: `${p.windows.length} windows`,
+                run: () => {
+                    if (p.layout && p.layout !== WindowLayouts.current)
+                        WindowLayouts.use(p.layout);
+                    Hypr.applyPreset(p);
+                }
+            })).concat(root.presets.map(p => ({
+                    id: `presetdelete:${p.id}`,
+                    icon: "delete",
+                    label: `Delete preset ${p.name}`,
+                    words: `window preset arrangement setup delete remove ${p.name}`,
+                    confirm: true,
+                    run: () => Config.set("launcher.windowPresets", Moves.withoutPreset(root.presets, p.id))
+                })))
+
+    readonly property var presetRows: {
+        const name = Search.presetAsk(root.text);
+        if (!name)
+            return [];
+        const label = `Save window preset ${name}`;
+        return [
+            {
+                key: "command:savepreset",
+                kind: "command",
+                command: {
+                    id: "savepreset",
+                    label: label,
+                    run: () => Hypr.capturePreset(name, WindowLayouts.current, preset => {
+                        if (preset.windows.length)
+                            Config.set("launcher.windowPresets", Moves.withPreset(root.presets, preset));
+                    })
+                },
+                label: label,
+                detail: "windows on this workspace",
+                icon: "save",
+                score: Infinity
+            }
+        ];
+    }
+
+    readonly property var activeStream: {
+        const streams = Audio.playing.map(node => ({
+                    binary: Audio.streamBinary(node),
+                    name: Search.streamName(Audio.streamLabel(node)),
+                    node: node
+                }));
+        return Search.streamForWindow(streams, root.targetState.class);
+    }
+
+    readonly property bool activeStreamMuted: !!root.activeStream && Audio.streamMuted(root.activeStream.node)
+
+    function toggleHiddenFiles(): void {
+        const on = !Files.showHidden;
+        Files.setShowHidden(on);
+        Quickshell.execDetached(["sh", "-c", 'gsettings set org.gtk.Settings.FileChooser show-hidden "$1" 2>/dev/null; gsettings set org.gtk.gtk4.Settings.FileChooser show-hidden "$1" 2>/dev/null', "sh", String(on)]);
+    }
 
     readonly property int workspaceWanted: Search.workspaceAsk(root.text)
     readonly property int workspaceShown: Search.focusWorkspaceAsk(root.text)
@@ -1606,7 +1716,7 @@ QtObject {
         });
     }
 
-    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, FileSearch.grepAnswered, FileSearch.found, root.sourceGroupLists, root.aloneSource, root.limits]
+    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.presetRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, FileSearch.grepAnswered, FileSearch.found, root.sourceGroupLists, root.aloneSource, root.limits]
 
     property var arranged: []
     property bool arrangePending: false
@@ -1695,7 +1805,7 @@ QtObject {
         }, {
             key: "commands",
             title: "Commands",
-            items: root.withAlias("command", root.awakeRows.concat(root.workspaceRows, root.commandRows))
+            items: root.withAlias("command", root.awakeRows.concat(root.workspaceRows, root.presetRows, root.commandRows))
         }, {
             key: "settings",
             title: "Settings",

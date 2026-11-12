@@ -1535,3 +1535,31 @@ function suggestions(text, found, more) {
     }
     return out;
 }
+
+function presetAsk(text) {
+    var m = /^(?:save|store|remember)(?: (?:this|the|my))?(?: window)? (?:preset|arrangement|setup|windows)(?: (?:as|named|called))? (.+)$/i.exec(String(text || "").trim());
+    var name = m ? m[1].trim().slice(0, 40) : "";
+    return /^(?:as|named|called)$/i.test(name) ? "" : name;
+}
+
+function inputAsk(text) {
+    return /^(?:(?:switch|change|set|select|choose|pick)(?: the)? )?(?:mic|microphone|mics|microphones|input|inputs|sound input|audio input|input devices?|sound input devices?)(?: devices?)?$/i.test(String(text || "").trim());
+}
+
+function streamForWindow(streams, windowClass) {
+    var want = String(windowClass || "").trim().toLowerCase();
+    if (!want)
+        return null;
+    var named = function (s) {
+        return [s.binary, s.name].some(function (n) {
+            return String(n || "").trim().toLowerCase() === want;
+        });
+    };
+    var loose = function (s) {
+        return [s.binary, s.name].some(function (n) {
+            var t = String(n || "").trim().toLowerCase();
+            return t.length >= 3 && (want.indexOf(t) >= 0 || t.indexOf(want) >= 0);
+        });
+    };
+    return (streams || []).find(named) || (streams || []).find(loose) || null;
+}
