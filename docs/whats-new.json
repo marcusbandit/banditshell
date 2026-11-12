@@ -1,6 +1,47 @@
 {
   "entries": [
     {
+      "id": "2026-11-12-p835-tools",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Weather answers in the launcher for here or any city"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "time diff tokyo says how many hours ahead or behind a place is"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Colours convert to and from hwb, lab, lch, oklab and oklch"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "translate to french translates the text you have selected"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Emoji can be pinned to the top, and symbols copy as their code point"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Screenshot search takes dates and, with tesseract, the text inside"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "File search skips git-ignored files unless you turn it off"
+        }
+      ]
+    },
+    {
       "id": "2026-11-12-p829",
       "date": "2026-11-12",
       "changes": [
