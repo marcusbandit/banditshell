@@ -400,6 +400,11 @@ Singleton {
     property bool previewOpen: true
 
     readonly property bool showHidden: Config.values.files.hidden
+
+    function setShowHidden(on: bool): void {
+        Config.set("files.hidden", on);
+        Quickshell.execDetached(["sh", "-c", 'gsettings set org.gtk.Settings.FileChooser show-hidden "$1" 2>/dev/null; gsettings set org.gtk.gtk4.Settings.FileChooser show-hidden "$1" 2>/dev/null', "sh", String(on)]);
+    }
     readonly property string sort: Config.values.files.sort
     readonly property bool reversed: Config.values.files.reversed
     readonly property var orderWords: FilesOrder.orderWords(root.sort)
@@ -1406,7 +1411,7 @@ Singleton {
                 root.focus = "grid";
             return true;
         case "hidden":
-            Config.set("files.hidden", !root.showHidden);
+            root.setShowHidden(!root.showHidden);
             return true;
         case "sidebar":
             root.sidebarOpen = !root.sidebarOpen;
