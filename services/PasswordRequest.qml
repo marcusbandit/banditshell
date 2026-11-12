@@ -19,8 +19,7 @@ Singleton {
     property string continueLabel: ""
 
     property string secret: ""
-    property string owner: ""
-    property string reason: ""
+    property string body: ""
     property string hint: ""
 
     readonly property string requester: ""
@@ -40,8 +39,7 @@ Singleton {
         root.warning = request.warning ?? "";
         root.continueLabel = request.continueLabel ?? "continue";
         root.secret = request.secret ?? "";
-        root.owner = request.owner ?? "";
-        root.reason = request.reason ?? "";
+        root.body = request.body ?? "";
         root.hint = request.hint ?? "";
         root.taker = request.take ?? null;
         root.dropper = request.cancel ?? null;
@@ -84,8 +82,7 @@ Singleton {
             message: "WPA2 network",
             placeholder: "Password for Cafe Corner",
             secret: "Wi-Fi password",
-            owner: "for Cafe Corner",
-            reason: "Joining a WPA2 network",
+            body: "Joins Cafe Corner, a WPA2 network.",
             hint: "The network's own password, often printed on the router.",
             continueLabel: "join",
             screenName: Focus.offStageScreen

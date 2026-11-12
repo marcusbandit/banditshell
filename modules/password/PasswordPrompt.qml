@@ -51,8 +51,7 @@ Item {
         title: PasswordRequest.title,
         message: PasswordRequest.message,
         secret: PasswordRequest.secret,
-        owner: PasswordRequest.owner,
-        reason: PasswordRequest.reason,
+        body: PasswordRequest.body,
         hint: PasswordRequest.hint,
         placeholder: PasswordRequest.placeholder,
         warning: PasswordRequest.warning
@@ -74,13 +73,10 @@ Item {
     readonly property bool asksForSecret: root.source.kind === "password"
 
     readonly property color tone: root.ask.family === "admin" ? Appearance.colour.warning : Appearance.colour.accent
+    readonly property color toneFill: root.ask.family === "admin" ? Appearance.colour.warningFill : Appearance.colour.accentFill
 
     readonly property string goLabel: root.sentence(root.source.continueLabel || (root.asksForSecret ? "unlock" : "continue"))
     readonly property string stopLabel: root.sentence(root.source.cancelLabel || "cancel")
-
-    readonly property real headlineSize: Math.round((Appearance.font.size.large + Appearance.font.size.display) / 2)
-
-    readonly property real gutter: glyph.width + Appearance.padding.large
 
     property bool detailed: false
 
@@ -171,7 +167,7 @@ Item {
         y: panel.bandY + (panel.centredY - panel.bandY) * reveal.value
         width: Math.min(Appearance.sizes.launcherWidth, root.width - root.inset * 2)
 
-        implicitHeight: Appearance.padding.large * 2 + layout.implicitHeight
+        implicitHeight: Appearance.padding.large + layout.implicitHeight
         height: tall.value * reveal.value
 
         visible: panel.height > 0
@@ -193,94 +189,61 @@ Item {
                 width: panel.width - Appearance.padding.large * 2
                 spacing: Appearance.padding.large
 
-                Item {
-                    width: parent.width
-                    height: Math.max(glyph.height, heading.implicitHeight)
+                Column {
+                    width: layout.width
+                    spacing: Appearance.padding.normal
 
-                    Icon {
-                        id: glyph
+                    SquircleRect {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: Appearance.font.size.large + Appearance.padding.normal * 2
+                        height: width
+                        radius: Appearance.rounding.normal
+                        color: root.toneFill
 
-                        width: Math.round(root.headlineSize * 1.25)
-                        height: headline.height / Math.max(1, headline.lineCount)
-                        size: Math.round(root.headlineSize * 1.1)
-                        fill: 1
-                        name: root.ask.glyph
-                        fallback: "password"
-                        color: root.tone
+                        Icon {
+                            anchors.centerIn: parent
+                            name: root.ask.glyph
+                            fallback: "password"
+                            size: Appearance.font.size.large
+                            fill: 1
+                            color: root.tone
+                        }
                     }
 
                     Column {
-                        id: heading
-
-                        x: root.gutter
-                        width: parent.width - root.gutter
-                        spacing: Appearance.padding.hair
+                        width: layout.width
+                        spacing: Appearance.padding.small
 
                         StyledText {
-                            id: headline
-
-                            width: heading.width
+                            width: layout.width
                             text: root.ask.secret
-                            font.pixelSize: root.headlineSize
+                            font.pixelSize: Appearance.font.size.large
                             font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.Wrap
                         }
 
                         StyledText {
-                            width: heading.width
+                            width: layout.width
                             visible: text !== ""
-                            text: root.ask.owner
+                            text: root.ask.body
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textDim
-                            wrapMode: Text.WrapAnywhere
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.Wrap
                         }
                     }
                 }
 
                 Column {
-                    id: body
-
-                    x: root.gutter
-                    width: parent.width - root.gutter
-                    spacing: Appearance.padding.normal
-
-                    StyledText {
-                        width: body.width
-                        visible: text !== ""
-                        text: root.ask.reason
-                        font.pixelSize: Appearance.font.size.normal
-                        wrapMode: Text.Wrap
-                    }
-
-                    Row {
-                        width: body.width
-                        visible: !!root.ask.command
-                        spacing: Appearance.padding.small
-
-                        StyledText {
-                            id: runsAs
-
-                            anchors.baseline: command.baseline
-                            text: `Runs as ${root.ask.commandAs || "root"}:`
-                            font.pixelSize: Appearance.font.size.small
-                            color: Appearance.colour.textFaint
-                        }
-
-                        StyledText {
-                            id: command
-
-                            width: Math.min(implicitWidth, body.width - runsAs.implicitWidth - Appearance.padding.small)
-                            text: root.ask.command ?? ""
-                            font.pixelSize: Appearance.font.size.small
-                            color: Appearance.colour.textDim
-                            elide: Text.ElideMiddle
-                        }
-                    }
+                    width: layout.width
+                    spacing: Appearance.padding.small
+                    visible: root.asksForSecret || !!root.ask.choice
 
                     SecretField {
                         id: field
 
-                        width: body.width
+                        width: layout.width
                         height: Appearance.font.line.normal + Appearance.padding.normal * 2
                         visible: root.asksForSecret
 
@@ -301,23 +264,22 @@ Item {
                     }
 
                     StyledText {
-                        width: body.width
+                        width: layout.width
                         visible: text !== ""
                         text: root.ask.warning || root.ask.hint
-                        font.pixelSize: Appearance.font.size.small
                         color: root.ask.warning ? Appearance.colour.alarm : Appearance.colour.textDim
+                        horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.Wrap
                     }
 
-                    Item {
-                        width: body.width
-                        height: Math.max(choice.height, choiceLabel.implicitHeight)
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
                         visible: !!root.ask.choice
+                        spacing: Appearance.padding.normal
 
                         Toggle {
                             id: choice
 
-                            anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             checked: root.source.choiceChosen
 
@@ -325,61 +287,53 @@ Item {
                         }
 
                         StyledText {
-                            id: choiceLabel
-
-                            anchors.left: choice.right
-                            anchors.right: parent.right
-                            anchors.leftMargin: Appearance.padding.normal
+                            width: Math.min(implicitWidth, layout.width - choice.width - Appearance.padding.normal)
                             anchors.verticalCenter: parent.verticalCenter
                             text: root.ask.choice
-                            font.pixelSize: Appearance.font.size.small
                             color: Appearance.colour.textDim
-                            wrapMode: Text.Wrap
+                            elide: Text.ElideRight
 
                             TapHandler {
                                 onTapped: root.source.choose(!root.source.choiceChosen)
                             }
                         }
                     }
+                }
 
-                    Column {
-                        width: body.width
-                        visible: root.detailed
-                        topPadding: Appearance.padding.small
-                        spacing: Appearance.padding.small
+                Column {
+                    width: layout.width
+                    visible: root.detailed
+                    spacing: Appearance.padding.normal
 
-                        Repeater {
-                            model: root.ask.details
+                    Repeater {
+                        model: root.ask.details
 
-                            Column {
-                                id: fact
+                        Column {
+                            id: fact
 
-                                required property var modelData
+                            required property var modelData
 
-                                width: body.width
-                                spacing: Appearance.padding.hair
+                            width: layout.width
+                            spacing: Appearance.padding.hair
 
-                                StyledText {
-                                    text: fact.modelData[0]
-                                    font.pixelSize: Appearance.font.size.small
-                                    color: Appearance.colour.textFaint
-                                }
+                            StyledText {
+                                text: fact.modelData[0]
+                                color: Appearance.colour.textFaint
+                            }
 
-                                StyledText {
-                                    width: body.width
-                                    text: fact.modelData[1]
-                                    font.pixelSize: Appearance.font.size.small
-                                    color: Appearance.colour.textDim
-                                    wrapMode: Text.WrapAnywhere
-                                }
+                            StyledText {
+                                width: layout.width
+                                text: fact.modelData[1]
+                                color: Appearance.colour.textDim
+                                wrapMode: Text.WrapAnywhere
                             }
                         }
                     }
                 }
 
                 Item {
-                    width: parent.width
-                    height: footer.y + footer.height
+                    width: layout.width
+                    height: footer.height
 
                     Separator {
                         width: parent.width
@@ -388,13 +342,10 @@ Item {
                     Item {
                         id: footer
 
-                        y: Appearance.padding.normal
                         width: parent.width
-                        height: Appearance.font.line.small + Appearance.padding.small
+                        height: actions.height + Appearance.padding.card * 2
 
                         Row {
-                            id: more
-
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: Appearance.padding.small
@@ -403,14 +354,14 @@ Item {
                             Icon {
                                 anchors.verticalCenter: parent.verticalCenter
                                 name: root.detailed ? "expand_less" : "expand_more"
-                                size: Appearance.font.size.normal
-                                color: moreHover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+                                size: Appearance.font.size.small
+                                color: moreHover.hovered ? Appearance.colour.text : Appearance.colour.textDim
                             }
 
                             StyledText {
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: root.detailed ? "Less" : "Details"
-                                color: moreHover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+                                text: root.detailed ? "Hide details" : "Details"
+                                color: moreHover.hovered ? Appearance.colour.text : Appearance.colour.textDim
                             }
 
                             HoverHandler {
@@ -425,6 +376,8 @@ Item {
                         }
 
                         Row {
+                            id: actions
+
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: Appearance.padding.normal

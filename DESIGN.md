@@ -1552,17 +1552,16 @@ banditshell/
 │   │                            for exactly those two moments, so a dead lock
 │   │                            client never shows what is behind it
 │   ├── password/PasswordPrompt.qml the keyring's, polkit's and Wi-Fi's password
-│   │                            question (redrawn 2026-11-12, #828). It leads
-│   │                            with WHICH secret it wants, in words the owner
-│   │                            uses ("Your sudo password", "SSH key
-│   │                            passphrase", "Login keyring password"), with
-│   │                            its glyph hanging in the margin, then exactly
-│   │                            which one (the key's path, the account, the
-│   │                            keyring's name), then who asked and why ("git
-│   │                            is pushing to github.com/..."), then the field,
-│   │                            whose placeholder says it again, and one line on
-│   │                            what it is not. The program's own words wait
-│   │                            behind Details. Admin asks take the warning
+│   │                            question (redrawn 2026-11-12, #828). One centred
+│   │                            stack: the kind's glyph on a tinted plate, a
+│   │                            title naming WHICH secret in the owner's words
+│   │                            ("Your sudo password", "SSH key passphrase"),
+│   │                            one sentence on what it unlocks and who is
+│   │                            waiting ("Unlocks ~/.ssh/id_ed25519 so git can
+│   │                            push to ..."), the field, whose placeholder says
+│   │                            it again, and one line on what it is not. The
+│   │                            program's own words wait behind Details. Admin
+│   │                            asks take the warning
 │   │                            colour, since they hand out root. Still the
 │   │                            one panel nobody asks for: an application wants
 │   │                            a secret and is BLOCKED on the answer, so it

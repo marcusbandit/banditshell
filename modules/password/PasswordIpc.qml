@@ -55,5 +55,13 @@ Scope {
                 return `showing the made-up ${name} card; escape puts it away`;
             return `no scene called ${name}; try ${root.scenes}`;
         }
+
+        function refuse(): string {
+            const asking = Polkit.active ? Polkit : PasswordRequest.active ? PasswordRequest : Keyring.active ? Keyring : null;
+            if (!asking)
+                return "nothing is being asked";
+            asking.refuse();
+            return "refused";
+        }
     }
 }

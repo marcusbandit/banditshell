@@ -10,24 +10,6 @@ const SSH_TAKES_VALUE = "BbcDEeFIiJLlmOoPpQRSWw";
 
 const GIT_TAKES_VALUE = ["-C", "-c", "--exec-path", "--git-dir", "--work-tree", "--namespace", "--config-env", "--super-prefix"];
 
-const KNOWN_ACTIONS = [
-    ["org.freedesktop.policykit.exec", "Run a command as root"],
-    ["org.freedesktop.systemd1.manage-units", "Start, stop or restart a system service"],
-    ["org.freedesktop.systemd1.manage-unit-files", "Turn a system service on or off"],
-    ["org.freedesktop.systemd1.reload-daemon", "Reload the system services"],
-    ["org.freedesktop.login1.", "Power off, restart or change the session"],
-    ["org.freedesktop.udisks2.", "Mount or change a drive"],
-    ["org.freedesktop.NetworkManager.", "Change the network settings"],
-    ["org.freedesktop.packagekit.", "Install or update software"],
-    ["org.freedesktop.Flatpak.", "Install or update Flatpak apps"],
-    ["org.freedesktop.timedate1.", "Change the date and time"],
-    ["org.freedesktop.hostname1.", "Change this computer's name"],
-    ["org.freedesktop.locale1.", "Change the system language or keyboard"],
-    ["org.freedesktop.accounts.", "Change a user account"],
-    ["org.freedesktop.fwupd.", "Update device firmware"],
-    ["org.freedesktop.bolt.", "Allow a Thunderbolt device"]
-];
-
 function basename(path) {
     const text = String(path ?? "");
     return text.slice(text.lastIndexOf("/") + 1);
@@ -246,26 +228,26 @@ function originOf(chain, from) {
 function gitPhrase(verb, push, place) {
     switch (verb) {
     case "push":
-        return `pushing to ${place}`;
+        return `push to ${place}`;
     case "pull":
-        return `pulling from ${place}`;
+        return `pull from ${place}`;
     case "fetch":
     case "remote":
-        return `fetching from ${place}`;
+        return `fetch from ${place}`;
     case "clone":
-        return `cloning ${place}`;
+        return `clone ${place}`;
     case "ls-remote":
-        return `checking ${place}`;
+        return `check ${place}`;
     case "submodule":
-        return `updating submodules from ${place}`;
+        return `update submodules from ${place}`;
     default:
-        return push ? `pushing to ${place}` : `fetching from ${place}`;
+        return push ? `push to ${place}` : `fetch from ${place}`;
     }
 }
 
 function causeOf(chain) {
     if (!chain || !chain.length)
-        return "";
+        return null;
     const sshAt = chain.findIndex(entry => programOf(entry) === "ssh");
     if (sshAt >= 0) {
         const target = sshTarget(chain[sshAt].args);
@@ -276,40 +258,51 @@ function causeOf(chain) {
             const top = gitAt >= 0 ? outermost(chain, gitAt, entry => programOf(entry) === "git") : sshAt;
             const verb = gitAt >= 0 ? gitVerb(chain[top].args) : "";
             const place = service?.path ? `${host}/${service.path}` : host;
-            const origin = originOf(chain, top);
-            return `${origin || "git"} is ${gitPhrase(verb, service?.push ?? verb === "push", place)}`;
+            return {
+                who: originOf(chain, top) || "git",
+                doing: gitPhrase(verb, service?.push ?? verb === "push", place)
+            };
         }
         const wrapperAt = sshAt + 1 < chain.length && ["scp", "sftp", "rsync", "sshfs"].includes(programOf(chain[sshAt + 1])) ? sshAt + 1 : -1;
         if (wrapperAt >= 0) {
             const tool = programOf(chain[wrapperAt]);
-            const origin = originOf(chain, wrapperAt);
-            const phrase = tool === "rsync" ? `syncing files with ${host}` : tool === "sshfs" ? `mounting ${host}` : `copying files with ${host}`;
-            return `${origin || tool} is ${phrase}`;
+            return {
+                who: originOf(chain, wrapperAt) || tool,
+                doing: tool === "rsync" ? `sync files with ${host}` : tool === "sshfs" ? `mount ${host}` : `copy files with ${host}`
+            };
         }
-        const origin = originOf(chain, sshAt);
-        return `${origin || "ssh"} is connecting to ${host}`;
+        return {
+            who: originOf(chain, sshAt) || "ssh",
+            doing: `connect to ${host}`
+        };
     }
     const first = programOf(chain[0]);
     if (first === "ssh-add")
-        return "ssh-add is adding the key to the agent";
+        return {
+            who: "ssh-add",
+            doing: "load it into the agent"
+        };
     if (first === "gpg" || first === "gpg2") {
         const gitAt = chain.findIndex(entry => programOf(entry) === "git");
         const args = chain[0].args;
         if (gitAt >= 0) {
             const top = outermost(chain, gitAt, entry => programOf(entry) === "git");
-            const verb = gitVerb(chain[top].args);
-            const origin = originOf(chain, top);
-            const what = verb === "tag" ? "a tag" : "a commit";
-            return `${origin || "git"} is signing ${what}`;
+            return {
+                who: originOf(chain, top) || "git",
+                doing: gitVerb(chain[top].args) === "tag" ? "sign a tag" : "sign a commit"
+            };
         }
-        const origin = originOf(chain, 0);
         const decrypt = args.some(arg => arg === "-d" || arg === "--decrypt");
         const sign = args.some(arg => /^--(clear|detach-)?sign$/.test(arg) || /^-[a-zA-Z]*s[a-zA-Z]*$/.test(arg));
-        const phrase = decrypt ? "decrypting something" : sign ? "signing something" : "using the key";
-        return `${origin || "gpg"} is ${phrase}`;
+        return {
+            who: originOf(chain, 0) || "gpg",
+            doing: decrypt ? "decrypt something" : sign ? "sign something" : "use it"
+        };
     }
-    const origin = originOf(chain, 0);
-    return `${origin || first} is using the key`;
+    return {
+        who: originOf(chain, 0) || first,
+        doing: "use it"
+    };
 }
 
 function commandOf(chain) {
@@ -320,13 +313,6 @@ function identityName(identity) {
     return String(identity?.name ?? "").replace(/^unix-(user|group):/, "");
 }
 
-function actionTitle(actionId) {
-    for (const [prefix, title] of KNOWN_ACTIONS)
-        if (actionId === prefix || (prefix.endsWith(".") && String(actionId ?? "").startsWith(prefix)))
-            return title;
-    return "";
-}
-
 function pkexecRun(message) {
     const match = String(message ?? "").match(/run [`'‘"](.+?)['’"] as (?:the super user|user (\S+?))\.?$/);
     if (!match)
@@ -335,18 +321,15 @@ function pkexecRun(message) {
     words[0] = basename(words[0]);
     return {
         command: words.join(" "),
+        program: words[0],
         as: match[2] ?? "root"
     };
 }
 
-function polkitReason(message) {
+function polkitNeed(message) {
     const text = String(message ?? "");
     const rest = text.replace(/^Authentication is (?:required|needed) (?:in order )?to /i, "").replace(/\.$/, "");
-    return rest === text ? text : `A program wants to ${rest}`;
-}
-
-function keyringName(name) {
-    return /keyring$/i.test(name) ? `“${name}”` : `the “${name}” keyring`;
+    return rest === text ? "" : rest;
 }
 
 function wrong(warning, noun) {
@@ -361,83 +344,95 @@ function rememberLabel(label) {
     return label ?? "";
 }
 
+function keyringName(name) {
+    return /keyring$/i.test(name) ? `“${name}”` : `the “${name}” keyring`;
+}
+
+function so(cause, fallback) {
+    return cause ? ` so ${cause.who} can ${cause.doing}.` : fallback;
+}
+
+function card(fields) {
+    return Object.assign({
+        family: "keyring",
+        glyph: "password",
+        secret: "Password",
+        body: "",
+        hint: "",
+        placeholder: "Password",
+        warning: "",
+        details: []
+    }, fields);
+}
+
 function describePolkit(ask) {
     const who = identityName(ask.identity) || ask.user || "";
     const self = !ask.identity || who === ask.user || (!!ask.user && ask.identity.displayName === ask.user);
     const root = who === "root";
     const run = pkexecRun(ask.message);
-    const doing = ask.label ? `banditshell wants to ${lowerFirst(ask.label)}` : run ? `A program wants to run a command as ${run.as}` : polkitReason(ask.message) || actionTitle(ask.actionId) || "A program wants to act as an administrator";
+    const need = polkitNeed(ask.message);
+    const body = ask.label ? `banditshell needs it to ${lowerFirst(ask.label)}.` : run ? `A program needs it to run ${run.program} as ${run.as}.` : need ? `A program needs it to ${need}.` : ask.message || "A program wants to act as an administrator.";
     const details = [];
+    if (run)
+        details.push([`Runs as ${run.as}`, run.command]);
     if (ask.actionId)
         details.push(["Polkit action", ask.actionId]);
-    if (ask.message)
+    if (ask.message && !run)
         details.push(["Polkit says", ask.message]);
-    if (ask.identity?.isGroup)
-        details.push(["Any member of", who]);
-    return {
+    return card({
         family: "admin",
         glyph: "admin_panel_settings",
         secret: root ? "The root password" : self ? "Your sudo password" : `${who}'s password`,
-        owner: root ? "the root account's own password, not yours" : self ? (who ? `for ${who}, the account you log in with` : "for the account you log in with") : `${who} is an administrator on this computer`,
-        reason: doing,
-        command: run?.command ?? "",
-        commandAs: run?.as ?? "",
-        hint: root ? "Asked for root because polkit is set up that way here." : "",
+        body: body,
+        hint: root ? "This computer asks for root's password here, not yours." : self ? "" : `${who} is an administrator on this computer.`,
         placeholder: root ? "Root password" : who ? `Password for ${who}` : "Your password",
         warning: wrong(ask.warning, "password"),
-        noun: "password",
         details: details
-    };
+    });
 }
 
-function describeSshKey(ask, path) {
-    const shown = tilde(path, ask.home);
-    const name = basename(path) || "this key";
-    const details = [["Asked by", ask.requester || "the ssh agent"]];
+function waiting(ask) {
+    const details = [["Asked by", ask.requester || "an agent"]];
     if (ask.command)
-        details.push(["Waiting", ask.command]);
-    return {
+        details.push(["Command waiting", ask.command]);
+    return details;
+}
+
+function describeSshKey(ask, path, label) {
+    const shown = path ? tilde(path, ask.home) : label;
+    const name = basename(path) || label || "this key";
+    return card({
         family: "ssh",
         glyph: "vpn_key",
         secret: "SSH key passphrase",
-        owner: path ? shown : "a key the ssh agent holds",
-        reason: ask.cause || "A program wants to sign in with this key over ssh",
+        body: `Unlocks ${shown || "your SSH key"}` + so(ask.cause, " for a program signing in over ssh."),
         hint: "Set when the key was made. It is not your login password.",
         placeholder: `Passphrase for ${name}`,
         warning: wrong(ask.warning, "passphrase"),
-        noun: "passphrase",
-        details: details
-    };
+        details: waiting(ask)
+    });
 }
 
 function describeGpg(ask) {
     const text = ask.description ?? "";
     const sshKey = text.match(/passphrase for the ssh key\s+(\S+)\s*\(([^)]*)\)/i);
     if (sshKey)
-        return Object.assign(describeSshKey(ask, ""), {
-            owner: sshKey[2] || sshKey[1],
-            placeholder: `Passphrase for ${sshKey[2] || "this key"}`
-        });
+        return describeSshKey(ask, "", sshKey[2] || sshKey[1]);
     const fresh = /new key|protect/i.test(text) && !/unlock/i.test(text);
     const uid = (text.match(/"([^"]+)"/) ?? [])[1] ?? "";
     const person = uid.replace(/\s*<[^>]*>\s*/, "").replace(/\s*\([^)]*\)\s*/, "").trim();
-    const id = (text.match(/ID\s+([0-9A-F]{8,40})/i) ?? [])[1] ?? "";
-    const owner = [person ? `${person}'s key` : "", id ? id.slice(-8) : ""].filter(Boolean).join(", ");
-    const details = [["Asked by", ask.requester || "pinentry"]];
-    if (ask.command)
-        details.push(["Waiting", ask.command]);
-    return {
+    const id = ((text.match(/ID\s+([0-9A-F]{8,40})/i) ?? [])[1] ?? "").slice(-8);
+    const key = person ? `${person}'s key${id ? " " + id : ""}` : id ? `key ${id}` : "your GPG key";
+    return card({
         family: "gpg",
         glyph: "signature",
         secret: fresh ? "New GPG passphrase" : "GPG key passphrase",
-        owner: owner || "a key in your GPG keyring",
-        reason: ask.cause || (fresh ? "gpg is protecting a new key" : "gpg wants to use your key"),
+        body: fresh ? "Protects a new GPG key." : `Unlocks ${key}` + so(ask.cause, " for gpg."),
         hint: fresh ? "Choose one. You type it whenever the key is used." : "Set when the key was made. It is not your login password.",
         placeholder: fresh ? "New passphrase" : "GPG passphrase",
         warning: wrong(ask.warning, "passphrase"),
-        noun: "passphrase",
-        details: details
-    };
+        details: waiting(ask)
+    });
 }
 
 function describeKeyring(ask) {
@@ -446,130 +441,99 @@ function describeKeyring(ask) {
     const description = ask.description ?? "";
     const details = [["Asked by", ask.requester || "the keyring"]];
     const name = quoted(description) || quoted(message);
-    if (ask.requester === "gcr-ssh-agent" || /ssh/.test(ask.requester ?? "")) {
+    if (/ssh/.test(ask.requester ?? "")) {
         const path = (description.match(/passphrase for (?:key )?['"]?(\S+?)['"]?:/) ?? [])[1] ?? "";
-        return describeSshKey(ask, path);
+        return describeSshKey(ask, path, "");
     }
     if (/^pinentry/.test(ask.requester ?? ""))
         return describeGpg(ask);
     if (ask.kind === "confirm")
-        return {
-            family: "keyring",
+        return card({
             glyph: "lock_open",
             secret: title || "Allow this?",
-            owner: "",
-            reason: description || message,
-            hint: "",
+            body: description || message,
             placeholder: "",
             warning: ask.warning ?? "",
-            noun: "",
             details: details
-        };
+        });
     if (/login keyring/i.test(title)) {
         const changed = /no longer matches/i.test(description);
-        return {
-            family: "keyring",
-            glyph: "key",
+        return card({
             secret: "Login keyring password",
-            owner: "the keyring that holds your saved passwords",
-            reason: "An app wants a saved password, and the keyring is still locked",
-            hint: changed ? "Your login password changed after this keyring was made. Type the old one." : "Usually your login password. Face unlock and auto-login leave this keyring locked.",
+            body: "An app is waiting for a saved password, and this keyring is still locked.",
+            hint: changed ? "Your login password changed after this keyring was made. Type the old one." : "Usually your login password. Face unlock and auto-login leave it locked.",
             placeholder: changed ? "Old login password" : "Login keyring password",
             warning: wrong(ask.warning, "password"),
-            noun: "password",
             details: details
-        };
-    }
-    if (ask.passwordNew || /new keyring|new password/i.test(title)) {
-        return {
-            family: "keyring",
-            glyph: "key",
-            secret: /change/i.test(title) ? "New keyring password" : "Password for a new keyring",
-            owner: name ? keyringName(name) : "a new keyring",
-            reason: /change/i.test(title + description) ? "An app wants to change this keyring's password" : "An app wants somewhere safe to keep its passwords",
-            hint: "Choose one. You type it whenever this keyring is locked.",
-            placeholder: "New password",
-            warning: ask.warning ?? "",
-            noun: "password",
-            details: details
-        };
-    }
-    if (/change/i.test(title)) {
-        return {
-            family: "keyring",
-            glyph: "key",
-            secret: "Current keyring password",
-            owner: name ? keyringName(name) : "a keyring",
-            reason: "An app wants to change this keyring's password",
-            hint: "The password it has now, before the change.",
-            placeholder: "Current password",
-            warning: wrong(ask.warning, "password"),
-            noun: "password",
-            details: details
-        };
-    }
-    if (/unlock keyring/i.test(title) || /keyring/i.test(description)) {
-        return {
-            family: "keyring",
-            glyph: "key",
-            secret: "Keyring password",
-            owner: name ? keyringName(name) : "a keyring",
-            reason: "An app wants a saved password from it",
-            hint: name === "login" ? "Usually your login password." : "The password chosen when this keyring was made.",
-            placeholder: name ? `Password for “${name}”` : "Keyring password",
-            warning: wrong(ask.warning, "password"),
-            noun: "password",
-            details: details
-        };
+        });
     }
     if (/unlock (private key|certificate|public key)/i.test(title)) {
         const what = (title.match(/unlock (.+)$/i) ?? [])[1] ?? "key";
-        return {
-            family: "keyring",
+        return card({
             glyph: "encrypted",
             secret: `${upperFirst(what)} password`,
-            owner: name || `a ${what} in your keyring`,
-            reason: `An app wants to use this ${what}`,
-            hint: `Set when the ${what} was stored. It is not always your login password.`,
+            body: `An app wants to use ${name ? `the ${what} “${name}”` : `a ${what} in your keyring`}.`,
+            hint: `Set when the ${what} was stored.`,
             placeholder: `Password for the ${what}`,
             warning: wrong(ask.warning, "password"),
-            noun: "password",
             details: details
-        };
+        });
     }
-    return {
+    if (ask.passwordNew || /new keyring|new password/i.test(title)) {
+        const changing = /change/i.test(title + description);
+        return card({
+            secret: changing ? "New keyring password" : "Password for a new keyring",
+            body: changing ? `An app is changing the password of ${name ? keyringName(name) : "a keyring"}.` : `An app wants a new keyring${name ? `, “${name}”,` : ""} for its passwords.`,
+            hint: "Choose one. You type it whenever this keyring is locked.",
+            placeholder: "New password",
+            warning: ask.warning ?? "",
+            details: details
+        });
+    }
+    if (/change/i.test(title))
+        return card({
+            secret: "Current keyring password",
+            body: `An app is changing the password of ${name ? keyringName(name) : "a keyring"}.`,
+            hint: "The password it has now, before the change.",
+            placeholder: "Current password",
+            warning: wrong(ask.warning, "password"),
+            details: details
+        });
+    if (/unlock keyring/i.test(title) || /keyring/i.test(description))
+        return card({
+            secret: "Keyring password",
+            body: `An app wants a saved password from ${name ? keyringName(name) : "a keyring"}.`,
+            hint: name === "login" ? "Usually your login password." : "The password chosen when this keyring was made.",
+            placeholder: name ? `Password for “${name}”` : "Keyring password",
+            warning: wrong(ask.warning, "password"),
+            details: details
+        });
+    return card({
         family: "other",
         glyph: "password",
         secret: title || "Password",
-        owner: message,
-        reason: description,
-        hint: "",
-        placeholder: "Password",
+        body: [message, description].filter(Boolean).join(" "),
         warning: ask.warning ?? "",
-        noun: "password",
         details: details
-    };
+    });
 }
 
 function describeRequest(ask) {
-    return {
+    return card({
         family: ask.family || "wifi",
         glyph: ask.glyph || "wifi_password",
         secret: ask.secret || ask.title || "Password",
-        owner: ask.owner || "",
-        reason: ask.reason || ask.message || "",
+        body: ask.body || ask.message || "",
         hint: ask.hint || "",
         placeholder: ask.placeholder || "Password",
-        warning: ask.warning ?? "",
-        noun: "password",
-        details: []
-    };
+        warning: ask.warning ?? ""
+    });
 }
 
 function describe(ask) {
     const told = ask.source === "polkit" ? describePolkit(ask) : ask.source === "request" ? describeRequest(ask) : describeKeyring(ask);
     const original = [ask.title, ask.message, ask.description].filter(text => text && !told.details.some(([, said]) => said === text));
-    if (ask.source !== "request" && original.length)
+    if (ask.source === "keyring" && original.length)
         told.details.push(["Their words", original.join("\n")]);
     told.choice = rememberLabel(ask.choiceLabel);
     return told;

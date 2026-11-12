@@ -35,7 +35,7 @@ Singleton {
 
     property int requesterPid: 0
 
-    property string cause: ""
+    property var cause: null
 
     property string callerCommand: ""
 
@@ -127,7 +127,7 @@ Singleton {
         root.cancelLabel = "";
         root.requester = "";
         root.requesterPid = 0;
-        root.cause = "";
+        root.cause = null;
         root.callerCommand = "";
     }
 
@@ -189,7 +189,7 @@ Singleton {
         root.cancelLabel = event.cancelLabel ?? "";
         root.requester = event.requester ?? "";
         root.requesterPid = event.requesterPid ?? 0;
-        root.cause = "";
+        root.cause = null;
         root.callerCommand = "";
 
         root.screenName = root.screenFor(Focus.offStageScreen);
@@ -221,7 +221,10 @@ Singleton {
                 choiceLabel: "Automatically unlock this key whenever I’m logged in",
                 continueLabel: "Unlock",
                 requester: "gcr-ssh-agent",
-                cause: "git is pushing to github.com/marcusbandit/banditshell",
+                cause: {
+                    who: "git",
+                    doing: "push to github.com/marcusbandit/banditshell"
+                },
                 callerCommand: "/usr/bin/ssh -o SendEnv=GIT_PROTOCOL git@github.com git-receive-pack 'marcusbandit/banditshell.git'"
             },
             agent: {
@@ -231,7 +234,10 @@ Singleton {
                 choiceLabel: "Automatically unlock this key whenever I’m logged in",
                 continueLabel: "Unlock",
                 requester: "gcr-ssh-agent",
-                cause: "claude is pulling from github.com/marcusbandit/banditshell",
+                cause: {
+                    who: "claude",
+                    doing: "pull from github.com/marcusbandit/banditshell"
+                },
                 warning: "The unlock password was incorrect"
             },
             gpg: {
@@ -240,7 +246,10 @@ Singleton {
                 description: "Please enter the passphrase to unlock the OpenPGP secret key:\n\"Ada Example <ada@example.com>\"\n255-bit EDDSA key, ID 0123456789ABCDEF,\ncreated 2025-01-01.",
                 continueLabel: "OK",
                 requester: "pinentry-gnome3",
-                cause: "git is signing a commit"
+                cause: {
+                    who: "git",
+                    doing: "sign a commit"
+                }
             },
             keyring: {
                 title: "Unlock Keyring",
@@ -288,7 +297,7 @@ Singleton {
         root.cancelLabel = "Cancel";
         root.requester = picked.requester ?? "";
         root.requesterPid = 0;
-        root.cause = picked.cause ?? "";
+        root.cause = picked.cause ?? null;
         root.callerCommand = picked.callerCommand ?? "";
         root.screenName = root.screenFor(Focus.offStageScreen);
         root.asked += 1;
