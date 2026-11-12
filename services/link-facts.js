@@ -4,6 +4,8 @@ var SHAPE = /^([a-z][a-z0-9+.-]*):\/\/(?:([^@\/?#\s]*)@)?(\[[^\]]+\]|[^\/?#:\s]*
 var TRACKERS = /^(utm_\w+|si|src|fbclid|gclid|dclid|msclkid|igshid|igsh|ref_src|ref_url|feature|pp|mc_cid|mc_eid|_hsenc|_hsmi|spm|share_id|mibextid)$/i;
 var SECRET_NAMES = /(^|[_-])(api[_-]?key|apikey|key|token|access[_-]?token|auth|password|passwd|pass|secret|sig|signature|session|sid|credential|code)$/i;
 var RANDOM = /^[A-Za-z0-9_\-+\/=%.]{24,}$/;
+var PLAIN_NAMES = /^(list|v|id|t|q|query|search|page|p|index|lang|hl|tab)$/i;
+var ONE_TIME = /(^|[_-])(reset|verify|verification|confirm|activate|magic|token|login|signin|sign-in|auth|oauth|callback|unsubscribe|invite|accept|download)([_-]|$)/i;
 var MEDIA = {
     video: /\.(mp4|webm|mov|mkv|m3u8|mpd)$/i,
     image: /\.(png|jpe?g|gif|webp|svg|avif|bmp)$/i,
@@ -36,7 +38,7 @@ function parse(url) {
                 name: name,
                 value: value,
                 tracking: TRACKERS.test(name),
-                secret: SECRET_NAMES.test(name) || RANDOM.test(value) && !TRACKERS.test(name)
+                secret: SECRET_NAMES.test(name) || RANDOM.test(value) && /\d/.test(value) && !TRACKERS.test(name) && !PLAIN_NAMES.test(name)
             });
         });
     var path = m[5] || "";
@@ -224,8 +226,10 @@ function clean(url) {
 
 function fetchable(url) {
     var link = parse(url);
-    return !!link && (link.scheme === "http" || link.scheme === "https") && !link.login && !link.params.some(function (p) {
+    return !!link && (link.scheme === "http" || link.scheme === "https") && !link.login && placeOf(link.host) === "web" && !link.params.some(function (p) {
         return p.secret;
+    }) && !link.segments.some(function (segment) {
+        return ONE_TIME.test(segment) || RANDOM.test(segment) && /\d/.test(segment) && segment.length >= 32;
     });
 }
 
@@ -238,9 +242,11 @@ function secret(url) {
 
 function entity(text) {
     return String(text || "").replace(/&#x([0-9a-f]+);/gi, function (m, h) {
-        return String.fromCodePoint(parseInt(h, 16));
+        var n = parseInt(h, 16);
+        return n > 0 && n <= 0x10FFFF ? String.fromCodePoint(n) : "";
     }).replace(/&#(\d+);/g, function (m, d) {
-        return String.fromCodePoint(parseInt(d, 10));
+        var n = parseInt(d, 10);
+        return n > 0 && n <= 0x10FFFF ? String.fromCodePoint(n) : "";
     }).replace(/&quot;/g, "\"").replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 }
 

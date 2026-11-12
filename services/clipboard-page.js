@@ -91,7 +91,7 @@ var SHAPES = {
     }
 };
 
-var EMAIL = /^(?:mailto:)?[^\s@<>()"',;]+@[^\s@<>()"',;]+\.[a-z]{2,}$/i;
+var EMAIL = /^(?:mailto:)?[^\s@<>()"',;:\/]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}$/i;
 var COLOURISH = /^(?:#|rgba?\s*\(|hsla?\s*\()/i;
 var BARE_HEX = /^(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 var FILE_KINDS = ["files", "document", "audio", "video"];
@@ -103,7 +103,7 @@ function colourOf(entry, parseColour) {
         return null;
     if (COLOURISH.test(text))
         return parseColour(text);
-    return BARE_HEX.test(text) && /[a-f]/i.test(text) ? parseColour("#" + text) : null;
+    return BARE_HEX.test(text) && /[a-f]/i.test(text) && /\d/.test(text) ? parseColour("#" + text) : null;
 }
 
 function swatchOf(c) {

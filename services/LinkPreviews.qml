@@ -19,6 +19,14 @@ Singleton {
     property int busy: 0
     property bool loaded: false
     property var asked: ({})
+    property var inflight: ({})
+    readonly property int kept: 400
+    readonly property var blank: ({
+            title: "",
+            description: "",
+            icon: "",
+            image: ""
+        })
 
     function pageOf(url: string): var {
         return root.pages[String(url ?? "").trim()] ?? null;
@@ -48,6 +56,7 @@ Singleton {
             const url = root.waiting[0];
             root.waiting = root.waiting.slice(1);
             root.busy += 1;
+            root.inflight[url] = true;
             const key = Links.keyOf(url);
             const embed = Links.oembedOf(url);
             fetcher.createObject(root, {
@@ -60,7 +69,15 @@ Singleton {
     }
 
     function read(url: string, key: string, html: string): void {
-        const got = Links.oembedOf(url) ? Links.readEmbed(html) ?? Links.readPage("", url) : Links.readPage(html, url);
+        let got;
+        try {
+            got = Links.oembedOf(url) ? Links.readEmbed(html) ?? Links.readPage("", url) : Links.readPage(html, url);
+        } catch (e) {
+            root.keep(url, Object.assign({
+                at: Date.now()
+            }, root.blank));
+            return;
+        }
         const icon = `${root.dir}/${key}-icon`;
         const image = got.image ? `${root.dir}/${key}-image` : "";
         downloader.createObject(root, {
@@ -78,11 +95,28 @@ Singleton {
     }
 
     function keep(url: string, page: var): void {
-        root.pages = Object.assign({}, root.pages, {
+        const next = Object.assign({}, root.pages, {
             [url]: page
         });
-        root.busy = Math.max(0, root.busy - 1);
+        const urls = Object.keys(next);
+        if (urls.length > root.kept) {
+            const old = urls.sort((a, b) => (next[a].at ?? 0) - (next[b].at ?? 0)).slice(0, urls.length - root.kept + 50);
+            const files = [];
+            for (const u of old) {
+                for (const f of [next[u].icon, next[u].image])
+                    if (f && f.indexOf(`${root.dir}/`) === 0)
+                        files.push(f);
+                delete next[u];
+            }
+            if (files.length)
+                Quickshell.execDetached(["rm", "-f", "--", ...files]);
+        }
+        root.pages = next;
         save.restart();
+        if (!root.inflight[url])
+            return;
+        delete root.inflight[url];
+        root.busy = Math.max(0, root.busy - 1);
         root.pump();
     }
 
@@ -94,13 +128,23 @@ Singleton {
 
             property string url: ""
             property string key: ""
+            property bool heard: false
 
             stdout: StdioCollector {
-                onStreamFinished: root.read(fetch.url, fetch.key, text)
+                onStreamFinished: {
+                    fetch.heard = true;
+                    root.read(fetch.url, fetch.key, text);
+                }
             }
 
             onRunningChanged: if (!fetch.running)
-                fetch.destroy()
+                Qt.callLater(() => {
+                    if (!fetch.heard)
+                        root.keep(fetch.url, Object.assign({
+                            at: Date.now()
+                        }, root.blank));
+                    fetch.destroy();
+                })
         }
     }
 

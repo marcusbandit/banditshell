@@ -92,7 +92,7 @@ Item {
     readonly property var linkInfo: root.address ? Links.describe(root.address) : null
     readonly property var linkPage: root.address ? LinkPreviews.pages[root.address] ?? null : null
 
-    onAddressChanged: if (root.address)
+    onAddressChanged: if (root.address && !root.currentRow?.secret)
         LinkPreviews.look(root.address)
 
     readonly property string body: {
@@ -217,6 +217,10 @@ Item {
             }));
     }
 
+    function fileUrl(path: string): string {
+        return `file://${String(path).split("/").map(encodeURIComponent).join("/")}`;
+    }
+
     function openOut(url: string): void {
         root.source.search.launch(() => Quickshell.execDetached(["xdg-open", url]));
     }
@@ -277,11 +281,11 @@ Item {
                     out.push({
                         icon: "open_in_new",
                         label: paths.length > 1 ? "Open the first" : "Open",
-                        run: () => root.openOut(`file://${first}`)
+                        run: () => root.openOut(root.fileUrl(first))
                     }, {
                         icon: "folder_open",
                         label: "Show in its folder",
-                        run: () => root.openOut(`file://${first.slice(0, first.lastIndexOf("/")) || "/"}`)
+                        run: () => root.openOut(root.fileUrl(first.slice(0, first.lastIndexOf("/")) || "/"))
                     });
                 if (paths.length)
                     out.push({
@@ -560,8 +564,6 @@ Item {
             readonly property var info: line.address ? Links.describe(line.address) : null
             readonly property var site: line.address ? LinkPreviews.pages[line.address] ?? null : null
 
-            Component.onCompleted: if (line.address)
-                LinkPreviews.look(line.address)
 
             width: list.width
             height: line.modelData.header ? root.headerPitch : root.rowPitch

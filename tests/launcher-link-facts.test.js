@@ -119,3 +119,23 @@ test("a page title that only names the site gives way to what the link points at
     assert.strictEqual(Links.bestTitle(video, { title: "Before you continue to YouTube" }), "abc at 1:30");
     assert.deepStrictEqual(Links.factsOf(video).map(f => f.label), ["Kind", "Site", "Path", "Starts at"]);
 });
+
+test("only public web pages are fetched for a preview, never local machines or one-time links", () => {
+    for (const url of ["http://localhost:8080/api/reset", "http://192.168.1.20/reboot.cgi", "https://box.example-tailnet.ts.net/", "http://printer/status", "http://100.100.1.2:8000/"])
+        assert.strictEqual(Links.fetchable(url), false, url);
+    for (const url of ["https://accounts.example.com/reset/9f8a7b6c5d", "https://example.com/verify-email/abc", "https://example.com/a/0123456789abcdef0123456789abcdef01"])
+        assert.strictEqual(Links.fetchable(url), false, url);
+    assert.strictEqual(Links.fetchable("https://example.com/someone/project/issues/3"), true);
+});
+
+test("a long playlist or video id is not mistaken for a key", () => {
+    const url = "https://www.youtube.com/playlist?list=PLabcdefghijklmnopqrstuvwxyz012345";
+    assert.strictEqual(Links.secret(url), false);
+    assert.strictEqual(Links.masked(url), url);
+    assert.strictEqual(Links.fetchable(url), true);
+});
+
+test("a page title with a broken character reference reads without throwing", () => {
+    assert.strictEqual(Links.readPage("<title>Bad &#x110000; and &#0; ok &#65;</title>", "https://example.com/").title, "Bad and ok A");
+});
+

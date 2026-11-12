@@ -119,3 +119,11 @@ test("a colour swatch is drawn in Qt's order, alpha first, and nothing draws as 
     assert.strictEqual(Page.swatchOf(Colours.parseColour("rgba(255, 99, 99, 0.5)")), "#80ff6363");
     assert.strictEqual(Page.swatchOf(null), "transparent");
 });
+test("a git remote is not an email address, and plain words made of hex letters are not colours", () => {
+    assert.strictEqual(shape("text", "git@github.com:someone/project.git"), "text");
+    assert.strictEqual(shape("url", "https://user@example.com/path"), "link");
+    for (const word of ["add", "bad", "bee", "decade", "facade"])
+        assert.strictEqual(shape("colour", word), "text", word);
+    assert.strictEqual(shape("colour", "5cc377"), "colour");
+});
+
