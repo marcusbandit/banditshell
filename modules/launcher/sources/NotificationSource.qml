@@ -222,7 +222,20 @@ QtObject {
         return acts;
     }
 
+    readonly property double clockDeadline: Notifications.clockDeadline(root.search.text, Date.now())
+
+    readonly property var clockCommand: ({
+            id: "quiet:clock",
+            icon: "do_not_disturb_on",
+            label: `Do not disturb until ${TimeFormat.time(new Date(root.clockDeadline), false)}`,
+            words: `${root.search.text} do not disturb quiet notifications`,
+            hidden: !(root.clockDeadline > 0),
+            stay: true,
+            run: () => Notifications.quietTill(Notifications.clockDeadline(root.search.text, Date.now()))
+        })
+
     readonly property var commands: [
+        root.clockCommand,
         {
             id: "dismiss",
             icon: "clear_all",

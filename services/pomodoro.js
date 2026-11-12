@@ -2,13 +2,25 @@
 
 var MINUTES = "(\\d{1,3})(?:\\s*(?:m|min|mins|minutes?))?";
 
+var CLOCK_WORDS = "(?:until|till|til)\\s+(.+?)";
+
 var ASKS = [
+    {
+        pattern: new RegExp(`^(?:focus|work)\\s+${CLOCK_WORDS}(?:\\s*,\\s*(.+))?$`, "i"),
+        phase: "focus",
+        until: true
+    },
+    {
+        pattern: /^(?:focus|work)\s+on\s+(.+)$/i,
+        phase: "focus",
+        goalOnly: true
+    },
     {
         pattern: new RegExp(`^(?:pomodoro|pomo|tomato)(?:\\s+${MINUTES}(?:\\s+${MINUTES})?)?$`, "i"),
         phase: "pomodoro"
     },
     {
-        pattern: new RegExp(`^(?:focus|work)(?:\\s+for)?\\s+${MINUTES}$`, "i"),
+        pattern: new RegExp(`^(?:focus|work)(?:\\s+for)?\\s+${MINUTES}(?:\\s+(?:on\\s+)?(\\D.*))?$`, "i"),
         phase: "focus"
     },
     {
@@ -25,6 +37,23 @@ function pomodoroAsk(text) {
         var m = ASKS[i].pattern.exec(t);
         if (!m)
             continue;
+        if (ASKS[i].until)
+            return {
+                phase: "focus",
+                minutes: 0,
+                breakMinutes: 0,
+                long: false,
+                until: m[1].trim(),
+                goal: (m[2] || "").trim()
+            };
+        if (ASKS[i].goalOnly)
+            return {
+                phase: "focus",
+                minutes: 0,
+                breakMinutes: 0,
+                long: false,
+                goal: m[1].trim()
+            };
         var first = m[1] ? Math.min(480, Number(m[1])) : 0;
         var second = m[2] ? Math.min(480, Number(m[2])) : 0;
         if (m[1] && first <= 0)
@@ -33,10 +62,17 @@ function pomodoroAsk(text) {
             phase: ASKS[i].phase,
             minutes: first,
             breakMinutes: second,
-            long: ASKS[i].phase === "break" && LONG.test(t)
+            long: ASKS[i].phase === "break" && LONG.test(t),
+            goal: ASKS[i].phase === "focus" ? (m[2] || "").trim() : ""
         };
     }
     return null;
+}
+
+function minutesUntil(deadline, at) {
+    if (!(deadline > at))
+        return 0;
+    return Math.min(1440, Math.max(1, Math.ceil((deadline - at) / 60000)));
 }
 
 function nextRound(state, settings) {
@@ -61,7 +97,7 @@ function phaseName(phase) {
 
 function roundLabel(state, settings) {
     if (state.phase === "focus")
-        return `Focus round ${state.round}`;
+        return state.goal ? `Focus round ${state.round}: ${state.goal}` : `Focus round ${state.round}`;
     return phaseName(state.phase);
 }
 
@@ -72,7 +108,7 @@ function minutesText(minutes) {
 function notice(finished, next) {
     if (finished.phase === "focus")
         return {
-            summary: `Focus round ${finished.round} done`,
+            summary: finished.goal ? `Focus round ${finished.round} done: ${finished.goal}` : `Focus round ${finished.round} done`,
             body: `${phaseName(next.phase)} for ${minutesText(next.minutes)}`
         };
     return {
@@ -95,6 +131,7 @@ function readState(text) {
         phase: parsed.phase,
         round: Math.max(0, Math.round(Number(parsed.round) || 0)),
         focusMinutes: Math.max(0, Math.round(Number(parsed.focusMinutes) || 0)),
-        breakMinutes: Math.max(0, Math.round(Number(parsed.breakMinutes) || 0))
+        breakMinutes: Math.max(0, Math.round(Number(parsed.breakMinutes) || 0)),
+        goal: typeof parsed.goal === "string" ? parsed.goal : ""
     };
 }

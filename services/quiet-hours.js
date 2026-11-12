@@ -126,3 +126,36 @@ function quietLine(state, at) {
         return `Quiet until ${state.to}`;
     return "";
 }
+
+const CLOCK = /^(?:at\s+)?(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?$/i;
+
+function clockMinutes(text) {
+    const m = CLOCK.exec(String(text ?? "").trim());
+    if (!m)
+        return -1;
+    const suffix = (m[3] ?? "").toLowerCase();
+    if (!suffix && m[2] === undefined)
+        return -1;
+    let hour = Number(m[1]);
+    const minute = m[2] === undefined ? 0 : Number(m[2]);
+    if (minute > 59)
+        return -1;
+    if (suffix) {
+        if (hour < 1 || hour > 12)
+            return -1;
+        hour = hour % 12 + (suffix[0] === "p" ? 12 : 0);
+    }
+    return hour > 23 ? -1 : hour * 60 + minute;
+}
+
+function untilClock(text, at) {
+    const minutes = clockMinutes(String(text ?? "").replace(/^(?:until|till|til|to)\s+/i, ""));
+    return minutes < 0 ? -1 : nextOccurrence(at, minutes);
+}
+
+const QUIET_UNTIL = /^(?:dnd|do not disturb|quiet|silence|mute)\s+(?:until|till|til|to)\s+(.+)$/i;
+
+function quietClockAsk(text, at) {
+    const m = QUIET_UNTIL.exec(String(text ?? "").trim());
+    return m ? untilClock(m[1], at) : -1;
+}

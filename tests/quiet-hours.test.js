@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/quiet-hours.js"), "utf8");
-const Quiet = new Function(src + "\nreturn { minutesOf, nightlyActive, holding, deadlineFor, endsLabel, clockTime, parseEnds, quietLine, hushUntil, endsAt, hushChoices };")();
+const Quiet = new Function(src + "\nreturn { minutesOf, nightlyActive, holding, deadlineFor, endsLabel, clockTime, parseEnds, quietLine, hushUntil, endsAt, hushChoices, clockMinutes, untilClock, quietClockAsk };")();
 
 function inZone(zone, body) {
     const before = process.env.TZ;
@@ -150,4 +150,29 @@ test("each choice leads with how long and ends with the time it stops", () => {
     assert.deepStrictEqual(late.map(c => c.until), [at(26, 0, 0), at(26, 7, 30)]);
     const early = Quiet.hushChoices(at(25, 7, 0), "07:30");
     assert.deepStrictEqual(early.map(c => c.choice), ["tomorrow", "hour"]);
+});
+
+test("clock times are read the way people type them", () => {
+    assert.strictEqual(Quiet.clockMinutes("16:30"), 990);
+    assert.strictEqual(Quiet.clockMinutes("4:30pm"), 990);
+    assert.strictEqual(Quiet.clockMinutes("4pm"), 960);
+    assert.strictEqual(Quiet.clockMinutes("12am"), 0);
+    assert.strictEqual(Quiet.clockMinutes("12:15 PM"), 735);
+    assert.strictEqual(Quiet.clockMinutes("16"), -1);
+    assert.strictEqual(Quiet.clockMinutes("13pm"), -1);
+    assert.strictEqual(Quiet.clockMinutes("25:00"), -1);
+    assert.strictEqual(Quiet.clockMinutes("soon"), -1);
+});
+
+test("until a clock time lands on the next time it is that o'clock", () => {
+    assert.strictEqual(Quiet.untilClock("until 16:30", at(10, 0)), at(16, 30));
+    assert.strictEqual(Quiet.untilClock("9am", at(10, 0)), at(9, 0, 15));
+    assert.strictEqual(Quiet.untilClock("until nonsense", at(10, 0)), -1);
+});
+
+test("do not disturb phrases with a clock time give a deadline, other phrases do not", () => {
+    assert.strictEqual(Quiet.quietClockAsk("dnd until 4:30pm", at(10, 0)), at(16, 30));
+    assert.strictEqual(Quiet.quietClockAsk("do not disturb till 22:00", at(10, 0)), at(22, 0));
+    assert.strictEqual(Quiet.quietClockAsk("dnd evening", at(10, 0)), -1);
+    assert.strictEqual(Quiet.quietClockAsk("until 16:30", at(10, 0)), -1);
 });

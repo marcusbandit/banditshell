@@ -33,6 +33,18 @@ Singleton {
 
     property bool asked: false
 
+    readonly property string quickFolder: {
+        const chosen = Paths.listFrom(root.settings.quickNoteFolder, System.home)[0];
+        return chosen ?? (root.vault ? root.vault.path : `${System.home}/Notes`);
+    }
+
+    property string contentTerm: ""
+    property string contentText: ""
+    readonly property var contentNotes: Logic.contentHits(root.contentText, root.notes, [], 10)
+
+    property string pendingTerm: ""
+    property string lastSaved: ""
+
     onVaultsChanged: {
         root.indexedAt = 0;
         if (root.asked)
@@ -58,6 +70,57 @@ Singleton {
         indexer.signature = signature;
         indexer.command = Logic.indexCommand(root.vaults, root.limit);
         indexer.running = true;
+    }
+
+    function findContent(term: string): void {
+        const clean = term.trim();
+        if (clean.length < 3 || !root.vaults.length) {
+            root.pendingTerm = "";
+            root.contentTerm = "";
+            root.contentText = "";
+            return;
+        }
+        if (clean === root.contentTerm)
+            return;
+        root.pendingTerm = clean;
+        contentDelay.restart();
+    }
+
+    function capture(text: string): void {
+        const body = Logic.quickBody(text);
+        if (!text.trim())
+            return;
+        const name = Logic.quickFileName(text, Date.now());
+        root.lastSaved = `${root.quickFolder}/${name}.md`;
+        Quickshell.execDetached(Logic.quickCommand(root.quickFolder, name, body));
+        root.indexedAt = 0;
+    }
+
+    Timer {
+        id: contentDelay
+
+        interval: 200
+        onTriggered: {
+            if (!root.pendingTerm || root.pendingTerm === root.contentTerm)
+                return;
+            grepper.running = false;
+            grepper.term = root.pendingTerm;
+            grepper.command = Logic.contentCommand(root.pendingTerm, root.vaults, 40);
+            grepper.running = true;
+        }
+    }
+
+    Process {
+        id: grepper
+
+        property string term: ""
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.contentTerm = grepper.term;
+                root.contentText = text;
+            }
+        }
     }
 
     FileView {

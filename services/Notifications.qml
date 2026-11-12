@@ -139,6 +139,14 @@ Singleton {
         return QuietHours.endsLabel(until, Date.now(), root.nightTo);
     }
 
+    function clockDeadline(text: string, at: double): double {
+        return QuietHours.quietClockAsk(text, at);
+    }
+
+    function untilClock(text: string, at: double): double {
+        return QuietHours.untilClock(text, at);
+    }
+
     function parseEnds(text: string): string {
         return QuietHours.parseEnds(text);
     }

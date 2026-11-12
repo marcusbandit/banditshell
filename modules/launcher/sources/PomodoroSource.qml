@@ -9,7 +9,18 @@ QtObject {
 
     readonly property var kinds: ["pomodoro", "pomodorostart"]
 
-    readonly property var ask: Logic.pomodoroAsk(root.search.text)
+    readonly property var typedAsk: Logic.pomodoroAsk(root.search.text)
+
+    readonly property var ask: {
+        const typed = root.typedAsk;
+        if (!typed?.until)
+            return typed;
+        const now = Date.now();
+        const minutes = Logic.minutesUntil(Notifications.untilClock(typed.until, now), now);
+        return minutes ? Object.assign({}, typed, {
+            minutes: minutes
+        }) : null;
+    }
 
     readonly property bool intent: !!root.ask
 
@@ -46,10 +57,10 @@ QtObject {
         const minutes = ask.minutes || (ask.phase === "focus" ? root.settings.focus : ask.long ? root.settings.longBreak : root.settings.breakMinutes);
         const what = ask.phase === "focus" ? "Focus" : ask.long ? "Long break" : "Break";
         return {
-            key: `pomodorostart:${ask.long ? "long" : ask.phase}:${minutes}:0`,
+            key: `pomodorostart:${ask.long ? "long" : ask.phase}:${minutes}:0:${ask.goal ?? ""}`,
             kind: "pomodorostart",
             ask: ask,
-            label: `${what} for ${minutes} min`,
+            label: ask.goal ? `${what} for ${minutes} min: ${ask.goal}` : `${what} for ${minutes} min`,
             detail: `until ${TimeFormat.time(new Date(Date.now() + minutes * 60000), false)}`,
             icon: ask.phase === "focus" ? "timer_play" : "coffee",
             score: Infinity
