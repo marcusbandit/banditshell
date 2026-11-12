@@ -31,7 +31,7 @@ Singleton {
 
     property var expected: null
 
-    readonly property bool ours: !!root.expected && root.message.includes(root.expected.program)
+    readonly property bool ours: !!root.expected && !!root.expected.program && root.message.includes(root.expected.program)
 
     readonly property string label: root.showing ? root.shown.label ?? "" : root.ours ? root.expected.label : ""
     readonly property string title: root.label || "Authentication"
@@ -46,11 +46,8 @@ Singleton {
         } : null;
     }
     readonly property string warning: root.showing ? root.shown.warning ?? "" : !root.flow ? "" : root.flow.supplementaryIsError && root.flow.supplementaryMessage ? root.flow.supplementaryMessage : root.flow.failed ? "That password did not work" : ""
-    readonly property string placeholder: (root.flow?.inputPrompt ?? "").replace(/:\s*$/, "").trim().toLowerCase() || "password"
+    readonly property string inputPrompt: root.showing ? root.shown.inputPrompt ?? "" : root.flow?.inputPrompt ?? ""
 
-    readonly property string requester: ""
-    readonly property string description: ""
-    readonly property string choiceLabel: ""
     readonly property bool choiceChosen: false
     readonly property string continueLabel: "allow"
     readonly property string cancelLabel: "cancel"

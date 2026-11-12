@@ -15,7 +15,7 @@ Item {
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
-    readonly property var source: Polkit.active ? Polkit : PasswordRequest.active ? PasswordRequest : Keyring
+    readonly property var source: PasswordAsks.current(Polkit, PasswordRequest, Keyring) ?? Keyring
 
     readonly property bool open: root.source.active && root.source.screenName === root.screenName
 
@@ -44,6 +44,7 @@ Item {
         actionId: Polkit.actionId,
         identity: Polkit.identity,
         label: Polkit.label,
+        inputPrompt: Polkit.inputPrompt,
         warning: Polkit.warning,
         user: Quickshell.env("USER") ?? ""
     } : root.source === PasswordRequest ? {

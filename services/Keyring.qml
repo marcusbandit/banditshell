@@ -188,9 +188,11 @@ Singleton {
         root.continueLabel = event.continueLabel ?? "";
         root.cancelLabel = event.cancelLabel ?? "";
         root.requester = event.requester ?? "";
+        if ((event.requesterPid ?? 0) !== root.requesterPid) {
+            root.cause = null;
+            root.callerCommand = "";
+        }
         root.requesterPid = event.requesterPid ?? 0;
-        root.cause = null;
-        root.callerCommand = "";
 
         root.screenName = root.screenFor(Focus.offStageScreen);
         root.asked += 1;
@@ -199,8 +201,12 @@ Singleton {
     }
 
     function traceCaller(): void {
-        if (!(root.requesterPid > 0) || !/ssh|pinentry/.test(root.requester))
+        if (!(root.requesterPid > 0) || PasswordAsks.agentKind(root.requester) === "")
             return;
+        if (trace.running) {
+            trace.again = true;
+            return;
+        }
         trace.serial = root.serial;
         trace.running = true;
     }
@@ -310,19 +316,28 @@ Singleton {
 
         property int serial: 0
 
-        command: ["sh", "-c", "ss -xpH 2>/dev/null; echo '#ps'; ps -eo pid=,ppid=,etimes=,args="]
+        property bool again: false
+
+        command: ["sh", "-c", PasswordAsks.traceCommand()]
 
         stdout: StdioCollector {
             onStreamFinished: {
                 if (trace.serial !== root.serial || !root.active)
                     return;
-                const cut = text.indexOf("#ps\n");
-                if (cut < 0)
+                const parts = PasswordAsks.splitTrace(text);
+                if (!parts)
                     return;
-                const chain = PasswordAsks.callerOf(text.slice(0, cut), text.slice(cut + 4), root.requesterPid, root.requester);
+                const chain = PasswordAsks.callerOf(parts.sockets, parts.processes, root.requesterPid, root.requester, parts.argv);
                 root.cause = PasswordAsks.causeOf(chain);
                 root.callerCommand = PasswordAsks.commandOf(chain);
             }
+        }
+
+        onExited: {
+            if (!trace.again)
+                return;
+            trace.again = false;
+            root.traceCaller();
         }
     }
 

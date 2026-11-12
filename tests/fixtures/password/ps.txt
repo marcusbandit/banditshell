@@ -16,3 +16,12 @@
    5203    5170      4 /usr/bin/ssh -o SendEnv=GIT_PROTOCOL git@github.com git-upload-pack 'you/project.git'
    5300    3001      3 git -C /home/you/notes commit -S -m wip
    5401    5300      3 gpg --status-fd=2 -bsau ABCDEF0123456789
+   6000    1200   5000 tmux: server
+   6001    6000   5000 -zsh
+   6010    6001      2 git push origin main
+   6011    6010      2 /usr/bin/ssh -o SendEnv=GIT_PROTOCOL git@github.com git-receive-pack 'you/project.git'
+   6100    3001      2 git commit -m wip
+   6110    6100      2 /bin/sh .git/hooks/pre-commit
+   6120    6110      2 gpg -d secrets.gpg
+   6200    3001      2 git commit -S -m wip
+   6210    6200      2 ssh-keygen -Y sign -n git -f /home/you/.ssh/id_ed25519 /tmp/.git_signing_buffer

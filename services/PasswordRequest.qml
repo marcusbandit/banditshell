@@ -22,9 +22,6 @@ Singleton {
     property var facts: []
     property string hint: ""
 
-    readonly property string requester: ""
-    readonly property string description: ""
-    readonly property string choiceLabel: ""
     readonly property bool choiceChosen: false
     readonly property string cancelLabel: "cancel"
     readonly property bool busy: false

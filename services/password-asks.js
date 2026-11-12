@@ -2,7 +2,11 @@
 
 const SHELLS = ["sh", "bash", "zsh", "fish", "dash", "ksh", "nu", "xonsh", "elvish", "env", "timeout", "nice", "nohup", "setsid", "script", "stdbuf", "systemd-run", "uv", "npx"];
 
-const TERMINALS = ["kitty", "foot", "footclient", "alacritty", "wezterm-gui", "wezterm", "ghostty", "konsole", "gnome-terminal-server", "xterm", "st", "urxvt", "terminator", "tilix", "rio", "warp"];
+const TERMINALS = ["kitty", "foot", "footclient", "alacritty", "wezterm-gui", "wezterm", "ghostty", "konsole", "gnome-terminal-server", "kgx", "ptyxis", "xfce4-terminal", "mate-terminal", "lxterminal", "qterminal", "terminology", "xterm", "st", "urxvt", "terminator", "tilix", "rio", "warp"];
+
+const SESSIONS = ["tmux", "screen", "zellij", "abduco", "dtach", "mosh-server", "sshd", "sshd-session", "login", "systemd", "init"];
+
+const TRACED = ["ssh", "ssh-add", "ssh-keygen", "scp", "sftp", "rsync", "sshfs", "git", "gpg", "gpg2"];
 
 const INTERPRETERS = ["node", "bun", "deno", "python", "python3", "ruby", "perl"];
 
@@ -40,7 +44,7 @@ function quoted(text) {
 
 function programOf(entry) {
     const args = entry?.args ?? [];
-    const first = basename(args[0] ?? "");
+    const first = basename(args[0] ?? "").replace(/^-/, "");
     if (INTERPRETERS.includes(first.replace(/[\d.]+$/, "")) && args[1] && !args[1].startsWith("-"))
         return basename(args[1]);
     if (first.endsWith(":"))
@@ -48,7 +52,47 @@ function programOf(entry) {
     return first;
 }
 
-function parseProcesses(text) {
+function agentKind(requester) {
+    if (requester === "gcr-ssh-agent" || requester === "ssh-agent")
+        return "ssh";
+    if (/^pinentry(-|$)/.test(requester ?? ""))
+        return "gpg";
+    return "";
+}
+
+function current(polkit, request, keyring) {
+    return polkit.active ? polkit : request.active ? request : keyring.active ? keyring : null;
+}
+
+function traceCommand() {
+    return `ss -xpH 2>/dev/null; echo '#ps'; ps -eo pid=,ppid=,etimes=,args=; echo '#argv'; for p in $(pgrep -x '${TRACED.join("|")}'); do printf '%s ' "$p"; tr '\\0' '\\037' < /proc/$p/cmdline 2>/dev/null; echo; done`;
+}
+
+function splitTrace(text) {
+    const value = String(text ?? "");
+    const ps = value.indexOf("#ps\n");
+    const argv = value.indexOf("#argv\n");
+    if (ps < 0)
+        return null;
+    return {
+        sockets: value.slice(0, ps),
+        processes: value.slice(ps + 4, argv < 0 ? value.length : argv),
+        argv: argv < 0 ? "" : value.slice(argv + 6)
+    };
+}
+
+function parseArgv(text) {
+    const exact = {};
+    for (const line of String(text ?? "").split("\n")) {
+        const match = line.match(/^(\d+) (.+)$/);
+        if (match)
+            exact[match[1]] = match[2].split("\x1f").filter((arg, index, all) => arg !== "" || index < all.length - 1);
+    }
+    return exact;
+}
+
+function parseProcesses(text, argvText) {
+    const exact = parseArgv(argvText);
     const table = {};
     for (const line of String(text ?? "").split("\n")) {
         const match = line.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(.*)$/);
@@ -58,7 +102,7 @@ function parseProcesses(text) {
             pid: Number(match[1]),
             ppid: Number(match[2]),
             age: Number(match[3]),
-            args: match[4].trim().split(/\s+/)
+            args: exact[match[1]] ?? match[4].trim().split(/\s+/)
         };
     }
     return table;
@@ -105,13 +149,13 @@ function chainOf(pid, table) {
 }
 
 function agentOf(requesterPid, requester, table) {
-    if (/^pinentry/.test(requester ?? ""))
+    if (agentKind(requester) === "gpg")
         return table[requesterPid]?.ppid ?? 0;
     return requesterPid;
 }
 
-function callerOf(socketText, processText, requesterPid, requester) {
-    const table = parseProcesses(processText);
+function callerOf(socketText, processText, requesterPid, requester, argvText) {
+    const table = parseProcesses(processText, argvText);
     const agent = agentOf(requesterPid, requester, table);
     if (!(agent > 0))
         return [];
@@ -216,7 +260,7 @@ function originOf(chain, from) {
         const name = programOf(chain[index]);
         if (SHELLS.includes(name) || name === "git" || name === "ssh")
             continue;
-        if (TERMINALS.includes(name) || name === "tmux" || name === "systemd" || name === "sshd" || name === "init")
+        if (TERMINALS.includes(name) || SESSIONS.includes(name))
             return "";
         if (name === "qs" || name === "quickshell")
             return "banditshell";
@@ -282,21 +326,27 @@ function causeOf(chain) {
             who: "ssh-add",
             doing: "load it into the agent"
         };
-    if (first === "gpg" || first === "gpg2") {
-        const gitAt = chain.findIndex(entry => programOf(entry) === "git");
-        const args = chain[0].args;
-        if (gitAt >= 0) {
-            const top = outermost(chain, gitAt, entry => programOf(entry) === "git");
-            return {
-                who: originOf(chain, top) || "git",
-                doing: gitVerb(chain[top].args) === "tag" ? "sign a tag" : "sign a commit"
-            };
-        }
-        const decrypt = args.some(arg => arg === "-d" || arg === "--decrypt");
-        const sign = args.some(arg => /^--(clear|detach-)?sign$/.test(arg) || /^-[a-zA-Z]*s[a-zA-Z]*$/.test(arg));
+    const gitAt = chain.findIndex(entry => programOf(entry) === "git");
+    const gitTop = gitAt >= 0 ? outermost(chain, gitAt, entry => programOf(entry) === "git") : -1;
+    const gitSigns = () => {
+        const verb = gitVerb(chain[gitTop].args);
+        return verb === "tag" ? "sign a tag" : verb === "push" ? "sign a push" : "sign a commit";
+    };
+    if (first === "ssh-keygen" && chain[0].args.includes("-Y")) {
+        const signing = chain[0].args.includes("sign");
         return {
-            who: originOf(chain, 0) || "gpg",
-            doing: decrypt ? "decrypt something" : sign ? "sign something" : "use it"
+            who: gitTop >= 0 ? originOf(chain, gitTop) || "git" : originOf(chain, 0) || "ssh-keygen",
+            doing: signing ? (gitTop >= 0 ? gitSigns() : "sign something") : "use it"
+        };
+    }
+    if (first === "gpg" || first === "gpg2") {
+        const args = chain[0].args;
+        const decrypt = args.some(arg => arg === "-d" || arg === "--decrypt");
+        const sign = !decrypt && args.some(arg => /^--(clear|detach-)?sign$/.test(arg) || /^-[a-zA-Z]*s[a-zA-Z]*$/.test(arg));
+        const top = gitTop >= 0 ? gitTop : 0;
+        return {
+            who: originOf(chain, top) || (gitTop >= 0 ? "git" : "gpg"),
+            doing: decrypt ? "decrypt something" : sign ? (gitTop >= 0 ? gitSigns() : "sign something") : "use it"
         };
     }
     return {
@@ -314,15 +364,16 @@ function identityName(identity) {
 }
 
 function pkexecRun(message) {
-    const match = String(message ?? "").match(/run [`'‘"](.+?)['’"] as (?:the super user|user (\S+?))\.?$/);
+    const match = String(message ?? "").match(/run [`'‘"](.+?)['’"] as (?:the super user|user (.+?))\.?$/);
     if (!match)
         return null;
     const words = match[1].split(/\s+/);
     words[0] = basename(words[0]);
+    const user = match[2] ?? "";
     return {
         command: words.join(" "),
         program: words[0],
-        as: match[2] ?? "root"
+        as: user ? (user.match(/\(([^)]+)\)\s*$/) ?? [null, user])[1] : "root"
     };
 }
 
@@ -342,10 +393,6 @@ function rememberLabel(label) {
     if (/automatically unlock/i.test(label ?? ""))
         return "Unlock it on its own whenever I'm logged in";
     return label ?? "";
-}
-
-function keyringName(name) {
-    return /keyring$/i.test(name) ? `“${name}”` : `the “${name}” keyring`;
 }
 
 function askedBy(cause, fallback) {
@@ -371,12 +418,14 @@ function describePolkit(ask) {
     const root = who === "root";
     const run = pkexecRun(ask.message);
     const need = polkitNeed(ask.message);
+    const prompt = String(ask.inputPrompt ?? "").replace(/:\s*$/, "").trim();
+    const code = prompt !== "" && !/^password$/i.test(prompt);
     const facts = [];
     if (who)
         facts.push(["Account", who]);
     if (ask.label)
         facts.push(["Asked by", `banditshell, to ${lowerFirst(ask.label)}`]);
-    else if (need && !run)
+    if (need && !run)
         facts.push(["Wants to", need]);
     if (run)
         facts.push([`As ${run.as}`, run.command]);
@@ -390,10 +439,10 @@ function describePolkit(ask) {
     return card({
         family: "admin",
         glyph: "admin_panel_settings",
-        secret: root ? "The root password" : self ? "Your sudo password" : `${who}'s password`,
+        secret: code ? upperFirst(prompt) : root ? "The root password" : self ? "Your sudo password" : `${who}'s password`,
         facts: facts,
-        hint: root ? "This computer asks for root's password here, not yours." : self ? "" : `${who} is an administrator on this computer.`,
-        placeholder: "Password",
+        hint: code ? "Asked for by the login system, on top of or instead of a password." : root ? "This computer asks for root's password here, not yours." : self ? "" : `${who} is an administrator on this computer.`,
+        placeholder: code ? upperFirst(prompt) : "Password",
         warning: wrong(ask.warning, "password"),
         details: details
     });
@@ -425,7 +474,20 @@ function describeGpg(ask) {
     const sshKey = text.match(/passphrase for the ssh key\s+(\S+)\s*\(([^)]*)\)/i);
     if (sshKey)
         return describeSshKey(ask, "", sshKey[2] || sshKey[1]);
-    const fresh = /new key|protect/i.test(text) && !/unlock/i.test(text);
+    if (/\bPIN\b/.test(ask.message ?? "") || /unlock the card|smart ?card/i.test(text)) {
+        const serial = (text.match(/(?:number|serial)[:\s]+([0-9A-F ]{4,})/i) ?? [])[1] ?? "";
+        return card({
+            family: "gpg",
+            glyph: "sim_card",
+            secret: /admin/i.test(ask.message + text) ? "Card admin PIN" : "Card PIN",
+            facts: [["Card", serial.trim() || "your security key"], ["Asked by", askedBy(ask.cause, "gpg")]],
+            hint: "The PIN of the card or security key, not your login password.",
+            placeholder: "PIN",
+            warning: wrong(ask.warning, "PIN"),
+            details: waiting(ask)
+        });
+    }
+    const fresh = !!ask.passwordNew || /new passphrase|new key|protect the imported/i.test(text);
     const uid = (text.match(/"([^"]+)"/) ?? [])[1] ?? "";
     const person = uid.replace(/\s*<[^>]*>\s*/, "").replace(/\s*\([^)]*\)\s*/, "").trim();
     const id = ((text.match(/ID\s+([0-9A-F]{8,40})/i) ?? [])[1] ?? "").slice(-8);
@@ -434,7 +496,7 @@ function describeGpg(ask) {
         family: "gpg",
         glyph: "signature",
         secret: fresh ? "New GPG passphrase" : "GPG key passphrase",
-        facts: [["Key", fresh ? "a new GPG key" : key || "your GPG key"], ["Asked by", askedBy(ask.cause, "gpg")]],
+        facts: [["Key", key || (fresh ? "a new GPG key" : "your GPG key")], ["Asked by", askedBy(ask.cause, "gpg")]],
         hint: fresh ? "Choose one. You type it whenever the key is used." : "Not your login password. It was set when the key was made.",
         placeholder: fresh ? "New passphrase" : "Passphrase",
         warning: wrong(ask.warning, "passphrase"),
@@ -449,21 +511,21 @@ function describeKeyring(ask) {
     const details = [["Prompt from", ask.requester || "the keyring"]];
     const name = quoted(description) || quoted(message);
     const app = "an app that wants a saved password";
-    if (/ssh/.test(ask.requester ?? "")) {
-        const path = (description.match(/passphrase for (?:key )?['"]?(\S+?)['"]?:/) ?? [])[1] ?? "";
-        return describeSshKey(ask, path, "");
-    }
-    if (/^pinentry/.test(ask.requester ?? ""))
-        return describeGpg(ask);
     if (ask.kind === "confirm")
         return card({
             glyph: "lock_open",
-            secret: title || "Allow this?",
+            secret: title && !/^enter passphrase$/i.test(title) ? title : description.split("\n")[0] || "Allow this?",
             hint: description || message,
             placeholder: "",
             warning: ask.warning ?? "",
             details: details
         });
+    if (agentKind(ask.requester) === "ssh") {
+        const path = (description.match(/passphrase for (?:key )?['"]?(\S+?)['"]?:/) ?? [])[1] ?? "";
+        return describeSshKey(ask, path, "");
+    }
+    if (agentKind(ask.requester) === "gpg")
+        return describeGpg(ask);
     if (/login keyring/i.test(title)) {
         const changed = /no longer matches/i.test(description);
         return card({

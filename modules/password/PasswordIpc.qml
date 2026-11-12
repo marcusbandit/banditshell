@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Io
 import qs.services
+import "../../services/password-asks.js" as PasswordAsks
 
 Scope {
     id: root
@@ -57,7 +58,7 @@ Scope {
         }
 
         function refuse(): string {
-            const asking = Polkit.active ? Polkit : PasswordRequest.active ? PasswordRequest : Keyring.active ? Keyring : null;
+            const asking = PasswordAsks.current(Polkit, PasswordRequest, Keyring);
             if (!asking)
                 return "nothing is being asked";
             asking.refuse();
