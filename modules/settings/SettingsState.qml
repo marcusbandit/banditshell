@@ -117,6 +117,7 @@ Singleton {
 
     readonly property var configBacked: ({
             aiOn: "launcher.ai.enabled",
+            aiWeb: "launcher.ai.webSearch",
             aiBackend: "launcher.ai.backend",
             aiModel: "launcher.ai.model",
             aiAddress: "launcher.ai.openaiAddress",
@@ -1402,6 +1403,25 @@ Singleton {
             pulling: `downloading · ${Assistant.progress}%`,
             unreachable: "Ollama is not answering"
         })[Assistant.phase] ?? ""
+    function checkAssistant(): void {
+        Assistant.checkConnection();
+    }
+
+    function toggleAssistantAccount(): void {
+        if (Assistant.phase === "ready")
+            Assistant.signOut();
+        else
+            Assistant.setUp(null);
+    }
+
+    readonly property string aiCheckNote: Assistant.checkNote
+    readonly property bool aiSignedIn: Assistant.agent && Assistant.phase === "ready"
+    readonly property string aiAccountNote: Assistant.agent ? ({
+            ready: `signed in, ${Assistant.agentInfo.plan}`,
+            signedout: "not signed in",
+            signingin: "finish in the terminal",
+            missing: `${Assistant.agentInfo.name} is not installed`
+        })[Assistant.phase] ?? "" : ""
     readonly property string aiAddressNote: Assistant.keyHeld ? "plain http, so the key is not sent" : ""
     readonly property string aiModelNote: Assistant.modelName ? `${Assistant.modelName} in use` : ""
 
