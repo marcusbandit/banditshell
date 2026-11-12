@@ -42,6 +42,47 @@
       ]
     },
     {
+      "id": "2026-11-12-p835-launcher",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "File rows can open with another app or move to the trash"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Shift+Tab in a typed path goes up to the parent folder"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher can always open on one chosen screen"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Escape can close the launcher at once instead of stepping back"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "An app hotkey can hide the app when pressed again"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Hotkeys and aliases switch off without deleting, and filter by state"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Single plugin commands can be switched off in Settings"
+        }
+      ]
+    },
+    {
       "id": "2026-11-12-p835-windows",
       "date": "2026-11-12",
       "changes": [

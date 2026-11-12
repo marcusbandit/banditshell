@@ -80,6 +80,7 @@ flowchart BT
     desktop --> wallpaper
     keyboard --> display
     launcher --> apps
+    launcher --> files
     launcher --> plugin_status
     notifications --> apps
     quickcontrols --> audio
@@ -92,7 +93,6 @@ flowchart BT
     windows --> apps
     launcher_ai --> clipboard
     launcher_ai --> launcher
-    launcher_devops --> files
     launcher_devops --> launcher
     launcher_system --> audio
     launcher_system --> capture
@@ -101,7 +101,6 @@ flowchart BT
     launcher_system --> launcher
     launcher_tools --> clipboard
     launcher_tools --> clock
-    launcher_tools --> files
     launcher_tools --> launcher
     launcher_tools --> notifications
     power --> compositor
@@ -121,7 +120,6 @@ flowchart BT
     island --> notifications
     island -.-> updates
     launcher_online --> clock
-    launcher_online --> files
     launcher_online --> launcher_ai
     lock --> clock
     lock --> media
@@ -154,7 +152,7 @@ further than its manifest allows, `node scripts/check-modules.js --explain <pack
 | clipboard | 2 | clipboard history and dictation | `modules/clipboard`, `services/Clipboard.qml`, `services/Dictation.qml`, `services/Typist.qml` | core, compositor | launcher-ai, launcher-tools, island, launcher-shell |
 | clock | 2 | timers, alarms, world clocks and weather | `modules/ipc/ClockIpc.qml`, `services/Clock.qml`, `services/Localisation.qml`, `services/Weather.qml` | core, compositor | desktop, settings, launcher-tools, tour, island, launcher-online, lock |
 | display | 2 | brightness, night light, dark mode and tablet state | `modules/ipc/DisplayIpc.qml`, `services/Backlight.qml`, `services/DarkMode.qml`, `services/Display.qml`, `services/Tablet.qml` | core, compositor | bar, keyboard, quickcontrols, settings, launcher-system, island |
-| files | 2 | the file browser and its terminal | `modules/files`, `previews/FilesPreview.qml`, `previews/TerminalDebug.qml`, `services/Downloads.qml`, `services/Files.qml`, `services/FilesFind.qml`, `services/FilesPaste.qml`, `services/FilesUndo.qml` | core, compositor | launcher-devops, launcher-tools, tour, island, launcher-online, events, launcher-shell |
+| files | 2 | the file browser and its terminal | `modules/files`, `previews/FilesPreview.qml`, `previews/TerminalDebug.qml`, `services/Downloads.qml`, `services/Files.qml`, `services/FilesFind.qml`, `services/FilesPaste.qml`, `services/FilesUndo.qml` | core, compositor | launcher, launcher-devops, launcher-tools, tour, island, launcher-online, events, launcher-shell |
 | media | 2 | media players, lyrics and the player widgets | `modules/media`, `services/Lyrics.qml`, `services/Media.qml` | core, compositor | desktop, island, lock, events |
 | network | 2 | network, hotspot, tunnels and Tailscale | `services/Hotspot.qml`, `services/Network.qml`, `services/NetworkEvents.qml`, `services/Tailscale.qml`, `services/Tunnels.qml`, `services/WifiJoin.qml` | core, compositor | bar, calculator, stream, launcher-system, island |
 | password | 2 | the keyring and polkit password prompts | `modules/password`, `services/Keyring.qml`, `services/PasswordRequest.qml` | core, compositor | none |
@@ -165,7 +163,7 @@ further than its manifest allows, `node scripts/check-modules.js --explain <pack
 | calculator | 3 | the calculator and currency rates | `modules/calculator`, `previews/CalculatorPreview.qml`, `services/Calculator.qml`, `services/Currency.qml` | core, compositor, network | island |
 | desktop | 3 | widgets on the desktop, under the windows | `modules/desktop` | core, compositor, clock, media, wallpaper | host |
 | keyboard | 3 | the on-screen keyboard | `modules/keyboard`, `services/Keystrokes.qml` | core, compositor, display | none |
-| launcher | 3 | the launcher: search, concepts, edge and hotkeys | `modules/launcher/AlphabetLauncher.qml`, `modules/launcher/AlphabetRow.qml`, `modules/launcher/AnswerCard.qml`, `modules/launcher/AnswerRow.qml`, `modules/launcher/ArgumentBox.qml`, `modules/launcher/ColourPicker.qml`, `modules/launcher/LaunchEdge.qml`, `modules/launcher/Launcher.qml`, `modules/launcher/LauncherConcept.qml`, `modules/launcher/LauncherIpc.qml`, `modules/launcher/LauncherSearch.qml`, `modules/launcher/ListLauncher.qml`, `modules/launcher/Peek.qml`, `modules/launcher/PluginContext.qml`, `modules/launcher/PluginFacts.qml`, `modules/launcher/PluginHost.qml`, `modules/launcher/PluginPreview.qml`, `modules/launcher/PluginProcess.qml`, `modules/launcher/PluginRow.qml`, `modules/launcher/PluginSource.qml`, `modules/launcher/PluginView.qml`, `modules/launcher/RowTag.qml`, `modules/launcher/module.json`, `modules/launcher/placement.js`, `modules/launcher/prefixes.js`, `modules/launcher/qmldir`, `modules/launcher/search.js`, `modules/launcher/shellcli.js`, `modules/launcher/sources/FallbackSource.qml`, `modules/launcher/sources/MediaSource.qml`, `modules/launcher/sources/PrefixSource.qml`, `modules/launcher/sources/PushSource.qml`, `modules/launcher/sources/qmldir`, `modules/launcher/system-asks.js`, `services/LauncherHotkeys.qml`, `services/LauncherSources.qml`, `services/PushedRows.qml` | core, compositor, apps, plugin-status | launcher-ai, launcher-devops, launcher-system, launcher-tools, launcher-online, launcher-shell |
+| launcher | 3 | the launcher: search, concepts, edge and hotkeys | `modules/launcher/AlphabetLauncher.qml`, `modules/launcher/AlphabetRow.qml`, `modules/launcher/AnswerCard.qml`, `modules/launcher/AnswerRow.qml`, `modules/launcher/ArgumentBox.qml`, `modules/launcher/ColourPicker.qml`, `modules/launcher/LaunchEdge.qml`, `modules/launcher/Launcher.qml`, `modules/launcher/LauncherConcept.qml`, `modules/launcher/LauncherIpc.qml`, `modules/launcher/LauncherSearch.qml`, `modules/launcher/ListLauncher.qml`, `modules/launcher/Peek.qml`, `modules/launcher/PluginContext.qml`, `modules/launcher/PluginFacts.qml`, `modules/launcher/PluginHost.qml`, `modules/launcher/PluginPreview.qml`, `modules/launcher/PluginProcess.qml`, `modules/launcher/PluginRow.qml`, `modules/launcher/PluginSource.qml`, `modules/launcher/PluginView.qml`, `modules/launcher/RowTag.qml`, `modules/launcher/module.json`, `modules/launcher/placement.js`, `modules/launcher/prefixes.js`, `modules/launcher/qmldir`, `modules/launcher/search.js`, `modules/launcher/shellcli.js`, `modules/launcher/sources/FallbackSource.qml`, `modules/launcher/sources/MediaSource.qml`, `modules/launcher/sources/PrefixSource.qml`, `modules/launcher/sources/PushSource.qml`, `modules/launcher/sources/qmldir`, `modules/launcher/system-asks.js`, `services/LauncherHotkeys.qml`, `services/LauncherSources.qml`, `services/PushedRows.qml` | core, compositor, apps, files, plugin-status | launcher-ai, launcher-devops, launcher-system, launcher-tools, launcher-online, launcher-shell |
 | notifications | 3 | the notification server, history and popups | `modules/ipc/NotificationsIpc.qml`, `modules/notifications`, `previews/NotificationPreview.qml`, `services/AlertSounds.qml`, `services/AppNotifications.qml`, `services/NotificationBrief.qml`, `services/NotificationEntry.qml`, `services/Notifications.qml` | core, compositor, apps | launcher-tools, island, lock, events |
 | quickcontrols | 3 | the quick controls panel | `modules/quickcontrols`, `previews/QuickControlsPreview.qml` | core, compositor, audio, display | none |
 | settings | 3 | the settings panel | `modules/settings`, `previews/SettingsPreview.qml`, `services/Modes.qml`, `services/Settings.qml`, `services/ThemeSwitcher.qml` | core, compositor, clock, display | tour, events |

@@ -13,7 +13,7 @@ Scope {
     property alias handler: served
 
     function showHistory(screen: string, query: string): string {
-        const win = Shell.forScreen(screen);
+        const win = Shell.homeFor("launcher", screen);
         if (!win)
             return PanelWindows.missing(screen);
         win.launcher.show(query ? `notifications ${query}` : "notifications ");
@@ -62,7 +62,7 @@ Scope {
         }
 
         function toggle(screen: string): string {
-            const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.launcher.open);
+            const win = screen ? Shell.forScreen(screen) : Shell.showingFrom(w => w.launcher.open, Shell.launcherHome());
             if (!win)
                 return PanelWindows.missing(screen);
             if (win.launcher.open && Notifications.asking(win.launcher.concept?.input?.text ?? "")) {
