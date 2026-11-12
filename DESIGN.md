@@ -1029,6 +1029,12 @@ banditshell/
 │   │                            Lock, read from Hyprland's main keyboard and
 │   │                            re-read on its activelayout event; next() moves
 │   │                            every keyboard to the next layout
+│   ├── password-asks.js         what a password card says: which secret, whose,
+│   │                            why and what it is not, from the raw words of
+│   │                            gcr, polkit, pinentry or the shell. Also who is
+│   │                            waiting on an ssh or gpg agent: the agent's
+│   │                            sockets in `ss -xp` matched to their callers,
+│   │                            then up `ps` to the git, ssh or gpg behind it
 │   ├── Keyring.qml              the KEYRING'S question, once the shell is the one
 │   │                            asking it. gnome-keyring draws nothing: it asks
 │   │                            whoever owns org.gnome.keyring.SystemPrompter,
@@ -1545,12 +1551,21 @@ banditshell/
 │   │                            session_lock_xray is on
 │   │                            for exactly those two moments, so a dead lock
 │   │                            client never shows what is behind it
-│   ├── password/PasswordPrompt.qml the keyring's and polkit's password question,
-│   │                            drawn as a page of the launcher (2026-10-19):
-│   │                            the same chassis blob rising out of the band,
-│   │                            the secret where the search row would be, the
-│   │                            dictionary page's bold heading below it and its
-│   │                            key-cap footer for the answers. The
+│   ├── password/PasswordPrompt.qml the keyring's, polkit's and Wi-Fi's password
+│   │                            question, drawn as a page of the launcher
+│   │                            (2026-10-19, content redone 2026-11-12, #828):
+│   │                            the field where the search row would be, with
+│   │                            the kind's glyph, then a bold heading naming
+│   │                            WHICH secret in the owner's words ("Your sudo
+│   │                            password", "SSH key passphrase"), then a short
+│   │                            list of labelled facts (Key, Account, Keyring,
+│   │                            Network, Asked by, As root), one line on what
+│   │                            it is not, and the key-cap footer. The
+│   │                            program's own words wait behind Details, in
+│   │                            the same two columns. Left-aligned like every
+│   │                            launcher page; a centred stack was tried and
+│   │                            rejected. Admin asks take the warning
+│   │                            colour, since they hand out root. Still the
 │   │                            one panel nobody asks for: an application wants
 │   │                            a secret and is BLOCKED on the answer, so it
 │   │                            draws over everything, a fullscreen window
@@ -2253,6 +2268,7 @@ banditshell dev preview lock|settings [WxH] [page]|files [dir]|gallery|menu <key
 banditshell dev menu [current|hover|list]
 banditshell dev launcher scrub <fraction>
 banditshell dev keyring|polkit [status|demo|close]
+banditshell dev password <scene>
 ```
 
 **The boot check, 2026-10-17.** Two bugs got past the compile check and every node test: a read of

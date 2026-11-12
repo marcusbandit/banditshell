@@ -6,6 +6,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.controls
+import "../../services/password-asks.js" as PasswordAsks
 
 Item {
     id: root
@@ -14,7 +15,7 @@ Item {
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
-    readonly property var source: Polkit.active ? Polkit : PasswordRequest.active ? PasswordRequest : Keyring
+    readonly property var source: PasswordAsks.current(Polkit, PasswordRequest, Keyring) ?? Keyring
 
     readonly property bool open: root.source.active && root.source.screenName === root.screenName
 
@@ -35,13 +36,52 @@ Item {
         }
     ]
 
-    readonly property string sourceName: root.source === Polkit ? "Polkit" : root.source === PasswordRequest ? "Wi-Fi" : "Keyring"
-    readonly property string sourceIcon: root.source === Polkit ? "admin_panel_settings" : root.source === PasswordRequest ? "wifi_password" : "key"
+    readonly property string home: Quickshell.env("HOME") ?? ""
+
+    readonly property var ask: PasswordAsks.describe(root.source === Polkit ? {
+        source: "polkit",
+        message: Polkit.message,
+        actionId: Polkit.actionId,
+        identity: Polkit.identity,
+        label: Polkit.label,
+        inputPrompt: Polkit.inputPrompt,
+        warning: Polkit.warning,
+        user: Quickshell.env("USER") ?? ""
+    } : root.source === PasswordRequest ? {
+        source: "request",
+        title: PasswordRequest.title,
+        message: PasswordRequest.message,
+        secret: PasswordRequest.secret,
+        facts: PasswordRequest.facts,
+        hint: PasswordRequest.hint,
+        placeholder: PasswordRequest.placeholder,
+        warning: PasswordRequest.warning
+    } : {
+        source: "keyring",
+        kind: Keyring.kind,
+        title: Keyring.title,
+        message: Keyring.message,
+        description: Keyring.description,
+        warning: Keyring.warning,
+        choiceLabel: Keyring.choiceLabel,
+        passwordNew: Keyring.passwordNew,
+        requester: Keyring.requester,
+        cause: Keyring.cause,
+        command: Keyring.callerCommand,
+        home: root.home
+    })
 
     readonly property bool asksForSecret: root.source.kind === "password"
 
+    readonly property color tone: root.ask.family === "admin" ? Appearance.colour.warning : Appearance.colour.accent
+
+    readonly property real factLabelWidth: Math.max(0, ...root.ask.facts.map(fact => factMetrics.advanceWidth(fact[0])))
+    readonly property real detailLabelWidth: Math.max(0, ...root.ask.details.map(detail => detailMetrics.advanceWidth(detail[0])))
+
     readonly property string goLabel: root.sentence(root.source.continueLabel || (root.asksForSecret ? "unlock" : "continue"))
     readonly property string stopLabel: root.sentence(root.source.cancelLabel || "cancel")
+
+    property bool detailed: false
 
     function sentence(text: string): string {
         const plain = text.replace(/_/g, "");
@@ -102,10 +142,12 @@ Item {
     }
 
     onOpenChanged: {
-        if (!root.open)
+        if (!root.open) {
             Qt.callLater(field.clear);
-        else if (!root.asksForSecret)
+            root.detailed = false;
+        } else if (!root.asksForSecret) {
             Qt.callLater(keys.forceActiveFocus);
+        }
     }
 
     MouseArea {
@@ -151,9 +193,7 @@ Item {
                 spacing: Appearance.padding.normal
 
                 Item {
-                    id: header
-
-                    width: parent.width
+                    width: layout.width
                     height: Math.max(glyph.implicitHeight, Appearance.font.line.normal)
 
                     Icon {
@@ -164,8 +204,9 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: Appearance.sizes.launcherIcon
                         size: Appearance.font.size.normal
-                        name: root.asksForSecret ? "lock" : root.sourceIcon
-                        color: root.source.warning ? Appearance.colour.alarm : Appearance.colour.textFaint
+                        name: root.ask.glyph
+                        fallback: "password"
+                        color: root.ask.warning ? Appearance.colour.alarm : root.tone
                     }
 
                     SecretField {
@@ -174,6 +215,7 @@ Item {
                         anchors.left: glyph.right
                         anchors.leftMargin: Appearance.padding.normal
                         anchors.right: parent.right
+                        anchors.rightMargin: Appearance.padding.normal
                         height: parent.height
                         visible: root.asksForSecret
 
@@ -182,9 +224,9 @@ Item {
                         onCapsAsked: Keymap.refresh()
                         textSize: Appearance.font.size.normal
                         markSize: Appearance.font.size.normal
-                        placeholder: root.sentence(root.source.placeholder ?? (Keyring.passwordNew ? "new password" : "password"))
+                        placeholder: root.ask.placeholder || "Password"
                         busy: root.source.busy ?? false
-                        alarm: !!root.source.warning
+                        alarm: !!root.ask.warning
 
                         onAccepted: secret => root.source.submit(secret)
                         onCancelled: root.source.refuse()
@@ -197,89 +239,88 @@ Item {
                         anchors.left: glyph.right
                         anchors.leftMargin: Appearance.padding.normal
                         anchors.right: parent.right
+                        anchors.rightMargin: Appearance.padding.normal
                         anchors.verticalCenter: parent.verticalCenter
                         visible: !root.asksForSecret
-                        text: root.source.title || root.sourceName
+                        text: root.ask.secret
                         font.pixelSize: Appearance.font.size.normal
                         elide: Text.ElideRight
                     }
                 }
 
                 Separator {
-                    width: parent.width
+                    width: layout.width
                 }
 
                 Column {
                     id: page
 
                     x: Appearance.padding.normal
-                    width: parent.width - Appearance.padding.normal * 2
+                    width: layout.width - Appearance.padding.normal * 2
                     topPadding: Appearance.padding.small
                     bottomPadding: Appearance.padding.small
-                    spacing: Appearance.padding.large
+                    spacing: Appearance.padding.card
 
-                    Column {
+                    StyledText {
                         width: page.width
-                        spacing: Appearance.padding.hair
-
-                        StyledText {
-                            width: page.width
-                            text: root.source.title || root.sourceName
-                            font.pixelSize: Appearance.font.size.large
-                            font.bold: true
-                            wrapMode: Text.Wrap
-                        }
-
-                        StyledText {
-                            width: page.width
-                            visible: text !== ""
-                            text: root.source.requester
-                            color: Appearance.colour.textFaint
-                            elide: Text.ElideRight
-                        }
+                        visible: root.asksForSecret
+                        text: root.ask.secret
+                        font.pixelSize: Appearance.font.size.large
+                        font.bold: true
+                        wrapMode: Text.Wrap
                     }
 
                     Column {
                         width: page.width
+                        visible: root.ask.facts.length > 0
+                        spacing: Appearance.padding.small
+
+                        Repeater {
+                            model: root.ask.facts
+
+                            Item {
+                                id: fact
+
+                                required property var modelData
+
+                                width: page.width
+                                height: factValue.implicitHeight
+
+                                StyledText {
+                                    text: fact.modelData[0]
+                                    font.pixelSize: Appearance.font.size.normal
+                                    color: Appearance.colour.textFaint
+                                }
+
+                                StyledText {
+                                    id: factValue
+
+                                    x: root.factLabelWidth + Appearance.padding.large
+                                    width: page.width - x
+                                    text: fact.modelData[1]
+                                    font.pixelSize: Appearance.font.size.normal
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+                        }
+                    }
+
+                    StyledText {
+                        width: page.width
+                        visible: text !== ""
+                        text: root.ask.warning || root.ask.hint
+                        font.pixelSize: root.asksForSecret ? Appearance.font.size.small : Appearance.font.size.normal
+                        color: root.ask.warning ? Appearance.colour.alarm : root.asksForSecret ? Appearance.colour.textDim : Appearance.colour.text
+                        wrapMode: Text.Wrap
+                    }
+
+                    Row {
+                        visible: !!root.ask.choice
                         spacing: Appearance.padding.normal
-                        visible: !!root.source.message || !!root.source.description || !!root.source.warning
-
-                        StyledText {
-                            width: page.width
-                            visible: text !== ""
-                            text: root.source.message
-                            font.pixelSize: Appearance.font.size.normal
-                            wrapMode: Text.Wrap
-                        }
-
-                        StyledText {
-                            width: page.width
-                            visible: text !== ""
-                            text: root.source.description
-                            font.pixelSize: Appearance.font.size.normal
-                            color: Appearance.colour.textDim
-                            wrapMode: Text.Wrap
-                        }
-
-                        StyledText {
-                            width: page.width
-                            visible: text !== ""
-                            text: root.source.warning
-                            font.pixelSize: Appearance.font.size.normal
-                            color: Appearance.colour.alarm
-                            wrapMode: Text.Wrap
-                        }
-                    }
-
-                    Item {
-                        width: page.width
-                        height: Math.max(choice.height, choiceLabel.implicitHeight)
-                        visible: !!root.source.choiceLabel
 
                         Toggle {
                             id: choice
 
-                            anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             checked: root.source.choiceChosen
 
@@ -287,55 +328,95 @@ Item {
                         }
 
                         StyledText {
-                            id: choiceLabel
-
-                            anchors.left: choice.right
-                            anchors.right: parent.right
-                            anchors.leftMargin: Appearance.padding.normal
+                            width: Math.min(implicitWidth, page.width - choice.width - Appearance.padding.normal)
                             anchors.verticalCenter: parent.verticalCenter
-                            text: root.source.choiceLabel
-                            font.pixelSize: Appearance.font.size.normal
+                            text: root.ask.choice
                             color: Appearance.colour.textDim
-                            wrapMode: Text.Wrap
+                            elide: Text.ElideRight
 
                             TapHandler {
                                 onTapped: root.source.choose(!root.source.choiceChosen)
                             }
                         }
                     }
+
+                    Column {
+                        width: page.width
+                        visible: root.detailed
+                        spacing: Appearance.padding.small
+
+                        Repeater {
+                            model: root.ask.details
+
+                            Item {
+                                id: detail
+
+                                required property var modelData
+
+                                width: page.width
+                                height: detailValue.implicitHeight
+
+                                StyledText {
+                                    text: detail.modelData[0]
+                                    color: Appearance.colour.textFaint
+                                }
+
+                                StyledText {
+                                    id: detailValue
+
+                                    x: root.detailLabelWidth + Appearance.padding.large
+                                    width: page.width - x
+                                    text: detail.modelData[1]
+                                    color: Appearance.colour.textDim
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Separator {
-                    width: parent.width
+                    width: layout.width
                 }
 
                 Item {
-                    width: parent.width
+                    width: layout.width
                     height: Appearance.font.line.small + Appearance.padding.small
 
                     Row {
                         anchors.left: parent.left
                         anchors.leftMargin: Appearance.padding.normal
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: Appearance.padding.normal
+                        spacing: Appearance.padding.small
+                        visible: root.ask.details.length > 0
 
                         Icon {
                             anchors.verticalCenter: parent.verticalCenter
-                            name: root.sourceIcon
+                            name: root.detailed ? "expand_less" : "expand_more"
                             size: Appearance.font.size.normal
-                            color: Appearance.colour.accent
+                            color: moreHover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
                         }
 
                         StyledText {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: root.sourceName
-                            color: Appearance.colour.textFaint
+                            text: root.detailed ? "Hide details" : "Details"
+                            color: moreHover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+                        }
+
+                        HoverHandler {
+                            id: moreHover
+
+                            cursorShape: Qt.PointingHandCursor
+                        }
+
+                        TapHandler {
+                            onTapped: root.detailed = !root.detailed
                         }
                     }
 
                     Row {
                         anchors.right: parent.right
-                        anchors.rightMargin: Appearance.padding.small
+                        anchors.rightMargin: Appearance.padding.normal
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: Appearance.padding.normal
 
@@ -359,6 +440,20 @@ Item {
                 }
             }
         }
+    }
+
+    FontMetrics {
+        id: factMetrics
+
+        font.family: Appearance.font.family
+        font.pixelSize: Appearance.font.size.normal
+    }
+
+    FontMetrics {
+        id: detailMetrics
+
+        font.family: Appearance.font.family
+        font.pixelSize: Appearance.font.size.small
     }
 
     component Action: Row {

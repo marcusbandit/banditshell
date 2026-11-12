@@ -173,6 +173,7 @@ rule	dev menu current,hover,list
 rule	dev launcher scrub *
 rule	dev keyring status,demo,close
 rule	dev polkit status,demo,close
+rule	dev password ssh,agent,gpg,login,keyring,new,confirm,sudo,service,root,wrong,wifi
 verb	help	this list; banditshell help <command> for one
 rule	help @command
 values	theme	rendered slate
