@@ -29,6 +29,7 @@
       "Emoji",
       "FileSearch",
       "LatestFiles",
+      "LinkPreviews",
       "Notes",
       "Pomodoro",
       "Projects",
@@ -43,6 +44,7 @@
       "services/emoji-table.js",
       "services/emoji.js",
       "services/latest-files.js",
+      "services/link-facts.js",
       "services/lorem.js",
       "services/narrowing.js",
       "services/notes.js",
@@ -60,6 +62,7 @@
       "tests/launcher-dev-utilities.test.js",
       "tests/launcher-emoji-grid.test.js",
       "tests/launcher-latest-files.test.js",
+      "tests/launcher-link-facts.test.js",
       "tests/launcher-power-tools.test.js",
       "tests/launcher-typing.test.js",
       "tests/narrowing.test.js"

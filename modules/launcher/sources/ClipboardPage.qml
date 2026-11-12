@@ -10,6 +10,7 @@ import "../../../services/clipboard-search.js" as ClipboardSearch
 import "../../../services/clipboard-page.js" as Page
 import "../../../services/colours.js" as Colours
 import "../../../services/dictation-events.js" as DictationEvents
+import "../../../services/link-facts.js" as Links
 
 Item {
     id: root
@@ -87,6 +88,12 @@ Item {
     readonly property var colour: root.entry && root.shape === "colour" ? Page.colourOf(root.entry, Colours.parseColour) : null
     readonly property string picture: root.entry && root.shape === "image" ? root.entry.file || (root.entry.paths ?? [])[0] || "" : ""
     readonly property bool masked: !!root.currentRow?.masked
+    readonly property string address: root.shape === "link" ? String(root.entry?.text ?? "").trim() : ""
+    readonly property var linkInfo: root.address ? Links.describe(root.address) : null
+    readonly property var linkPage: root.address ? LinkPreviews.pages[root.address] ?? null : null
+
+    onAddressChanged: if (root.address)
+        LinkPreviews.look(root.address)
 
     readonly property string body: {
         if (!root.entry)
@@ -109,7 +116,7 @@ Item {
     readonly property var facts: {
         if (!root.entry)
             return [];
-        const out = Page.facts(root.entry, root.shape, root.colour, Colours.FORMS);
+        const out = root.linkInfo ? Links.factsOf(root.linkInfo) : Page.facts(root.entry, root.shape, root.colour, Colours.FORMS);
         if (root.masked)
             out.splice(1);
         if (root.entry.app)
@@ -117,7 +124,7 @@ Item {
                 label: "Source",
                 value: Apps.nameFor(root.entry.app)
             });
-        const size = Clipboard.size(root.entry.bytes);
+        const size = root.linkInfo ? "" : Clipboard.size(root.entry.bytes);
         if (size)
             out.push({
                 label: "Size",
@@ -228,11 +235,30 @@ Item {
                 });
             break;
         case "link":
-            out.push({
-                icon: "open_in_new",
-                label: "Open in the browser",
-                run: () => root.openOut(text)
-            });
+            {
+                const tidy = Links.clean(text);
+                const title = Links.bestTitle(root.linkInfo, root.linkPage) || text;
+                out.push({
+                    icon: "open_in_new",
+                    label: "Open in the browser",
+                    run: () => root.openOut(text)
+                });
+                if (tidy !== text)
+                    out.push({
+                        icon: "link_off",
+                        label: "Copy without tracking",
+                        run: () => root.copyAs(tidy)
+                    });
+                out.push({
+                    icon: "markdown",
+                    label: "Copy as a Markdown link",
+                    run: () => root.copyAs(`[${title.replace(/[\[\]]/g, "")}](${tidy})`)
+                }, {
+                    icon: "language",
+                    label: "Copy the site",
+                    run: () => root.copyAs(root.linkInfo?.host ?? text)
+                });
+            }
             break;
         case "email":
             out.push({
@@ -462,7 +488,7 @@ Item {
         return false;
     }
 
-    implicitHeight: root.rowPitch * 12 + footer.implicitHeight
+    implicitHeight: root.rowPitch * 14 + footer.implicitHeight
 
     MouseArea {
         anchors.fill: parent
@@ -530,6 +556,12 @@ Item {
             readonly property var shaped: line.modelData.header ? null : line.modelData
             readonly property var made: line.shaped && root.source ? root.source.row(line.shaped.entry) : null
             readonly property var swatch: line.shaped?.shape === "colour" ? Page.colourOf(line.shaped.entry, Colours.parseColour) : null
+            readonly property string address: line.shaped?.shape === "link" ? String(line.shaped.entry.text ?? "").trim() : ""
+            readonly property var info: line.address ? Links.describe(line.address) : null
+            readonly property var site: line.address ? LinkPreviews.pages[line.address] ?? null : null
+
+            Component.onCompleted: if (line.address)
+                LinkPreviews.look(line.address)
 
             width: list.width
             height: line.modelData.header ? root.headerPitch : root.rowPitch
@@ -552,10 +584,12 @@ Item {
                 iconSize: Appearance.sizes.launcherIcon
                 rowHeight: root.rowPitch
                 labelSize: Appearance.font.size.normal
-                icon: line.made?.secret ? "visibility_off" : (Page.SHAPES[line.shaped?.shape]?.icon ?? "notes")
-                iconSource: line.shaped?.shape === "image" ? line.made?.iconSource ?? "" : ""
+                icon: line.made?.secret ? "visibility_off" : line.info ? line.info.mark : (Page.SHAPES[line.shaped?.shape]?.icon ?? "notes")
+                iconSource: line.shaped?.shape === "image" ? line.made?.iconSource ?? "" : line.site?.icon ? `file://${line.site.icon}` : ""
                 mark: line.swatch ? swatchMark : null
-                label: line.shaped?.shape === "image" ? `Image${line.shaped.entry.w > 0 ? ` (${line.shaped.entry.w}×${line.shaped.entry.h})` : ""}` : line.made?.label ?? ""
+                inlineDetail: true
+                detail: line.info ? line.info.host : ""
+                label: line.shaped?.shape === "image" ? `Image${line.shaped.entry.w > 0 ? ` (${line.shaped.entry.w}×${line.shaped.entry.h})` : ""}` : line.info ? Links.bestTitle(line.info, line.site) : line.made?.label ?? ""
                 selected: line.index === root.selected
                 askable: true
                 tips: false
@@ -623,6 +657,7 @@ Item {
 
             width: pane.width
             height: root.reading ? pane.height : Math.max(Appearance.font.line.large * 3, infoHead.y - Appearance.padding.large)
+            clip: true
 
             SquircleImage {
                 anchors.fill: parent
@@ -658,7 +693,7 @@ Item {
             Column {
                 anchors.centerIn: parent
                 width: parent.width - Appearance.padding.large * 2
-                visible: !root.masked && (root.shape === "link" || root.shape === "email" || (root.shape === "file" || root.shape === "files") && !root.picture)
+                visible: !root.masked && (root.shape === "email" || (root.shape === "file" || root.shape === "files") && !root.picture)
                 spacing: Appearance.padding.normal
 
                 Icon {
@@ -694,6 +729,105 @@ Item {
                     color: Appearance.colour.textFaint
                     wrapMode: Text.WrapAnywhere
                     maximumLineCount: 4
+                    elide: Text.ElideRight
+                }
+            }
+
+            Column {
+                id: linkCard
+
+                readonly property string shot: root.linkPage?.image ?? ""
+                readonly property string icon: root.linkPage?.icon ?? ""
+
+                y: Math.max(0, Math.round((stage.height - implicitHeight) / 2))
+                width: parent.width
+                visible: !root.masked && root.shape === "link" && !!root.linkInfo
+                spacing: Appearance.padding.normal
+
+                SquircleImage {
+                    id: linkShot
+
+                    width: parent.width
+                    height: linkCard.shot ? Math.min(Math.round(stage.height * 0.45), Math.round(width / 1.91)) : 0
+                    visible: height > 0 && status !== Image.Error
+                    source: linkCard.shot ? `file://${linkCard.shot}` : ""
+                    fillMode: Image.PreserveAspectCrop
+                    radius: Appearance.rounding.normal
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: Appearance.padding.normal
+
+                    Item {
+                        width: Appearance.icon.huge
+                        height: width
+
+                        Image {
+                            id: favicon
+
+                            anchors.fill: parent
+                            visible: status === Image.Ready
+                            source: linkCard.icon ? `file://${linkCard.icon}` : ""
+                            sourceSize.width: width * 2
+                            sourceSize.height: height * 2
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
+                            smooth: true
+                        }
+
+                        Icon {
+                            anchors.centerIn: parent
+                            visible: favicon.status !== Image.Ready
+                            name: root.linkInfo?.mark ?? "link"
+                            size: Appearance.icon.large
+                            color: Appearance.colour.textDim
+                        }
+                    }
+
+                    Column {
+                        width: parent.width - Appearance.icon.huge - parent.spacing
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Appearance.padding.hair
+
+                        StyledText {
+                            width: parent.width
+                            text: Links.bestTitle(root.linkInfo, root.linkPage)
+                            font.pixelSize: Appearance.font.size.large
+                            font.weight: Font.DemiBold
+                            wrapMode: Text.Wrap
+                            maximumLineCount: 2
+                            elide: Text.ElideRight
+                        }
+
+                        StyledText {
+                            width: parent.width
+                            text: `${root.linkInfo?.kind ?? ""} · ${root.linkInfo?.host ?? ""}`
+                            font.pixelSize: Appearance.font.size.small
+                            color: Appearance.colour.textFaint
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+
+                StyledText {
+                    width: parent.width
+                    visible: text !== ""
+                    text: root.linkPage?.description ?? ""
+                    font.pixelSize: Appearance.font.size.small
+                    color: Appearance.colour.textDim
+                    wrapMode: Text.Wrap
+                    maximumLineCount: linkShot.visible ? 2 : 4
+                    elide: Text.ElideRight
+                }
+
+                StyledText {
+                    width: parent.width
+                    text: Links.masked(root.address)
+                    font.pixelSize: Appearance.font.size.small
+                    color: Appearance.colour.textFaint
+                    wrapMode: Text.WrapAnywhere
+                    maximumLineCount: 2
                     elide: Text.ElideRight
                 }
             }
