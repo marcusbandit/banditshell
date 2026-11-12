@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-12-p827",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The update menu offers to even out uneven window gaps on Hyprland"
+        }
+      ]
+    },
+    {
       "id": "2026-11-12-p822",
       "date": "2026-11-12",
       "changes": [
