@@ -13,6 +13,7 @@ Item {
 
     property string typed: ""
     property string query: ""
+    property string selection: ""
     property var view: null
 
     readonly property var source: root.view?.source ?? null

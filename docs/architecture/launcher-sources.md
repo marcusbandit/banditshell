@@ -126,10 +126,12 @@ and emoji pages, adds:
 | `name` | A short name, so `launcher.page` can say which page is open. |
 | `source` | Anything the page needs back, usually the source itself. The page reads it as `view.source`. |
 
-The page is an `Item` that may declare `typed`, `query` and `view` for the
-launcher to fill, `claimKey(event)` to take keys before the field does, and
+The page is an `Item` that may declare `typed`, `query`, `selection` (the
+field's selected text) and `view` for the launcher to fill, `claimKey(event)`
+to take keys before the field does, `claimEscape()` to keep Esc for itself, and
 the signals `leave(fn)`, `launch(fn)`, `back()`, `retitle(text)` and
 `asks(item, actions, x, y)`, the last one opening the actions sheet. A page
 with `choices` (a list of `{ label, icon }`), `choice` and `choose(index)`
-gets a dropdown at the right of the field, opened by a click or Ctrl+P.
+gets a dropdown at the right of the field, opened by a click, or by Ctrl+P
+when the page does not take that key itself.
 

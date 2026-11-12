@@ -13,6 +13,9 @@ Item {
 
     signal primed
     signal asked
+    signal noteTapped
+
+    readonly property bool noteHovered: noteHover.hovered && root.note !== ""
 
     implicitHeight: Math.max(Appearance.sizes.rowHeight, actionsKey.height + Appearance.padding.small * 2)
 
@@ -44,6 +47,18 @@ Item {
             font.pixelSize: Appearance.font.size.small
             color: root.note ? Appearance.colour.accent : Appearance.colour.textDim
             elide: Text.ElideRight
+
+            HoverHandler {
+                id: noteHover
+
+                enabled: root.note !== ""
+                cursorShape: Qt.PointingHandCursor
+            }
+
+            TapHandler {
+                enabled: root.note !== ""
+                onTapped: root.noteTapped()
+            }
         }
     }
 

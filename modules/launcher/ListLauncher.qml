@@ -600,14 +600,17 @@ LauncherConcept {
 
         if (root.shownView && !sheet.open) {
             if (event.key === Qt.Key_Escape && !(event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier))) {
-                root.closeView();
+                if (!viewLoader.item?.claimEscape?.())
+                    root.closeView();
                 return true;
             }
+            if (viewLoader.item?.claimKey(event))
+                return true;
             if (event.key === Qt.Key_P && (event.modifiers & Qt.ControlModifier) && viewLoader.item?.choices?.length) {
                 root.chooseFilter();
                 return true;
             }
-            return !!viewLoader.item?.claimKey(event);
+            return false;
         }
 
         if (sheet.open) {
@@ -1437,6 +1440,13 @@ LauncherConcept {
                             target: viewLoader.item
                             property: "view"
                             value: root.shownView
+                            when: viewLoader.status === Loader.Ready && root.filtering
+                        }
+
+                        Binding {
+                            target: viewLoader.item
+                            property: "selection"
+                            value: query.selectedText
                             when: viewLoader.status === Loader.Ready && root.filtering
                         }
 

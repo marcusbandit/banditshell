@@ -9,12 +9,14 @@ import qs.modules.controls
 import "../../../services/clipboard-search.js" as ClipboardSearch
 import "../../../services/clipboard-page.js" as Page
 import "../../../services/colours.js" as Colours
+import "../../../services/dictation-events.js" as DictationEvents
 
 Item {
     id: root
 
     property string typed: ""
     property string query: ""
+    property string selection: ""
     property var view: null
 
     readonly property var source: root.view?.source ?? null
@@ -45,7 +47,26 @@ Item {
     property double now: Date.now()
     property string keptId: ""
     property int selected: -1
-    property string note: ""
+    property bool reading: false
+
+    readonly property bool undoable: !root.dictating && Clipboard.shelved > 0
+    readonly property string note: {
+        if (!root.undoable)
+            return "";
+        const gone = Clipboard.shelfKind === "delete" ? Clipboard.shelved === 1 ? "Deleted" : `${Clipboard.shelved} deleted` : Clipboard.shelfKept > 0 ? `${Clipboard.shelved} cleared, ${Clipboard.shelfKept} pinned kept` : `${Clipboard.shelved} cleared`;
+        return `${gone} · Ctrl Z or click to undo`;
+    }
+    readonly property bool telling: !root.dictating && !!Clipboard.recovery
+    readonly property var told: Clipboard.recovery ?? ({})
+    property bool toldOnce: false
+
+    onTellingChanged: if (root.telling)
+        root.toldOnce = true
+    Component.onDestruction: {
+        Clipboard.releaseShelf(root);
+        if (root.toldOnce)
+            Clipboard.recoverySeen();
+    }
 
     readonly property real rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
     readonly property real headerPitch: Appearance.font.line.small + Appearance.padding.normal + Appearance.padding.small
@@ -110,10 +131,7 @@ Item {
         return out;
     }
 
-    onQueryChanged: {
-        root.keptId = "";
-        root.note = "";
-    }
+    onQueryChanged: root.keptId = ""
     onRowsChanged: root.settle()
     Component.onCompleted: root.settle()
 
@@ -279,6 +297,11 @@ Item {
         const own = root.source.actionsFor(row).map(a => a.label === "Delete" ? Object.assign({}, a, {
                 run: () => root.discard()
             }) : a);
+        own.splice(own.findIndex(a => a.icon === "push_pin") >= 0 ? own.findIndex(a => a.icon === "push_pin") : own.length, 0, {
+            icon: root.reading ? "close_fullscreen" : "open_in_full",
+            label: root.reading ? "Back to the list" : "View it whole",
+            run: () => root.reading = !root.reading
+        });
         const lead = own.findIndex(a => a.label === "Show" || a.label === "Hide" || a.icon === "push_pin");
         const cut = lead < 0 ? own.length : lead;
         const out = own.slice(0, cut).concat(root.masked ? [] : root.extras(), own.slice(cut));
@@ -301,7 +324,6 @@ Item {
             return;
         }
         Clipboard.remove(root.entry);
-        root.note = "Deleted, Ctrl Z brings it back";
     }
 
     function askClear(): void {
@@ -312,10 +334,7 @@ Item {
                     icon: "delete_sweep",
                     label: `Clear ${n === 1 ? "1 item" : `${n} items`}${pinned ? `, ${pinned} pinned stay` : ""}`,
                     alarm: true,
-                    run: () => {
-                        root.source.clear();
-                        root.note = "Cleared, Ctrl Z brings it back";
-                    }
+                    run: () => root.source.clear()
                 },
                 {
                     icon: "close",
@@ -333,9 +352,47 @@ Item {
         root.asks(item, acts, item.width / 2, item.height / 2);
     }
 
+    function claimEscape(): bool {
+        if (!root.reading)
+            return false;
+        root.reading = false;
+        return true;
+    }
+
     function claimKey(event: var): bool {
         const ctrl = event.modifiers & Qt.ControlModifier;
+        const empty = root.query === "";
         switch (event.key) {
+        case Qt.Key_C:
+            if (!ctrl || root.selection !== "" || !root.entry)
+                return false;
+            root.actions().find(a => a.label === "Copy")?.run();
+            return true;
+        case Qt.Key_P:
+            if (!ctrl || root.dictating || !root.entry)
+                return false;
+            Clipboard.setPinned(root.entry, !root.entry.pinned);
+            return true;
+        case Qt.Key_Right:
+            if (!empty || root.reading || !root.entry)
+                return false;
+            root.reading = true;
+            return true;
+        case Qt.Key_Left:
+            if (!root.reading)
+                return false;
+            root.reading = false;
+            return true;
+        case Qt.Key_Home:
+            if (!empty)
+                return false;
+            root.select(root.firstFrom(0, 1));
+            return true;
+        case Qt.Key_End:
+            if (!empty)
+                return false;
+            root.select(root.firstFrom(root.rows.length - 1, -1));
+            return true;
         case Qt.Key_Down:
             root.move(1);
             return true;
@@ -366,13 +423,12 @@ Item {
             root.openActions();
             return true;
         case Qt.Key_Z:
-            if (!ctrl || !Clipboard.shelved)
+            if (!ctrl || !root.undoable)
                 return false;
             Clipboard.undo();
-            root.note = "";
             return true;
         case Qt.Key_Delete:
-            if (!(event.modifiers & Qt.ShiftModifier))
+            if (!empty && !(event.modifiers & Qt.ShiftModifier))
                 return false;
             root.discard();
             return true;
@@ -390,11 +446,52 @@ Item {
 
     implicitHeight: root.rowPitch * 12 + footer.implicitHeight
 
+    Item {
+        id: banner
+
+        width: list.width
+        height: root.telling ? bannerText.implicitHeight + (bannerCopy.visible ? bannerCopy.height + Appearance.padding.small : 0) + Appearance.padding.normal * 2 : 0
+        visible: root.telling && !root.reading
+
+        SquircleRect {
+            anchors.fill: parent
+            radius: Appearance.rounding.normal
+            color: Appearance.colour.warningFill
+        }
+
+        StyledText {
+            id: bannerText
+
+            x: Appearance.padding.normal
+            y: Appearance.padding.normal
+            width: parent.width - Appearance.padding.normal * 2
+            text: root.told.of > root.told.kept ? `The history file was damaged. Kept ${root.told.kept} of ${root.told.of} entries.` : `The history file was damaged. Kept ${root.told.kept === 1 ? "1 entry" : `${root.told.kept ?? 0} entries`}.`
+            font.pixelSize: Appearance.font.size.small
+            color: Appearance.colour.warning
+            wrapMode: Text.Wrap
+        }
+
+        Button {
+            id: bannerCopy
+
+            visible: !!root.told.copy
+            x: Appearance.padding.small
+            y: bannerText.y + bannerText.height + Appearance.padding.small
+            style: "bare"
+            size: 0
+            icon: "content_copy"
+            text: "Copy the damaged file's path"
+            onClicked: Clipboard.offer(["wl-copy", "-n"], root.told.copy, false)
+        }
+    }
+
     GlideList {
         id: list
 
+        y: banner.visible ? banner.height + Appearance.padding.small : 0
         width: Math.round(root.width * 0.4)
-        height: root.height - footer.height - Appearance.padding.small
+        height: root.height - footer.height - Appearance.padding.small - y
+        visible: !root.reading
         clip: true
         model: ScriptModel {
             values: root.rows
@@ -467,32 +564,43 @@ Item {
         x: Appearance.padding.normal
         y: Appearance.padding.normal
         width: list.width - Appearance.padding.normal * 2
-        text: root.query ? `Nothing copied matches “${root.query}”` : Clipboard.entries.length ? `No ${(root.choices[root.choice]?.label ?? "").toLowerCase()} copied yet` : "Nothing copied yet"
+        text: {
+            if (root.query)
+                return root.dictating ? `Nothing dictated matches “${root.query}”` : `Nothing copied matches “${root.query}”`;
+            if (root.dictating) {
+                const key = DictationEvents.startKey(HyprConfig.binds);
+                return key ? `Nothing has been dictated yet. ${key} starts it.` : "Nothing has been dictated yet.";
+            }
+            if (!Clipboard.entries.length)
+                return Clipboard.wasCleared ? "History cleared." : "Nothing has been copied yet.";
+            return `No ${(root.choices[root.choice]?.label ?? "").toLowerCase()} copied yet`;
+        }
         font.pixelSize: Appearance.font.size.normal
         color: Appearance.colour.textFaint
         wrapMode: Text.Wrap
     }
 
     Rectangle {
+        visible: !root.reading
         x: list.width + Appearance.padding.normal
         width: Appearance.stroke.line
-        height: list.height
+        height: root.height - footer.height - Appearance.padding.small
         color: Appearance.colour.separator
     }
 
     Item {
         id: pane
 
-        x: list.width + Appearance.padding.normal * 2
+        x: root.reading ? 0 : list.width + Appearance.padding.normal * 2
         width: root.width - x
-        height: list.height
+        height: root.height - footer.height - Appearance.padding.small
         visible: !!root.entry
 
         Item {
             id: stage
 
             width: pane.width
-            height: Math.max(Appearance.font.line.large * 3, infoHead.y - Appearance.padding.large)
+            height: root.reading ? pane.height : Math.max(Appearance.font.line.large * 3, infoHead.y - Appearance.padding.large)
 
             SquircleImage {
                 anchors.fill: parent
@@ -598,6 +706,7 @@ Item {
         StyledText {
             id: infoHead
 
+            visible: !root.reading
             y: factList.y - height - Appearance.padding.small
             x: Appearance.padding.small
             text: "Information"
@@ -608,6 +717,7 @@ Item {
         Column {
             id: factList
 
+            visible: !root.reading
             y: pane.height - height
             width: pane.width
 
@@ -663,6 +773,11 @@ Item {
         icon: "content_paste"
         title: `${root.dictating ? "Dictation" : "Clipboard history"}${root.rows.length ? ` · ${root.shaped.length === 1 ? "1 item" : `${root.shaped.length} items`}` : ""}`
         note: root.note
+        onNoteTapped: Clipboard.undo()
+        onNoteHoveredChanged: if (footer.noteHovered)
+            Clipboard.holdShelf(root);
+        else
+            Clipboard.releaseShelf(root)
         primary: root.entry ? Typist.found ? "Paste" : "Copy" : ""
         onPrimed: root.useIt()
         onAsked: root.openActions()
