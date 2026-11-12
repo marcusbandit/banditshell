@@ -11,6 +11,8 @@ Singleton {
 
     readonly property int least: 3
 
+    readonly property bool ignoring: Config.values.launcher.ignoredFiles !== false
+
     readonly property string hidden: Config.values.launcher.hiddenFiles
 
     readonly property var noise: ["node_modules", ".cache", ".git", ".npm", ".cargo", ".rustup", ".gradle", ".m2", ".var", ".steam", ".local/share/Steam", ".local/share/Trash", ".mozilla", ".pki", ".nv", ".venv", "venv", "__pycache__", ".tox", ".mypy_cache", ".pytest_cache"]
@@ -31,7 +33,7 @@ Singleton {
     }
 
     function commands(text: string): var {
-        const base = ["nice", "-n", "10", root.fd, "--fixed-strings", "--ignore-case", "--no-ignore-vcs", "--type", "f", "--type", "d", "--max-results", String(root.findLimit), ...(text.indexOf("/") >= 0 ? ["--full-path"] : []), ...root.excluding("--exclude", root.noise, "")];
+        const base = ["nice", "-n", "10", root.fd, "--fixed-strings", "--ignore-case", ...(root.ignoring ? [] : ["--no-ignore-vcs"]), "--type", "f", "--type", "d", "--max-results", String(root.findLimit), ...(text.indexOf("/") >= 0 ? ["--full-path"] : []), ...root.excluding("--exclude", root.noise, "")];
         const out = [base.concat(root.hidden === "all" ? ["--hidden", "--exclude", "/.config"] : [], ["--", text, System.home])];
         if (root.configSearched)
             out.push(base.concat(root.excluding("--exclude", root.appNoise, ""), ["--", text, root.configDir]));

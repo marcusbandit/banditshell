@@ -207,6 +207,7 @@ Singleton {
             polkitAgent: "polkit.agent",
             webSearch: "launcher.webSearch",
             contents: "launcher.contents",
+            ignoredFiles: "launcher.ignoredFiles",
             fallbackWeb: "launcher.fallbacks.web",
             fallbackYoutube: "launcher.fallbacks.youtube",
             fallbackWikipedia: "launcher.fallbacks.wikipedia",

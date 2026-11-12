@@ -299,6 +299,7 @@ Singleton {
                 },
 
                 contents: true,
+                ignoredFiles: true,
 
                 aliases: ({}),
 
