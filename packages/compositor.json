@@ -4,7 +4,7 @@
   "layer": 1,
   "owns": {
     "qml": ["modules/ipc/CompositorIpc.qml"],
-    "services": ["CliMigration", "CompositorSync", "Hypr", "HyprConfig", "Keymap", "Monitors", "WorkspaceSlide"],
+    "services": ["CliMigration", "CompositorSync", "Hypr", "HyprConfig", "Keymap", "Monitors", "ScrollingGaps", "WorkspaceSlide"],
     "js": [
       "services/chords.js",
       "services/cli-migration.js",
@@ -12,17 +12,18 @@
       "services/hyprland-lua.js",
       "services/keymap.js",
       "services/monitor-rules.js",
+      "services/scrolling-gaps.js",
       "services/workspace-key.js",
       "services/workspace-span.js"
     ],
-    "tests": ["tests/cli-migration.test.js", "tests/compositor-options.test.js", "tests/fixtures/hyprctl", "tests/hypr-config-writes.test.js", "tests/hyprland-lua.test.js", "tests/keymap.test.js", "tests/monitor-rules.test.js", "tests/workspace-key.test.js", "tests/workspace-span.test.js"]
+    "tests": ["tests/cli-migration.test.js", "tests/compositor-options.test.js", "tests/fixtures/hyprctl", "tests/hypr-config-writes.test.js", "tests/hyprland-lua.test.js", "tests/keymap.test.js", "tests/monitor-rules.test.js", "tests/scrolling-gaps.test.js", "tests/workspace-key.test.js", "tests/workspace-span.test.js"]
   },
   "requires": {
     "packages": ["core"],
     "optional": []
   },
   "provides": {
-    "singletons": ["Hypr", "HyprConfig", "Keymap", "Monitors", "WorkspaceSlide"],
+    "singletons": ["Hypr", "HyprConfig", "Keymap", "Monitors", "ScrollingGaps", "WorkspaceSlide"],
     "ipc": ["migration"]
   },
   "config": {

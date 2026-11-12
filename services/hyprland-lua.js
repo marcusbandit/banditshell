@@ -1269,6 +1269,9 @@ function luaOptionValue(value) {
         return Number.isFinite(value) ? String(Number.isInteger(value) ? value : +value.toFixed(4)) : null;
     if (typeof value === "string")
         return `"${luaString(value)}"`;
+    const sides = ["top", "right", "bottom", "left"];
+    if (value && typeof value === "object" && sides.every(side => typeof value[side] === "number" && Number.isFinite(value[side])))
+        return `{ ${sides.map(side => `${side} = ${luaOptionValue(value[side])}`).join(", ")} }`;
     return null;
 }
 
@@ -1511,7 +1514,9 @@ function locateOption(files, request) {
             for (let at = 0; at < tables.length; at++) {
                 for (const field of tables[at].table.fields) {
                     const path = tables[at].path.concat(optionSegments(field.key));
-                    if (field.table)
+                    if (field.table && path.join(":") === segments.join(":"))
+                        set.push({ file, s, depth: call.depth, field: Object.assign({}, field, { literal: field.table.fields.every(f => f.literal) }) });
+                    else if (field.table)
                         tables.push({ path, table: field.table });
                     else if (path.join(":") === segments.join(":"))
                         set.push({ file, s, depth: call.depth, field });
