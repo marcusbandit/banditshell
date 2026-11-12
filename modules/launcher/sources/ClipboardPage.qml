@@ -51,9 +51,23 @@ Item {
     property bool reading: false
 
     readonly property bool undoable: !root.dictating && Clipboard.shelved > 0
+    property string savedSnippet: ""
+
+    Timer {
+        id: savedFade
+
+        interval: 4000
+        onTriggered: root.savedSnippet = ""
+    }
+
+    function saveSnippet(): void {
+        root.savedSnippet = root.source.saveAsSnippet(root.entry);
+        savedFade.restart();
+    }
+
     readonly property string note: {
         if (!root.undoable)
-            return "";
+            return root.savedSnippet ? `Saved as snippet “${root.savedSnippet}”` : "";
         const gone = Clipboard.shelfKind === "delete" ? Clipboard.shelved === 1 ? "Deleted" : `${Clipboard.shelved} deleted` : Clipboard.shelfKept > 0 ? `${Clipboard.shelved} cleared, ${Clipboard.shelfKept} pinned kept` : `${Clipboard.shelved} cleared`;
         return `${gone} · Ctrl Z or click to undo`;
     }
@@ -344,6 +358,8 @@ Item {
             ];
         const own = root.source.actionsFor(row).map(a => a.label === "Delete" ? Object.assign({}, a, {
                 run: () => root.discard()
+            }) : a.label === "Save as snippet" ? Object.assign({}, a, {
+                run: () => root.saveSnippet()
             }) : a);
         own.splice(own.findIndex(a => a.icon === "push_pin") >= 0 ? own.findIndex(a => a.icon === "push_pin") : own.length, 0, {
             icon: root.reading ? "close_fullscreen" : "open_in_full",
@@ -936,7 +952,7 @@ Item {
             Clipboard.holdShelf(root);
         else
             Clipboard.releaseShelf(root)
-        primary: root.entry ? Typist.found ? "Paste" : "Copy" : ""
+        primary: root.entry ? root.source?.pasting ? "Paste" : "Copy" : ""
         onPrimed: root.useIt()
         onAsked: root.openActions()
     }
