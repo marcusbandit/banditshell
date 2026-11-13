@@ -1283,7 +1283,7 @@ function rowStep(tiles, at, direction, left) {
         return -1;
     const row = from.row + direction;
     const back = left?.[row];
-    if (back >= 0 && tiles[back]?.row === row)
+    if (Number.isInteger(back) && tiles[back]?.row === row)
         return back;
     let best = -1;
     tiles.forEach((t, i) => {
@@ -1291,6 +1291,17 @@ function rowStep(tiles, at, direction, left) {
             best = i;
     });
     return best;
+}
+
+function trailStep(tiles, at, direction, trail) {
+    const left = trail?.at === at ? trail.left : {};
+    const to = rowStep(tiles, at, direction, left);
+    if (to < 0)
+        return { to: -1, trail: trail };
+    return {
+        to: to,
+        trail: { at: to, left: Object.assign({}, left, { [tiles[at].row]: at }) }
+    };
 }
 
 function gridSpot(index, count, columns) {

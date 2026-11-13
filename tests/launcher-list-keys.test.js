@@ -23,7 +23,7 @@ const Qt = {
 };
 
 const src = fs.readFileSync(path.join(ROOT, "modules/launcher/search.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Search = new Function("Qt", `${src}\nreturn { stepTarget, shiftTarget, caretKey, opensSheet, nextPickable, foldedActions, gridSpot, nearestTile, draggedSlot, rowStep };`)(Qt);
+const Search = new Function("Qt", `${src}\nreturn { stepTarget, shiftTarget, caretKey, opensSheet, nextPickable, foldedActions, gridSpot, nearestTile, draggedSlot, rowStep, trailStep };`)(Qt);
 
 const ROWS = [{ label: "answer" }, { label: "one" }, { label: "two" }, { label: "three" }];
 
@@ -159,8 +159,34 @@ test.describe("stepping between tile rows", () => {
         assert.strictEqual(Search.rowStep(TILES, 3, -1, { 0: 4 }), 0);
     });
 
+    test.it("ignores a remembered tile that is not a tile index", () => {
+        assert.strictEqual(Search.rowStep(TILES, 3, -1, { 0: null }), 0);
+    });
+
     test.it("stays put past the first and last row", () => {
         assert.strictEqual(Search.rowStep(TILES, 0, -1, {}), -1);
         assert.strictEqual(Search.rowStep(TILES, 3, 1, {}), -1);
+    });
+});
+
+test.describe("walking the tile rows with a trail", () => {
+    const grid = (counts) => counts.flatMap((n, row) => Array.from({ length: n }, (_, i) => ({ row, slot: i - (n - 1) / 2 })));
+    const walk = (tiles, from, steps, trail = null) => steps.reduce((s, d) => {
+        const next = Search.trailStep(tiles, s.at, d, s.trail);
+        return next.to < 0 ? s : { at: next.to, trail: next.trail };
+    }, { at: from, trail });
+
+    test.it("comes back to the second tile after Down then Up", () => {
+        assert.strictEqual(walk(grid([3, 2]), 1, [1, -1]).at, 1);
+    });
+
+    test.it("retraces a path across three rows", () => {
+        const tiles = grid([3, 2, 3]);
+        assert.deepStrictEqual([1, 1, -1, -1].reduce((seen, d, i, all) => seen.concat(walk(tiles, 2, all.slice(0, i + 1)).at), []), [4, 6, 4, 2]);
+    });
+
+    test.it("forgets the trail once the tile moved some other way", () => {
+        const down = walk(grid([3, 2]), 1, [1]);
+        assert.strictEqual(Search.trailStep(grid([3, 2]), 4, -1, down.trail).to, 1);
     });
 });
