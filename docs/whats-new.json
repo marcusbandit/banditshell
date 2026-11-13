@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-11-13-p849-app-grid",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Drag a pinned app in the launcher to put it somewhere else"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Right-click menus open at once, their corner at the pointer"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Apps with many actions, like Steam, show them in a submenu"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ctrl+Enter on a launcher app opens its menu"
+        }
+      ]
+    },
+    {
       "id": "2026-11-13-p834-cli-target",
       "date": "2026-11-13",
       "changes": [

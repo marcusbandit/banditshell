@@ -70,21 +70,7 @@ Item {
         }
 
         if (sheet.open) {
-            switch (event.key) {
-            case Qt.Key_Up:
-                sheet.move(-1);
-                break;
-            case Qt.Key_Down:
-                sheet.move(1);
-                break;
-            case Qt.Key_Return:
-            case Qt.Key_Enter:
-                sheet.activate(sheet.selected);
-                break;
-            case Qt.Key_Escape:
-                sheet.close();
-                break;
-            }
+            sheet.key(event);
             event.accepted = true;
             return;
         }

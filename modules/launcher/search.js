@@ -1269,11 +1269,56 @@ function caretKey(key, hasText, intoList) {
     return hasText && !intoList && [Qt.Key_Home, Qt.Key_End, Qt.Key_Left, Qt.Key_Right].includes(key);
 }
 
-function opensSheet(key, modifiers) {
+function opensSheet(key, modifiers, onTiles) {
     if (key === Qt.Key_Menu)
         return true;
     const plain = modifiers & (Qt.ControlModifier | Qt.ShiftModifier | Qt.AltModifier | Qt.MetaModifier);
-    return key === Qt.Key_K && plain === Qt.ControlModifier || key === Qt.Key_F10 && plain === Qt.ShiftModifier;
+    const enter = key === Qt.Key_Return || key === Qt.Key_Enter;
+    return key === Qt.Key_K && plain === Qt.ControlModifier || key === Qt.Key_F10 && plain === Qt.ShiftModifier || !!onTiles && enter && plain === Qt.ControlModifier;
+}
+
+function gridSpot(index, count, columns) {
+    const row = Math.floor(index / columns);
+    const across = Math.min(columns, count - row * columns);
+    return {
+        row: row,
+        slot: index % columns - (across - 1) / 2
+    };
+}
+
+function nearestTile(x, y, count, columns, cell, middle) {
+    let best = 0;
+    let bestDistance = Infinity;
+    for (let i = 0; i < count; i++) {
+        const spot = gridSpot(i, count, columns);
+        const distance = Math.hypot(x - (middle + spot.slot * cell), y - (spot.row + 0.5) * cell);
+        if (distance < bestDistance) {
+            best = i;
+            bestDistance = distance;
+        }
+    }
+    return best;
+}
+
+function draggedSlot(index, from, to) {
+    if (from < 0 || to < 0 || from === to)
+        return index;
+    if (index === from)
+        return to;
+    if (from < to && index > from && index <= to)
+        return index - 1;
+    if (from > to && index >= to && index < from)
+        return index + 1;
+    return index;
+}
+
+function foldedActions(actions, title, most) {
+    const list = actions || [];
+    return list.length > most ? [{
+            icon: "more_horiz",
+            label: title,
+            children: list
+        }] : list;
 }
 
 function cleanAlias(text) {

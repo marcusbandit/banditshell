@@ -277,7 +277,7 @@ LauncherConcept {
         const page = viewLoader.item;
         if (!page?.choices?.length)
             return;
-        const at = choicePill.mapToItem(panel, choicePill.width / 2, choicePill.height);
+        const at = choicePill.mapToItem(sheet, choicePill.width / 2, choicePill.height);
         sheet.popup(at.x, at.y, page.choices.map((c, i) => ({
                     icon: c.icon,
                     label: c.label,
@@ -361,6 +361,10 @@ LauncherConcept {
     property int tile: 0
     property bool tileKeyed: false
 
+    property int lifted: -1
+    property int liftedTo: -1
+    property var landing: null
+
     readonly property bool asking: sheet.open
 
     property Item tipHost: null
@@ -410,6 +414,9 @@ LauncherConcept {
     onHidden: {
         FileSearch.halt();
         sheet.close();
+        root.lifted = -1;
+        root.liftedTo = -1;
+        root.landing = null;
         Assistant.following = false;
         if (!Assistant.inPlace)
             Assistant.launcherClosed();
@@ -489,6 +496,40 @@ LauncherConcept {
         const t = root.tiles[root.tile];
         if (t?.pinned && Search.shiftTarget(root.pinnedApps.indexOf(t.entry), step, root.pinnedApps.length) >= 0 && Apps.moveStarred(t.entry, step))
             root.tile += step;
+    }
+
+    function lift(index: int): void {
+        root.lifted = index;
+        root.liftedTo = index;
+        root.tile = index;
+    }
+
+    function dragTile(x: real, y: real): void {
+        root.liftedTo = Search.nearestTile(x, y, root.pinnedApps.length, root.tileColumns, quickLaunch.cell, quickLaunch.width / 2);
+    }
+
+    function dropTile(x: real, y: real): void {
+        if (root.lifted < 0)
+            return;
+        root.landing = {
+            id: root.pinnedApps[root.lifted]?.id ?? "",
+            from: root.lifted,
+            to: root.liftedTo,
+            x: x,
+            y: y
+        };
+        Qt.callLater(root.landTile);
+    }
+
+    function landTile(): void {
+        const landing = root.landing;
+        if (!landing)
+            return;
+        root.lifted = -1;
+        root.liftedTo = -1;
+        if (landing.to >= 0 && landing.from !== landing.to && Apps.moveStarred(root.pinnedApps[landing.from], landing.to - landing.from))
+            root.tile = landing.to;
+        root.landing = null;
     }
 
     function claimTileKey(event: var): bool {
@@ -641,21 +682,8 @@ LauncherConcept {
         }
 
         if (sheet.open) {
-            switch (event.key) {
-            case Qt.Key_Down:
-                sheet.move(1);
-                break;
-            case Qt.Key_Up:
-                sheet.move(-1);
-                break;
-            case Qt.Key_Return:
-            case Qt.Key_Enter:
-                sheet.activate(sheet.selected);
-                break;
-            default:
+            if (!sheet.key(event))
                 sheet.close();
-                break;
-            }
             return true;
         }
 
@@ -673,7 +701,7 @@ LauncherConcept {
             root.ask(answerCard, root.answer.row, answerCard.width / 2, answerCard.height / 2);
             return true;
         }
-        if (Search.opensSheet(event.key, event.modifiers)) {
+        if (Search.opensSheet(event.key, event.modifiers, root.quick)) {
             const item = root.quick ? tileRepeater.itemAt(root.tile) : list.itemAtIndex(root.selected);
             if (item)
                 root.ask(item, root.quick ? root.tiles[root.tile].entry : root.results[root.selected], item.width / 2, item.height / 2);
@@ -703,7 +731,7 @@ LauncherConcept {
             return true;
         }
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
-            Search.sectioned(root.actionsFor(row)).slice(1).find(a => !a.tucked)?.run();
+            Search.sectioned(root.actionsFor(row)).slice(1).find(a => !a.tucked && a.run)?.run();
             return true;
         }
 
@@ -814,12 +842,11 @@ LauncherConcept {
 
         acts.push(...search.appActions(entry));
 
-        for (const action of entry.actions ?? [])
-            acts.push({
-                icon: "open_in_new",
-                label: action.name,
-                run: () => root.launch(() => Apps.launchAction(entry, action))
-            });
+        acts.push(...Search.foldedActions((entry.actions ?? []).map(action => ({
+                        icon: "open_in_new",
+                        label: action.name,
+                        run: () => root.launch(() => Apps.launchAction(entry, action))
+                    })), `${entry.name} actions`, 4));
 
         const at = root.quick ? root.pinnedApps.indexOf(entry) : -1;
         if (at > 0)
@@ -875,7 +902,7 @@ LauncherConcept {
         if (!acts.length)
             return;
         root.answerHolds = false;
-        const at = item.mapToItem(panel, x, y);
+        const at = item.mapToItem(sheet, x, y);
         root.askedAt = at;
         sheet.popup(at.x, at.y, Search.sectioned(acts));
     }
@@ -1547,7 +1574,7 @@ LauncherConcept {
                             }
 
                             function onAsks(item: Item, actions: var, x: real, y: real): void {
-                                const at = item.mapToItem(panel, x, y);
+                                const at = item.mapToItem(sheet, x, y);
                                 sheet.popup(at.x, at.y, actions);
                             }
                         }
@@ -1586,15 +1613,54 @@ LauncherConcept {
                                 required property int index
 
                                 readonly property bool chosen: cell.index === root.tile
-                                readonly property bool named: cell.chosen && root.quick && root.tileKeyed && !root.asking
+                                readonly property bool named: cell.chosen && root.quick && root.tileKeyed && !root.asking && root.lifted < 0
                                 readonly property real drop: (cell.height + quickLaunch.icon) / 2 + Appearance.padding.card
 
+                                readonly property bool grabbed: root.lifted === cell.index
+                                readonly property real homeX: quickLaunch.width / 2 + (cell.modelData.slot - 0.5) * quickLaunch.cell
+                                readonly property real homeY: cell.modelData.row * quickLaunch.cell + (cell.modelData.pinned ? 0 : quickLaunch.gap)
+                                readonly property var shownSpot: cell.modelData.pinned ? Search.gridSpot(Search.draggedSlot(cell.index, root.lifted, root.liftedTo), root.pinnedApps.length, root.tileColumns) : null
                                 onNamedChanged: root.tip(cell, cell.modelData.entry.name ?? "", cell.drop, cell.named)
+                                onGrabbedChanged: if (!cell.grabbed) {
+                                    slideX.release();
+                                    slideY.release();
+                                }
 
-                                x: quickLaunch.width / 2 + (cell.modelData.slot - 0.5) * quickLaunch.cell
-                                y: cell.modelData.row * quickLaunch.cell + (cell.modelData.pinned ? 0 : quickLaunch.gap)
+                                Component.onCompleted: {
+                                    const landing = root.landing;
+                                    if (!landing || !cell.modelData.pinned || landing.id !== cell.modelData.entry.id)
+                                        return;
+                                    slideX.value = landing.x - cell.homeX;
+                                    slideY.value = landing.y - cell.homeY;
+                                    rise.value = 1.1;
+                                }
+
+                                x: cell.homeX + slideX.value
+                                y: cell.homeY + slideY.value
+                                z: cell.grabbed ? 2 : 0
                                 width: quickLaunch.cell
                                 height: quickLaunch.cell
+                                scale: rise.value
+
+                                Spring {
+                                    id: slideX
+
+                                    target: cell.shownSpot ? (cell.shownSpot.slot - cell.modelData.slot) * quickLaunch.cell : 0
+                                }
+
+                                Spring {
+                                    id: slideY
+
+                                    target: cell.shownSpot ? (cell.shownSpot.row - cell.modelData.row) * quickLaunch.cell : 0
+                                }
+
+                                Spring {
+                                    id: rise
+
+                                    value: 1
+                                    epsilon: 0.002
+                                    target: cell.grabbed ? 1.1 : 1
+                                }
 
                                 SquircleRect {
                                     anchors.centerIn: parent
@@ -1640,25 +1706,76 @@ LauncherConcept {
                                     anchors.fill: parent
                                     enabled: !root.asking
                                     hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
+                                    preventStealing: true
+                                    cursorShape: cell.grabbed ? Qt.ClosedHandCursor : Qt.PointingHandCursor
                                     acceptedButtons: Qt.LeftButton | Qt.RightButton
 
                                     property bool held: false
+                                    property bool moved: false
+                                    property point from: Qt.point(0, 0)
 
                                     pressAndHoldInterval: Appearance.animation.longPress
 
-                                    onContainsMouseChanged: root.tip(cell, cell.modelData.entry.name ?? "", cell.drop, pointer.containsMouse)
+                                    onContainsMouseChanged: root.tip(cell, cell.modelData.entry.name ?? "", cell.drop, pointer.containsMouse && root.lifted < 0)
 
-                                    onPressed: pointer.held = false
+                                    onPressed: mouse => {
+                                        pointer.held = false;
+                                        pointer.moved = false;
+                                        pointer.from = Qt.point(mouse.x, mouse.y);
+                                    }
+
+                                    onPositionChanged: mouse => {
+                                        if (!pointer.pressed || !(mouse.buttons & Qt.LeftButton) || !cell.modelData.pinned)
+                                            return;
+                                        if (!pointer.moved) {
+                                            if (!cell.grabbed && Math.hypot(mouse.x - pointer.from.x, mouse.y - pointer.from.y) < Qt.styleHints.startDragDistance)
+                                                return;
+                                            pointer.moved = true;
+                                            root.tip(cell, "", cell.drop, false);
+                                            root.lift(cell.index);
+                                        }
+                                        const at = cell.mapToItem(quickLaunch, mouse.x, mouse.y);
+                                        slideX.hold(at.x - pointer.from.x - cell.homeX);
+                                        slideY.hold(at.y - pointer.from.y - cell.homeY);
+                                        root.dragTile(at.x - pointer.from.x + cell.width / 2, at.y - pointer.from.y + cell.height / 2);
+                                    }
 
                                     onPressAndHold: mouse => {
+                                        if (pointer.moved)
+                                            return;
                                         pointer.held = true;
                                         root.tile = cell.index;
+                                        if (!cell.modelData.pinned) {
+                                            root.ask(cell, cell.modelData.entry, mouse.x, mouse.y);
+                                            return;
+                                        }
+                                        root.tip(cell, "", cell.drop, false);
+                                        root.lift(cell.index);
+                                    }
+
+                                    onReleased: mouse => {
+                                        if (!cell.grabbed)
+                                            return;
+                                        if (pointer.moved) {
+                                            root.dropTile(cell.x, cell.y);
+                                            return;
+                                        }
+                                        root.lifted = -1;
+                                        root.liftedTo = -1;
                                         root.ask(cell, cell.modelData.entry, mouse.x, mouse.y);
                                     }
 
+                                    onCanceled: {
+                                        if (!cell.grabbed)
+                                            return;
+                                        if (pointer.moved)
+                                            root.dropTile(cell.x, cell.y);
+                                        else
+                                            root.lifted = -1;
+                                    }
+
                                     onClicked: mouse => {
-                                        if (pointer.held)
+                                        if (pointer.held || pointer.moved)
                                             return;
                                         root.tile = cell.index;
                                         if (mouse.button === Qt.RightButton)
@@ -1947,7 +2064,7 @@ LauncherConcept {
                                     return search.confirmActions(line.modelData);
                                 const all = root.actionsFor(line.modelData);
                                 const acts = all[0]?.button ? all : all.slice(1);
-                                const shown = acts.filter(a => !a.tucked);
+                                const shown = acts.filter(a => !a.tucked && !a.children);
                                 return shown.length === acts.length && shown.length <= root.buttonLimit ? shown : [...shown.slice(0, root.buttonLimit - 1), {
                                         icon: "more_horiz",
                                         label: "More",
@@ -2003,22 +2120,34 @@ LauncherConcept {
 
             onColourPicked: (hex, done) => root.takeColour(hex, done)
         }
+    }
 
-        ActionSheet {
-            id: sheet
+    ActionSheet {
+        id: sheet
 
-            anchors.fill: parent
+        anchors.fill: parent
+        z: 100
 
-            Connections {
-                target: list
-
-                function onContentYChanged(): void {
-                    sheet.close();
-                }
+        Keys.onPressed: event => {
+            event.accepted = true;
+            if (sheet.key(event) || [Qt.Key_Shift, Qt.Key_Control, Qt.Key_Alt, Qt.Key_Meta].includes(event.key))
+                return;
+            sheet.close();
+            if (event.text && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) && event.text.charCodeAt(0) >= 32) {
+                query.forceActiveFocus();
+                query.insert(query.cursorPosition, event.text);
             }
-
-            onClosed: if (root.open)
-                Qt.callLater(query.forceActiveFocus)
         }
+
+        Connections {
+            target: list
+
+            function onContentYChanged(): void {
+                sheet.close();
+            }
+        }
+
+        onClosed: if (root.open)
+            Qt.callLater(query.forceActiveFocus)
     }
 }
