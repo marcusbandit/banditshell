@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-13-p853-tile-step-back",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Up and Down in the launcher's apps go back to the app you came from"
+        }
+      ]
+    },
+    {
       "id": "2026-11-13-p849-app-grid",
       "date": "2026-11-13",
       "changes": [

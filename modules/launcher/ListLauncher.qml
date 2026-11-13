@@ -360,6 +360,7 @@ LauncherConcept {
     readonly property bool quick: !root.capture && !root.shownView && !query.text && root.tiles.length > 0
     property int tile: 0
     property bool tileKeyed: false
+    property var leftRows: ({})
 
     property int lifted: -1
     property int liftedTo: -1
@@ -386,9 +387,14 @@ LauncherConcept {
 
     onQuickChanged: {
         root.tile = 0;
+        root.leftRows = {};
         root.tileKeyed = false;
     }
-    onTilesChanged: root.tile = Math.min(root.tile, Math.max(0, root.tiles.length - 1))
+    onTilesChanged: {
+        root.tile = Math.min(root.tile, Math.max(0, root.tiles.length - 1));
+        root.leftRows = {};
+    }
+    onTileChanged: root.leftRows = {}
 
     onShowing: {
         root.backCloses = false;
@@ -404,6 +410,7 @@ LauncherConcept {
         search.arrangeNow();
         root.selected = Math.max(0, Search.nextPickable(root.results, 0, 1));
         root.tile = 0;
+        root.leftRows = {};
         if (root.unsized) {
             root.unsized = false;
             grow.value = panel.implicitHeight;
@@ -482,14 +489,13 @@ LauncherConcept {
     }
 
     function stepRow(direction: int): void {
-        const from = root.tiles[root.tile];
-        let best = -1;
-        root.tiles.forEach((t, i) => {
-            if (t.row === from.row + direction && (best < 0 || Math.abs(t.slot - from.slot) < Math.abs(root.tiles[best].slot - from.slot)))
-                best = i;
-        });
-        if (best >= 0)
-            root.tile = best;
+        const to = Search.rowStep(root.tiles, root.tile, direction, root.leftRows);
+        if (to < 0)
+            return;
+        const left = Object.assign({}, root.leftRows);
+        left[root.tiles[root.tile].row] = root.tile;
+        root.tile = to;
+        root.leftRows = left;
     }
 
     function shiftTile(step: int): void {

@@ -23,7 +23,7 @@ const Qt = {
 };
 
 const src = fs.readFileSync(path.join(ROOT, "modules/launcher/search.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Search = new Function("Qt", `${src}\nreturn { stepTarget, shiftTarget, caretKey, opensSheet, nextPickable, foldedActions, gridSpot, nearestTile, draggedSlot };`)(Qt);
+const Search = new Function("Qt", `${src}\nreturn { stepTarget, shiftTarget, caretKey, opensSheet, nextPickable, foldedActions, gridSpot, nearestTile, draggedSlot, rowStep };`)(Qt);
 
 const ROWS = [{ label: "answer" }, { label: "one" }, { label: "two" }, { label: "three" }];
 
@@ -138,5 +138,29 @@ test.describe("dragging a pinned app to a new place", () => {
         assert.deepStrictEqual(order(3, 0), [1, 2, 3, 0, 4]);
         assert.deepStrictEqual(order(2, 2), [0, 1, 2, 3, 4]);
         assert.deepStrictEqual(order(-1, -1), [0, 1, 2, 3, 4]);
+    });
+});
+
+test.describe("stepping between tile rows", () => {
+    const grid = (counts) => counts.flatMap((n, row) => Array.from({ length: n }, (_, i) => ({ row, slot: i - (n - 1) / 2 })));
+    const TILES = grid([3, 2]);
+
+    test.it("lands on the nearest tile, the lower one on a tie", () => {
+        assert.strictEqual(Search.rowStep(TILES, 1, 1, {}), 3);
+        assert.strictEqual(Search.rowStep(TILES, 3, -1, {}), 0);
+    });
+
+    test.it("goes back to the tile it left the row from", () => {
+        assert.strictEqual(Search.rowStep(TILES, 3, -1, { 0: 1 }), 1);
+        assert.strictEqual(Search.rowStep(TILES, 4, -1, { 0: 2 }), 2);
+    });
+
+    test.it("ignores a remembered tile that is not in the row it steps into", () => {
+        assert.strictEqual(Search.rowStep(TILES, 3, -1, { 0: 4 }), 0);
+    });
+
+    test.it("stays put past the first and last row", () => {
+        assert.strictEqual(Search.rowStep(TILES, 0, -1, {}), -1);
+        assert.strictEqual(Search.rowStep(TILES, 3, 1, {}), -1);
     });
 });

@@ -1277,6 +1277,22 @@ function opensSheet(key, modifiers, onTiles) {
     return key === Qt.Key_K && plain === Qt.ControlModifier || key === Qt.Key_F10 && plain === Qt.ShiftModifier || !!onTiles && enter && plain === Qt.ControlModifier;
 }
 
+function rowStep(tiles, at, direction, left) {
+    const from = tiles[at];
+    if (!from)
+        return -1;
+    const row = from.row + direction;
+    const back = left?.[row];
+    if (back >= 0 && tiles[back]?.row === row)
+        return back;
+    let best = -1;
+    tiles.forEach((t, i) => {
+        if (t.row === row && (best < 0 || Math.abs(t.slot - from.slot) < Math.abs(tiles[best].slot - from.slot)))
+            best = i;
+    });
+    return best;
+}
+
 function gridSpot(index, count, columns) {
     const row = Math.floor(index / columns);
     const across = Math.min(columns, count - row * columns);
