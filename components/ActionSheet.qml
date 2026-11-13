@@ -55,10 +55,12 @@ Item {
     }
 
     function move(delta: int): void {
-        if (root.deep)
+        if (root.deep) {
             root.innerSelected = Math.max(0, Math.min(root.innerActions.length - 1, root.innerSelected + delta));
-        else
-            root.choose(Math.max(0, Math.min(root.actions.length - 1, root.selected + delta)));
+            return;
+        }
+        root.leave();
+        root.choose(Math.max(0, Math.min(root.actions.length - 1, root.selected + delta)));
     }
 
     function nests(index: int): bool {
@@ -173,14 +175,7 @@ Item {
 
     property real zoom: 1
 
-    readonly property real plainRow: Math.max(Appearance.sizes.rowHeight, Appearance.font.iconSize + Appearance.padding.normal * 2)
-    readonly property real plainHeight: {
-        let total = Appearance.padding.small;
-        for (let i = 0; i < root.actions.length; i++)
-            total += root.plainRow + Appearance.padding.small + (main.apart(i) && !main.headed(i) ? Appearance.padding.small * 2 + 1 : 0) + (main.headed(i) ? Math.round(Appearance.font.size.small * 1.6) + Appearance.padding.small : 0);
-        return total;
-    }
-    readonly property real sized: Math.min(root.zoom, Math.max(1, (root.height - root.edge * 2) / Math.max(1, root.plainHeight)))
+    readonly property real sized: Math.min(root.zoom, Math.max(1, (root.height - root.edge * 2) / Math.max(1, main.plainHeight)))
 
     readonly property real edge: Appearance.padding.normal
 

@@ -314,21 +314,8 @@ LauncherConcept {
 
     function claimKey(event: var): bool {
         if (sheet.open) {
-            switch (event.key) {
-            case Qt.Key_Down:
-                sheet.move(1);
-                break;
-            case Qt.Key_Up:
-                sheet.move(-1);
-                break;
-            case Qt.Key_Return:
-            case Qt.Key_Enter:
-                sheet.activate(sheet.selected);
-                break;
-            default:
+            if (!sheet.key(event))
                 sheet.close();
-                break;
-            }
             return true;
         }
 
@@ -377,12 +364,11 @@ LauncherConcept {
             }
         ];
 
-        for (const action of entry.actions ?? [])
-            acts.push({
-                icon: "open_in_new",
-                label: action.name,
-                run: () => root.launch(() => Apps.launchAction(entry, action))
-            });
+        acts.push(...Search.foldedActions((entry.actions ?? []).map(action => ({
+                        icon: "open_in_new",
+                        label: action.name,
+                        run: () => root.launch(() => Apps.launchAction(entry, action))
+                    })), `${entry.name} actions`, 4));
 
         acts.push({
             icon: root.starIcon,

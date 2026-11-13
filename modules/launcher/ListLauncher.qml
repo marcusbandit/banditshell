@@ -363,7 +363,7 @@ LauncherConcept {
 
     property int lifted: -1
     property int liftedTo: -1
-    property bool dropping: false
+    property var landing: null
 
     readonly property bool asking: sheet.open
 
@@ -416,7 +416,7 @@ LauncherConcept {
         sheet.close();
         root.lifted = -1;
         root.liftedTo = -1;
-        root.dropping = false;
+        root.landing = null;
         Assistant.following = false;
         if (!Assistant.inPlace)
             Assistant.launcherClosed();
@@ -501,7 +501,6 @@ LauncherConcept {
     function lift(index: int): void {
         root.lifted = index;
         root.liftedTo = index;
-        root.dropping = false;
         root.tile = index;
     }
 
@@ -509,14 +508,28 @@ LauncherConcept {
         root.liftedTo = Search.nearestTile(x, y, root.pinnedApps.length, root.tileColumns, quickLaunch.cell, quickLaunch.width / 2);
     }
 
+    function dropTile(x: real, y: real): void {
+        if (root.lifted < 0)
+            return;
+        root.landing = {
+            id: root.pinnedApps[root.lifted]?.id ?? "",
+            from: root.lifted,
+            to: root.liftedTo,
+            x: x,
+            y: y
+        };
+        Qt.callLater(root.landTile);
+    }
+
     function landTile(): void {
-        const from = root.lifted;
-        const to = root.liftedTo;
+        const landing = root.landing;
+        if (!landing)
+            return;
         root.lifted = -1;
         root.liftedTo = -1;
-        root.dropping = false;
-        if (from >= 0 && to >= 0 && from !== to && Apps.moveStarred(root.pinnedApps[from], to - from))
-            root.tile = to;
+        if (landing.to >= 0 && landing.from !== landing.to && Apps.moveStarred(root.pinnedApps[landing.from], landing.to - landing.from))
+            root.tile = landing.to;
+        root.landing = null;
     }
 
     function claimTileKey(event: var): bool {
@@ -1607,11 +1620,20 @@ LauncherConcept {
                                 readonly property real homeX: quickLaunch.width / 2 + (cell.modelData.slot - 0.5) * quickLaunch.cell
                                 readonly property real homeY: cell.modelData.row * quickLaunch.cell + (cell.modelData.pinned ? 0 : quickLaunch.gap)
                                 readonly property var shownSpot: cell.modelData.pinned ? Search.gridSpot(Search.draggedSlot(cell.index, root.lifted, root.liftedTo), root.pinnedApps.length, root.tileColumns) : null
-                                readonly property bool landed: root.dropping && cell.grabbed && slideX.settled && slideY.settled
-
                                 onNamedChanged: root.tip(cell, cell.modelData.entry.name ?? "", cell.drop, cell.named)
-                                onLandedChanged: if (cell.landed)
-                                    Qt.callLater(root.landTile)
+                                onGrabbedChanged: if (!cell.grabbed) {
+                                    slideX.release();
+                                    slideY.release();
+                                }
+
+                                Component.onCompleted: {
+                                    const landing = root.landing;
+                                    if (!landing || !cell.modelData.pinned || landing.id !== cell.modelData.entry.id)
+                                        return;
+                                    slideX.value = landing.x - cell.homeX;
+                                    slideY.value = landing.y - cell.homeY;
+                                    rise.value = 1.1;
+                                }
 
                                 x: cell.homeX + slideX.value
                                 y: cell.homeY + slideY.value
@@ -1637,7 +1659,7 @@ LauncherConcept {
 
                                     value: 1
                                     epsilon: 0.002
-                                    target: cell.grabbed && !root.dropping ? 1.1 : 1
+                                    target: cell.grabbed ? 1.1 : 1
                                 }
 
                                 SquircleRect {
@@ -1734,10 +1756,8 @@ LauncherConcept {
                                     onReleased: mouse => {
                                         if (!cell.grabbed)
                                             return;
-                                        slideX.release();
-                                        slideY.release();
                                         if (pointer.moved) {
-                                            root.dropping = true;
+                                            root.dropTile(cell.x, cell.y);
                                             return;
                                         }
                                         root.lifted = -1;
@@ -1745,10 +1765,13 @@ LauncherConcept {
                                         root.ask(cell, cell.modelData.entry, mouse.x, mouse.y);
                                     }
 
-                                    onCanceled: if (cell.grabbed) {
-                                        slideX.release();
-                                        slideY.release();
-                                        root.dropping = true;
+                                    onCanceled: {
+                                        if (!cell.grabbed)
+                                            return;
+                                        if (pointer.moved)
+                                            root.dropTile(cell.x, cell.y);
+                                        else
+                                            root.lifted = -1;
                                     }
 
                                     onClicked: mouse => {
@@ -2041,7 +2064,7 @@ LauncherConcept {
                                     return search.confirmActions(line.modelData);
                                 const all = root.actionsFor(line.modelData);
                                 const acts = all[0]?.button ? all : all.slice(1);
-                                const shown = acts.filter(a => !a.tucked);
+                                const shown = acts.filter(a => !a.tucked && !a.children);
                                 return shown.length === acts.length && shown.length <= root.buttonLimit ? shown : [...shown.slice(0, root.buttonLimit - 1), {
                                         icon: "more_horiz",
                                         label: "More",
@@ -2105,7 +2128,16 @@ LauncherConcept {
         anchors.fill: parent
         z: 100
 
-        Keys.onPressed: event => event.accepted = sheet.key(event)
+        Keys.onPressed: event => {
+            event.accepted = true;
+            if (sheet.key(event) || [Qt.Key_Shift, Qt.Key_Control, Qt.Key_Alt, Qt.Key_Meta].includes(event.key))
+                return;
+            sheet.close();
+            if (event.text && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) && event.text.charCodeAt(0) >= 32) {
+                query.forceActiveFocus();
+                query.insert(query.cursorPosition, event.text);
+            }
+        }
 
         Connections {
             target: list

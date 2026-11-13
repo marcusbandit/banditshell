@@ -31,26 +31,59 @@ Item {
         return index > 0 && !!action && (!!action.apart || !!action.alarm !== !!root.actions[index - 1].alarm);
     }
 
-    function lead(index: int): real {
-        return (root.apart(index) && !root.headed(index) ? root.split : 0) + (root.headed(index) ? root.headRow : 0);
+    function measureAt(scale: real): var {
+        const gap = Math.round(Appearance.padding.small * scale);
+        const inset = Math.round(Appearance.padding.normal * scale);
+        const iconSize = Math.round(Appearance.font.iconSize * scale);
+        const textSize = Math.round(Appearance.font.size.small * scale);
+        const rowHeight = Math.max(Math.round(Appearance.sizes.rowHeight * scale), iconSize + inset * 2);
+        return {
+            gap: gap,
+            inset: inset,
+            iconSize: iconSize,
+            textSize: textSize,
+            rowHeight: rowHeight,
+            step: rowHeight + gap,
+            split: gap * 2 + 1,
+            headRow: Math.round(textSize * 1.6) + gap
+        };
     }
 
-    function rowTop(index: int): real {
-        let total = index * root.step;
+    function leadIn(index: int, size: var): real {
+        return (root.apart(index) && !root.headed(index) ? size.split : 0) + (root.headed(index) ? size.headRow : 0);
+    }
+
+    function topIn(index: int, size: var): real {
+        let total = index * size.step;
         for (let i = 0; i <= index && i < root.actions.length; i++)
-            total += root.lead(i);
+            total += root.leadIn(i, size);
         return total;
     }
 
-    readonly property real gap: Math.round(Appearance.padding.small * root.sized)
-    readonly property real inset: Math.round(Appearance.padding.normal * root.sized)
-    readonly property int iconSize: Math.round(Appearance.font.iconSize * root.sized)
-    readonly property int textSize: Math.round(Appearance.font.size.small * root.sized)
+    function heightIn(size: var): real {
+        return root.actions.length ? root.topIn(root.actions.length - 1, size) + size.rowHeight + size.gap * 2 : 0;
+    }
 
-    readonly property real rowHeight: Math.max(Math.round(Appearance.sizes.rowHeight * root.sized), root.iconSize + root.inset * 2)
-    readonly property real step: root.rowHeight + root.gap
-    readonly property real split: root.gap * 2 + 1
-    readonly property real headRow: Math.round(root.textSize * 1.6) + root.gap
+    function lead(index: int): real {
+        return root.leadIn(index, root.metrics);
+    }
+
+    function rowTop(index: int): real {
+        return root.topIn(index, root.metrics);
+    }
+
+    readonly property var metrics: root.measureAt(root.sized)
+    readonly property real plainHeight: root.heightIn(root.measureAt(1))
+
+    readonly property real gap: root.metrics.gap
+    readonly property real inset: root.metrics.inset
+    readonly property int iconSize: root.metrics.iconSize
+    readonly property int textSize: root.metrics.textSize
+
+    readonly property real rowHeight: root.metrics.rowHeight
+    readonly property real step: root.metrics.step
+    readonly property real split: root.metrics.split
+    readonly property real headRow: root.metrics.headRow
 
     readonly property real rowWidth: Math.min(root.widest - root.gap * 2, root.inset * 3 + root.iconSize + measure.childrenRect.width)
 
@@ -58,7 +91,7 @@ Item {
     readonly property real groupRadius: root.cellRadius + root.gap
 
     implicitWidth: root.rowWidth + root.gap * 2
-    implicitHeight: root.actions.length ? root.rowTop(root.actions.length - 1) + root.rowHeight + root.gap * 2 : 0
+    implicitHeight: root.heightIn(root.metrics)
 
     Follow {
         id: marker

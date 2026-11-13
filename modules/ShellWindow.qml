@@ -709,10 +709,7 @@ PanelWindow {
             anchors.fill: parent
             z: 200
 
-            Keys.onUpPressed: sidebarSheet.move(-1)
-            Keys.onDownPressed: sidebarSheet.move(1)
-            Keys.onReturnPressed: sidebarSheet.activate(sidebarSheet.selected)
-            Keys.onEnterPressed: sidebarSheet.activate(sidebarSheet.selected)
+            Keys.onPressed: event => event.accepted = sidebarSheet.key(event)
 
             property Item giveBack: null
 
