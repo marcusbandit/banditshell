@@ -142,6 +142,14 @@ QtObject {
 
     readonly property var commands: [
         {
+            id: "assistantcopychat",
+            icon: "content_copy",
+            label: "Copy AI chat",
+            words: "ai chat copy conversation whole transcript",
+            hidden: !Assistant.answeredTurns,
+            run: () => Assistant.copyChat()
+        },
+        {
             id: "assistantsetup",
             icon: "auto_awesome",
             label: "Set up AI answers",
@@ -179,7 +187,7 @@ QtObject {
         if (row.kind === "ask") {
             if (Assistant.streaming && Assistant.topic === root.search.text)
                 return;
-            Assistant.ask(row.question, root.search.text);
+            Assistant.ask(row.question, root.search.text, null);
             return;
         }
         if (Assistant.phase === "nokey" || Assistant.phase === "unreachable") {
@@ -203,6 +211,24 @@ QtObject {
                     icon: "auto_awesome",
                     label: "Ask",
                     run: () => root.activate(row)
+                },
+                {
+                    icon: "text_select_start",
+                    label: "Ask about the selection",
+                    short: "Selection",
+                    run: () => Assistant.askWith("selection", row.question, root.search.text)
+                },
+                {
+                    icon: "content_paste",
+                    label: "Ask about the clipboard",
+                    short: "Clipboard",
+                    run: () => Assistant.askWith("clipboard", row.question, root.search.text)
+                },
+                {
+                    icon: "web_asset",
+                    label: "Ask about the focused window",
+                    short: "Window",
+                    run: () => Assistant.askWith("window", row.question, root.search.text)
                 }
             ];
         const apiKey = {
