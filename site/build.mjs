@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { card, longDate, posts } from "./blog.mjs";
+import { card, imageSize, longDate, posts } from "./blog.mjs";
 import { escape, inline, render } from "./roadmap.mjs";
 
 const SITE = dirname(fileURLToPath(import.meta.url));
@@ -24,52 +24,53 @@ const git = (...args) => {
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
 const template = (name) => readFileSync(join(SITE, name), "utf8");
 const fill = (text, values) => text.replace(/\{\{(\w+)\}\}/g, (_, key) => values[key] ?? "");
-const plain = (html) =>
-    html.replace(/<[^>]+>/g, " ").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
-
 const roadmap = render(read(SOURCE), REPO);
 const updated = git("log", "-1", "--format=%cs", "--", SOURCE) || new Date().toLocaleDateString("sv");
 const commit = git("rev-parse", "--short", "HEAD");
 const vision = roadmap.sections[0]?.blocks.find((block) => block.type === "paragraph")?.text ?? "";
 
-const now = roadmap.sections.find((section) => section.id === "now")?.blocks ?? [];
-const after = now.findIndex((block) => block.type === "paragraph" && /being built/i.test(block.text));
-const building = now.slice(after + 1).find((block) => block.type === "list") ?? now.find((block) => block.type === "list");
-const notes = (building?.items ?? []).slice(0, 4).map((item) => {
-    const [, title = item, body = ""] = item.match(/^\*\*(.+?)\.?\*\*\s*(.*)$/) ?? [];
-    return `<article class="note"><span class="note-icon" aria-hidden="true"></span><span class="note-text"><strong>${inline(title, REPO)}</strong><span>${inline(body, REPO)}</span></span></article>`;
-});
+const SCREEN = { width: 1920, height: 1080 };
+const OPEN = "launcher";
+const states = [
+    { state: "rest", label: "At rest", keys: ["Esc"] },
+    { state: "launcher", label: "Launcher", keys: ["Super", "Space"], x: 499, y: 349, alt: "The launcher open in the middle of the screen: a search field over a row of six apps" },
+    { state: "sum", label: "A sum", typed: "12*7+3", x: 499, y: 349, alt: "The launcher answering 12*7+3 with 87" },
+    { state: "session", label: "Session", keys: ["Super", "Esc"], x: 1696, y: 120, alt: "The session menu on the right edge: shut down, restart, log out, lock and sleep" },
+    { state: "settings", label: "Settings", keys: ["Super", "I"], x: 290, y: 89, alt: "Settings open on its home page, with shortcuts to colour, wallpaper, widgets, the sidebar, notifications and the lock" },
+];
+const percent = (value, whole) => `${+((value / whole) * 100).toFixed(3)}%`;
+const deck = states
+    .map(({ state, label, keys, typed }) => {
+        const on = state === OPEN;
+        const hint = typed ? `<code class="typed">${escape(typed)}</code>` : `<kbd>${keys.map((key) => `<kbd>${key}</kbd>`).join("")}</kbd>`;
+        return `<button type="button" role="radio" data-state="${state}" aria-checked="${on}" tabindex="${on ? 0 : -1}">${hint}${label}</button>`;
+    })
+    .join("\n");
+const layerTags = states
+    .filter((layer) => layer.alt)
+    .map((layer) => {
+        const file = `images/shell-${layer.state}.webp`;
+        const size = imageSize(readFileSync(join(SITE, file)));
+        if (!size) throw new Error(`${file} is not a readable webp`);
+        const on = layer.state === OPEN;
+        return (
+            `<img class="layer${on ? " on" : ""}" data-layer="${layer.state}" src="/${file}" width="${size.width}" height="${size.height}" ` +
+            `style="left:${percent(layer.x, SCREEN.width)};top:${percent(layer.y, SCREEN.height)};width:${percent(size.width, SCREEN.width)}" ` +
+            `decoding="async"${on ? "" : ' fetchpriority="low"'} alt="${escape(layer.alt)}" aria-hidden="${!on}">`
+        );
+    })
+    .join("\n");
 
 const articles = posts(join(SITE, "blog"), SITE, REPO, { drafts: DRAFTS });
 
 const hasBlog = articles.length > 0;
 
-const entries = [
-    { label: "Install banditshell", hint: "Install", href: "#install" },
-    { label: "What's in it", hint: "Features", href: "#features" },
-    { label: "Read the roadmap", hint: "Roadmap", href: "/roadmap/" },
-    ...roadmap.sections.map((section) => ({
-        label: section.label,
-        hint: "Roadmap",
-        href: `/roadmap/#${section.id}`,
-        words: plain(section.html).slice(0, 1600),
-    })),
-    ...(hasBlog ? [{ label: "Read the blog", hint: "Blog", href: "/blog/" }] : []),
-    ...articles.filter((entry) => !entry.draft).map((entry) => ({
-        label: entry.title,
-        hint: "Blog",
-        href: `/blog/${entry.slug}/`,
-        words: entry.words,
-    })),
-    { label: "Source on GitHub", hint: "GitHub", href: REPO },
-    { label: "Report a bug", hint: "GitHub", href: `${REPO}/issues` },
-    { label: "Buy me a coffee", hint: "Ko-fi", href: "https://ko-fi.com/marcusbandit" },
-];
-
 const page = (values) => {
     const merged = { roadmapCurrent: "", blogCurrent: "", robots: "", scripts: "", ...values };
+    merged.canonical ??= `<link rel="canonical" href="${merged.url}">`;
     return fill(template("layout.html"), {
         repo: REPO,
+        origin: ORIGIN,
         commit: commit ? `<a href="${REPO}/commit/${commit}"><code>${commit}</code></a>` : "an uncommitted tree",
         blogNav: hasBlog ? `<a href="/blog/"${merged.blogCurrent}>Blog</a>` : "",
         blogFoot: hasBlog ? '<a href="/blog/">Blog</a>' : "",
@@ -90,11 +91,12 @@ writeFileSync(
         url: `${ORIGIN}/`,
         page: "home",
         main: fill(template("home.html"), {
-            entries: JSON.stringify(entries).replace(/</g, "\\u003c"),
+            repo: REPO,
+            deck,
+            layers: layerTags,
             vision: inline(vision, REPO),
-            now: notes.join("\n"),
         }),
-        scripts: '<script type="module" src="/desk.js"></script>',
+        scripts: '<script src="/site.js" defer></script>',
     }),
 );
 
@@ -149,8 +151,8 @@ for (const entry of articles) {
                 byline: `${entry.draft ? '<span class="chip">Draft</span> ' : ""}<time datetime="${entry.date}">${longDate(entry.date)}</time>${
                     entry.release
                         ? entry.draft
-                            ? ` · written for ${escape(entry.release)}`
-                            : ` · <a href="${REPO}/releases/tag/${escape(entry.release)}">Release ${escape(entry.release)}</a>`
+                            ? `, written for ${escape(entry.release)}`
+                            : `, <a href="${REPO}/releases/tag/${escape(entry.release)}">release ${escape(entry.release)}</a>`
                         : ""
                 }`,
                 body: entry.html,
@@ -165,43 +167,15 @@ writeFileSync(
         title: "Not here | banditshell",
         description,
         url: `${ORIGIN}/`,
+        canonical: "",
+        robots: '<meta name="robots" content="noindex">',
         page: "lost",
-        main: `<section class="band lost"><h1>Not here</h1><p class="measure">Nothing lives at this address. ${hasBlog ? 'The <a href="/">front page</a>, the <a href="/roadmap/">roadmap</a> and the <a href="/blog/">blog</a> do.' : 'The <a href="/">front page</a> and the <a href="/roadmap/">roadmap</a> do.'}</p></section>`,
+        main: `<section class="lost"><h1>Not here</h1><p>Nothing lives at this address. ${hasBlog ? 'The <a href="/">front page</a>, the <a href="/roadmap/">roadmap</a> and the <a href="/blog/">blog</a> do.' : 'The <a href="/">front page</a> and the <a href="/roadmap/">roadmap</a> do.'}</p></section>`,
     }),
 );
 
-const wordmark = read("docs/readme/wordmark.svg");
-const between = (from, to) => wordmark.slice(wordmark.indexOf(from), wordmark.indexOf(to, wordmark.indexOf(from)) + to.length);
-writeFileSync(
-    join(DIST, "wordmark-word.svg"),
-    [
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="50 92 800 150" width="800" height="150" role="img" aria-label="banditshell">',
-        "<defs>",
-        between("<clipPath", "</clipPath>"),
-        between('<linearGradient id="ink"', "</linearGradient>"),
-        "</defs>",
-        between('<g fill="#1D2126">', "</g>"),
-        '<rect x="54" y="96" width="726" height="77" fill="url(#ink)" clip-path="url(#word)"/>',
-        '<rect x="791" y="96" width="55" height="77" fill="#D8C48C"/>',
-        between('<g fill="#78838F">', "</g>"),
-        "</svg>",
-        "",
-    ].join("\n"),
-);
-
-const word = between("<clipPath", "</clipPath>");
-const letter = [...word.matchAll(/<rect x="(\d+)" y="(\d+)" width="11" height="11"\/>/g)]
-    .filter(([, x]) => Number(x) < 110)
-    .map(([rect]) => rect)
-    .join("");
-writeFileSync(
-    join(DIST, "favicon.svg"),
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="31.5 84.5 100 100"><rect x="31.5" y="84.5" width="100" height="100" rx="22" fill="#1D2126"/><g fill="#B8DCF0">${letter}</g></svg>\n`,
-);
-
-for (const name of ["style.css", "site.js", "desk.js"]) copyFileSync(join(SITE, name), join(DIST, name));
+for (const name of ["style.css", "site.js", "favicon.svg"]) copyFileSync(join(SITE, name), join(DIST, name));
 cpSync(join(SITE, "fonts"), join(DIST, "fonts"), { recursive: true });
 cpSync(join(SITE, "images"), join(DIST, "images"), { recursive: true });
-copyFileSync(join(ROOT, "docs/readme/hero.webp"), join(DIST, "hero.webp"));
 
 console.log(`built ${DIST} from ${SOURCE}, updated ${updated}${commit ? ` at ${commit}` : ""}, ${articles.length} blog ${articles.length === 1 ? "post" : "posts"}${DRAFTS ? " with drafts" : ""}`);

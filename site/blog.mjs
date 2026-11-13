@@ -115,13 +115,6 @@ export function post(source, file, site, repo) {
         release: meta.release ?? "",
         draft,
         html: parsed.map((block) => html(block, repo)).join("\n"),
-        words: parsed
-            .filter((block) => block.type === "paragraph")
-            .map((block) => block.text)
-            .join(" ")
-            .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-            .replace(/[*`]/g, "")
-            .slice(0, 1600),
     };
 }
 
@@ -135,5 +128,5 @@ export function posts(dir, site, repo, { drafts = false } = {}) {
 }
 
 export const card = (entry) =>
-    `<article class="post-card"><p class="meta"><time datetime="${entry.date}">${longDate(entry.date)}</time>${entry.release ? ` · ${escape(entry.release)}` : ""}${entry.draft ? ' · <span class="chip">Draft</span>' : ""}</p>` +
+    `<article class="post-card"><p class="meta"><time datetime="${entry.date}">${longDate(entry.date)}</time>${entry.release ? `, ${escape(entry.release)}` : ""}${entry.draft ? ' <span class="chip">Draft</span>' : ""}</p>` +
     `<h2><a href="/blog/${entry.slug}/">${escape(entry.title)}</a></h2><p>${escape(entry.summary)}</p></article>`;
