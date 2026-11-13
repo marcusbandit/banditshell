@@ -1,16 +1,6 @@
 {
   "entries": [
     {
-<<<<<<< HEAD
-      "id": "2026-11-13-p853-tile-step-back",
-      "date": "2026-11-13",
-      "changes": [
-        {
-          "type": "issues",
-          "severity": "minor",
-          "text": "Up and Down in the launcher's apps go back to the app you came from"
-||||||| parent of b70630c8 (fix(launcher,files): emoji and file grids keep the column across short rows (#855))
-=======
       "id": "2026-11-13-p855-grids-keep-column",
       "date": "2026-11-13",
       "changes": [
@@ -18,7 +8,17 @@
           "type": "issues",
           "severity": "minor",
           "text": "Emoji and Files grids keep your column as you move up and down"
->>>>>>> b70630c8 (fix(launcher,files): emoji and file grids keep the column across short rows (#855))
+        }
+      ]
+    },
+    {
+      "id": "2026-11-13-p853-tile-step-back",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Up and Down in the launcher's apps go back to the app you came from"
         }
       ]
     },
