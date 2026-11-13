@@ -100,7 +100,7 @@ test("the pid is cached, validated with kill -0, and rescanned when it goes stal
         assert.strictEqual(cli(["panel", "launcher", "status"], { stub, env, home }).code, 0);
         assert.strictEqual(lists(), 1);
         const pidFile = path.join(home, "run/banditshell/pid");
-        assert.strictEqual(fs.readFileSync(pidFile, "utf8"), `${child.pid}\t${ROOT}\n`);
+        assert.strictEqual(fs.readFileSync(pidFile, "utf8"), `${child.pid}\t${ROOT}\t${ROOT}\n`);
         const second = cli(["panel", "launcher", "status"], { stub, env, home });
         assert.strictEqual(second.code, 0);
         assert.strictEqual(lists(), 1);
@@ -120,11 +120,42 @@ test("a cached pid that belongs to some other program is not trusted", () => {
     const stub = stubs();
     const home = directory("home");
     fs.mkdirSync(path.join(home, "run/banditshell"), { recursive: true });
-    fs.writeFileSync(path.join(home, "run/banditshell/pid"), `${process.pid}\t${ROOT}\n`);
+    fs.writeFileSync(path.join(home, "run/banditshell/pid"), `${process.pid}\t${ROOT}\t${ROOT}\n`);
     const env = fakeQuickshell(stub, { list: "", code: 1 });
     const run = cli(["focus", "quiet", "off"], { stub, env, home });
     assert.strictEqual(run.code, 3);
     assert.ok(run.calls.some(c => c.startsWith("qs list")));
+});
+
+test("another Quickshell app is never taken for the shell, and a tried worktree is", () => {
+    const tree = (name, banditshell) => {
+        const dir = directory(name);
+        fs.writeFileSync(path.join(dir, "shell.qml"), "");
+        if (banditshell) {
+            fs.mkdirSync(path.join(dir, "cli"));
+            fs.writeFileSync(path.join(dir, "cli/banditshell"), "");
+        }
+        return dir;
+    };
+    const other = tree("other-app", false);
+    const rig = tree("rig", true);
+    const tried = tree("tried", true);
+    const at = (pid, dir) => `Instance ${pid}:\n  Process ID: ${pid}\n  Config path: ${dir}/shell.qml\n`;
+    const home = directory("home");
+    fs.mkdirSync(path.join(home, "state/banditshell"), { recursive: true });
+    fs.writeFileSync(path.join(home, "state/banditshell/live"), `${tried}\n`);
+    fs.mkdirSync(path.join(home, "run/banditshell"), { recursive: true });
+    fs.writeFileSync(path.join(home, "run/banditshell/pid"), `${process.pid}\t${ROOT}\n`);
+    const stub = stubs();
+    const env = { ...fakeQuickshell(stub, { reply: "ok" }), XDG_STATE_HOME: path.join(home, "state") };
+
+    const alone = cli(["panel", "launcher", "status"], { stub, home, env: { ...env, QS_LIST: at(101, other) } });
+    assert.ok(alone.calls.some(c => c.startsWith(`qs ipc -p ${ROOT} call`)), alone.calls.join("\n"));
+    assert.ok(!alone.calls.some(c => c.startsWith("qs ipc --pid")));
+
+    const run = cli(["panel", "launcher", "status"], { stub, home, env: { ...env, QS_LIST: at(101, other) + at(102, rig) + at(103, tried) } });
+    assert.ok(run.calls.some(c => c.startsWith("qs ipc --pid 103 call launcher status")), run.calls.join("\n"));
+    assert.strictEqual(fs.readFileSync(path.join(home, "run/banditshell/pid"), "utf8"), `103\t${ROOT}\t${tried}\n`);
 });
 
 function hyprland(files = {}) {

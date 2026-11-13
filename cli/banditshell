@@ -793,12 +793,17 @@ list_worktrees() {
     done <<<"$entries"
 }
 
+banditshell_tree() {
+    [ "$1" = "$SHELL_DIR" ] || [ -f "$1/cli/banditshell" ]
+}
+
 cached_pid() {
-    local pid dir
+    local pid dir tree
     [ -r "$PID_FILE" ] || return 1
-    IFS=$'\t' read -r pid dir <"$PID_FILE" || return 1
+    IFS=$'\t' read -r pid dir tree <"$PID_FILE" || return 1
     [ "$dir" = "$SHELL_DIR" ] || return 1
     [[ $pid =~ ^[0-9]+$ ]] || return 1
+    [ -n "$tree" ] && banditshell_tree "$tree" || return 1
     kill -0 "$pid" 2>/dev/null || return 1
     case "$(cat "/proc/$pid/comm" 2>/dev/null)" in
     qs | quickshell* | .quickshell-wra* | .qs-wrapped) echo "$pid" ;;
@@ -859,7 +864,7 @@ absolute_path() {
 
 remember_pid() {
     mkdir -p "$RUN_DIR" 2>/dev/null || return 0
-    printf '%s\t%s\n' "$1" "$SHELL_DIR" >"$PID_FILE" 2>/dev/null || true
+    printf '%s\t%s\t%s\n' "$1" "$SHELL_DIR" "$2" >"$PID_FILE" 2>/dev/null || true
 }
 
 resolve_target() {
@@ -868,22 +873,30 @@ resolve_target() {
     fi
     qs_target_resolved=1
 
-    local pid path exact="" any=""
+    local pid path tree rank live best="" best_tree="" best_rank=4
     if pid=$(cached_pid); then
         qs_target=(--pid "$pid")
         return 0
     fi
+    live=$(cat "$LIVE_FILE" 2>/dev/null || true)
     while IFS=$'\t' read -r pid path; do
-        case "$path" in
-        "$SHELL_DIR/shell.qml") exact="$pid" ;;
-        */shell.qml) [ -n "$any" ] || any="$pid" ;;
-        esac
+        tree="${path%/shell.qml}"
+        [ "$tree/shell.qml" = "$path" ] && banditshell_tree "$tree" || continue
+        if [ "$tree" = "$SHELL_DIR" ]; then
+            rank=1
+        elif [ "$tree" = "$live" ]; then
+            rank=2
+        else
+            rank=3
+        fi
+        if [ "$rank" -lt "$best_rank" ]; then
+            best="$pid" best_tree="$tree" best_rank="$rank"
+        fi
     done < <(list_instances)
 
-    local pick="${exact:-$any}"
-    if [ -n "$pick" ]; then
-        qs_target=(--pid "$pick")
-        remember_pid "$pick"
+    if [ -n "$best" ]; then
+        qs_target=(--pid "$best")
+        remember_pid "$best" "$best_tree"
     else
         qs_target=(-p "$SHELL_DIR")
     fi
@@ -1101,6 +1114,8 @@ launch() {
     fi
     rm -f "$out"
     hold_worktree "$1"
+    remember_pid "$pid" "$1"
+    qs_target=(--pid "$pid") qs_target_resolved=1
     return 0
 }
 
