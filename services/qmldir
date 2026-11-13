@@ -118,6 +118,7 @@ singleton SystemUpgrade 1.0 SystemUpgrade.qml
 singleton SystemdUnits 1.0 SystemdUnits.qml
 singleton Tablet 1.0 Tablet.qml
 singleton Tailscale 1.0 Tailscale.qml
+singleton ThemeEditor 1.0 ThemeEditor.qml
 singleton ThemeSwitcher 1.0 ThemeSwitcher.qml
 singleton TimeFormat 1.0 TimeFormat.qml
 singleton ToolInstaller 1.0 ToolInstaller.qml

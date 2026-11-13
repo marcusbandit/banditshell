@@ -27,6 +27,140 @@
       ]
     },
     {
+      "id": "2026-11-13-p835-notes-focus",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "jot saves a quick note, with or without an Obsidian vault"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Note search also finds words inside notes"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Focus rounds take a goal, and focus until 16:30 sets the end"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "dnd until 16:30 keeps notifications quiet until then"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-13-p835-scripts-themes",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Script commands load from more than one folder"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A script can say which folder it runs in"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Make your own theme from four colours, saved as a new theme"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Light and dark mode can each use their own theme"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-12-p835-tools",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Weather answers in the launcher for here or any city"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "time diff tokyo says how many hours ahead or behind a place is"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Colours convert to and from hwb, lab, lch, oklab and oklch"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "translate to french translates the text you have selected"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Emoji can be pinned to the top, and symbols copy as their code point"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Screenshot search takes dates and, with tesseract, the text inside"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "File search can skip git-ignored files, in settings"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-12-p835-launcher",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "File rows can open with another app or move to the trash"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Shift+Tab in a typed path goes up to the parent folder"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher can always open on one chosen screen"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Escape can close the launcher at once instead of stepping back"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "An app hotkey can hide the app when pressed again"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Hotkeys and aliases switch off without deleting, and filter by state"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Single plugin commands can be switched off in Settings"
+        }
+      ]
+    },
+    {
       "id": "2026-11-12-p835-windows",
       "date": "2026-11-12",
       "changes": [

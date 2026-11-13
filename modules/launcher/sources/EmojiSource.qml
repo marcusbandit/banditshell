@@ -114,6 +114,12 @@ QtObject {
             }));
     }
 
+    function copyCode(row: var): void {
+        root.search.leave(() => Clipboard.copy({
+                text: Emoji.codeOf(row.entry.char)
+            }));
+    }
+
     function activate(row: var): void {
         if (row.kind === "emojipage") {
             if (root.search.presents)
@@ -163,6 +169,19 @@ QtObject {
                     run: () => typing ? root.type(row, glyph) : root.copy(row, glyph)
                 });
             }
+        acts.push({
+            icon: "copy_all",
+            label: `Copy ${Emoji.codeOf(row.entry.char)}`,
+            short: "Copy code point",
+            tucked: true,
+            run: () => root.copyCode(row)
+        });
+        acts.push({
+            icon: Emoji.isPinned(row.entry) ? "keep_off" : "keep",
+            label: Emoji.isPinned(row.entry) ? "Unpin" : "Pin to the top",
+            tucked: true,
+            run: () => Emoji.isPinned(row.entry) ? Emoji.unpin(row.entry) : Emoji.pin(row.entry)
+        });
         if (Emoji.used[row.entry.char])
             acts.push({
                 icon: "history",

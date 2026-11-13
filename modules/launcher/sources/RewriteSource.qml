@@ -11,27 +11,14 @@ QtObject {
 
     readonly property var kinds: ["rewrite"]
 
-    property bool readThisTime: false
-
     readonly property bool wanted: Assistant.enabled && Assistant.ready && root.search.active && root.search.text.length >= 3 && Logic.ACTIONS.some(a => root.score(a) > 0)
 
-    onWantedChanged: {
-        if (!root.wanted || root.readThisTime)
-            return;
-        root.readThisTime = true;
-        Assistant.readSelection();
+    property SelectionReader reader: SelectionReader {
+        search: root.search
+        wanted: root.wanted
     }
 
-    property Connections opening: Connections {
-        target: root.search
-
-        function onStartedChanged(): void {
-            if (!root.search.started)
-                root.readThisTime = false;
-        }
-    }
-
-    readonly property string selected: Assistant.selection.trim() && Assistant.selection !== root.search.query ? Assistant.selection : ""
+    readonly property string selected: root.reader.text
 
     readonly property bool usable: Assistant.ready && !!root.selected && root.search.text.length >= 3
 

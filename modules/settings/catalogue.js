@@ -275,6 +275,11 @@ const PAGES_SOURCE = {
                 { n: [], icon: "dark_mode", label: "Light or dark", k: "scheme", kind: "seg", o: ["light", "dark", "auto"], cfg: "colour.mode", state: s => s.schemeDetail, extra: { icon: "schedule", tip: "set night light’s schedule", act: "nightSchedule" }, kw: "dark mode dark apps light mode night theme colour scheme apps appearance auto",
                     why: "Sets the shell and every app that follows the system colour scheme. Auto goes dark while night light warms the screens, on its schedule under Light and warmth. If apps drift, pick the same choice again." },
                 { n: 42, kind: "w", w: "themes", kw: "theme palette" },
+                { n: [], kind: "w", w: "themeEditor", kw: "theme editor studio custom colours create own theme save" },
+                { n: [], icon: "light_mode", label: "Theme in light mode", k: "lightTheme", kind: "choice", o: s => s.themeChoices, cfg: "colour.lightTheme", kw: "theme light mode day set as light theme",
+                    why: "Light mode switches to this theme. Leave it on the picked theme to keep one theme for both." },
+                { n: [], icon: "bedtime", label: "Theme in dark mode", k: "darkTheme", kind: "choice", o: s => s.themeChoices, cfg: "colour.darkTheme", kw: "theme dark mode night set as dark theme",
+                    why: "Dark mode switches to this theme. Leave it on the picked theme to keep one theme for both." },
                 { n: 43, icon: "colorize", label: "Take it from the wallpaper", k: "fromWall", kind: "toggle", cfg: "themeFromWallpaper", state: s => s.v("fromWall") ? s.wallName : "", kw: "theme from wallpaper" },
                 { n: 44, icon: "format_color_fill", label: "Highlight colour", k: "accent", kind: "seg", o: [["dim", "soft"], ["mid", "normal"], ["bright", "strong"]], swatches: true, cfg: "colour.accent", kw: "accent strength dim mid bright",
                     why: "Which of the theme’s three highlight colours paints everything that’s on. Soft sits back, strong jumps out." },
@@ -419,6 +424,10 @@ const PAGES_SOURCE = {
                     why: "List is a plain search list. Alphabet is a thumb-sized rail of letters with favourites on a bow." },
                 { n: [], icon: "vertical_align_center", label: "Position", k: "searchAt", kind: "slider", min: 0, max: 1, step: 0.01, ends: ["top", "bottom"], fmtS: (s, v) => placedText(v, s.launcherPlaced ?? -1), cfg: "launcher.list.searchAt", dis: s => s.v("concept") !== "list", kw: "launcher position height vertical move up down raise lower top centre center search bar",
                     why: "How far down the screen the middle of the search bar sits, as a share of the screen's height. When the full list would not fit below, the launcher moves up until it does." },
+                { n: [], icon: "desktop_windows", label: "Open on", k: "launcherScreen", kind: "choice", o: s => [["", "The focused screen"]].concat(s.monitorNames.map(m => [m, m])), cfg: "launcher.screen", kw: "launcher screen monitor display open on primary multi monitor pin",
+                    why: "The focused screen opens the launcher wherever you are working. A named screen always opens it there. If that screen is unplugged, the focused one is used." },
+                { n: [], icon: "keyboard_return", label: "Escape", k: "launcherEscape", kind: "seg", o: [["back", "step back"], ["close", "close"]], cfg: "launcher.escape", kw: "escape esc key close step back launcher",
+                    why: "Step back leaves a page, the symbol picker or a confirmation first, then closes the launcher. Close shuts it at once." },
                 { n: [], icon: "push_pin", label: "Show pinned", k: "listPinned", kind: "toggle", cfg: "launcher.list.pinned", dis: s => s.v("concept") !== "list", kw: "pinned favourites quick launch grid icons",
                     why: "Pick an app in the list and press Pin to put it here." },
                 { n: [], icon: "schedule", label: "Show recents", k: "listRecents", kind: "toggle", cfg: "launcher.list.recents", dis: s => s.v("concept") !== "list", kw: "recent apps launcher icons" },
@@ -430,6 +439,8 @@ const PAGES_SOURCE = {
             { t: "Search results", rows: [
                 { n: [], icon: "visibility", label: "Hidden files", k: "hiddenFiles", kind: "seg", o: ["off", ".config", "all"], cfg: "launcher.hiddenFiles", kw: "hidden files dotfiles .config search results",
                     why: "Which hidden files the launcher finds by name. .config is where most apps keep their settings." },
+                { n: [], icon: "filter_alt_off", label: "Skip ignored files", k: "ignoredFiles", kind: "toggle", cfg: "launcher.ignoredFiles", kw: "gitignore ignore ignored files build node_modules search names",
+                    why: "Off by default. When on, names listed in a git project's own .gitignore, such as build folders and dependencies, stay out of the results. A repository kept in your home folder with a broad .gitignore would hide most files, so turn it on only if you have none." },
                 { n: [], icon: "currency_exchange", label: "Currency", k: "currency", kind: "choice", o: s => s.currencies, cfg: "launcher.currency", state: s => s.ratesNote, kw: "currency money exchange rates convert",
                     why: "Typing an amount like 5 eur shows it in this currency. Rates come from the European Central Bank once a day and are kept for when you are offline." },
                 { n: [], icon: "find_in_page", label: "Inside files", k: "contents", kind: "toggle", cfg: "launcher.contents", kw: "search inside files contents text ripgrep grep",
@@ -458,8 +469,8 @@ const PAGES_SOURCE = {
                 { n: [], kind: "w", w: "quicklinks", kw: "quicklinks search shortcuts keywords urls youtube github wiki" }
             ] },
             { t: "Power tools", rows: [
-                { n: [], icon: "terminal", label: "Scripts folder", k: "scriptsFolder", kind: "text", mono: true, cfg: "launcher.powerTools.scriptsFolder", placeholder: "~/.config/banditshell/scripts", kw: "script commands raycast scripts folder",
-                    why: "Scripts in this folder show up by their file name, or by the Raycast style @raycast.title header. Type a script's name and press Enter to run it." },
+                { n: [], icon: "terminal", label: "Script folders", k: "scriptsFolder", kind: "text", mono: true, cfg: "launcher.powerTools.scriptsFolder", placeholder: "~/.config/banditshell/scripts", kw: "script commands raycast scripts folder folders directory",
+                    why: "Scripts in these folders, separated by commas, show up by their file name, or by the Raycast style @raycast.title header. Type a script's name and press Enter to run it." },
                 { n: [], icon: "folder_code", label: "Project folders", k: "projectFolders", kind: "text", mono: true, cfg: "launcher.powerTools.projectFolders", placeholder: "~/Projects", kw: "projects git repositories code folders",
                     why: "Git repositories in these folders, separated by commas, show up when you type their name or projects." },
                 { n: [], icon: "account_tree", label: "Project depth", k: "projectDepth", kind: "step", min: 1, max: 4, cfg: "launcher.powerTools.projectDepth", fmt: v => v === 1 ? "1 level" : `${v} levels`, kw: "projects search depth" },
@@ -468,6 +479,8 @@ const PAGES_SOURCE = {
                 { n: [], icon: "visibility_off", label: "Leave out vaults", k: "noteSkip", kind: "text", mono: true, cfg: "launcher.powerTools.noteSkip", placeholder: "Archive, ~/Obsidian/Work", kw: "notes obsidian vaults hide skip private exclude",
                     why: "Vaults named here, by name or folder and separated by commas, are never searched and never get new notes." },
                 { n: [], icon: "note_add", label: "New notes go to", k: "noteVault", kind: "choice", o: s => s.noteVaults, cfg: "launcher.powerTools.noteVault", kw: "notes obsidian vault new note default" },
+                { n: [], icon: "edit_note", label: "Quick notes folder", k: "quickNoteFolder", kind: "text", mono: true, cfg: "launcher.powerTools.quickNoteFolder", placeholder: "~/Notes", kw: "quick notes capture jot folder markdown",
+                    why: "Quick notes are saved here as plain Markdown files. Left empty, they go in the vault new notes use, or ~/Notes when there is none." },
                 { n: [], icon: "timer", label: "Focus round", k: "focusMinutes", kind: "step", min: 5, max: 120, step: 5, unit: " min", cfg: "launcher.powerTools.focusMinutes", kw: "pomodoro focus work minutes" },
                 { n: [], icon: "coffee", label: "Break", k: "breakMinutes", kind: "step", min: 1, max: 30, unit: " min", cfg: "launcher.powerTools.breakMinutes", kw: "pomodoro short break minutes" },
                 { n: [], icon: "self_improvement", label: "Long break", k: "longBreakMinutes", kind: "step", min: 5, max: 60, step: 5, unit: " min", cfg: "launcher.powerTools.longBreakMinutes", kw: "pomodoro long break minutes" },
@@ -495,6 +508,8 @@ const PAGES_SOURCE = {
                 { n: [], icon: "translate", label: "Translate", k: "onlineTranslate", kind: "toggle", cfg: "launcher.online.translate", kw: "translate translation language google",
                     why: "Type hello in german, translate bonjour or tr hola. The text goes to Google Translate." },
                 { n: [], icon: "language", label: "Translate into", k: "onlineTranslateTo", kind: "choice", o: [["", "System language"], ["en", "English"], ["da", "Danish"], ["de", "German"], ["fr", "French"], ["es", "Spanish"], ["it", "Italian"], ["nl", "Dutch"], ["sv", "Swedish"], ["no", "Norwegian"], ["fi", "Finnish"], ["pl", "Polish"], ["pt", "Portuguese"], ["ja", "Japanese"], ["zh-CN", "Chinese"], ["ko", "Korean"]], cfg: "launcher.online.translateTo", dis: s => !s.v("onlineTranslate"), kw: "translate target language default" },
+                { n: [], icon: "partly_cloudy_day", label: "Weather", k: "onlineWeather", kind: "toggle", cfg: "launcher.online.weather", kw: "weather forecast temperature rain city place",
+                    why: "Type weather paris or weather for the place you set. The place name goes to wttr.in." },
                 { n: [], icon: "menu_book", label: "Wiktionary definitions", k: "onlineDefine", kind: "toggle", cfg: "launcher.online.define", kw: "define dictionary meaning word",
                     why: "Type define and a word. The offline dictionary answers at once; this adds Wiktionary's entry beside it." },
                 { n: [], icon: "package_2", label: "Packages", k: "onlinePackages", kind: "toggle", cfg: "launcher.online.packages", kw: "install package pacman aur flatpak apt dnf software",
@@ -841,6 +856,7 @@ const PAGES_SOURCE = {
         groups: [
             { t: "Screenshots", rows: [
                 { n: 89, icon: "folder", label: "Saved to", k: "shotDir", kind: "path", cfg: "picker.dir", kw: "screenshots folder" },
+                { n: 89, icon: "folder_copy", label: "Also search in", k: "shotFolders", kind: "text", mono: true, cfg: "launcher.latest.screenshotFolders", placeholder: "~/Pictures/Shots, ~/Documents/Captures", why: "More folders for the launcher's screenshots search, separated by commas.", kw: "screenshots folders search more" },
                 { n: 89, icon: "edit", label: "Edit with", k: "shotEditor", kind: "text", mono: true, cfg: "picker.editor", placeholder: "just save it", kw: "screenshots editor" },
                 { n: 89, icon: "highlight_alt", label: "Outline", k: "outline", kind: "step", min: 0, max: 6, unit: " px", cfg: "picker.outline", why: "A line around the selection. 0 draws none.", kw: "screenshots outline" }
             ] },

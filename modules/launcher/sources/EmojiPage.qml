@@ -70,7 +70,7 @@ Item {
     readonly property string term: root.query.trim()
     readonly property var found: root.term ? Emoji.search(root.term, true, 400) : null
     readonly property var recents: Grid.recent(Emoji.used, Emoji.byChar, root.columns * 2)
-    readonly property var shaped: Grid.layout(Grid.sections(Emoji.all, root.groups, root.group, root.found, root.recents), root.columns)
+    readonly property var shaped: Grid.layout(Grid.sections(Emoji.all, root.groups, root.group, root.found, root.recents, Grid.pinned(Emoji.pinned, Emoji.byChar)), root.columns)
 
     property int selected: 0
     readonly property var entry: root.shaped.items[root.selected] ?? null
