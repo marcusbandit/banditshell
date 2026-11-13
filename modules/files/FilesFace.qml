@@ -313,21 +313,10 @@ Item {
     Connections {
         target: Files
 
-        function onOpenersFound(path: string, kind: string, apps: var): void {
-            if (!Files.windowOpen)
+        function onOpenersFound(path: string, kind: string, apps: var, who: string): void {
+            if (who !== "files" || !Files.windowOpen)
                 return;
-            const rows = apps.map(app => ({
-                        icon: "open_in_new",
-                        label: app.name,
-                        run: () => Files.openIn(app.id, path)
-                    }));
-            if (rows.length === 0)
-                rows.push({
-                    icon: "open_in_new",
-                    label: kind ? `No app lists ${kind}, try the default` : "Try the default app",
-                    run: () => Files.openWith(path)
-                });
-            sheet.popup(root.menuAt.x, root.menuAt.y, rows, 0);
+            sheet.popup(root.menuAt.x, root.menuAt.y, Files.openerRows(path, kind, apps, what => what()), 0);
         }
     }
 
@@ -380,7 +369,7 @@ Item {
             }, {
                 icon: "apps",
                 label: "Open with…",
-                run: () => Files.offerOpeners(Files.pathOf(one))
+                run: () => Files.offerOpeners(Files.pathOf(one), "files")
             });
         else if (one && one.kind === "dir")
             acts.push({
@@ -396,7 +385,7 @@ Item {
             }, {
                 icon: "apps",
                 label: "Open with…",
-                run: () => Files.offerOpeners(Files.pathOf(one))
+                run: () => Files.offerOpeners(Files.pathOf(one), "files")
             });
 
         acts.push({

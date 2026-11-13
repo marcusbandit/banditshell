@@ -6,7 +6,8 @@
     "qml": [
       "modules/launcher/AssistantCard.qml",
       "modules/launcher/sources/AskSource.qml",
-      "modules/launcher/sources/RewriteSource.qml"
+      "modules/launcher/sources/RewriteSource.qml",
+      "modules/launcher/sources/SelectionReader.qml"
     ],
     "services": ["Assistant"],
     "js": ["services/assistant.js"],

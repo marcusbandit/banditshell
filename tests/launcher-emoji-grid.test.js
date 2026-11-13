@@ -7,7 +7,7 @@ function lib(file, names) {
     const src = fs.readFileSync(path.join(ROOT, file), "utf8").replace(/^\.pragma .*$/m, "");
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
-const Grid = lib("services/emoji-grid.js", ["recent", "sections", "layout", "rowOf", "step"]);
+const Grid = lib("services/emoji-grid.js", ["recent", "sections", "layout", "rowOf", "step", "pinned"]);
 
 const e = (char, group) => ({ char, group, name: char });
 const run = (group, n, prefix) => Array.from({ length: n }, (_, i) => e(prefix + i, group));
@@ -89,3 +89,6 @@ test("Down from the last row goes to the last tile", () => assert.strictEqual(Gr
 test("Three presses down move three rows", () => assert.strictEqual(Grid.step(ten, 10, 0, 0, 3), 9));
 test("An empty grid has nowhere to go", () => assert.strictEqual(Grid.step(one, 0, 0, 0, 1), -1));
 test("With no tile selected, a move starts at the first tile", () => assert.strictEqual(Grid.step(one, 7, -1, 0, 1), 0));
+
+test("Pinned emoji get their own section above the recent ones", () => assert.deepStrictEqual(titles(Grid.sections(all, GROUPS, null, null, [A], Grid.pinned(["d"], { d: D })).slice(0, 2)), ["Pinned", "Recently used"]));
+test("Pins that left the catalogue are dropped", () => assert.deepStrictEqual(chars(Grid.pinned(["ghost", "a"], byChar)), ["a"]));

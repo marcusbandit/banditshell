@@ -4,10 +4,10 @@
   "layer": 3,
   "owns": {
     "qml": ["modules/settings", "previews/SettingsPreview.qml"],
-    "services": ["Modes", "Settings", "ThemeSwitcher"],
-    "js": ["services/settings-summon.js"],
+    "services": ["Modes", "Settings", "ThemeSwitcher", "ThemeEditor"],
+    "js": ["services/settings-summon.js", "services/theme-modes.js", "services/theme-editor.js"],
     "scripts": ["scripts/pointing-devices.py"],
-    "tests": ["tests/pointing-devices.test.js", "tests/restore.test.js", "tests/settings-floating.test.js", "tests/settings-summon.test.js", "tests/settings.test.js"]
+    "tests": ["tests/pointing-devices.test.js", "tests/theme-modes.test.js", "tests/theme-editor.test.js", "tests/restore.test.js", "tests/settings-floating.test.js", "tests/settings-summon.test.js", "tests/settings.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor", "display", "clock"],

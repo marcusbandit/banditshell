@@ -126,6 +126,7 @@ function parseScript(path, head, executable) {
         iconFile: iconFile,
         packageName: String(fields.packageName || ""),
         description: String(fields.description || ""),
+        directory: String(fields.currentDirectoryPath || "").trim(),
         arguments: args.filter(Boolean).slice(0, 3),
         selects: String(fields.onSelect || "").toLowerCase() === "run",
         executable: !!executable,
@@ -254,6 +255,25 @@ function textOf(value) {
 function expandHome(path, home) {
     var p = String(path || "");
     return home && (p === "~" || p.indexOf("~/") === 0) ? `${home}${p.slice(1)}` : p;
+}
+
+function foldersFrom(text, home, fallback) {
+    var seen = {};
+    var list = String(text || "").split(/[,\n]/).map(p => expandHome(p.trim(), home).replace(/(.)\/+$/, "$1")).filter(p => {
+        if (!p || seen[p])
+            return false;
+        seen[p] = true;
+        return true;
+    });
+    return list.length ? list : [fallback];
+}
+
+function workingFolder(script, home) {
+    var own = folderOf(script.path) || "/";
+    var wanted = expandHome(script.directory, home);
+    if (!wanted)
+        return own;
+    return wanted.charAt(0) === "/" ? wanted : `${own}/${wanted}`;
 }
 
 function iconOf(icon, folder, home) {

@@ -46,6 +46,7 @@
     ],
     "tests": [
       "tests/launcher-actions.test.js",
+      "tests/launcher-actions-package.test.js",
       "tests/launcher-calculator.test.js",
       "tests/launcher-list-keys.test.js",
       "tests/launcher-phrases.test.js",
@@ -74,7 +75,8 @@
       "core",
       "compositor",
       "apps",
-      "plugin-status"
+      "plugin-status",
+      "files"
     ],
     "optional": []
   },
