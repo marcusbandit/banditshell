@@ -1075,6 +1075,7 @@ test("a reload leaves a shell run from a tried worktree alone, even when the che
     const world = makeWorld();
     const tried = path.join(world.root, "tried");
     write(tried, "shell.qml", "// tried\n");
+    write(world.state, "banditshell/live", `${tried}\n`);
     const started = spawnSync(path.join(world.fakebin, "qs"), ["-d", "-p", tried], { env: { ...process.env, FAKE_QS_DIR: world.fakeqs } });
     assert.strictEqual(started.status, 0);
     const pid = pids(world)[0];

@@ -882,16 +882,20 @@ resolve_target() {
         return 0
     fi
     live=$(cat "$LIVE_FILE" 2>/dev/null || true)
-    known=$(known_shells)
+    known=""
     while IFS=$'\t' read -r pid path; do
-        grep -qxF -- "$path" <<<"$known" || continue
         tree="${path%/shell.qml}"
-        case "$tree" in
-        "$SHELL_DIR") rank=1 ;;
-        "$live") rank=2 ;;
-        "$BACKUP") rank=3 ;;
-        *) rank=4 ;;
-        esac
+        if [ "$path" = "$SHELL_DIR/shell.qml" ]; then
+            rank=1
+        else
+            [ -n "$known" ] || known=$(known_shells)
+            grep -qxF -- "$path" <<<"$known" || continue
+            case "$tree" in
+            "$live") rank=2 ;;
+            "$BACKUP") rank=3 ;;
+            *) rank=4 ;;
+            esac
+        fi
         if [ "$rank" -lt "$best_rank" ]; then
             best="$pid" best_tree="$tree" best_rank="$rank"
         fi
