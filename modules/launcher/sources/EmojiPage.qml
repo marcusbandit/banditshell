@@ -94,12 +94,14 @@ Item {
     onShapedChanged: root.goalColumn = -1
 
     function go(dx: int, dy: int): void {
-        const goal = dy ? (root.goalColumn >= 0 ? root.goalColumn : Grid.columnOf(root.shaped.rows, root.selected)) : -1;
-        const next = Grid.step(root.shaped.rows, root.shaped.items.length, root.selected, dx, dy, goal);
-        if (next < 0)
+        const next = dy ? Grid.verticalStep(root.shaped.rows, root.shaped.items.length, root.selected, dy, root.goalColumn) : {
+            to: Grid.step(root.shaped.rows, root.shaped.items.length, root.selected, dx, 0),
+            goal: -1
+        };
+        if (next.to < 0)
             return;
-        root.selected = next;
-        root.goalColumn = goal;
+        root.selected = next.to;
+        root.goalColumn = next.goal;
         root.reveal();
     }
 

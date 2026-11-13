@@ -70,13 +70,16 @@ function windowOwns(chord, action) {
 
 function gridStep(index, count, columns, rows, goal) {
     if (count <= 0)
-        return -1;
-    var from = Math.max(0, index);
-    var column = goal >= 0 ? goal : from % columns;
-    var row = Math.floor(from / columns) + rows;
-    if (row < 0)
-        return 0;
-    return Math.min(row * columns + column, count - 1);
+        return { to: -1, goal: -1 };
+    if (index < 0)
+        return { to: 0, goal: -1 };
+    var column = goal >= 0 ? goal : index % columns;
+    var row = Math.floor(index / columns) + rows;
+    if (row < 0 || row * columns >= count) {
+        var edge = row < 0 ? 0 : count - 1;
+        return { to: edge, goal: edge === index ? goal : -1 };
+    }
+    return { to: Math.min(row * columns + column, count - 1), goal: column };
 }
 
 function previewScroll(qt, key, modifiers, action, page, line) {

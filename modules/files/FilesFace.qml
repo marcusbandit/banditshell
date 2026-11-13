@@ -303,6 +303,10 @@ Item {
             root.goalColumn = -1;
         }
 
+        function onVisibleChanged(): void {
+            root.goalColumn = -1;
+        }
+
         function onOpenersFound(path: string, kind: string, apps: var, who: string): void {
             if (who !== "files" || !Files.windowOpen)
                 return;
@@ -341,12 +345,11 @@ Item {
     }
 
     function stepRows(rows: int, extend: bool): void {
-        const goal = root.goalColumn >= 0 ? root.goalColumn : Math.max(0, Files.cursor) % grid.columns;
-        const to = Chords.gridStep(Files.cursor, Files.visible.length, grid.columns, rows, goal);
-        if (to < 0)
+        const step = Chords.gridStep(Files.cursor, Files.visible.length, grid.columns, rows, root.goalColumn);
+        if (step.to < 0)
             return;
-        root.select(to, extend);
-        root.goalColumn = goal;
+        root.select(step.to, extend);
+        root.goalColumn = step.goal;
     }
 
     function fileActions(): var {
