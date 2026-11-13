@@ -793,22 +793,25 @@ list_worktrees() {
     done <<<"$entries"
 }
 
-banditshell_tree() {
-    [ "$1" = "$SHELL_DIR" ] || [ -f "$1/cli/banditshell" ]
-}
-
 cached_pid() {
-    local pid dir tree
+    local pid dir tree arg
+    local -a args=()
     [ -r "$PID_FILE" ] || return 1
     IFS=$'\t' read -r pid dir tree <"$PID_FILE" || return 1
     [ "$dir" = "$SHELL_DIR" ] || return 1
     [[ $pid =~ ^[0-9]+$ ]] || return 1
-    [ -n "$tree" ] && banditshell_tree "$tree" || return 1
+    [ -n "$tree" ] || return 1
+    [ "$tree" = "$SHELL_DIR" ] || [ "$tree" = "$(cat "$LIVE_FILE" 2>/dev/null || true)" ] || return 1
     kill -0 "$pid" 2>/dev/null || return 1
     case "$(cat "/proc/$pid/comm" 2>/dev/null)" in
-    qs | quickshell* | .quickshell-wra* | .qs-wrapped) echo "$pid" ;;
+    qs | quickshell* | .quickshell-wra* | .qs-wrapped) ;;
     *) return 1 ;;
     esac
+    mapfile -d '' -t args <"/proc/$pid/cmdline" 2>/dev/null || return 1
+    for arg in "${args[@]}"; do
+        [ "$arg" = "$tree" ] && { echo "$pid"; return 0; }
+    done
+    return 1
 }
 
 scope=()
@@ -873,25 +876,26 @@ resolve_target() {
     fi
     qs_target_resolved=1
 
-    local pid path tree rank live best="" best_tree="" best_rank=4
+    local pid path tree rank live known best="" best_tree="" best_rank=5
     if pid=$(cached_pid); then
         qs_target=(--pid "$pid")
         return 0
     fi
     live=$(cat "$LIVE_FILE" 2>/dev/null || true)
+    known=$(known_shells)
     while IFS=$'\t' read -r pid path; do
+        grep -qxF -- "$path" <<<"$known" || continue
         tree="${path%/shell.qml}"
-        [ "$tree/shell.qml" = "$path" ] && banditshell_tree "$tree" || continue
-        if [ "$tree" = "$SHELL_DIR" ]; then
-            rank=1
-        elif [ "$tree" = "$live" ]; then
-            rank=2
-        else
-            rank=3
-        fi
+        case "$tree" in
+        "$SHELL_DIR") rank=1 ;;
+        "$live") rank=2 ;;
+        "$BACKUP") rank=3 ;;
+        *) rank=4 ;;
+        esac
         if [ "$rank" -lt "$best_rank" ]; then
             best="$pid" best_tree="$tree" best_rank="$rank"
         fi
+        [ "$best_rank" != 1 ] || break
     done < <(list_instances)
 
     if [ -n "$best" ]; then
@@ -966,14 +970,7 @@ ipc_quiet() {
 
 running() {
     cached_pid >/dev/null && return 0
-    qs list --all 2>/dev/null | awk '
-        /^[[:space:]]*Config path:/ {
-            p = $0
-            sub(/^[[:space:]]*Config path:[[:space:]]*/, "", p)
-            if (p ~ /\/shell\.qml$/) found = 1
-        }
-        END { exit found ? 0 : 1 }
-    '
+    [ -n "$(shell_pids)" ]
 }
 
 dry() { [ -n "${BANDITSHELL_DRY:-}" ] && [ "${BANDITSHELL_DRY:-}" != 0 ]; }
