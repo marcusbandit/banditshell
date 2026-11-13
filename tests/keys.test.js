@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/files/keys.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Keys = new Function(src + "\nreturn { names, chordOf, NAMED, windowOwns, previewScroll, holder, moved, sameKeys };")();
+const Keys = new Function(src + "\nreturn { names, chordOf, NAMED, windowOwns, previewScroll, holder, moved, sameKeys, gridStep };")();
 
 const Qt = {
     ShiftModifier: 0x02000000,
@@ -166,5 +166,29 @@ test.describe("rebinding file browser keys", () => {
         assert.strictEqual(Keys.sameKeys({a: "x", b: "y"}, {b: "y", a: "x"}), true);
         assert.strictEqual(Keys.sameKeys({a: "x"}, {a: "z"}), false);
         assert.strictEqual(Keys.sameKeys({a: "x"}, {a: "x", b: "y"}), false);
+    });
+});
+
+test.describe("stepping rows in the file grid", () => {
+    test.it("moves a whole row and keeps the column", () => {
+        assert.strictEqual(Keys.gridStep(1, 10, 4, 1, -1), 5);
+        assert.strictEqual(Keys.gridStep(5, 10, 4, -1, -1), 1);
+    });
+
+    test.it("lands on the last file when the row below is shorter", () => {
+        assert.strictEqual(Keys.gridStep(7, 10, 4, 1, -1), 9);
+    });
+
+    test.it("goes back to the column it started in on the way up", () => {
+        assert.strictEqual(Keys.gridStep(9, 10, 4, -1, 3), 7);
+    });
+
+    test.it("stops at the first and last file", () => {
+        assert.strictEqual(Keys.gridStep(2, 10, 4, -1, -1), 0);
+        assert.strictEqual(Keys.gridStep(9, 10, 4, 1, -1), 9);
+    });
+
+    test.it("has nowhere to go in an empty folder", () => {
+        assert.strictEqual(Keys.gridStep(-1, 0, 4, 1, -1), -1);
     });
 });

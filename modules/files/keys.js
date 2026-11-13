@@ -68,6 +68,17 @@ function windowOwns(chord, action) {
     return /^Ctrl\+[0-9]$/.test(chord) || action === "terminal" || action.indexOf("focus:") === 0;
 }
 
+function gridStep(index, count, columns, rows, goal) {
+    if (count <= 0)
+        return -1;
+    var from = Math.max(0, index);
+    var column = goal >= 0 ? goal : from % columns;
+    var row = Math.floor(from / columns) + rows;
+    if (row < 0)
+        return 0;
+    return Math.min(row * columns + column, count - 1);
+}
+
 function previewScroll(qt, key, modifiers, action, page, line) {
     if (modifiers & (qt.ControlModifier | qt.AltModifier | qt.MetaModifier))
         return null;

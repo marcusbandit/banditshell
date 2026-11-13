@@ -150,19 +150,19 @@ Item {
             event.accepted = true;
             return;
         case Qt.Key_Up:
-            root.move(-grid.columns, shift);
+            root.stepRows(-1, shift);
             event.accepted = true;
             return;
         case Qt.Key_Down:
-            root.move(grid.columns, shift);
+            root.stepRows(1, shift);
             event.accepted = true;
             return;
         case Qt.Key_PageUp:
-            root.move(-grid.columns * grid.pageRows, shift);
+            root.stepRows(-grid.pageRows, shift);
             event.accepted = true;
             return;
         case Qt.Key_PageDown:
-            root.move(grid.columns * grid.pageRows, shift);
+            root.stepRows(grid.pageRows, shift);
             event.accepted = true;
             return;
         case Qt.Key_Home:
@@ -213,10 +213,10 @@ Item {
             root.move(1, false);
             return true;
         case "up":
-            root.move(-grid.columns, false);
+            root.stepRows(-1, false);
             return true;
         case "down":
-            root.move(grid.columns, false);
+            root.stepRows(1, false);
             return true;
         case "first":
             root.select(0, false);
@@ -299,6 +299,10 @@ Item {
     Connections {
         target: Files
 
+        function onCursorChanged(): void {
+            root.goalColumn = -1;
+        }
+
         function onOpenersFound(path: string, kind: string, apps: var, who: string): void {
             if (who !== "files" || !Files.windowOpen)
                 return;
@@ -324,6 +328,25 @@ Item {
 
     function move(delta: int, extend: bool): void {
         root.select(Math.max(0, Files.cursor) + delta, extend ?? false);
+    }
+
+    property int goalColumn: -1
+
+    Connections {
+        target: grid
+
+        function onColumnsChanged(): void {
+            root.goalColumn = -1;
+        }
+    }
+
+    function stepRows(rows: int, extend: bool): void {
+        const goal = root.goalColumn >= 0 ? root.goalColumn : Math.max(0, Files.cursor) % grid.columns;
+        const to = Chords.gridStep(Files.cursor, Files.visible.length, grid.columns, rows, goal);
+        if (to < 0)
+            return;
+        root.select(to, extend);
+        root.goalColumn = goal;
     }
 
     function fileActions(): var {
