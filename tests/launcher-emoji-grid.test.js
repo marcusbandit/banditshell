@@ -7,7 +7,7 @@ function lib(file, names) {
     const src = fs.readFileSync(path.join(ROOT, file), "utf8").replace(/^\.pragma .*$/m, "");
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
-const Grid = lib("services/emoji-grid.js", ["recent", "sections", "layout", "rowOf", "step", "pinned"]);
+const Grid = lib("services/emoji-grid.js", ["recent", "sections", "layout", "rowOf", "columnOf", "step", "verticalStep", "pinned"]);
 
 const e = (char, group) => ({ char, group, name: char });
 const run = (group, n, prefix) => Array.from({ length: n }, (_, i) => e(prefix + i, group));
@@ -87,6 +87,19 @@ test("Down from the last column of a full row lands on the last tile of a shorte
 test("Up from the first row goes to the first tile", () => assert.strictEqual(Grid.step(one, 7, 1, 0, -1), 0));
 test("Down from the last row goes to the last tile", () => assert.strictEqual(Grid.step(six, 6, 4, 0, 1), 5));
 test("Three presses down move three rows", () => assert.strictEqual(Grid.step(ten, 10, 0, 0, 3), 9));
+test("Up after Down into a shorter row returns to the column it started in", () => {
+    const down = Grid.step(one, 7, 5, 0, 1, Grid.columnOf(one, 5));
+    assert.strictEqual(down, 6);
+    assert.strictEqual(Grid.step(one, 7, down, 0, -1, 2), 5);
+});
+test("A step that stops at the first or last tile forgets the column", () => {
+    assert.deepStrictEqual(Grid.verticalStep(one, 7, 2, -1, -1), { to: 0, goal: -1 });
+    assert.deepStrictEqual(Grid.verticalStep(six, 6, 4, 1, -1), { to: 5, goal: -1 });
+    assert.deepStrictEqual(Grid.verticalStep(one, 7, 1, -1, -1), { to: 0, goal: -1 });
+});
+test("A step with nowhere further to go keeps the column", () => assert.deepStrictEqual(Grid.verticalStep(one, 7, 6, 1, 2), { to: 6, goal: 2 }));
+test("A step into a shorter row keeps the column it started in", () => assert.deepStrictEqual(Grid.verticalStep(one, 7, 5, 1, -1), { to: 6, goal: 2 }));
+test("A goal column past a short row's end lands on its last tile", () => assert.strictEqual(Grid.step(one, 7, 5, 0, 1, 2), 6));
 test("An empty grid has nowhere to go", () => assert.strictEqual(Grid.step(one, 0, 0, 0, 1), -1));
 test("With no tile selected, a move starts at the first tile", () => assert.strictEqual(Grid.step(one, 7, -1, 0, 1), 0));
 

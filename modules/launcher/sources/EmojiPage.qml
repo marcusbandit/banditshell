@@ -73,6 +73,7 @@ Item {
     readonly property var shaped: Grid.layout(Grid.sections(Emoji.all, root.groups, root.group, root.found, root.recents, Grid.pinned(Emoji.pinned, Emoji.byChar)), root.columns)
 
     property int selected: 0
+    property int goalColumn: -1
     readonly property var entry: root.shaped.items[root.selected] ?? null
     readonly property var row: root.entry && root.source ? root.source.row(root.entry) : null
 
@@ -89,11 +90,18 @@ Item {
         grid.reveal(at);
     }
 
+    onSelectedChanged: root.goalColumn = -1
+    onShapedChanged: root.goalColumn = -1
+
     function go(dx: int, dy: int): void {
-        const next = Grid.step(root.shaped.rows, root.shaped.items.length, root.selected, dx, dy);
-        if (next < 0)
+        const next = dy ? Grid.verticalStep(root.shaped.rows, root.shaped.items.length, root.selected, dy, root.goalColumn) : {
+            to: Grid.step(root.shaped.rows, root.shaped.items.length, root.selected, dx, 0),
+            goal: -1
+        };
+        if (next.to < 0)
             return;
-        root.selected = next;
+        root.selected = next.to;
+        root.goalColumn = next.goal;
         root.reveal();
     }
 

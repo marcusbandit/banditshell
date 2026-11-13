@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-13-p855-grids-keep-column",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Emoji and Files grids keep your column as you move up and down"
+        }
+      ]
+    },
+    {
       "id": "2026-11-13-p853-tile-step-back",
       "date": "2026-11-13",
       "changes": [

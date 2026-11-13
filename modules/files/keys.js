@@ -68,6 +68,20 @@ function windowOwns(chord, action) {
     return /^Ctrl\+[0-9]$/.test(chord) || action === "terminal" || action.indexOf("focus:") === 0;
 }
 
+function gridStep(index, count, columns, rows, goal) {
+    if (count <= 0)
+        return { to: -1, goal: -1 };
+    if (index < 0)
+        return { to: 0, goal: -1 };
+    var column = goal >= 0 ? goal : index % columns;
+    var row = Math.floor(index / columns) + rows;
+    if (row < 0 || row * columns >= count) {
+        var edge = row < 0 ? 0 : count - 1;
+        return { to: edge, goal: edge === index ? goal : -1 };
+    }
+    return { to: Math.min(row * columns + column, count - 1), goal: column };
+}
+
 function previewScroll(qt, key, modifiers, action, page, line) {
     if (modifiers & (qt.ControlModifier | qt.AltModifier | qt.MetaModifier))
         return null;

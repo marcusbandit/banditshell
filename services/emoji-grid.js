@@ -86,7 +86,19 @@ function rowOf(rows, index) {
     return -1;
 }
 
-function step(rows, count, index, dx, dy) {
+function columnOf(rows, index) {
+    var at = rowOf(rows, index);
+    return at < 0 ? -1 : index - rows[at].start;
+}
+
+function verticalStep(rows, count, index, dy, goal) {
+    var column = goal >= 0 ? goal : columnOf(rows, index);
+    var to = step(rows, count, index, 0, dy, column);
+    var moved = to >= 0 && index >= 0 && rowOf(rows, to) !== rowOf(rows, index);
+    return { to: to, goal: moved ? column : to === index ? goal : -1 };
+}
+
+function step(rows, count, index, dx, dy, goal) {
     if (count <= 0)
         return -1;
     if (index < 0)
@@ -96,7 +108,7 @@ function step(rows, count, index, dx, dy) {
     var at = rowOf(rows, index);
     if (at < 0)
         return 0;
-    var column = index - rows[at].start;
+    var column = goal >= 0 ? goal : index - rows[at].start;
     var target = at;
     var moved = 0;
     var way = dy > 0 ? 1 : -1;
