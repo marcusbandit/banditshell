@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Assistant = lib("services/assistant.js", ["askOf", "looksLikeQuestion", "chatRequest", "listRequest", "pullRequest", "readModels", "readChunk", "splitStatus", "failureText", "visibleText", "tidyRewrite", "readPull", "pullTotals", "sizeText", "snippet", "trimTurns", "undash", "keySafe", "keyFor", "keyless", "officialOpenai", "webLink", "lineBreaks", "typeBackRefusal", "modelFor", "isLocal", "actionOf", "ACTIONS", "STARTER", "rewriteMessage", "rewritePrompt", "agentCommand", "agentPrompt", "agentFailure", "readCodexModels", "signedOut", "modelLabel"]);
+const Assistant = lib("services/assistant.js", ["askOf", "looksLikeQuestion", "chatRequest", "listRequest", "pullRequest", "readModels", "readChunk", "splitStatus", "failureText", "visibleText", "tidyRewrite", "readPull", "pullTotals", "sizeText", "snippet", "trimTurns", "undash", "keySafe", "keyFor", "keyless", "officialOpenai", "webLink", "lineBreaks", "typeBackRefusal", "modelFor", "isLocal", "actionOf", "ACTIONS", "STARTER", "rewriteMessage", "rewritePrompt", "agentCommand", "agentPrompt", "agentFailure", "readCodexModels", "signedOut", "modelLabel", "askPrompt", "withContext", "windowContext", "droppedTurns", "extendSummary", "transcript", "askModel", "nextModel", "hasContext", "chatModels"]);
 
 const settings = {
     model: "m",
@@ -151,8 +151,8 @@ test.describe("assistant: streams", () => {
 });
 
 test.describe("assistant: rewriting selected text", () => {
-    test.it("has the six actions, and only some replace the selection", () => {
-        assert.deepStrictEqual(Assistant.ACTIONS.map(a => a.id), ["fix", "shorter", "friendlier", "summarise", "english", "explain"]);
+    test.it("has the seven actions, and only some replace the selection", () => {
+        assert.deepStrictEqual(Assistant.ACTIONS.map(a => a.id), ["fix", "improve", "shorter", "friendlier", "summarise", "english", "explain"]);
         assert.strictEqual(Assistant.actionOf("fix").replaces, true);
         assert.strictEqual(Assistant.actionOf("explain").replaces, false);
         assert.strictEqual(Assistant.actionOf("nope"), null);
@@ -336,5 +336,97 @@ test.describe("assistant: Claude Code and Codex sessions", () => {
         assert.ok(!Assistant.signedOut("Overloaded"));
         assert.strictEqual(Assistant.agentFailure("codex", "noise\nReconnecting... 5/5\n"), "Reconnecting... 5/5");
         assert.strictEqual(Assistant.agentFailure("claude", ""), "Claude Code did not answer");
+    });
+});
+
+test.describe("assistant: context, web search, long chats, models", () => {
+    test.it("wraps attached text as reference material before the question", () => {
+        const out = Assistant.withContext("what is this", { kind: "clipboard", text: " select * from t " });
+        assert.ok(out.startsWith("Here is my clipboard."));
+        assert.ok(out.includes("<context>\nselect * from t\n</context>"));
+        assert.ok(out.endsWith("what is this"));
+    });
+
+    test.it("sends the bare question when nothing is attached", () => {
+        assert.strictEqual(Assistant.withContext("hi", null), "hi");
+        assert.strictEqual(Assistant.withContext("hi", { kind: "selection", text: "  " }), "hi");
+        assert.strictEqual(Assistant.withContext("hi", { kind: "bogus", text: "x" }), "hi");
+    });
+
+    test.it("describes the focused window by class and title", () => {
+        assert.strictEqual(Assistant.windowContext("Inbox", "firefox"), "Application: firefox\nWindow title: Inbox");
+        assert.strictEqual(Assistant.windowContext("Inbox", ""), "Window title: Inbox");
+        assert.strictEqual(Assistant.windowContext("", "firefox"), "");
+    });
+
+    test.it("keeps tools off unless web search is on", () => {
+        const off = Assistant.agentCommand("claude", "haiku", "sys", false);
+        assert.strictEqual(off[off.indexOf("--tools") + 1], "");
+        assert.ok(!off.includes("--allowedTools"));
+        const on = Assistant.agentCommand("claude", "haiku", "sys", true);
+        assert.strictEqual(on[on.indexOf("--tools") + 1], "WebSearch");
+        assert.strictEqual(on[on.indexOf("--allowedTools") + 1], "WebSearch");
+        assert.ok(Assistant.agentCommand("codex", "", "sys", false).includes("web_search=\"disabled\""));
+        assert.ok(Assistant.agentCommand("codex", "", "sys", true).includes("web_search=\"live\""));
+    });
+
+    test.it("mentions the summary and web search in the system prompt only when set", () => {
+        assert.ok(!Assistant.askPrompt("2026-01-01", "", false).includes("Earlier in this chat"));
+        assert.ok(Assistant.askPrompt("2026-01-01", "The user asked: a", false).includes("Earlier in this chat, before the messages below: The user asked: a"));
+        assert.ok(Assistant.askPrompt("2026-01-01", "", true).includes("search the web"));
+    });
+
+    test.it("folds dropped turns into a short running note", () => {
+        const turns = [];
+        for (let i = 0; i < 6; i++)
+            turns.push({ role: i % 2 ? "assistant" : "user", content: `message ${i}` });
+        const kept = Assistant.trimTurns(turns, 2, 16000);
+        const dropped = Assistant.droppedTurns(turns, kept);
+        assert.strictEqual(dropped.length, 4);
+        const note = Assistant.extendSummary("", dropped);
+        assert.ok(note.startsWith("The user asked: message 0 You answered: message 1"));
+        assert.ok(Assistant.extendSummary(note, [{ role: "user", content: "later" }]).endsWith("The user asked: later"));
+        assert.ok(Assistant.extendSummary("", [{ role: "user", content: "x".repeat(5000) }]).length <= 700);
+    });
+
+    test.it("copies the whole chat with the question as typed, not the attached text", () => {
+        const text = Assistant.transcript([
+            { role: "user", content: "Here is my clipboard.\n<context>x</context>\n\nwhy", shown: "why" },
+            { role: "assistant", content: "because" }
+        ]);
+        assert.strictEqual(text, "Question: why\n\nAnswer: because");
+    });
+
+    test.it("lets Claude use a fast model for short asks and a stronger one for long ones", () => {
+        const models = ["haiku", "sonnet", "opus"];
+        assert.strictEqual(Assistant.askModel("claude", "", models, "why is the sky blue", 1, false), "haiku");
+        assert.strictEqual(Assistant.askModel("claude", "", models, "x".repeat(500), 1, false), "sonnet");
+        assert.strictEqual(Assistant.askModel("claude", "", models, "short", 5, false), "sonnet");
+        assert.strictEqual(Assistant.askModel("claude", "", models, "short", 1, true), "sonnet");
+        assert.strictEqual(Assistant.askModel("claude", "opus", models, "short", 1, false), "opus");
+        assert.strictEqual(Assistant.askModel("ollama", "", ["a"], "short", 1, false), "a");
+    });
+
+    test.it("steps through models in a ring", () => {
+        assert.strictEqual(Assistant.nextModel(["a", "b", "c"], "a"), "b");
+        assert.strictEqual(Assistant.nextModel(["a", "b", "c"], "c"), "a");
+        assert.strictEqual(Assistant.nextModel(["a"], "a"), "a");
+    });
+
+    test.it("skips embedding, speech and image models and the one in use when stepping", () => {
+        const models = ["gpt-5-mini", "text-embedding-3-small", "whisper-1", "gpt-5", "tts-1", "gpt-image-1"];
+        assert.strictEqual(Assistant.nextModel(models, "gpt-5-mini"), "gpt-5");
+        assert.strictEqual(Assistant.nextModel(models, "gpt-5"), "gpt-5-mini");
+        assert.strictEqual(Assistant.nextModel(["a", "b"], ""), "a");
+        assert.strictEqual(Assistant.nextModel(["a"], "a"), "a");
+    });
+
+    test.it("notices when an earlier turn carried attached text", () => {
+        assert.strictEqual(Assistant.hasContext([{ role: "user", content: "x", shown: "x" }]), false);
+        assert.strictEqual(Assistant.hasContext([{ role: "user", content: "ctx x", shown: "x" }]), true);
+    });
+
+    test.it("offers an improve rewrite that replaces the selection", () => {
+        assert.strictEqual(Assistant.actionOf("improve").replaces, true);
     });
 });

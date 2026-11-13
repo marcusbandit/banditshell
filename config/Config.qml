@@ -336,6 +336,7 @@ Singleton {
 
                     backend: "ollama",
                     model: "",
+                    webSearch: false,
 
                     ollamaAddress: "http://localhost:11434",
                     openaiAddress: "https://api.openai.com/v1"
