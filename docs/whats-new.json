@@ -27,6 +27,20 @@
       ]
     },
     {
+      "id": "2026-11-13-p834-cli-target",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Keys like Super+Shift+S no longer go to another Quickshell app"
+        }
+      ],
+      "impact": {
+        "cli": true
+      }
+    },
+    {
       "id": "2026-11-13-p835-snippets-quicklinks",
       "date": "2026-11-13",
       "changes": [
