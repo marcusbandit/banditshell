@@ -7,6 +7,7 @@ import qs.config
 import qs.services
 import "catalogue.js" as Catalogue
 import "durations.js" as Durations
+import "../../services/dictation-events.js" as DictationEvents
 import "screens.js" as Screens
 import "../../config/files-zoom.js" as FilesZoom
 
@@ -211,6 +212,7 @@ Singleton {
             animatePreview: "launcher.animatePreview",
             polkitAgent: "polkit.agent",
             webSearch: "launcher.webSearch",
+            dictateAsk: "launcher.dictateToAsk",
             contents: "launcher.contents",
             ignoredFiles: "launcher.ignoredFiles",
             fallbackWeb: "launcher.fallbacks.web",
@@ -387,6 +389,12 @@ Singleton {
             return Audio.sink?.name ?? "";
         case "input":
             return Audio.source?.name ?? "";
+        case "dictMic":
+            return Dictation.microphone;
+        case "dictOutput":
+            return Dictation.output;
+        case "dictLang":
+            return Dictation.languageCode;
         case "micLevel":
             return Audio.sourceVolume;
         case "level":
@@ -583,6 +591,12 @@ Singleton {
                     root.denied = true;
                 return;
             }
+        case "dictMic":
+            return Dictation.setMicrophone(value);
+        case "dictOutput":
+            return Dictation.setOutput(value);
+        case "dictLang":
+            return Dictation.setLanguage(value);
         case "micLevel":
             return Audio.setSourceVolume(value);
         case "level":
@@ -1370,6 +1384,9 @@ Singleton {
 
     readonly property var outputs: Audio.sinks.map(n => [n.name, Audio.deviceLabel(n)])
     readonly property var inputs: Audio.sources.map(n => [n.name, Audio.deviceLabel(n)])
+    readonly property var dictationInputs: [["default", `System default, ${root.inputName}`]].concat(root.inputs, Dictation.microphone !== "default" && !root.inputs.some(i => i[0] === Dictation.microphone) ? [[Dictation.microphone, `${Dictation.microphone} (not connected)`]] : [])
+    readonly property var dictationOutputs: DictationEvents.OUTPUTS
+    readonly property var dictationLanguages: DictationEvents.LANGUAGES
     readonly property string outputName: Audio.sink ? Audio.deviceLabel(Audio.sink) : "no output"
     readonly property string inputName: Audio.source ? Audio.deviceLabel(Audio.source) : "no microphone"
     readonly property int appsPlaying: Audio.playing.length

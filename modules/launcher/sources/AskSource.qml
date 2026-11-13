@@ -1,7 +1,9 @@
 import QtQuick
 import Quickshell
 import qs.services
+import qs.config
 import "../../../services/assistant.js" as Logic
+import "../../../services/dictation-events.js" as DictationEvents
 import "../prefixes.js" as Prefixes
 
 QtObject {
@@ -24,6 +26,38 @@ QtObject {
         function onStartedChanged(): void {
             if (root.search.started)
                 Assistant.refresh();
+        }
+    }
+
+    property bool listening: false
+    property bool eligible: false
+
+    property Connections dictation: Connections {
+        target: Dictation
+
+        function onPhaseChanged(): void {
+            if (Dictation.phase !== "idle") {
+                if (root.listening)
+                    return;
+                root.listening = true;
+                root.eligible = root.search.active && root.search.query.trim() === "" && Config.values.launcher.dictateToAsk && Assistant.enabled;
+            } else if (root.listening) {
+                root.listening = false;
+                if (root.eligible)
+                    settle.restart();
+            }
+        }
+    }
+
+    property Timer settle: Timer {
+        interval: 150
+        onTriggered: {
+            const typed = root.search.query;
+            if (!root.search.active || root.search.intent || Prefixes.asked(typed))
+                return;
+            const asked = DictationEvents.asking(typed);
+            if (asked !== null)
+                root.search.retype(asked);
         }
     }
 

@@ -356,6 +356,13 @@ Item {
                     label: "Delete",
                     alarm: true,
                     run: () => Dictation.drop(root.entry)
+                },
+                {
+                    icon: "delete_sweep",
+                    label: "Delete all dictation history",
+                    alarm: true,
+                    tucked: true,
+                    run: () => root.askClearDictation()
                 }
             ];
         const own = root.source.actionsFor(row).map(a => a.label === "Delete" ? Object.assign({}, a, {
@@ -401,6 +408,23 @@ Item {
                     label: `Clear ${n === 1 ? "1 item" : `${n} items`}${pinned ? `, ${pinned} pinned stay` : ""}`,
                     alarm: true,
                     run: () => root.source.clear()
+                },
+                {
+                    icon: "close",
+                    label: "Keep them",
+                    run: () => {}
+                }
+            ], footer.width - Appearance.padding.large, 0));
+    }
+
+    function askClearDictation(): void {
+        const n = Dictation.entries.length;
+        Qt.callLater(() => root.asks(footer, [
+                {
+                    icon: "delete_sweep",
+                    label: `Delete ${n === 1 ? "1 transcription" : `all ${n} transcriptions`} for good`,
+                    alarm: true,
+                    run: () => Dictation.clear()
                 },
                 {
                     icon: "close",

@@ -166,6 +166,46 @@ Singleton {
         root.run(["use", entry.id]);
     }
 
+    function clear(): void {
+        root.run(["drop", "all"]);
+    }
+
+    readonly property string settingsPath: Quickshell.env("GVOICE_SETTINGS") || `${Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`}/gvoice/settings.json`
+
+    property string output: "auto"
+    property string microphone: "default"
+    readonly property string languageCode: DictationEvents.languageCode(root.lang)
+
+    function setOutput(mode: string): void {
+        root.output = mode;
+        root.run(["option", "output", mode]);
+    }
+
+    function setMicrophone(name: string): void {
+        root.microphone = name;
+        root.run(["option", "microphone", name]);
+    }
+
+    function setLanguage(code: string): void {
+        root.run(["lang", code]);
+    }
+
+    FileView {
+        id: options
+
+        path: root.settingsPath
+
+        watchChanges: true
+        printErrors: false
+
+        onLoaded: {
+            const read = DictationEvents.dictationSettings(text());
+            root.output = read.output;
+            root.microphone = read.microphone;
+        }
+        onFileChanged: reload()
+    }
+
     function drop(entry: var): void {
         if (!entry?.id)
             return;
@@ -174,13 +214,32 @@ Singleton {
         root.run(["drop", entry.id]);
     }
 
+    property var queued: []
+
     function run(args: var): void {
-        poke.command = ["sh", "-c", 'exec "$(command -v voice || printf %s "$HOME/bin/voice")" "$@"', "voice", ...args];
+        root.queued = root.queued.concat([args]);
+        root.advance();
+    }
+
+    function advance(): void {
+        if (poke.running || !root.queued.length)
+            return;
+        const next = root.queued[0];
+        root.queued = root.queued.slice(1);
+        poke.command = ["sh", "-c", 'exec "$(command -v voice || printf %s "$HOME/bin/voice")" "$@"', "voice", ...next];
         poke.running = true;
     }
 
     Process {
         id: poke
+
+        onExited: code => {
+            if (code !== 0) {
+                options.reload();
+                store.reload();
+            }
+            root.advance();
+        }
 
         stderr: SplitParser {
             onRead: line => console.warn("Dictation:", line)
