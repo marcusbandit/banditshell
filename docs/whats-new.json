@@ -33,7 +33,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Dictating with the launcher open turns what you said into an AI ask"
+          "text": "Speak to ask in Settings turns launcher dictation into an AI ask"
         },
         {
           "type": "features",
