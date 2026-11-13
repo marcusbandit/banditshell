@@ -5,12 +5,8 @@
 <p class="actions"><a class="button primary" href="#install">Install</a><a class="button" href="{{repo}}">Source on GitHub</a></p>
 </div>
 <div class="machine" data-machine>
-<div class="deck" role="group" aria-label="Show the shell" hidden>
-<button type="button" data-state="rest" aria-pressed="false"><kbd><kbd>Esc</kbd></kbd>At rest</button>
-<button type="button" data-state="launcher" aria-pressed="true"><kbd><kbd>Super</kbd><kbd>Space</kbd></kbd>Launcher</button>
-<button type="button" data-state="sum" aria-pressed="false"><code class="typed">12*7+3</code>A sum</button>
-<button type="button" data-state="session" aria-pressed="false"><kbd><kbd>Super</kbd><kbd>Esc</kbd></kbd>Session</button>
-<button type="button" data-state="settings" aria-pressed="false"><kbd><kbd>Super</kbd><kbd>I</kbd></kbd>Settings</button>
+<div class="deck" role="radiogroup" aria-label="Show the shell" hidden>
+{{deck}}
 </div>
 <figure class="screen">
 <img src="/images/shell-rest.webp" srcset="/images/shell-rest-960.webp 960w, /images/shell-rest.webp 1920w" sizes="(min-width: 1400px) 1296px, calc(100vw - 48px)" width="1920" height="1080" fetchpriority="high" alt="banditshell at rest: the dark leaves wallpaper inside a thin slate frame, with the clock in a rail on the left">
@@ -64,15 +60,15 @@
 </section>
 
 <section class="band drive">
-<div>
-<h2>Drive it from anywhere</h2>
-<p>Everything the shell does is a command. A keybind, a script and a terminal all drive it the same way, and Tab completes every word.</p>
-</div>
+<h2>Everything is a command</h2>
 <pre class="terminal"><code><span class="prompt">$ </span>banditshell panel launcher toggle
 <span class="prompt">$ </span>banditshell wallpaper next
 <span class="prompt">$ </span>banditshell clock timer start 10m
 <span class="prompt">$ </span>banditshell screen border off
-<span class="prompt">$ </span>banditshell doctor</code></pre>
+<span class="prompt">$ </span>banditshell panel <span class="tab">Tab</span>
+<span class="dim">calculator  clipboard  close  files  hotkeys
+island  keyboard  launcher  media  notifications
+quickcontrols  session  settings  wallpaper</span></code></pre>
 </section>
 
 <section class="band ahead">

@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { card, longDate, posts } from "./blog.mjs";
+import { card, imageSize, longDate, posts } from "./blog.mjs";
 import { escape, inline, render } from "./roadmap.mjs";
 
 const SITE = dirname(fileURLToPath(import.meta.url));
@@ -31,20 +31,34 @@ const vision = roadmap.sections[0]?.blocks.find((block) => block.type === "parag
 
 const SCREEN = { width: 1920, height: 1080 };
 const OPEN = "launcher";
-const layers = [
-    { state: "launcher", x: 499, y: 349, width: 921, height: 285, alt: "The launcher open in the middle of the screen: a search field over a row of six apps" },
-    { state: "sum", x: 499, y: 349, width: 922, height: 447, alt: "The launcher answering 12*7+3 with 87" },
-    { state: "session", x: 1696, y: 120, width: 224, height: 838, alt: "The session menu on the right edge: shut down, restart, log out, lock and sleep" },
-    { state: "settings", x: 290, y: 89, width: 1362, height: 902, alt: "Settings open on its home page, with shortcuts to colour, wallpaper, widgets, the sidebar, notifications and the lock" },
+const states = [
+    { state: "rest", label: "At rest", keys: ["Esc"] },
+    { state: "launcher", label: "Launcher", keys: ["Super", "Space"], x: 499, y: 349, alt: "The launcher open in the middle of the screen: a search field over a row of six apps" },
+    { state: "sum", label: "A sum", typed: "12*7+3", x: 499, y: 349, alt: "The launcher answering 12*7+3 with 87" },
+    { state: "session", label: "Session", keys: ["Super", "Esc"], x: 1696, y: 120, alt: "The session menu on the right edge: shut down, restart, log out, lock and sleep" },
+    { state: "settings", label: "Settings", keys: ["Super", "I"], x: 290, y: 89, alt: "Settings open on its home page, with shortcuts to colour, wallpaper, widgets, the sidebar, notifications and the lock" },
 ];
 const percent = (value, whole) => `${+((value / whole) * 100).toFixed(3)}%`;
-const layerTags = layers
-    .map(
-        (layer) =>
-            `<img class="layer${layer.state === OPEN ? " on" : ""}" data-layer="${layer.state}" src="/images/shell-${layer.state}.webp" width="${layer.width}" height="${layer.height}" ` +
-            `style="left:${percent(layer.x, SCREEN.width)};top:${percent(layer.y, SCREEN.height)};width:${percent(layer.width, SCREEN.width)}" ` +
-            `decoding="async" alt="${escape(layer.alt)}" aria-hidden="${layer.state !== OPEN}">`,
-    )
+const deck = states
+    .map(({ state, label, keys, typed }) => {
+        const on = state === OPEN;
+        const hint = typed ? `<code class="typed">${escape(typed)}</code>` : `<kbd>${keys.map((key) => `<kbd>${key}</kbd>`).join("")}</kbd>`;
+        return `<button type="button" role="radio" data-state="${state}" aria-checked="${on}" tabindex="${on ? 0 : -1}">${hint}${label}</button>`;
+    })
+    .join("\n");
+const layerTags = states
+    .filter((layer) => layer.alt)
+    .map((layer) => {
+        const file = `images/shell-${layer.state}.webp`;
+        const size = imageSize(readFileSync(join(SITE, file)));
+        if (!size) throw new Error(`${file} is not a readable webp`);
+        const on = layer.state === OPEN;
+        return (
+            `<img class="layer${on ? " on" : ""}" data-layer="${layer.state}" src="/${file}" width="${size.width}" height="${size.height}" ` +
+            `style="left:${percent(layer.x, SCREEN.width)};top:${percent(layer.y, SCREEN.height)};width:${percent(size.width, SCREEN.width)}" ` +
+            `decoding="async"${on ? "" : ' fetchpriority="low"'} alt="${escape(layer.alt)}" aria-hidden="${!on}">`
+        );
+    })
     .join("\n");
 
 const articles = posts(join(SITE, "blog"), SITE, REPO, { drafts: DRAFTS });
@@ -53,6 +67,7 @@ const hasBlog = articles.length > 0;
 
 const page = (values) => {
     const merged = { roadmapCurrent: "", blogCurrent: "", robots: "", scripts: "", ...values };
+    merged.canonical ??= `<link rel="canonical" href="${merged.url}">`;
     return fill(template("layout.html"), {
         repo: REPO,
         origin: ORIGIN,
@@ -77,6 +92,7 @@ writeFileSync(
         page: "home",
         main: fill(template("home.html"), {
             repo: REPO,
+            deck,
             layers: layerTags,
             vision: inline(vision, REPO),
         }),
@@ -151,6 +167,8 @@ writeFileSync(
         title: "Not here | banditshell",
         description,
         url: `${ORIGIN}/`,
+        canonical: "",
+        robots: '<meta name="robots" content="noindex">',
         page: "lost",
         main: `<section class="lost"><h1>Not here</h1><p>Nothing lives at this address. ${hasBlog ? 'The <a href="/">front page</a>, the <a href="/roadmap/">roadmap</a> and the <a href="/blog/">blog</a> do.' : 'The <a href="/">front page</a> and the <a href="/roadmap/">roadmap</a> do.'}</p></section>`,
     }),

@@ -115,13 +115,6 @@ export function post(source, file, site, repo) {
         release: meta.release ?? "",
         draft,
         html: parsed.map((block) => html(block, repo)).join("\n"),
-        words: parsed
-            .filter((block) => block.type === "paragraph")
-            .map((block) => block.text)
-            .join(" ")
-            .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-            .replace(/[*`]/g, "")
-            .slice(0, 1600),
     };
 }
 
