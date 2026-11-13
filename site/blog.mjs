@@ -135,5 +135,5 @@ export function posts(dir, site, repo, { drafts = false } = {}) {
 }
 
 export const card = (entry) =>
-    `<article class="post-card"><p class="meta"><time datetime="${entry.date}">${longDate(entry.date)}</time>${entry.release ? ` · ${escape(entry.release)}` : ""}${entry.draft ? ' · <span class="chip">Draft</span>' : ""}</p>` +
+    `<article class="post-card"><p class="meta"><time datetime="${entry.date}">${longDate(entry.date)}</time>${entry.release ? `, ${escape(entry.release)}` : ""}${entry.draft ? ' <span class="chip">Draft</span>' : ""}</p>` +
     `<h2><a href="/blog/${entry.slug}/">${escape(entry.title)}</a></h2><p>${escape(entry.summary)}</p></article>`;

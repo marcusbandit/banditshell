@@ -5,50 +5,52 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{title}}</title>
 <meta name="description" content="{{description}}">
-<meta name="theme-color" content="#0f1114">
+<meta name="author" content="Marcus Rosado">
+<meta name="theme-color" content="#0d0c0b">
 {{robots}}
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="banditshell">
 <meta property="og:title" content="{{title}}">
 <meta property="og:description" content="{{description}}">
 <meta property="og:url" content="{{url}}">
-<meta property="og:image" content="https://banditshell.marcusrosado.com/images/hero-still.webp">
+<meta property="og:image" content="{{origin}}/images/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="{{url}}">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="preload" href="/fonts/Monocraft.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/NotoSansMono.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body class="{{page}}">
 <a class="skip" href="#main">Skip to content</a>
 <header class="bar">
-<nav class="bar-inner" aria-label="Site">
-<a class="brand" href="/"><img src="/favicon.svg" width="24" height="24" alt=""><span>banditshell</span></a>
+<div class="page bar-inner">
+<p class="crumb"><a class="owner" href="https://marcusrosado.com">Marcus Rosado</a><span class="slash" aria-hidden="true">/</span><a class="brand" href="/">banditshell<i aria-hidden="true"></i></a></p>
+<nav class="site-nav" aria-label="Site">
 <a href="/#features">Features</a>
 <a href="/#install">Install</a>
 <a href="/roadmap/"{{roadmapCurrent}}>Roadmap</a>
 {{blogNav}}
 <a href="{{repo}}">GitHub</a>
 </nav>
+</div>
 </header>
-<main id="main">
+<main id="main" class="page">
 {{main}}
 </main>
 <footer class="foot">
-<div class="foot-inner">
-<p class="brand"><img src="/favicon.svg" width="24" height="24" alt=""><span>banditshell</span></p>
-<p>A desktop shell for Hyprland, written from scratch in Quickshell and QML. Free software under the GPL-3.0.</p>
+<div class="page foot-inner">
+<p>banditshell is made by <a class="made" href="https://marcusrosado.com">Marcus Rosado</a>. Free software under the GPL-3.0.</p>
 <nav aria-label="Elsewhere">
+<a href="https://marcusrosado.com">marcusrosado.com</a>
 <a href="{{repo}}">GitHub</a>
 <a href="/roadmap/">Roadmap</a>
 {{blogFoot}}
 <a href="{{repo}}/issues">Report a bug</a>
 <a href="https://ko-fi.com/marcusbandit">Ko-fi</a>
-<a href="https://quickshell.org">Quickshell</a>
-<a href="https://hypr.land">Hyprland</a>
 </nav>
-<p class="build">Built at {{commit}}. Headings are set in Monocraft by Idrees Hassan, under the <a href="/fonts/OFL.txt">SIL Open Font License</a>.</p>
+<p class="build">Built at {{commit}}. Set in Noto Sans Mono, under the <a href="/fonts/OFL-NotoSansMono.txt">SIL Open Font License</a>.</p>
 </div>
 </footer>
-<script src="/site.js" defer></script>
 {{scripts}}
 </body>
 </html>
