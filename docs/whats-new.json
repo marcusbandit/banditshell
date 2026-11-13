@@ -22,6 +22,52 @@
       ]
     },
     {
+      "id": "2026-11-13-p835-ai",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ask can include your selection, clipboard or the focused window"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "AI answers can search the web with Claude Code and Codex"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Improve writing joins the AI rewrite actions"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "An AI answer finishing while the launcher is closed notifies you"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Copy chat copies the whole AI conversation"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Try another model asks again with a different model"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "reminders lists pending reminders to push back or clear"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings shows the AI sign-in, with sign in, out and a check"
+        }
+      ]
+    },
+    {
       "id": "2026-11-13-p835-notes-focus",
       "date": "2026-11-13",
       "changes": [

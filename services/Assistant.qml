@@ -58,6 +58,19 @@ Singleton {
         return (root.backend === "codex" ? root.codexModels.find(m => m[0] === model)?.[1] : "") || Logic.modelLabel(model);
     }
 
+    property string oneShotModel: ""
+    readonly property var otherModels: Logic.chatModels(root.models)
+    readonly property string autoNote: root.backend === "claude" && !root.settings.model && root.models.length ? `${root.labelOf(Logic.askModel("claude", "", root.models, "", 0, false))} for short asks, ${root.labelOf(Logic.askModel("claude", "", root.models, "", 4, false))} for long ones` : ""
+    property string usedModel: ""
+    readonly property string usedModelName: root.usedModel ? root.labelOf(root.usedModel) : root.modelName
+    readonly property bool web: !!root.settings.webSearch && root.agent
+    property string summary: ""
+    property var askContext: null
+    property bool watching: false
+    property bool checking: false
+    property bool checkAfterProbe: false
+    property string checkNote: ""
+
     property string setup: ""
     property string trouble: ""
     property int progress: 0
@@ -96,6 +109,7 @@ Singleton {
     readonly property bool canReadSelection: !!root.tools["wl-paste"]
 
     property var turns: []
+    readonly property string contextNote: root.askContext ? Logic.contextShort(root.askContext.kind) : ""
     property string topic: ""
     property string question: ""
     property string kind: ""
@@ -183,6 +197,10 @@ Singleton {
 
     function signInChecked(backend: string, code: int): void {
         root.setSignedIn(backend, code === 0);
+        if (root.checking && backend === root.backend) {
+            root.checking = false;
+            root.checkNote = code === 0 ? "signed in" : code === 124 ? `${root.agentInfo.name} did not answer in time` : `not signed in to ${root.agentInfo.name}`;
+        }
         if (backend !== root.backend)
             Qt.callLater(root.checkSignIn);
         else if (root.ready)
@@ -255,8 +273,13 @@ Singleton {
     }
 
     function takeList(text: string, generation: int, listing: string, backend: string): void {
-        if (generation !== root.listGeneration || listing !== root.listing)
+        if (generation !== root.listGeneration || listing !== root.listing) {
+            if (root.checking && generation === root.listGeneration) {
+                root.checking = false;
+                root.checkNote = "the settings changed, press Check again";
+            }
             return;
+        }
         root.listRun = null;
         const got = Logic.splitStatus(text);
         const names = Logic.readModels(backend, got.body);
@@ -265,6 +288,10 @@ Singleton {
         root.listed = true;
         root.listedFor = listing;
         root.listedAt = Date.now();
+        if (root.checking) {
+            root.checking = false;
+            root.checkNote = root.reachable ? "connected" : Logic.failureText(got.status, got.body);
+        }
         if (root.setup === "starting" && root.reachable) {
             waitForServer.stop();
             root.setup = "";
@@ -314,7 +341,7 @@ Singleton {
         if (!next)
             return;
         if (next.kind === "ask")
-            root.ask(next.question, next.topic);
+            root.ask(next.question, next.topic, next.context ?? null);
         else if (next.kind === "rewrite")
             root.rewrite(next.actionId, next.text, next.topic, next.inPlace);
     }
@@ -416,29 +443,152 @@ Singleton {
         return Qt.formatDate(new Date(), "yyyy-MM-dd");
     }
 
-    function ask(question: string, topic: string): void {
+    function ask(question: string, topic: string, context: var): void {
         if (!question)
             return;
         if (!root.ready) {
             root.setUp({
                 kind: "ask",
                 question: question,
-                topic: topic
+                topic: topic,
+                context: context ?? null
             });
             return;
         }
         root.stop();
         const before = root.following ? root.turns : [];
-        root.turns = Logic.trimTurns(before.concat([
+        if (!root.following)
+            root.summary = "";
+        const joined = before.concat([
             {
                 role: "user",
-                content: question
+                content: Logic.withContext(question, context),
+                shown: question
             }
-        ]), 8, 16000);
+        ]);
+        root.turns = Logic.trimTurns(joined, 8, 16000);
+        root.summary = Logic.extendSummary(root.summary, Logic.droppedTurns(joined, root.turns));
+        root.askContext = context ?? null;
         root.inPlace = false;
         root.actionId = "";
         root.source = "";
-        root.begin("ask", topic, question, Logic.askPrompt(root.today()), root.turns);
+        root.usedModel = root.pickModel(question, root.turns.length, !!context);
+        root.begin("ask", topic, question, Logic.askPrompt(root.today(), root.summary, root.webFor(root.turns)), root.turns);
+    }
+
+    function webFor(turns: var): bool {
+        return root.web && !Logic.hasContext(turns);
+    }
+
+    function pickModel(text: string, turnCount: int, withContext: bool): string {
+        const chosen = root.oneShotModel || root.settings.model;
+        root.oneShotModel = "";
+        return Logic.askModel(root.backend, chosen, root.models, text, turnCount, withContext);
+    }
+
+    function askWith(kind: string, question: string, topic: string): void {
+        if (!question)
+            return;
+        if (kind === "window") {
+            const top = Hypr.toplevelFor(Hypr.focusedAddress);
+            const text = Logic.windowContext(top?.title, top?.lastIpcObject?.class);
+            if (!text) {
+                root.notify("web_asset_off", "Nothing to attach", "No window has focus.");
+                return;
+            }
+            root.ask(question, topic, {
+                kind: "window",
+                text: text
+            });
+            return;
+        }
+        const reader = contextRequest.createObject(root, {
+            kind: kind,
+            question: question,
+            topic: topic,
+            command: ["sh", "-c", kind === "selection" ? "wl-paste --primary --list-types 2>/dev/null | grep -qx x-kde-passwordManagerHint && exit 0; wl-paste --primary --no-newline --type text 2>/dev/null | head -c 60001" : "wl-paste --list-types 2>/dev/null | grep -qx x-kde-passwordManagerHint && exit 0; wl-paste --no-newline --type text 2>/dev/null | head -c 60001"]
+        });
+        reader.running = true;
+    }
+
+    function retryWith(model: string): void {
+        if (root.kind !== "ask" || root.streaming || root.turns.length < 2)
+            return;
+        const question = root.question;
+        const topic = root.topic;
+        const context = root.askContext;
+        root.oneShotModel = model;
+        root.turns = root.turns.slice(0, -2);
+        root.following = root.turns.length > 0;
+        root.ask(question, topic, context);
+    }
+
+    function cycleModel(): void {
+        root.retryWith(Logic.nextModel(root.models, root.usedModel));
+    }
+
+    function checkConnection(): void {
+        if (!root.enabled)
+            return;
+        root.checking = true;
+        root.checkNote = "checking";
+        root.checkAfterProbe = true;
+        checkTimeout.restart();
+        prober.running = true;
+    }
+
+    function continueCheck(): void {
+        if (!root.checking)
+            return;
+        if (root.agent) {
+            if (!root.tools[root.backend]) {
+                root.checking = false;
+                root.checkNote = `${root.agentInfo.name} is not installed`;
+                return;
+            }
+            if (signInChecker.running) {
+                root.checking = false;
+                root.checkNote = "still checking, try again in a moment";
+                return;
+            }
+            root.checkSignIn();
+            return;
+        }
+        if (!root.local && !root.key && !root.keyless) {
+            root.checking = false;
+            root.checkNote = "no API key yet";
+            return;
+        }
+        root.listedFor = "";
+        root.list();
+    }
+
+    function signOut(): void {
+        if (!root.agent || signOutRun.running)
+            return;
+        signOutRun.backend = root.backend;
+        signOutRun.command = ["timeout", "10"].concat(root.agentInfo.signOut);
+        signOutRun.running = true;
+    }
+
+    function signedOutDone(backend: string, code: int): void {
+        if (code !== 0) {
+            root.checkNote = code === 124 ? `${Logic.AGENTS[backend].name} did not answer in time` : `could not sign out of ${Logic.AGENTS[backend].name}`;
+            return;
+        }
+        root.setSignedIn(backend, false);
+        root.checkNote = `signed out of ${Logic.AGENTS[backend].name}`;
+    }
+
+    function contextRead(kind: string, text: string, question: string, topic: string): void {
+        if (!text.trim()) {
+            root.notify("content_paste_off", "Nothing to attach", kind === "selection" ? "Select some text first." : "The clipboard has no text.");
+            return;
+        }
+        root.ask(question, topic, {
+            kind: kind,
+            text: text
+        });
     }
 
     function rewrite(actionId: string, text: string, topic: string, inPlace: bool): void {
@@ -460,6 +610,8 @@ Singleton {
         root.inPlace = inPlace;
         root.actionId = actionId;
         root.origin = root.selectionOrigin;
+        root.askContext = null;
+        root.usedModel = root.model;
         root.sourceCut = text.length > Logic.SELECTION_LIMIT;
         root.source = text.slice(0, Logic.SELECTION_LIMIT);
         root.begin("rewrite", topic, action.label, Logic.rewritePrompt(action), [Logic.rewriteMessage(root.source)]);
@@ -492,12 +644,12 @@ Singleton {
                     ANTHROPIC_API_KEY: null,
                     PATH: root.agentPath
                 },
-                command: ["sh", "-c", "mkdir -p -- \"$1\" && cd -- \"$1\" && shift && exec \"$@\"", "sh", root.sessionDir].concat(Logic.agentCommand(root.backend, root.model, system))
+                command: ["sh", "-c", "mkdir -p -- \"$1\" && cd -- \"$1\" && shift && exec \"$@\"", "sh", root.sessionDir].concat(Logic.agentCommand(root.backend, root.usedModel || root.model, system, kind === "ask" && root.webFor(messages)))
             });
             root.talk.running = true;
             return;
         }
-        const request = Logic.chatRequest(root.backend, root.settingsFor(root.model), system, messages);
+        const request = Logic.chatRequest(root.backend, root.settingsFor(root.usedModel || root.model), system, messages);
         const wired = root.wire(request, "stream");
         root.talk = talking.createObject(root, {
             generation: root.generation,
@@ -563,6 +715,15 @@ Singleton {
             ]);
         if (root.inPlace)
             root.deliver();
+        else if (root.watching <= 0 && root.kind === "ask")
+            root.notifyFinished();
+    }
+
+    function notifyFinished(): void {
+        if (root.error)
+            root.notify("error", root.question, root.error);
+        else if (root.result)
+            root.notify("auto_awesome", root.question, Logic.snippet(root.result, 160));
     }
 
     function ended(generation: int): void {
@@ -591,6 +752,12 @@ Singleton {
         }
     }
 
+    function launcherClosed(): void {
+        if (root.streaming && root.kind === "ask")
+            return;
+        root.stop();
+    }
+
     function shownFor(text: string): bool {
         return root.kind !== "" && root.topic === text && (root.streaming || root.finished || !!root.error);
     }
@@ -601,6 +768,9 @@ Singleton {
 
     function newChat(): void {
         root.stop();
+        root.summary = "";
+        root.askContext = null;
+        root.oneShotModel = "";
         root.following = false;
         root.turns = [];
         root.kind = "";
@@ -614,6 +784,13 @@ Singleton {
         if (root.result)
             Clipboard.copy({
                 text: root.result
+            });
+    }
+
+    function copyChat(): void {
+        if (root.turns.length)
+            Clipboard.copy({
+                text: Logic.transcript(root.turns)
             });
     }
 
@@ -795,7 +972,11 @@ Singleton {
                 text.split("\n").filter(Boolean).forEach(tool => found[tool] = true);
                 root.tools = found;
                 root.probed = true;
-                root.checkSignIn();
+                if (root.checkAfterProbe) {
+                    root.checkAfterProbe = false;
+                    root.continueCheck();
+                } else
+                    root.checkSignIn();
             }
         }
     }
@@ -905,6 +1086,47 @@ Singleton {
                     Quickshell.execDetached(["notify-send", "-a", "banditshell", "-i", "text_select_start", "Nothing selected", "Select some text first."]);
             }
         }
+    }
+
+    Component {
+        id: contextRequest
+
+        Process {
+            id: reader
+
+            property string kind: ""
+            property string question: ""
+            property string topic: ""
+
+            stdout: StdioCollector {
+                onStreamFinished: root.contextRead(reader.kind, text, reader.question, reader.topic)
+            }
+
+            onRunningChanged: if (!reader.running)
+                reader.destroy(2000)
+        }
+    }
+
+    Timer {
+        id: checkTimeout
+
+        interval: 15000
+        onTriggered: if (root.checking) {
+            root.checking = false;
+            root.checkAfterProbe = false;
+            root.checkNote = "no answer, try again";
+        }
+    }
+
+    Process {
+        id: signOutRun
+
+        property string backend: ""
+
+        environment: ({
+                PATH: root.agentPath
+            })
+        onExited: code => root.signedOutDone(signOutRun.backend, code)
     }
 
     Process {
