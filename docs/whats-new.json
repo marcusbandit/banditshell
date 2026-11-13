@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-11-13-p835-snippets-quicklinks",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A key expands the snippet keyword you just typed, in any app"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Snippets can be pinned and duplicated"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Quicklinks show the site's icon and take up to three arguments"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Quicklinks can be duplicated and copy their name"
+        }
+      ]
+    },
+    {
       "id": "2026-11-13-p835-dictation",
       "date": "2026-11-13",
       "changes": [

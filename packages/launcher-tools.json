@@ -22,6 +22,8 @@
       "modules/launcher/sources/QuicklinkSource.qml",
       "modules/launcher/sources/ScriptSource.qml",
       "modules/launcher/sources/SnippetSource.qml",
+      "modules/launcher/snippets/SnippetsIpc.qml",
+      "modules/launcher/snippets/qmldir",
       "modules/launcher/sources/TimerSource.qml"
     ],
     "services": [
@@ -35,10 +37,12 @@
       "Pomodoro",
       "Projects",
       "ScriptCommands",
+      "SnippetExpander",
       "Snippets"
     ],
     "js": [
       "services/clipboard-page.js",
+      "services/copy-name.js",
       "services/colour-picks.js",
       "services/dev-utilities.js",
       "services/emoji-grid.js",
@@ -65,6 +69,7 @@
       "tests/launcher-latest-files.test.js",
       "tests/launcher-link-facts.test.js",
       "tests/launcher-power-tools.test.js",
+      "tests/launcher-snippets-quicklinks.test.js",
       "tests/launcher-typing.test.js",
       "tests/narrowing.test.js"
     ]
@@ -77,6 +82,7 @@
       "compositor",
       "core",
       "files",
+      "keyboard",
       "launcher",
       "notifications"
     ],
@@ -84,7 +90,9 @@
   },
   "provides": {
     "singletons": [],
-    "ipc": []
+    "ipc": [
+      "snippets"
+    ]
   },
   "config": {
     "namespace": [

@@ -76,8 +76,8 @@ const WIDGET_WHY = {
     walls: "A new wallpaper grows out from where you clicked.",
     battery: "Charge over the last day. The dashed lines are the hold point and the warning.",
     keys: "Click a key to change it in the pane.",
-    snippets: "Type a snippet's keyword or name in the launcher and press Enter to type it into the app you were in. {date}, {time} and {clipboard} fill in as it is typed; {cursor} is where the caret ends up.",
-    quicklinks: "Type a keyword, a space and what to look for. {query} in the address is where it goes.",
+    snippets: "Type a snippet's keyword or name in the launcher and press Enter to type it into the app you were in. {date}, {time} and {clipboard} fill in as it is typed; {cursor} is where the caret ends up. To expand a keyword typed in any app, bind a key to snippets.expand in Aliases and hotkeys, type the keyword and press it.",
+    quicklinks: "Type a keyword, a space and what to look for. {query} in the address is where it goes. Up to three different words in braces, like {from} and {to}, take a value each, in the order they first appear.",
     plugins: "A plugin is a folder in ~/.config/banditshell/plugins with a plugin.json and a program in any language. It adds rows to the launcher under its own word, and some to plain searches. It runs as you, so only add plugins you would run yourself."
 };
 

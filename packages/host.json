@@ -55,7 +55,8 @@
       "core",
       "compositor",
       "desktop",
-      "tour"
+      "tour",
+      "launcher-tools"
     ],
     "optional": []
   },

@@ -108,7 +108,7 @@ Column {
                 anchors.right: actions.left
                 anchors.rightMargin: Appearance.padding.normal
                 anchors.verticalCenter: parent.verticalCenter
-                text: form.problem || Quicklinks.resolve(form.draft.url, "cats")
+                text: form.problem || Quicklinks.resolve(form.draft.url, Quicklinks.sample(form.draft.url) || "cats")
                 color: form.problem ? Appearance.colour.alarm : Appearance.colour.textFaint
                 elide: Text.ElideMiddle
             }
