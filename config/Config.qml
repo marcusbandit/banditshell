@@ -448,6 +448,8 @@ Singleton {
                     lostMs: 5000
                 },
 
+                dictateToAsk: false,
+
                 typing: {
                     skinTone: "none",
 

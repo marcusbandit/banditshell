@@ -24,6 +24,6 @@
   },
   "config": {
     "namespace": ["launcher.ai"],
-    "reads": []
+    "reads": ["launcher.dictateToAsk"]
   }
 }

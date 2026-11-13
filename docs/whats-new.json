@@ -27,6 +27,27 @@
       ]
     },
     {
+      "id": "2026-11-13-p835-dictation",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Dictating with the launcher open turns what you said into an AI ask"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Dictation history can be deleted in one go"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Dictation's microphone, language and where text goes are in Settings"
+        }
+      ]
+    },
+    {
       "id": "2026-11-13-p835-ai",
       "date": "2026-11-13",
       "changes": [
