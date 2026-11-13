@@ -17,10 +17,18 @@ Item {
     property real atX: 0
     property real atY: 0
 
+    property int inner: -1
+    property bool deep: false
+    property int innerSelected: 0
+    property int pending: -1
+
+    readonly property var innerActions: root.inner >= 0 ? root.actions[root.inner]?.children ?? [] : []
+
     signal closed
 
     function popup(x: real, y: real, list: var, start: var): void {
         root.actions = list ?? [];
+        root.leave();
         if (!root.actions.length)
             return;
         const at = typeof start === "number" && start >= 0 ? start : -1;
@@ -29,7 +37,7 @@ Item {
         root.worn = at;
         root.selected = Math.max(0, Math.min(root.actions.length - 1, at));
 
-        marker.snap();
+        main.snap();
         root.open = true;
     }
 
@@ -37,6 +45,7 @@ Item {
         if (!root.open)
             return;
         root.open = false;
+        root.leave();
         root.closed();
     }
 
@@ -46,92 +55,153 @@ Item {
     }
 
     function move(delta: int): void {
-        root.choose(Math.max(0, Math.min(root.actions.length - 1, root.selected + delta)));
+        if (root.deep)
+            root.innerSelected = Math.max(0, Math.min(root.innerActions.length - 1, root.innerSelected + delta));
+        else
+            root.choose(Math.max(0, Math.min(root.actions.length - 1, root.selected + delta)));
     }
 
-    function activate(index: int): void {
-        const action = root.actions[index];
+    function nests(index: int): bool {
+        return !!root.actions[index]?.children?.length;
+    }
+
+    function enter(index: int): bool {
+        if (!root.nests(index))
+            return false;
+        root.selected = index;
+        if (root.inner !== index) {
+            root.inner = index;
+            root.innerSelected = 0;
+            sub.snap();
+        }
+        return true;
+    }
+
+    function leave(): void {
+        grace.stop();
+        root.pending = -1;
+        root.deep = false;
+        root.inner = -1;
+    }
+
+    function run(action: var): void {
         root.close();
         if (action?.run)
             action.run();
     }
 
+    function activate(index: int): void {
+        if (root.deep) {
+            root.run(root.innerActions[root.innerSelected]);
+            return;
+        }
+        if (root.enter(index)) {
+            root.deep = true;
+            return;
+        }
+        root.run(root.actions[index]);
+    }
+
+    function key(event: var): bool {
+        if (!root.open)
+            return false;
+        switch (event.key) {
+        case Qt.Key_Down:
+        case Qt.Key_Tab:
+            root.move(1);
+            return true;
+        case Qt.Key_Up:
+        case Qt.Key_Backtab:
+            root.move(-1);
+            return true;
+        case Qt.Key_Right:
+            if (!root.deep && root.enter(root.selected))
+                root.deep = true;
+            return true;
+        case Qt.Key_Left:
+            if (root.inner >= 0)
+                root.leave();
+            return true;
+        case Qt.Key_Return:
+        case Qt.Key_Enter:
+            root.activate(root.selected);
+            return true;
+        case Qt.Key_Escape:
+            if (root.inner >= 0)
+                root.leave();
+            else
+                root.close();
+            return true;
+        }
+        return false;
+    }
+
+    function hoverMain(index: int): void {
+        root.deep = false;
+        if (root.inner >= 0 && index !== root.inner) {
+            root.pending = index;
+            grace.restart();
+            return;
+        }
+        grace.stop();
+        root.choose(index);
+        root.enter(index);
+    }
+
+    function hoverInner(index: int): void {
+        grace.stop();
+        root.pending = -1;
+        root.selected = root.inner;
+        root.deep = true;
+        root.innerSelected = index;
+    }
+
+    Timer {
+        id: grace
+
+        interval: 250
+        onTriggered: {
+            const to = root.pending;
+            root.pending = -1;
+            if (to < 0)
+                return;
+            if (!root.enter(to))
+                root.inner = -1;
+            root.choose(to);
+        }
+    }
+
     property real zoom: 1
 
-    function headed(index: int): bool {
-        const action = root.actions[index];
-        return !!action && !!action.section && (index === 0 || root.actions[index - 1].section !== action.section);
-    }
-
-    function lead(index: int, split: real, head: real): real {
-        return (root.apart(index) && !root.headed(index) ? split : 0) + (root.headed(index) ? head : 0);
-    }
-
-    function leads(upTo: int, split: real, head: real): real {
-        let total = 0;
-        for (let i = 0; i <= upTo && i < root.actions.length; i++)
-            total += root.lead(i, split, head);
+    readonly property real plainRow: Math.max(Appearance.sizes.rowHeight, Appearance.font.iconSize + Appearance.padding.normal * 2)
+    readonly property real plainHeight: {
+        let total = Appearance.padding.small;
+        for (let i = 0; i < root.actions.length; i++)
+            total += root.plainRow + Appearance.padding.small + (main.apart(i) && !main.headed(i) ? Appearance.padding.small * 2 + 1 : 0) + (main.headed(i) ? Math.round(Appearance.font.size.small * 1.6) + Appearance.padding.small : 0);
         return total;
     }
-
-    readonly property real plainRow: Math.max(Appearance.sizes.rowHeight, Appearance.font.iconSize + Appearance.padding.normal * 2)
-    readonly property real plainHeight: root.actions.length * (root.plainRow + Appearance.padding.small) + root.leads(root.actions.length - 1, Appearance.padding.small * 2 + 1, Math.round(Appearance.font.size.small * 1.6) + Appearance.padding.small) + Appearance.padding.small
     readonly property real sized: Math.min(root.zoom, Math.max(1, (root.height - root.edge * 2) / Math.max(1, root.plainHeight)))
 
-    readonly property real gap: Math.round(Appearance.padding.small * root.sized)
-    readonly property real inset: Math.round(Appearance.padding.normal * root.sized)
-    readonly property int iconSize: Math.round(Appearance.font.iconSize * root.sized)
-    readonly property int textSize: Math.round(Appearance.font.size.small * root.sized)
-
-    readonly property real rowHeight: Math.max(Math.round(Appearance.sizes.rowHeight * root.sized), root.iconSize + root.inset * 2)
-    readonly property real step: root.rowHeight + root.gap
-    readonly property real split: root.gap * 2 + 1
-    readonly property real headRow: Math.round(root.textSize * 1.6) + root.gap
-
-    function apart(index: int): bool {
-        const action = root.actions[index];
-        return index > 0 && !!action && (!!action.apart || !!action.alarm !== !!root.actions[index - 1].alarm);
-    }
-
-    function rowTop(index: int): real {
-        return index * root.step + root.leads(index, root.split, root.headRow);
-    }
-
-    readonly property real rowWidth: Math.min(root.width - root.edge * 2 - root.gap * 2, root.inset * 3 + root.iconSize + measure.childrenRect.width)
-
-    readonly property real cellRadius: Math.round(Appearance.rounding.normal * root.sized)
-    readonly property real groupRadius: root.cellRadius + root.gap
-
     readonly property real edge: Appearance.padding.normal
-    readonly property real fullWidth: root.rowWidth + root.gap * 2
-    readonly property real fullHeight: root.rowTop(root.actions.length - 1) + root.rowHeight + root.gap * 2
 
-    readonly property bool flipX: root.atX + root.fullWidth > root.width - root.edge
-    readonly property bool flipY: root.atY + root.fullHeight > root.height - root.edge
-    readonly property real originX: Math.max(root.edge, Math.min(root.flipX ? root.atX - root.fullWidth : root.atX, root.width - root.edge - root.fullWidth))
-    readonly property real originY: Math.max(root.edge, Math.min(root.flipY ? root.atY - root.fullHeight : root.atY, root.height - root.edge - root.fullHeight))
+    readonly property bool flipX: root.atX + main.width > root.width - root.edge
+    readonly property bool flipY: root.atY + main.height > root.height - root.edge
+    readonly property real originX: Math.max(root.edge, Math.min(root.flipX ? root.atX - main.width : root.atX, root.width - root.edge - main.width))
+    readonly property real originY: Math.max(root.edge, Math.min(root.flipY ? root.atY - main.height : root.atY, root.height - root.edge - main.height))
 
-    Follow {
-        id: unroll
+    readonly property bool innerLeft: main.x + main.width + sub.width > root.width - root.edge && main.x - sub.width >= root.edge
 
-        target: root.open ? 1 : 0
-        speed: Appearance.animation.revealSpeed
-        epsilon: 0.001
-    }
-
-    Follow {
-        id: marker
-
-        speed: Appearance.animation.trackSpeed
-        target: root.rowTop(root.selected)
-    }
-
-    visible: unroll.value > 0.001
+    visible: root.open
 
     onOpenChanged: if (root.open)
         root.forceActiveFocus()
 
-    Keys.onEscapePressed: root.close()
+    Keys.onEscapePressed: {
+        if (root.inner >= 0)
+            root.leave();
+        else
+            root.close();
+    }
 
     MouseArea {
         anchors.fill: parent
@@ -141,198 +211,47 @@ Item {
         onPressed: root.close()
     }
 
-    Column {
-        id: measure
+    ActionMenu {
+        id: main
 
-        visible: false
+        x: root.originX
+        y: root.originY
+        width: implicitWidth
+        height: implicitHeight
 
-        Repeater {
-            model: root.actions
+        actions: root.actions
+        selected: root.selected
+        worn: root.worn
+        opened: root.inner
+        sized: root.sized
+        widest: root.width - root.edge * 2
 
-            Row {
-                required property var modelData
-
-                spacing: modelData.keys ? root.inset * 2 : 0
-
-                StyledText {
-                    text: parent.modelData.label
-                    font.pixelSize: root.textSize
-                }
-
-                StyledText {
-                    text: parent.modelData.keys ?? ""
-                    font.pixelSize: root.textSize
-                }
-            }
+        onHovered: index => root.hoverMain(index)
+        onClicked: index => {
+            root.choose(index);
+            root.deep = false;
+            root.activate(index);
         }
     }
 
-    Item {
-        id: sheet
+    ActionMenu {
+        id: sub
 
-        width: root.fullWidth
-        height: root.fullHeight * unroll.value
+        visible: root.inner >= 0
+        x: root.innerLeft ? main.x - width + main.gap : Math.min(main.x + main.width - main.gap, root.width - root.edge - width)
+        y: Math.max(root.edge, Math.min(main.y + main.rowTop(Math.max(0, root.inner)), root.height - root.edge - height))
+        width: implicitWidth
+        height: implicitHeight
 
-        x: root.originX + (root.flipX ? root.fullWidth - width : 0)
-        y: root.originY + (root.flipY ? root.fullHeight - height : 0)
+        actions: root.innerActions
+        selected: root.innerSelected
+        sized: root.sized
+        widest: root.width - root.edge * 2
 
-        clip: true
-
-        SquircleRect {
-            anchors.fill: parent
-            radius: root.groupRadius
-            color: Appearance.colour.surfaceSolid
-            stroke: Appearance.colour.separator
-            strokeWidth: Appearance.stroke.ring
-        }
-
-        SquircleRect {
-            x: root.gap
-            y: root.gap + marker.value
-            width: root.rowWidth
-            height: root.rowHeight
-            radius: root.cellRadius
-            color: Appearance.colour.fillStronger
-
-            SquircleRect {
-                anchors.fill: parent
-                radius: root.cellRadius
-                color: Appearance.colour.alarmFill
-                opacity: alarmShown.value
-
-                Follow {
-                    id: alarmShown
-
-                    target: root.actions[root.selected]?.alarm ? 1 : 0
-                    speed: Appearance.animation.trackSpeed
-                    epsilon: Appearance.animation.fadeEpsilon
-                }
-            }
-        }
-
-        Column {
-            x: root.gap
-            y: root.gap
-            spacing: root.gap
-
-            Repeater {
-                model: root.actions
-
-                delegate: Item {
-                    id: cell
-
-                    required property var modelData
-                    required property int index
-
-                    readonly property bool chosen: root.selected === cell.index
-                    readonly property bool worn: root.worn === cell.index
-
-                    readonly property real lead: root.lead(cell.index, root.split, root.headRow)
-                    readonly property bool headed: root.headed(cell.index)
-
-                    width: root.rowWidth
-                    height: root.rowHeight + cell.lead
-
-                    Separator {
-                        visible: cell.lead > 0 && !cell.headed && cell.index > 0
-                        width: parent.width
-                        y: (cell.lead - root.gap - height) / 2
-                    }
-
-                    StyledText {
-                        visible: cell.headed
-                        x: root.inset
-                        y: Math.round(root.gap / 2)
-                        text: cell.modelData.section ?? ""
-                        font.pixelSize: root.textSize
-                        color: Appearance.colour.textFaint
-                    }
-
-                    Item {
-                        y: cell.lead
-                        width: parent.width
-                        height: root.rowHeight
-
-                        Icon {
-                            id: mark
-
-                            opacity: cell.worn ? 0 : 1
-
-                            x: root.inset
-                            anchors.verticalCenter: parent.verticalCenter
-
-                            name: cell.modelData.icon
-                            size: root.iconSize
-                            color: markTone.value
-
-                            FollowColour {
-                                id: markTone
-
-                                target: cell.modelData.alarm ? Appearance.colour.alarm : cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
-                                speed: Appearance.animation.trackSpeed
-                            }
-                        }
-
-                        SquircleRect {
-                            visible: cell.worn
-
-                            anchors.centerIn: mark
-
-                            width: mark.width
-                            height: width
-                            pill: "object"
-                            color: Appearance.colour.accent
-                        }
-
-                        StyledText {
-                            id: keys
-
-                            anchors.right: parent.right
-                            anchors.rightMargin: root.inset
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: text !== ""
-                            text: cell.modelData.keys ?? ""
-                            font.pixelSize: root.textSize
-                            color: Appearance.colour.textFaint
-                        }
-
-                        StyledText {
-                            anchors.left: mark.right
-                            anchors.leftMargin: root.inset
-                            anchors.right: keys.visible ? keys.left : parent.right
-                            anchors.rightMargin: keys.visible ? root.inset * 2 : root.inset
-                            anchors.verticalCenter: parent.verticalCenter
-                            elide: Text.ElideRight
-
-                            text: cell.modelData.label
-                            font.pixelSize: root.textSize
-
-                            color: labelTone.value
-
-                            FollowColour {
-                                id: labelTone
-
-                                target: cell.modelData.alarm ? Appearance.colour.alarm : cell.worn || cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
-                                speed: Appearance.animation.trackSpeed
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        y: cell.lead
-                        width: parent.width
-                        height: root.rowHeight
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-
-                        onEntered: root.choose(cell.index)
-                        onClicked: {
-                            root.choose(cell.index);
-                            root.activate(cell.index);
-                        }
-                    }
-                }
-            }
+        onHovered: index => root.hoverInner(index)
+        onClicked: index => {
+            root.hoverInner(index);
+            root.run(root.innerActions[index]);
         }
     }
 }
