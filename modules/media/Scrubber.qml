@@ -9,6 +9,7 @@ Item {
     id: root
 
     property bool watched: true
+    property bool perPixel: false
 
     property color ink: Appearance.colour.text
 
@@ -47,9 +48,17 @@ Item {
     implicitHeight: root.band + Appearance.padding.small + elapsed.implicitHeight
 
     FrameAnimation {
-        running: root.watched && root.visible && Media.playing && root.timed
+        running: !root.perPixel && root.watched && root.visible && Media.playing && root.timed
 
         onTriggered: root.live = Media.progressNow()
+    }
+
+    Timer {
+        interval: Math.max(100, Math.min(1000, Media.length / root.travel / Media.rate * 1000))
+        repeat: true
+        triggeredOnStart: true
+        running: root.perPixel && root.watched && root.visible && Media.playing && root.timed
+        onTriggered: root.catchUp()
     }
 
     function catchUp(): void {
@@ -67,8 +76,7 @@ Item {
         enabled: root.watched
 
         function onPositionChanged(): void {
-            if (!Media.playing)
-                root.live = Media.progress;
+            root.live = Media.progressNow();
         }
 
         function onTrackKeyChanged(): void {
