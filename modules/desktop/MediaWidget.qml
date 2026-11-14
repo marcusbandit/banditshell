@@ -112,6 +112,7 @@ WidgetCard {
 
     Scrubber {
         width: parent.width
+        visible: Media.length > 0
         watched: root.running
         perPixel: true
     }
