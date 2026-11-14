@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-11-14-p859-desktop-media-progress",
+      "date": "2026-11-14",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The desktop Now playing bar moves while windows are open"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Now playing on the desktop shows times and drags to seek"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Pausing keeps the media bar where the song is"
+        }
+      ]
+    },
+    {
       "id": "2026-11-13-p855-grids-keep-column",
       "date": "2026-11-13",
       "changes": [
