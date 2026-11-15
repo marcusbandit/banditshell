@@ -62,6 +62,7 @@ singleton Lock 1.0 Lock.qml
 Lookup 1.0 Lookup.qml
 singleton Lyrics 1.0 Lyrics.qml
 singleton Media 1.0 Media.qml
+singleton Mixer 1.0 Mixer.qml
 singleton Modes 1.0 Modes.qml
 singleton Moments 1.0 Moments.qml
 singleton Monitors 1.0 Monitors.qml

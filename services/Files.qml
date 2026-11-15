@@ -1347,21 +1347,7 @@ Singleton {
     ]
 
     function installRules(): void {
-        if (!Compositor.isHyprland || !Hypr.parserKnown)
-            return;
-
-        const title = `^(${root.windowTitle})$`;
-
-        if (Hypr.lua) {
-            ruler.exec(["hyprctl", "eval", `hl.window_rule({ name = "${root.windowTitle}", match = { title = "${title}" }, ${root.rules.map(r => r.lua).join(", ")} })`]);
-            return;
-        }
-
-        ruler.exec(["hyprctl", "--batch", root.rules.map(r => `keyword windowrule ${r.legacy}, match:title ${title}`).join(" ; ")]);
-    }
-
-    Process {
-        id: ruler
+        Hypr.windowRule(root.windowTitle, root.rules);
     }
 
     Connections {

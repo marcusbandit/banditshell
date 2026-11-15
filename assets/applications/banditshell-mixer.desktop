@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Volume Mixer
+GenericName=Volume Mixer
+Comment=Which apps are making sound, and how loud
+Exec=banditshell panel mixer open
+Icon=multimedia-volume-control
+Terminal=false
+Categories=AudioVideo;Audio;Mixer;
+Keywords=mixer;volume;sound;audio;mute;apps;speakers;microphone;
+StartupNotify=false

@@ -9,6 +9,7 @@ import qs.modules.desktop
 import qs.modules.files
 import qs.modules.island
 import qs.modules.lock
+import qs.modules.mixer
 import qs.modules.pen
 import qs.modules.picker
 import qs.modules.tour
@@ -43,6 +44,8 @@ ShellRoot {
     LockScreen {}
 
     FilesWindow {}
+
+    MixerWindow {}
 
     PickerState {
         id: picker

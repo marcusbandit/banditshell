@@ -22,7 +22,10 @@ ShellRoot {
             anchors.fill: parent
             border: Appearance.sizes.border
 
-            Component.onCompleted: pinned = true
+            Component.onCompleted: {
+                pinned = true;
+                mixing = Quickshell.env("QUICKCONTROLS_MIXING") === "1";
+            }
         }
     }
 }

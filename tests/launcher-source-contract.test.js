@@ -9,7 +9,7 @@ const SEARCH = fs.readFileSync(path.join(ROOT, "modules/launcher/LauncherSearch.
 const DOC = fs.readFileSync(path.join(ROOT, "docs/architecture/launcher-sources.md"), "utf8");
 
 const ROWS = ["kinds", "groups", "activate", "actionsFor"];
-const OPTIONAL = ["intent", "alone", "caps", "commands", "prefixes", "phrases", "rowById", "complete", "confirmActionsFor", "listsWifi", "commandOf", "opening", "openPage"];
+const OPTIONAL = ["intent", "alone", "caps", "commands", "prefixes", "phrases", "rowById", "complete", "confirmActionsFor", "listsWifi", "commandOf", "opening", "openPage", "claimsApps"];
 const FUNCTIONS = ["activate", "actionsFor", "rowById", "complete", "confirmActionsFor", "commandOf", "openPage"];
 const CONTRACT = ["search"].concat(ROWS, OPTIONAL);
 

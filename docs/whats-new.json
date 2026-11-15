@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-11-15-mixer",
+      "date": "2026-11-15",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The volume mixer shows which apps are making sound, in a window"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Open it from the sound menu, or type mixer in the launcher"
+        }
+      ]
+    },
+    {
       "id": "2026-11-14-p859-desktop-media-progress",
       "date": "2026-11-14",
       "changes": [

@@ -20,6 +20,7 @@ KeysSource 1.0 KeysSource.qml
 LatestSource 1.0 LatestSource.qml
 LoremSource 1.0 LoremSource.qml
 MediaSource 1.0 MediaSource.qml
+MixerPage 1.0 MixerPage.qml
 MonitorSource 1.0 MonitorSource.qml
 NotesSource 1.0 NotesSource.qml
 NotificationSource 1.0 NotificationSource.qml
