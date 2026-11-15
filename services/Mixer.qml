@@ -109,8 +109,19 @@ Singleton {
         return Logic.mutedAll(root.streamsOf(app));
     }
 
+    function heardFor(app: var): var {
+        if (!app?.listening)
+            return root.heard;
+        const feed = root.deviceOf(app);
+        const out = {};
+        if (feed && root.heard[feed.id])
+            for (const n of app.nodes)
+                out[n.id] = true;
+        return out;
+    }
+
     function stateOf(app: var): string {
-        return Logic.state(root.streamsOf(app), root.heard, root.watching);
+        return Logic.state(root.streamsOf(app), root.heardFor(app), root.watching);
     }
 
     function titleOf(app: var): string {
@@ -125,6 +136,8 @@ Singleton {
     }
 
     function peakOf(app: var): real {
+        if (app?.listening)
+            return root.watchOf(root.deviceOf(app))?.monitor.peak ?? 0;
         let most = 0;
         for (const n of app?.nodes ?? [])
             most = Math.max(most, root.watchOf(n)?.monitor.peak ?? 0);
@@ -137,7 +150,7 @@ Singleton {
     }
 
     function nudge(app: var, steps: int): void {
-        root.setVolume(app, root.volumeOf(app) + steps * Config.values.volume.step / 100);
+        root.setVolume(app, root.volumeOf(app) + steps * Config.values.volume.step);
     }
 
     function setMuted(app: var, muted: bool): void {
@@ -197,11 +210,9 @@ Singleton {
         return node ? root.watches[node.id] ?? null : null;
     }
 
-    function recordsOutput(node: var): bool {
-        return Pipewire.linkGroups.values.some(g => g.target === node && !!g.source?.isSink);
-    }
+    readonly property var feeds: root.inputApps.map(a => root.deviceOf(a)).filter(Boolean)
 
-    readonly property var watched: root.watching ? [Audio.sink, Audio.source].filter(Boolean).concat(root.outputs, root.inputs.filter(n => !root.recordsOutput(n))).slice(0, 40) : []
+    readonly property var watched: root.watching ? [Audio.sink, Audio.source].concat(root.feeds).filter((n, i, all) => !!n && all.indexOf(n) === i).concat(root.outputs).slice(0, 40) : []
 
     Instantiator {
         model: ScriptModel {

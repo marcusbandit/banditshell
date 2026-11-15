@@ -4,5 +4,6 @@ MixerApp 1.0 MixerApp.qml
 MixerControls 1.0 MixerControls.qml
 MixerDevice 1.0 MixerDevice.qml
 MixerIpc 1.0 MixerIpc.qml
+MixerQuickRow 1.0 MixerQuickRow.qml
 MixerView 1.0 MixerView.qml
 MixerWindow 1.0 MixerWindow.qml

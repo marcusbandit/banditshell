@@ -12,7 +12,6 @@ Item {
     property bool muted: false
     property bool listening: false
     property real peak: 0
-    property bool metered: true
     property real span: 0
 
     signal moved(real value)
@@ -31,10 +30,10 @@ Item {
         width: Math.round(Math.max(Appearance.sizes.menuWidth * 0.45, root.span * 0.36))
         value: root.volume
         to: Math.max(root.most, root.volume)
-        step: Config.values.volume.step / 100
+        step: Config.values.volume.step
         dimmed: root.muted
         peak: root.peak
-        live: Mixer.watching && root.metered
+        live: Mixer.watching
         lit: root.listening ? Appearance.colour.warning : Appearance.colour.accent
         onMoved: v => root.moved(v)
     }

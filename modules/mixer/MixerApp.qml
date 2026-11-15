@@ -22,7 +22,6 @@ Item {
     readonly property bool muted: root.state === "muted"
     readonly property real volume: root.app ? Mixer.volumeOf(root.app) : 0
     readonly property real peak: root.app && Mixer.watching ? Mixer.peakOf(root.app) : 0
-    readonly property bool metered: !root.listening || !root.device?.isSink
     readonly property var device: root.app ? Mixer.deviceOf(root.app) : null
     readonly property string title: root.app ? Mixer.titleOf(root.app) : ""
 
@@ -222,7 +221,6 @@ Item {
             muted: root.muted
             listening: root.listening
             peak: root.peak
-            metered: root.metered
             onMoved: v => Mixer.setVolume(root.app, v)
             onToggled: root.toggle()
         }

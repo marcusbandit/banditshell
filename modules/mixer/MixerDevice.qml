@@ -30,7 +30,7 @@ Item {
     }
 
     function nudge(steps: int): void {
-        const v = root.volume + steps * Config.values.volume.step / 100;
+        const v = root.volume + steps * Config.values.volume.step;
         if (root.input)
             Audio.setSourceVolume(v);
         else

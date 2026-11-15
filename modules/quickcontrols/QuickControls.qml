@@ -1,9 +1,11 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.mixer
 
 Item {
     id: root
@@ -24,15 +26,33 @@ Item {
 
     readonly property real valueWidth: Appearance.sizes.screenValueWidth
 
-    readonly property real contentWidth: root.iconColumn + root.columnGap + root.sliderWidth + root.columnGap + root.valueWidth
+    readonly property real actionColumn: root.iconColumn
+
+    readonly property real contentWidth: root.iconColumn + root.columnGap + root.sliderWidth + root.columnGap + root.valueWidth + root.columnGap + root.actionColumn
 
     readonly property real panelWidth: root.contentWidth + Appearance.padding.large * 2
 
     readonly property real panelHeight: root.contentHeight + Appearance.padding.large * 2
 
-    readonly property int rowCount: Display.brightnessReady ? 3 : 2
+    readonly property real contentHeight: grow.value
 
-    readonly property real contentHeight: root.rowHeight * root.rowCount + root.rowGap * (root.rowCount - 1)
+    property bool mixing: false
+
+    onActiveChanged: if (!root.active)
+        root.mixing = false
+
+    onMixingChanged: Mixer.watch(root, root.mixing)
+
+    Component.onDestruction: Mixer.watch(root, false)
+
+    Follow {
+        id: grow
+
+        target: rows.implicitHeight
+        speed: Appearance.animation.resizeSpeed
+        epsilon: 0.5
+        startsAtTarget: true
+    }
 
     readonly property real rowHeight: Math.max(root.iconColumn, Appearance.sizes.sliderHeight * 2.2 * 1.35)
 
@@ -232,11 +252,105 @@ Item {
 
                 StyledText {
                     anchors.right: parent.right
+                    anchors.rightMargin: root.actionColumn + root.columnGap
                     anchors.verticalCenter: parent.verticalCenter
                     width: root.valueWidth
 
                     text: `${Math.round(Audio.volume * 100)}%`
                     color: Appearance.colour.textDim
+                }
+
+                Item {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: root.actionColumn
+                    height: root.actionColumn
+
+                    SquircleRect {
+                        anchors.centerIn: parent
+                        width: parent.width + Appearance.padding.small * 2
+                        height: width
+                        pill: "object"
+                        color: root.mixing ? Appearance.colour.accentFill : mixHover.hovered ? Appearance.colour.fill : "transparent"
+                    }
+
+                    Icon {
+                        anchors.centerIn: parent
+                        name: "tune"
+                        color: root.mixing ? Appearance.colour.accent : Appearance.colour.textDim
+                    }
+
+                    HoverHandler {
+                        id: mixHover
+
+                        cursorShape: Qt.PointingHandCursor
+                    }
+
+                    TapHandler {
+                        onTapped: root.mixing = !root.mixing
+                    }
+                }
+            }
+
+            Column {
+                id: mixerList
+
+                width: parent.width
+                visible: root.mixing
+                spacing: root.rowGap
+
+                Repeater {
+                    model: ScriptModel {
+                        values: root.mixing ? Mixer.outputApps.map(a => a.key) : []
+                    }
+
+                    delegate: MixerQuickRow {
+                        required property string modelData
+
+                        width: mixerList.width
+                        appKey: modelData
+                        iconColumn: root.iconColumn
+                        gap: root.columnGap
+                        sliderWidth: root.sliderWidth
+                        valueWidth: root.valueWidth
+                    }
+                }
+
+                StyledText {
+                    visible: !Mixer.outputApps.length
+                    x: root.iconColumn + root.columnGap
+                    text: "No app has sound open"
+                    color: Appearance.colour.textFaint
+                    font.pixelSize: Appearance.font.size.small
+                }
+
+                Item {
+                    width: parent.width
+                    height: openLabel.implicitHeight + Appearance.padding.small * 2
+
+                    StyledText {
+                        id: openLabel
+
+                        x: root.iconColumn + root.columnGap
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Open volume mixer"
+                        color: openHover.hovered ? Appearance.colour.text : Appearance.colour.accent
+                        font.pixelSize: Appearance.font.size.small
+
+                        HoverHandler {
+                            id: openHover
+
+                            cursorShape: Qt.PointingHandCursor
+                        }
+
+                        TapHandler {
+                            onTapped: {
+                                root.pinned = false;
+                                root.mixing = false;
+                                Mixer.show();
+                            }
+                        }
+                    }
                 }
             }
 
@@ -274,6 +388,7 @@ Item {
 
                 StyledText {
                     anchors.right: parent.right
+                    anchors.rightMargin: root.actionColumn + root.columnGap
                     anchors.verticalCenter: parent.verticalCenter
                     width: root.valueWidth
 
@@ -324,6 +439,7 @@ Item {
 
                 StyledText {
                     anchors.right: parent.right
+                    anchors.rightMargin: root.actionColumn + root.columnGap
                     anchors.verticalCenter: parent.verticalCenter
                     width: root.valueWidth
 
