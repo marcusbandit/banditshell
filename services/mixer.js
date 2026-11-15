@@ -1,7 +1,7 @@
 var HEARD = 0.001;
 var FLOOR_DB = -60;
 
-var PLAIN_TITLES = /^(?:-|playback|audio stream|audio|sound|output|input|capture|record(?:ing)?|alsa (?:playback|capture)|simple dsp|webrtc.*|.*\[.*\])$/i;
+var PLAIN_TITLES = /^(?:-|playback|audio stream|audio|sound|output|input|capture|record(?:ing)?|alsa (?:playback|capture)|pipewire alsa .*|simple dsp|webrtc.*)$/i;
 
 function text(value) {
     return value === undefined || value === null ? "" : String(value);
@@ -25,11 +25,13 @@ function identity(props) {
     var inner = wrapped(raw);
     var binary = text(p["application.process.binary"]) || inner;
     var name = inner || raw || text(p["node.description"]) || text(p["node.name"]) || binary || "Unknown app";
+    var named = !!raw && !inner && raw.toLowerCase() !== binary.toLowerCase();
+    var pid = named ? "" : text(p["application.process.id"]);
     return {
-        key: (binary || name).toLowerCase(),
+        key: [binary, name, pid].join("|").toLowerCase(),
         binary: binary,
         name: name,
-        named: !!raw && !inner && raw.toLowerCase() !== binary.toLowerCase()
+        named: named
     };
 }
 
@@ -62,18 +64,10 @@ function group(streams) {
                 binary: who.binary,
                 name: who.name,
                 named: who.named,
-                ids: [],
                 streams: []
             };
             order.push(app);
         }
-        if (!app.binary && who.binary)
-            app.binary = who.binary;
-        if (!app.named && who.named) {
-            app.name = who.name;
-            app.named = true;
-        }
-        app.ids.push(s.id);
         app.streams.push(s);
     }
     return order;
@@ -106,12 +100,14 @@ function mutedAll(streams) {
 function state(streams, heard, watching) {
     if (!streams.length)
         return "gone";
+    if (mutedAll(streams))
+        return "muted";
     var audible = [];
     for (var i = 0; i < streams.length; i++)
         if (!streams[i].muted && (streams[i].volume || 0) > 0)
             audible.push(streams[i]);
     if (!audible.length)
-        return "muted";
+        return "silent";
     var paused = true;
     for (var j = 0; j < audible.length; j++) {
         if (watching && heard[audible[j].id])
@@ -186,10 +182,6 @@ function meter(peak) {
         return 0;
     var db = 20 * Math.log(p) / Math.LN10;
     return Math.max(0, Math.min(1, (db - FLOOR_DB) / -FLOOR_DB));
-}
-
-function heardNow(peak) {
-    return (Number(peak) || 0) > HEARD;
 }
 
 function percent(v) {

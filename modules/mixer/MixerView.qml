@@ -36,7 +36,9 @@ Item {
     readonly property var entries: (root.filtering ? [] : ["device:out", "device:in"]).concat(root.outputKeys.map(k => `out:${k}`), root.inputKeys.map(k => `in:${k}`))
 
     property string selectedKey: ""
-    readonly property int selected: Math.max(0, root.entries.indexOf(root.selectedKey))
+    property bool showsSelection: true
+    readonly property int fallback: Math.max(0, root.entries.findIndex(k => k.startsWith("out:")))
+    readonly property int selected: root.entries.indexOf(root.selectedKey) >= 0 ? root.entries.indexOf(root.selectedKey) : root.fallback
     readonly property string current: root.entries[root.selected] ?? ""
 
     function pick(key: string): void {
@@ -90,7 +92,14 @@ Item {
     }
 
     function claimKey(event: var): bool {
-        const mods = event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier);
+        const claimed = root.handleKey(event);
+        if (claimed)
+            root.showsSelection = true;
+        return claimed;
+    }
+
+    function handleKey(event: var): bool {
+        const mods = event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier | Qt.ShiftModifier);
         if (mods)
             return false;
         switch (event.key) {
@@ -166,7 +175,7 @@ Item {
                 readonly property string entryKey: ""
 
                 visible: !root.filtering
-                text: "DEVICES"
+                text: "Devices"
             }
 
             MixerDevice {
@@ -174,7 +183,7 @@ Item {
 
                 visible: !root.filtering
                 width: parent.width
-                selected: root.current === entryKey
+                selected: root.showsSelection && root.current === entryKey
                 onPicked: root.pick(entryKey)
                 onAsks: (item, actions, x, y) => root.asks(item, actions, x, y)
             }
@@ -185,7 +194,7 @@ Item {
                 visible: !root.filtering
                 width: parent.width
                 input: true
-                selected: root.current === entryKey
+                selected: root.showsSelection && root.current === entryKey
                 onPicked: root.pick(entryKey)
                 onAsks: (item, actions, x, y) => root.asks(item, actions, x, y)
             }
@@ -193,7 +202,7 @@ Item {
             Heading {
                 readonly property string entryKey: ""
 
-                text: "APPS"
+                text: "Playing"
             }
 
             StyledText {
@@ -204,7 +213,7 @@ Item {
                 leftPadding: Appearance.padding.card
                 topPadding: Appearance.padding.small
                 bottomPadding: Appearance.padding.normal
-                text: root.filtering ? "No app matches" : "No app is playing anything"
+                text: root.filtering ? "No app matches" : "No app has sound open"
                 color: Appearance.colour.textFaint
                 font.pixelSize: Appearance.font.size.normal
             }
@@ -221,7 +230,7 @@ Item {
 
                     width: rows.width
                     appKey: modelData
-                    selected: root.current === entryKey
+                    selected: root.showsSelection && root.current === entryKey
                     onPicked: root.pick(entryKey)
                     onAsks: (item, actions, x, y) => root.asks(item, actions, x, y)
                 }
@@ -231,7 +240,7 @@ Item {
                 readonly property string entryKey: ""
 
                 visible: root.inputKeys.length > 0
-                text: "LISTENING"
+                text: "Recording"
             }
 
             Repeater {
@@ -247,7 +256,7 @@ Item {
                     width: rows.width
                     appKey: modelData
                     listening: true
-                    selected: root.current === entryKey
+                    selected: root.showsSelection && root.current === entryKey
                     onPicked: root.pick(entryKey)
                     onAsks: (item, actions, x, y) => root.asks(item, actions, x, y)
                 }

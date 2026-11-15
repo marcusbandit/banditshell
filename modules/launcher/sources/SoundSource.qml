@@ -18,7 +18,7 @@ QtObject {
 
     readonly property var kinds: ["stream", "appmute", "mixerpage"]
 
-    readonly property var claimsApps: ["banditshell-mixer"]
+    readonly property var claimsApps: root.rows.some(r => r.kind === "mixerpage") ? ["banditshell-mixer"] : []
 
     readonly property var pageAsk: /^\s*(?:sound |volume |audio )?mixer(\s+(.*))?$/i.exec(root.search.query ?? "")
 
@@ -47,14 +47,14 @@ QtObject {
     }
 
     function mixerRow(): var {
-        const score = root.mixer || root.pageAsk ? Infinity : Math.max(Ranking.place("mixer", root.text), Ranking.place("sound mixer volume mixer audio apps", root.text) - 0.5);
+        const score = root.pageAsk ? Infinity : root.mixer ? 0.9 : Math.max(Ranking.place("mixer", root.text), Ranking.place("sound mixer volume mixer audio apps", root.text) - 0.5);
         if (score <= 0)
             return null;
         return {
             key: "mixerpage",
             kind: "mixerpage",
             label: "Mixer",
-            detail: Mixer.summary,
+            detail: Mixer.summaryNow(),
             icon: "tune",
             score: score
         };
@@ -148,7 +148,8 @@ QtObject {
         const master = root.masterRow();
         const streams = root.masterLevel >= 0 ? [] : Audio.playing.map(node => root.streamRow(node)).filter(Boolean).sort((a, b) => b.score - a.score);
         const app = root.appMuteRow();
-        return (page ? [page] : []).concat(master ? [master] : [], streams, app ? [app] : []);
+        const lead = page && page.score === Infinity;
+        return (lead ? [page] : []).concat(master ? [master] : [], page && !lead ? [page] : [], streams, app ? [app] : []);
     }
 
     function activate(row: var): void {

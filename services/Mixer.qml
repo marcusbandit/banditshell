@@ -43,14 +43,15 @@ Singleton {
             root.viewers = root.viewers.filter(v => v !== viewer);
     }
 
-    readonly property var outputs: Audio.playing.filter(n => !Logic.isPlumbing(n.properties))
-    readonly property var inputs: Audio.recording.filter(n => !Logic.isPlumbing(n.properties))
+    function shownOf(nodes: var): var {
+        return nodes.filter(n => !Logic.isPlumbing(n.properties));
+    }
+
+    readonly property var outputs: root.watching ? root.shownOf(Audio.playing) : []
+    readonly property var inputs: root.watching ? root.shownOf(Audio.recording) : []
 
     readonly property var outputApps: root.appsOf(root.outputs, false)
     readonly property var inputApps: root.appsOf(root.inputs, true)
-
-    readonly property string outputOrder: root.outputApps.map(a => a.key).join("\n")
-    readonly property string inputOrder: root.inputApps.map(a => a.key).join("\n")
 
     readonly property var outputByKey: root.keyed(root.outputApps)
     readonly property var inputByKey: root.keyed(root.inputApps)
@@ -148,15 +149,11 @@ Singleton {
             return null;
         const groups = Pipewire.linkGroups.values;
         if (app.listening) {
-            const feed = groups.find(g => g.target === node);
+            const feed = groups.find(g => g.target === node && g.source && !g.source.isStream);
             return feed?.source ?? null;
         }
-        const out = groups.find(g => g.source === node);
+        const out = groups.find(g => g.source === node && g.target?.isSink && !g.target.isStream);
         return out?.target ?? null;
-    }
-
-    function hearsOutput(app: var): bool {
-        return !!root.deviceOf(app)?.isSink;
     }
 
     function route(app: var, sink: var): void {
@@ -166,7 +163,15 @@ Singleton {
 
     readonly property var soundingApps: root.outputApps.filter(a => root.stateOf(a) === "sound")
     readonly property string headline: Logic.headline(root.soundingApps.map(a => a.display), root.outputApps.length)
-    readonly property string summary: Logic.summary(root.outputApps.map(a => root.stateOf(a)))
+
+    function summaryNow(): string {
+        return Logic.summary(root.appsOf(root.shownOf(Audio.playing), false).map(a => root.stateOf(a)));
+    }
+
+    function statusLine(): string {
+        const line = apps => apps.map(a => `${a.display}=${root.stateOf(a)}`).join(",");
+        return `open=${root.windowOpen} watching=${root.watching} apps=[${line(root.appsOf(root.shownOf(Audio.playing), false))}] listening=[${line(root.appsOf(root.shownOf(Audio.recording), true))}]`;
+    }
 
     property var heard: ({})
 
@@ -187,7 +192,11 @@ Singleton {
         return node ? root.watches[node.id] ?? null : null;
     }
 
-    readonly property var watched: root.watching ? [Audio.sink, Audio.source].filter(Boolean).concat(root.outputs, root.inputs).slice(0, 40) : []
+    function recordsOutput(node: var): bool {
+        return Pipewire.linkGroups.values.some(g => g.target === node && !!g.source?.isSink);
+    }
+
+    readonly property var watched: root.watching ? [Audio.sink, Audio.source].filter(Boolean).concat(root.outputs, root.inputs.filter(n => !root.recordsOutput(n))).slice(0, 40) : []
 
     Instantiator {
         model: ScriptModel {
@@ -204,12 +213,17 @@ Singleton {
             readonly property PwNodePeakMonitor monitor: PwNodePeakMonitor {
                 node: watch.modelData
                 enabled: root.watching
+
+                onPeakChanged: watch.heardNow(watch.monitor.peak > Logic.HEARD)
             }
 
-            readonly property bool loud: Logic.heardNow(watch.monitor.peak)
+            property bool loud: false
 
-            onLoudChanged: {
-                if (watch.loud) {
+            function heardNow(now: bool): void {
+                if (now === watch.loud)
+                    return;
+                watch.loud = now;
+                if (now) {
                     watch.quiet.stop();
                     root.hear(watch.nodeId, true);
                 } else {

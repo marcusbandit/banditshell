@@ -20,8 +20,6 @@ IpcHandler {
     }
 
     function status(): string {
-        const apps = Mixer.outputApps.map(a => `${a.display}=${Mixer.stateOf(a)}`).join(",");
-        const listening = Mixer.inputApps.map(a => `${a.display}=${Mixer.stateOf(a)}`).join(",");
-        return `open=${Mixer.windowOpen} watching=${Mixer.watching} apps=[${apps}] listening=[${listening}]`;
+        return Mixer.statusLine();
     }
 }

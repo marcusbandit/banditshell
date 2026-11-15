@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import qs.config
 import qs.components
 import qs.services
@@ -45,21 +44,10 @@ FloatingWindow {
     ]
 
     function installRules(): void {
-        if (!Compositor.isHyprland || !Hypr.parserKnown)
-            return;
-        const title = `^(${win.windowTitle})$`;
-        if (Hypr.lua) {
-            ruler.exec(["hyprctl", "eval", `hl.window_rule({ name = "${win.windowTitle}", match = { title = "${title}" }, ${win.rules.map(r => r.lua).join(", ")} })`]);
-            return;
-        }
-        ruler.exec(["hyprctl", "--batch", win.rules.map(r => `keyword windowrule ${r.legacy}, match:title ${title}`).join(" ; ")]);
+        Hypr.windowRule(win.windowTitle, win.rules);
     }
 
     Component.onCompleted: win.installRules()
-
-    Process {
-        id: ruler
-    }
 
     Connections {
         target: Hypr
@@ -99,6 +87,7 @@ FloatingWindow {
             anchors.fill: parent
             anchors.margins: Appearance.padding.large
             live: win.visible
+            showsSelection: false
 
             onAsks: (item, actions, x, y) => {
                 const at = item.mapToItem(sheet, x, y);

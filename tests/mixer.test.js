@@ -19,22 +19,35 @@ test("two browser tabs are one app, keyed by the binary", () => {
         stream(2, { "application.name": "Zen", "application.process.binary": "zen-bin", "media.name": "Another tab" }),
         stream(3, { "application.name": "Spotify", "media.name": "Spotify" })
     ]);
-    assert.deepStrictEqual(apps.map(a => [a.key, a.ids]), [["zen-bin", [1, 2]], ["spotify", [3]]]);
+    assert.deepStrictEqual(apps.map(a => a.streams.map(st => st.id)), [[1, 2], [3]]);
     assert.strictEqual(apps[0].name, "Zen");
     assert.strictEqual(apps[0].named, true);
 });
 
 test("an ALSA client is named after the program inside the brackets", () => {
     const who = M.identity({ "application.name": "PipeWire ALSA [python3.12]" });
-    assert.deepStrictEqual(who, { key: "python3.12", binary: "python3.12", name: "python3.12", named: false });
+    assert.strictEqual(who.name, "python3.12");
+    assert.strictEqual(who.binary, "python3.12");
+    assert.strictEqual(who.named, false);
 });
 
 test("an app whose name is its binary asks the desktop entry for a name", () => {
     assert.strictEqual(M.identity({ "application.name": "vesktop", "application.process.binary": "vesktop" }).named, false);
 });
 
+test("two programs on one runtime stay two apps", () => {
+    const apps = M.group([
+        stream(1, { "application.name": "Signal", "application.process.binary": "electron" }),
+        stream(2, { "application.name": "Obsidian", "application.process.binary": "electron" }),
+        stream(3, { "application.name": "PipeWire ALSA [python3.12]", "application.process.id": "10" }),
+        stream(4, { "application.name": "PipeWire ALSA [python3.12]", "application.process.id": "20" })
+    ]);
+    assert.strictEqual(apps.length, 4);
+});
+
 test("tab titles show, stock stream names do not", () => {
     assert.strictEqual(M.title({ "media.name": "Some video - YouTube" }, "Zen"), "Some video - YouTube");
+    assert.strictEqual(M.title({ "media.name": "Song [Official Video]" }, "Zen"), "Song [Official Video]");
     for (const plain of ["Playback", "ALSA Capture", "-", "Spotify", "audio stream", "Simple DSP"])
         assert.strictEqual(M.title({ "media.name": plain, "application.name": "Spotify" }, "Spotify"), "", plain);
 });
@@ -57,7 +70,7 @@ test("an app is making sound only while it is heard and audible", () => {
     assert.strictEqual(M.state(s, { 7: true }, true), "sound");
     assert.strictEqual(M.state(s, {}, true), "silent");
     assert.strictEqual(M.state([stream(7, {}, { muted: true })], { 7: true }, true), "muted");
-    assert.strictEqual(M.state([stream(7, {}, { volume: 0 })], {}, true), "muted");
+    assert.strictEqual(M.state([stream(7, {}, { volume: 0 })], { 7: true }, true), "silent");
     assert.strictEqual(M.state([stream(7, { "pulse.corked": "true" })], {}, true), "paused");
 });
 
@@ -69,6 +82,7 @@ test("one loud tab makes the whole app count as making sound", () => {
 test("a muted tab does not count, even if its meter moved", () => {
     const s = [stream(1, {}, { muted: true }), stream(2, { "pulse.corked": "true" })];
     assert.strictEqual(M.state(s, { 1: true }, true), "paused");
+    assert.strictEqual(M.state([stream(1, {}, { muted: true }), stream(2, {}, { volume: 0 })], {}, true), "silent");
 });
 
 test("without meters running nothing claims to be silent", () => {

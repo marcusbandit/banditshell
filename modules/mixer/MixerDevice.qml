@@ -4,7 +4,6 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
-import "../../services/mixer.js" as Logic
 
 Item {
     id: root
@@ -69,13 +68,13 @@ Item {
     function chooseDevice(): void {
         const acts = root.deviceActions();
         if (acts.length > 1)
-            root.asks(deviceButton, acts, 0, deviceButton.height);
+            root.asks(picker, acts, 0, picker.height);
     }
 
     SquircleRect {
         anchors.fill: parent
         radius: Appearance.rounding.normal
-        color: root.selected ? Appearance.colour.fillStrong : hover.hovered ? Appearance.colour.fill : "transparent"
+        color: root.selected ? Appearance.colour.fill : hover.hovered ? Appearance.colour.tile : "transparent"
     }
 
     HoverHandler {
@@ -86,16 +85,18 @@ Item {
         onTapped: root.picked()
     }
 
+    readonly property bool picks: root.choices.length > 1
+
     Icon {
         id: mark
 
         anchors.left: parent.left
         anchors.leftMargin: Appearance.padding.card
         anchors.verticalCenter: parent.verticalCenter
-        width: Math.round(Appearance.font.iconSize * 1.6)
+        width: Math.round(Appearance.font.iconSize * 1.5)
         name: root.muted ? (root.input ? "mic_off" : "no_sound") : root.node ? Audio.deviceIcon(root.node) : root.input ? "mic" : "speaker"
-        size: Math.round(Appearance.font.iconSize * 1.3)
-        color: root.muted ? Appearance.colour.alarm : Appearance.colour.text
+        size: Math.round(Appearance.font.iconSize * 1.2)
+        color: root.muted ? Appearance.colour.alarm : Appearance.colour.textDim
     }
 
     Column {
@@ -103,114 +104,71 @@ Item {
 
         anchors.left: mark.right
         anchors.leftMargin: Appearance.padding.large
-        anchors.right: level.left
-        anchors.rightMargin: Appearance.padding.large
+        anchors.right: controls.left
+        anchors.rightMargin: Appearance.padding.huge
         anchors.verticalCenter: parent.verticalCenter
         spacing: Appearance.padding.hair
 
-        StyledText {
-            width: parent.width
-            text: root.node ? Audio.deviceLabel(root.node) : root.input ? "No microphone" : "No output"
-            color: Appearance.colour.text
-            font.pixelSize: Appearance.font.size.normal
-            elide: Text.ElideRight
+        Row {
+            id: picker
+
+            spacing: Appearance.padding.hair
+
+            StyledText {
+                width: Math.max(0, Math.min(implicitWidth, words.width - (chevron.visible ? chevron.width + picker.spacing : 0)))
+                text: root.node ? Audio.deviceLabel(root.node) : root.input ? "No microphone" : "No output"
+                color: Appearance.colour.text
+                font.pixelSize: Appearance.font.size.normal
+                elide: Text.ElideRight
+            }
+
+            Icon {
+                id: chevron
+
+                anchors.verticalCenter: parent.verticalCenter
+                visible: root.picks
+                name: "expand_more"
+                size: Appearance.icon.small
+                color: pickHover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+            }
+
+            HoverHandler {
+                id: pickHover
+
+                enabled: root.picks
+                cursorShape: Qt.PointingHandCursor
+            }
+
+            TapHandler {
+                enabled: root.picks
+                onTapped: root.chooseDevice()
+            }
         }
 
         StyledText {
             width: parent.width
-            text: [root.input ? "Input" : "Output", root.muted ? "muted" : root.node ? Audio.deviceTransport(root.node) : ""].filter(Boolean).join(" · ")
+            text: root.muted ? "Muted" : [root.input ? "Input" : "Output", root.node ? Audio.deviceTransport(root.node) : ""].filter(Boolean).join(", ")
             color: root.muted ? Appearance.colour.alarm : Appearance.colour.textFaint
             font.pixelSize: Appearance.font.size.small
             elide: Text.ElideRight
         }
     }
 
-    Item {
-        id: level
+    MixerControls {
+        id: controls
 
-        anchors.right: readout.left
-        anchors.rightMargin: Appearance.padding.normal
-        anchors.verticalCenter: parent.verticalCenter
-
-        width: Math.round(Math.max(Appearance.sizes.menuWidth * 0.4, root.width * 0.22))
-        height: bar.implicitHeight
-
-        Slider {
-            id: bar
-
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-
-            enabled: !!root.node
-            value: root.volume
-            to: Math.max(root.input ? 1 : Audio.maxVolume, root.volume)
-            warnAbove: 1
-            step: Config.values.volume.step / 100
-            dimmed: root.muted
-            onMoved: v => root.input ? Audio.setSourceVolume(v) : Audio.setVolume(v)
-        }
-
-        LevelMeter {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.leftMargin: bar.beadSize / 2
-            anchors.rightMargin: bar.beadSize / 2
-            anchors.top: bar.verticalCenter
-            anchors.topMargin: bar.beadSize / 2 + Appearance.padding.hair
-            peak: root.peak
-            live: Mixer.watching && !root.muted
-            color: root.input ? Appearance.colour.warning : Appearance.colour.accent
-        }
-    }
-
-    StyledText {
-        id: readout
-
-        anchors.right: deviceButton.left
-        anchors.rightMargin: Appearance.padding.normal
-        anchors.verticalCenter: parent.verticalCenter
-
-        width: metrics.width
-        horizontalAlignment: Text.AlignRight
-        text: Logic.percent(root.volume)
-        color: root.muted ? Appearance.colour.textFaint : Appearance.colour.textDim
-        font.pixelSize: Appearance.font.size.small
-    }
-
-    TextMetrics {
-        id: metrics
-
-        font.family: Appearance.font.family
-        font.pixelSize: Appearance.font.size.small
-        text: "150%"
-    }
-
-    Button {
-        id: deviceButton
-
-        anchors.right: muteButton.left
-        anchors.rightMargin: Appearance.padding.small
-        anchors.verticalCenter: parent.verticalCenter
-
-        style: "bare"
-        icon: "swap_horiz"
-        interactive: root.choices.length > 1
-        opacity: root.choices.length > 1 ? 1 : 0
-        onClicked: root.chooseDevice()
-    }
-
-    Button {
-        id: muteButton
-
+        span: root.width
         anchors.right: parent.right
         anchors.rightMargin: Appearance.padding.card
         anchors.verticalCenter: parent.verticalCenter
 
-        style: root.muted ? "plate" : "bare"
-        alarm: root.muted
         enabled: !!root.node
-        icon: root.input ? (root.muted ? "mic_off" : "mic") : root.muted ? "volume_off" : "volume_up"
-        onClicked: root.toggle()
+        volume: root.volume
+        most: root.input ? 1 : Audio.maxVolume
+        muted: root.muted
+        listening: root.input
+        peak: root.peak
+        onMoved: v => root.input ? Audio.setSourceVolume(v) : Audio.setVolume(v)
+        onToggled: root.toggle()
     }
 }

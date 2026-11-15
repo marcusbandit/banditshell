@@ -36,6 +36,7 @@ ShellRoot {
 
                 anchors.fill: parent
                 anchors.margins: Appearance.padding.large
+                showsSelection: root.pick > 0
             }
         }
     }

@@ -205,6 +205,16 @@ Singleton {
         }
     }
 
+    function windowRule(title: string, rules: var): void {
+        if (!Compositor.isHyprland || !root.parserKnown)
+            return;
+        const match = `^(${title})$`;
+        if (root.lua)
+            Quickshell.execDetached(["hyprctl", "eval", `hl.window_rule({ name = "${title}", match = { title = "${match}" }, ${rules.map(r => r.lua).join(", ")} })`]);
+        else
+            Quickshell.execDetached(["hyprctl", "--batch", rules.map(r => `keyword windowrule ${r.legacy}, match:title ${match}`).join(" ; ")]);
+    }
+
     function toggleSpecial(name: string): void {
         const bare = name.startsWith("special:") ? name.slice(8) : name;
         root.send(`hl.dsp.workspace.toggle_special("${bare}")`, `togglespecialworkspace ${bare}`);
