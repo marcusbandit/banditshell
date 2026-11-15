@@ -429,14 +429,14 @@ esac
     return { QS_LIST: instance(process.pid), QS_REPLY: reply, QS_FAIL_ON: failOn, QS_LOG_LINES: logLines };
 }
 
-test("panel close is one closeAll call and the two things no window owns", () => {
+test("panel close is one closeAll call and the three things no window owns", () => {
     const stub = stubs();
     const env = recordingQuickshell(stub);
     const run = cli(["panel", "close"], { stub, env });
     assert.strictEqual(run.code, 0, run.err);
     assert.strictEqual(run.out, "closed everything\n");
     const calls = run.calls.filter(c => c.startsWith("qs ipc"));
-    assert.deepStrictEqual(calls.map(c => c.replace(/^qs ipc (--pid \d+|-p \S+) call /, "")), ["panels closeAll", "files close", "penmap cancel"]);
+    assert.deepStrictEqual(calls.map(c => c.replace(/^qs ipc (--pid \d+|-p \S+) call /, "")), ["panels closeAll", "files close", "mixer close", "penmap cancel"]);
 });
 
 test("panel close falls back on the old loop when the shell does not know closeAll", () => {

@@ -8,6 +8,8 @@
 #                                one panel; bare, whether it is open
 #   banditshell panel files [toggle|open] [dir]
 #                                the file browser, in a folder
+#   banditshell panel mixer [toggle|open|close|status]
+#                                the mixer window: which apps are making sound
 #   banditshell panel settings open [page] [screen]
 #   banditshell panel settings page <page>
 #                                settings on a page, or another page while it
@@ -37,7 +39,8 @@
 #                                the history is a launcher mode: open and toggle
 #                                show the launcher on notifications
 #   <panel>: launcher|session|clipboard|media|calculator|quickcontrols
-#            keyboard|settings|notifications|island|hotkeys|files|wallpaper
+#            keyboard|settings|notifications|island|hotkeys|files|mixer
+#            wallpaper
 #                                and every menu; banditshell panel lists them all
 #
 # launcher                       rows any tool adds to the launcher, no plugin needed
@@ -449,7 +452,7 @@ UPDATE_STATE="$STATE_ROOT/update"
 CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json"
 HEALTH_WAIT="${BANDITSHELL_HEALTH_WAIT:-8}"
 HEALTH_SCAN="${BANDITSHELL_HEALTH_SCAN:-3}"
-SURFACES=(launcher session clipboard media calculator quickcontrols keyboard settings notifications island hotkeys files wallpaper)
+SURFACES=(launcher session clipboard media calculator quickcontrols keyboard settings notifications island hotkeys files mixer wallpaper)
 HELPERS=(bs-pty bs-ls bs-gamma)
 IPC_LIMIT="${BANDITSHELL_IPC_LIMIT:-10}"
 HANG_DIR="$STATE_DIR/hangs"
@@ -1504,7 +1507,7 @@ panel_status_takes_screen() { case "$1" in keyboard | notifications | island | h
 toggle_panel() {
     local name="$1" rest="${2:-}"
     case "$name" in
-    launcher | session | clipboard | media | calculator | quickcontrols | settings) ipc "$name" toggle ;;
+    launcher | session | clipboard | media | calculator | quickcontrols | settings | mixer) ipc "$name" toggle ;;
     keyboard | notifications | island | hotkeys | files) ipc "$name" toggle "$rest" ;;
     wallpaper) ipc wallpapers toggle "$rest" ;;
     *) ipc menu toggle "$name" "$rest" ;;
@@ -1516,7 +1519,7 @@ open_panel() {
     shift
     case "$name" in
     launcher) ipc launcher open "$*" ;;
-    session | clipboard | media | calculator | quickcontrols) ipc "$name" open ;;
+    session | clipboard | media | calculator | quickcontrols | mixer) ipc "$name" open ;;
     keyboard | notifications | island | hotkeys | files) ipc "$name" open "${1:-}" ;;
     settings) ipc settings open "${1:-}" "${2:-}" ;;
     wallpaper) ipc wallpapers open "${1:-}" ;;
@@ -1528,7 +1531,7 @@ close_call() {
     case "$1" in
     wallpaper) call=(wallpapers close) ;;
     penmap) call=(penmap cancel) ;;
-    launcher | session | clipboard | media | calculator | quickcontrols | keyboard | settings | notifications | island | hotkeys | files | picker) call=("$1" close) ;;
+    launcher | session | clipboard | media | calculator | quickcontrols | keyboard | settings | notifications | island | hotkeys | files | mixer | picker) call=("$1" close) ;;
     *) call=(menu close) ;;
     esac
 }
@@ -1544,6 +1547,7 @@ close_everything() {
     local name closed=0
     if ipc_quiet panels closeAll >/dev/null; then
         ipc_quiet files close >/dev/null || true
+        ipc_quiet mixer close >/dev/null || true
         ipc_quiet penmap cancel >/dev/null || true
         echo "closed everything"
         return 0

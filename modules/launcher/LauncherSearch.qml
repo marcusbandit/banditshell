@@ -1011,8 +1011,11 @@ QtObject {
         };
     }
 
+    readonly property var claimedApps: root.sources.reduce((all, s) => all.concat(s.claimsApps ?? []), [])
+
     readonly property var appRows: {
-        const found = Apps.search(root.text);
+        const claimed = root.claimedApps;
+        const found = Apps.search(root.text).filter(e => claimed.indexOf(e.id) < 0);
         return (root.text ? found.slice(0, root.caps.apps) : found).map(entry => root.appRow(entry));
     }
 

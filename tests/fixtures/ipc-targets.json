@@ -49,6 +49,12 @@
     "status(): string",
     "toggle(path: string): string"
   ],
+  "mixer": [
+    "close(): string",
+    "open(): string",
+    "status(): string",
+    "toggle(): string"
+  ],
   "hotkeys": [
     "close(): string",
     "open(screen: string): string",

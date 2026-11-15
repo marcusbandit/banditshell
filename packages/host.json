@@ -56,7 +56,8 @@
       "compositor",
       "desktop",
       "tour",
-      "launcher-tools"
+      "launcher-tools",
+      "mixer"
     ],
     "optional": []
   },

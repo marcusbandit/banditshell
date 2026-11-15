@@ -16,7 +16,49 @@ QtObject {
     readonly property string named: root.masterLevel < 0 && !root.streamAsk ? Search.streamNameAsk(root.text) : ""
     readonly property int ceiling: Math.round(Audio.maxVolume * 100)
 
-    readonly property var kinds: ["stream", "appmute"]
+    readonly property var kinds: ["stream", "appmute", "mixerpage"]
+
+    readonly property var claimsApps: ["banditshell-mixer"]
+
+    readonly property var pageAsk: /^\s*(?:sound |volume |audio )?mixer(\s+(.*))?$/i.exec(root.search.query ?? "")
+
+    readonly property bool opening: !!root.pageAsk?.[1] && root.search.presents
+
+    onOpeningChanged: if (root.opening && !root.search.presenting)
+        Qt.callLater(root.openPage)
+
+    readonly property Component page: Component {
+        MixerPage {}
+    }
+
+    function openPage(): void {
+        if (!root.search.presents || root.search.presenting)
+            return;
+        root.search.present({
+            component: root.page,
+            name: "mixer",
+            text: "Mixer",
+            filters: true,
+            placeholder: "Filter apps",
+            filter: root.pageAsk?.[2] ?? "",
+            restore: "mixer",
+            source: root
+        });
+    }
+
+    function mixerRow(): var {
+        const score = root.mixer || root.pageAsk ? Infinity : Math.max(Ranking.place("mixer", root.text), Ranking.place("sound mixer volume mixer audio apps", root.text) - 0.5);
+        if (score <= 0)
+            return null;
+        return {
+            key: "mixerpage",
+            kind: "mixerpage",
+            label: "Mixer",
+            detail: Mixer.summary,
+            icon: "tune",
+            score: score
+        };
+    }
     readonly property var caps: ({
             sound: root.mixer ? 12 : 5
         })
@@ -102,13 +144,21 @@ QtObject {
     readonly property var rows: {
         if (root.text.length < 3 || !Audio.ready)
             return [];
+        const page = root.mixerRow();
         const master = root.masterRow();
         const streams = root.masterLevel >= 0 ? [] : Audio.playing.map(node => root.streamRow(node)).filter(Boolean).sort((a, b) => b.score - a.score);
         const app = root.appMuteRow();
-        return (master ? [master] : []).concat(streams, app ? [app] : []);
+        return (page ? [page] : []).concat(master ? [master] : [], streams, app ? [app] : []);
     }
 
     function activate(row: var): void {
+        if (row.kind === "mixerpage") {
+            if (root.search.presents)
+                root.openPage();
+            else
+                root.search.leave(() => Mixer.show());
+            return;
+        }
         if (row.kind === "appmute")
             Audio.setStreamsMuted(row.nodes, !row.toggle);
         else if (row.level >= 0)
@@ -118,6 +168,19 @@ QtObject {
     }
 
     function actionsFor(row: var): var {
+        if (row.kind === "mixerpage")
+            return [
+                {
+                    icon: "tune",
+                    label: "Open",
+                    run: () => root.activate(row)
+                },
+                {
+                    icon: "open_in_new",
+                    label: "Open in a window",
+                    run: () => root.search.leave(() => Mixer.show())
+                }
+            ];
         if (row.kind === "appmute")
             return [
                 {

@@ -876,6 +876,10 @@ banditshell/
 │   │                            wrapper's arguments, systemd unit listing. No
 │   │                            QML, tested in node
 │   ├── Audio.qml                PipeWire: sinks, sources, volume, mute
+│   ├── Mixer.qml                streams grouped into apps, whether each is making
+│   │                            sound (a live peak meter per stream, run only
+│   │                            while a mixer is on screen), and moving an app to
+│   │                            another output; mixer.js is the pure part
 │   ├── Battery.qml              UPower, the low warning, and the nearly empty
 │   │                            step: warn once, count down 30 s, then
 │   │                            suspend or hibernate (battery.js is the
@@ -1714,6 +1718,9 @@ banditshell/
 │   │   │                        history and no arms. It also runs the copier
 │   │   └── NotificationCopier.qml keeps a copy of a borrowed or temporary
 │   │                            picture so history outlives the sender
+│   ├── mixer/                   the mixer: MixerView is the one face, shown in its
+│   │                            own window (MixerWindow, `banditshell panel mixer`)
+│   │                            and as the launcher's mixer page (MixerPage)
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
 │   │   ├── MenuPanel.qml        one panel: geometry and contents, NOT a shape

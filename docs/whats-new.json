@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-11-15-mixer",
+      "date": "2026-11-15",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A mixer shows which apps are making sound, in its own window"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type mixer in the launcher to set each app's volume and output"
+        }
+      ]
+    },
+    {
       "id": "2026-11-14-p859-desktop-media-progress",
       "date": "2026-11-14",
       "changes": [

@@ -63,6 +63,7 @@ members instead: `WorkshopSource` only adds commands.
 | `listsWifi` | no | bool | True while this source shows networks itself, so the plain search leaves them out. |
 | `opening` | no | bool | True when the query asks for this source's page, such as `clip ` with its space. The launcher then calls `openPage` in the same step, so the plain list never shows for a frame. |
 | `openPage` | no | function | Presents this source's page, see Pages. |
+| `claimsApps` | no | list of ids | Desktop entry ids this source stands in for. The launcher leaves those apps out of its app rows, so a page such as the mixer shows once and not again as an app. |
 
 ## Groups
 

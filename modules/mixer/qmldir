@@ -1,0 +1,7 @@
+module qs.modules.mixer
+LevelMeter 1.0 LevelMeter.qml
+MixerApp 1.0 MixerApp.qml
+MixerDevice 1.0 MixerDevice.qml
+MixerIpc 1.0 MixerIpc.qml
+MixerView 1.0 MixerView.qml
+MixerWindow 1.0 MixerWindow.qml
