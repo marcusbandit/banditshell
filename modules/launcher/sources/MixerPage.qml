@@ -60,7 +60,7 @@ Item {
         anchors.bottom: parent.bottom
         width: root.width
         icon: "tune"
-        title: mixer.currentName || "Mixer"
+        title: mixer.currentName || "Volume mixer"
         primary: mixer.currentName ? mixer.currentMuted ? "Unmute" : "Mute" : ""
         onPrimed: mixer.toggle()
         onAsked: root.openActions()

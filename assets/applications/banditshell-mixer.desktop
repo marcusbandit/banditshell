@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Mixer
+Name=Volume Mixer
 GenericName=Volume Mixer
 Comment=Which apps are making sound, and how loud
 Exec=banditshell panel mixer open

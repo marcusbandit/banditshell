@@ -28,6 +28,11 @@ Singleton {
     })
 
     Component.onCompleted: {
+        Panels.claim("mixer", {
+            open: args => root.show(),
+            toggle: args => root.toggle(),
+            isOpen: () => root.windowOpen
+        });
         if (Relaunch.recall("mixer")?.open)
             root.show();
     }

@@ -150,7 +150,7 @@ build_table() {
     add_step completion                    "completion_present"                      @completion                   2 "tab completion for the CLI, in zsh and bash"
     add_step path                          "path_present"                            @path                         2 "banditshell on your PATH: ~/.local/bin/banditshell, when nothing else provides one"
     add_step files-entry                   "files_entry_present"                     @files-entry                  2 "Files in the launcher and the application menus: ~/.local/share/applications/banditshell-files.desktop"
-    add_step mixer-entry                   "mixer_entry_present"                     @mixer-entry                  2 "the Mixer in the application menus: ~/.local/share/applications/banditshell-mixer.desktop"
+    add_step mixer-entry                   "mixer_entry_present"                     @mixer-entry                  2 "the Volume Mixer in the application menus: ~/.local/share/applications/banditshell-mixer.desktop"
     add_step home-bin                      "home_bin_present"                        @home-bin                     2 "the command an exec-once line starts the shell with: ~/bin/banditshell"
     add_step lua-api                       "lua_api_present"                         @lua-api                      2 "the Lua module for binds: the shim beside hyprland.lua and the checkout pointer"
     add_step spicy-lyrics                  "spicy_lyrics_present"                    @spicy                        2 "word-timed lyrics: Spicetify and Spicy Lyrics, in Spotify"

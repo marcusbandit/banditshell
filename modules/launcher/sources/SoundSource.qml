@@ -37,7 +37,7 @@ QtObject {
         root.search.present({
             component: root.page,
             name: "mixer",
-            text: "Mixer",
+            text: "Volume mixer",
             filters: true,
             placeholder: "Filter apps",
             filter: root.pageAsk?.[2] ?? "",
@@ -53,7 +53,7 @@ QtObject {
         return {
             key: "mixerpage",
             kind: "mixerpage",
-            label: "Mixer",
+            label: "Volume mixer",
             detail: Mixer.summaryNow(),
             icon: "tune",
             score: score
