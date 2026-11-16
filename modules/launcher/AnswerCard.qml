@@ -130,15 +130,13 @@ Item {
                     big: root.question,
                     caption: root.asked,
                     swatch: "",
-                    dim: true,
-                    drawn: false
+                    dim: true
                 },
                 {
                     big: root.said,
                     caption: root.told,
                     swatch: root.answer?.swatch ?? "",
-                    dim: false,
-                    drawn: matrix.shown
+                    dim: false
                 }
             ]
 
@@ -154,7 +152,7 @@ Item {
                 spacing: Appearance.padding.normal
 
                 StyledText {
-                    visible: !side.modelData.drawn
+                    visible: !(side.index === 1 && matrix.shown)
                     width: side.width
                     height: Appearance.font.line.large * 1.5
                     lineHeightMode: Text.ProportionalHeight
@@ -221,7 +219,7 @@ Item {
 
             x: card.width - Appearance.padding.large - root.half + (root.half - matrix.width) / 2
             anchors.verticalCenter: parent.verticalCenter
-            rows: root.answer?.matrix ?? null
+            rows: root.told ? null : root.answer?.matrix ?? null
             available: root.half
         }
 

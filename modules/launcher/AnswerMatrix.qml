@@ -21,7 +21,7 @@ Item {
         }
         return sum;
     }
-    readonly property int size: root.across ? Math.floor(Math.min(root.display, root.display * 3 / root.rows.length, root.available / (root.inked / root.display + root.across * 0.75))) : 0
+    readonly property int size: root.across ? Math.floor(Math.min(root.display, root.display * 3 / root.rows.length, (root.available - Appearance.stroke.ring * 2) / (root.inked / root.display + root.across * 0.75 + 0.2))) : 0
     readonly property bool shown: root.across > 0 && root.size >= Appearance.font.size.small
     readonly property int stem: Math.max(Appearance.stroke.ring, Math.round(root.size / 12))
     readonly property int inset: Math.round(root.size * 0.35)
