@@ -360,6 +360,7 @@ Singleton {
         root.worked = text ? {
             query: query,
             text: text,
+            matrix: Calculation.readMatrix(text),
             work: 1,
             firm: true
         } : null;
