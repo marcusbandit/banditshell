@@ -259,6 +259,7 @@ Singleton {
             return null;
         const got = Calculation.lenient(text, t => root.evaluate(t));
         return got ? Object.assign({}, got, {
+            readable: Calculation.readable(got.text),
             firm: Calculation.firm(text)
         }) : null;
     }
@@ -270,6 +271,7 @@ Singleton {
     function programmed(text: string): var {
         const got = Calculation.program(text, t => root.evaluate(t), n => root.format(n));
         return got ? Object.assign({}, got, {
+            readable: Calculation.readable(got.text),
             work: 1,
             firm: true
         }) : null;
@@ -340,11 +342,7 @@ Singleton {
     }
 
     function answerFor(text: string): var {
-        const got = Currency.answer(text, root.amountOf) ?? root.coloured(text) ?? root.dated(text) ?? root.missing(text) ?? root.leniently(text) ?? root.programmed(text) ?? (root.worked?.query === text ? root.worked : null);
-        return got ? Object.assign({}, got, {
-            readable: Calculation.readable(got.text),
-            matrix: got.matrix ? got.matrix.map(row => row.map(cell => Calculation.readable(cell))) : null
-        }) : null;
+        return Currency.answer(text, root.amountOf) ?? root.coloured(text) ?? root.dated(text) ?? root.missing(text) ?? root.leniently(text) ?? root.programmed(text) ?? (root.worked?.query === text ? root.worked : null);
     }
 
     function ask(text: string): void {
@@ -361,10 +359,12 @@ Singleton {
         if (generation !== root.generation)
             return;
         const text = Calculation.readQalc(output, query);
+        const matrix = Calculation.readMatrix(text);
         root.worked = text ? {
             query: query,
             text: text,
-            matrix: Calculation.readMatrix(text),
+            readable: Calculation.readable(text, query),
+            matrix: matrix ? matrix.map(row => row.map(cell => Calculation.readable(cell, query))) : null,
             work: 1,
             firm: true
         } : null;

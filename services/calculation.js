@@ -26,10 +26,11 @@ function bracketRows(expr) {
     return expr.replace(/^([^[\]()=]*?)(\s+(?:to|->|→)\s+.*)?$/i, (whole, rows, tail) => bareRows(rows) ? `[${rows.trim()}]${tail || ""}` : whole).replace(/\(([^()[\]=]*)\)/g, (whole, rows) => bareRows(rows) ? `([${rows.trim()}])` : whole);
 }
 
-var TEMPERATURE = /^([−+-]?[\d.]+)\s*(°\s*[cf]|[cfk]|celsius|fahrenheit|kelvin)\s+(to|in|->|→)\s+(°\s*[cf]|[cfk]|celsius|fahrenheit|kelvin)$/i;
+var TEMPERATURE_UNIT = "(°\\s*[cfk]|deg\\s*[cfk]|℃|℉|[cfk]|celsius|fahrenheit|kelvin)";
+var TEMPERATURE = new RegExp(`^([−+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:e[−+-]?\\d+)?)\\s*${TEMPERATURE_UNIT}\\s+(to|in|->|→)\\s+${TEMPERATURE_UNIT}$`, "i");
 
 function temperatureUnit(word) {
-    const w = word.replace(/[°\s]/g, "").toLowerCase();
+    const w = word.replace(/[°\s]|deg/gi, "").replace("℃", "c").replace("℉", "f").toLowerCase();
     return w[0] === "c" ? "°C" : w[0] === "f" ? "°F" : "K";
 }
 
@@ -37,9 +38,7 @@ function temperatures(expr) {
     const m = expr.match(TEMPERATURE);
     if (!m)
         return expr;
-    const from = temperatureUnit(m[2]);
-    const to = temperatureUnit(m[4]);
-    return from === "K" && to === "K" ? expr : `${m[1]} ${from} ${m[3].toLowerCase() === "in" ? "to" : m[3]} ${to}`;
+    return `${m[1]} ${temperatureUnit(m[2])} ${m[3].toLowerCase() === "in" ? "to" : m[3]} ${temperatureUnit(m[4])}`;
 }
 
 function qalcExpression(text) {
@@ -125,8 +124,12 @@ var SUPERSCRIPT = {
     "+": ""
 };
 
-function readable(text) {
-    return String(text || "").replace(/(^|[^\w#.])(\d+(?:\.\d+)?)[eE]([−+-]?\d+)(?![\w.])/g, (whole, before, mantissa, power) => `${before}${mantissa === "1" ? "" : `${mantissa} × `}10${power.split("").map(c => SUPERSCRIPT[c]).join("")}`);
+var DIGIT_BASES = /\b(base|bases|bijective|duo|duodecimal|sexa|sexagesimal|roman)\b/i;
+
+function readable(text, query) {
+    if (DIGIT_BASES.test(query || ""))
+        return String(text || "");
+    return String(text || "").replace(/(^|[^\w#.])(\d+(?:\.\d+)?)[eE]([−+-]?\d+)(?=$|[^\w.]|i(?![\w.]))/g, (whole, before, mantissa, power) => `${before}${mantissa === "1" ? "" : `${mantissa} × `}10${power.split("").map(c => SUPERSCRIPT[c]).join("")}`);
 }
 
 function squeeze(text) {

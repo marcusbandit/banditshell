@@ -71,6 +71,10 @@ test.describe("temperatures", () => {
         assert.strictEqual(Calculation.qalcExpression("98.6 °F in C"), "98.6 °F to -°C");
         assert.strictEqual(Calculation.qalcExpression("300 K to C"), "300 K to -°C");
         assert.strictEqual(Calculation.qalcExpression("-40 celsius to fahrenheit"), "-40 °C to -°F");
+        assert.strictEqual(Calculation.qalcExpression("1e3 F to C"), "1e3 °F to -°C");
+        assert.strictEqual(Calculation.qalcExpression("50 degF to degC"), "50 °F to -°C");
+        assert.strictEqual(Calculation.qalcExpression("20 ℃ to ℉"), "20 °C to -°F");
+        assert.strictEqual(Calculation.qalcExpression("300 K in K"), "300 K to -K");
     });
 
     test.it("leaves other units and a lone F alone", () => {
@@ -87,6 +91,12 @@ test.describe("readable", () => {
         assert.strictEqual(Calculation.readable("2.99792458E25 fm/s"), "2.99792458 × 10²⁵ fm/s");
         assert.strictEqual(Calculation.readable("1e+21"), "10²¹");
         assert.strictEqual(Calculation.readable("−1.5E10"), "−1.5 × 10¹⁰");
+        assert.strictEqual(Calculation.readable("1E20 + 1E5i"), "10²⁰ + 10⁵i");
+    });
+
+    test.it("keeps digits of other bases as they are", () => {
+        assert.strictEqual(Calculation.readable("1E5", "440 to base 15"), "1E5");
+        assert.strictEqual(Calculation.readable("1E5", "440 to bijective"), "1E5");
     });
 
     test.it("leaves hex, colours and plain answers alone", () => {
