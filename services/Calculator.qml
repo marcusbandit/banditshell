@@ -365,6 +365,7 @@ Singleton {
             text: text,
             readable: Calculation.readable(text, query),
             matrix: matrix ? matrix.map(row => row.map(cell => Calculation.readable(cell, query))) : null,
+            formula: Calculation.readFormula(query),
             work: 1,
             firm: true
         } : null;
