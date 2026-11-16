@@ -82,7 +82,7 @@ Item {
 
         y: head.height + Appearance.padding.small
         width: parent.width
-        height: Appearance.padding.large * 2 + Appearance.font.line.large * 1.5 + (root.captioned ? Appearance.padding.normal + Appearance.font.line.small + Appearance.padding.small * 2 : 0)
+        height: Math.max(Appearance.padding.large * 2 + Appearance.font.line.large * 1.5 + (root.captioned ? Appearance.padding.normal + Appearance.font.line.small + Appearance.padding.small * 2 : 0), matrix.shown ? Appearance.padding.large * 2 + matrix.height : 0)
         radius: Appearance.rounding.normal
         color: plate.value
 
@@ -152,7 +152,12 @@ Item {
                 spacing: Appearance.padding.normal
 
                 StyledText {
+                    visible: !(side.index === 1 && matrix.shown)
                     width: side.width
+                    height: Appearance.font.line.large * 1.5
+                    lineHeightMode: Text.ProportionalHeight
+                    lineHeight: 1
+                    verticalAlignment: Text.AlignVCenter
                     text: side.modelData.big
                     font.pixelSize: Appearance.font.size.display
                     font.weight: Font.DemiBold
@@ -207,6 +212,15 @@ Item {
                     }
                 }
             }
+        }
+
+        AnswerMatrix {
+            id: matrix
+
+            x: card.width - Appearance.padding.large - root.half + (root.half - matrix.width) / 2
+            anchors.verticalCenter: parent.verticalCenter
+            rows: root.told ? null : root.answer?.matrix ?? null
+            available: root.half
         }
 
         MouseArea {

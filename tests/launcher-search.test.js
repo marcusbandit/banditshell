@@ -10,18 +10,18 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Calculation = lib("services/calculation.js", ["looksLikeCalculation", "qalcExpression", "readQalc"]);
+const Calculation = lib("services/calculation.js", ["looksLikeCalculation", "qalcExpression", "readQalc", "readMatrix"]);
 const Search = lib("modules/launcher/search.js", ["withoutRow", "pathQuery", "shortPath", "pathRows", "fileRows", "urlOf", "linkScore", "webSearchUrl", "arrange", "nextPickable", "matchesNothing", "armsFirst", "sharedStarts"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 test.describe("looksLikeCalculation", () => {
     test.it("takes sums, conversions and functions", () => {
-        for (const t of ["5 km to miles", "2^10", "sqrt(2)", "today + 3 weeks", "80 * 20%", "5!", "100 usd to nok", "(1+2)", "-3 + 4", "0xff"])
+        for (const t of ["5 km to miles", "2^10", "sqrt(2)", "today + 3 weeks", "80 * 20%", "5!", "100 usd to nok", "(1+2)", "-3 + 4", "0xff", "[1,2;3,4]"])
             assert.ok(Calculation.looksLikeCalculation(t), t);
     });
 
     test.it("leaves app names and half-typed sums alone", () => {
-        for (const t of ["firefox", "firefox 2", "steam", "now", "1 +", "2 *", "", "   "])
+        for (const t of ["firefox", "firefox 2", "steam", "now", "1 +", "2 *", "", "   ", "[2024] report", "[1] notes"])
             assert.ok(!Calculation.looksLikeCalculation(t), t);
     });
 
@@ -47,6 +47,45 @@ test.describe("qalcExpression", () => {
     test.it("drops the forcing =", () => {
         assert.strictEqual(Calculation.qalcExpression("= now"), "now");
     });
+
+    test.it("reads bare rows split by ; as a matrix", () => {
+        assert.strictEqual(Calculation.qalcExpression("1,2;3,4"), "[1,2;3,4]");
+        assert.strictEqual(Calculation.qalcExpression("= 1 2; 3 4"), "[1 2; 3 4]");
+        assert.strictEqual(Calculation.qalcExpression("1,2;3,4 to fraction"), "[1,2;3,4] to fraction");
+        assert.strictEqual(Calculation.qalcExpression("[1,2;3,4]^2"), "[1,2;3,4]^2");
+        assert.strictEqual(Calculation.qalcExpression("1,2"), "1,2");
+        assert.strictEqual(Calculation.qalcExpression("det(1,2;3,4)"), "det([1,2;3,4])");
+    });
+
+    test.it("leaves rows alone when they carry an operator or are half typed", () => {
+        assert.strictEqual(Calculation.qalcExpression("1,2;3,4 *2"), "1,2;3,4 *2");
+        assert.strictEqual(Calculation.qalcExpression("1,2;3,"), "1,2;3,");
+        assert.strictEqual(Calculation.qalcExpression("1,2;3"), "1,2;3");
+    });
+});
+
+test.describe("readMatrix", () => {
+    test.it("splits qalc's matrix into rows and cells", () => {
+        assert.deepStrictEqual(Calculation.readMatrix("[1  2; 3  4]"), [["1", "2"], ["3", "4"]]);
+        assert.deepStrictEqual(Calculation.readMatrix("[−2  1; 1.5  −0.5]"), [["−2", "1"], ["1.5", "−0.5"]]);
+        assert.deepStrictEqual(Calculation.readMatrix("[1  2  3]"), [["1", "2", "3"]]);
+        assert.deepStrictEqual(Calculation.readMatrix("[17; 39]"), [["17"], ["39"]]);
+    });
+
+    test.it("drops the brackets qalc puts around cells with spaces", () => {
+        assert.deepStrictEqual(Calculation.readMatrix("[(x + 1)  2; (1 m)  (2 + 3i)]"), [["x + 1", "2"], ["1 m", "2 + 3i"]]);
+        assert.deepStrictEqual(Calculation.readMatrix("[(1)+(2)  3]"), [["(1)+(2)", "3"]]);
+        assert.deepStrictEqual(Calculation.readMatrix("[\"a b\"  2]"), [["a b", "2"]]);
+        assert.deepStrictEqual(Calculation.readMatrix("[\"2026-11-16T14:30:55\"  2]"), [["2026-11-16T14:30:55", "2"]]);
+    });
+
+    test.it("refuses ragged rows, nesting and plain answers", () => {
+        assert.strictEqual(Calculation.readMatrix("([1  2], 3)"), null);
+        assert.strictEqual(Calculation.readMatrix("[1  2; 3]"), null);
+        assert.strictEqual(Calculation.readMatrix("[[1  2]  3]"), null);
+        assert.strictEqual(Calculation.readMatrix("42"), null);
+        assert.strictEqual(Calculation.readMatrix("[]"), null);
+    });
 });
 
 test.describe("readQalc", () => {
@@ -61,6 +100,17 @@ test.describe("readQalc", () => {
         assert.strictEqual(Calculation.readQalc("1 / 0", "1/0"), "");
         assert.strictEqual(Calculation.readQalc("error: bad\n2", "x"), "2");
         assert.strictEqual(Calculation.readQalc("", "1+1"), "");
+    });
+
+    test.it("keeps a matrix that reads back like the question", () => {
+        assert.strictEqual(Calculation.readQalc("[1  2; 3  4]\n", "1 2; 3 4"), "[1  2; 3  4]");
+    });
+
+    test.it("refuses what qalc makes of a ; it reads as a list", () => {
+        assert.strictEqual(Calculation.readQalc("[1  2  3]\n", "1,2;3"), "");
+        assert.strictEqual(Calculation.readQalc("[1  2  3  8]\n", "1,2;3,4 *2"), "");
+        assert.strictEqual(Calculation.readQalc("[(x = 2)  √(x)]\n", "x=2; sqrt(x)"), "");
+        assert.strictEqual(Calculation.readQalc("−2\n", "det(1,2;3,4)"), "−2");
     });
 });
 

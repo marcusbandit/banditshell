@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-11-16-calculator-matrix",
+      "date": "2026-11-16",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The calculator shows a matrix in rows and columns"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type 1,2;3,4 in the launcher to get a 2x2 matrix"
+        }
+      ]
+    },
+    {
       "id": "2026-11-15-mixer",
       "date": "2026-11-15",
       "changes": [

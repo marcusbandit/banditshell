@@ -10,11 +10,87 @@ function looksLikeCalculation(text) {
         return t.length > 1;
     if (/[+\-*/×÷^]$/.test(t) || !/\d/.test(t))
         return false;
-    return /^[\d(.\-+√]/.test(t) || /^[a-z]\w*\s*\(/i.test(t) || /[+\-*/×÷^%!]/.test(t);
+    return /^[\d(.\-+√]/.test(t) || /^\[[^\]]*[,;\s][^\]]*\]/.test(t) || /^[a-z]\w*\s*\(/i.test(t) || /[+\-*/×÷^%!]/.test(t);
+}
+
+var NUMBER = /^[+\-−]?(\d+\.?\d*|\.\d+)$/;
+
+function bareRows(expr) {
+    if (!/;/.test(expr))
+        return false;
+    const rows = expr.split(";").map(row => row.trim().split(/\s*,\s*|\s+/));
+    return rows.every(row => row.length === rows[0].length && row.every(cell => NUMBER.test(cell)));
+}
+
+function bracketRows(expr) {
+    return expr.replace(/^([^[\]()=]*?)(\s+(?:to|->|→)\s+.*)?$/i, (whole, rows, tail) => bareRows(rows) ? `[${rows.trim()}]${tail || ""}` : whole).replace(/\(([^()[\]=]*)\)/g, (whole, rows) => bareRows(rows) ? `([${rows.trim()}])` : whole);
 }
 
 function qalcExpression(text) {
-    return String(text || "").trim().replace(/^=\s*/, "").replace(/(\s)(to|->|→)\s+([^\s\-+].*)$/i, (whole, gap, word, target) => CONVERSION_WORDS.test(target) || /^\d/.test(target) ? whole : `${gap}${word} -${target}`);
+    return bracketRows(String(text || "").trim().replace(/^=\s*/, "")).replace(/(\s)(to|->|→)\s+([^\s\-+].*)$/i, (whole, gap, word, target) => CONVERSION_WORDS.test(target) || /^\d/.test(target) ? whole : `${gap}${word} -${target}`);
+}
+
+function outsideBrackets(expr) {
+    let depth = 0;
+    let out = "";
+    for (const c of expr) {
+        depth += c === "[" ? 1 : c === "]" ? -1 : 0;
+        if (depth === 0 && c !== "]")
+            out += c;
+    }
+    return out;
+}
+
+function unwrap(cell) {
+    if (/^(["']).*\1$/.test(cell))
+        return cell.slice(1, -1);
+    if (!/^\(.*\)$/.test(cell))
+        return cell;
+    let depth = 0;
+    for (let i = 0; i < cell.length - 1; i++) {
+        depth += cell[i] === "(" ? 1 : cell[i] === ")" ? -1 : 0;
+        if (depth === 0)
+            return cell;
+    }
+    return cell.slice(1, -1);
+}
+
+function readMatrix(text) {
+    const t = String(text || "").trim();
+    if (!/^\[.*\]$/.test(t))
+        return null;
+    const rows = [[]];
+    let depth = 0;
+    let quote = "";
+    let cell = "";
+    const close = () => {
+        if (cell)
+            rows[rows.length - 1].push(unwrap(cell));
+        cell = "";
+    };
+    for (const c of t.slice(1, -1)) {
+        if (quote) {
+            cell += c;
+            if (c === quote)
+                quote = "";
+            continue;
+        }
+        if (c === "[" || c === "]")
+            return null;
+        if (c === "\"" || c === "'")
+            quote = c;
+        depth += c === "(" ? 1 : c === ")" ? -1 : 0;
+        if (depth === 0 && (c === ";" || /\s/.test(c))) {
+            close();
+            if (c === ";")
+                rows.push([]);
+            continue;
+        }
+        cell += c;
+    }
+    close();
+    const across = rows[0].length;
+    return across > 0 && depth === 0 && !quote && rows.every(row => row.length === across) ? rows : null;
 }
 
 function squeeze(text) {
@@ -23,10 +99,10 @@ function squeeze(text) {
 
 function readQalc(output, text) {
     const lines = String(output || "").split("\n").map(l => l.trim()).filter(l => l && !/^(error|warning)\b/i.test(l));
-    if (lines.length !== 1)
+    if (lines.length !== 1 || /;/.test(outsideBrackets(qalcExpression(text))))
         return "";
     const out = lines[0].replace(/^"(.*)"$/, "$1");
-    if (/[·×]|[A-Za-z]\(/.test(out) || squeeze(out) === squeeze(qalcExpression(text)) || squeeze(out) === squeeze(text))
+    if (/[·×]|[A-Za-z]\(/.test(out) || !readMatrix(out) && (squeeze(out) === squeeze(qalcExpression(text)) || squeeze(out) === squeeze(text)))
         return "";
     return out;
 }
