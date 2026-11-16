@@ -37,7 +37,7 @@ MenuRow {
             strokeWidth: Appearance.sizes.seam
         }
     }
-    label: root.result?.text ?? ""
+    label: root.result?.readable ?? root.result?.text ?? ""
     detail: root.result?.missing ? "" : root.result?.detail || root.expression
     selected: root.holds
     inlineDetail: true

@@ -26,8 +26,23 @@ function bracketRows(expr) {
     return expr.replace(/^([^[\]()=]*?)(\s+(?:to|->|→)\s+.*)?$/i, (whole, rows, tail) => bareRows(rows) ? `[${rows.trim()}]${tail || ""}` : whole).replace(/\(([^()[\]=]*)\)/g, (whole, rows) => bareRows(rows) ? `([${rows.trim()}])` : whole);
 }
 
+var TEMPERATURE_UNIT = "(°\\s*[cfk]|deg\\s*[cfk]|℃|℉|[cfk]|celsius|fahrenheit|kelvin)";
+var TEMPERATURE = new RegExp(`^([−+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:e[−+-]?\\d+)?)\\s*${TEMPERATURE_UNIT}\\s+(to|in|->|→)\\s+${TEMPERATURE_UNIT}$`, "i");
+
+function temperatureUnit(word) {
+    const w = word.replace(/[°\s]|deg/gi, "").replace("℃", "c").replace("℉", "f").toLowerCase();
+    return w[0] === "c" ? "°C" : w[0] === "f" ? "°F" : "K";
+}
+
+function temperatures(expr) {
+    const m = expr.match(TEMPERATURE);
+    if (!m)
+        return expr;
+    return `${m[1]} ${temperatureUnit(m[2])} ${m[3].toLowerCase() === "in" ? "to" : m[3]} ${temperatureUnit(m[4])}`;
+}
+
 function qalcExpression(text) {
-    return bracketRows(String(text || "").trim().replace(/^=\s*/, "")).replace(/(\s)(to|->|→)\s+([^\s\-+].*)$/i, (whole, gap, word, target) => CONVERSION_WORDS.test(target) || /^\d/.test(target) ? whole : `${gap}${word} -${target}`);
+    return bracketRows(temperatures(String(text || "").trim().replace(/^=\s*/, ""))).replace(/(\s)(to|->|→)\s+([^\s\-+].*)$/i, (whole, gap, word, target) => CONVERSION_WORDS.test(target) || /^\d/.test(target) ? whole : `${gap}${word} -${target}`);
 }
 
 function outsideBrackets(expr) {
@@ -91,6 +106,30 @@ function readMatrix(text) {
     close();
     const across = rows[0].length;
     return across > 0 && depth === 0 && !quote && rows.every(row => row.length === across) ? rows : null;
+}
+
+var SUPERSCRIPT = {
+    "0": "⁰",
+    "1": "¹",
+    "2": "²",
+    "3": "³",
+    "4": "⁴",
+    "5": "⁵",
+    "6": "⁶",
+    "7": "⁷",
+    "8": "⁸",
+    "9": "⁹",
+    "−": "⁻",
+    "-": "⁻",
+    "+": ""
+};
+
+var DIGIT_BASES = /\b(base|bases|bijective|duo|duodecimal|sexa|sexagesimal|roman)\b/i;
+
+function readable(text, query) {
+    if (DIGIT_BASES.test(query || ""))
+        return String(text || "");
+    return String(text || "").replace(/(^|[^\w#.])(\d+(?:\.\d+)?)[eE]([−+-]?\d+)(?=$|[^\w.]|i(?![\w.]))/g, (whole, before, mantissa, power) => `${before}${mantissa === "1" ? "" : `${mantissa} × `}10${power.split("").map(c => SUPERSCRIPT[c]).join("")}`);
 }
 
 function squeeze(text) {

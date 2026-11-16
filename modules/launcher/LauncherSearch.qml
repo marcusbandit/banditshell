@@ -1314,7 +1314,7 @@ QtObject {
                 kind: "suggest",
                 complete: text,
                 label: text.endsWith(" ") ? `${text}…` : text,
-                detail: preview && !preview.missing ? preview.text : "",
+                detail: preview && !preview.missing ? preview.readable : "",
                 icon: "keyboard_tab",
                 score: inside ? 3 : 0.4
             };
