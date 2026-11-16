@@ -13,7 +13,8 @@ function looksLikeCalculation(text) {
     return /^[\d(.\-+√]/.test(t) || /^\[[^\]]*[,;\s][^\]]*\]/.test(t) || /^[a-z]\w*\s*\(/i.test(t) || /[+\-*/×÷^%!]/.test(t);
 }
 
-var NUMBER = /^[+\-−]?(\d+\.?\d*|\.\d+)$/;
+var CELL = "[+\\-−]?(?:\\d+\\.?\\d*|\\.\\d+)";
+var NUMBER = new RegExp(`^${CELL}$`);
 
 function bareRows(expr) {
     if (!/;/.test(expr))
@@ -22,11 +23,12 @@ function bareRows(expr) {
     return rows.every(row => row.length === rows[0].length && row.every(cell => NUMBER.test(cell)));
 }
 
-var CELL = "[+\\-−]?(?:\\d+\\.?\\d*|\\.\\d+)";
 var ROW = `${CELL}(?:(?:\\s*,\\s*|\\s+)${CELL})*`;
 var BARE_MATRIX = new RegExp(`(^|[^\\w.])(${ROW}(?:\\s*;\\s*${ROW})+)(?![\\w.])`, "g");
 
 function bracketRows(expr) {
+    if (/=/.test(expr))
+        return expr;
     return expr.split(/(\[[^\]]*\])/).map(chunk => chunk[0] === "[" ? chunk : chunk.replace(BARE_MATRIX, (whole, before, rows) => bareRows(rows) ? `${before}[${rows.trim()}]` : whole)).join("");
 }
 
@@ -54,7 +56,8 @@ function mathSigns(text) {
 function typedRows(inner) {
     const rows = splitTop(inner, ";").map(row => {
         const t = row.trim();
-        const cells = splitTop(t, ",").length > 1 ? splitTop(t, ",") : t.split(/\s+/);
+        const commas = splitTop(t, ",");
+        const cells = commas.length > 1 ? commas : t.split(/\s+/);
         return cells.map(cell => mathSigns(cell.trim()));
     });
     const across = rows[0].length;
@@ -72,7 +75,9 @@ var OPERATORS = {
 };
 
 function readFormula(text) {
-    const t = bracketRows(String(text || "").trim().replace(/^=\s*/, ""));
+    const whole = bracketRows(String(text || "").trim().replace(/^=\s*/, "")).replace(/\*\*/g, "^");
+    const cut = whole.search(/\s(?:to|->|→)\s/i);
+    const t = cut < 0 ? whole : whole.slice(0, cut);
     const parts = [];
     let run = "";
     const flush = () => {
@@ -105,7 +110,7 @@ function readFormula(text) {
         if (c === "^") {
             const m = /^\^\s*(?:\(([^()]*)\)|([−+-]?[\w.]+))/.exec(t.slice(i));
             flush();
-            if (!m || !parts.length)
+            if (!m || !parts.length || parts[parts.length - 1].kind === "power")
                 return null;
             parts.push({
                 kind: "power",
@@ -114,7 +119,8 @@ function readFormula(text) {
             i += m[0].length;
             continue;
         }
-        const before = run.trim() ? run.trim().slice(-1) : parts.length ? "]" : "";
+        const last = parts[parts.length - 1];
+        const before = run.trim() ? run.trim().slice(-1) : !last || last.kind === "operator" ? "" : "]";
         const sign = c === "+" || c === "-" || c === "−";
         const glued = /\s$/.test(run) && !/\s/.test(t[i + 1] ?? " ");
         if (OPERATORS[c] && before && (!sign || /[\w)\]]/.test(before) && !glued && !/\d[eE]$/.test(run.trim()))) {
@@ -133,11 +139,17 @@ function readFormula(text) {
     for (let k = 1; k < parts.length - 1; k++) {
         const open = parts[k - 1];
         const close = parts[k + 1];
-        if (parts[k].kind === "matrix" && open.kind === "text" && open.text.endsWith("(") && close.kind === "text" && close.text.startsWith(")")) {
+        const raised = close.text === ")" && parts[k + 2]?.kind === "power";
+        if (parts[k].kind === "matrix" && open.kind === "text" && open.text.endsWith("(") && close.kind === "text" && close.text.startsWith(")") && !raised) {
             open.text = open.text.slice(0, -1).trim();
             close.text = close.text.slice(1).trim();
         }
     }
+    if (cut >= 0)
+        parts.push({
+            kind: "text",
+            text: whole.slice(cut).trim()
+        });
     const kept = parts.filter(part => part.kind !== "text" || part.text);
     return kept.some(part => part.kind === "matrix") ? kept : null;
 }

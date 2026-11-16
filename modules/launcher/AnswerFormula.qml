@@ -17,6 +17,8 @@ Item {
     readonly property int size: root.list.length ? Math.floor(Math.min(root.display, root.display * 3 / root.tallest, root.display * (root.available - Appearance.stroke.ring * root.brackets) / root.natural)) : 0
     readonly property bool shown: root.list.length > 0 && root.size >= Appearance.font.size.small * 0.75
     readonly property int line: Math.round(root.size * Appearance.font.leading)
+    readonly property real step: Appearance.font.size.small / Appearance.font.size.normal
+    readonly property int exponentSize: Math.round(root.size * root.step)
 
     function lead(part: var, i: int): real {
         return i === 0 ? 0 : part.kind === "power" ? 0.05 : 0.3;
@@ -24,7 +26,7 @@ Item {
 
     function inked(part: var): real {
         if (part.kind === "power")
-            return metrics.advanceWidth(part.text) * 0.6;
+            return metrics.advanceWidth(part.text) * root.step;
         if (part.kind !== "matrix")
             return metrics.advanceWidth(part.text);
         let sum = 0;
@@ -87,7 +89,7 @@ Item {
                     anchors.right: parent.right
                     y: piece.raised ? Math.max(0, (root.height - piece.base) / 2 - Math.round(root.size * 0.1)) : (root.height - height) / 2
                     text: piece.modelData.kind === "matrix" ? "" : piece.modelData.text
-                    font.pixelSize: piece.raised ? Math.round(root.size * 0.6) : root.size
+                    font.pixelSize: piece.raised ? root.exponentSize : root.size
                     font.weight: Font.DemiBold
                     color: root.colour
                 }

@@ -63,6 +63,11 @@ test.describe("qalcExpression", () => {
         assert.strictEqual(Calculation.qalcExpression("[1,2;3,4]*5,6;7,8"), "[1,2;3,4]*[5,6;7,8]");
     });
 
+    test.it("leaves rows in an assignment to the program reader", () => {
+        assert.strictEqual(Calculation.qalcExpression("x=1;2"), "x=1;2");
+        assert.strictEqual(Calculation.readQalc("[2; 3]\n", "a=2; 3"), "");
+    });
+
     test.it("leaves half typed rows alone", () => {
         assert.strictEqual(Calculation.qalcExpression("1,2;3,"), "1,2;3,");
         assert.strictEqual(Calculation.qalcExpression("1,2;3"), "1,2;3");
@@ -125,6 +130,17 @@ test.describe("readFormula", () => {
         assert.deepStrictEqual(shape("-[1,2;3,4]"), ["text:−", [["1", "2"], ["3", "4"]]]);
         assert.deepStrictEqual(shape("[1,2;3,4]*1e-5"), [[["1", "2"], ["3", "4"]], "operator:×", "text:1e−5"]);
         assert.deepStrictEqual(shape("[1,-2;3,4]"), [[["1", "−2"], ["3", "4"]]]);
+        assert.deepStrictEqual(shape("[1,2;3,4]*-1"), [[["1", "2"], ["3", "4"]], "operator:×", "text:−1"]);
+    });
+
+    test.it("reads ** as a power and keeps brackets a power needs", () => {
+        assert.deepStrictEqual(shape("[1,2;3,4]**2"), [[["1", "2"], ["3", "4"]], "power:2"]);
+        assert.deepStrictEqual(shape("tr(1,2;3,4)^2"), ["text:tr(", [["1", "2"], ["3", "4"]], "text:)", "power:2"]);
+        assert.strictEqual(shape("[1,2;3,4]^2^3"), null);
+    });
+
+    test.it("leaves a conversion target as written", () => {
+        assert.deepStrictEqual(shape("[1,2;3,4] to m/s"), [[["1", "2"], ["3", "4"]], "text:to m/s"]);
     });
 
     test.it("gives nothing without a matrix or with a broken one", () => {
