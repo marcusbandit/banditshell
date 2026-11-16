@@ -26,8 +26,24 @@ function bracketRows(expr) {
     return expr.replace(/^([^[\]()=]*?)(\s+(?:to|->|→)\s+.*)?$/i, (whole, rows, tail) => bareRows(rows) ? `[${rows.trim()}]${tail || ""}` : whole).replace(/\(([^()[\]=]*)\)/g, (whole, rows) => bareRows(rows) ? `([${rows.trim()}])` : whole);
 }
 
+var TEMPERATURE = /^([−+-]?[\d.]+)\s*(°\s*[cf]|[cfk]|celsius|fahrenheit|kelvin)\s+(to|in|->|→)\s+(°\s*[cf]|[cfk]|celsius|fahrenheit|kelvin)$/i;
+
+function temperatureUnit(word) {
+    const w = word.replace(/[°\s]/g, "").toLowerCase();
+    return w[0] === "c" ? "°C" : w[0] === "f" ? "°F" : "K";
+}
+
+function temperatures(expr) {
+    const m = expr.match(TEMPERATURE);
+    if (!m)
+        return expr;
+    const from = temperatureUnit(m[2]);
+    const to = temperatureUnit(m[4]);
+    return from === "K" && to === "K" ? expr : `${m[1]} ${from} ${m[3].toLowerCase() === "in" ? "to" : m[3]} ${to}`;
+}
+
 function qalcExpression(text) {
-    return bracketRows(String(text || "").trim().replace(/^=\s*/, "")).replace(/(\s)(to|->|→)\s+([^\s\-+].*)$/i, (whole, gap, word, target) => CONVERSION_WORDS.test(target) || /^\d/.test(target) ? whole : `${gap}${word} -${target}`);
+    return bracketRows(temperatures(String(text || "").trim().replace(/^=\s*/, ""))).replace(/(\s)(to|->|→)\s+([^\s\-+].*)$/i, (whole, gap, word, target) => CONVERSION_WORDS.test(target) || /^\d/.test(target) ? whole : `${gap}${word} -${target}`);
 }
 
 function outsideBrackets(expr) {
@@ -91,6 +107,26 @@ function readMatrix(text) {
     close();
     const across = rows[0].length;
     return across > 0 && depth === 0 && !quote && rows.every(row => row.length === across) ? rows : null;
+}
+
+var SUPERSCRIPT = {
+    "0": "⁰",
+    "1": "¹",
+    "2": "²",
+    "3": "³",
+    "4": "⁴",
+    "5": "⁵",
+    "6": "⁶",
+    "7": "⁷",
+    "8": "⁸",
+    "9": "⁹",
+    "−": "⁻",
+    "-": "⁻",
+    "+": ""
+};
+
+function readable(text) {
+    return String(text || "").replace(/(^|[^\w#.])(\d+(?:\.\d+)?)[eE]([−+-]?\d+)(?![\w.])/g, (whole, before, mantissa, power) => `${before}${mantissa === "1" ? "" : `${mantissa} × `}10${power.split("").map(c => SUPERSCRIPT[c]).join("")}`);
 }
 
 function squeeze(text) {

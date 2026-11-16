@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-11-16-calculator-numbers-temperatures",
+      "date": "2026-11-16",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Big results read 1.84 × 10¹⁹ instead of 1.84E19"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "32 F to C converts temperatures instead of farads"
+        }
+      ]
+    },
+    {
       "id": "2026-11-16-calculator-matrix",
       "date": "2026-11-16",
       "changes": [

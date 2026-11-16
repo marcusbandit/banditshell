@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Calculation = lib("services/calculation.js", ["looksLikeCalculation", "qalcExpression", "readQalc", "readMatrix"]);
+const Calculation = lib("services/calculation.js", ["looksLikeCalculation", "qalcExpression", "readQalc", "readMatrix", "readable"]);
 const Search = lib("modules/launcher/search.js", ["withoutRow", "pathQuery", "shortPath", "pathRows", "fileRows", "urlOf", "linkScore", "webSearchUrl", "arrange", "nextPickable", "matchesNothing", "armsFirst", "sharedStarts"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
@@ -61,6 +61,37 @@ test.describe("qalcExpression", () => {
         assert.strictEqual(Calculation.qalcExpression("1,2;3,4 *2"), "1,2;3,4 *2");
         assert.strictEqual(Calculation.qalcExpression("1,2;3,"), "1,2;3,");
         assert.strictEqual(Calculation.qalcExpression("1,2;3"), "1,2;3");
+    });
+});
+
+test.describe("temperatures", () => {
+    test.it("reads C and F as degrees when converting between temperatures", () => {
+        assert.strictEqual(Calculation.qalcExpression("32 F to C"), "32 °F to -°C");
+        assert.strictEqual(Calculation.qalcExpression("100 c to f"), "100 °C to -°F");
+        assert.strictEqual(Calculation.qalcExpression("98.6 °F in C"), "98.6 °F to -°C");
+        assert.strictEqual(Calculation.qalcExpression("300 K to C"), "300 K to -°C");
+        assert.strictEqual(Calculation.qalcExpression("-40 celsius to fahrenheit"), "-40 °C to -°F");
+    });
+
+    test.it("leaves other units and a lone F alone", () => {
+        assert.strictEqual(Calculation.qalcExpression("32 F"), "32 F");
+        assert.strictEqual(Calculation.qalcExpression("5 km to miles"), "5 km to -miles");
+        assert.strictEqual(Calculation.qalcExpression("3 kg to lb"), "3 kg to -lb");
+    });
+});
+
+test.describe("readable", () => {
+    test.it("writes E notation as a power of ten", () => {
+        assert.strictEqual(Calculation.readable("1.844674407E19"), "1.844674407 × 10¹⁹");
+        assert.strictEqual(Calculation.readable("1E−20"), "10⁻²⁰");
+        assert.strictEqual(Calculation.readable("2.99792458E25 fm/s"), "2.99792458 × 10²⁵ fm/s");
+        assert.strictEqual(Calculation.readable("1e+21"), "10²¹");
+        assert.strictEqual(Calculation.readable("−1.5E10"), "−1.5 × 10¹⁰");
+    });
+
+    test.it("leaves hex, colours and plain answers alone", () => {
+        for (const t of ["#1E3A5F", "0x1E5", "12E5abc", "2026-12-07", "3.106855961 mi", "84"])
+            assert.strictEqual(Calculation.readable(t), t);
     });
 });
 

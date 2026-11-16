@@ -340,7 +340,11 @@ Singleton {
     }
 
     function answerFor(text: string): var {
-        return Currency.answer(text, root.amountOf) ?? root.coloured(text) ?? root.dated(text) ?? root.missing(text) ?? root.leniently(text) ?? root.programmed(text) ?? (root.worked?.query === text ? root.worked : null);
+        const got = Currency.answer(text, root.amountOf) ?? root.coloured(text) ?? root.dated(text) ?? root.missing(text) ?? root.leniently(text) ?? root.programmed(text) ?? (root.worked?.query === text ? root.worked : null);
+        return got ? Object.assign({}, got, {
+            readable: Calculation.readable(got.text),
+            matrix: got.matrix ? got.matrix.map(row => row.map(cell => Calculation.readable(cell))) : null
+        }) : null;
     }
 
     function ask(text: string): void {

@@ -17,7 +17,7 @@ Item {
 
     readonly property string question: root.answer?.question ?? root.typed
     readonly property string asked: root.answer?.asked ?? ""
-    readonly property string said: root.answer?.text ?? ""
+    readonly property string said: root.answer?.readable ?? root.answer?.text ?? ""
     readonly property string told: root.answer?.detail ?? ""
     readonly property bool captioned: root.asked !== "" || root.told !== ""
     readonly property real half: (card.width - Appearance.padding.large * 4 - arrow.width) / 2
