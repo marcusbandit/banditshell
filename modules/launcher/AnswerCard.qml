@@ -82,7 +82,7 @@ Item {
 
         y: head.height + Appearance.padding.small
         width: parent.width
-        height: Math.max(Appearance.padding.large * 2 + Appearance.font.line.large * 1.5 + (root.captioned ? Appearance.padding.normal + Appearance.font.line.small + Appearance.padding.small * 2 : 0), matrix.shown ? Appearance.padding.large * 2 + matrix.height : 0)
+        height: Math.max(Appearance.padding.large * 2 + Appearance.font.line.large * 1.5 + (root.captioned ? Appearance.padding.normal + Appearance.font.line.small + Appearance.padding.small * 2 : 0), typedFormula.shown ? Appearance.padding.large * 2 + typedFormula.height : 0, resultFormula.shown ? Appearance.padding.large * 2 + resultFormula.height : 0)
         radius: Appearance.rounding.normal
         color: plate.value
 
@@ -152,7 +152,7 @@ Item {
                 spacing: Appearance.padding.normal
 
                 StyledText {
-                    visible: !(side.index === 1 && matrix.shown)
+                    visible: !(side.index === 0 ? typedFormula.shown : resultFormula.shown)
                     width: side.width
                     height: Appearance.font.line.large * 1.5
                     lineHeightMode: Text.ProportionalHeight
@@ -214,12 +214,27 @@ Item {
             }
         }
 
-        AnswerMatrix {
-            id: matrix
+        AnswerFormula {
+            id: typedFormula
 
-            x: card.width - Appearance.padding.large - root.half + (root.half - matrix.width) / 2
+            x: Appearance.padding.large + (root.half - typedFormula.width) / 2
             anchors.verticalCenter: parent.verticalCenter
-            rows: root.told ? null : root.answer?.matrix ?? null
+            parts: root.asked ? null : root.answer?.formula ?? null
+            available: root.half
+            colour: Appearance.colour.textDim
+        }
+
+        AnswerFormula {
+            id: resultFormula
+
+            x: card.width - Appearance.padding.large - root.half + (root.half - resultFormula.width) / 2
+            anchors.verticalCenter: parent.verticalCenter
+            parts: !root.told && root.answer?.matrix ? [
+                {
+                    kind: "matrix",
+                    rows: root.answer.matrix
+                }
+            ] : null
             available: root.half
         }
 
