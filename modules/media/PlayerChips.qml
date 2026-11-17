@@ -13,7 +13,7 @@ Flow {
     spacing: Appearance.padding.small
 
     Repeater {
-        model: Media.players
+        model: Media.choices
 
         delegate: Item {
             id: chip
@@ -21,7 +21,7 @@ Flow {
             required property MprisPlayer modelData
 
             readonly property bool current: chip.modelData === Media.active
-            readonly property bool alone: Media.players.length < 2
+            readonly property bool alone: Media.choices.length < 2
             readonly property string name: chip.modelData.identity || "player"
 
             width: Math.max(height, content.implicitWidth + Appearance.padding.normal * 2)

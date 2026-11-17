@@ -72,7 +72,7 @@ Item {
         id: scroll
 
         target: root.browsing || !Lyrics.synced ? root.browseTarget : root.followTarget
-        speed: Appearance.animation.scrollSpeed * 0.55
+        speed: root.browsing ? Appearance.animation.scrollSpeed : Appearance.animation.scrollSpeed * 0.55
         epsilon: 0.2
     }
 
@@ -137,6 +137,32 @@ Item {
                 }
             }
 
+            Row {
+                visible: Lyrics.spicyAbsent && !!Lyrics.spotifyId && !Lyrics.hintDismissed
+                x: Appearance.padding.normal
+                width: visible ? parent.width - Appearance.padding.normal * 2 : 0
+                height: visible ? implicitHeight : 0
+                spacing: Appearance.padding.small
+
+                StyledText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - hintClose.width - parent.spacing
+                    wrapMode: Text.Wrap
+                    text: "Word timing needs the Spicy Lyrics add-on in Spotify"
+                    color: Appearance.colour.textFaint
+                }
+
+                Button {
+                    id: hintClose
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    icon: "close"
+                    text: "Hide"
+
+                    onClicked: Lyrics.dismissHint()
+                }
+            }
+
             Item {
                 width: parent.width
                 height: credit.implicitHeight + Appearance.padding.huge
@@ -148,7 +174,7 @@ Item {
                     anchors.bottom: parent.bottom
                     width: parent.width - Appearance.padding.normal * 2
                     wrapMode: Text.Wrap
-                    text: (Lyrics.writers.length > 0 ? `written by ${Lyrics.writers.join(", ")}\n` : "") + (Lyrics.plain ? `lyrics from ${Lyrics.source}, not synced` : `lyrics from ${Lyrics.source}`) + (Lyrics.spicyAbsent && Lyrics.spotifyId ? "\nword timing needs Spicy Lyrics in Spotify: run install.sh" : "")
+                    text: (Lyrics.writers.length > 0 ? `written by ${Lyrics.writers.join(", ")}\n` : "") + (Lyrics.plain ? `lyrics from ${Lyrics.source}, not synced` : `lyrics from ${Lyrics.source}`)
                     color: Appearance.colour.textFaint
                 }
             }
@@ -205,12 +231,25 @@ Item {
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
 
         onWheel: event => {
+            if (event.phase === Qt.ScrollBegin || event.phase === Qt.ScrollEnd) {
+                event.accepted = false;
+                return;
+            }
+            if (Math.abs(event.angleDelta.x) > Math.abs(event.angleDelta.y) || Math.abs(event.pixelDelta.x) > Math.abs(event.pixelDelta.y) || event.angleDelta.y === 0 && event.pixelDelta.y === 0) {
+                event.accepted = false;
+                return;
+            }
             if (!root.browsing) {
                 root.browsing = true;
                 root.browseTarget = scroll.value;
             }
-            const delta = event.pixelDelta.y !== 0 ? event.pixelDelta.y : event.angleDelta.y / 120 * Appearance.font.line.normal * 2;
-            root.browseTarget = Math.max(root.minScroll, Math.min(root.maxScroll, root.browseTarget - delta));
+            if (event.phase === Qt.NoScrollPhase) {
+                const notches = event.angleDelta.y !== 0 ? event.angleDelta.y / 120 : event.pixelDelta.y / 15;
+                root.browseTarget = Math.max(root.minScroll, Math.min(root.maxScroll, root.browseTarget - notches * ControlTuning.wheelNotch));
+            } else {
+                root.browseTarget = Math.max(root.minScroll, Math.min(root.maxScroll, scroll.value - event.pixelDelta.y));
+                scroll.snap();
+            }
             comeBack.restart();
         }
     }

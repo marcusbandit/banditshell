@@ -55,3 +55,15 @@ test("a player you picked is shown whatever it is doing", () => {
     assert.strictEqual(shown([tab, song], tab, song, rank), tab);
     assert.strictEqual(shown([song], tab, song, rank), song);
 });
+
+test("a chosen player that has no track is not shown", () => {
+    const empty = player("mpv", false, 0);
+    const song = player("spotify", true);
+    assert.strictEqual(shown([empty, song], empty, song, rank), song);
+});
+
+test("a chosen player with a track stays shown over what is playing", () => {
+    const paused = player("spotify", false);
+    const video = player("zen", true);
+    assert.strictEqual(shown([paused, video], paused, video, rank), paused);
+});
