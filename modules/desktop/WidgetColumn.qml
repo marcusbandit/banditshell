@@ -42,7 +42,7 @@ Flow {
     MediaWidget {
         width: root.cardWidth
         visible: root.cfg.media && Media.hasTrack
-        running: root.seen
+        running: root.running
     }
 
     WeatherWidget {

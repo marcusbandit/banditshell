@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const src = fs.readFileSync(path.join(__dirname, "..", "services/weather.js"), "utf8");
-const Forecast = new Function(src + "\nreturn { wttrIcon, wmo, placeOf, coordsOf, wttrDays, outlookUrl, outlookDays, dateOf, upcoming, isToday, weekRange, barOf, rainText, readWttr, failureLook, ago, suggestionQueries, geocodeUrl, editDistance, geocodeResults, suggestPlace, suggestionCommand, typeaheadCommand, placeMatches };")();
+const Forecast = new Function(src + "\nreturn { wttrIcon, wmo, placeOf, coordsOf, wttrDays, outlookUrl, outlookDays, dateOf, upcoming, isToday, weekRange, barOf, rainText, readWttr, failureLook, ago, suggestionQueries, geocodeUrl, editDistance, geocodeResults, suggestPlace, suggestionCommand, typeaheadCommand, placeMatches, weatherAsk, nowOf, nowText };")();
 
 function hour(time, code, desc, rain) {
     return { time, weatherCode: String(code), weatherDesc: [{ value: desc }], chanceofrain: String(rain) };
@@ -306,4 +306,34 @@ test("the type-ahead lists towns that start with what was typed, with the region
     const lyngby = Forecast.placeMatches("Lyngby", geocoded("lyngbyy"));
     assert.strictEqual(new Set(lyngby.map(p => p.text)).size, lyngby.length);
     assert.deepStrictEqual(Forecast.placeMatches("Xqzwvb", geocoded("xqzwvb")), []);
+});
+
+test("weather questions give a place, or none for here", () => {
+    assert.deepStrictEqual(Forecast.weatherAsk("weather"), { place: "", loose: false });
+    assert.deepStrictEqual(Forecast.weatherAsk("weather paris"), { place: "paris", loose: false });
+    assert.deepStrictEqual(Forecast.weatherAsk("weather in new york"), { place: "new york", loose: false });
+    assert.deepStrictEqual(Forecast.weatherAsk("what's the weather in tokyo?"), { place: "tokyo", loose: false });
+    assert.deepStrictEqual(Forecast.weatherAsk("oslo weather"), { place: "oslo", loose: true });
+    assert.deepStrictEqual(Forecast.weatherAsk("forecast for rome today"), { place: "rome", loose: false });
+    assert.deepStrictEqual(Forecast.weatherAsk("weather here"), { place: "", loose: false });
+});
+
+test("weather leaves app names and other words alone", () => {
+    assert.strictEqual(Forecast.weatherAsk("weather app"), null);
+    assert.strictEqual(Forecast.weatherAsk("weatherman"), null);
+    assert.strictEqual(Forecast.weatherAsk("the weather widget"), null);
+    assert.strictEqual(Forecast.weatherAsk("whether"), null);
+    assert.strictEqual(Forecast.weatherAsk("weather tomorrow"), null);
+    assert.strictEqual(Forecast.weatherAsk("weather in new york tomorrow"), null);
+    assert.strictEqual(Forecast.weatherAsk("gnome weather").loose, true);
+    assert.deepStrictEqual(Forecast.weatherAsk("what's the weather like"), { place: "", loose: false });
+    assert.deepStrictEqual(Forecast.weatherAsk("weather in paris today"), { place: "paris", loose: false });
+});
+
+test("current conditions read into a short line in either unit", () => {
+    const data = Object.assign({}, WTTR, { current_condition: [{ temp_C: "9", temp_F: "48", FeelsLikeC: "6", FeelsLikeF: "43", humidity: "80", windspeedKmph: "15", windspeedMiles: "9", weatherCode: "116", weatherDesc: [{ value: "Partly cloudy" }] }] });
+    const now = Forecast.nowOf(data);
+    assert.deepStrictEqual(Forecast.nowText(now, false), { label: "9°C, Partly cloudy", detail: "Kongens Lyngby, Denmark · feels like 6° · 6° to 11° · wind 15 km/h" });
+    assert.strictEqual(Forecast.nowText(now, true).label, "48°F, Partly cloudy");
+    assert.strictEqual(Forecast.nowOf({}), null);
 });

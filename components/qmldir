@@ -1,4 +1,5 @@
 module qs.components
+ActionMenu 1.0 ActionMenu.qml
 ActionSheet 1.0 ActionSheet.qml
 AppMark 1.0 AppMark.qml
 AspectMark 1.0 AspectMark.qml

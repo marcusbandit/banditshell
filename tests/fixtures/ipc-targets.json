@@ -49,6 +49,12 @@
     "status(): string",
     "toggle(path: string): string"
   ],
+  "mixer": [
+    "close(): string",
+    "open(): string",
+    "status(): string",
+    "toggle(): string"
+  ],
   "hotkeys": [
     "close(): string",
     "open(screen: string): string",
@@ -87,7 +93,7 @@
     "query(): string",
     "reloadPlugin(id: string): string",
     "remove(tool: string, id: string): string",
-    "run(id: string): string",
+    "run(id: string, how: string): string",
     "scrub(fraction: string): string",
     "status(): string",
     "toggle(): string"
@@ -141,6 +147,10 @@
   ],
   "panels": [
     "closeAll(): string"
+  ],
+  "password": [
+    "refuse(): string",
+    "scene(name: string): string"
   ],
   "penmap": [
     "aspect(): string",
@@ -208,6 +218,9 @@
     "on(screen: string): string",
     "status(): string",
     "toggle(screen: string): string"
+  ],
+  "snippets": [
+    "expand(): string"
   ],
   "stream": [
     "off(): string",

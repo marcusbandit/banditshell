@@ -17,6 +17,11 @@ Item {
 
     signal markPressed(var opens)
 
+    onRequested: key => {
+        if (key.startsWith("plugin:"))
+            PluginStatus.menuKey = key;
+    }
+
     property bool awake: false
 
     property string hoveredKey: ""
@@ -145,7 +150,20 @@ Item {
             shown: Config.values.sidebar.status.brightness,
             scroll: root.scrollBrightness
         }
-    ].filter(g => g.present ?? true)
+    ].concat(PluginStatus.rail.map(i => ({
+                key: i.key,
+                title: i.title,
+                reading: {
+                    icon: i.icon,
+                    active: i.tone === "active",
+                    alert: i.tone === "alert",
+                    warning: i.tone === "warning",
+                    alarm: i.tone === "alarm",
+                    tip: i.text ? `${i.title}, ${i.text}` : i.title
+                },
+                body: i.click === "menu" ? pluginMenu : undefined,
+                press: i.click === "menu" ? undefined : () => PluginStatus.press(i.key, "")
+            }))).filter(g => g.present ?? true)
 
     readonly property var gauges: root.allGauges.filter(g => g.shown ?? true)
 
@@ -372,5 +390,11 @@ Item {
         id: bluetoothMenu
 
         BluetoothMenu {}
+    }
+
+    Component {
+        id: pluginMenu
+
+        PluginStatusMenu {}
     }
 }

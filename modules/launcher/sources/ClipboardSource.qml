@@ -15,7 +15,7 @@ QtObject {
 
     readonly property bool listening: root.explicit || Config.values.launcher.typing.clipboard
 
-    readonly property bool active: root.listening && root.search.text.length > 0
+    readonly property bool active: root.listening && root.search.text.length > 0 && !root.paged
 
     readonly property var indexed: root.active ? ClipboardSearch.index(Clipboard.entries, e => Clipboard.summarise(e)) : []
 
@@ -49,10 +49,40 @@ QtObject {
 
     property string revealed: ""
 
+    readonly property bool pasting: Typist.found && Config.values.clipboard.enterAction !== "copy"
+
     onActiveChanged: if (!root.active)
         root.revealed = ""
 
+    readonly property bool paged: root.search.presents && root.explicit
+
+    readonly property bool opening: root.paged && /^\s*\S+\s/.test(root.search.query)
+
+    onOpeningChanged: if (root.opening && !root.search.presenting)
+        Qt.callLater(root.openPage)
+
+    readonly property Component page: Component {
+        ClipboardPage {}
+    }
+
+    function openPage(): void {
+        if (!root.search.presents || root.search.presenting)
+            return;
+        root.search.present({
+            component: root.page,
+            name: "clipboard",
+            text: "Clipboard history",
+            filters: true,
+            placeholder: "Filter what you copied",
+            filter: root.asked.term,
+            restore: root.search.query.trim().split(/\s+/)[0] ?? "",
+            source: root
+        });
+    }
+
     readonly property var rows: {
+        if (root.paged)
+            return root.offersUndo ? [root.undoRow()] : [];
         const rows = root.found.map(entry => root.row(entry));
         if (root.offersUndo)
             return [root.undoRow()].concat(rows);
@@ -176,10 +206,20 @@ QtObject {
             Clipboard.remove(row.entry);
             return;
         }
-        if (Typist.found)
+        if (root.pasting)
             root.paste(row);
         else
             root.copy(row);
+    }
+
+    function saveAsSnippet(entry: var): string {
+        const text = String(entry.text ?? "");
+        const had = Snippets.list.find(s => String(s.text ?? "") === text);
+        if (had)
+            return had.name;
+        const name = Snippets.suggestName(text);
+        Snippets.add(name, "", text);
+        return name;
     }
 
     function confirmActionsFor(row: var): var {
@@ -224,18 +264,23 @@ QtObject {
                 }
             ];
         const typing = Typist.found;
-        const acts = [
-            {
-                icon: typing ? "content_paste_go" : "content_copy",
-                label: typing ? "Paste" : "Copy",
-                run: () => typing ? root.paste(row) : root.copy(row)
-            }
-        ];
-        if (typing)
+        const pasteAct = {
+            icon: "content_paste_go",
+            label: "Paste",
+            run: () => root.paste(row)
+        };
+        const copyAct = {
+            icon: "content_copy",
+            label: "Copy",
+            run: () => root.copy(row)
+        };
+        const acts = root.pasting ? [pasteAct, copyAct] : typing ? [copyAct, pasteAct] : [copyAct];
+        if (!row.entry.file && !(row.entry.paths ?? []).length && !row.secret && String(row.entry.text ?? "").trim())
             acts.push({
-                icon: "content_copy",
-                label: "Copy",
-                run: () => root.copy(row)
+                icon: "bookmark_add",
+                label: "Save as snippet",
+                tucked: true,
+                run: () => root.saveAsSnippet(row.entry)
             });
         if (row.secret)
             acts.push({

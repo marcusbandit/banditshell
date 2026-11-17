@@ -139,6 +139,14 @@ Singleton {
         return QuietHours.endsLabel(until, Date.now(), root.nightTo);
     }
 
+    function quietClockPhrase(text: string): string {
+        return QuietHours.quietClockPhrase(text);
+    }
+
+    function nextClockAt(minutes: int, at: double): double {
+        return QuietHours.nextClockAt(minutes, at);
+    }
+
     function parseEnds(text: string): string {
         return QuietHours.parseEnds(text);
     }

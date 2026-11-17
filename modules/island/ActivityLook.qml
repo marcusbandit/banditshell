@@ -177,6 +177,21 @@ QtObject {
                     actions: a.actions ?? [],
                     actionTone: Appearance.colour.accent
                 };
+            if (a.style === "plugin")
+                return {
+                    icon: a.icon || "extension",
+                    tone: ({
+                            plain: Appearance.colour.textDim,
+                            warning: Appearance.colour.warning,
+                            alarm: Appearance.colour.alarm
+                        })[a.data?.tone] ?? Appearance.colour.accent,
+                    text: a.text,
+                    detail: a.detail,
+                    trailing: (a.actions ?? []).length ? "actions" : a.progress >= 0 ? "ring" : "",
+                    actions: a.actions ?? [],
+                    actionTone: Appearance.colour.accent,
+                    ringValue: Math.max(0, a.progress)
+                };
             if (a.style === "bluetooth") {
                 const battery = a.data?.battery ?? -1;
                 return {

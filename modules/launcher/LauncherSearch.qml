@@ -14,6 +14,7 @@ import "shellcli.js" as ShellCli
 import "../files/marks.js" as Marks
 import "../settings/catalogue.js" as Catalogue
 import "../../services/ranking.js" as Ranking
+import "../../services/window-moves.js" as Moves
 import "../../services/system-monitor.js" as ProcessNames
 
 QtObject {
@@ -99,6 +100,9 @@ QtObject {
             search: root
         },
         TranslateSource {
+            search: root
+        },
+        WeatherSource {
             search: root
         },
         DefineSource {
@@ -280,6 +284,7 @@ QtObject {
     readonly property var reminder: Search.reminderAsk(root.text)
     readonly property string place: Search.zoneAsk(root.text)
     readonly property var convert: Search.zoneConvertAsk(root.text)
+    readonly property var zoneDiff: Search.zoneDiffAsk(root.text)
     readonly property var killing: Search.killAsk(root.text)
 
     readonly property var parsedHere: [
@@ -327,7 +332,7 @@ QtObject {
 
     readonly property var prefixes: Prefixes.OWN.concat(root.parsedHere, root.sources.reduce((out, s) => out.concat(s.prefixes ?? []), []))
 
-    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || root.windowList || root.commandRows.some(r => r.score === Infinity)
+    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.diffRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || root.presetRows.length > 0 || root.windowList || root.commandRows.some(r => r.score === Infinity)
 
     property bool started: false
 
@@ -352,7 +357,7 @@ QtObject {
             Files.refreshPlaces();
             Hyprland.refreshToplevels();
         }
-        if (Search.zoneAsk(root.query.trim()) || Search.zoneConvertAsk(root.query.trim()))
+        if (Search.zoneAsk(root.query.trim()) || Search.zoneConvertAsk(root.query.trim()) || Search.zoneDiffAsk(root.query.trim()))
             Clock.loadZoneList();
         if (Search.killAsk(root.query.trim()) !== null)
             root.listProcesses();
@@ -439,9 +444,8 @@ QtObject {
             icon: "content_paste",
             label: "Clipboard history",
             words: "clipboard paste copied history",
-            run: () => Panels.open("clipboard", {
-                screen: root.screenName
-            })
+            stay: true,
+            run: () => root.retype("clip ")
         },
         {
             id: "wallpapers",
@@ -488,6 +492,13 @@ QtObject {
             run: () => root.leave(() => Panels.open("tour", {
                     screen: root.screenName
                 }))
+        },
+        {
+            id: "manual",
+            icon: "menu_book",
+            label: "Open the manual",
+            words: "manual user guide docs documentation readme help how to",
+            run: () => root.leave(() => Quickshell.execDetached(["xdg-open", "https://github.com/marcusbandit/banditshell#readme"]))
         },
         {
             id: "playpause",
@@ -574,6 +585,32 @@ QtObject {
             run: () => Quickshell.execDetached(["gio", "trash", "--empty"])
         },
         {
+            id: "opentrash",
+            icon: "delete",
+            label: "Open trash",
+            words: "open trash bin rubbish show deleted files",
+            run: () => Files.show(Files.trashFiles)
+        },
+        {
+            id: "hiddenfiles",
+            icon: "visibility",
+            label: "Show hidden files",
+            words: "hidden files dotfiles show hide toggle file manager",
+            toggle: Files.showHidden,
+            stay: true,
+            run: () => Files.setShowHidden(!Files.showHidden)
+        },
+        {
+            id: "bluetooth",
+            icon: Bluetooth.enabled ? "bluetooth" : "bluetooth_disabled",
+            label: "Bluetooth",
+            words: "bluetooth on off toggle turn on turn off enable disable switch",
+            toggle: Bluetooth.enabled,
+            hidden: !Bluetooth.available,
+            stay: true,
+            run: () => Bluetooth.setEnabled(!Bluetooth.enabled)
+        },
+        {
             id: "nightlight",
             icon: "nightlight",
             label: "Night light",
@@ -639,7 +676,7 @@ QtObject {
             confirm: true,
             run: () => root.openWindows.forEach(t => Hypr.closeWindow(Hypr.windowAddress(t.address)))
         }
-    ].concat(root.windowCommands, root.layoutCommands, root.sourceCommands, Files.drives.map(d => ({
+    ].concat(root.windowCommands, root.layoutCommands, root.presetCommands, root.sourceCommands, Files.drives.map(d => ({
                 id: `eject:${d.path}`,
                 icon: "eject",
                 label: `Eject ${d.name}`,
@@ -789,8 +826,8 @@ QtObject {
                     id: `move-${d.name}`,
                     icon: d.icon,
                     label: `Move window ${d.name}`,
-                    words: `move window ${d.name}`,
-                    run: () => Hypr.moveWindowToward(root.windowTarget(), d.short)
+                    words: `move window ${d.name} nudge`,
+                    run: () => floating ? Hypr.nudgeWindow(root.windowTarget(), d.short, Moves.NUDGE_STEP) : Hypr.moveWindowToward(root.windowTarget(), d.short)
                 })), [
             {
                 id: "nextworkspace",
@@ -836,6 +873,56 @@ QtObject {
                 run: () => WindowLayouts.use(name)
             }))
 
+    readonly property var presets: Config.values.launcher.windowPresets ?? []
+
+    readonly property var presetCommands: root.presets.map(p => ({
+                id: `preset:${p.id}`,
+                icon: "view_quilt",
+                label: `Apply preset ${p.name}`,
+                words: `window preset arrangement setup apply ${p.name}`,
+                detail: `${p.windows.length} windows`,
+                run: () => {
+                    if (p.layout && p.layout !== WindowLayouts.current)
+                        WindowLayouts.use(p.layout, () => Hypr.applyPreset(p));
+                    else
+                        Hypr.applyPreset(p);
+                }
+            })).concat(root.presets.map(p => ({
+                    id: `presetdelete:${p.id}`,
+                    icon: "delete",
+                    label: `Delete preset ${p.name}`,
+                    words: `window preset arrangement setup delete remove ${p.name}`,
+                    confirm: true,
+                    run: () => Config.set("launcher.windowPresets", Moves.withoutPreset(root.presets, p.id))
+                })))
+
+    readonly property var presetRows: {
+        const name = Search.presetAsk(root.text);
+        if (!name)
+            return [];
+        const label = `Save window preset ${name}`;
+        return [
+            {
+                key: "command:savepreset",
+                kind: "command",
+                command: {
+                    id: "savepreset",
+                    label: label,
+                    run: () => Hypr.capturePreset(name, WindowLayouts.current, preset => {
+                        if (preset.windows.length)
+                            Config.set("launcher.windowPresets", Moves.withPreset(root.presets, preset));
+                        else
+                            Quickshell.execDetached(["notify-send", "Window preset", "No windows on this workspace to save"]);
+                    })
+                },
+                label: label,
+                detail: "windows on this workspace",
+                icon: "save",
+                score: Infinity
+            }
+        ];
+    }
+
     readonly property int workspaceWanted: Search.workspaceAsk(root.text)
     readonly property int workspaceShown: Search.focusWorkspaceAsk(root.text)
 
@@ -877,7 +964,7 @@ QtObject {
         ];
     }
 
-    readonly property var openWindows: Hyprland.toplevels.values.filter(t => (t.workspace?.id ?? 0) !== 0)
+    readonly property var openWindows: Hyprland.toplevels.values.filter(t => Hypr.keyOf(t) !== "")
 
     readonly property bool airplane: !Network.enabled && !Bluetooth.enabled
 
@@ -924,8 +1011,11 @@ QtObject {
         };
     }
 
+    readonly property var claimedApps: root.sources.reduce((all, s) => all.concat(s.claimsApps ?? []), [])
+
     readonly property var appRows: {
-        const found = Apps.search(root.text);
+        const claimed = root.claimedApps;
+        const found = Apps.search(root.text).filter(e => claimed.indexOf(e.id) < 0);
         return (root.text ? found.slice(0, root.caps.apps) : found).map(entry => root.appRow(entry));
     }
 
@@ -1022,6 +1112,15 @@ QtObject {
             const row = s.rowById?.(id) ?? null;
             if (row)
                 return row;
+        }
+        return null;
+    }
+
+    function commandFor(text: string): var {
+        for (const s of root.sources) {
+            const found = s.commandOf?.(text) ?? null;
+            if (found)
+                return found;
         }
         return null;
     }
@@ -1215,7 +1314,7 @@ QtObject {
                 kind: "suggest",
                 complete: text,
                 label: text.endsWith(" ") ? `${text}…` : text,
-                detail: preview && !preview.missing ? preview.text : "",
+                detail: preview && !preview.missing ? preview.readable : "",
                 icon: "keyboard_tab",
                 score: inside ? 3 : 0.4
             };
@@ -1226,7 +1325,7 @@ QtObject {
 
     readonly property bool windowList: Search.windowListAsk(root.text)
 
-    readonly property var windowRows: root.text.length < 2 ? [] : Hyprland.toplevels.values.filter(t => (t.workspace?.id ?? 0) !== 0).map(t => {
+    readonly property var windowRows: root.text.length < 2 ? [] : Hyprland.toplevels.values.filter(t => Hypr.keyOf(t) !== "").map(t => {
         const o = t.lastIpcObject ?? {};
         const cls = o.class || o.initialClass || "";
         const app = Apps.nameFor(cls);
@@ -1281,15 +1380,41 @@ QtObject {
                     icon: Audio.deviceIcon(n),
                     score: root.kindScore(Audio.deviceLabel(n), "sound output speakers headphones audio")
                 }));
-        return bluetooth.concat(wifi, outputs).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
+        const inputs = Audio.sources.map(n => ({
+                    key: `input:${n.id}`,
+                    kind: "input",
+                    node: n,
+                    label: Audio.deviceLabel(n),
+                    detail: n === Audio.source ? "in use" : "",
+                    icon: Audio.deviceIcon(n),
+                    score: root.kindScore(Audio.deviceLabel(n), "microphone mic input sound audio")
+                }));
+        return bluetooth.concat(wifi, outputs, inputs).filter(r => r.score > 0).sort((a, b) => b.score - a.score);
     }
 
     property var zoneOffsets: ({})
 
     readonly property var zoneIds: root.place ? Search.zoneMatches(Clock.allZones, root.place, Clock.cityOf, Clock.localZone).slice(0, 4) : []
 
-    onZoneIdsChanged: {
-        const unknown = root.zoneIds.filter(id => root.zoneOffsets[id] === undefined && Clock.validZone(id));
+    readonly property var diffPair: {
+        const ask = root.zoneDiff;
+        if (!ask)
+            return null;
+        const from = root.zoneFor(ask.from);
+        const to = root.zoneFor(ask.to);
+        if (!from || !to || from === to || !Clock.validZone(from) || !Clock.validZone(to))
+            return null;
+        return {
+            ask: ask,
+            from: from,
+            to: to
+        };
+    }
+
+    readonly property var zoneWanted: root.diffPair ? root.zoneIds.concat([root.diffPair.from, root.diffPair.to]) : root.zoneIds
+
+    onZoneWantedChanged: {
+        const unknown = root.zoneWanted.filter(id => root.zoneOffsets[id] === undefined && Clock.validZone(id));
         if (!unknown.length)
             return;
         root.offsets.running = false;
@@ -1319,6 +1444,32 @@ QtObject {
             score: Infinity
         };
     })
+
+    readonly property var diffRows: {
+        const pair = root.diffPair;
+        if (!pair)
+            return [];
+        const a = root.zoneOffsets[pair.from];
+        const b = root.zoneOffsets[pair.to];
+        if (a === undefined || b === undefined)
+            return [];
+        const fromName = root.placeName(pair.ask.from, pair.from);
+        const toName = root.placeName(pair.ask.to, pair.to);
+        const now = Date.now();
+        const there = new Date(now + b * 60000);
+        return [
+            {
+                key: `diff:${pair.from}|${pair.to}`,
+                kind: "zone",
+                zone: pair.to,
+                time: TimeFormat.clock(there.getUTCHours(), there.getUTCMinutes()),
+                label: Search.diffSentence(b - a, fromName, toName),
+                detail: `${Clock.offsetLabel(b - a)} · ${TimeFormat.clock(there.getUTCHours(), there.getUTCMinutes())} in ${toName}`,
+                icon: "schedule",
+                score: Infinity
+            }
+        ];
+    }
 
     function zoneFor(place: string): string {
         if (!place)
@@ -1394,6 +1545,43 @@ QtObject {
         ];
     }
 
+    readonly property var timeAnswer: {
+        const c = root.conversion;
+        const got = root.converted;
+        if (c && got?.key === c.key && root.convertRows.length) {
+            const there = new Date(`${got.day}T12:00:00`);
+            const here = new Date(there.getTime() - got.shift * 86400000);
+            const delta = got.hour * 60 + got.minute + got.shift * 1440 - (c.ask.clock.hour * 60 + c.ask.clock.minute);
+            return {
+                section: "Time",
+                question: TimeFormat.clock(c.ask.clock.hour, c.ask.clock.minute),
+                asked: `${root.placeName(c.ask.from, c.from)} · ${TimeFormat.dateText(here, "brief")}`,
+                text: TimeFormat.clock(got.hour, got.minute),
+                detail: `${root.placeName(c.ask.to, c.to)} · ${TimeFormat.dateText(there, "brief")}${delta ? ` · ${Clock.offsetLabel(delta)}` : ""}`,
+                row: root.convertRows[0],
+                work: 1,
+                firm: true
+            };
+        }
+        const zone = root.zoneRows[0];
+        if (!zone)
+            return null;
+        const offset = root.zoneOffsets[zone.zone];
+        const now = new Date();
+        const there = new Date(now.getTime() + (offset + now.getTimezoneOffset()) * 60000);
+        const delta = offset + now.getTimezoneOffset();
+        return {
+            section: "Time",
+            question: TimeFormat.clock(now.getHours(), now.getMinutes()),
+            asked: `${Clock.localCity || "Here"} · ${TimeFormat.dateText(now, "brief")}`,
+            text: zone.time,
+            detail: `${Search.placeLabel(root.place, zone.zone, Clock.cityOf)} · ${TimeFormat.dateText(there, "brief")}${delta ? ` · ${Clock.offsetLabel(delta)}` : ""}`,
+            row: zone,
+            work: 1,
+            firm: true
+        };
+    }
+
     readonly property int reminderHour: Config.values.launcher.utilities.reminderHour
     readonly property bool alarmsFull: Clock.alarmsFull
     readonly property bool timersFull: Clock.timersFull
@@ -1450,7 +1638,7 @@ QtObject {
             });
         if (root.reminder)
             out.push(root.reminderRow(root.reminder));
-        return out.concat(root.convertRows, root.zoneRows);
+        return out.concat(root.convertRows, root.diffRows, root.zoneRows);
     }
 
     property var processes: []
@@ -1561,7 +1749,7 @@ QtObject {
         });
     }
 
-    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, FileSearch.grepAnswered, FileSearch.found, root.sourceGroupLists, root.aloneSource, root.limits]
+    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.presetRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, FileSearch.grepAnswered, FileSearch.found, root.sourceGroupLists, root.aloneSource, root.limits]
 
     property var arranged: []
     property bool arrangePending: false
@@ -1577,6 +1765,14 @@ QtObject {
         root.syncAdded();
         root.arrangePending = true;
         root.arrangeNow();
+    }
+
+    function openPending(): void {
+        if (!root.presents || root.presenting)
+            return;
+        const source = root.sources.find(s => s.opening && typeof s.openPage === "function");
+        if (source)
+            source.openPage();
     }
 
     function arrangeNow(): void {
@@ -1642,7 +1838,7 @@ QtObject {
         }, {
             key: "commands",
             title: "Commands",
-            items: root.withAlias("command", root.awakeRows.concat(root.workspaceRows, root.commandRows))
+            items: root.withAlias("command", root.awakeRows.concat(root.workspaceRows, root.presetRows, root.commandRows))
         }, {
             key: "settings",
             title: "Settings",
@@ -1736,6 +1932,9 @@ QtObject {
         case "output":
             Audio.setSink(row.node);
             return;
+        case "input":
+            Audio.setSource(row.node);
+            return;
         case "timer":
             if (!row.full)
                 root.leave(() => Clock.startTimer(row.ask.seconds, row.ask.label));
@@ -1782,7 +1981,7 @@ QtObject {
     function windowsOf(entry: var): var {
         return Hyprland.toplevels.values.filter(t => {
             const o = t.lastIpcObject ?? {};
-            return (t.workspace?.id ?? 0) !== 0 && Apps.entryFor(o.class || o.initialClass || "")?.id === entry.id;
+            return Hypr.keyOf(t) !== "" && Apps.entryFor(o.class || o.initialClass || "")?.id === entry.id;
         });
     }
 
@@ -1867,6 +2066,13 @@ QtObject {
             });
     }
 
+    property string openersFor: ""
+
+    function askOpeners(path: string): void {
+        root.openersFor = path;
+        Files.offerOpeners(path, "launcher");
+    }
+
     function complete(row: var): bool {
         const owner = root.sourceOf(row);
         if (owner)
@@ -1903,7 +2109,20 @@ QtObject {
                     label: "Copy path",
                     run: () => root.leave(() => System.copyText(row.path))
                 }
-            ];
+            ].concat(row.dir ? [] : [
+                    {
+                        icon: "apps",
+                        label: "Open with…",
+                        run: () => root.askOpeners(row.path)
+                    }
+                ], [
+                    {
+                        icon: "delete",
+                        label: "Move to trash",
+                        alarm: true,
+                        run: () => root.leave(() => Files.trash([row.path]))
+                    }
+                ]);
         case "setting":
             return row.toggle === undefined ? [
                 {
@@ -2008,6 +2227,7 @@ QtObject {
                 }
             ];
         case "output":
+        case "input":
         case "timer":
         case "reminder":
         case "command":

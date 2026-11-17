@@ -6,6 +6,8 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import qs.config
 import "workspace-span.js" as WorkspaceSpan
+import "workspace-key.js" as WorkspaceKey
+import "window-moves.js" as Moves
 
 Singleton {
     id: root
@@ -81,11 +83,23 @@ Singleton {
             root.switchTo(band);
     }
 
+    function workspaceOf(client: var): var {
+        const live = {
+            id: client?.workspace?.id,
+            name: client?.workspace?.name
+        };
+        return WorkspaceKey.keyOf(live) !== "" ? live : (client?.lastIpcObject?.workspace ?? live);
+    }
+
+    function keyOf(client: var): string {
+        return WorkspaceKey.keyOf(root.workspaceOf(client));
+    }
+
     readonly property var clients: {
         const out = {};
         for (const c of Hyprland.toplevels.values) {
-            const id = c.workspace?.id ?? 0;
-            if (id !== 0) {
+            const id = root.keyOf(c);
+            if (id !== "") {
                 if (!out[id])
                     out[id] = [];
                 out[id].push(c);
@@ -100,7 +114,7 @@ Singleton {
         return out;
     }
 
-    function clientsIn(id: int): var {
+    function clientsIn(id: var): var {
         return root.clients[id] ?? [];
     }
 
@@ -109,19 +123,17 @@ Singleton {
     }
 
     readonly property var specials: {
-        const out = [];
-        for (const ws of Hyprland.workspaces.values) {
-            if (ws.id >= 0)
-                continue;
-            const name = ws.lastIpcObject?.name ?? "";
-            out.push({
-                id: ws.id,
-                name,
-                label: name.startsWith("special:") ? name.slice(8) : name,
-                windows: root.clients[ws.id] ?? []
-            });
-        }
-        return out;
+        const names = WorkspaceKey.specialNames(Hyprland.workspaces.values.map(ws => ws.lastIpcObject?.name ? ws.lastIpcObject : ({
+                    id: ws.id,
+                    name: ws.name
+                })), Hyprland.toplevels.values.map(c => ({
+                    workspace: root.workspaceOf(c)
+                })), Hyprland.monitors.values.map(m => m.lastIpcObject));
+        return names.map(name => ({
+                    name,
+                    label: name.startsWith("special:") ? name.slice(8) : name,
+                    windows: root.clients[name] ?? []
+                }));
     }
 
     readonly property var specialDeck: {
@@ -132,7 +144,6 @@ Singleton {
         const out = [];
         for (const name of want)
             out.push(live.find(s => s.label === name) ?? ({
-                        id: 0,
                         name: `special:${name}`,
                         label: name,
                         windows: []
@@ -192,6 +203,16 @@ Singleton {
                 root.parserKnown = true;
             }
         }
+    }
+
+    function windowRule(title: string, rules: var): void {
+        if (!Compositor.isHyprland || !root.parserKnown)
+            return;
+        const match = `^(${title})$`;
+        if (root.lua)
+            Quickshell.execDetached(["hyprctl", "eval", `hl.window_rule({ name = "${title}", match = { title = "${match}" }, ${rules.map(r => r.lua).join(", ")} })`]);
+        else
+            Quickshell.execDetached(["hyprctl", "--batch", rules.map(r => `keyword windowrule ${r.legacy}, match:title ${match}`).join(" ; ")]);
     }
 
     function toggleSpecial(name: string): void {
@@ -257,13 +278,10 @@ Singleton {
     }
 
     function monitorOf(addr: string): string {
-        const id = root.toplevelFor(addr)?.workspace?.id ?? 0;
-        if (id === 0)
+        const key = root.keyOf(root.toplevelFor(addr));
+        if (key === "")
             return "";
-        const shown = Hyprland.monitors.values.find(mon => {
-            const special = mon.lastIpcObject?.specialWorkspace;
-            return mon.activeWorkspace?.id === id || (!!special?.name && special.id === id);
-        });
+        const shown = Hyprland.monitors.values.find(mon => root.shownOn(mon).includes(key));
         return shown?.name ?? "";
     }
 
@@ -271,22 +289,34 @@ Singleton {
         return root.monitorOf(addr) !== "";
     }
 
+    property var remembered: ({})
+
     function fullscreenWindow(addr: string, mode: string): void {
         const w = root.windowAddress(addr);
-        if (w)
-            root.send(`hl.dsp.window.fullscreen({ mode = "${mode}", action = "toggle", window = "address:${w}" })`, `fullscreen ${mode === "maximized" ? 1 : 0}`);
+        if (!w)
+            return;
+        const now = root.toplevelFor(w)?.lastIpcObject;
+        if (now?.fullscreen)
+            delete root.remembered[w];
+        else if (!root.remembered[w]) {
+            const saved = Moves.remembered(now);
+            if (saved)
+                root.remembered[w] = saved;
+        }
+        root.send(`hl.dsp.window.fullscreen({ mode = "${mode}", action = "toggle", window = "address:${w}" })`, `fullscreen ${mode === "maximized" ? 1 : 0}`);
     }
 
     function restoreWindow(addr: string): void {
         const w = root.windowAddress(addr);
         if (!w)
             return;
-        if (root.lua) {
-            Hyprland.dispatch(`(function() hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, action = "set", window = "address:${w}" })) return hl.dsp.window.float({ action = "off", window = "address:${w}" }) end)()`);
+        const rect = root.toplevelFor(w)?.lastIpcObject?.floating === false ? null : Moves.restoreRect(root.remembered[w]);
+        delete root.remembered[w];
+        if (rect) {
+            root.placeWindow(w, rect);
             return;
         }
-        Hyprland.dispatch("fullscreenstate 0 0");
-        Hyprland.dispatch(`settiled address:${w}`);
+        root.tileWindow(w);
     }
 
     function floatWindow(addr: string): void {
@@ -336,8 +366,12 @@ Singleton {
             root.withLayout((mons, clients) => {
                 const client = clients.find(c => root.windowAddress(c.address) === w);
                 const mon = mons.find(m => m.id === client?.monitor) ?? mons.find(m => m.focused);
-                if (client && mon)
+                if (client && mon) {
+                    const saved = Moves.remembered(client);
+                    if (saved && !root.remembered[w])
+                        root.remembered[w] = saved;
                     root.placeWindow(w, rectFor(mon));
+                }
             });
     }
 
@@ -353,7 +387,7 @@ Singleton {
             const self = clients.find(c => root.windowAddress(c.address) === w);
             if (!self || self.floating)
                 return;
-            const main = clients.filter(c => c.workspace?.id === self.workspace?.id && !c.floating && c.mapped !== false).sort((a, b) => b.size[0] * b.size[1] - a.size[0] * a.size[1])[0];
+            const main = clients.filter(c => WorkspaceKey.keyOf(c.workspace) === WorkspaceKey.keyOf(self.workspace) && !c.floating && c.mapped !== false).sort((a, b) => b.size[0] * b.size[1] - a.size[0] * a.size[1])[0];
             const other = root.windowAddress(main?.address);
             if (other && other !== w)
                 root.send(`hl.dsp.window.swap({ target = "address:${other}", window = "address:${w}" })`, `swapwindow address:${other}`);
@@ -374,6 +408,52 @@ Singleton {
         const w = root.windowAddress(addr);
         if (w)
             root.send(`hl.dsp.window.move({ direction = "${direction}", window = "address:${w}" })`, `movewindow ${direction}`);
+    }
+
+    function nudgeWindow(addr: string, direction: string, step: int): void {
+        const w = root.windowAddress(addr);
+        if (!w)
+            return;
+        root.withLayout((mons, clients) => {
+            const client = clients.find(c => root.windowAddress(c.address) === w);
+            const to = Moves.nudgeTarget(client, direction, step, mons.find(m => m.id === client?.monitor));
+            if (to)
+                root.send(`hl.dsp.window.move({ x = ${to.x}, y = ${to.y}, window = "address:${w}" })`, `movewindowpixel exact ${to.x} ${to.y},address:${w}`);
+        });
+    }
+
+    function applyPreset(preset: var): void {
+        root.withLayout((mons, clients) => {
+            const mon = mons.find(m => m.focused);
+            if (!mon)
+                return;
+            for (const step of Moves.presetPlan(preset, mon, clients)) {
+                if (step.rect)
+                    root.placeWindow(step.address, step.rect);
+                else
+                    root.tileWindow(step.address);
+            }
+        });
+    }
+
+    function capturePreset(name: string, layout: string, done: var): void {
+        root.withLayout((mons, clients) => {
+            const mon = mons.find(m => m.focused);
+            if (mon)
+                done(Moves.presetFrom(name, layout, mon, clients));
+        });
+    }
+
+    function tileWindow(addr: string): void {
+        const w = root.windowAddress(addr);
+        if (!w)
+            return;
+        if (root.lua) {
+            Hyprland.dispatch(`(function() hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, action = "set", window = "address:${w}" })) return hl.dsp.window.float({ action = "off", window = "address:${w}" }) end)()`);
+            return;
+        }
+        Hyprland.dispatch("fullscreenstate 0 0");
+        Hyprland.dispatch(`settiled address:${w}`);
     }
 
     function focusToward(direction: string, layout: string): void {
@@ -519,23 +599,29 @@ Singleton {
             root.focusedByMonitor = next;
     }
 
+    function shownOn(mon: var): var {
+        return WorkspaceKey.shownKeys(mon.activeWorkspace?.id, mon.lastIpcObject?.specialWorkspace?.name);
+    }
+
+    function visibleOn(mon: var): string {
+        return WorkspaceKey.visibleKey(mon.activeWorkspace?.id, mon.lastIpcObject?.specialWorkspace?.name);
+    }
+
     function clientsOn(screen: var): var {
         const mon = Hyprland.monitorFor(screen);
         if (!mon)
             return [];
-        const special = mon.lastIpcObject?.specialWorkspace;
-        const workspaceId = special?.name ? special.id : mon.activeWorkspace?.id;
+        const workspaceId = root.visibleOn(mon);
         const layer = o => (o?.pinned ? 4 : 0) + (o?.fullscreen ? 2 : 0) + (o?.floating ? 1 : 0);
         const recency = o => o?.focusHistoryID ?? Infinity;
-        return Hyprland.toplevels.values.filter(c => c.workspace?.id === workspaceId).sort((a, b) => layer(b.lastIpcObject) - layer(a.lastIpcObject) || recency(a.lastIpcObject) - recency(b.lastIpcObject));
+        return Hyprland.toplevels.values.filter(c => root.keyOf(c) === workspaceId).sort((a, b) => layer(b.lastIpcObject) - layer(a.lastIpcObject) || recency(a.lastIpcObject) - recency(b.lastIpcObject));
     }
 
     readonly property var occupancy: {
         const out = {};
         for (const mon of Hyprland.monitors.values) {
-            const special = mon.lastIpcObject?.specialWorkspace;
-            const id = special?.name ? special.id : mon.activeWorkspace?.id;
-            out[mon.name] = id === undefined ? 0 : Hyprland.toplevels.values.filter(c => c.workspace?.id === id).length;
+            const key = root.visibleOn(mon);
+            out[mon.name] = key === "" ? 0 : Hyprland.toplevels.values.filter(c => root.keyOf(c) === key).length;
         }
         return out;
     }
@@ -547,9 +633,8 @@ Singleton {
     readonly property var fullscreenByMonitor: {
         const out = {};
         for (const mon of Hyprland.monitors.values) {
-            const special = mon.lastIpcObject?.specialWorkspace;
-            const shown = [mon.activeWorkspace?.id, special?.name ? special.id : undefined].filter(id => id !== undefined);
-            out[mon.name] = Hyprland.toplevels.values.find(c => shown.includes(c.workspace?.id) && (c.lastIpcObject?.fullscreen & 2) !== 0) ?? null;
+            const shown = root.shownOn(mon);
+            out[mon.name] = Hyprland.toplevels.values.find(c => shown.includes(root.keyOf(c)) && (c.lastIpcObject?.fullscreen & 2) !== 0) ?? null;
         }
         return out;
     }
@@ -655,6 +740,7 @@ Singleton {
             if (n === "closewindow") {
                 const gone = root.windowAddress(event.data);
                 if (gone) {
+                    delete root.remembered[gone];
                     if (root.focusedAddress === gone)
                         root.focusedAddress = "";
                     root.forgetFocus(gone);

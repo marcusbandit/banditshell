@@ -1,8 +1,13 @@
 import Quickshell
 import Quickshell.Io
 import qs.services
+import "../../services/password-asks.js" as PasswordAsks
 
 Scope {
+    id: root
+
+    readonly property string scenes: [...Object.keys(Keyring.scenes), ...Object.keys(Polkit.scenes), "wifi"].join(", ")
+
     IpcHandler {
         target: "keyring"
 
@@ -40,6 +45,24 @@ Scope {
         function demo(): string {
             Polkit.demo();
             return "showing a made-up question; escape puts it away";
+        }
+    }
+
+    IpcHandler {
+        target: "password"
+
+        function scene(name: string): string {
+            if (Keyring.scene(name) || Polkit.scene(name) || PasswordRequest.scene(name))
+                return `showing the made-up ${name} card; escape puts it away`;
+            return `no scene called ${name}; try ${root.scenes}`;
+        }
+
+        function refuse(): string {
+            const asking = PasswordAsks.current(Polkit, PasswordRequest, Keyring);
+            if (!asking)
+                return "nothing is being asked";
+            asking.refuse();
+            return "refused";
         }
     }
 }

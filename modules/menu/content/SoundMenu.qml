@@ -5,6 +5,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.controls
+import qs.modules.panel
 
 Column {
     id: root
@@ -251,6 +252,16 @@ Column {
             width: root.width
             node: modelData
             focusGroup: "output"
+        }
+    }
+
+    MenuRow {
+        width: root.width
+        icon: "tune"
+        label: "Open volume mixer"
+        onActivated: {
+            PanelWindows.close("menus");
+            Panels.open("mixer");
         }
     }
 

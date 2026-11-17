@@ -12,6 +12,7 @@ FocusScope {
     required property real band
 
     property bool yielded: false
+    property bool menuOpen: false
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
@@ -115,6 +116,13 @@ FocusScope {
 
     onWantedWidthChanged: if (!SettingsView.sliding)
         root.settledWidth = root.wantedWidth
+
+    Binding {
+        target: Settings
+        property: "covered"
+        value: root.menuOpen
+        when: root.shown
+    }
 
     Connections {
         target: SettingsView

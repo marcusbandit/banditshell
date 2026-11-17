@@ -13,6 +13,8 @@ const Qt = {
     Key_Menu: 0x01000055,
     Key_F10: 0x01000039,
     Key_K: 0x4b,
+    Key_Return: 0x01000004,
+    Key_Enter: 0x01000005,
     Key_A: 0x41,
     ControlModifier: 0x04000000,
     ShiftModifier: 0x02000000,
@@ -21,7 +23,7 @@ const Qt = {
 };
 
 const src = fs.readFileSync(path.join(ROOT, "modules/launcher/search.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Search = new Function("Qt", `${src}\nreturn { stepTarget, shiftTarget, caretKey, opensSheet, nextPickable };`)(Qt);
+const Search = new Function("Qt", `${src}\nreturn { stepTarget, shiftTarget, caretKey, opensSheet, nextPickable, foldedActions, gridSpot, nearestTile, draggedSlot, rowStep, trailStep };`)(Qt);
 
 const ROWS = [{ label: "answer" }, { label: "one" }, { label: "two" }, { label: "three" }];
 
@@ -88,5 +90,103 @@ test.describe("opening the actions sheet", () => {
         assert.strictEqual(Search.opensSheet(Qt.Key_K, Qt.ControlModifier | Qt.ShiftModifier), false);
         assert.strictEqual(Search.opensSheet(Qt.Key_F10, 0), false);
         assert.strictEqual(Search.opensSheet(Qt.Key_K, Qt.AltModifier), false);
+    });
+
+    test.it("answers to Ctrl+Enter on the app grid, where Enter alone opens the app", () => {
+        assert.strictEqual(Search.opensSheet(Qt.Key_Return, Qt.ControlModifier, true), true);
+        assert.strictEqual(Search.opensSheet(Qt.Key_Enter, Qt.ControlModifier, true), true);
+        assert.strictEqual(Search.opensSheet(Qt.Key_Return, 0, true), false);
+        assert.strictEqual(Search.opensSheet(Qt.Key_Return, Qt.ControlModifier, false), false);
+    });
+});
+
+test.describe("folding an app's own actions", () => {
+    const own = n => Array.from({ length: n }, (_, i) => ({ label: `action ${i}` }));
+
+    test.it("keeps a short list inline", () => {
+        assert.deepStrictEqual(Search.foldedActions(own(4), "Steam actions", 4), own(4));
+        assert.deepStrictEqual(Search.foldedActions(undefined, "Steam actions", 4), []);
+    });
+
+    test.it("puts a long list under one row named for the app", () => {
+        const folded = Search.foldedActions(own(9), "Steam actions", 4);
+        assert.strictEqual(folded.length, 1);
+        assert.strictEqual(folded[0].label, "Steam actions");
+        assert.deepStrictEqual(folded[0].children, own(9));
+    });
+});
+
+test.describe("dragging a pinned app to a new place", () => {
+    test.it("centres a short last row under the full one", () => {
+        assert.deepStrictEqual(Search.gridSpot(0, 11, 6), { row: 0, slot: -2.5 });
+        assert.deepStrictEqual(Search.gridSpot(6, 11, 6), { row: 1, slot: -2 });
+        assert.deepStrictEqual(Search.gridSpot(10, 11, 6), { row: 1, slot: 2 });
+    });
+
+    test.it("drops on the tile nearest the pointer", () => {
+        const cell = 100;
+        const middle = 300;
+        assert.strictEqual(Search.nearestTile(50, 50, 11, 6, cell, middle), 0);
+        assert.strictEqual(Search.nearestTile(560, 40, 11, 6, cell, middle), 5);
+        assert.strictEqual(Search.nearestTile(300, 150, 11, 6, cell, middle), 8);
+        assert.strictEqual(Search.nearestTile(-400, 900, 11, 6, cell, middle), 6);
+    });
+
+    test.it("slides the tiles between the old and new place over by one", () => {
+        const order = (from, to) => [0, 1, 2, 3, 4].map(i => Search.draggedSlot(i, from, to));
+        assert.deepStrictEqual(order(1, 3), [0, 3, 1, 2, 4]);
+        assert.deepStrictEqual(order(3, 0), [1, 2, 3, 0, 4]);
+        assert.deepStrictEqual(order(2, 2), [0, 1, 2, 3, 4]);
+        assert.deepStrictEqual(order(-1, -1), [0, 1, 2, 3, 4]);
+    });
+});
+
+test.describe("stepping between tile rows", () => {
+    const grid = (counts) => counts.flatMap((n, row) => Array.from({ length: n }, (_, i) => ({ row, slot: i - (n - 1) / 2 })));
+    const TILES = grid([3, 2]);
+
+    test.it("lands on the nearest tile, the lower one on a tie", () => {
+        assert.strictEqual(Search.rowStep(TILES, 1, 1, {}), 3);
+        assert.strictEqual(Search.rowStep(TILES, 3, -1, {}), 0);
+    });
+
+    test.it("goes back to the tile it left the row from", () => {
+        assert.strictEqual(Search.rowStep(TILES, 3, -1, { 0: 1 }), 1);
+        assert.strictEqual(Search.rowStep(TILES, 4, -1, { 0: 2 }), 2);
+    });
+
+    test.it("ignores a remembered tile that is not in the row it steps into", () => {
+        assert.strictEqual(Search.rowStep(TILES, 3, -1, { 0: 4 }), 0);
+    });
+
+    test.it("ignores a remembered tile that is not a tile index", () => {
+        assert.strictEqual(Search.rowStep(TILES, 3, -1, { 0: null }), 0);
+    });
+
+    test.it("stays put past the first and last row", () => {
+        assert.strictEqual(Search.rowStep(TILES, 0, -1, {}), -1);
+        assert.strictEqual(Search.rowStep(TILES, 3, 1, {}), -1);
+    });
+});
+
+test.describe("walking the tile rows with a trail", () => {
+    const grid = (counts) => counts.flatMap((n, row) => Array.from({ length: n }, (_, i) => ({ row, slot: i - (n - 1) / 2 })));
+    const walk = (tiles, from, steps, trail = null) => steps.reduce((s, d) => {
+        const next = Search.trailStep(tiles, s.at, d, s.trail);
+        return next.to < 0 ? s : { at: next.to, trail: next.trail };
+    }, { at: from, trail });
+
+    test.it("comes back to the second tile after Down then Up", () => {
+        assert.strictEqual(walk(grid([3, 2]), 1, [1, -1]).at, 1);
+    });
+
+    test.it("retraces a path across three rows", () => {
+        const tiles = grid([3, 2, 3]);
+        assert.deepStrictEqual([1, 1, -1, -1].reduce((seen, d, i, all) => seen.concat(walk(tiles, 2, all.slice(0, i + 1)).at), []), [4, 6, 4, 2]);
+    });
+
+    test.it("forgets the trail once the tile moved some other way", () => {
+        const down = walk(grid([3, 2]), 1, [1]);
+        assert.strictEqual(Search.trailStep(grid([3, 2]), 4, -1, down.trail).to, 1);
     });
 });

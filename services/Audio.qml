@@ -28,7 +28,8 @@ Singleton {
     readonly property var sinks: Pipewire.nodes.values.filter(n => n.isSink && n.audio && !n.isStream)
     readonly property var sources: Pipewire.nodes.values.filter(n => !n.isSink && n.audio && !n.isStream)
 
-    readonly property var streams: Pipewire.nodes.values.filter(n => n.isStream && n.audio)
+    readonly property var allStreams: Pipewire.nodes.values.filter(n => n.isStream && n.audio)
+    readonly property var streams: root.allStreams.filter(n => n.ready && !Names.isMeter(n.properties))
     readonly property var playing: streams.filter(n => (n.properties?.["media.class"] ?? "").includes("Output"))
     readonly property var recording: streams.filter(n => (n.properties?.["media.class"] ?? "").includes("Input"))
 
@@ -172,6 +173,12 @@ Singleton {
             node.audio.muted = !node.audio.muted;
     }
 
+    function setStreamsMuted(nodes: var, muted: bool): void {
+        for (const node of nodes)
+            if (node?.audio)
+                node.audio.muted = muted;
+    }
+
     function setSink(node: PwNode): void {
         if (node)
             Pipewire.preferredDefaultAudioSink = node;
@@ -254,6 +261,6 @@ Singleton {
     }
 
     PwObjectTracker {
-        objects: [root.sink, root.source, ...root.sinks, ...root.sources, ...root.streams]
+        objects: [root.sink, root.source, ...root.sinks, ...root.sources, ...root.allStreams]
     }
 }

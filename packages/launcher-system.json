@@ -5,6 +5,7 @@
   "owns": {
     "qml": [
       "modules/launcher/sources/BrightnessSource.qml",
+      "modules/launcher/sources/MixerPage.qml",
       "modules/launcher/sources/RecordSource.qml",
       "modules/launcher/sources/SoundSource.qml",
       "modules/launcher/sources/VpnSource.qml",
@@ -14,7 +15,7 @@
     "tests": ["tests/launcher-system-controls.test.js", "tests/launcher-system.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor", "launcher", "network", "display", "audio", "capture"],
+    "packages": ["core", "compositor", "launcher", "network", "display", "audio", "capture", "mixer"],
     "optional": []
   },
   "provides": {

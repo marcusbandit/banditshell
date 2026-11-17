@@ -12,11 +12,19 @@ QtObject {
 
     property string pluginId: ""
 
-    readonly property var plugin: PluginHost.pluginOf(root.pluginId)
+    readonly property var plugin: Protocol.withoutCommands(PluginHost.pluginOf(root.pluginId), root.pluginId, Config.values.launcher.plugins.commandsOff)
 
     readonly property string kind: `plugin-${root.pluginId}`
 
     readonly property var kinds: [root.kind]
+
+    readonly property bool watching: root.search.active && root.search.presents
+
+    onWatchingChanged: PluginHost.watch(root, root.watching)
+
+    Component.onCompleted: PluginHost.watch(root, root.watching)
+
+    Component.onDestruction: PluginHost.watch(root, false)
 
     readonly property var asked: root.plugin && root.search.active ? Protocol.asked(root.plugin, root.search.query) : null
 
@@ -72,6 +80,7 @@ QtObject {
     function rowOf(item: var, score: real): var {
         const span = item.height;
         const preview = item.preview;
+        const facts = preview?.facts ? preview : null;
         return Object.assign({
             key: `plugin:${root.pluginId}:${item.id}`,
             kind: root.kind,
@@ -83,15 +92,15 @@ QtObject {
             span: span,
             tags: item.tags,
             card: item.qml || span !== 1 ? root.rowCard : null,
-            peekText: preview?.text ?? "",
+            peekText: facts ? "" : preview?.text ?? "",
             peekImage: preview?.image ?? "",
             peekPath: preview?.file ?? "",
-            peekCard: preview?.qml ? root.previewCard : null,
+            peekCard: preview?.qml ? root.previewCard : facts ? root.factsCard : null,
             entry: preview?.qml ? {
                 owner: root,
                 item: item,
                 qml: preview.qml
-            } : null
+            } : facts
         }, root.iconOf(item.icon), item.image && span === 1 && !item.qml ? {
             iconSource: item.image
         } : {});
@@ -150,16 +159,49 @@ QtObject {
             [`plugin:${root.pluginId}`]: root.asked?.prefixed ? Protocol.ITEM_LIMIT : root.plugin?.global?.cap ?? 0
         })
 
-    readonly property var prefixes: root.plugin?.prefix.length ? [
-        {
-            section: "Plugins",
-            word: root.plugin.prefix[0],
-            example: `${root.plugin.prefix[0]} …`,
-            about: root.plugin.about || root.plugin.name,
-            icon: root.plugin.icon.name ?? "extension",
-            also: root.plugin.prefix.slice(1)
-        }
-    ] : []
+    readonly property var commandWords: (root.plugin?.commands ?? []).map(c => c.word)
+
+    readonly property var plainWords: (root.plugin?.prefix ?? []).filter(w => !root.commandWords.includes(w))
+
+    readonly property var prefixes: (root.plainWords.length ? [
+            {
+                section: "Plugins",
+                word: root.plainWords[0],
+                example: `${root.plainWords[0]} …`,
+                about: root.plugin.about || root.plugin.name,
+                icon: root.plugin.icon.name ?? "extension",
+                also: root.plainWords.slice(1)
+            }
+        ] : []).concat((root.plugin?.commands ?? []).map(c => ({
+                section: "Plugins",
+                word: c.word,
+                example: `${c.word} ${c.arguments.map(a => `‹${a.placeholder}›`).join(" ")}`,
+                about: c.title,
+                icon: c.icon || (root.plugin.icon.name ?? "extension"),
+                also: []
+            })))
+
+    function commandOf(text: string): var {
+        if (!root.plugin || !root.search.presents)
+            return null;
+        const found = Protocol.commandOf(root.plugin, text);
+        if (!found)
+            return null;
+        const command = Object.assign({}, found.command, {
+            arguments: found.command.arguments.map(a => Object.assign({}, a, {
+                        choices: PluginHost.choicesOf(root.pluginId, found.command.word, a.key) ?? a.choices
+                    }))
+        });
+        return {
+            source: root,
+            command: command,
+            rest: found.rest
+        };
+    }
+
+    function runCommand(word: string, values: var): void {
+        PluginHost.command(root.pluginId, word, values, root);
+    }
 
     function doLocal(doing: var): void {
         if (doing.refusal)
@@ -182,6 +224,10 @@ QtObject {
 
     property Component previewCard: Component {
         PluginPreview {}
+    }
+
+    property Component factsCard: Component {
+        PluginFacts {}
     }
 
     function handle(message: var): void {
@@ -273,19 +319,29 @@ QtObject {
         PluginHost.activate(root.pluginId, item, action, root, view);
     }
 
+    function pick(view: string, value: string): void {
+        PluginHost.pick(root.pluginId, view, value, root);
+    }
+
     function submit(view: string, values: var): void {
         PluginHost.submit(root.pluginId, view, values, root);
     }
 
-    function choiceOf(row: var, doing: var, action: string, title: string, icon: string): var {
+    function choiceOf(row: var, doing: var, action: string, title: string, icon: string, chord: string): var {
         return {
             icon: icon || (doing?.open ? "open_in_new" : doing?.copy ? "content_copy" : doing?.run.length ? "play_arrow" : "chevron_right"),
             label: title,
+            chord: chord,
+            keys: Protocol.chordLabel(chord),
             run: () => doing ? root.doLocal(doing) : PluginHost.activate(root.pluginId, row.item.id, action, root, "")
         };
     }
 
     function activate(row: var): void {
+        if (row.cold) {
+            PluginHost.activateCold(root.pluginId, row.cold, root);
+            return;
+        }
         if (row.problem) {
             root.solve(row);
             return;
@@ -298,6 +354,8 @@ QtObject {
     }
 
     function actionsFor(row: var): var {
+        if (row.cold)
+            return [];
         if (row.problem)
             return row.problem === "waiting" ? [] : [
                 {
@@ -307,14 +365,14 @@ QtObject {
                 }
             ];
         const item = row.item;
-        const own = Protocol.local(item) || item.refusal ? [root.choiceOf(row, item, "", item.open ? "Open" : item.copy ? "Copy" : "Run", "")] : [];
-        const listed = item.actions.map(a => root.choiceOf(row, Protocol.local(a) || a.refusal ? a : null, a.id, a.title, a.icon));
+        const own = Protocol.local(item) || item.refusal ? [root.choiceOf(row, item, "", item.open ? "Open" : item.copy ? "Copy" : "Run", "", "")] : [];
+        const listed = item.actions.map(a => root.choiceOf(row, Protocol.local(a) || a.refusal ? a : null, a.id, a.title, a.icon, a.chord));
         const out = own.concat(listed);
-        return out.length ? out : [root.choiceOf(row, null, "", "Open", "")];
+        return out.length ? out : [root.choiceOf(row, null, "", "Open", "", "")];
     }
 
     function complete(row: var): bool {
-        if (row.problem)
+        if (row.problem || row.cold)
             return false;
         PluginHost.complete(root.pluginId, row.item.id, root);
         return true;
@@ -322,9 +380,18 @@ QtObject {
 
     function rowById(id: string): var {
         const prefix = `plugin:${root.pluginId}:`;
-        if (id.indexOf(prefix) !== 0)
+        if (id.indexOf(prefix) !== 0 || !root.plugin)
             return null;
         const item = (root.answer?.items ?? []).find(i => i.id === id.slice(prefix.length));
-        return item ? root.rowOf(item, 1) : null;
+        if (item)
+            return root.rowOf(item, 1);
+        const cold = Protocol.coldId(prefix, id);
+        return cold ? Object.assign({
+            key: id,
+            kind: root.kind,
+            cold: cold,
+            label: Config.values.launcher.hotkeys[id]?.label || cold,
+            score: 1
+        }, root.iconOf(null)) : null;
     }
 }

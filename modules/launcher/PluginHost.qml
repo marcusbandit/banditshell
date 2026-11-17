@@ -13,6 +13,7 @@ Singleton {
 
     readonly property string folder: `${Config.dir}/plugins`
     readonly property string logDir: `${Config.stateDir}/plugins`
+    readonly property string dataDir: `${Config.stateDir}/plugin-data`
     readonly property string listing: `${Config.stateDir}/plugins.json`
     readonly property string secretsPath: `${Config.stateDir}/plugin-secrets.json`
     readonly property var off: Config.values.launcher.plugins.off
@@ -27,6 +28,12 @@ Singleton {
     property var registered: ({})
     property var expecting: ({})
     property var page: null
+    property var watchers: []
+    property var exiting: ({})
+    property var statusAsked: ({})
+    property var notified: ({})
+    property var choiceSets: ({})
+    readonly property bool open: root.watchers.length > 0
     readonly property var drawings: ({})
     readonly property var noted: ({})
     property var generations: ({})
@@ -182,6 +189,35 @@ Singleton {
         }
         root.registered = next;
         root.writeListing();
+        root.keepAlive();
+    }
+
+    function watch(source: var, on: bool): void {
+        const had = root.watchers.includes(source);
+        if (on && !had)
+            root.watchers = root.watchers.concat([source]);
+        else if (!on && had)
+            root.watchers = root.watchers.filter(w => w !== source);
+    }
+
+    function keepAlive(): void {
+        let wait = 0;
+        for (const id of Object.keys(root.registered)) {
+            if (!root.registered[id] || !root.pluginOf(id)?.background || root.processes[id] || root.exiting[id])
+                continue;
+            const state = root.stateOf(id);
+            if (state.off || root.missingOf(id).length)
+                continue;
+            const left = state.until - Date.now();
+            if (left > 0)
+                wait = wait ? Math.min(wait, left) : left;
+            else
+                root.ensure(id);
+        }
+        if (wait > 0) {
+            revival.interval = wait + 50;
+            revival.restart();
+        }
     }
 
     function writeListing(): void {
@@ -194,7 +230,13 @@ Singleton {
                         icon: e.plugin?.icon ?? {},
                         prefix: e.plugin?.prefix ?? [],
                         global: !!e.plugin?.global,
+                        background: !!e.plugin?.background,
                         preferences: e.plugin?.preferences ?? [],
+                        commands: (e.plugin?.commands ?? []).map(c => ({
+                                    word: c.word,
+                                    title: c.title,
+                                    icon: c.icon
+                                })),
                         error: e.error ?? "",
                         crashed: root.stateOf(e.id).off,
                         log: root.logOf(e.id)
@@ -215,24 +257,38 @@ Singleton {
             exec: plugin.exec,
             folder: plugin.folder,
             log: root.logOf(id),
-            env: Protocol.environment(plugin, root.valuesOf(id), root.secretsOf(id))
+            lasting: plugin.background,
+            env: Protocol.environment(plugin, root.valuesOf(id), root.secretsOf(id), root.dataDir)
         });
         proc.said.connect(line => root.heard(id, proc, line));
         proc.ended.connect(wanted => root.ended(id, proc, wanted));
         root.processes = Object.assign({}, root.processes, {
             [id]: proc
         });
+        if (root.open)
+            proc.send(Protocol.openLine());
         proc.running = true;
         return proc;
     }
 
     function stop(id: string): void {
+        PluginStatus.drop(id);
+        if (Object.keys(root.choiceSets).some(k => k.indexOf(`${id}\n`) === 0)) {
+            const kept = {};
+            for (const k of Object.keys(root.choiceSets))
+                if (k.indexOf(`${id}\n`) !== 0)
+                    kept[k] = root.choiceSets[k];
+            root.choiceSets = kept;
+        }
         const proc = root.processes[id];
         if (!proc)
             return;
         const next = Object.assign({}, root.processes);
         delete next[id];
         root.processes = next;
+        root.exiting = Object.assign({}, root.exiting, {
+            [id]: proc
+        });
         proc.stop();
     }
 
@@ -287,6 +343,39 @@ Singleton {
         root.ensure(id).send(Protocol.activateLine(root.answers[id]?.seq ?? 0, item, action, view));
     }
 
+    function command(id: string, word: string, values: var, asker: var): void {
+        if (!root.usable(id))
+            return;
+        root.expect(id, asker);
+        root.ensure(id).send(Protocol.commandLine(word, values));
+    }
+
+    function choicesOf(id: string, word: string, key: string): var {
+        return root.choiceSets[`${id}\n${word}\n${key}`] ?? null;
+    }
+
+    function pick(id: string, view: string, value: string, asker: var): void {
+        if (!root.usable(id))
+            return;
+        root.expect(id, asker);
+        root.ensure(id).send(Protocol.dropdownLine(view, value));
+    }
+
+    function activateCold(id: string, item: string, asker: var): bool {
+        if (!root.usable(id)) {
+            root.note(id, `could not run ${item}: the plugin is off, restarting or missing a setting`);
+            return false;
+        }
+        if (asker?.search?.presents && asker.search.active)
+            root.expect(id, asker);
+        else
+            root.statusAsked = Object.assign({}, root.statusAsked, {
+                [id]: Date.now()
+            });
+        root.ensure(id).send(Protocol.coldLine(item));
+        return true;
+    }
+
     function submit(id: string, view: string, values: var, asker: var): void {
         if (!root.usable(id))
             return;
@@ -314,13 +403,13 @@ Singleton {
     function heard(id: string, proc: var, line: string): void {
         if (root.processes[id] !== proc || !line.trim())
             return;
-        const message = Protocol.readMessage(line, root.pluginOf(id)?.folder ?? "");
+        const message = Protocol.readMessage(line, root.pluginOf(id)?.folder ?? "", root.pluginOf(id)?.status ?? []);
         if (message.error) {
             root.note(id, `skipped ${message.error}`);
             return;
         }
-        const items = message.type === "results" ? message.items : message.type === "update" ? [message.item] : message.type === "view" ? message.view.items ?? [] : [];
-        for (const problem of items.reduce((out, item) => out.concat(item.notes), [])) {
+        const items = message.type === "results" ? message.items : message.type === "update" || message.type === "status" ? [message.item] : message.type === "view" ? message.view.items ?? [] : [];
+        for (const problem of items.concat(message.view?.actions ?? []).reduce((out, item) => out.concat(item.notes), [])) {
             if (root.noted[`${id}\n${problem}`])
                 continue;
             root.noted[`${id}\n${problem}`] = true;
@@ -337,6 +426,21 @@ Singleton {
                 }));
             return;
         }
+        if (message.type === "choices") {
+            root.choiceSets = Object.assign({}, root.choiceSets, {
+                [`${id}\n${message.word}\n${message.key}`]: message.choices
+            });
+            return;
+        }
+        if (message.type === "status") {
+            PluginStatus.set(Object.assign({
+                key: `plugin:${id}:${message.item.id}`,
+                pluginId: id,
+                name: root.pluginOf(id).name,
+                rows: root.pluginOf(id).prefix.length > 0
+            }, message.item));
+            return;
+        }
         if (message.type === "update") {
             const had = root.answers[id];
             const items = had ? Protocol.updated(had.items, message.item) : null;
@@ -346,6 +450,33 @@ Singleton {
                 }));
             else
                 root.note(id, `skipped an update for ${message.item.id}, which is not on screen`);
+            return;
+        }
+        if (message.type === "effect" && message.do === "notify") {
+            const now = Date.now();
+            const answering = now - (root.expecting[id] ?? 0) < 10000 || now - (root.statusAsked[id] ?? 0) < 10000;
+            if (!answering && !Protocol.notifyAllowed(root.notified[id] ?? 0, now)) {
+                root.note(id, "skipped a notify, one every 3 s at most");
+                return;
+            }
+            root.notified[id] = now;
+            if (root.statusAsked[id]) {
+                const left = Object.assign({}, root.statusAsked);
+                delete left[id];
+                root.statusAsked = left;
+            }
+            Notify.post({
+                summary: message.title,
+                body: message.body,
+                app: root.pluginOf(id)?.name ?? id
+            });
+            return;
+        }
+        if (message.type === "effect" && (root.statusAsked[id] ?? 0) > (root.expecting[id] ?? 0) && Date.now() - root.statusAsked[id] < 10000) {
+            const left = Object.assign({}, root.statusAsked);
+            delete left[id];
+            root.statusAsked = left;
+            root.statusAsker.handle(message);
             return;
         }
         const asked = root.expecting[id] ?? 0;
@@ -362,6 +493,7 @@ Singleton {
 
     function ended(id: string, proc: var, wanted: bool): void {
         if (root.processes[id] === proc) {
+            PluginStatus.drop(id);
             const next = Object.assign({}, root.processes);
             delete next[id];
             root.processes = next;
@@ -376,13 +508,20 @@ Singleton {
                     off: crashed.off,
                     until: now + crashed.delay
                 });
-                root.note(id, crashed.off ? "stopped after three crashes in a minute" : `exited, starting again on the next query after ${crashed.delay / 1000} s`);
+                root.note(id, crashed.off ? "stopped after three crashes in a minute" : `exited, starting again ${root.pluginOf(id)?.background ? "" : "on the next query "}after ${crashed.delay / 1000} s`);
             }
         }
+        if (root.exiting[id] === proc) {
+            const left = Object.assign({}, root.exiting);
+            delete left[id];
+            root.exiting = left;
+        }
         proc.destroy();
+        Qt.callLater(root.keepAlive);
     }
 
     function reload(id: string): string {
+        delete root.notified[id];
         root.forgetDrawings(id);
         root.stop(id);
         const answers = Object.assign({}, root.answers);
@@ -405,10 +544,50 @@ Singleton {
         });
     }
 
+    function pressStatus(id: string, statusId: string, action: string): void {
+        const plugin = root.pluginOf(id);
+        const item = PluginStatus.items.find(i => i.key === `plugin:${id}:${statusId}`);
+        if (!plugin || !item)
+            return;
+        const wanted = action || (item.click === "rows" || item.click === "menu" ? "#rows" : item.click);
+        if (wanted === "#rows" && plugin.prefix.length) {
+            Panels.open("launcher", {
+                text: `${plugin.prefix[0]} `
+            });
+            return;
+        }
+        const listed = item.actions.find(a => a.id === wanted);
+        if (listed?.refusal) {
+            root.note(id, `status ${statusId}: ${listed.refusal}`);
+            return;
+        }
+        if (listed && Protocol.local(listed)) {
+            if (listed.open)
+                System.openWith(listed.open);
+            else if (listed.copy)
+                System.copyText(listed.copy);
+            else if (listed.run.length)
+                Quickshell.execDetached(listed.run);
+            return;
+        }
+        if (!root.usable(id))
+            return;
+        root.statusAsked = Object.assign({}, root.statusAsked, {
+            [id]: Date.now()
+        });
+        root.ensure(id).send(Protocol.statusLine(statusId, wanted === "#rows" ? "" : wanted));
+    }
+
     function note(id: string, text: string): void {
         noter.createObject(root, {
             command: ["sh", "-c", 'mkdir -p "${1%/*}" && printf "banditshell: %s\\n" "$2" >>"$1"', "sh", root.logOf(id), text]
         });
+    }
+
+    onOpenChanged: {
+        const line = root.open ? Protocol.openLine() : Protocol.closeLine();
+        for (const proc of Object.values(root.processes))
+            proc.send(line, true);
     }
 
     onOffChanged: root.sync()
@@ -416,6 +595,27 @@ Singleton {
     onSecretsChanged: root.sync()
 
     Component.onCompleted: root.refresh()
+
+    property Connections statusPresses: Connections {
+        target: PluginStatus
+
+        function onPressed(pluginId: string, statusId: string, action: string): void {
+            root.pressStatus(pluginId, statusId, action);
+        }
+    }
+
+    property QtObject statusAsker: QtObject {
+        function handle(message: var): void {
+            switch (message.do) {
+            case "copy":
+                System.copyText(message.text);
+                return;
+            case "open":
+                System.openWith(message.target);
+                return;
+            }
+        }
+    }
 
     property Component source: Component {
         PluginSource {}
@@ -430,6 +630,10 @@ Singleton {
             running: true
             onExited: destroy()
         }
+    }
+
+    property Timer revival: Timer {
+        onTriggered: root.keepAlive()
     }
 
     property Timer patience: Timer {

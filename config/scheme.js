@@ -1,9 +1,12 @@
 .pragma library
 
-const GROUND = 0.99;
-const INK = 0.16;
-const CURVE = 1.6;
-const PIVOT = 0.62;
+const GROUND = 0.96;
+const INK = 0.22;
+const CURVE = 1.1;
+const PIVOT = 0.65;
+const HUE_FLOOR = 0.3;
+const HUE_CEILING = 0.72;
+const HUE_CHROMA = 1.35;
 const WARNING_FLOOR = 0.52;
 const READABLE = 4.5;
 const KEEP = 0.85;
@@ -76,7 +79,7 @@ function lightRamp(ramp) {
 
 function lightAccent(hex, floor) {
     const s = toLch(hex);
-    return fromLch(Math.max(floor ?? 0.2, Math.min(0.75, 2 * PIVOT - s.l)), s.c * (floor ? 1.6 : 1), s.h);
+    return fromLch(Math.max(floor ?? HUE_FLOOR, Math.min(HUE_CEILING, 2 * PIVOT - s.l)), s.c * (floor ? 1.6 : HUE_CHROMA), s.h);
 }
 
 function lightTheme(theme) {
@@ -109,7 +112,7 @@ function lightCard(card) {
         return fromLch(l, s.c, s.h);
     };
     return Object.assign({}, card, {
-        background: card.background ? tone(card.background, 0.96) : card.background,
+        background: card.background ? tone(card.background, 0.94) : card.background,
         foreground: card.foreground ? tone(card.foreground, 0.3) : card.foreground,
         dim: lightAccent(String(card.dim)),
         mid: lightAccent(String(card.mid)),

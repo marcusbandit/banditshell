@@ -33,7 +33,7 @@ Item {
 
             width: parent.width - side.implicitWidth - Appearance.padding.normal
             text: root.title
-            color: Appearance.colour.textFaint
+            color: Appearance.colour.textDim
             elide: Text.ElideRight
         }
 
@@ -42,7 +42,7 @@ Item {
 
             anchors.right: parent.right
             text: root.aside
-            color: Appearance.colour.textFaint
+            color: Appearance.colour.textDim
         }
     }
 
