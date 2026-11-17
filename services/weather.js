@@ -381,3 +381,88 @@ function suggestPlace(location, results) {
     const best = pool[0];
     return best ? { name: best.name, country: best.country, text: best.text } : null;
 }
+
+var WEATHER_BEFORE = /^(?:(?:what(?:'s|s| is)|how(?:'s| is)|show(?: me)?)\s+(?:the\s+)?)?(?:weather|forecast)(?:\s+(?:in|for|at|of|near))?(?:\s+(.+?))?\s*\??$/;
+var WEATHER_AFTER = /^(.+?)\s+(?:weather|forecast)\s*\??$/;
+var WEATHER_NOT_PLACES = /^(?:app|apps|widget|station|forecast|settings|setting|icon|icons|api|data|bar|panel|card|island)$/;
+var WEATHER_LATER = /\s+(?:tomorrow|tonight|next week|this week|this weekend|the weekend|next \w+|on (?:mon|tues|wednes|thurs|fri|satur|sun)day)$/;
+var WEATHER_FILLER = /(?:^|\s+)(?:today|now|right now|currently|outside|like|please|here|local|at the moment)$/;
+
+function weatherAsk(text) {
+    var t = String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
+    var loose = false;
+    var m = WEATHER_BEFORE.exec(t);
+    var place = m ? (m[1] || "") : "";
+    if (!m) {
+        m = WEATHER_AFTER.exec(t);
+        place = m ? m[1] : "";
+        loose = true;
+    }
+    if (!m)
+        return null;
+    place = place.replace(/^(?:the|my)\s+/, "");
+    if (WEATHER_LATER.test(place) || place === "tomorrow" || place === "tonight")
+        return null;
+    while (WEATHER_FILLER.test(place))
+        place = place.replace(WEATHER_FILLER, "").trim();
+    if (WEATHER_NOT_PLACES.test(place) || (place && place.length < 2))
+        return null;
+    if (/^(?:home|my place|me)$/.test(place))
+        place = "";
+    if (loose && !place)
+        return null;
+    return {
+        place: place,
+        loose: loose
+    };
+}
+
+function nowOf(data) {
+    var now = data && data.current_condition && data.current_condition[0];
+    if (!now)
+        return null;
+    var today = data.weather && data.weather[0];
+    var area = data.nearest_area && data.nearest_area[0];
+    var region = area && area.country && area.country[0] && area.country[0].value;
+    return {
+        place: placeOf(data),
+        country: region ? String(region).trim() : "",
+        code: Number(now.weatherCode || 0),
+        daytime: now.isdaytime === undefined ? null : now.isdaytime === "yes",
+        summary: String(now.weatherDesc && now.weatherDesc[0] && now.weatherDesc[0].value || "").trim(),
+        tempC: now.temp_C,
+        tempF: now.temp_F,
+        feelsC: now.FeelsLikeC,
+        feelsF: now.FeelsLikeF,
+        humidity: now.humidity,
+        windKmph: now.windspeedKmph,
+        windMph: now.windspeedMiles,
+        highC: today && today.maxtempC,
+        highF: today && today.maxtempF,
+        lowC: today && today.mintempC,
+        lowF: today && today.mintempF
+    };
+}
+
+function nowText(now, imperial) {
+    var unit = imperial ? "F" : "C";
+    var temp = imperial ? now.tempF : now.tempC;
+    var feels = imperial ? now.feelsF : now.feelsC;
+    var high = imperial ? now.highF : now.highC;
+    var low = imperial ? now.lowF : now.lowC;
+    var wind = imperial ? now.windMph + " mph" : now.windKmph + " km/h";
+    var parts = [];
+    var where = [now.place, now.country].filter(Boolean).join(", ");
+    if (where)
+        parts.push(where);
+    if (feels !== undefined && String(feels) !== String(temp))
+        parts.push("feels like " + feels + "°");
+    if (high !== undefined && low !== undefined && high !== null && low !== null)
+        parts.push(low + "° to " + high + "°");
+    if (now.windKmph !== undefined)
+        parts.push("wind " + wind);
+    return {
+        label: temp + "°" + unit + (now.summary ? ", " + now.summary : ""),
+        detail: parts.join(" · ")
+    };
+}

@@ -142,7 +142,15 @@ QtObject {
                     trailing: ended ? "icon" : "actions",
                     trailingIcon: "check_circle",
                     trailingTone: Appearance.colour.accent,
-                    actions: a.actions ?? []
+                    actions: (a.actions ?? []).map(x => Object.assign({
+                            icon: ({
+                                    copy: "content_copy",
+                                    edit: "edit",
+                                    folder: "folder_open",
+                                    delete: "delete"
+                                })[x.name] ?? ""
+                        }, x)),
+                    plainActions: true
                 };
             if (a.style === "copied")
                 return {
@@ -168,6 +176,21 @@ QtObject {
                     trailing: ended ? "" : "actions",
                     actions: a.actions ?? [],
                     actionTone: Appearance.colour.accent
+                };
+            if (a.style === "plugin")
+                return {
+                    icon: a.icon || "extension",
+                    tone: ({
+                            plain: Appearance.colour.textDim,
+                            warning: Appearance.colour.warning,
+                            alarm: Appearance.colour.alarm
+                        })[a.data?.tone] ?? Appearance.colour.accent,
+                    text: a.text,
+                    detail: a.detail,
+                    trailing: (a.actions ?? []).length ? "actions" : a.progress >= 0 ? "ring" : "",
+                    actions: a.actions ?? [],
+                    actionTone: Appearance.colour.accent,
+                    ringValue: Math.max(0, a.progress)
                 };
             if (a.style === "bluetooth") {
                 const battery = a.data?.battery ?? -1;
@@ -248,7 +271,7 @@ QtObject {
         case "held":
             return {
                 icon: "notifications_paused",
-                text: `${a.count} held while quiet`,
+                text: `${a.count} held while ${a.why || "quiet"}`,
                 trailing: "icon",
                 trailingIcon: "chevron_right",
                 trailingInk: true
@@ -256,7 +279,10 @@ QtObject {
         case "quiet":
             return {
                 icon: "do_not_disturb_on",
-                text: a.text
+                text: a.text,
+                trailing: "icon",
+                trailingIcon: "chevron_right",
+                trailingInk: true
             };
         case "notification":
             return {

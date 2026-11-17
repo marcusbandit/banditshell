@@ -316,6 +316,7 @@ Item {
     readonly property bool trimmed: root.wholeCards && root.unfolded.length === 0
     readonly property int fits: DeckFit.wholeCards(root.settledTops, root.maxHeight - (root.footed ? root.footerHeight : 0), root.cards.length)
     readonly property var hiddenCards: root.trimmed ? root.cards.slice(root.fits) : []
+    readonly property var drawn: root.cards.filter(e => !e.leaving && !root.hiddenCards.includes(e))
     readonly property real viewMax: Math.max(root.foldedHeight, root.trimmed ? root.settledTops[root.fits] : root.maxHeight - root.footerHeight)
     readonly property real settledFull: {
         root.reshaped;

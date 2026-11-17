@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.Pipewire
 import qs.config
+import "audio.js" as Names
 
 Singleton {
     id: root
@@ -27,7 +28,8 @@ Singleton {
     readonly property var sinks: Pipewire.nodes.values.filter(n => n.isSink && n.audio && !n.isStream)
     readonly property var sources: Pipewire.nodes.values.filter(n => !n.isSink && n.audio && !n.isStream)
 
-    readonly property var streams: Pipewire.nodes.values.filter(n => n.isStream && n.audio)
+    readonly property var allStreams: Pipewire.nodes.values.filter(n => n.isStream && n.audio)
+    readonly property var streams: root.allStreams.filter(n => n.ready && !Names.isMeter(n.properties))
     readonly property var playing: streams.filter(n => (n.properties?.["media.class"] ?? "").includes("Output"))
     readonly property var recording: streams.filter(n => (n.properties?.["media.class"] ?? "").includes("Input"))
 
@@ -94,10 +96,24 @@ Singleton {
         return "";
     }
 
-    function deviceLabel(node: PwNode): string {
+    function plainLabel(node: PwNode): string {
         if (root.isBluetooth(node))
             return root.label(node);
         return node?.properties?.["device.profile.description"] || root.label(node);
+    }
+
+    function labelEntries(nodes: var): var {
+        return nodes.map(n => ({
+                    key: n.name,
+                    label: root.plainLabel(n),
+                    card: root.isBluetooth(n) ? "" : n.properties?.["device.description"] || n.properties?.["device.nick"] || ""
+                }));
+    }
+
+    readonly property var deviceLabels: Object.assign(Names.uniqueLabels(root.labelEntries(root.sinks)), Names.uniqueLabels(root.labelEntries(root.sources)))
+
+    function deviceLabel(node: PwNode): string {
+        return root.deviceLabels[node?.name] ?? root.plainLabel(node);
     }
 
     function streamLabel(node: PwNode): string {
@@ -155,6 +171,12 @@ Singleton {
     function toggleStreamMute(node: PwNode): void {
         if (node?.audio)
             node.audio.muted = !node.audio.muted;
+    }
+
+    function setStreamsMuted(nodes: var, muted: bool): void {
+        for (const node of nodes)
+            if (node?.audio)
+                node.audio.muted = muted;
     }
 
     function setSink(node: PwNode): void {
@@ -239,6 +261,6 @@ Singleton {
     }
 
     PwObjectTracker {
-        objects: [root.sink, root.source, ...root.sinks, ...root.sources, ...root.streams]
+        objects: [root.sink, root.source, ...root.sinks, ...root.sources, ...root.allStreams]
     }
 }

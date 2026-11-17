@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import qs.components
+import qs.services
 import qs.modules.controls
 import "../../services/plugin-protocol.js" as Protocol
 import "../../services/ranking.js" as Ranking
@@ -25,6 +26,10 @@ Item {
     readonly property string viewId: root.view?.id ?? ""
 
     property string filter: ""
+    readonly property var dropdown: root.kind === "list" ? root.view.dropdown ?? null : null
+    property string picked: ""
+    readonly property string choice: root.picked || (root.dropdown?.value ?? "")
+    readonly property var chosen: root.dropdown?.choices.find(c => c.value === root.choice) ?? null
     property int selected: 0
     property int field: 0
     property int actionAt: -1
@@ -40,6 +45,7 @@ Item {
     readonly property real rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
 
     onViewChanged: {
+        root.picked = "";
         if (!root.view)
             return;
         root.retitle(root.view.title);
@@ -160,9 +166,73 @@ Item {
         root.actionAt = next >= count ? -1 : next < -1 ? count - 1 : next;
     }
 
+    function openDropdown(): void {
+        if (!root.dropdown)
+            return;
+        const at = pill.mapToItem(root, 0, pill.height);
+        sheet.popup(at.x, at.y, root.dropdown.choices.map(c => ({
+                    icon: c.value === root.choice ? "check" : "",
+                    label: c.title,
+                    run: () => root.pickChoice(c.value)
+                })), root.dropdown.choices.findIndex(c => c.value === root.choice));
+    }
+
+    function pickChoice(value: string): void {
+        if (value === root.choice)
+            return;
+        root.picked = value;
+        root.source?.pick(root.viewId, value);
+    }
+
+    function claimSheetKey(event: var): bool {
+        if (sheet.key(event))
+            return true;
+        switch (event.key) {
+        case Qt.Key_Shift:
+        case Qt.Key_Control:
+        case Qt.Key_Alt:
+        case Qt.Key_Meta:
+            break;
+        default:
+            sheet.close();
+            if (event.text && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) && event.text.charCodeAt(0) >= 32) {
+                filterInput.insert(filterInput.cursorPosition, event.text);
+                root.filter = filterInput.text;
+                root.selected = 0;
+            }
+            break;
+        }
+        return true;
+    }
+
+    function claimChord(event: var): bool {
+        const chord = LauncherHotkeys.pressedChord(event);
+        if (!chord)
+            return false;
+        const item = root.kind === "list" ? root.shown[root.selected] : null;
+        const own = item ? Protocol.actionOf(item.actions, chord) : null;
+        if (own) {
+            root.run(own, own.id, item.id);
+            return true;
+        }
+        const at = root.actions.indexOf(Protocol.actionOf(root.actions, chord));
+        if (at < 0)
+            return false;
+        root.runAction(at);
+        return true;
+    }
+
     function claimKey(event: var): bool {
+        if (sheet.open)
+            return root.claimSheetKey(event);
+        if (root.dropdown && event.key === Qt.Key_Down && event.modifiers & Qt.AltModifier) {
+            root.openDropdown();
+            return true;
+        }
         const page = scroller.height - Appearance.font.line.normal * 2;
         if (root.kind === "list" && root.actionAt < 0 && root.rows[root.selected]?.card && Search.rowMayClaim(event.key, event.modifiers) && listRepeater.itemAt(root.selected)?.claimRowKey(event))
+            return true;
+        if (root.claimChord(event))
             return true;
         switch (event.key) {
         case Qt.Key_Down:
@@ -236,6 +306,19 @@ Item {
         width: root.width - Appearance.padding.normal * 2
         height: visible ? Appearance.sizes.rowHeight : 0
 
+        Button {
+            id: pill
+
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            visible: !!root.dropdown
+            width: Math.min(implicitWidth, Math.round(filterLine.width * 0.4))
+            size: 0
+            icon: "arrow_drop_down"
+            text: root.dropdown?.title ? `${root.dropdown.title}: ${root.chosen?.title ?? ""}` : root.chosen?.title ?? ""
+            onClicked: root.openDropdown()
+        }
+
         Icon {
             id: filterIcon
 
@@ -249,7 +332,8 @@ Item {
 
             anchors.left: filterIcon.right
             anchors.leftMargin: Appearance.padding.normal
-            anchors.right: parent.right
+            anchors.right: pill.visible ? pill.left : parent.right
+            anchors.rightMargin: pill.visible ? Appearance.padding.normal : 0
             anchors.verticalCenter: parent.verticalCenter
             text: root.filter
             font.family: Appearance.font.family
@@ -583,12 +667,22 @@ Item {
 
                 size: 0
                 icon: act.modelData.icon
-                text: act.modelData.title
+                text: act.modelData.chord ? `${act.modelData.title} · ${Protocol.chordLabel(act.modelData.chord)}` : act.modelData.title
                 checkable: true
                 checked: act.index === root.actionAt
                 onClicked: root.runAction(act.index)
                 onToggled: root.runAction(act.index)
             }
         }
+    }
+
+    ActionSheet {
+        id: sheet
+
+        anchors.fill: parent
+        z: 10
+
+        Keys.onPressed: event => event.accepted = root.claimSheetKey(event)
+        onClosed: filterInput.forceActiveFocus()
     }
 }

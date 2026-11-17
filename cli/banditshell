@@ -8,6 +8,8 @@
 #                                one panel; bare, whether it is open
 #   banditshell panel files [toggle|open] [dir]
 #                                the file browser, in a folder
+#   banditshell panel mixer [toggle|open|close|status]
+#                                the mixer window: which apps are making sound
 #   banditshell panel settings open [page] [screen]
 #   banditshell panel settings page <page>
 #                                settings on a page, or another page while it
@@ -15,9 +17,10 @@
 #   banditshell panel launcher open [<query>]
 #                                the launcher with the query already typed, like
 #                                notifications unread
-#   banditshell panel launcher run <app|row>
+#   banditshell panel launcher run <app|row> [toggle|]
 #                                start an app the way the launcher does, or run
-#                                any launcher row by its id, like command:lock
+#                                any launcher row by its id, like command:lock;
+#                                toggle hides a focused app and brings it back
 #   banditshell panel keyboard [dock|float]
 #   banditshell panel keyboard page <layer> [screen]
 #                                dock or float the on-screen keyboard, or show one
@@ -36,7 +39,8 @@
 #                                the history is a launcher mode: open and toggle
 #                                show the launcher on notifications
 #   <panel>: launcher|session|clipboard|media|calculator|quickcontrols
-#            keyboard|settings|notifications|island|hotkeys|files|wallpaper
+#            keyboard|settings|notifications|island|hotkeys|files|mixer
+#            wallpaper
 #                                and every menu; banditshell panel lists them all
 #
 # launcher                       rows any tool adds to the launcher, no plugin needed
@@ -52,6 +56,11 @@
 #                                docs/plugins/push.md
 #   banditshell launcher remove <tool> [<row>]
 #                                take one row away, or every row of the tool
+#   banditshell launcher expand
+#                                replace the snippet keyword just before the
+#                                cursor in the focused window with its text;
+#                                bind it to a key, it selects and copies the
+#                                last few characters to read them
 #
 # plugin                         launcher plugins: start one, try one, install one
 #   banditshell plugin           every plugin in the plugins folder
@@ -416,6 +425,9 @@
 #                                the shell's polkit password prompt: whether the
 #                                shell is the agent, what it asks, a made-up
 #                                question, or refuse it
+#   banditshell dev password [ssh|agent|gpg|login|keyring|new|confirm|sudo|service|root|wrong|wifi]
+#                                a made-up password card of one kind, to look at
+#                                how each secret is asked for
 #
 # help                           this list; banditshell help <command> for one
 #   banditshell help [<command>]
@@ -440,7 +452,7 @@ UPDATE_STATE="$STATE_ROOT/update"
 CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json"
 HEALTH_WAIT="${BANDITSHELL_HEALTH_WAIT:-8}"
 HEALTH_SCAN="${BANDITSHELL_HEALTH_SCAN:-3}"
-SURFACES=(launcher session clipboard media calculator quickcontrols keyboard settings notifications island hotkeys files wallpaper)
+SURFACES=(launcher session clipboard media calculator quickcontrols keyboard settings notifications island hotkeys files mixer wallpaper)
 HELPERS=(bs-pty bs-ls bs-gamma)
 IPC_LIMIT="${BANDITSHELL_IPC_LIMIT:-10}"
 HANG_DIR="$STATE_DIR/hangs"
@@ -785,16 +797,24 @@ list_worktrees() {
 }
 
 cached_pid() {
-    local pid dir
+    local pid dir tree arg
+    local -a args=()
     [ -r "$PID_FILE" ] || return 1
-    IFS=$'\t' read -r pid dir <"$PID_FILE" || return 1
+    IFS=$'\t' read -r pid dir tree <"$PID_FILE" || return 1
     [ "$dir" = "$SHELL_DIR" ] || return 1
     [[ $pid =~ ^[0-9]+$ ]] || return 1
+    [ -n "$tree" ] || return 1
+    [ "$tree" = "$SHELL_DIR" ] || [ "$tree" = "$(cat "$LIVE_FILE" 2>/dev/null || true)" ] || return 1
     kill -0 "$pid" 2>/dev/null || return 1
     case "$(cat "/proc/$pid/comm" 2>/dev/null)" in
-    qs | quickshell* | .quickshell-wra* | .qs-wrapped) echo "$pid" ;;
+    qs | quickshell* | .quickshell-wra* | .qs-wrapped) ;;
     *) return 1 ;;
     esac
+    mapfile -d '' -t args <"/proc/$pid/cmdline" 2>/dev/null || return 1
+    for arg in "${args[@]}"; do
+        [ "$arg" = "$tree" ] && { echo "$pid"; return 0; }
+    done
+    return 1
 }
 
 scope=()
@@ -850,7 +870,7 @@ absolute_path() {
 
 remember_pid() {
     mkdir -p "$RUN_DIR" 2>/dev/null || return 0
-    printf '%s\t%s\n' "$1" "$SHELL_DIR" >"$PID_FILE" 2>/dev/null || true
+    printf '%s\t%s\t%s\n' "$1" "$SHELL_DIR" "$2" >"$PID_FILE" 2>/dev/null || true
 }
 
 resolve_target() {
@@ -859,22 +879,35 @@ resolve_target() {
     fi
     qs_target_resolved=1
 
-    local pid path exact="" any=""
+    local pid path tree rank live known best="" best_tree="" best_rank=5
     if pid=$(cached_pid); then
         qs_target=(--pid "$pid")
         return 0
     fi
+    live=$(cat "$LIVE_FILE" 2>/dev/null || true)
+    known=""
     while IFS=$'\t' read -r pid path; do
-        case "$path" in
-        "$SHELL_DIR/shell.qml") exact="$pid" ;;
-        */shell.qml) [ -n "$any" ] || any="$pid" ;;
-        esac
+        tree="${path%/shell.qml}"
+        if [ "$path" = "$SHELL_DIR/shell.qml" ]; then
+            rank=1
+        else
+            [ -n "$known" ] || known=$(known_shells)
+            grep -qxF -- "$path" <<<"$known" || continue
+            case "$tree" in
+            "$live") rank=2 ;;
+            "$BACKUP") rank=3 ;;
+            *) rank=4 ;;
+            esac
+        fi
+        if [ "$rank" -lt "$best_rank" ]; then
+            best="$pid" best_tree="$tree" best_rank="$rank"
+        fi
+        [ "$best_rank" != 1 ] || break
     done < <(list_instances)
 
-    local pick="${exact:-$any}"
-    if [ -n "$pick" ]; then
-        qs_target=(--pid "$pick")
-        remember_pid "$pick"
+    if [ -n "$best" ]; then
+        qs_target=(--pid "$best")
+        remember_pid "$best" "$best_tree"
     else
         qs_target=(-p "$SHELL_DIR")
     fi
@@ -944,14 +977,7 @@ ipc_quiet() {
 
 running() {
     cached_pid >/dev/null && return 0
-    qs list --all 2>/dev/null | awk '
-        /^[[:space:]]*Config path:/ {
-            p = $0
-            sub(/^[[:space:]]*Config path:[[:space:]]*/, "", p)
-            if (p ~ /\/shell\.qml$/) found = 1
-        }
-        END { exit found ? 0 : 1 }
-    '
+    [ -n "$(shell_pids)" ]
 }
 
 dry() { [ -n "${BANDITSHELL_DRY:-}" ] && [ "${BANDITSHELL_DRY:-}" != 0 ]; }
@@ -1092,6 +1118,8 @@ launch() {
     fi
     rm -f "$out"
     hold_worktree "$1"
+    remember_pid "$pid" "$1"
+    qs_target=(--pid "$pid") qs_target_resolved=1
     return 0
 }
 
@@ -1479,7 +1507,7 @@ panel_status_takes_screen() { case "$1" in keyboard | notifications | island | h
 toggle_panel() {
     local name="$1" rest="${2:-}"
     case "$name" in
-    launcher | session | clipboard | media | calculator | quickcontrols | settings) ipc "$name" toggle ;;
+    launcher | session | clipboard | media | calculator | quickcontrols | settings | mixer) ipc "$name" toggle ;;
     keyboard | notifications | island | hotkeys | files) ipc "$name" toggle "$rest" ;;
     wallpaper) ipc wallpapers toggle "$rest" ;;
     *) ipc menu toggle "$name" "$rest" ;;
@@ -1491,7 +1519,7 @@ open_panel() {
     shift
     case "$name" in
     launcher) ipc launcher open "$*" ;;
-    session | clipboard | media | calculator | quickcontrols) ipc "$name" open ;;
+    session | clipboard | media | calculator | quickcontrols | mixer) ipc "$name" open ;;
     keyboard | notifications | island | hotkeys | files) ipc "$name" open "${1:-}" ;;
     settings) ipc settings open "${1:-}" "${2:-}" ;;
     wallpaper) ipc wallpapers open "${1:-}" ;;
@@ -1503,7 +1531,7 @@ close_call() {
     case "$1" in
     wallpaper) call=(wallpapers close) ;;
     penmap) call=(penmap cancel) ;;
-    launcher | session | clipboard | media | calculator | quickcontrols | keyboard | settings | notifications | island | hotkeys | files | picker) call=("$1" close) ;;
+    launcher | session | clipboard | media | calculator | quickcontrols | keyboard | settings | notifications | island | hotkeys | files | mixer | picker) call=("$1" close) ;;
     *) call=(menu close) ;;
     esac
 }
@@ -1519,6 +1547,7 @@ close_everything() {
     local name closed=0
     if ipc_quiet panels closeAll >/dev/null; then
         ipc_quiet files close >/dev/null || true
+        ipc_quiet mixer close >/dev/null || true
         ipc_quiet penmap cancel >/dev/null || true
         echo "closed everything"
         return 0
@@ -1567,7 +1596,7 @@ route_panel() {
     if [ $# -gt 0 ]; then shift; fi
 
     case "$name:$action" in
-    launcher:run) [ $# -ge 1 ] || say_usage "panel launcher run <app|row>"; ipc launcher run "$1" ;;
+    launcher:run) [ $# -ge 1 ] || say_usage "panel launcher run <app|row> [toggle]"; ipc launcher run "$1" "${2:-}" ;;
     settings:page) [ $# -ge 1 ] || say_usage "panel settings page <page>"; ipc settings page "$1" ;;
     keyboard:dock) ipc keyboard dock ;;
     keyboard:float) ipc keyboard undock ;;
@@ -1851,6 +1880,9 @@ route_launcher() {
     "" | list)
         [ $# -le 2 ] || say_usage "launcher list [<tool>]"
         ipc launcher list "${2:-}" ;;
+    expand)
+        [ $# -eq 1 ] || say_usage "launcher expand"
+        ipc snippets expand ;;
     remove)
         [ $# -ge 2 ] && [ $# -le 3 ] || say_usage "launcher remove <tool> [<row>]"
         ipc launcher remove "$2" "${3:-}" ;;
@@ -3613,6 +3645,9 @@ route_dev() {
         close) ipc polkit refuse ;;
         *) nope dev "polkit $1" ;;
         esac ;;
+    password)
+        [ -n "${1:-}" ] || say_usage "dev password <scene>"
+        ipc password scene "$1" ;;
     *) nope dev "$what" ;;
     esac
 }

@@ -7,6 +7,7 @@ import qs.config
 import qs.services
 import "catalogue.js" as Catalogue
 import "durations.js" as Durations
+import "../../services/dictation-events.js" as DictationEvents
 import "screens.js" as Screens
 import "../../config/files-zoom.js" as FilesZoom
 
@@ -117,6 +118,7 @@ Singleton {
 
     readonly property var configBacked: ({
             aiOn: "launcher.ai.enabled",
+            aiWeb: "launcher.ai.webSearch",
             aiBackend: "launcher.ai.backend",
             aiModel: "launcher.ai.model",
             aiAddress: "launcher.ai.openaiAddress",
@@ -141,6 +143,8 @@ Singleton {
             fromWall: "themeFromWallpaper",
             scheme: "colour.mode",
             accent: "colour.accent",
+            lightTheme: "colour.lightTheme",
+            darkTheme: "colour.darkTheme",
             surface: "colour.surface",
             surfaceAlpha: "material.surfaceAlpha",
             wallOn: "wallpaper.enabled",
@@ -196,7 +200,8 @@ Singleton {
             dropMode: "windows.mode",
             followSent: "windows.follow",
             launcherW: "launcher.width",
-            clipW: "clipboard.width",
+            launcherScreen: "launcher.screen",
+            launcherEscape: "launcher.escape",
             menuW: "menu.width",
             settingsW: "settings.width",
             concept: "launcher.concept",
@@ -207,7 +212,9 @@ Singleton {
             animatePreview: "launcher.animatePreview",
             polkitAgent: "polkit.agent",
             webSearch: "launcher.webSearch",
+            dictateAsk: "launcher.dictateToAsk",
             contents: "launcher.contents",
+            ignoredFiles: "launcher.ignoredFiles",
             fallbackWeb: "launcher.fallbacks.web",
             fallbackYoutube: "launcher.fallbacks.youtube",
             fallbackWikipedia: "launcher.fallbacks.wikipedia",
@@ -218,6 +225,7 @@ Singleton {
             notificationsInSearch: "launcher.typing.notifications",
             onlineTranslate: "launcher.online.translate",
             onlineTranslateTo: "launcher.online.translateTo",
+            onlineWeather: "launcher.online.weather",
             onlineDefine: "launcher.online.define",
             onlinePackages: "launcher.online.packages",
             onlineGithub: "launcher.online.github",
@@ -240,6 +248,7 @@ Singleton {
             noteFolders: "launcher.powerTools.noteFolders",
             noteVault: "launcher.powerTools.noteVault",
             noteSkip: "launcher.powerTools.noteSkip",
+            quickNoteFolder: "launcher.powerTools.quickNoteFolder",
             focusMinutes: "launcher.powerTools.focusMinutes",
             breakMinutes: "launcher.powerTools.breakMinutes",
             longBreakMinutes: "launcher.powerTools.longBreakMinutes",
@@ -253,6 +262,9 @@ Singleton {
             reminderHour: "launcher.utilities.reminderHour",
             clip: "clipboard.record",
             clipMax: "clipboard.maxEntries",
+            clipDays: "clipboard.keepDays",
+            clipIgnore: "clipboard.ignoreApps",
+            clipEnter: "clipboard.enterAction",
             clipText: "clipboard.maxText",
             clipBlob: "clipboard.maxBlob",
             notifTimeout: "notifications.timeout",
@@ -296,6 +308,7 @@ Singleton {
             weatherMinutes: "weather.minutes",
             shotDir: "picker.dir",
             shotEditor: "picker.editor",
+            shotFolders: "launcher.latest.screenshotFolders",
             outline: "picker.outline",
             stream: "stream.enabled",
             streamScreen: "stream.screen",
@@ -376,6 +389,12 @@ Singleton {
             return Audio.sink?.name ?? "";
         case "input":
             return Audio.source?.name ?? "";
+        case "dictMic":
+            return Dictation.microphone;
+        case "dictOutput":
+            return Dictation.output;
+        case "dictLang":
+            return Dictation.languageCode;
         case "micLevel":
             return Audio.sourceVolume;
         case "level":
@@ -489,6 +508,29 @@ Singleton {
             root.log(k, r, before, after);
     }
 
+    function resetPage(pageId: string): var {
+        const was = [];
+        root.muteLog = true;
+        for (const k of Catalogue.pageChanges(pageId, root)) {
+            const before = root.v(k);
+            root.set(k, root.defaultOf(k));
+            if (JSON.stringify(root.v(k)) !== JSON.stringify(before))
+                was.push({
+                    k,
+                    value: before
+                });
+        }
+        root.muteLog = false;
+        return was;
+    }
+
+    function putBack(was: var): void {
+        root.muteLog = true;
+        for (const w of was)
+            root.set(w.k, w.value);
+        root.muteLog = false;
+    }
+
     function lookup(values: var, key: string): var {
         let at = values;
         for (const part of key.split(".")) {
@@ -549,6 +591,12 @@ Singleton {
                     root.denied = true;
                 return;
             }
+        case "dictMic":
+            return Dictation.setMicrophone(value);
+        case "dictOutput":
+            return Dictation.setOutput(value);
+        case "dictLang":
+            return Dictation.setLanguage(value);
         case "micLevel":
             return Audio.setSourceVolume(value);
         case "level":
@@ -576,6 +624,7 @@ Singleton {
                 root.refused(ThemeSwitcher.unavailableWhy, "");
                 return;
             }
+            ThemeSwitcher.remember(value);
             return ThemeSwitcher.apply(value);
         case "sidebar":
             return SidebarState.setAll(value);
@@ -1335,6 +1384,9 @@ Singleton {
 
     readonly property var outputs: Audio.sinks.map(n => [n.name, Audio.deviceLabel(n)])
     readonly property var inputs: Audio.sources.map(n => [n.name, Audio.deviceLabel(n)])
+    readonly property var dictationInputs: [["default", `System default, ${root.inputName}`]].concat(root.inputs, Dictation.microphone !== "default" && !root.inputs.some(i => i[0] === Dictation.microphone) ? [[Dictation.microphone, `${Dictation.microphone} (not connected)`]] : [])
+    readonly property var dictationOutputs: DictationEvents.OUTPUTS
+    readonly property var dictationLanguages: DictationEvents.LANGUAGES
     readonly property string outputName: Audio.sink ? Audio.deviceLabel(Audio.sink) : "no output"
     readonly property string inputName: Audio.source ? Audio.deviceLabel(Audio.source) : "no microphone"
     readonly property int appsPlaying: Audio.playing.length
@@ -1357,9 +1409,11 @@ Singleton {
     readonly property string profileTrouble: PowerProfile.trouble
     readonly property bool chargeSupported: !ChargeLimit.probed || ChargeLimit.supported
     readonly property string chargeTrouble: ChargeLimit.trouble
+    readonly property bool chargeNeedsHelper: ChargeLimit.probed && ChargeLimit.supported && !ChargeLimit.helper
     readonly property int trayCount: Tray.items.length
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
     readonly property var currencies: Currency.codes
+    readonly property var themeChoices: [["", "the one picked above"]].concat(Themes.catalogue.map(t => [t.name, t.name]))
     readonly property var noteVaults: [["", "the one Obsidian opened last"]].concat(Notes.vaults.map(v => [v.path, v.name]))
 
     readonly property var aiModels: [["", "automatic"]].concat(Assistant.models.map(m => [m, Assistant.labelOf(m)]))
@@ -1379,8 +1433,27 @@ Singleton {
             pulling: `downloading · ${Assistant.progress}%`,
             unreachable: "Ollama is not answering"
         })[Assistant.phase] ?? ""
+    function checkAssistant(): void {
+        Assistant.checkConnection();
+    }
+
+    function toggleAssistantAccount(): void {
+        if (Assistant.phase === "ready")
+            Assistant.signOut();
+        else
+            Assistant.setUp(null);
+    }
+
+    readonly property string aiCheckNote: Assistant.checkNote
+    readonly property bool aiSignedIn: Assistant.agent && Assistant.phase === "ready"
+    readonly property string aiAccountNote: Assistant.agent ? ({
+            ready: `signed in, ${Assistant.agentInfo.plan}`,
+            signedout: "not signed in",
+            signingin: "finish in the terminal",
+            missing: `${Assistant.agentInfo.name} is not installed`
+        })[Assistant.phase] ?? "" : ""
     readonly property string aiAddressNote: Assistant.keyHeld ? "plain http, so the key is not sent" : ""
-    readonly property string aiModelNote: Assistant.modelName ? `${Assistant.modelName} in use` : ""
+    readonly property string aiModelNote: Assistant.autoNote || (Assistant.modelName ? `${Assistant.modelName} in use` : "")
 
     readonly property string polkitNote: Polkit.serving ? "the shell asks" : "another program asks"
     readonly property string ratesNote: Currency.date ? `rates from ${Currency.date}` : "no rates yet"

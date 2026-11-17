@@ -5,9 +5,9 @@
   "owns": {
     "qml": ["modules/ipc/AudioIpc.qml"],
     "services": ["Audio", "Bluetooth"],
-    "js": ["services/bluetooth-pairing.js"],
+    "js": ["services/audio.js", "services/bluetooth-pairing.js"],
     "scripts": ["scripts/bluetooth-agent.py"],
-    "tests": ["tests/bluetooth-agent.test.js", "tests/bluetooth-pairing.test.js"]
+    "tests": ["tests/audio-labels.test.js", "tests/bluetooth-agent.test.js", "tests/bluetooth-pairing.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor"],

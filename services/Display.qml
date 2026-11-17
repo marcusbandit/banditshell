@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "brightness.js" as Brightness
 import "ddcutil.js" as Ddcutil
 import "nightlight.js" as Nightlight
 
@@ -25,6 +26,8 @@ Singleton {
     readonly property bool brightnessReady: root.displays.length > 0
 
     property real level: -1
+
+    readonly property real floor: Brightness.lowestFraction(Config.values.launcher.systemControls?.lowestBrightness)
 
     readonly property bool levelKnown: root.level >= 0
 
@@ -177,7 +180,7 @@ Singleton {
     }
 
     function setLevel(v: real): void {
-        const f = Math.max(0, Math.min(1, v));
+        const f = Brightness.clamp(v, Config.values.launcher.systemControls?.lowestBrightness);
         if (root.levelKnown && Math.abs(f - root.level) < 0.001 && !Object.keys(root.displayLevels).length)
             return;
         root.level = f;
@@ -195,7 +198,7 @@ Singleton {
         if (!display?.index)
             return;
         const levels = Object.assign({}, root.displayLevels);
-        levels[display.index] = Math.max(0, Math.min(1, v));
+        levels[display.index] = Brightness.clamp(v, Config.values.launcher.systemControls?.lowestBrightness);
         root.displayLevels = levels;
         root.markPending([display.index]);
     }

@@ -4,41 +4,15 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.media
 
 WidgetCard {
     id: root
 
     property bool running: true
-    property real progress: 0
-
-    function measure(): void {
-        root.progress = Media.progressNow();
-    }
 
     title: Media.playing ? "Now playing" : "Paused"
     aside: Media.app
-
-    Component.onCompleted: root.measure()
-
-    Timer {
-        interval: 1000
-        repeat: true
-        running: root.running && root.visible && Media.playing
-        triggeredOnStart: true
-        onTriggered: root.measure()
-    }
-
-    Connections {
-        target: Media
-
-        function onTrackKeyChanged(): void {
-            root.measure();
-        }
-
-        function onPlayingChanged(): void {
-            root.measure();
-        }
-    }
 
     Item {
         width: parent.width
@@ -136,23 +110,11 @@ WidgetCard {
         }
     }
 
-    Item {
+    Scrubber {
         width: parent.width
-        height: 4
         visible: Media.length > 0
-
-        SquircleRect {
-            anchors.fill: parent
-            pill: "place"
-            color: Appearance.colour.fillStrong
-        }
-
-        SquircleRect {
-            width: Math.max(height, parent.width * root.progress)
-            height: parent.height
-            pill: "place"
-            color: Appearance.colour.accent
-        }
+        watched: root.running
+        perPixel: true
     }
 
     component Press: Item {

@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "readMessage", "readItems", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated"]);
+const P = lib("services/plugin-protocol.js", ["submitLine", "formValues", "formMissing", "listed", "readManifest", "environment", "missing", "asked", "queryLine", "activateLine", "completeLine", "cancelLine", "openLine", "closeLine", "readMessage", "readItems", "readShortcut", "chordLabel", "actionOf", "readStatus", "statusLine", "coldLine", "dropdownLine", "notifyAllowed", "enterOf", "plainScore", "crashes", "plainRows", "kept", "updated", "coldId", "commandOf", "argumentsFrom", "completionOf", "argumentValues", "commandLine"]);
 const Ranking = lib("services/ranking.js", ["place"]);
 
 const JIRA = {
@@ -38,6 +38,10 @@ test.describe("plugin manifest", () => {
         assert.deepStrictEqual([plugin.id, plugin.name, plugin.exec, plugin.prefix, plugin.icon], ["jira", "Jira", ["/p/jira/jira-plugin", "--quiet"], ["jira", "j"], { name: "bug_report" }]);
     });
 
+    test.it("keeps a program running with the shell only when its manifest asks for background", () => {
+        assert.deepStrictEqual([manifest({}).plugin.background, manifest({ background: true }).plugin.background, manifest({ background: "yes" }).plugin.background], [false, true, false]);
+    });
+
     test.it("lets a plugin add up to fifty rows to a plain search, three when it does not say", () => {
         assert.deepStrictEqual(manifest({}).plugin.global, { minLength: 3, cap: 9 });
         assert.deepStrictEqual(manifest({ global: { cap: 80 } }).plugin.global, { minLength: 3, cap: 50 });
@@ -48,10 +52,10 @@ test.describe("plugin manifest", () => {
         assert.match(P.readManifest("{", "/p/jira").error, /not JSON/);
         assert.match(manifest({ id: "other" }).error, /folder's name/);
         assert.match(manifest({}, "/p/Jira").error, /folder's name/);
-        assert.match(manifest({ api: 3 }).error, /api 3, the shell speaks 1 and 2/);
-        assert.strictEqual(manifest({ api: 2 }).plugin.api, 2);
+        assert.match(manifest({ api: 4 }).error, /api 4, the shell speaks 1, 2 and 3/);
+        assert.strictEqual(manifest({ api: 3 }).plugin.api, 3);
         assert.match(manifest({ exec: "./jira-plugin" }).error, /exec/);
-        assert.match(manifest({ prefix: [], global: undefined }).error, /prefix, global/);
+        assert.match(manifest({ prefix: [], global: undefined }).error, /prefix, global, status/);
         assert.match(manifest({ preferences: [{ key: "a b", type: "text" }] }).error, /preference/);
         assert.match(manifest({ preferences: [{ key: "a", type: "colour" }] }).error, /preference/);
     });
@@ -93,7 +97,133 @@ test.describe("plugin queries", () => {
         assert.strictEqual(P.activateLine(12, "PROJ-41", "open"), '{"type":"activate","seq":12,"id":"PROJ-41","action":"open"}');
         assert.strictEqual(P.completeLine("PROJ-41"), '{"type":"complete","id":"PROJ-41"}');
         assert.strictEqual(P.cancelLine(12), '{"type":"cancel","seq":12}');
+        assert.deepStrictEqual([P.openLine(), P.closeLine()], ['{"type":"open"}', '{"type":"close"}']);
         assert.ok(!P.queryLine(1, "a\nb", false).includes("\n"));
+    });
+});
+
+test.describe("action shortcuts", () => {
+    test.it("reads a chord in any order and case, and draws it the way a person reads it", () => {
+        assert.deepStrictEqual([P.readShortcut("ctrl+d"), P.readShortcut("Shift + Ctrl + X"), P.readShortcut("alt+enter"), P.readShortcut("ctrl+f5"), P.readShortcut("")], [{ chord: "CTRL+D" }, { chord: "CTRL+SHIFT+X" }, { chord: "ALT+RETURN" }, { chord: "CTRL+F5" }, { chord: "" }]);
+        assert.deepStrictEqual([P.chordLabel("CTRL+SHIFT+X"), P.chordLabel("ALT+RETURN"), P.chordLabel("")], ["Ctrl Shift X", "Alt Enter", ""]);
+    });
+
+    test.it("refuses chords that would type, that the launcher uses, or that it cannot read", () => {
+        for (const [chord, why] of [["d", /ctrl or alt/], ["shift+d", /ctrl or alt/], ["ctrl+k", /already uses/], ["ctrl+enter", /already uses/], ["ctrl+backspace", /already uses/], ["ctrl+v", /already uses/], ["super+d", /modifiers/], ["ctrl+ctrl+d", /modifiers/], ["ctrl+banana", /not a key/], ["ctrl+shift+/", /shift changes/], ["alt+home", /not a key/], ["ctrl+u", /already uses/], ["ctrl+shift+enter", /already uses/]])
+            assert.match(P.readShortcut(chord).refusal, why, chord);
+    });
+
+    test.it("keeps the first action that claims a chord, logs the rest, and finds an action by its chord", () => {
+        const [item] = P.readItems([{ id: "r", title: "Rule", actions: [
+            { id: "dim", title: "Dim", shortcut: "ctrl+d" },
+            { id: "drop", title: "Drop", shortcut: "ctrl+d" },
+            { id: "copy", title: "Copy", shortcut: "ctrl+c" }
+        ] }]);
+        assert.deepStrictEqual(item.actions.map(a => a.chord), ["CTRL+D", "", ""]);
+        assert.strictEqual(item.notes.length, 2);
+        assert.match(item.notes.join("\n"), /Ctrl D on Drop: Dim has it/);
+        assert.strictEqual(P.actionOf(item.actions, "CTRL+D").id, "dim");
+        assert.strictEqual(P.actionOf(item.actions, ""), null);
+    });
+});
+
+test.describe("command arguments", () => {
+    const app = { key: "app", type: "choice", placeholder: "App", required: true, choices: [{ value: "spotify", title: "Spotify" }, { value: "firefox", title: "Zen Browser" }] };
+    const { plugin } = manifest({ commands: [{ word: "Dim", title: "Dim an app", arguments: [app, { key: "level", placeholder: "Level" }] }] });
+
+    test.it("reads commands, adds their words to the prefixes and refuses broken ones", () => {
+        assert.deepStrictEqual([plugin.commands[0].word, plugin.commands[0].arguments[1].type, plugin.prefix], ["dim", "text", ["jira", "j", "dim"]]);
+        assert.match(manifest({ commands: [{ word: "dim", arguments: [] }] }).error, /one to 3/);
+        assert.match(manifest({ commands: [{ word: "dim", arguments: [{ key: "a", type: "choice" }] }] }).error, /no choices/);
+        assert.match(manifest({ commands: [{ word: "two words", arguments: [{ key: "a" }] }] }).error, /a word/);
+    });
+
+    test.it("splits what follows the word over the arguments, the last one taking the rest", () => {
+        const found = P.commandOf(plugin, "dim spotify 15");
+        assert.deepStrictEqual([found.rest, P.argumentsFrom(found.command, found.rest)], ["spotify 15", ["spotify", "15"]]);
+        assert.deepStrictEqual(P.argumentsFrom(found.command, "zen browser twenty  percent "), ["zen browser", "twenty  percent"]);
+        assert.deepStrictEqual(P.argumentsFrom(found.command, ""), ["", ""]);
+        assert.deepStrictEqual(P.argumentsFrom(found.command, "zen browser 30"), ["zen browser", "30"]);
+        assert.match(manifest({ commands: [{ word: "dim", arguments: [{ placeholder: "Level" }] }] }).error, /key/);
+        assert.strictEqual(P.commandOf(plugin, "dim"), null);
+    });
+
+    test.it("completes a choice by title, then by value, and sends a choice's value", () => {
+        assert.strictEqual(P.completionOf(app, "ze").value, "firefox");
+        assert.strictEqual(P.completionOf(app, "fire").title, "Zen Browser");
+        assert.strictEqual(P.completionOf(app, ""), null);
+        assert.deepStrictEqual(P.argumentValues(plugin.commands[0], ["Zen Browser", "15"]), { values: { app: "firefox", level: "15" }, missing: [] });
+        assert.deepStrictEqual(P.argumentValues(plugin.commands[0], ["winamp", ""]), { values: { app: "", level: "" }, missing: ["app"] });
+        assert.deepStrictEqual(P.argumentValues(plugin.commands[0], ["sp", ""]).values.app, "spotify");
+        const steam = { key: "app", type: "choice", choices: [{ value: "spotify", title: "Spotify" }, { value: "steam", title: "Steam" }] };
+        assert.deepStrictEqual(P.argumentValues({ arguments: [steam] }, ["s"]).missing, ["app"]);
+        assert.strictEqual(P.commandLine("dim", { app: "spotify" }), '{"type":"command","word":"dim","arguments":{"app":"spotify"}}');
+    });
+});
+
+test.describe("list dropdown", () => {
+    test.it("reads a dropdown on a list page, falls back to the first choice, and sends picks", () => {
+        const page = P.readMessage(JSON.stringify({ type: "view", view: { kind: "list", id: "history", title: "History", items: [],
+            dropdown: { title: "App", value: "zen", choices: [{ value: "all", title: "Every app" }, "spotify", { title: "no value" }] } } }), "/p");
+        assert.deepStrictEqual(page.view.dropdown, { title: "App", choices: [{ value: "all", title: "Every app" }, { value: "spotify", title: "spotify" }], value: "all" });
+        const none = P.readMessage(JSON.stringify({ type: "view", view: { kind: "list", id: "h", title: "H", items: [], dropdown: { choices: [] } } }), "/p");
+        assert.strictEqual(none.view.dropdown, null);
+        const numbered = P.readMessage(JSON.stringify({ type: "view", view: { kind: "list", id: "d", title: "D", items: [], dropdown: { value: 7, choices: [1, 7, 7, 30] } } }), "/p");
+        assert.deepStrictEqual([numbered.view.dropdown.value, numbered.view.dropdown.choices.length], ["7", 3]);
+        assert.strictEqual(P.dropdownLine("history", "spotify"), '{"type":"dropdown","view":"history","value":"spotify"}');
+    });
+});
+
+test.describe("preview facts", () => {
+    test.it("reads facts into the preview, text above them, and drops facts with no label", () => {
+        const [item] = P.readItems([{ id: "r", title: "Rule", preview: { text: "Spotify", facts: [{ label: "Does", value: "Dims to 15%" }, { value: "no label" }, { label: "Empty" }, { label: "Playing", value: 3 }] } }]);
+        assert.deepStrictEqual(item.preview, { facts: [{ label: "Does", value: "Dims to 15%" }, { label: "Playing", value: "3" }], text: "Spotify" });
+        const [plain] = P.readItems([{ id: "p", title: "Plain", preview: { text: "Only text", facts: [] } }]);
+        assert.deepStrictEqual(plain.preview, { text: "Only text" });
+        const [pictured] = P.readItems([{ id: "i", title: "Pic", preview: { image: "/a.png", facts: [{ label: "A", value: "b" }] } }]);
+        assert.deepStrictEqual(pictured.preview, { image: "file:///a.png" });
+    });
+});
+
+test.describe("notify and data", () => {
+    test.it("gives the program a data folder of its own only when the shell names a root", () => {
+        const { plugin } = manifest({});
+        assert.strictEqual(P.environment(plugin, {}, {}, "/s/plugin-data").BANDITSHELL_PLUGIN_DATA, "/s/plugin-data/jira");
+        assert.strictEqual(P.environment(plugin, {}, {}).BANDITSHELL_PLUGIN_DATA, undefined);
+    });
+
+    test.it("lets a notify through at most once every three seconds", () => {
+        assert.deepStrictEqual([P.notifyAllowed(0, 5000), P.notifyAllowed(5000, 7999), P.notifyAllowed(5000, 8000)], [true, false, true]);
+    });
+});
+
+test.describe("status items", () => {
+    const declared = manifest({ status: [{ id: "mic", place: "rail", icon: "mic" }, { id: "held", place: "island" }] }).plugin;
+
+    test.it("reads declared items from the manifest, keeps their programs running and needs no prefix", () => {
+        assert.deepStrictEqual(declared.status, [{ id: "mic", place: "rail", title: "Jira", icon: "mic" }, { id: "held", place: "island", title: "Jira", icon: "bug_report" }]);
+        assert.strictEqual(declared.background, true);
+        assert.strictEqual(manifest({ prefix: [], global: undefined, status: [{ id: "mic", place: "rail" }] }).plugin.id, "jira");
+        assert.match(manifest({ status: [{ id: "mic", place: "dock" }] }).error, /rail or island/);
+        assert.match(manifest({ status: [1, 2, 3, 4, 5].map(n => ({ id: `s${n}`, place: "rail" })) }).error, /at most 4/);
+    });
+
+    test.it("fills an update from its declaration and refuses one plugin.json never declared", () => {
+        const { item } = P.readStatus({ id: "mic", tone: "alarm", text: "Spotify dimmed", lines: ["Spotify dimmed", "", "Zen paused"], icon: "Not An Icon" }, declared.status);
+        assert.deepStrictEqual([item.title, item.icon, item.tone, item.lines, item.click, item.shown, item.progress], ["Jira", "mic", "alarm", ["Spotify dimmed", "Zen paused"], "menu", true, -1]);
+        assert.match(P.readStatus({ id: "other" }, declared.status).error, /does not declare/);
+        assert.strictEqual(P.readStatus({ id: "mic", tone: "loud" }, declared.status).item.tone, "plain");
+        assert.strictEqual(P.readStatus({ id: "mic", shown: false }, declared.status).item.shown, false);
+    });
+
+    test.it("clicks an action, the rows or the rail's menu, and never a menu in the island", () => {
+        const acts = [{ id: "undo", title: "Give back" }];
+        assert.strictEqual(P.readStatus({ id: "mic", click: "undo", actions: acts }, declared.status).item.click, "undo");
+        assert.strictEqual(P.readStatus({ id: "mic", click: "nope" }, declared.status).item.click, "menu");
+        assert.strictEqual(P.readStatus({ id: "held", click: "menu" }, declared.status).item.click, "rows");
+        assert.deepStrictEqual([P.coldId("plugin:jira:", "plugin:jira:PROJ-41"), P.coldId("plugin:jira:", "plugin:jira:"), P.coldId("plugin:jira:", "plugin:jira:!waiting"), P.coldId("plugin:jira:", "plugin:other:x")], ["PROJ-41", "", "", ""]);
+        assert.strictEqual(P.coldLine("PROJ-41"), '{"type":"activate","seq":0,"id":"PROJ-41","action":"","cold":true}');
+        assert.strictEqual(P.statusLine("mic", "undo"), '{"type":"activate","seq":0,"id":"mic","action":"undo","status":true}');
     });
 });
 

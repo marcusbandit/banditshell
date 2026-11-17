@@ -25,8 +25,8 @@ Column {
         visible: Battery.available
         interactive: false
         icon: Battery.icon()
-        label: `${Battery.percent}% · ${Battery.charging ? "charging" : Battery.onBattery ? "on battery" : "plugged in"}`
-        detail: Battery.timeLabel() || (Battery.full ? "full" : "")
+        label: `${Battery.percent}% · ${Battery.state}`
+        detail: Battery.timeLabel() || Battery.note
         onPointed: SettingsView.hovered = root.row
     }
 
@@ -45,8 +45,8 @@ Column {
         visible: Battery.available
         interactive: false
         icon: "electric_bolt"
-        label: "Drawing"
-        detail: `${Math.abs(Battery.rate).toFixed(1)} W`
+        label: Battery.flow === "in" ? "Charging at" : Battery.flow === "out" ? "Drawing" : "Power"
+        detail: Battery.flow === "idle" ? "idle" : `${Battery.rate.toFixed(1)} W`
         onPointed: SettingsView.hovered = root.row
     }
 }

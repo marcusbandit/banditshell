@@ -876,6 +876,10 @@ banditshell/
 │   │                            wrapper's arguments, systemd unit listing. No
 │   │                            QML, tested in node
 │   ├── Audio.qml                PipeWire: sinks, sources, volume, mute
+│   ├── Mixer.qml                streams grouped into apps, whether each is making
+│   │                            sound (a live peak meter per stream, run only
+│   │                            while a mixer is on screen), and moving an app to
+│   │                            another output; mixer.js is the pure part
 │   ├── Battery.qml              UPower, the low warning, and the nearly empty
 │   │                            step: warn once, count down 30 s, then
 │   │                            suspend or hibernate (battery.js is the
@@ -1029,6 +1033,12 @@ banditshell/
 │   │                            Lock, read from Hyprland's main keyboard and
 │   │                            re-read on its activelayout event; next() moves
 │   │                            every keyboard to the next layout
+│   ├── password-asks.js         what a password card says: which secret, whose,
+│   │                            why and what it is not, from the raw words of
+│   │                            gcr, polkit, pinentry or the shell. Also who is
+│   │                            waiting on an ssh or gpg agent: the agent's
+│   │                            sockets in `ss -xp` matched to their callers,
+│   │                            then up `ps` to the git, ssh or gpg behind it
 │   ├── Keyring.qml              the KEYRING'S question, once the shell is the one
 │   │                            asking it. gnome-keyring draws nothing: it asks
 │   │                            whoever owns org.gnome.keyring.SystemPrompter,
@@ -1474,7 +1484,14 @@ banditshell/
 │   │   │                        `action <words>` (every stable action id) and
 │   │   │                        `recent` (recently-used.xbel, secret names hidden).
 │   │   │                        Each answers below 0.5 for a plain word and
-│   │   │                        has a switch under `launcher.shell`
+│   │   │                        has a switch under `launcher.shell`.
+│   │   │                        ClipboardPage.qml and EmojiPage.qml are pages:
+│   │   │                        `clip ` (or SUPER + V) and `emoji ` turn the
+│   │   │                        field into their filter, with a kind or
+│   │   │                        category dropdown at its right and a footer
+│   │   │                        naming Enter and Ctrl K. The clipboard page is
+│   │   │                        a list by day beside a preview and facts that
+│   │   │                        fit the kind; the emoji page is a grid
 │   │   ├── search.js            the pure part of it: paths, links, sections,
 │   │   │                        reading timer, reminder, volume, zone and
 │   │   │                        kill phrases, a time moved between places
@@ -1484,18 +1501,17 @@ banditshell/
 │   │   │                        Folders live in the favourites, a row carries
 │   │   │                        its application's notifications, and a swipe
 │   │   │                        across one clears them or opens the folder
+│   │   ├── AnswerCard.qml       the list concept's answer: what you asked on the
+│   │   │                        left, the answer on the right, a caption under
+│   │   │                        each (zones and days, rates, other colour forms).
+│   │   │                        A time moved between places lands here too
 │   │   ├── AnswerRow.qml        the sum you typed, answered under the field.
 │   │   │                        Enter copies it; arrowing hands Return back to
-│   │   │                        the list. Both concepts draw the same row
+│   │   │                        the list. The alphabet concept draws it, and the
+│   │   │                        list concept only for "install qalc"
 │   │   └── LaunchEdge.qml       the bottom band as the way to pull it out
-│   ├── clipboard/               what you copied; the launcher's twin
-│   │   ├── ClipboardPanel.qml   two tabs, a list, and `/` for the search that
-│   │   │                        is not there until it is asked for; the list and
-│   │   │                        the page are two halves of one strip
-│   │   ├── ClipRow.qml          one thing copied: its kind, or the picture
-│   │   │                        itself, which grows when it is the one you are on
-│   │   └── ClipDetail.qml       one thing properly: whole, formatted, coloured.
-│   │                            A right arrow or a swipe right away
+│   ├── clipboard/               what you copied: the history's IPC, whose panel
+│   │                            commands open the launcher's clipboard page
 │   ├── session/SessionMenu.qml  power, on the right edge, summoned by name
 │   ├── calculator/              the keypad, out of the sidebar's flank: the power
 │   │   └── CalculatorPanel.qml  panel's twin, mirrored. Summoned by name, so it
@@ -1547,12 +1563,21 @@ banditshell/
 │   │                            session_lock_xray is on
 │   │                            for exactly those two moments, so a dead lock
 │   │                            client never shows what is behind it
-│   ├── password/PasswordPrompt.qml the keyring's and polkit's password question,
-│   │                            drawn as a page of the launcher (2026-10-19):
-│   │                            the same chassis blob rising out of the band,
-│   │                            the secret where the search row would be, the
-│   │                            dictionary page's bold heading below it and its
-│   │                            key-cap footer for the answers. The
+│   ├── password/PasswordPrompt.qml the keyring's, polkit's and Wi-Fi's password
+│   │                            question, drawn as a page of the launcher
+│   │                            (2026-10-19, content redone 2026-11-12, #828):
+│   │                            the field where the search row would be, with
+│   │                            the kind's glyph, then a bold heading naming
+│   │                            WHICH secret in the owner's words ("Your sudo
+│   │                            password", "SSH key passphrase"), then a short
+│   │                            list of labelled facts (Key, Account, Keyring,
+│   │                            Network, Asked by, As root), one line on what
+│   │                            it is not, and the key-cap footer. The
+│   │                            program's own words wait behind Details, in
+│   │                            the same two columns. Left-aligned like every
+│   │                            launcher page; a centred stack was tried and
+│   │                            rejected. Admin asks take the warning
+│   │                            colour, since they hand out root. Still the
 │   │                            one panel nobody asks for: an application wants
 │   │                            a secret and is BLOCKED on the answer, so it
 │   │                            draws over everything, a fullscreen window
@@ -1695,6 +1720,9 @@ banditshell/
 │   │   │                        history and no arms. It also runs the copier
 │   │   └── NotificationCopier.qml keeps a copy of a borrowed or temporary
 │   │                            picture so history outlives the sender
+│   ├── mixer/                   the mixer: MixerView is the one face, shown in its
+│   │                            own window (MixerWindow, `banditshell panel mixer`)
+│   │                            and as the launcher's mixer page (MixerPage)
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
 │   │   ├── MenuPanel.qml        one panel: geometry and contents, NOT a shape
@@ -2112,10 +2140,9 @@ small time with the battery given a shape of its own, a level bar, beside other 
 the rail's width behind. Apple's iPhone Duo met the same problem in its side column and answered
 it the same way: a small time on top, the battery as a level rather than a battery icon. `sidebar.glance` picks where (Settings, Sidebar, "Clock and battery"):
 
-- `rail` (the default): near the rail's foot, the time, and under it the battery as an upright
-  level bar with a nub on top and its percent below. The time sits at the height of the open
-  sidebar's clock, centre on centre, so it stays put while the rail grows; it only rises when the
-  battery would otherwise fall off the foot. The resting clock (`sidebar.clock.style` and `size`)
+- `rail` (the default): at the rail's foot, the time, the date under it, and under that the
+  battery as an upright level bar with a nub on top and its percent below. The time and date read
+  sideways when the clock is one line. The resting clock (`sidebar.clock.style` and `size`)
   and the open one (`wideStyle` and `wideSize`) are chosen apart: stacked or one line, small or
   large. One line turns the time on its side so it reads as 14:32. The defaults are one line small
   at rest and stacked large when open, so the wide column is used for something.
@@ -2135,7 +2162,7 @@ nothing. The clock style `off` and the sidebar's battery toggle still hide each 
 mode draws no glance outside the rail. `wide` widens the rail but not its workspace marks. This
 bends 2.1 for two readings everyone asks for; nothing else joins them at rest.
 
-Pointing at the rail for `anim.dwell` grows it into the full column: the clock, tray, status
+Pointing anywhere on the rail, workspace marks included, for `anim.dwell` grows it into the full column: the clock, tray, status
 icons and mode icon, with the workspaces turning from marks into plates. It is not a new panel.
 `Chassis` smooths one number (`railOpen`, through `Follow`) and the cutout's left edge simply
 moves, so the growth is the band swelling over the windows, and the content fades in as the
@@ -2256,6 +2283,7 @@ banditshell dev preview lock|settings [WxH] [page]|files [dir]|gallery|menu <key
 banditshell dev menu [current|hover|list]
 banditshell dev launcher scrub <fraction>
 banditshell dev keyring|polkit [status|demo|close]
+banditshell dev password <scene>
 ```
 
 **The boot check, 2026-10-17.** Two bugs got past the compile check and every node test: a read of

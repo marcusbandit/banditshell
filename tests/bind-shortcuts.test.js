@@ -13,7 +13,7 @@ const Shortcuts = new Function(src + "\nreturn { shortcutFor, names, callsFor };
 const LUA = ["lua5.5", "lua5.4", "lua", "luajit"].find(name => spawnSync(name, ["-e", "os.exit(0)"]).status === 0);
 const skip = LUA ? false : "no lua interpreter";
 
-const PANELS = ["launcher", "session", "clipboard", "media", "calculator", "quickcontrols", "keyboard", "settings", "notifications", "island", "hotkeys", "files", "wallpaper", "audio", "network", "bluetooth", "battery", "calendar", "clock", "update", "notch", "picker", "penmap", "tray_app"];
+const PANELS = ["launcher", "session", "clipboard", "media", "calculator", "quickcontrols", "keyboard", "settings", "notifications", "island", "hotkeys", "files", "mixer", "wallpaper", "audio", "network", "bluetooth", "battery", "calendar", "clock", "update", "notch", "picker", "penmap", "tray_app"];
 
 function everyId() {
     const ids = [];

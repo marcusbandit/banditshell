@@ -4,11 +4,11 @@ const SPAN_MAX_MS = 7 * 24 * 60 * 60 * 1000;
 const TEXT_MAX = 120;
 const DETAIL_MAX = 200;
 const ENDING_MS = 10000;
-const LEVEL_MS = 1000;
+const LEVEL_MS = 1800;
 const OUTCOMES = ["done", "failed", "cancelled"];
 const OUTCOME_WORDS = { done: "finished", failed: "failed", cancelled: "cancelled" };
 const KINDS = ["external", "privacy"];
-const STYLES = ["", "screenshot", "copied", "bluetooth", "wifi", "undo", "privacy"];
+const STYLES = ["", "screenshot", "copied", "bluetooth", "wifi", "undo", "privacy", "plugin"];
 const ACTIONS_MAX = 4;
 const ACTION_LABEL_MAX = 12;
 const LEVEL_KINDS = ["volume", "brightness", "mic"];
@@ -34,6 +34,10 @@ function parseSpan(text) {
         piece = SPAN_PIECE.exec(raw);
     }
     return covered === raw.length ? parseSpan(total) : -1;
+}
+
+function clockAt(now, pausedMs, pausedAt) {
+    return (pausedAt > 0 ? pausedAt : now) - (pausedMs || 0);
 }
 
 function readProgress(value) {

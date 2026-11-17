@@ -25,6 +25,6 @@
   },
   "config": {
     "namespace": ["screen", "tablet"],
-    "reads": ["colour"]
+    "reads": ["colour", "launcher.systemControls"]
   }
 }

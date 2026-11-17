@@ -10,7 +10,9 @@ Singleton {
     id: root
 
     readonly property string chosenFolder: Config.values.launcher.powerTools.scriptsFolder
-    readonly property string folder: root.chosenFolder ? root.chosenFolder.replace(/^~(?=\/|$)/, System.home).replace(/(.)\/+$/, "$1") : `${Config.dir}/scripts`
+    readonly property var folders: Scripts.foldersFrom(root.chosenFolder, System.home, `${Config.dir}/scripts`)
+    property string existingFolder: ""
+    readonly property string folder: root.existingFolder || root.folders[0]
 
     property var scripts: []
     property bool folderExists: false
@@ -37,7 +39,7 @@ Singleton {
         scanner.running = true;
     }
 
-    onFolderChanged: {
+    onFoldersChanged: {
         root.scripts = [];
         settle.restart();
     }
@@ -52,11 +54,12 @@ Singleton {
     Process {
         id: scanner
 
-        command: ["sh", "-c", '[ -d "$1" ] || { echo none; exit 0; }; echo found; for f in "$1"/*; do [ -f "$f" ] || continue; x=0; [ -x "$f" ] && x=1; printf "\\036%s\\t%s\\n" "$x" "$f"; head -c 8192 "$f" | head -n 60; echo; done', "sh", root.folder]
+        command: ["sh", "-c", 'seen=0; for d in "$@"; do [ -d "$d" ] || continue; [ $seen = 0 ] && printf "found\\t%s\\n" "$d"; seen=1; for f in "$d"/*; do [ -f "$f" ] || continue; x=0; [ -x "$f" ] && x=1; printf "\\036%s\\t%s\\n" "$x" "$f"; head -c 8192 "$f" | head -n 60; echo; done; done; [ $seen = 1 ] || echo none', "sh", ...root.folders]
 
         stdout: StdioCollector {
             onStreamFinished: {
-                root.folderExists = text.indexOf("found") === 0;
+                root.folderExists = text.indexOf("found\t") === 0;
+                root.existingFolder = root.folderExists ? text.slice(6, text.indexOf("\n")) : "";
                 root.scripts = Scripts.readScan(text);
                 root.scannedAt = Date.now();
             }
@@ -78,7 +81,7 @@ Singleton {
 
     function run(script: var, values: var): void {
         const command = Scripts.commandFor(script, values);
-        const folder = script.path.slice(0, script.path.lastIndexOf("/")) || "/";
+        const folder = Scripts.workingFolder(script, System.home);
         if (script.mode === "silent") {
             Quickshell.execDetached({
                 command: command,
@@ -225,7 +228,7 @@ Singleton {
             key: root.listWanted,
             path: script.path,
             command: Scripts.groupCommand(Scripts.commandFor(script, root.listValues), root.grouped),
-            workingDirectory: script.path.slice(0, script.path.lastIndexOf("/")) || "/"
+            workingDirectory: Scripts.workingFolder(script, System.home)
         });
         root.listRun.running = true;
     }
@@ -235,7 +238,10 @@ Singleton {
             root.listRun = null;
         if (run.dropped)
             return;
-        const folder = run.path.slice(0, run.path.lastIndexOf("/")) || "/";
+        const folder = Scripts.workingFolder(root.script(run.path) ?? {
+            path: run.path,
+            directory: ""
+        }, System.home);
         const result = run.late ? {
             items: [],
             error: `stopped after ${root.listTimeoutMs / 1000} s`,
@@ -261,7 +267,7 @@ Singleton {
     function select(script: var, arg: string): void {
         Quickshell.execDetached({
             command: Scripts.selectCommand(script, arg),
-            workingDirectory: script.path.slice(0, script.path.lastIndexOf("/")) || "/"
+            workingDirectory: Scripts.workingFolder(script, System.home)
         });
     }
 

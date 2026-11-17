@@ -30,6 +30,14 @@ Everyone else follows releases. The loop is:
    `--dry-run`. It checks main, picks the number (minor for a `feat`, patch
    otherwise), tags it, moves `stable` and writes the GitHub release from
    what's new since the last tag.
+4. Write and publish the release post. The post is a Markdown file in
+   `site/blog/`, written ahead of the release as a draft: front matter with
+   `title`, `date`, `release` and `summary`, plus `draft: true`, which keeps it
+   off the blog index and out of the build. Before cutting the tag, finish the
+   post from the merged PRs, remove `draft: true`, set the real `date`, check
+   it with `node site/build.mjs --drafts` and merge it. Then deploy the site
+   (`npm run deploy` in `site/`) so the post is live when the release is.
+   Every release gets a post, a push does not.
 
 Never cut a release the owner did not ask for. `docs/architecture/updates.md`
 has the details.

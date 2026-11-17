@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import "../../components/drag-resist.js" as Drag
 
 Item {
     id: root
@@ -41,11 +42,7 @@ Item {
     }
 
     function resist(delta: real): real {
-        const commit = root.throwDistance;
-        const k = Config.values.control.dragResistance;
-        const m = Math.abs(delta);
-        const resisted = m < commit ? m * k : commit * k + (m - commit);
-        return delta < 0 ? -resisted : resisted;
+        return Drag.resist(delta, root.throwDistance, Config.values.control.dragResistance);
     }
 
     function unresist(offset: real): real {

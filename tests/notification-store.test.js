@@ -47,6 +47,23 @@ test("an entry held back while quiet is still held back after a restart", () => 
     assert.deepStrictEqual(back.map(e => e.withheld), [true, false]);
 });
 
+test("a snoozed entry keeps its wake time across a restart", () => {
+    const a = entry("a", 5000);
+    const b = entry("b", 4000);
+    const raw = JSON.stringify(Store.serialise([a, b], 10, [{ entry: a, at: 9000 }]));
+    const back = Store.restore(raw, 50, [], DIR);
+    assert.deepStrictEqual(back.map(e => e.wake), [9000, 0]);
+});
+
+test("a wake time that is not a positive number is ignored", () => {
+    const a = entry("a", 5000);
+    assert.strictEqual(Store.serialise([a], 10, [{ entry: a, at: "soon" }]).entries[0].wake, 0);
+    assert.strictEqual(Store.serialise([a], 10, [{ entry: a, at: -5 }]).entries[0].wake, 0);
+    assert.strictEqual(Store.serialise([a], 10, [{ entry: entry("other", 1), at: 9000 }]).entries[0].wake, 0);
+    const [back] = Store.restore({ entries: [{ id: "a", time: 5, wake: "x" }] }, 50, [], DIR);
+    assert.strictEqual(back.wake, 0);
+});
+
 test("only durable entries are written, so a preview never reaches the file", () => {
     const saved = Store.serialise([entry("a", 1000), entry("b", 2000, { durable: false })], 10);
     assert.deepStrictEqual(saved.entries.map(e => e.id), ["a"]);

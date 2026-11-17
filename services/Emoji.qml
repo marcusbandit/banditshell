@@ -19,7 +19,11 @@ Singleton {
 
     readonly property string path: `${Config.stateDir}/emoji.json`
 
+    readonly property string pinPath: `${Config.stateDir}/emoji-pinned.json`
+
     property var used: ({})
+
+    property var pinned: []
 
     readonly property var recentNames: Object.keys(root.used).sort((a, b) => root.used[b].last - root.used[a].last).map(c => root.byChar[c]?.name ?? "").filter(Boolean).slice(0, 6)
 
@@ -28,7 +32,7 @@ Singleton {
     }
 
     function search(term: string, explicit: bool, limit: int): var {
-        return EmojiLogic.search(root.all, root.byChar, term, root.used, explicit, limit);
+        return EmojiLogic.search(root.all, root.byChar, term, root.used, explicit, limit, root.pinned);
     }
 
     function textOf(entry: var): string {
@@ -41,6 +45,24 @@ Singleton {
 
     function codeOf(glyph: string): string {
         return EmojiLogic.codeOf(glyph);
+    }
+
+    function isPinned(entry: var): bool {
+        return !!entry && root.pinned.indexOf(entry.char) >= 0;
+    }
+
+    function pin(entry: var): void {
+        if (!entry)
+            return;
+        root.pinned = EmojiLogic.pin(root.pinned, entry.char);
+        pinStore.setText(JSON.stringify(root.pinned));
+    }
+
+    function unpin(entry: var): void {
+        if (!entry || !root.isPinned(entry))
+            return;
+        root.pinned = EmojiLogic.unpin(root.pinned, entry.char);
+        pinStore.setText(JSON.stringify(root.pinned));
     }
 
     function use(entry: var): void {
@@ -57,6 +79,23 @@ Singleton {
         delete next[entry.char];
         root.used = next;
         store.setText(JSON.stringify(root.used));
+    }
+
+    FileView {
+        id: pinStore
+
+        path: root.pinPath
+        printErrors: false
+
+        onLoaded: {
+            try {
+                const data = JSON.parse(text());
+                root.pinned = Array.isArray(data) ? data.filter(c => typeof c === "string") : [];
+            } catch (e) {
+                console.warn(`Emoji: ${root.pinPath} is not valid JSON, starting the pinned list over.`, e);
+                root.pinned = [];
+            }
+        }
     }
 
     FileView {

@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import "search.js" as Search
 
 LauncherConcept {
     id: root
@@ -313,21 +314,15 @@ LauncherConcept {
 
     function claimKey(event: var): bool {
         if (sheet.open) {
-            switch (event.key) {
-            case Qt.Key_Down:
-                sheet.move(1);
-                break;
-            case Qt.Key_Up:
-                sheet.move(-1);
-                break;
-            case Qt.Key_Return:
-            case Qt.Key_Enter:
-                sheet.activate(sheet.selected);
-                break;
-            default:
+            if (!sheet.key(event))
                 sheet.close();
-                break;
-            }
+            return true;
+        }
+
+        if (Search.opensSheet(event.key, event.modifiers) && !root.naming) {
+            const row = list.itemAtIndex(root.selected);
+            if (row)
+                root.askRow(row, row.width / 2, row.height / 2);
             return true;
         }
 
@@ -369,12 +364,11 @@ LauncherConcept {
             }
         ];
 
-        for (const action of entry.actions ?? [])
-            acts.push({
-                icon: "open_in_new",
-                label: action.name,
-                run: () => root.launch(() => Apps.launchAction(entry, action))
-            });
+        acts.push(...Search.foldedActions((entry.actions ?? []).map(action => ({
+                        icon: "open_in_new",
+                        label: action.name,
+                        run: () => root.launch(() => Apps.launchAction(entry, action))
+                    })), `${entry.name} actions`, 4));
 
         acts.push({
             icon: root.starIcon,

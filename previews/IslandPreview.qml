@@ -12,6 +12,7 @@ import "../services/privacy.js" as PrivacyLogic
 ShellRoot {
     id: preview
 
+    readonly property var pluginMirror: PluginActivities
     readonly property string shots: Quickshell.env("BANDITSHELL_SHOTS") ?? ""
 
     readonly property var levels: Levels
@@ -883,6 +884,18 @@ ShellRoot {
             expect: "activity"
         },
         {
+            name: "pin the island: the screenshot row keeps its name beside smaller buttons",
+            run: () => island.pinned = true,
+            wait: 600,
+            expect: "overview"
+        },
+        {
+            name: "unpin: the screenshot row is back in the pill",
+            run: () => island.pinned = false,
+            wait: 600,
+            expect: "activity"
+        },
+        {
             name: "the microphone goes live: a privacy row shows below it first",
             run: () => Activities.push(PrivacyLogic.usageSpec({
                     kind: "mic",
@@ -929,6 +942,12 @@ ShellRoot {
             expect: "privacy, below it: activity"
         },
         {
+            name: "the copied row lapses",
+            run: () => {},
+            wait: 2200,
+            expect: "privacy"
+        },
+        {
             name: "a masked history entry is copied where wl-copy has no --sensitive: still masked",
             run: () => Moments.copied(["wl-copy", "-n"], "Xk9#mP2qLwZ7", true),
             wait: 400,
@@ -964,6 +983,18 @@ ShellRoot {
             expect: "hidden"
         },
         {
+            name: "a plugin's island item: Listening, with Give back",
+            run: () => PluginStatus.set(preview.pluginItem(true)),
+            wait: 600,
+            expect: "activity"
+        },
+        {
+            name: "the plugin takes its item away",
+            run: () => PluginStatus.set(preview.pluginItem(false)),
+            wait: 600,
+            expect: "hidden"
+        },
+        {
             name: "a Wi-Fi join fails: Wi-Fi failed, with Try again",
             run: () => Activities.push(MomentLogic.wifiSpec("Cafe", "timeout", "Cafe: no answer")),
             expect: "activity"
@@ -981,13 +1012,14 @@ ShellRoot {
             expect: "the failed Wi-Fi join"
         },
         {
-            name: "leave the view: the failure still waits after ten seconds",
+            name: "leave the view: it counts as seen and the failure goes",
             run: () => {
                 island.leaveTask();
                 island.close();
             },
-            wait: 10000,
-            expect: "activity"
+            wait: 1500,
+            expect: "hidden",
+            holds: () => !Activities.entries.some(e => e.id === "moment:wifi")
         },
         {
             name: "it goes once it is closed",
@@ -1465,6 +1497,29 @@ ShellRoot {
         });
         Notifications.popups = [entry, ...Notifications.popups];
         Notifications.history = [entry, ...Notifications.history];
+    }
+
+    function pluginItem(shown: bool): var {
+        return {
+            key: "plugin:voice:held",
+            pluginId: "voice",
+            id: "held",
+            place: "island",
+            shown: shown,
+            title: "Listening",
+            text: "Spotify dimmed, Zen paused",
+            icon: "mic",
+            tone: "alarm",
+            lines: [],
+            actions: [
+                {
+                    id: "release",
+                    title: "Give back"
+                }
+            ],
+            click: "rows",
+            progress: -1
+        };
     }
 
     function shoot(name: string): void {

@@ -11,6 +11,7 @@ Item {
     property bool on: false
     property bool turned: false
     property real size: 36
+    property bool repeats: false
     property color tint: Appearance.colour.textFaint
 
     signal clicked
@@ -79,7 +80,35 @@ Item {
         hoverEnabled: true
         enabled: root.enabled
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.clicked()
+
+        property bool repeated: false
+
+        onPressed: {
+            pointer.repeated = false;
+            if (root.repeats) {
+                again.interval = 400;
+                again.restart();
+            }
+        }
+        onReleased: again.stop()
+        onCanceled: again.stop()
+        onClicked: if (!pointer.repeated)
+            root.clicked()
+    }
+
+    Timer {
+        id: again
+
+        repeat: true
+        onTriggered: {
+            if (!root.enabled) {
+                again.stop();
+                return;
+            }
+            pointer.repeated = true;
+            again.interval = 100;
+            root.clicked();
+        }
     }
 
     HoverTip {

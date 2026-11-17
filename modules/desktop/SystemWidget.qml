@@ -118,7 +118,7 @@ WidgetCard {
             StyledText {
                 width: parent.width
                 text: gauge.label
-                color: Appearance.colour.textFaint
+                color: Appearance.colour.textDim
                 elide: Text.ElideRight
             }
         }

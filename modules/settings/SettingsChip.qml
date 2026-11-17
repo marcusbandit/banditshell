@@ -8,6 +8,8 @@ Item {
     property string text: ""
     property string tip: ""
     property bool adder: false
+    property bool dimmed: false
+    property bool toggles: false
 
     signal removed
     signal clicked
@@ -23,8 +25,17 @@ Item {
         strokeWidth: root.adder ? Appearance.stroke.ring : 0
     }
 
+    MouseArea {
+        anchors.fill: parent
+        visible: root.toggles && !root.adder
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.clicked()
+    }
+
     Row {
         id: row
+
+        opacity: root.dimmed ? 0.5 : 1
 
         x: root.adder ? Appearance.padding.small : Appearance.padding.normal
         anchors.verticalCenter: parent.verticalCenter

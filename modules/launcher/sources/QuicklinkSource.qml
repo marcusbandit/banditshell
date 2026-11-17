@@ -14,6 +14,17 @@ QtObject {
 
     readonly property var links: Config.values.launcher.typing.quicklinks ?? []
 
+    function fetchIcons(): void {
+        for (const link of root.links) {
+            const origin = Quicklinks.originOf(link?.url);
+            if (origin)
+                LinkPreviews.look(origin);
+        }
+    }
+
+    onLinksChanged: root.fetchIcons()
+    Component.onCompleted: root.fetchIcons()
+
     readonly property var matched: root.search.text ? Quicklinks.match(root.links, root.search.text) : {
         exact: [],
         partial: []
@@ -44,6 +55,9 @@ QtObject {
 
     function row(link: var, query: string, score: real): var {
         const url = Quicklinks.resolve(link.url, query);
+        const next = Quicklinks.missing(link.url, query);
+        const site = LinkPreviews.pageOf(Quicklinks.originOf(link.url));
+        const host = Quicklinks.hostOf(url);
         return {
             key: `quicklink:${Quicklinks.cleanKeyword(link.keyword)}`,
             kind: "quicklink",
@@ -51,8 +65,9 @@ QtObject {
             query: query,
             url: url,
             label: query ? `${link.name}: ${query}` : link.name,
-            detail: root.clashes(link) ? `${Quicklinks.hostOf(url)} · same word as a built-in source` : Quicklinks.hostOf(url),
+            detail: root.clashes(link) ? `${host} · same word as a built-in source` : next && query ? `${host} · then ${next}` : host,
             icon: Quicklinks.takes(link) ? "travel_explore" : "link",
+            iconSource: site?.icon ? `file://${site.icon}` : "",
             score: score
         };
     }
@@ -84,6 +99,14 @@ QtObject {
                 run: () => root.search.leave(() => Clipboard.copy({
                             text: row.url
                         }))
+            },
+            {
+                icon: "label",
+                label: "Copy name",
+                short: "Name",
+                run: () => root.search.leave(() => Clipboard.copy({
+                            text: row.link.name
+                        }))
             }
         ];
         if (!row.query && Quicklinks.takes(row.link))
@@ -94,6 +117,11 @@ QtObject {
                 run: () => root.complete(row)
             });
         acts.push({
+            icon: "file_copy",
+            label: "Duplicate",
+            tucked: true,
+            run: () => root.duplicate(row.link)
+        }, {
             icon: "edit",
             label: "Edit quicklinks",
             tucked: true,
@@ -103,6 +131,12 @@ QtObject {
             }
         });
         return acts;
+    }
+
+    function duplicate(link: var): void {
+        const made = Quicklinks.copyOf(root.links, link);
+        Config.set("launcher.typing.quicklinks", Quicklinks.withLink(root.links, made, -1));
+        root.search.retype(made.keyword);
     }
 
     function complete(row: var): bool {

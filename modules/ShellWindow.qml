@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import qs.components
 import qs.config
 import qs.modules.calculator
 import qs.modules.cheatsheet
@@ -30,7 +31,6 @@ PanelWindow {
     readonly property Menus menus: menuLayer
     readonly property Launcher launcher: launcherLayer
 
-    readonly property LazyPanel clipboard: clipLayer
     readonly property LazyPanel wallpapers: wallpaperLayer
     readonly property LazyPanel session: sessionLayer
 
@@ -57,7 +57,7 @@ PanelWindow {
     readonly property var usage: Usage
     readonly property var clipboardHistory: Clipboard
 
-    readonly property var panels: [launcherLayer, clipLayer, wallpaperLayer, sessionLayer, cheatLayer, calcLayer, mediaLayer]
+    readonly property var panels: [launcherLayer, wallpaperLayer, sessionLayer, cheatLayer, calcLayer, mediaLayer]
 
     readonly property bool panelOpen: win.panels.some(panel => panel.open)
     readonly property bool covering: win.panels.some(panel => panel.open && panel !== mediaLayer)
@@ -70,7 +70,7 @@ PanelWindow {
 
     onLauncherAboveChanged: if (!win.launcherAbove)
         Qt.callLater(() => {
-            launcherLayer.stackBefore(clipLayer);
+            launcherLayer.stackBefore(wallpaperLayer);
             if (launcherLayer.open)
                 launcherLayer.concept?.input?.forceActiveFocus();
         })
@@ -87,6 +87,7 @@ PanelWindow {
     onUnderFullscreenChanged: if (win.underFullscreen) {
         win.closePanels(null, false);
         menuLayer.hide();
+        sidebarSheet.close();
     }
 
     Component.onCompleted: {
@@ -98,7 +99,6 @@ PanelWindow {
 
     readonly property var named: ({
             launcher: launcherLayer,
-            clipboard: clipLayer,
             wallpapers: wallpaperLayer,
             session: sessionLayer,
             calculator: calcLayer,
@@ -175,6 +175,7 @@ PanelWindow {
     }
 
     function closePanels(opening: Item, here: bool): void {
+        sidebarSheet.close();
         for (const panel of win.panels)
             if (panel !== opening)
                 panel.hide();
@@ -232,8 +233,7 @@ PanelWindow {
             return;
         case "dictation":
             islandLayer.close();
-            clipLayer.build().setTab(1);
-            clipLayer.show();
+            win.launcher.showPage("clip ", "speech");
             return;
         case "recording":
             ScreenRecorder.stop();
@@ -258,7 +258,7 @@ PanelWindow {
             break;
         case "held":
             islandLayer.close();
-            launcherLayer.show("notifications held ");
+            launcherLayer.show(notice.why === "fullscreen" ? "notifications unread " : "notifications held ");
             break;
         case "kernel":
             if (!SystemUpgrade.start())
@@ -290,7 +290,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: win.underFullscreen ? WlrKeyboardFocus.None : (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: win.underFullscreen ? WlrKeyboardFocus.None : (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard || sidebarSheet.open ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -316,11 +316,6 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: launcherLayer.open ? launcherLayer.maskItem : null
-        }
-
-        Region {
-            intersection: Intersection.Combine
-            item: clipLayer.open ? clipLayer.maskItem : null
         }
 
         Region {
@@ -396,6 +391,11 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: keyringLayer.open ? keyringLayer.maskItem : null
+        }
+
+        Region {
+            intersection: Intersection.Combine
+            item: sidebarSheet.open ? sidebarSheet : null
         }
 
         Region {
@@ -524,7 +524,7 @@ PanelWindow {
             railWanted: sidebar.railWanted
             readable: settingsLayer.open
 
-            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs, ...keyringLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs), ...body.lowered(glance.blobs)]
+            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs, ...keyringLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs), ...body.lowered(glance.blobs)]
         }
 
         BandProgress {
@@ -552,6 +552,7 @@ PanelWindow {
 
             menusShown: menuLayer.open
             openKey: menuLayer.currentKey
+            menuOpen: sidebarSheet.open
 
             pullSpan: Math.hypot(win.width, win.height)
 
@@ -562,6 +563,12 @@ PanelWindow {
             glanceReach: Math.max(0, glance.footReach - win.border)
 
             onMarkPressed: opens => win.pressMark(opens)
+            onMenuAsked: (x, y, actions) => {
+                const at = sidebar.mapToItem(sidebarSheet, x, y);
+                if (!sidebarSheet.open)
+                    sidebarSheet.giveBack = body.Window.activeFocusItem;
+                sidebarSheet.popup(at.x, at.y, actions, -1);
+            }
         }
 
         RestingGlance {
@@ -598,6 +605,15 @@ PanelWindow {
                     else
                         win.openMenu(key, true);
                 }
+            }
+        }
+
+        Connections {
+            target: Settings
+
+            function onSummoned(screen: string): void {
+                if (screen !== "" && screen === (win.screen?.name ?? ""))
+                    menuLayer.hide();
             }
         }
 
@@ -687,6 +703,24 @@ PanelWindow {
             keyboardHeld: win.panelOpen
         }
 
+        ActionSheet {
+            id: sidebarSheet
+
+            anchors.fill: parent
+            z: 200
+
+            Keys.onPressed: event => event.accepted = sidebarSheet.key(event)
+
+            property Item giveBack: null
+
+            onClosed: {
+                const back = sidebarSheet.giveBack;
+                sidebarSheet.giveBack = null;
+                if (sidebarSheet.activeFocus)
+                    (back?.visible ? back : body).forceActiveFocus();
+            }
+        }
+
         Launcher {
             id: launcherLayer
 
@@ -698,22 +732,6 @@ PanelWindow {
 
             onOpenChanged: if (open)
                 win.closeOthers(launcherLayer)
-        }
-
-        LazyPanel {
-            id: clipLayer
-
-            name: "clipboard"
-            anchors.fill: parent
-            anchors.topMargin: chassis.streamReach
-
-            onOpenChanged: if (open)
-                win.closeOthers(clipLayer)
-
-            panel: ClipboardPanel {
-                originX: chassis.barWidth
-                inset: win.border
-            }
         }
 
         LazyPanel {
@@ -850,6 +868,7 @@ PanelWindow {
             panel: SettingsPanel {
                 originX: chassis.barWidth
                 band: win.border
+                menuOpen: menuLayer.open
                 yielded: win.panelOpen || menuLayer.open || Prompts.awayIn(settingsLayer.QsWindow.window) || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
             }
         }
@@ -917,7 +936,7 @@ PanelWindow {
             holeWidth: chassis.holeWidth
             holeHeight: chassis.holeHeight
 
-            blocked: keyboardLayer.open || launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.open
+            blocked: keyboardLayer.open || launcherLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.open
         }
 
         Island {

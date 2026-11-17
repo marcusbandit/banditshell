@@ -11,6 +11,7 @@ function identity(e) {
 function shelve(entries) {
     var all = entries || [];
     return {
+        kind: "clear",
         before: all.map(function (e) {
             return {
                 id: e.id,
@@ -20,6 +21,28 @@ function shelve(entries) {
         entries: all.filter(function (e) {
             return !e.pinned;
         })
+    };
+}
+
+function removal(entries, entry, shelf) {
+    var before = shelf ? shelf.before.slice() : (entries || []).map(function (e) {
+        return {
+            id: e.id,
+            recorded: e.recorded
+        };
+    });
+    var known = before.some(function (b) {
+        return b.id === entry.id;
+    });
+    if (!known)
+        before.unshift({
+            id: entry.id,
+            recorded: entry.recorded
+        });
+    return {
+        kind: "delete",
+        before: before,
+        entries: (shelf ? shelf.entries : []).concat([entry])
     };
 }
 

@@ -1,7 +1,9 @@
 import QtQuick
 import Quickshell
 import qs.services
+import qs.config
 import "../../../services/assistant.js" as Logic
+import "../../../services/dictation-events.js" as DictationEvents
 import "../prefixes.js" as Prefixes
 
 QtObject {
@@ -24,6 +26,38 @@ QtObject {
         function onStartedChanged(): void {
             if (root.search.started)
                 Assistant.refresh();
+        }
+    }
+
+    property bool listening: false
+    property bool eligible: false
+
+    property Connections dictation: Connections {
+        target: Dictation
+
+        function onPhaseChanged(): void {
+            if (Dictation.phase !== "idle") {
+                if (root.listening)
+                    return;
+                root.listening = true;
+                root.eligible = root.search.active && root.search.query.trim() === "" && Config.values.launcher.dictateToAsk && Assistant.enabled;
+            } else if (root.listening) {
+                root.listening = false;
+                if (root.eligible)
+                    settle.restart();
+            }
+        }
+    }
+
+    property Timer settle: Timer {
+        interval: 150
+        onTriggered: {
+            const typed = root.search.query;
+            if (!root.search.active || root.search.intent || Prefixes.asked(typed))
+                return;
+            const asked = DictationEvents.asking(typed);
+            if (asked !== null)
+                root.search.retype(asked);
         }
     }
 
@@ -142,6 +176,14 @@ QtObject {
 
     readonly property var commands: [
         {
+            id: "assistantcopychat",
+            icon: "content_copy",
+            label: "Copy AI chat",
+            words: "ai chat copy conversation whole transcript",
+            hidden: !Assistant.answeredTurns,
+            run: () => Assistant.copyChat()
+        },
+        {
             id: "assistantsetup",
             icon: "auto_awesome",
             label: "Set up AI answers",
@@ -179,7 +221,7 @@ QtObject {
         if (row.kind === "ask") {
             if (Assistant.streaming && Assistant.topic === root.search.text)
                 return;
-            Assistant.ask(row.question, root.search.text);
+            Assistant.ask(row.question, root.search.text, null);
             return;
         }
         if (Assistant.phase === "nokey" || Assistant.phase === "unreachable") {
@@ -203,6 +245,24 @@ QtObject {
                     icon: "auto_awesome",
                     label: "Ask",
                     run: () => root.activate(row)
+                },
+                {
+                    icon: "text_select_start",
+                    label: "Ask about the selection",
+                    short: "Selection",
+                    run: () => Assistant.askWith("selection", row.question, root.search.text)
+                },
+                {
+                    icon: "content_paste",
+                    label: "Ask about the clipboard",
+                    short: "Clipboard",
+                    run: () => Assistant.askWith("clipboard", row.question, root.search.text)
+                },
+                {
+                    icon: "web_asset",
+                    label: "Ask about the focused window",
+                    short: "Window",
+                    run: () => Assistant.askWith("window", row.question, root.search.text)
                 }
             ];
         const apiKey = {

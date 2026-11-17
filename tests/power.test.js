@@ -8,7 +8,7 @@ const { spawnSync } = require("node:child_process");
 const ROOT = path.resolve(__dirname, "..");
 const load = (file, names) => new Function(fs.readFileSync(path.join(ROOT, "services", file), "utf8") + `\nreturn { ${names.join(", ")} };`)();
 
-const Battery = load("battery.js", ["lowStep", "countdownMessage", "nearlyEmptyChoice", "nearlyEmptyAction", "afterResume", "nearlyEmptyFraction", "rearmMargin", "graceSeconds"]);
+const Battery = load("battery.js", ["lowStep", "countdownMessage", "nearlyEmptyChoice", "nearlyEmptyAction", "afterResume", "phaseOf", "stateText", "noteText", "timeText", "flow", "percentOf", "nearlyEmptyFraction", "rearmMargin", "graceSeconds"]);
 const Suspension = load("suspension.js", ["parseHibernate", "resolve", "commandFor", "logindCommand", "logoutCommand"]);
 const Lid = load("lid.js", ["internalOutput", "hasLid", "externalScreens", "differsFromLogind", "chooseAction", "closedFrom", "closedFromProperty"]);
 const Profile = load("powerprofile.js", ["nameFor", "profileFor", "parseProbe", "parseActive", "choices"]);
@@ -296,4 +296,41 @@ test("log out ends the logind session where logind runs, and asks Hyprland to ex
     assert.deepStrictEqual(logOut(true, "echo ok"), ["loginctl terminate-session 4"]);
     assert.deepStrictEqual(logOut(false, '[ "$2" = "hl.dsp.exit()" ] && echo ok'), ["hyprctl dispatch hl.dsp.exit()"]);
     assert.deepStrictEqual(logOut(false, "echo 'invalid dispatcher'"), ["hyprctl dispatch hl.dsp.exit()", "hyprctl dispatch exit"]);
+});
+
+test("a battery that is full or held at its limit is not charging and has no estimate", () => {
+    assert.strictEqual(Battery.phaseOf("full", false), "full");
+    assert.strictEqual(Battery.phaseOf("pendingCharge", false), "held");
+    assert.strictEqual(Battery.phaseOf("other", false), "plugged");
+    assert.strictEqual(Battery.phaseOf("pendingCharge", true), "battery");
+    assert.strictEqual(Battery.phaseOf("charging", false), "charging");
+    assert.strictEqual(Battery.phaseOf("discharging", false), "battery");
+
+    assert.strictEqual(Battery.stateText("held", 80), "plugged in, held at 80%");
+    assert.strictEqual(Battery.stateText("held", 0), "not charging");
+    assert.strictEqual(Battery.stateText("full", 0), "full");
+    assert.strictEqual(Battery.stateText("plugged", 0), "plugged in");
+    assert.strictEqual(Battery.noteText("full", 0), "fully charged");
+    assert.strictEqual(Battery.noteText("held", 80), "not charging");
+
+    for (const phase of ["full", "held", "plugged"])
+        assert.strictEqual(Battery.timeText(phase, 0), "", phase);
+    assert.strictEqual(Battery.timeText("charging", 0), "estimating");
+    assert.strictEqual(Battery.timeText("battery", 5400), "1h 30m left");
+    assert.strictEqual(Battery.timeText("charging", 1500), "25m to full");
+});
+
+test("the power direction follows the sign of the rate, or the phase when it is known", () => {
+    assert.strictEqual(Battery.flow(12, "charging"), "in");
+    assert.strictEqual(Battery.flow(12, "battery"), "out");
+    assert.strictEqual(Battery.flow(12, "plugged"), "in");
+    assert.strictEqual(Battery.flow(-9, "plugged"), "out");
+    assert.strictEqual(Battery.flow(0, "charging"), "idle");
+});
+
+test("a battery at 99.6 percent does not read 99", () => {
+    assert.strictEqual(Battery.percentOf(0.996), 100);
+    assert.strictEqual(Battery.percentOf(0.994), 99);
+    assert.strictEqual(Battery.percentOf(1.2), 100);
+    assert.strictEqual(Battery.percentOf(NaN), 0);
 });

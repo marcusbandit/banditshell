@@ -39,6 +39,34 @@ function pathQuery(text, home) {
     };
 }
 
+function parentQuery(text, home) {
+    const at = pathQuery(text, home);
+    if (!at)
+        return "";
+    const trimmed = at.dir.length > 1 ? at.dir.replace(/\/+$/, "") : at.dir;
+    const cut = trimmed.lastIndexOf("/");
+    const parent = cut <= 0 ? "/" : trimmed.slice(0, cut + 1);
+    const named = shortPath(parent, home);
+    return named === "~" ? "~/" : named;
+}
+
+var SECTION_ORDER = ["Open", "Favorites", "Shortcuts", "Manage"];
+
+function sectioned(actions) {
+    const list = (actions || []).map((a, i) => ({
+        action: a,
+        at: i,
+        section: a.section || (a.tucked || a.alarm ? "Manage" : "Open")
+    }));
+    if (new Set(list.map(e => e.section)).size < 2)
+        return actions || [];
+    const rank = name => SECTION_ORDER.indexOf(name);
+    list.sort((a, b) => rank(a.section) - rank(b.section) || a.at - b.at);
+    return list.map(e => Object.assign({}, e.action, {
+        section: e.section
+    }));
+}
+
 var PICTURE = /\.(?:png|jpe?g|webp|gif|bmp|svg|avif|tiff?)$/i;
 
 function streamName(label) {
@@ -233,6 +261,12 @@ function arrange(groups, caps) {
             out.push(it);
     }
     return out;
+}
+
+function withoutRow(rows, key) {
+    const kept = (rows || []).filter(r => r.key !== key);
+    const filled = kept.filter((r, i) => !r.header || (i + 1 < kept.length && !kept[i + 1].header));
+    return filled.filter(r => r.header).length > 1 ? filled : filled.filter(r => !r.header);
 }
 
 var SPAN_HEAD = /^(\d+(?:[.,]\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)(?![a-z])\s*(?:and\s+)?/i;
@@ -988,6 +1022,7 @@ var ZONE_NOT_MERIDIEM = "(?!(?:am|pm|a\\.m\\.|p\\.m\\.)(?: |$))";
 var ZONE_BETWEEN = new RegExp(`^${ZONE_TIME} ${ZONE_NOT_MERIDIEM}(?:in )?(.+?) (?:in|to|->|→) (.+)$`);
 var ZONE_TO = new RegExp(`^${ZONE_TIME} ${ZONE_NOT_MERIDIEM}(?:in|to) (.+)$`);
 var ZONE_AT = new RegExp(`^${ZONE_TIME} ${ZONE_NOT_MERIDIEM}(.+?)(?: time)?$`);
+var ZONE_HERE = /^(?:here|local|locally|my time|local time|home|my place)$/;
 
 function zoneConvertAsk(text) {
     const t = String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -1003,6 +1038,10 @@ function zoneConvertAsk(text) {
     } else {
         return null;
     }
+    if (ZONE_HERE.test(from))
+        from = "";
+    if (ZONE_HERE.test(to))
+        to = "";
     const clock = m[1] === "noon" ? {
         hour: 12,
         minute: 0
@@ -1019,6 +1058,55 @@ function zoneConvertAsk(text) {
     };
 }
 
+var ZONE_DIFF_BETWEEN = /^(?:time\s+diff(?:erence)?|diff(?:erence)?\s+in\s+time)\s+(?:between\s+|from\s+)?(.+?)\s+(?:and|to|vs|versus|&|->|→)\s+(.+)$/;
+var ZONE_DIFF_AFTER = /^(?:time\s+diff(?:erence)?|diff(?:erence)?\s+in\s+time)\s+(?:(with|to|from|between|in|for)\s+)?(.+)$/;
+var ZONE_DIFF_BEFORE = /^(.+?)\s+time\s+diff(?:erence)?$/;
+
+function zoneDiffAsk(text) {
+    const t = String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
+    let m = ZONE_DIFF_BETWEEN.exec(t);
+    let from = "", to = "";
+    if (m) {
+        from = m[1];
+        to = m[2];
+    } else if ((m = ZONE_DIFF_AFTER.exec(t))) {
+        if (m[1] === "from")
+            from = m[2];
+        else
+            to = m[2];
+    } else if ((m = ZONE_DIFF_BEFORE.exec(t))) {
+        to = m[1];
+    } else {
+        return null;
+    }
+    if (ZONE_HERE.test(from))
+        from = "";
+    if (ZONE_HERE.test(to))
+        to = "";
+    if ((!from && !to) || (to && to.length < 2) || (from && from.length < 2) || from === to)
+        return null;
+    return {
+        from: from,
+        to: to
+    };
+}
+
+function hoursText(minutes) {
+    const abs = Math.abs(minutes);
+    const h = Math.floor(abs / 60);
+    const m = abs % 60;
+    const hours = `${h} ${h === 1 ? "hour" : "hours"}`;
+    if (!m)
+        return hours;
+    return h ? `${hours} ${m} min` : `${m} min`;
+}
+
+function diffSentence(minutes, fromName, toName) {
+    if (!minutes)
+        return `${toName} and ${fromName} share a time`;
+    return `${toName} is ${hoursText(minutes)} ${minutes > 0 ? "ahead of" : "behind"} ${fromName}`;
+}
+
 function readConversion(text) {
     const lines = String(text || "").trim().split("\n");
     const m = /^(\d{2}) (\d{2}) (\d{4}-\d{2}-\d{2})$/.exec((lines[0] || "").trim());
@@ -1033,7 +1121,7 @@ function readConversion(text) {
 }
 
 var ZONE_ASK = /^(?:what(?:'s|s|\s+is)\s+the\s+(?:current\s+|local\s+)?|what\s+|(?:the\s+)?(?:current|local)\s+)?(?:time|clock)\s+(?:is\s+it\s+)?(?:(?:right\s+)?now\s+)?in\s+(.+?)(?:\s+(?:right\s+)?now)?\??$/;
-var ZONE_LOOSE_AFTER = /^time\s+(?!in$)(?!(?:out|zone|zones|machine|lapse|line|travel|sheet|tracker|tracking|table|off|left|limit|signature|stamp|stamps|to|is|for|of|and|at|on|in|now)(?:\s|$))(.+)$/;
+var ZONE_LOOSE_AFTER = /^time\s+(?!in$)(?!(?:diff|difference|out|zone|zones|machine|lapse|line|travel|sheet|tracker|tracking|table|off|left|limit|signature|stamp|stamps|to|is|for|of|and|at|on|in|now)(?:\s|$))(.+)$/;
 var ZONE_LOOSE_BEFORE = /^(?!(?:current|local|lunch|bed|bedtime|prime|epoch|dinner|break|screen|run|real|play|free|over|part|full|tea|game|show|story|bath|nap|quality|spare|server|compile|load|response|boot|wake|what|same|next|last|first|this|every|any|some|long|short|a|the|my|your|our|unix|system|set|change)(?:\s|$))(.+?)\s+time(?:\s+now)?$/;
 
 function zoneAsk(text) {
@@ -1166,13 +1254,107 @@ function nextPickable(rows, from, step) {
     return -1;
 }
 
+function stepTarget(rows, selected, delta, holding) {
+    if (!holding)
+        return nextPickable(rows, selected + delta, delta < 0 ? -1 : 1);
+    return delta < 0 ? -1 : nextPickable(rows, selected, 1);
+}
+
+function shiftTarget(at, step, count) {
+    const to = at + step;
+    return at < 0 || to < 0 || to >= count ? -1 : to;
+}
+
+function caretKey(key, hasText, intoList) {
+    return hasText && !intoList && [Qt.Key_Home, Qt.Key_End, Qt.Key_Left, Qt.Key_Right].includes(key);
+}
+
+function opensSheet(key, modifiers, onTiles) {
+    if (key === Qt.Key_Menu)
+        return true;
+    const plain = modifiers & (Qt.ControlModifier | Qt.ShiftModifier | Qt.AltModifier | Qt.MetaModifier);
+    const enter = key === Qt.Key_Return || key === Qt.Key_Enter;
+    return key === Qt.Key_K && plain === Qt.ControlModifier || key === Qt.Key_F10 && plain === Qt.ShiftModifier || !!onTiles && enter && plain === Qt.ControlModifier;
+}
+
+function rowStep(tiles, at, direction, left) {
+    const from = tiles[at];
+    if (!from)
+        return -1;
+    const row = from.row + direction;
+    const back = left?.[row];
+    if (Number.isInteger(back) && tiles[back]?.row === row)
+        return back;
+    let best = -1;
+    tiles.forEach((t, i) => {
+        if (t.row === row && (best < 0 || Math.abs(t.slot - from.slot) < Math.abs(tiles[best].slot - from.slot)))
+            best = i;
+    });
+    return best;
+}
+
+function trailStep(tiles, at, direction, trail) {
+    const left = trail?.at === at ? trail.left : {};
+    const to = rowStep(tiles, at, direction, left);
+    if (to < 0)
+        return { to: -1, trail: trail };
+    return {
+        to: to,
+        trail: { at: to, left: Object.assign({}, left, { [tiles[at].row]: at }) }
+    };
+}
+
+function gridSpot(index, count, columns) {
+    const row = Math.floor(index / columns);
+    const across = Math.min(columns, count - row * columns);
+    return {
+        row: row,
+        slot: index % columns - (across - 1) / 2
+    };
+}
+
+function nearestTile(x, y, count, columns, cell, middle) {
+    let best = 0;
+    let bestDistance = Infinity;
+    for (let i = 0; i < count; i++) {
+        const spot = gridSpot(i, count, columns);
+        const distance = Math.hypot(x - (middle + spot.slot * cell), y - (spot.row + 0.5) * cell);
+        if (distance < bestDistance) {
+            best = i;
+            bestDistance = distance;
+        }
+    }
+    return best;
+}
+
+function draggedSlot(index, from, to) {
+    if (from < 0 || to < 0 || from === to)
+        return index;
+    if (index === from)
+        return to;
+    if (from < to && index > from && index <= to)
+        return index - 1;
+    if (from > to && index >= to && index < from)
+        return index + 1;
+    return index;
+}
+
+function foldedActions(actions, title, most) {
+    const list = actions || [];
+    return list.length > most ? [{
+            icon: "more_horiz",
+            label: title,
+            children: list
+        }] : list;
+}
+
 function cleanAlias(text) {
     return String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 function aliasTarget(aliases, text) {
     const said = cleanAlias(text);
-    return said && aliases && Object.prototype.hasOwnProperty.call(aliases, said) ? aliases[said].id || "" : "";
+    return said && aliases && Object.prototype.hasOwnProperty.call(aliases, said) && !aliases[said].off ? aliases[said].id || "" : "";
 }
 
 function aliasHolder(aliases, alias, id, exists) {
@@ -1188,7 +1370,8 @@ function aliasHolder(aliases, alias, id, exists) {
 function aliasesById(aliases) {
     const out = {};
     for (const alias of Object.keys(aliases || {}))
-        out[aliases[alias].id] = alias;
+        if (!aliases[alias].off)
+            out[aliases[alias].id] = alias;
     return out;
 }
 
@@ -1501,4 +1684,29 @@ function suggestions(text, found, more) {
         }
     }
     return out;
+}
+
+function presetAsk(text) {
+    var m = /^(?:save|store|remember)(?: (?:this|the|my))?(?: window)? (?:preset|arrangement|setup|windows)(?: (?:as|named|called))? (.+)$/i.exec(String(text || "").trim());
+    var name = m ? m[1].trim().slice(0, 40) : "";
+    return /^(?:as|named|called)$/i.test(name) ? "" : name;
+}
+
+function streamsForWindow(streams, windowClass) {
+    var want = String(windowClass || "").trim().toLowerCase();
+    if (!want)
+        return [];
+    var named = function (s) {
+        return [s.binary, s.name].some(function (n) {
+            return String(n || "").trim().toLowerCase() === want;
+        });
+    };
+    var loose = function (s) {
+        return [s.binary, s.name].some(function (n) {
+            var t = String(n || "").trim().toLowerCase();
+            return t.length >= 3 && (want.indexOf(t) >= 0 || t.indexOf(want) >= 0);
+        });
+    };
+    var exact = (streams || []).filter(named);
+    return exact.length ? exact : (streams || []).filter(loose);
 }

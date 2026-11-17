@@ -10,11 +10,11 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Scripts = lib("services/script-commands.js", ["parseScript", "readScan", "argumentsFrom", "askFor", "missing", "commandFor", "outputLines", "lastLine", "runKey", "titleFromFile", "listAsk", "readItems", "readList", "itemAction", "selectCommand", "ambientScore", "linkRefusal", "fileRefusal", "refusalOf", "groupCommand", "stopGroupCommand"]);
+const Scripts = lib("services/script-commands.js", ["parseScript", "readScan", "argumentsFrom", "askFor", "missing", "commandFor", "outputLines", "lastLine", "runKey", "titleFromFile", "listAsk", "readItems", "readList", "itemAction", "selectCommand", "ambientScore", "linkRefusal", "fileRefusal", "refusalOf", "groupCommand", "stopGroupCommand", "foldersFrom", "workingFolder"]);
 const Projects = lib("services/projects.js", ["listFrom", "readScan", "rank", "ago", "editorFor", "terminalLine", "shellLine", "projectAsk", "parentWithin", "scanCommand", "ambientScore", "quote"]);
-const Notes = lib("services/notes.js", ["withoutSkipped", "vaultsFrom", "defaultVault", "readIndex", "search", "openUri", "newUri", "fileNameFor", "notesAsk", "indexCommand", "ambientScore"]);
+const Notes = lib("services/notes.js", ["withoutSkipped", "vaultsFrom", "defaultVault", "readIndex", "search", "openUri", "newUri", "fileNameFor", "notesAsk", "indexCommand", "ambientScore", "contentCommand", "contentHits", "quickFileName", "quickBody", "quickCommand"]);
 const Monitor = lib("services/system-monitor.js", ["monitorAsk", "readSample", "topProcesses", "SESSION", "readDisks", "bytesText", "uptimeText", "cpuText"]);
-const Pomodoro = lib("services/pomodoro.js", ["pomodoroAsk", "nextRound", "roundLabel", "notice", "readState"]);
+const Pomodoro = lib("services/pomodoro.js", ["pomodoroAsk", "nextRound", "roundLabel", "notice", "readState", "minutesToClock"]);
 const Lorem = lib("services/lorem.js", ["loremAsk", "generate", "describe", "preview"]);
 const Picks = lib("services/colour-picks.js", ["colourAsk", "readPicked", "remember", "forget", "readHistory"]);
 const Ranking = lib("services/ranking.js", ["place", "EXACT", "PREFIX", "WORD", "ANYWHERE"]);
@@ -105,6 +105,20 @@ test.describe("script commands", () => {
         assert.strictEqual(Scripts.listAsk("scripted"), false);
     });
 
+    test.it("reads several script folders and drops repeats", () => {
+        assert.deepStrictEqual(Scripts.foldersFrom("~/a, /b/\n~/a", "/home/user", "/fallback"), ["/home/user/a", "/b"]);
+        assert.deepStrictEqual(Scripts.foldersFrom("", "/home/user", "/fallback"), ["/fallback"]);
+    });
+
+    test.it("runs a script in its own folder unless a header says otherwise", () => {
+        const plain = Scripts.parseScript("/s/a.sh", "#!/bin/sh\n# @raycast.title A\n", true);
+        assert.strictEqual(Scripts.workingFolder(plain, "/home/user"), "/s");
+        const home = Scripts.parseScript("/s/a.sh", "# @raycast.currentDirectoryPath ~/Projects\n", true);
+        assert.strictEqual(Scripts.workingFolder(home, "/home/user"), "/home/user/Projects");
+        const relative = Scripts.parseScript("/s/a.sh", "# @raycast.currentDirectoryPath data\n", true);
+        assert.strictEqual(Scripts.workingFolder(relative, "/home/user"), "/s/data");
+    });
+
     test.it("ships an example that reads as a Raycast script", () => {
         const s = Scripts.parseScript("/s/hello.sh", fs.readFileSync(path.join(ROOT, "docs/script-commands/hello.sh"), "utf8"), true);
         assert.strictEqual(s.title, "Hello");
@@ -115,7 +129,7 @@ test.describe("script commands", () => {
 
 test.describe("projects", () => {
     test.it("expands folder lists", () => {
-        assert.deepStrictEqual(Projects.listFrom("~/Projects, ~/src/ ,~/Projects", "/home/a"), ["/home/a/Projects", "/home/a/src"]);
+        assert.deepStrictEqual(Projects.listFrom("~/Projects, ~/src/ ,~/Projects", "/home/user"), ["/home/user/Projects", "/home/user/src"]);
     });
 
     test.it("reads the scan and ranks by name, then by what was touched last", () => {
@@ -290,7 +304,8 @@ test.describe("pomodoro", () => {
             phase: "pomodoro",
             minutes: 0,
             breakMinutes: 0,
-            long: false
+            long: false,
+            goal: ""
         });
         assert.strictEqual(Pomodoro.pomodoroAsk("pomodoro 50 10").breakMinutes, 10);
         assert.strictEqual(Pomodoro.pomodoroAsk("focus 25").minutes, 25);
@@ -412,16 +427,16 @@ test.describe("colour picks", () => {
 });
 
 test.describe("vaults left out", () => {
-    const vaults = [{ name: "Agent", path: "/home/u/Obsidian/Agent" }, { name: "Thoughts", path: "/home/u/Obsidian/Thoughts" }, { name: "Work", path: "/home/u/Work" }];
+    const vaults = [{ name: "Agent", path: "/home/user/Obsidian/Agent" }, { name: "Thoughts", path: "/home/user/Obsidian/Thoughts" }, { name: "Work", path: "/home/user/Work" }];
 
     test.it("drops vaults named by name or by folder, with ~ for home", () => {
-        assert.deepStrictEqual(Notes.withoutSkipped(vaults, "Agent, ~/Work", "/home/u").map(v => v.name), ["Thoughts"]);
-        assert.deepStrictEqual(Notes.withoutSkipped(vaults, "/home/u/Obsidian/Agent/", "/home/u").map(v => v.name), ["Thoughts", "Work"]);
+        assert.deepStrictEqual(Notes.withoutSkipped(vaults, "Agent, ~/Work", "/home/user").map(v => v.name), ["Thoughts"]);
+        assert.deepStrictEqual(Notes.withoutSkipped(vaults, "/home/user/Obsidian/Agent/", "/home/user").map(v => v.name), ["Thoughts", "Work"]);
     });
 
     test.it("keeps every vault when nothing is left out", () => {
-        assert.strictEqual(Notes.withoutSkipped(vaults, "", "/home/u").length, 3);
-        assert.strictEqual(Notes.withoutSkipped(vaults, " , ", "/home/u").length, 3);
+        assert.strictEqual(Notes.withoutSkipped(vaults, "", "/home/user").length, 3);
+        assert.strictEqual(Notes.withoutSkipped(vaults, " , ", "/home/user").length, 3);
     });
 });
 
@@ -556,11 +571,11 @@ test.describe("list scripts", () => {
                     valid: false,
                     autocomplete: "more "
                 }]
-        }), "/s", "/home/a", 50);
+        }), "/s", "/home/user", 50);
         assert.deepStrictEqual(items.map(i => i.title), ["Leftwards Arrow", "Report", "Docs", "More"]);
         assert.strictEqual(items[0].glyph, "←");
         assert.strictEqual(items[1].file, true);
-        assert.strictEqual(items[1].arg, "/home/a/report.pdf");
+        assert.strictEqual(items[1].arg, "/home/user/report.pdf");
         assert.strictEqual(items[1].iconFile, "/s/icons/pdf.png");
         assert.strictEqual(items[2].icon, "menu_book");
         assert.strictEqual(items[2].url, "https://example.org");
@@ -651,13 +666,13 @@ test.describe("list script safety", () => {
         assert.strictEqual(Scripts.linkRefusal("https://example.org"), "");
         assert.strictEqual(Scripts.linkRefusal("http://example.org"), "");
         assert.strictEqual(Scripts.linkRefusal("mailto:a@b.c"), "");
-        assert.strictEqual(Scripts.linkRefusal("file:///home/a/x.pdf"), "");
+        assert.strictEqual(Scripts.linkRefusal("file:///home/user/x.pdf"), "");
         assert.strictEqual(Scripts.linkRefusal("file://host/x"), "refused a file: link");
         assert.strictEqual(Scripts.linkRefusal("steam://run/1"), "refused a steam: link");
         assert.strictEqual(Scripts.linkRefusal("javascript:alert(1)"), "refused a javascript: link");
         assert.strictEqual(Scripts.linkRefusal("--help"), "refused a link starting with -");
         assert.strictEqual(Scripts.linkRefusal("example.org"), "refused a link with no scheme");
-        assert.strictEqual(Scripts.fileRefusal("/home/a/x"), "");
+        assert.strictEqual(Scripts.fileRefusal("/home/user/x"), "");
         assert.strictEqual(Scripts.fileRefusal("x.pdf"), "refused a file path that is not absolute");
         assert.strictEqual(Scripts.fileRefusal("-rf"), "refused a file starting with -");
     });
@@ -683,7 +698,7 @@ test.describe("list script safety", () => {
             }, {
                 title: "Remote icon",
                 icon: "https://tracker.example/pixel.png"
-            }]), "/s", "/home/a", 50);
+            }]), "/s", "/home/user", 50);
         assert.strictEqual(Scripts.refusalOf(items[0]), "refused a steam: link");
         assert.strictEqual(Scripts.itemAction(items[0], false), "refused");
         assert.strictEqual(Scripts.itemAction(items[1], false), "copy");
@@ -729,5 +744,49 @@ test.describe("list script safety", () => {
         assert.strictEqual(Scripts.stopGroupCommand(1), null);
         assert.strictEqual(Scripts.stopGroupCommand("x"), null);
         assert.deepStrictEqual(Scripts.groupCommand(["a"], false), ["a"]);
+    });
+});
+
+test.describe("quick notes, content search and focus goals", () => {
+    test.it("a quick note is named by time and its first words, and never overwrites", () => {
+        const at = new Date(2026, 10, 12, 9, 5).getTime();
+        assert.strictEqual(Notes.quickFileName("Call the dentist: Monday?\nmore", at), "2026-11-12 0905 Call the dentist Monday");
+        assert.strictEqual(Notes.quickFileName("???", at), "2026-11-12 0905");
+        const dir = scratch();
+        const command = Notes.quickCommand(path.join(dir, "new", "folder"), "a", Notes.quickBody("  hello "));
+        execFileSync(command[0], command.slice(1));
+        execFileSync(command[0], command.slice(1));
+        assert.strictEqual(fs.readFileSync(path.join(dir, "new", "folder", "a.md"), "utf8"), "hello\n");
+        assert.strictEqual(fs.readFileSync(path.join(dir, "new", "folder", "a 2.md"), "utf8"), "hello\n");
+    });
+
+    test.it("content search finds notes by what is written inside them", () => {
+        const dir = scratch();
+        fs.writeFileSync(path.join(dir, "groceries.md"), "Buy Oat Milk\n");
+        fs.writeFileSync(path.join(dir, "other.md"), "nothing here\n");
+        const vaults = [{ path: dir, name: "v" }];
+        const command = Notes.contentCommand("oat milk", vaults, 10);
+        const out = execFileSync(command[0], command.slice(1), { encoding: "utf8" });
+        const notes = Notes.readIndex(`1\t${path.join(dir, "groceries.md")}\n2\t${path.join(dir, "other.md")}\n`, vaults);
+        assert.deepStrictEqual(Notes.contentHits(out, notes, 5).map(n => n.name), ["groceries"]);
+    });
+
+    test.it("a focus goal rides along with minutes or a clock time", () => {
+        assert.strictEqual(Pomodoro.pomodoroAsk("focus 25 writing the report").goal, "writing the report");
+        assert.strictEqual(Pomodoro.pomodoroAsk("focus 25 min on taxes").goal, "taxes");
+        assert.strictEqual(Pomodoro.pomodoroAsk("focus on taxes").goal, "taxes");
+        assert.strictEqual(Pomodoro.pomodoroAsk("focus until 4:30pm, taxes").until, "4:30pm");
+        assert.strictEqual(Pomodoro.pomodoroAsk("focus until 4:30pm, taxes").goal, "taxes");
+        assert.strictEqual(Pomodoro.pomodoroAsk("focus 25").goal, "");
+        assert.strictEqual(Pomodoro.roundLabel({ phase: "focus", round: 1, goal: "taxes" }, {}), "Focus round 1: taxes");
+        assert.strictEqual(Pomodoro.readState('{"timer":"t","phase":"focus","goal":"taxes"}').goal, "taxes");
+    });
+
+    test.it("minutes to a clock time round up, cap at a focus length and refuse a time that passed", () => {
+        const now = new Date(2026, 10, 12, 10, 0, 30).getTime();
+        assert.strictEqual(Pomodoro.minutesToClock({ hour: 10, minute: 30 }, now), 30);
+        assert.strictEqual(Pomodoro.minutesToClock({ hour: 9, minute: 0 }, now), 0);
+        assert.strictEqual(Pomodoro.minutesToClock({ hour: 10, minute: 0 }, now), 0);
+        assert.strictEqual(Pomodoro.minutesToClock({ hour: 23, minute: 59 }, now), 480);
     });
 });

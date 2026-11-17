@@ -277,6 +277,15 @@ Item {
 
                     boundsBehavior: Flickable.StopAtBounds
 
+                    readonly property real fade: Appearance.font.line.normal * 1.5
+
+                    layer.enabled: view.clip
+                    layer.effect: ShaderEffect {
+                        readonly property vector4d fades: Qt.vector4d(view.atYBeginning ? 0 : view.fade, view.atYEnd ? 0 : view.fade, height, 1)
+
+                        fragmentShader: Qt.resolvedUrl("../../components/edgefade.frag.qsb")
+                    }
+
                     onContentHeightChanged: if (!dragging)
                         returnToBounds()
                     onHeightChanged: if (!dragging)

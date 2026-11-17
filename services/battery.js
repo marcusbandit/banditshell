@@ -69,3 +69,67 @@ function nearlyEmptyAction(choice) {
 function afterResume(stage) {
     return stage === "acted" ? "resumed" : stage;
 }
+
+function phaseOf(state, onBattery) {
+    if (state === "charging" || state === "full")
+        return state;
+    if (onBattery || state === "discharging")
+        return "battery";
+    return state === "pendingCharge" ? "held" : "plugged";
+}
+
+function stateText(phase, heldAt) {
+    switch (phase) {
+    case "charging":
+        return "charging";
+    case "full":
+        return "full";
+    case "battery":
+        return "on battery";
+    case "held":
+        return heldAt > 0 ? `plugged in, held at ${heldAt}%` : "not charging";
+    default:
+        return "plugged in";
+    }
+}
+
+function noteText(phase, heldAt) {
+    switch (phase) {
+    case "full":
+        return "fully charged";
+    case "held":
+        return heldAt > 0 ? "not charging" : "plugged in";
+    case "plugged":
+        return "not charging";
+    default:
+        return "";
+    }
+}
+
+function timeText(phase, seconds) {
+    if (phase !== "charging" && phase !== "battery")
+        return "";
+    if (!(seconds > 0))
+        return "estimating";
+    const mins = Math.round(seconds / 60);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    const left = h > 0 ? `${h}h ${m}m` : `${m}m`;
+    return phase === "charging" ? `${left} to full` : `${left} left`;
+}
+
+function flow(rate, phase) {
+    const r = Number(rate);
+    if (!(Math.abs(r) >= 0.05))
+        return "idle";
+    if (phase === "charging")
+        return "in";
+    if (phase === "battery")
+        return "out";
+    return r > 0 ? "in" : "out";
+}
+
+function percentOf(fraction) {
+    const f = Number(fraction);
+    return Math.round((isFinite(f) ? Math.max(0, Math.min(1, f)) : 0) * 100);
+}

@@ -400,6 +400,11 @@ Singleton {
     property bool previewOpen: true
 
     readonly property bool showHidden: Config.values.files.hidden
+
+    function setShowHidden(on: bool): void {
+        Config.set("files.hidden", on);
+        Quickshell.execDetached(["sh", "-c", 'gsettings set org.gtk.Settings.FileChooser show-hidden "$1" 2>/dev/null; gsettings set org.gtk.gtk4.Settings.FileChooser show-hidden "$1" 2>/dev/null', "sh", String(on)]);
+    }
     readonly property string sort: Config.values.files.sort
     readonly property bool reversed: Config.values.files.reversed
     readonly property var orderWords: FilesOrder.orderWords(root.sort)
@@ -1235,11 +1240,27 @@ Singleton {
         System.openWith(path);
     }
 
-    signal openersFound(string path, string kind, var apps)
+    signal openersFound(string path, string kind, var apps, string who)
 
-    function offerOpeners(path: string): void {
+    function openerRows(path: string, kind: string, apps: var, wrap: var): var {
+        const rows = apps.map(app => ({
+                    icon: "open_in_new",
+                    label: app.name,
+                    run: () => wrap(() => root.openIn(app.id, path))
+                }));
+        if (rows.length === 0)
+            rows.push({
+                icon: "open_in_new",
+                label: kind ? `No app lists ${kind}, try the default` : "Try the default app",
+                run: () => wrap(() => root.openWith(path))
+            });
+        return rows;
+    }
+
+    function offerOpeners(path: string, who: string): void {
         asker.running = false;
         asker.path = path;
+        asker.who = who;
         asker.command = FilesCommands.openersCommand(path);
         asker.running = true;
     }
@@ -1252,13 +1273,14 @@ Singleton {
         id: asker
 
         property string path: ""
+        property string who: ""
 
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text === "")
                     return;
                 const found = FilesCommands.openers(text);
-                root.openersFound(asker.path, found.kind, found.apps);
+                root.openersFound(asker.path, found.kind, found.apps, asker.who);
             }
         }
     }
@@ -1325,21 +1347,7 @@ Singleton {
     ]
 
     function installRules(): void {
-        if (!Compositor.isHyprland || !Hypr.parserKnown)
-            return;
-
-        const title = `^(${root.windowTitle})$`;
-
-        if (Hypr.lua) {
-            ruler.exec(["hyprctl", "eval", `hl.window_rule({ name = "${root.windowTitle}", match = { title = "${title}" }, ${root.rules.map(r => r.lua).join(", ")} })`]);
-            return;
-        }
-
-        ruler.exec(["hyprctl", "--batch", root.rules.map(r => `keyword windowrule ${r.legacy}, match:title ${title}`).join(" ; ")]);
-    }
-
-    Process {
-        id: ruler
+        Hypr.windowRule(root.windowTitle, root.rules);
     }
 
     Connections {
@@ -1406,7 +1414,7 @@ Singleton {
                 root.focus = "grid";
             return true;
         case "hidden":
-            Config.set("files.hidden", !root.showHidden);
+            root.setShowHidden(!root.showHidden);
             return true;
         case "sidebar":
             root.sidebarOpen = !root.sidebarOpen;

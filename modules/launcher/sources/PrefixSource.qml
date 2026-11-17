@@ -17,6 +17,23 @@ QtObject {
             text: "Type"
         })
 
+    readonly property var keys: ({
+            key: "prefixes:Keys",
+            title: "Keys",
+            items: [
+                {
+                    key: "prefix:Keys:actions",
+                    kind: "prefix",
+                    complete: "?",
+                    label: "Ctrl+K",
+                    detail: "More actions for the chosen row, also Shift+F10",
+                    icon: "more_horiz",
+                    keyHint: true,
+                    score: 1
+                }
+            ]
+        })
+
     readonly property var groups: !root.alone ? [] : Prefixes.sections(root.search.prefixes).map(section => ({
                 key: `prefixes:${section.title}`,
                 title: section.title,
@@ -30,7 +47,7 @@ QtObject {
                         reserve: root.chip,
                         score: 1
                     }))
-            }))
+            })).concat([root.keys])
 
     function activate(row: var): void {
         root.search.retype(row.complete);
@@ -42,6 +59,8 @@ QtObject {
     }
 
     function actionsFor(row: var): var {
+        if (row.keyHint)
+            return [];
         return [
             {
                 icon: root.chip.icon,

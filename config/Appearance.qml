@@ -412,11 +412,6 @@ Singleton {
         readonly property int launcherWidth: root.config.launcher.width
         readonly property int launcherIcon: root.config.launcher.iconSize
 
-        readonly property int clipboardWidth: root.config.clipboard.width
-        readonly property int clipboardLines: root.config.clipboard.previewLines
-
-        readonly property int clipboardIcon: Math.round(root.font.iconSize * root.config.clipboard.iconScale)
-
         readonly property int wallpaperReveal: root.lessMotion ? 0 : root.config.wallpaper.reveal
 
         readonly property int scrubStroke: root.config.media.stroke

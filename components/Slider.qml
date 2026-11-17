@@ -27,6 +27,7 @@ Item {
 
     readonly property real fraction: Math.max(0, Math.min(1, (value - from) / Math.max(0.0001, to - from)))
     readonly property bool active: pointer.pressed || pointer.containsMouse
+    readonly property bool held: pointer.pressed
 
     readonly property color lit: root.dimmed ? Appearance.colour.textFaint : root.value > root.warnAbove ? (root.litOverride === null ? Appearance.colour.accent : root.litOverride) : Appearance.colour.text
 

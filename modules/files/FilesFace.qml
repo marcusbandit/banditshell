@@ -70,21 +70,7 @@ Item {
         }
 
         if (sheet.open) {
-            switch (event.key) {
-            case Qt.Key_Up:
-                sheet.move(-1);
-                break;
-            case Qt.Key_Down:
-                sheet.move(1);
-                break;
-            case Qt.Key_Return:
-            case Qt.Key_Enter:
-                sheet.activate(sheet.selected);
-                break;
-            case Qt.Key_Escape:
-                sheet.close();
-                break;
-            }
+            sheet.key(event);
             event.accepted = true;
             return;
         }
@@ -164,19 +150,19 @@ Item {
             event.accepted = true;
             return;
         case Qt.Key_Up:
-            root.move(-grid.columns, shift);
+            root.stepRows(-1, shift);
             event.accepted = true;
             return;
         case Qt.Key_Down:
-            root.move(grid.columns, shift);
+            root.stepRows(1, shift);
             event.accepted = true;
             return;
         case Qt.Key_PageUp:
-            root.move(-grid.columns * grid.pageRows, shift);
+            root.stepRows(-grid.pageRows, shift);
             event.accepted = true;
             return;
         case Qt.Key_PageDown:
-            root.move(grid.columns * grid.pageRows, shift);
+            root.stepRows(grid.pageRows, shift);
             event.accepted = true;
             return;
         case Qt.Key_Home:
@@ -227,10 +213,10 @@ Item {
             root.move(1, false);
             return true;
         case "up":
-            root.move(-grid.columns, false);
+            root.stepRows(-1, false);
             return true;
         case "down":
-            root.move(grid.columns, false);
+            root.stepRows(1, false);
             return true;
         case "first":
             root.select(0, false);
@@ -313,21 +299,18 @@ Item {
     Connections {
         target: Files
 
-        function onOpenersFound(path: string, kind: string, apps: var): void {
-            if (!Files.windowOpen)
+        function onCursorChanged(): void {
+            root.goalColumn = -1;
+        }
+
+        function onVisibleChanged(): void {
+            root.goalColumn = -1;
+        }
+
+        function onOpenersFound(path: string, kind: string, apps: var, who: string): void {
+            if (who !== "files" || !Files.windowOpen)
                 return;
-            const rows = apps.map(app => ({
-                        icon: "open_in_new",
-                        label: app.name,
-                        run: () => Files.openIn(app.id, path)
-                    }));
-            if (rows.length === 0)
-                rows.push({
-                    icon: "open_in_new",
-                    label: kind ? `No app lists ${kind}, try the default` : "Try the default app",
-                    run: () => Files.openWith(path)
-                });
-            sheet.popup(root.menuAt.x, root.menuAt.y, rows, 0);
+            sheet.popup(root.menuAt.x, root.menuAt.y, Files.openerRows(path, kind, apps, what => what()), 0);
         }
     }
 
@@ -349,6 +332,24 @@ Item {
 
     function move(delta: int, extend: bool): void {
         root.select(Math.max(0, Files.cursor) + delta, extend ?? false);
+    }
+
+    property int goalColumn: -1
+
+    Connections {
+        target: grid
+
+        function onColumnsChanged(): void {
+            root.goalColumn = -1;
+        }
+    }
+
+    function stepRows(rows: int, extend: bool): void {
+        const step = Chords.gridStep(Files.cursor, Files.visible.length, grid.columns, rows, root.goalColumn);
+        if (step.to < 0)
+            return;
+        root.select(step.to, extend);
+        root.goalColumn = step.goal;
     }
 
     function fileActions(): var {
@@ -380,7 +381,7 @@ Item {
             }, {
                 icon: "apps",
                 label: "Open with…",
-                run: () => Files.offerOpeners(Files.pathOf(one))
+                run: () => Files.offerOpeners(Files.pathOf(one), "files")
             });
         else if (one && one.kind === "dir")
             acts.push({
@@ -396,7 +397,7 @@ Item {
             }, {
                 icon: "apps",
                 label: "Open with…",
-                run: () => Files.offerOpeners(Files.pathOf(one))
+                run: () => Files.offerOpeners(Files.pathOf(one), "files")
             });
 
         acts.push({
@@ -481,7 +482,7 @@ Item {
         }, {
             icon: Files.showHidden ? "visibility_off" : "visibility",
             label: Files.showHidden ? "Hide hidden files" : "Show hidden files",
-            run: () => Config.set("files.hidden", !Files.showHidden)
+            run: () => Files.setShowHidden(!Files.showHidden)
         }, {
             icon: "terminal",
             label: Files.terminalOpen ? "Hide terminal" : "Terminal here",

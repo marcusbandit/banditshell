@@ -1,8 +1,8 @@
 {
   "entries": [
     {
-      "id": "2026-11-06-q32",
-      "date": "2026-11-06",
+      "id": "2026-11-17-media-lyrics-stream",
+      "date": "2026-11-17",
       "changes": [
         {
           "type": "bugs",
@@ -48,6 +48,923 @@
           "type": "ui",
           "severity": "minor",
           "text": "The Spotify word timing hint names the add-on and can be hidden"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-16-calculator-typed-matrices",
+      "date": "2026-11-16",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The calculator draws the matrices you type, not just the answer"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "inv(1 2 ; 1 3)*1 2 ; 1 3 works without brackets"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-16-calculator-numbers-temperatures",
+      "date": "2026-11-16",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Big results read 1.84 × 10¹⁹ instead of 1.84E19"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "32 F to C converts temperatures instead of farads"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-16-calculator-matrix",
+      "date": "2026-11-16",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The calculator shows a matrix in rows and columns"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type 1,2;3,4 in the launcher to get a 2x2 matrix"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-15-mixer",
+      "date": "2026-11-15",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The volume mixer shows which apps are making sound, in a window"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Open it from the sound menu, or type mixer in the launcher"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-14-p859-desktop-media-progress",
+      "date": "2026-11-14",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "The desktop Now playing bar moves while windows are open"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Now playing on the desktop shows times and drags to seek"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Pausing keeps the media bar where the song is"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-13-p855-grids-keep-column",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Emoji and Files grids keep your column as you move up and down"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-13-p853-tile-step-back",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Up and Down in the launcher's apps go back to the app you came from"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-13-p849-app-grid",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Drag a pinned app in the launcher to put it somewhere else"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Right-click menus open at once, their corner at the pointer"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Apps with many actions, like Steam, show them in a submenu"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ctrl+Enter on a launcher app opens its menu"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-13-p834-cli-target",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Keys like Super+Shift+S no longer go to another Quickshell app"
+        }
+      ],
+      "impact": {
+        "cli": true
+      }
+    },
+    {
+      "id": "2026-11-13-p835-snippets-quicklinks",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A key expands the snippet keyword you just typed, in any app"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Snippets can be pinned and duplicated"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Quicklinks show the site's icon and take up to three arguments"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Quicklinks can be duplicated and copy their name"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-13-p835-dictation",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Speak to ask in Settings turns launcher dictation into an AI ask"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Dictation history can be deleted in one go"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Dictation's microphone, language and where text goes are in Settings"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-13-p835-ai",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ask can include your selection, clipboard or the focused window"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "AI answers can search the web with Claude Code and Codex"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Improve writing joins the AI rewrite actions"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "An AI answer finishing while the launcher is closed notifies you"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Copy chat copies the whole AI conversation"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Try another model asks again with a different model"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "reminders lists pending reminders to push back or clear"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings shows the AI sign-in, with sign in, out and a check"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-13-p835-notes-focus",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "jot saves a quick note, with or without an Obsidian vault"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Note search also finds words inside notes"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Focus rounds take a goal, and focus until 16:30 sets the end"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "dnd until 16:30 keeps notifications quiet until then"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-13-p835-scripts-themes",
+      "date": "2026-11-13",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Script commands load from more than one folder"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A script can say which folder it runs in"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Make your own theme from four colours, saved as a new theme"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Light and dark mode can each use their own theme"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-12-p835-tools",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Weather answers in the launcher for here or any city"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "time diff tokyo says how many hours ahead or behind a place is"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Colours convert to and from hwb, lab, lch, oklab and oklch"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "translate to french translates the text you have selected"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Emoji can be pinned to the top, and symbols copy as their code point"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Screenshot search takes dates and, with tesseract, the text inside"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "File search can skip git-ignored files, in settings"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-12-p835-launcher",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "File rows can open with another app or move to the trash"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Shift+Tab in a typed path goes up to the parent folder"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher can always open on one chosen screen"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Escape can close the launcher at once instead of stepping back"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "An app hotkey can hide the app when pressed again"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Hotkeys and aliases switch off without deleting, and filter by state"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Single plugin commands can be switched off in Settings"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-12-p835-windows",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Floating windows nudge by a step, and Restore returns their old size"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Window arrangements save as named presets you can reapply"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher switches microphones and mutes the app you were in"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Open trash, hidden files and Bluetooth on or off are launcher rows"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-12-p835-clipboard",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Clipboard history can forget entries after a day, a week or a month"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Copies made in password managers are never recorded"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Enter on a clipboard entry can copy instead of paste"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Text in clipboard history can be saved as a snippet"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-12-p829",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Calculator answers show as a card: what you asked beside the answer"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Times convert when you say here, as in 12pm here in london"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Clipboard history opens in the launcher, with a preview of each copy"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "SUPER+V opens clipboard history in the launcher; the old panel is gone"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Copied colours, links, emails, code and files get their own actions"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Emoji open as a grid of big tiles you move through with the arrows"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-12-p832",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Password cards say which password they want and what it unlocks"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "SSH key prompts name the git push or ssh login waiting on them"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-12-p822",
+      "date": "2026-11-12",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Desktop widgets in a second column are no longer cut off"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Small grey labels on the desktop widgets are easier to read"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-09-p807",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugin commands take arguments in boxes right in the launcher search"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-09-p812",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugin list pages can have a dropdown beside their filter"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-09-p811",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Hotkeys on plugin rows work even when the launcher is closed"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-09-p810",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugin rows can list facts in the preview beside the launcher"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-09-p809",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugins can notify you at any time and keep state in their own folder"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-09-p805",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugins can show a live icon in the sidebar or a row in the island"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-09-p806",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugin actions can have their own key chords, shown in the Ctrl+K menu"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-09-p808",
+      "date": "2026-11-09",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Plugins can run in the background and hear the launcher open and close"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-s797",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Hovering the folded sidebar's workspaces unfolds it again"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Right-click the sidebar for Sidebar settings or to fold it"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-q90",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Each special workspace plate shows only its own windows"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The folded sidebar clock sits at the foot with the date under it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The folded sidebar rings the workspace mark while a special is open"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-l795",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The lock screen unlocks with your password again"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-q91",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Settings opens even while a sidebar menu is open"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-05-q16",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings search opens the folded list so you can read it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Hover a folded Settings row to see its page name"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Hold a plus or minus button in Settings to keep stepping"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Each Settings page can reset all its changed rows, with undo"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Esc in a Settings password box only leaves the box"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Dragging Settings moves it from the first pixel"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Opening Screens keeps the Settings list and close button in place"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The Settings width slider applies when you let go"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Long Settings names and font names are no longer cut short"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-05-q06",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Dictating no longer repeats Microphone on for an open mic"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Timed island rows wait while the pointer is on the island"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Delete on a screenshot row is a plain button, with an Undo after"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Screenshot and Undo rows keep their words at the overview width"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Closing a failed Wi-Fi view with X or Esc clears its row"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The Quiet row opens notifications; pressing Undo words undoes"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The camera and screen bubbles name the program on hover"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Copied and volume rows stay about 1.8 seconds"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-05-q29",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Enter in the clipboard pastes, and deleted entries can be undone"
+        },
+        {
+          "type": "bugs",
+          "severity": "major",
+          "text": "Clipboard: typing searches; pin is Ctrl+P, move is Ctrl+J and Ctrl+K"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Copied keys and tokens leave clipboard history after 5 minutes"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Clipboard rows have a View action and the header a search button"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Transcription tab shows only when dictation is set up"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-05-q08",
+      "date": "2026-11-05",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A changed notification pops up again and sounds, not silent"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A Remind me survives a restart or reboot"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A critical alert stays up when newer notifications arrive"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A reminder obeys Do Not Disturb and a muted app"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Closing the island marks only the notifications it showed as read"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Notifications under a fullscreen window are listed after it ends"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Timers and messages that start with a dash now show up"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-q02",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Launcher previews show on laptop-sized screens"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The chosen launcher row keeps its full name beside its buttons"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Home, End and the arrows edit the launcher query, not the list"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Ctrl+K or Shift+F10 opens a launcher row's actions"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Press and hold a pinned app to open its actions"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The pinned app you pick with the keys shows its name"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Pinning a 13th app says the grid is full"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The first Down after an answer picks the first result"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The ? page shows each example in full"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Timer rows show am or pm when the end time has it"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Ordinary searches no longer show raw action ids"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-06-q13",
+      "date": "2026-11-06",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Battery menu has a power mode row"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Full or held-at-limit batteries no longer read as charging"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Battery power says Charging at or Drawing, and 99.6% is 100%"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Sound devices with the same name now show their card too"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Long menu pages fade at the edge where more follows"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Brightness controls stop at the Lowest brightness setting"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Sidebar brightness icon says its level and steps by 5%"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Settings Hold charge tile says it needs the helper, not 80%"
         }
       ]
     },

@@ -112,7 +112,7 @@ WidgetCard {
                     verticalAlignment: Text.AlignVCenter
                     text: TimeFormat.weekNumber(modelData.rowStart)
                     font.pixelSize: Appearance.font.size.small
-                    color: Appearance.colour.textFaint
+                    color: Appearance.colour.textDim
                 }
             }
         }
@@ -131,7 +131,7 @@ WidgetCard {
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                     text: TimeFormat.weekdayInitial(modelData)
-                    color: Appearance.colour.textFaint
+                    color: Appearance.colour.textDim
                 }
             }
 
@@ -161,7 +161,7 @@ WidgetCard {
                         anchors.centerIn: parent
                         text: day.modelData.day
                         font.weight: day.today ? Font.DemiBold : Font.Normal
-                        color: day.today ? Appearance.colour.accentText : day.modelData.inMonth ? Appearance.colour.text : Appearance.colour.textFaint
+                        color: day.today ? Appearance.colour.accentText : day.modelData.inMonth ? Appearance.colour.text : Appearance.colour.textDim
                         opacity: day.modelData.inMonth || day.today ? 1 : 0.5
                     }
                 }

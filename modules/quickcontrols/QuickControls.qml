@@ -1,9 +1,11 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.mixer
 
 Item {
     id: root
@@ -24,15 +26,39 @@ Item {
 
     readonly property real valueWidth: Appearance.sizes.screenValueWidth
 
-    readonly property real contentWidth: root.iconColumn + root.columnGap + root.sliderWidth + root.columnGap + root.valueWidth
+    readonly property real actionColumn: root.iconColumn
+
+    readonly property real contentWidth: root.iconColumn + root.columnGap + root.sliderWidth + root.columnGap + root.valueWidth + root.columnGap + root.actionColumn
 
     readonly property real panelWidth: root.contentWidth + Appearance.padding.large * 2
 
     readonly property real panelHeight: root.contentHeight + Appearance.padding.large * 2
 
-    readonly property int rowCount: Display.brightnessReady ? 3 : 2
+    readonly property real contentHeight: rows.implicitHeight
 
-    readonly property real contentHeight: root.rowHeight * root.rowCount + root.rowGap * (root.rowCount - 1)
+    readonly property real panelY: {
+        const rest = (root.height - (root.panelHeight - mixerFold.height)) / 2;
+        return Math.max(Appearance.padding.large, Math.min(rest, root.height - root.panelHeight - Appearance.padding.large));
+    }
+
+    property bool mixing: false
+
+    onActiveChanged: if (!root.active)
+        root.mixing = false
+
+    readonly property bool mixerShown: root.mixing || fold.value > 0.001
+
+    onMixerShownChanged: Mixer.watch(root, root.mixerShown)
+
+    Component.onDestruction: Mixer.watch(root, false)
+
+    Follow {
+        id: fold
+
+        target: root.mixing ? 1 : 0
+        speed: Appearance.animation.resizeSpeed
+        epsilon: 0.002
+    }
 
     readonly property real rowHeight: Math.max(root.iconColumn, Appearance.sizes.sliderHeight * 2.2 * 1.35)
 
@@ -61,7 +87,7 @@ Item {
     readonly property var blobs: [
         {
             x: root.width - root.panelWidth + (root.panelWidth + Appearance.sizes.melt) * (1 - reveal.value),
-            y: (root.height - root.panelHeight) / 2,
+            y: root.panelY,
             w: root.panelWidth,
             h: root.panelHeight,
             radius: Appearance.rounding.large,
@@ -170,7 +196,7 @@ Item {
         id: cardZone
 
         anchors.right: parent.right
-        y: (parent.height - height) / 2
+        y: root.panelY
         width: Math.max(root.border, root.panelWidth - (root.panelWidth + Appearance.sizes.melt) * (1 - reveal.value))
         height: root.panelHeight
 
@@ -186,7 +212,7 @@ Item {
             x: Appearance.padding.large
             anchors.verticalCenter: parent.verticalCenter
             width: root.contentWidth
-            spacing: root.rowGap
+            spacing: 0
             opacity: reveal.value
 
             Item {
@@ -232,12 +258,121 @@ Item {
 
                 StyledText {
                     anchors.right: parent.right
+                    anchors.rightMargin: root.actionColumn + root.columnGap
                     anchors.verticalCenter: parent.verticalCenter
                     width: root.valueWidth
 
                     text: `${Math.round(Audio.volume * 100)}%`
                     color: Appearance.colour.textDim
                 }
+
+                Item {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: root.actionColumn
+                    height: root.actionColumn
+
+                    SquircleRect {
+                        anchors.centerIn: parent
+                        width: parent.width + Appearance.padding.small * 2
+                        height: width
+                        pill: "object"
+                        color: root.mixing ? Appearance.colour.accentFill : mixHover.hovered ? Appearance.colour.fill : "transparent"
+                    }
+
+                    Icon {
+                        anchors.centerIn: parent
+                        name: "tune"
+                        color: root.mixing ? Appearance.colour.accent : Appearance.colour.textDim
+                    }
+
+                    HoverHandler {
+                        id: mixHover
+
+                        cursorShape: Qt.PointingHandCursor
+                    }
+
+                    TapHandler {
+                        onTapped: root.mixing = !root.mixing
+                    }
+                }
+            }
+
+            Item {
+                id: mixerFold
+
+                width: parent.width
+                height: Math.round((mixerList.implicitHeight + root.rowGap) * fold.value)
+                clip: true
+
+                Column {
+                    id: mixerList
+
+                    width: parent.width
+                    y: root.rowGap + (fold.value - 1) * Appearance.padding.large
+                    opacity: fold.value * fold.value
+                    spacing: root.rowGap
+
+                    Repeater {
+                        model: ScriptModel {
+                            values: root.mixerShown ? Mixer.outputApps.map(a => a.key) : []
+                        }
+
+                        delegate: MixerQuickRow {
+                            required property string modelData
+
+                            width: mixerList.width
+                            appKey: modelData
+                            iconColumn: root.iconColumn
+                            gap: root.columnGap
+                            sliderWidth: root.sliderWidth
+                            valueWidth: root.valueWidth
+                        }
+                    }
+
+                    StyledText {
+                        visible: !Mixer.outputApps.length
+                        x: root.iconColumn + root.columnGap
+                        text: "No app has sound open"
+                        color: Appearance.colour.textFaint
+                        font.pixelSize: Appearance.font.size.small
+                    }
+
+                    Item {
+                        width: parent.width
+                        height: openLabel.implicitHeight + Appearance.padding.small * 2
+
+                        StyledText {
+                            id: openLabel
+
+                            x: root.iconColumn + root.columnGap
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Open volume mixer"
+                            color: openHover.hovered ? Appearance.colour.text : Appearance.colour.accent
+                            font.pixelSize: Appearance.font.size.small
+
+                            HoverHandler {
+                                id: openHover
+
+                                cursorShape: Qt.PointingHandCursor
+                            }
+
+                            TapHandler {
+                                onTapped: {
+                                    root.pinned = false;
+                                    root.mixing = false;
+                                    Mixer.show();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Item {
+                width: 1
+                height: root.rowGap
+                visible: brightRow.visible
             }
 
             Item {
@@ -265,7 +400,7 @@ Item {
                     width: root.sliderWidth
 
                     value: Display.levelKnown ? Display.level : 0
-                    from: 0
+                    from: Display.floor
                     to: 1
                     dimmed: !Display.levelKnown
 
@@ -274,12 +409,18 @@ Item {
 
                 StyledText {
                     anchors.right: parent.right
+                    anchors.rightMargin: root.actionColumn + root.columnGap
                     anchors.verticalCenter: parent.verticalCenter
                     width: root.valueWidth
 
                     text: Display.levelKnown ? `${Math.round(Display.level * 100)}%` : "..."
                     color: Appearance.colour.textDim
                 }
+            }
+
+            Item {
+                width: 1
+                height: root.rowGap
             }
 
             Item {
@@ -324,6 +465,7 @@ Item {
 
                 StyledText {
                     anchors.right: parent.right
+                    anchors.rightMargin: root.actionColumn + root.columnGap
                     anchors.verticalCenter: parent.verticalCenter
                     width: root.valueWidth
 

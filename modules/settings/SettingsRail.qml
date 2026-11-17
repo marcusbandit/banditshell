@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 import "catalogue.js" as Catalogue
 import "profile.js" as Profile
 
@@ -52,7 +53,7 @@ Item {
 
     function pick(i: int): void {
         root.openHit(i);
-        if (root.tiny)
+        if (root.folded)
             SettingsView.query = "";
         query.focus = false;
     }
@@ -570,6 +571,12 @@ Item {
 
         HoverHandler {
             id: hover
+        }
+
+        HoverTip {
+            host: rr
+            text: root.tiny ? rr.label : ""
+            asked: hover.hovered
         }
 
         MouseArea {

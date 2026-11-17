@@ -77,7 +77,7 @@ QtObject {
             {
                 section: "System",
                 word: "ssh",
-                example: "ssh nemurenai",
+                example: "ssh example-host",
                 about: "Connect to a host",
                 icon: "dns",
                 also: []

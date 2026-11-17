@@ -9,6 +9,7 @@ import "clipboard-sweep.js" as Sweep
 import "clipboard-shelf.js" as Shelf
 import "clipboard-secret.js" as Secret
 import "clipboard-age.js" as Age
+import "clipboard-rules.js" as Rules
 
 Singleton {
     id: root
@@ -26,6 +27,14 @@ Singleton {
     property bool loaded: false
 
     property bool keep: true
+
+    property bool muted: false
+
+    function mute(on: bool): void {
+        root.muted = on;
+    }
+
+    signal offersSettled
 
     property var recovery: null
     property int salvaged: 0
@@ -208,6 +217,8 @@ Singleton {
     }
 
     function absorb(line: string): void {
+        if (root.muted)
+            return;
         let ev;
         try {
             ev = JSON.parse(line);
@@ -231,6 +242,13 @@ Singleton {
         }
 
         const now = Date.now();
+        const app = now - root.offeredAt < 3000 ? "" : Hypr.classOf(Hypr.activeClient);
+        if (Rules.excluded(app, Config.values.clipboard.ignoreApps)) {
+            root.current = "";
+            if (ev.file)
+                root.sweep(false);
+            return;
+        }
         const entry = {
             id: `${now}-${root.entries.length}`,
             recorded: now,
@@ -243,6 +261,7 @@ Singleton {
             types: ev.types ?? [],
             paths: ev.paths ?? [],
             mimes: ev.mimes ?? [],
+            app: app,
             pinned: false
         };
         entry.kind = root.classify(entry);
@@ -257,6 +276,7 @@ Singleton {
         if (had) {
             entry.id = had.id;
             entry.pinned = had.pinned;
+            entry.app = had.app || entry.app;
         }
 
         const rest = root.entries.filter(e => root.identity(e) !== key);
@@ -267,7 +287,19 @@ Singleton {
         root.save();
     }
 
+    function dropStale(): void {
+        const kept = Rules.withoutStale(root.entries, Date.now(), Config.values.clipboard.keepDays);
+        if (kept.length === root.entries.length)
+            return;
+        root.entries = kept;
+        if (kept.every(e => e.id !== root.current))
+            root.current = "";
+        root.save();
+        root.sweep(false);
+    }
+
     function prune(): void {
+        root.dropStale();
         const max = Math.max(1, Config.values.clipboard.maxEntries);
         const loose = root.entries.filter(e => !e.pinned);
         if (loose.length <= max)
@@ -298,7 +330,10 @@ Singleton {
 
     signal copied(var command, string input, bool secret)
 
+    property double offeredAt: 0
+
     function offer(command: var, input: string, secret: bool): void {
+        root.offeredAt = Date.now();
         root.copied(command, input, secret);
         root.offered = {
             command: command,
@@ -411,10 +446,15 @@ Singleton {
     }
 
     function remove(entry: var): void {
-        if (!entry)
+        const had = entry ? root.entries.find(e => e.id === entry.id) : null;
+        if (!had)
             return;
-        root.entries = root.entries.filter(e => e.id !== entry.id);
-        if (root.current === entry.id)
+        if (root.shelf && root.shelf.kind !== "delete")
+            root.letGo();
+        root.shelf = Shelf.removal(root.entries, had, root.shelf);
+        root.shelfElapsed = 0;
+        root.entries = root.entries.filter(e => e.id !== had.id);
+        if (root.current === had.id)
             root.current = "";
         root.save();
         root.sweep(false);
@@ -451,6 +491,7 @@ Singleton {
 
     readonly property int shelved: root.shelf ? root.shelf.entries.length : 0
     readonly property int shelfKept: root.shelf ? root.shelf.before.length - root.shelf.entries.length : 0
+    readonly property string shelfKind: root.shelf?.kind ?? ""
     readonly property bool clearSaves: root.keep
 
     property bool wasCleared: false
@@ -470,9 +511,11 @@ Singleton {
     function letGo(): void {
         if (!root.shelf)
             return;
+        const cleared = root.shelf.kind !== "delete";
         root.shelf = null;
-        root.recovery = null;
-        root.sweep(true);
+        if (cleared)
+            root.recovery = null;
+        root.sweep(cleared);
     }
 
     function recoverySeen(): void {
@@ -492,6 +535,25 @@ Singleton {
             if (root.shelfElapsed >= root.undoMs)
                 root.letGo();
         }
+    }
+
+    Timer {
+        interval: 30000
+        repeat: true
+        running: root.loaded
+
+        onTriggered: root.forgetSecrets()
+    }
+
+    function forgetSecrets(): void {
+        root.dropStale();
+        const now = Date.now();
+        if (!root.entries.some(e => Secret.lapsed(e, now)))
+            return;
+        root.entries = Secret.expire(root.entries, now);
+        if (root.entries.every(e => e.id !== root.current))
+            root.current = "";
+        root.save();
     }
 
     property bool purgeOwed: false
@@ -625,7 +687,13 @@ Singleton {
         }
 
         onRunningChanged: if (!running)
-            Qt.callLater(root.offerNext)
+            Qt.callLater(root.afterOffer)
+    }
+
+    function afterOffer(): void {
+        root.offerNext();
+        if (!paste.running && !root.offered)
+            root.offersSettled();
     }
 
     property bool sweepOwed: false
@@ -739,7 +807,7 @@ Singleton {
                 return;
             }
 
-            root.entries = disk;
+            root.entries = Secret.expire(disk, Date.now());
             root.loaded = true;
 
             if (root.clipseOwed)
@@ -776,7 +844,7 @@ Singleton {
     function reconcile(disk: var): var {
         const theirs = new Set(disk.map(e => e?.id));
         const unseen = root.entries.filter(e => !theirs.has(e.id));
-        return [...disk, ...unseen].sort((a, b) => b.recorded - a.recorded);
+        return [...Secret.expire(disk, Date.now()), ...unseen].sort((a, b) => b.recorded - a.recorded);
     }
 
     property string lastWritten: ""
@@ -808,7 +876,7 @@ Singleton {
             return;
         const text = JSON.stringify(Object.assign({
             version: 1,
-            entries: root.entries
+            entries: Secret.persistable(root.entries)
         }, root.recovery ? {
             recovered: root.recovery
         } : {}));

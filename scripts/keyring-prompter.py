@@ -218,6 +218,7 @@ class Conversation:
         self.showing = False
         self.watch = 0
         self.requester = ""
+        self.requester_pid = 0
 
     @property
     def key(self) -> "tuple[str, str]":
@@ -261,9 +262,6 @@ class Prompter:
                 return handle.read().strip()
         except OSError:
             return ""
-
-    def program_of(self, name: str) -> str:
-        return self.program_at(self.pid_of(name))
 
     def owner_of(self, name: str) -> int:
         try:
@@ -319,7 +317,8 @@ class Prompter:
         if conversation.key in self._conversations:
             raise ValueError("already prompting for this callback")
 
-        conversation.requester = self.program_of(sender)
+        conversation.requester_pid = self.pid_of(sender)
+        conversation.requester = self.program_at(conversation.requester_pid)
         self._conversations[conversation.key] = conversation
         conversation.watch = Gio.bus_watch_name_on_connection(
             self._bus,
@@ -435,6 +434,7 @@ class Prompter:
             continueLabel=text("continue-label"),
             cancelLabel=text("cancel-label"),
             requester=conversation.requester,
+            requesterPid=conversation.requester_pid,
         )
 
     def _answered(self, message) -> None:

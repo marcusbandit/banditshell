@@ -10,12 +10,13 @@ Process {
     property string log: ""
     property var env: ({})
     property bool stopping: false
+    property bool lasting: false
     property var queued: []
 
     signal said(string line)
     signal ended(bool wanted)
 
-    command: ["sh", "-c", 'mkdir -p "${1%/*}" && exec 2>>"$1" && shift && exec "$@"', "sh", root.log].concat(root.exec)
+    command: ["sh", "-c", 'mkdir -p "${1%/*}" && exec 2>>"$1" && { [ -z "$BANDITSHELL_PLUGIN_DATA" ] || { mkdir -p "$BANDITSHELL_PLUGIN_DATA" && chmod 700 "$BANDITSHELL_PLUGIN_DATA"; }; } && shift && exec "$@"', "sh", root.log].concat(root.exec)
     workingDirectory: root.folder
     environment: root.env
     stdinEnabled: true
@@ -32,8 +33,9 @@ Process {
 
     onExited: root.ended(root.stopping)
 
-    function send(line: string): void {
-        idle.restart();
+    function send(line: string, passing: bool): void {
+        if (!passing)
+            idle.restart();
         if (root.running && root.processId)
             root.write(`${line}\n`);
         else
@@ -47,6 +49,9 @@ Process {
 
     property Timer idle: Timer {
         interval: 600000
-        onTriggered: root.stop()
+        onTriggered: {
+            if (!root.lasting)
+                root.stop();
+        }
     }
 }

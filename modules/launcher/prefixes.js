@@ -32,7 +32,7 @@ function completion(p) {
 }
 
 function detail(p) {
-    return p.example ? `${p.about}, as in ${p.example}` : p.about;
+    return p.example ? `${p.example} · ${p.about}` : p.about;
 }
 
 function order(a, b) {

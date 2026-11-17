@@ -65,7 +65,7 @@ plugin can reach before it lists any.
 
 ```json
 {
-  "api": 2,
+  "api": 3,
   "id": "jira",
   "name": "Jira",
   "about": "Search your Jira issues",
@@ -82,7 +82,7 @@ plugin can reach before it lists any.
 
 | field | required | meaning |
 |---|---|---|
-| `api` | yes | The protocol version, `2`. The shell still runs plugins that say `1`, and they can use everything below too; `2` makes an older shell, which cannot draw what api 2 adds, refuse the plugin instead of drawing it wrong. A plugin asking for a version the shell does not speak is listed but not started. |
+| `api` | yes | The protocol version, `3`. The shell still runs plugins that say `1` or `2`, and they can use everything below too; a newer number makes an older shell, which cannot do what that version adds, refuse the plugin instead of running it wrong. A plugin asking for a version the shell does not speak is listed but not started. |
 | `id` | yes | Lowercase letters, digits and `-`, the same as the folder name. |
 | `name` | yes | Shown in Settings and as the title of the plugin's group. |
 | `about` | no | One line for Settings and the `?` page. |
@@ -91,9 +91,12 @@ plugin can reach before it lists any.
 | `prefix` | no | Words that send the rest of the query to this plugin alone, the way `gh` and `pkg` work. They are listed on the `?` page. |
 | `global` | no | Lets the plugin add rows to plain searches. `minLength` is how many characters a query needs first, 3 by default. `cap` is how many of its rows a plain search shows at most, 3 by default and up to 50. Without `global` the plugin only answers after its prefix. |
 | `preferences` | no | Settings the plugin needs, drawn by Settings so a plugin never ships its own settings window. |
+| `commands` | no | Commands that take arguments in the search field, such as `dim spotify 15`. See Commands. Each command's word works as a prefix too. |
+| `status` | no | Live items the plugin owns outside the launcher, up to four, each `{ "id", "place", "title", "icon" }` with `place` either `rail` or `island`. See Status items. A plugin with status items runs in the background. |
+| `background` | no | `true` starts the program with the shell and keeps it running while the launcher is closed, so it can keep its rows fresh or work on its own. It is never stopped for being idle, and after a crash it starts again by itself, until three crashes in a minute switch it off. |
 
-A manifest needs `prefix`, `global` or both; with neither, nothing would ever
-reach the plugin.
+A manifest needs `prefix`, `global` or `status`, or a mix; with none of them,
+nothing would ever reach the plugin.
 
 ### Preferences
 
@@ -114,8 +117,12 @@ switched off under `launcher.plugins.off`. A `secret` is never written there:
 it is kept in `~/.local/state/banditshell/plugin-secrets.json`, a file only
 you can read. Changing a preference restarts the program.
 
-The program also gets `BANDITSHELL_PLUGIN_ID`, `BANDITSHELL_PLUGIN_DIR` and
-`BANDITSHELL_API`, the api its manifest asked for.
+The program also gets `BANDITSHELL_PLUGIN_ID`, `BANDITSHELL_PLUGIN_DIR`,
+`BANDITSHELL_API`, the api its manifest asked for, and
+`BANDITSHELL_PLUGIN_DATA`, a folder of its own under
+`~/.local/state/banditshell/plugin-data/<id>` that only you can read. The
+shell makes it before the program starts. Keep state there rather than in
+the plugin's folder, which `plugin install` and `plugin dev` replace.
 
 ## The protocol
 
@@ -132,6 +139,16 @@ skipped, so a stray `print` cannot break anything.
 | `{"type":"complete","id":"PROJ-41"}` | Tab on a row. |
 | `{"type":"cancel","seq":12}` | The query moved on before the answer to `seq` came. The plugin can stop working on it. |
 | `{"type":"submit","view":"new-issue","values":{...}}` | The person submitted a form page. `values` has every field's key. |
+| `{"type":"command","word":"dim","arguments":{"app":"spotify","level":"15"}}` | Enter in a command's argument boxes. See Commands. |
+| `{"type":"open"}` | The launcher opened, or the program started while it is open. |
+| `{"type":"dropdown","view":"history","value":"spotify"}` | The person picked from a list page's dropdown. See Pages. |
+| `{"type":"close"}` | The launcher closed. A plugin that keeps rows live with `update` stops here and starts again at the next `open`. |
+
+A hotkey or `banditshell panel launcher run plugin:<id>:<item>` on a row that
+is not among the plugin's last results, after a restart for instance, sends
+`{"type":"activate","seq":0,"id":"PROJ-41","action":"","cold":true}`: the
+shell no longer has the row, so the plugin does what Enter on it would. Its
+answer may be an effect, as for a status item; the launcher stays closed.
 
 `seq` grows with every query. An `activate` carries the `seq` of the results
 its row came from. An `activate` from inside a page also carries `"view"`, the
@@ -146,6 +163,8 @@ page's id.
 | `{"type":"fill","text":"jira PROJ-41 "}` | Replaces the query, the usual answer to `complete`. |
 | `{"type":"view","view":{...}}` | Opens a full page in place of the list. See Pages. |
 | `{"type":"effect","do":"copy","text":"..."}` | Does one thing for the plugin, so it needs neither `wl-copy` nor `xdg-open`. See Effects. |
+| `{"type":"choices","word":"dim","key":"app","choices":[...]}` | Replaces a choice argument's choices, such as the apps that are playing now. See Commands. |
+| `{"type":"status","item":{...}}` | Shows or changes one of the plugin's status items, at any time. See Status items. |
 
 The plugin answers every `query` with one `results`, even an empty one, so
 the shell knows it is done.
@@ -177,7 +196,7 @@ the shell knows it is done.
 | `open` | A link (`https://`, `http://`, `mailto:`, `file:///`) or an absolute file path, opened by the shell. |
 | `copy` | Text the shell copies. |
 | `run` | A program and its arguments, as a list, that the shell starts. Never passed through a shell. |
-| `actions` | More things the row can do, each `{ "id", "title", "icon" }` and optionally its own `open`, `copy` or `run`. |
+| `actions` | More things the row can do, each `{ "id", "title", "icon" }` and optionally its own `open`, `copy` or `run`, and a `shortcut`. See Shortcuts. |
 | `answer` | `true` when the row answers the query as typed, such as a sum or a conversion. A plain search then shows it even though its title and keywords do not match the typed words. |
 | `height` | How many rows tall it is, 1 to 12, 1 by default, in plain searches as after a prefix. `"auto"` lets the row's QML decide, see Rows drawn in QML. |
 | `pin` | `true` puts the row at the very top of a plain search, with the launcher's own pinned answers, whatever was typed. |
@@ -203,6 +222,27 @@ plugin can also answer with fresh `results` or a `fill`.
 
 Links with any other scheme, and files that are not absolute paths, are
 refused and the row says so, as for list scripts.
+
+### Shortcuts
+
+An action can carry `"shortcut": "ctrl+d"`. While its row is selected, that
+chord runs the action at once, and the actions menu shows it beside the
+action's title. The same works for a page's own actions and for the actions
+of the selected row on a list page.
+
+```json
+{ "id": "dim", "title": "Dim while dictating", "icon": "volume_down", "shortcut": "ctrl+d" }
+```
+
+A shortcut is `ctrl`, `alt` or both, optionally `shift`, then a key: a
+letter, a digit, `f1` to `f24`, or `enter`, `backspace`, `delete`, `space`,
+`insert`, `,`, `.`, `-`, `=`, `/`, `;`, `[` or `]`. Shift goes only with a
+letter, a digit or a named key, since it turns `/` into `?`. Chords the launcher or its search field already use are refused:
+`ctrl+k`, `ctrl+enter`, and the editing chords such as `ctrl+a`, `ctrl+c`,
+`ctrl+v`, `ctrl+x`, `ctrl+z`, `ctrl+u` and `ctrl+backspace`. A refused or repeated
+shortcut is written to the plugin's log, and the action still works from the
+menu. A row drawn in QML hears the keys first, so a chord its `claimKey`
+takes never reaches the actions.
 
 ### Tall rows
 
@@ -230,6 +270,7 @@ when the screen has room for it.
 | preview | what the card shows |
 |---|---|
 | `"Some text"` or `{"text": "..."}` | The text, its first 32 lines. |
+| `{"facts": [{"label": "Status", "value": "In progress"}], "text": "..."}` | Label and value pairs, up to 30, the way a detail page lists them, under the text when there is one. A fact with no value is left out, and a list longer than the card is cut at its foot. `qml`, `image` and `file` win over `facts` when a preview has both. |
 | `{"image": "..."}` | A picture: an absolute path, a path in the plugin's folder or an `https://` link. |
 | `{"file": "/abs/path"}` | The file the way the launcher previews files: the start of a text file, a picture, or a folder's listing. |
 | `{"qml": "Preview.qml"}` | A QML file in the plugin's folder, drawn like a row's QML. Its `implicitWidth` and `implicitHeight` size the card. |
@@ -299,8 +340,86 @@ refused and logged.
 |---|---|
 | `{"type":"effect","do":"copy","text":"..."}` | Copies the text and closes the launcher. |
 | `{"type":"effect","do":"open","target":"https://..."}` | Opens a link or an absolute path, as for `open` on an item, and closes the launcher. |
-| `{"type":"effect","do":"notify","title":"Assigned","body":"PROJ-41 is yours"}` | Posts a notification. The launcher stays open. |
+| `{"type":"effect","do":"notify","title":"Assigned","body":"PROJ-41 is yours"}` | Posts a notification. The launcher stays open. A plugin may send this at any time, not only in answer to something, at most one every 3 seconds; more are skipped and logged. |
 | `{"type":"effect","do":"close"}` | Closes the launcher. |
+
+## Commands
+
+A command is a word followed by up to three arguments, typed straight into
+the search field. Typing the word and a space turns the rest of the field
+into one box per argument; the words typed after it fill them in order, so
+`dim spotify 15` lands as `spotify` and `15`.
+
+```json
+"commands": [
+  {"word": "dim", "title": "Dim an app while you dictate", "icon": "volume_down",
+   "arguments": [
+     {"key": "app", "type": "choice", "placeholder": "App", "required": true,
+      "choices": [{"value": "spotify", "title": "Spotify"}, {"value": "firefox", "title": "Zen Browser"}]},
+     {"key": "level", "placeholder": "Level"}
+   ]}
+]
+```
+
+| field | meaning |
+|---|---|
+| `word` | Lowercase letters, digits and `-`. |
+| `title`, `icon` | How the `?` page lists the command. |
+| `arguments` | One to three, each with a `key` of letters, digits and `_`, a `type` of `text` (the default) or `choice`, a `placeholder` drawn in the empty box, `required`, and `choices` for a choice. A text argument may carry `choices` too, as suggestions. |
+
+In the boxes, a choice completes as you type and Tab or Space takes the
+completion and moves on. Tab and Shift+Tab move between boxes, Space moves on
+from every box but the last, which takes the rest of what you type,
+Backspace in an empty first box goes back to the plain search, and Escape
+clears it. Enter sends
+`{"type":"command","word":"dim","arguments":{"app":"spotify","level":"15"}}`,
+with every key present and a choice's `value`. A required box that is empty,
+or a choice that matches none of its choices, is marked and Enter waits. The
+plugin answers as it would an `activate`.
+
+Choices that change, such as the apps playing right now, can be replaced at
+any time with `{"type":"choices","word":"dim","key":"app","choices":[...]}`.
+
+## Status items
+
+A plugin can own a live item outside the launcher: an icon in the sidebar
+rail among the status icons, or a row in the island. The manifest declares
+each one, and the program fills it in with `status` messages whenever it
+likes. The program starts with the shell for them and keeps running.
+
+```json
+"status": [
+  { "id": "mic", "place": "rail", "title": "Voice", "icon": "mic" },
+  { "id": "held", "place": "island", "title": "Voice", "icon": "graphic_eq" }
+]
+```
+
+```json
+{"type": "status", "item": {"id": "mic", "title": "Listening", "text": "Spotify dimmed, Zen paused",
+ "tone": "alarm", "lines": ["Spotify dimmed to 15%", "Zen Browser paused"],
+ "actions": [{"id": "release", "title": "Give the sound back", "icon": "volume_up"}]}}
+```
+
+| field | meaning |
+|---|---|
+| `id` | One of the ids in the manifest's `status`. Required. |
+| `shown` | `false` takes the item away until the next message that shows it. Nothing is drawn before the first message. |
+| `title` | The rail icon's tooltip and its menu's title, or the island row's text. The manifest's `title` when left out. |
+| `text` | One line after the title: in the tooltip, at the top of the menu, or the island row's second line. |
+| `icon` | A Material Symbols name. The manifest's icon when left out. |
+| `tone` | `plain`, `active`, `alert` (the accent), `warning` or `alarm` (red). |
+| `lines` | Up to eight short lines listed in the rail menu. |
+| `actions` | Up to four, as on an item, with `open`, `copy`, `run` or a `shortcut`. The rail menu lists them, the island draws them as buttons. |
+| `click` | What a click on the icon or the row does: `menu` opens the rail menu (the rail's default), `rows` opens the plugin's prefix in the launcher (the island's default), or an action's id runs that action. |
+| `progress` | 0 to 1 draws a ring on the island row. |
+
+An action without its own `open`, `copy` or `run`, or a click on an action's
+id, reaches the program as
+`{"type":"activate","seq":0,"id":"mic","action":"release","status":true}`.
+It can answer with an effect: `copy`, `open` and `notify` work, and the
+launcher does not open for it. Its usual answer is a new `status`.
+
+The items go away when the program stops or the plugin is switched off.
 
 ## Pages
 
@@ -334,6 +453,18 @@ the `activate`.
 {"kind": "list", "id": "comments", "title": "Comments on PROJ-41", "placeholder": "Filter comments",
  "items": [{"id": "c1", "title": "Seen it on staging too", "copy": "Seen it on staging too"}]}
 ```
+
+A list page can carry a `dropdown` beside its filter, such as a day or an app
+to filter by, with up to 12 choices. Alt+Down or a click opens it.
+
+```json
+"dropdown": {"title": "App", "value": "all",
+ "choices": [{"value": "all", "title": "Every app"}, {"value": "spotify", "title": "Spotify"}]}
+```
+
+A pick sends `{"type":"dropdown","view":"history","value":"spotify"}`, and
+the plugin answers with the page again, its `items` filtered and its
+`dropdown.value` set to the pick. The dropdown shows the pick at once.
 
 `form` has fields and a submit button. Tab moves between fields, Space flips a
 toggle, Left and Right pick a choice, and Enter submits. A field marked
@@ -388,7 +519,8 @@ A broken plugin costs one row, never the shell.
 - A QML file that does not compile, or names a path outside the plugin, is
   logged there once, and its rows are drawn plainly.
 - After 10 minutes without a query the program is stopped. The next query
-  starts it again.
+  starts it again. A `background` program is never stopped this way, and
+  after a crash it starts again by itself after the same wait.
 
 ## What runs where
 

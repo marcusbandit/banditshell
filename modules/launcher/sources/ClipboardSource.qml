@@ -15,7 +15,7 @@ QtObject {
 
     readonly property bool listening: root.explicit || Config.values.launcher.typing.clipboard
 
-    readonly property bool active: root.listening && root.search.text.length > 0
+    readonly property bool active: root.listening && root.search.text.length > 0 && !root.paged
 
     readonly property var indexed: root.active ? ClipboardSearch.index(Clipboard.entries, e => Clipboard.summarise(e)) : []
 
@@ -29,6 +29,8 @@ QtObject {
 
     readonly property bool clearing: root.search.armed === "clipboardclear"
 
+    readonly property string deleting: root.search.armed.startsWith("clipboarddelete:") ? root.search.armed.slice(16) : ""
+
     readonly property var prefixes: [
         {
             section: "Files and clipboard",
@@ -40,14 +42,47 @@ QtObject {
         }
     ]
 
-    readonly property bool offersUndo: root.explicit && Clipboard.shelved > 0 && (root.asked.term === "" || "undo clear".startsWith(root.asked.term.toLowerCase()))
+    readonly property bool offersUndo: root.explicit && Clipboard.shelved > 0 && (root.asked.term === "" || root.undoLabel.toLowerCase().startsWith(root.asked.term.toLowerCase()))
+
+    readonly property bool undoingDelete: Clipboard.shelfKind === "delete"
+    readonly property string undoLabel: root.undoingDelete ? "Undo delete" : "Undo clear"
 
     property string revealed: ""
+
+    readonly property bool pasting: Typist.found && Config.values.clipboard.enterAction !== "copy"
 
     onActiveChanged: if (!root.active)
         root.revealed = ""
 
+    readonly property bool paged: root.search.presents && root.explicit
+
+    readonly property bool opening: root.paged && /^\s*\S+\s/.test(root.search.query)
+
+    onOpeningChanged: if (root.opening && !root.search.presenting)
+        Qt.callLater(root.openPage)
+
+    readonly property Component page: Component {
+        ClipboardPage {}
+    }
+
+    function openPage(): void {
+        if (!root.search.presents || root.search.presenting)
+            return;
+        root.search.present({
+            component: root.page,
+            name: "clipboard",
+            text: "Clipboard history",
+            filters: true,
+            placeholder: "Filter what you copied",
+            filter: root.asked.term,
+            restore: root.search.query.trim().split(/\s+/)[0] ?? "",
+            source: root
+        });
+    }
+
     readonly property var rows: {
+        if (root.paged)
+            return root.offersUndo ? [root.undoRow()] : [];
         const rows = root.found.map(entry => root.row(entry));
         if (root.offersUndo)
             return [root.undoRow()].concat(rows);
@@ -94,7 +129,8 @@ QtObject {
             kind: "clipboard",
             entry: entry,
             going: root.clearing && !entry.pinned,
-            label: masked ? Clipboard.mask : text,
+            armed: root.deleting === entry.id,
+            label: root.deleting === entry.id ? "Press Enter again to delete" : masked ? Clipboard.mask : text,
             revealLabel: masked ? text : "",
             masked: masked,
             secret: secret,
@@ -122,8 +158,8 @@ QtObject {
         return {
             key: "clipboardundo",
             kind: "clipboardundo",
-            label: "Undo clear",
-            detail: `${Clipboard.shelved} cleared`,
+            label: root.undoLabel,
+            detail: root.undoingDelete ? (Clipboard.shelved === 1 ? "1 deleted" : `${Clipboard.shelved} deleted`) : `${Clipboard.shelved} cleared`,
             icon: "undo",
             score: Infinity
         };
@@ -138,6 +174,14 @@ QtObject {
         const address = root.search.windowTarget();
         Clipboard.copy(row.entry);
         root.search.leave(() => Typist.paste(address));
+    }
+
+    function discard(entry: var): void {
+        if (entry.pinned) {
+            root.search.armed = `clipboarddelete:${entry.id}`;
+            return;
+        }
+        Clipboard.remove(entry);
     }
 
     function copy(row: var): void {
@@ -157,13 +201,40 @@ QtObject {
                 root.search.armed = "clipboardclear";
             return;
         }
-        if (Typist.found)
+        if (root.deleting === row.entry.id) {
+            root.search.armed = "";
+            Clipboard.remove(row.entry);
+            return;
+        }
+        if (root.pasting)
             root.paste(row);
         else
             root.copy(row);
     }
 
+    function saveAsSnippet(entry: var): string {
+        const text = String(entry.text ?? "");
+        const had = Snippets.list.find(s => String(s.text ?? "") === text);
+        if (had)
+            return had.name;
+        const name = Snippets.suggestName(text);
+        Snippets.add(name, "", text);
+        return name;
+    }
+
     function confirmActionsFor(row: var): var {
+        if (row.kind === "clipboard")
+            return [
+                {
+                    icon: "delete",
+                    label: "Delete",
+                    alarm: true,
+                    run: () => {
+                        root.search.armed = "";
+                        Clipboard.remove(row.entry);
+                    }
+                }
+            ];
         return [
             {
                 icon: "delete_sweep",
@@ -193,18 +264,23 @@ QtObject {
                 }
             ];
         const typing = Typist.found;
-        const acts = [
-            {
-                icon: typing ? "content_paste_go" : "content_copy",
-                label: typing ? "Paste" : "Copy",
-                run: () => root.activate(row)
-            }
-        ];
-        if (typing)
+        const pasteAct = {
+            icon: "content_paste_go",
+            label: "Paste",
+            run: () => root.paste(row)
+        };
+        const copyAct = {
+            icon: "content_copy",
+            label: "Copy",
+            run: () => root.copy(row)
+        };
+        const acts = root.pasting ? [pasteAct, copyAct] : typing ? [copyAct, pasteAct] : [copyAct];
+        if (!row.entry.file && !(row.entry.paths ?? []).length && !row.secret && String(row.entry.text ?? "").trim())
             acts.push({
-                icon: "content_copy",
-                label: "Copy",
-                run: () => root.copy(row)
+                icon: "bookmark_add",
+                label: "Save as snippet",
+                tucked: true,
+                run: () => root.saveAsSnippet(row.entry)
             });
         if (row.secret)
             acts.push({
@@ -221,7 +297,7 @@ QtObject {
             icon: "delete",
             label: "Delete",
             alarm: true,
-            run: () => Clipboard.remove(row.entry)
+            run: () => root.discard(row.entry)
         });
         if (!typing && Typist.probed)
             acts.push({

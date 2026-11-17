@@ -1,0 +1,10 @@
+u_str ESTAB 0      0                                                                                                     * 6696996 * 6693405 users:(("gcr-ssh-agent",pid=4100,fd=2),("gcr-ssh-agent",pid=4100,fd=1))
+u_str ESTAB 0      0                                                                                /run/user/1000/gcr/ssh 9196328 * 9197387 users:(("gcr-ssh-agent",pid=4100,fd=6))
+u_str ESTAB 0      0                                                                                /run/user/1000/gcr/ssh 9196400 * 9197401 users:(("gcr-ssh-agent",pid=4100,fd=7))
+u_str ESTAB 0      0                                                                               /run/user/1000/gcr/.ssh 9206947 * 9196329
+u_str ESTAB 0      0                                                                                                     * 9196329 * 9206947 users:(("gcr-ssh-agent",pid=4100,fd=9))
+u_str ESTAB 0      0                                                                                                     * 9197387 * 9196328 users:(("ssh",pid=5203,fd=3))
+u_str ESTAB 0      0                                                                                                     * 9197401 * 9196400 users:(("ssh",pid=5090,fd=3))
+u_str ESTAB 0      0                                                                                                     * 44151   * 40741   users:(("python3",pid=5722,fd=6))
+u_str ESTAB 0      0                                                        /run/user/1000/gnupg/S.gpg-agent 7001 * 7002 users:(("gpg-agent",pid=4300,fd=8))
+u_str ESTAB 0      0                                                                                                     * 7002 * 7001 users:(("gpg",pid=5401,fd=4))

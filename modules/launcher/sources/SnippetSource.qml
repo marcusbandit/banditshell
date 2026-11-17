@@ -55,7 +55,7 @@ QtObject {
             armed: arming,
             label: arming ? `Press Enter again to delete ${snippet.name || preview}` : snippet.name || preview,
             detail: arming ? "" : snippet.keyword ? `${snippet.keyword} · ${preview}` : preview,
-            icon: "short_text",
+            icon: snippet.pinned ? "push_pin" : "short_text",
             score: score
         };
     }
@@ -116,6 +116,12 @@ QtObject {
             }));
     }
 
+    function duplicate(snippet: var): void {
+        const name = Snippets.duplicate(snippet.id);
+        if (name)
+            root.search.retype(`snippet ${name}`);
+    }
+
     function edit(): void {
         const screen = root.search.screenName;
         root.search.leave(() => Settings.openAt(screen, "launcher", "snippets"));
@@ -157,6 +163,14 @@ QtObject {
                 run: () => root.copy(row.snippet)
             });
         acts.push({
+            icon: "push_pin",
+            label: row.snippet.pinned ? "Unpin" : "Pin",
+            run: () => Snippets.pin(row.snippet.id, !row.snippet.pinned)
+        }, {
+            icon: "file_copy",
+            label: "Duplicate",
+            run: () => root.duplicate(row.snippet)
+        }, {
             icon: "edit",
             label: "Edit",
             run: () => root.edit()

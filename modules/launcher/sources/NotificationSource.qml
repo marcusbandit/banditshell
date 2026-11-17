@@ -2,6 +2,7 @@ import QtQuick
 import qs.config
 import qs.services
 import qs.modules.notifications
+import "../search.js" as Search
 import "../../../services/notification-search.js" as NotificationSearch
 import "../../../services/notification-timing.js" as Timing
 
@@ -222,7 +223,22 @@ QtObject {
         return acts;
     }
 
+    function quietUntilTyped(): void {
+        const clock = Search.clockOf(Notifications.quietClockPhrase(root.search.text), false);
+        if (clock)
+            Notifications.quietTill(Notifications.nextClockAt(clock.hour * 60 + clock.minute, Date.now()));
+    }
+
     readonly property var commands: [
+        {
+            id: "quiet:clock",
+            icon: "do_not_disturb_on",
+            label: "Do not disturb until a time",
+            words: "dnd until till do not disturb quiet notifications clock noon midnight",
+            detail: "type dnd until 16:30",
+            stay: true,
+            run: () => root.quietUntilTyped()
+        },
         {
             id: "dismiss",
             icon: "clear_all",

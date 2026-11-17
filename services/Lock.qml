@@ -304,6 +304,8 @@ Singleton {
     function placeStack(): bool {
         if (!pamStack.path)
             return false;
+        if (pamStack.text() === LockPam.stack)
+            return true;
         pamStack.written = false;
         pamStack.setText(LockPam.stack);
         return pamStack.written;

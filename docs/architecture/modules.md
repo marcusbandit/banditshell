@@ -72,7 +72,7 @@ launcher's groups in the config.
 | audio | 2 | Audio, Bluetooth | core, compositor | output | audio, volume |
 | capture | 2 | ScreenRecorder, modules/picker | core, compositor | picker | picker |
 | cheatsheet | 2 | Keyboards, modules/cheatsheet | core, compositor | hotkeys | cheatsheet |
-| clipboard | 2 | Clipboard, Dictation, modules/clipboard | core, compositor | clipboard | clipboard |
+| clipboard | 2 | Clipboard, Dictation, Typist, modules/clipboard | core, compositor | clipboard | clipboard |
 | clock | 2 | Clock, Localisation, Weather | core, compositor | timer, alarm, zone | clock, weather |
 | display | 2 | Display, Backlight, DarkMode, Tablet, bs-gamma | core, compositor | screen, tablet | screen, tablet |
 | files | 2 | Files, Downloads, modules/files, bs-ls, bs-pty | core, compositor | files | files |

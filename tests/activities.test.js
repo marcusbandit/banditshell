@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/activities.js"), "utf8");
-const A = new Function(src + "\nreturn { ACTIVE_MAX, LINGER_MS, ENDING_MS, LEVEL_MS, parseSpan, readProgress, push, update, end, remove, sweep, nextWake, ordered, itemOf, listLine, clockText, clockSample, timerRemaining, timerItem, timerItems, alarmItem, alarmActions, levelIcon, levelMoment, layoutWords, layoutMoment, levelDiffers, coveredKinds, levelWanted };")();
+const A = new Function(src + "\nreturn { clockAt, ACTIVE_MAX, LINGER_MS, ENDING_MS, LEVEL_MS, parseSpan, readProgress, push, update, end, remove, sweep, nextWake, ordered, itemOf, listLine, clockText, clockSample, timerRemaining, timerItem, timerItems, alarmItem, alarmActions, levelIcon, levelMoment, layoutWords, layoutMoment, levelDiffers, coveredKinds, levelWanted };")();
 
 const NOW = 1_000_000;
 
@@ -197,6 +197,31 @@ test.describe("end", () => {
     test.it("clears a deadline so it cannot expire mid-linger", () => {
         const list = filled({ id: "a", text: "A", until: "1s" });
         assert.strictEqual(A.end(list, "a", "done", NOW).entry.deadline, 0);
+    });
+});
+
+test.describe("the clock rows count on", () => {
+    test.it("runs with the wall clock until a hold starts", () => {
+        assert.strictEqual(A.clockAt(NOW + 500, 0, 0), NOW + 500);
+        assert.strictEqual(A.clockAt(NOW + 500, 200, 0), NOW + 300);
+    });
+
+    test.it("stands still while held, so a row keeps its life", () => {
+        const list = filled({ id: "shot", text: "Screenshot", until: "6s" });
+        const heldAt = NOW + 1000;
+        const later = A.clockAt(NOW + 60000, 0, heldAt);
+        assert.strictEqual(later, heldAt);
+        assert.strictEqual(A.sweep(list, later), list);
+        assert.strictEqual(A.nextWake(list, later), 5000);
+    });
+
+    test.it("carries on from where it stopped once released", () => {
+        const list = filled({ id: "shot", text: "Screenshot", until: "6s" });
+        const paused = 59000;
+        const resumed = A.clockAt(NOW + 60000, paused, 0);
+        assert.strictEqual(resumed, NOW + 1000);
+        assert.strictEqual(A.sweep(list, resumed), list);
+        assert.strictEqual(A.sweep(list, A.clockAt(NOW + 66000, paused, 0)).length, 0);
     });
 });
 

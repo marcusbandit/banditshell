@@ -17,6 +17,8 @@ Row {
     property real tailWidth: 0
     property real room: Infinity
 
+    readonly property bool held: bar.held
+
     readonly property real firstRoom: root.ends.length > 0 ? firstEnd.implicitWidth + root.spacing : 0
     readonly property real lastRoom: root.ends.length > 1 ? lastEnd.implicitWidth + root.spacing : 0
     readonly property real readingRoom: Math.max(64, reading.implicitWidth)
@@ -41,6 +43,8 @@ Row {
     }
 
     Slider {
+        id: bar
+
         anchors.verticalCenter: parent.verticalCenter
         width: root.track
         value: root.value
