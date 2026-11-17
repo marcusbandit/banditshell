@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/whatsnew.js"), "utf8");
 const WhatsNew = new Function(src
-    + "\nreturn { parse, accumulated, severityOf, readSeen, lastSeen, legacyToMove, newestId, newestRelease, nextRelease, entriesSince, releaseNotes, sections, shortList, unreadCount, TYPES, IMPACT_KEYS };")();
+    + "\nreturn { parse, accumulated, severityOf, readSeen, lastSeen, legacyToMove, newestId, newestRelease, nextRelease, entriesSince, releaseNotes, sections, shortList, unreadCount, destination, logOf, TYPES, IMPACT_KEYS };")();
 
 const log = [
     { id: "third", date: "2026-09-03", changes: [{ type: "bugs", severity: "minor", text: "Fixed the thing." }] },
@@ -259,9 +259,9 @@ test("a few changes read as one tagged list in section order, and a long log kee
         { changes: [{ type: "ui", severity: "major", text: "Big thing" }] }
     ]);
     assert.deepStrictEqual(few, [
-        { key: "major", tag: "Big", text: "Big thing", unread: false },
-        { key: "features", tag: "New", text: "New thing", unread: false },
-        { key: "bugs", tag: "Fixed", text: "Fixed thing", unread: false }
+        { key: "major", tag: "Big", text: "Big thing", go: [], unread: false },
+        { key: "features", tag: "New", text: "New thing", go: [], unread: false },
+        { key: "bugs", tag: "Fixed", text: "Fixed thing", go: [], unread: false }
     ]);
     const many = Array.from({ length: 7 }, (_, i) => ({ type: "bugs", severity: "minor", text: `Fix ${i}` }));
     assert.deepStrictEqual(WhatsNew.shortList([{ changes: many }]), []);
@@ -280,4 +280,88 @@ test("changes from entries not read yet are marked unread, in both lists, and co
     assert.strictEqual(WhatsNew.unreadCount([], WhatsNew.sections(log, log)), 3);
     assert.strictEqual(WhatsNew.unreadCount(WhatsNew.shortList(log, []), []), 0);
     assert.strictEqual(WhatsNew.unreadCount(), 0);
+});
+
+const MENUS = ["audio", "network", "bluetooth", "vpn", "awake", "battery", "layout", "brightness", "calendar", "clock", "update"];
+const FIRST_DESTINATION_DAY = "2026-10-30";
+
+function shippedFeatures() {
+    const doc = JSON.parse(fs.readFileSync(path.join(ROOT, "docs/whats-new.json"), "utf8"));
+    return doc.entries.filter(e => !e.example && e.date >= FIRST_DESTINATION_DAY)
+        .flatMap(e => e.changes.map(c => ({ id: e.id, c })));
+}
+
+test("a destination is a panel open command, split into words", () => {
+    assert.deepStrictEqual(WhatsNew.destination("panel settings open launcher"), ["panel", "settings", "open", "launcher"]);
+    assert.deepStrictEqual(WhatsNew.destination("  panel   launcher open  files "), ["panel", "launcher", "open", "files"]);
+    assert.deepStrictEqual(WhatsNew.destination("panel battery open"), ["panel", "battery", "open"]);
+});
+
+test("anything else is no destination, so the log never runs a stray command", () => {
+    for (const bad of ["", "   ", "rm -rf /", "panel settings", "panel settings toggle launcher", "shell restart", "panel", 7, null, undefined, {}])
+        assert.deepStrictEqual(WhatsNew.destination(bad), [], String(bad));
+});
+
+test("a change carries its destination, and none when it names a bad one", () => {
+    const parsed = WhatsNew.parse(JSON.stringify([{ id: "e", changes: [
+        { type: "features", text: "With", go: "panel files open" },
+        { type: "features", text: "Bad", go: "reboot now" },
+        { type: "features", text: "None" }
+    ] }]));
+    assert.deepStrictEqual(parsed[0].changes.map(c => c.go), [["panel", "files", "open"], [], []]);
+});
+
+test("a destination already parsed survives being read again", () => {
+    const once = WhatsNew.parse(JSON.stringify([{ id: "e", changes: [{ type: "features", text: "Try it", go: "panel files open" }] }]));
+    assert.deepStrictEqual(WhatsNew.destination(once[0].changes[0].go), ["panel", "files", "open"]);
+    assert.deepStrictEqual(WhatsNew.logOf(once)[0].changes[0].go, ["panel", "files", "open"]);
+    assert.deepStrictEqual(WhatsNew.shortList(once)[0].go, ["panel", "files", "open"]);
+});
+
+test("sections and the short list pass the destination through", () => {
+    const log = [{ id: "e", changes: [{ type: "features", severity: "minor", text: "Try it", go: "panel clipboard open" }] }];
+    assert.deepStrictEqual(WhatsNew.shortList(log)[0].go, ["panel", "clipboard", "open"]);
+    assert.deepStrictEqual(WhatsNew.sections(log)[0].changes[0].go, ["panel", "clipboard", "open"]);
+});
+
+test("the full log lists every real entry newest first with its tags, skipping the example and empty ones", () => {
+    const entries = [
+        { id: "2026-11-04", date: "2026-11-04", changes: [{ type: "features", text: "New thing", go: "panel files open" }, { type: "bugs", text: "Fixed thing" }] },
+        { id: "silent", date: "2026-11-03", changes: [] },
+        { id: "example", example: true, changes: [{ type: "ui", text: "Shape only" }] },
+        { id: "2026-11-02", date: "2026-11-02", changes: [{ type: "config", severity: "major", text: "Big thing" }] }
+    ];
+    const got = WhatsNew.logOf(entries, [entries[0]]);
+    assert.deepStrictEqual(got.map(e => [e.id, e.unread]), [["2026-11-04", true], ["2026-11-02", false]]);
+    assert.deepStrictEqual(got[0].changes, [
+        { key: "features", tag: "New", text: "New thing", go: ["panel", "files", "open"] },
+        { key: "bugs", tag: "Fixed", text: "Fixed thing", go: [] }
+    ]);
+    assert.strictEqual(got[1].changes[0].tag, "Big");
+    assert.deepStrictEqual(WhatsNew.logOf(undefined), []);
+});
+
+test("every new feature bullet since the destinations began names where to try it", () => {
+    const missing = shippedFeatures().filter(({ c }) => c.type === "features" && WhatsNew.destination(c.go).length === 0)
+        .map(({ id, c }) => `${id}: ${c.text}`);
+    assert.deepStrictEqual(missing, [], "a features bullet needs a go, see docs/agents/whats-new.md");
+});
+
+test("every shipped destination opens something the shell has", () => {
+    const commands = fs.readFileSync(path.join(ROOT, "cli/commands.tsv"), "utf8");
+    const surfaces = commands.split("\n").find(l => l.startsWith("values\tpanel\t")).split("\t")[2].split(/\s+/);
+    const catalogue = new Function(fs.readFileSync(path.join(ROOT, "modules/settings/catalogue.js"), "utf8").replace(/^\.pragma .*$/m, "") + "\nreturn { resolve };")();
+    const bad = [];
+    for (const { id, c } of shippedFeatures()) {
+        if (c.go === undefined)
+            continue;
+        const words = WhatsNew.destination(c.go);
+        const [, name, , ...rest] = words;
+        const known = words.length > 0 && (surfaces.includes(name) || MENUS.includes(name))
+            && (name !== "settings" || rest.length === 0 || catalogue.resolve(rest[0]) !== null)
+            && (name === "launcher" || name === "settings" || rest.length === 0);
+        if (!known)
+            bad.push(`${id}: ${c.go}`);
+    }
+    assert.deepStrictEqual(bad, []);
 });

@@ -10,6 +10,7 @@ ClockScrubField 1.0 ClockScrubField.qml
 ClockTextField 1.0 ClockTextField.qml
 NetworkMenu 1.0 NetworkMenu.qml
 SoundMenu 1.0 SoundMenu.qml
+TakeMeThere 1.0 TakeMeThere.qml
 TrayEntries 1.0 TrayEntries.qml
 TrayMenu 1.0 TrayMenu.qml
 TrayMore 1.0 TrayMore.qml
