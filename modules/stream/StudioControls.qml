@@ -10,7 +10,7 @@ Item {
 
     property string armed: ""
 
-    readonly property string notice: Obs.phase === "missing" ? "Reaching OBS needs qt6-websockets: bash install.sh adds it" : Obs.phase === "closed" ? "OBS is not running" : Obs.phase === "unset" ? "OBS's WebSocket server is off: Tools → WebSocket Server Settings" : Obs.phase === "refused" ? "OBS did not accept its WebSocket password" : "Reaching OBS"
+    readonly property string notice: Obs.phase === "missing" ? "Reaching OBS needs the qt6-websockets package" : Obs.phase === "closed" ? "OBS is not running" : Obs.phase === "unset" ? "OBS's WebSocket server is off: in OBS, Tools → WebSocket Server Settings" : Obs.phase === "refused" ? "OBS did not accept its WebSocket password" : "Reaching OBS"
 
     function arm(want: string): void {
         root.armed = want;
@@ -103,6 +103,14 @@ Item {
             }
         }
 
+        StyledText {
+            visible: Obs.problem !== ""
+            width: parent.width
+            wrapMode: Text.Wrap
+            text: Obs.problem
+            color: Appearance.colour.alarm
+        }
+
         Row {
             spacing: Appearance.padding.small
 
@@ -171,7 +179,7 @@ Item {
 
         Button {
             anchors.verticalCenter: parent.verticalCenter
-            visible: Obs.phase === "closed" && Obs.installed
+            visible: (Obs.phase === "closed" || Obs.phase === "unset") && Obs.installed
             icon: "open_in_new"
             text: "Open OBS"
 

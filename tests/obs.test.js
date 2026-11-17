@@ -10,7 +10,7 @@ const ROOT = path.resolve(__dirname, "..");
 const base64Src = fs.readFileSync(path.join(ROOT, "components/base64.js"), "utf8");
 const Base64 = new Function(base64Src + "\nreturn { encode, decode, utf8 };")();
 const src = fs.readFileSync(path.join(ROOT, "services/obs.js"), "utf8");
-const Obs = new Function(src + "\nreturn { sha256, authentication, identify, request, role, sceneNames, health, duration, rate, address, endpoint, savePasswordCommand, withPassword };")();
+const Obs = new Function(src + "\nreturn { sha256, authentication, identify, request, role, refusal, sceneNames, health, duration, rate, address, endpoint, savePasswordCommand, withPassword };")();
 
 function nodeSha256(bytes) {
     return crypto.createHash("sha256").update(Buffer.from(bytes, "latin1")).digest("latin1");
@@ -197,5 +197,25 @@ test.describe("the password kept outside config.json", () => {
         const follows = Obs.endpoint(Obs.withPassword({ host: "", port: 0, password: "" }, ""), { server_password: "from obs" });
         assert.strictEqual(follows.password, "from obs");
         assert.strictEqual(follows.passwordHere, false);
+    });
+});
+
+test.describe("obs refusals", () => {
+    test.it("gives OBS's own reason after what was tried", () => {
+        assert.strictEqual(Obs.refusal("StartStream", { result: false, code: 500, comment: "Your stream service settings are invalid." }), "Could not go live: Your stream service settings are invalid");
+    });
+
+    test.it("names the code when OBS gave no reason", () => {
+        assert.strictEqual(Obs.refusal("StartRecord", { result: false, code: 703 }), "Could not start recording, OBS refused (code 703)");
+    });
+
+    test.it("covers every press on the deck", () => {
+        for (const type of ["StartStream", "StopStream", "StartRecord", "StopRecord", "SetCurrentProgramScene", "SetSceneItemEnabled", "SetInputMute"])
+            assert.notStrictEqual(Obs.refusal(type, { code: 600, comment: "no" }), "", type);
+    });
+
+    test.it("stays silent for the requests the shell makes on its own", () => {
+        for (const type of ["GetStreamStatus", "GetSceneList", "GetSceneItemList", "GetInputList"])
+            assert.strictEqual(Obs.refusal(type, { code: 600, comment: "no" }), "", type);
     });
 });

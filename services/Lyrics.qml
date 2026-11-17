@@ -60,6 +60,22 @@ Singleton {
 
     property bool spicyAbsent: false
 
+    property bool hintDismissed: false
+
+    function dismissHint(): void {
+        root.hintDismissed = true;
+        hintStore.setText("dismissed\n");
+    }
+
+    FileView {
+        id: hintStore
+
+        path: `${Config.stateDir}/spicy-hint-dismissed`
+        printErrors: false
+
+        onLoaded: root.hintDismissed = true
+    }
+
     readonly property bool synced: root.state === "synced"
     readonly property bool plain: root.state === "plain"
     readonly property bool ready: root.synced || root.plain
@@ -86,8 +102,20 @@ Singleton {
         return Parse.gapFill(entry, t + root.lead);
     }
 
-    function layout(widths: var, space: real, room: real): var {
-        return Parse.layout(widths, space, room);
+    function fit(texts: var, measure: var, room: real): var {
+        return Parse.fit(texts, measure, room);
+    }
+
+    function piecePosition(fitted: var, position: real): real {
+        return Parse.piecePosition(fitted, position);
+    }
+
+    function rowText(fitted: var, row: var): string {
+        return Parse.rowText(fitted, row);
+    }
+
+    function layout(widths: var, space: real, room: real, joined: var): var {
+        return Parse.layout(widths, space, room, joined);
     }
 
     function litWidth(row: var, widths: var, position: real): real {
@@ -432,7 +460,7 @@ Singleton {
             root.request(`${root.api}/${steps[i]}`, (status, body) => {
                 if (root.job !== job)
                     return;
-                if (status === 0) {
+                if (Parse.serverFailed(status)) {
                     job.failed = !job.spicy;
                     settle(root.lrclibFound(fallback));
                     return;
