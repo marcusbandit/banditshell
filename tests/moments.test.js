@@ -23,10 +23,10 @@ test.describe("moment switches", () => {
 
 test.describe("screenshot", () => {
     test.it("shows the picture with four actions for six seconds", () => {
-        const spec = M.screenshotSpec("/home/me/Pictures/shot one.png");
+        const spec = M.screenshotSpec("/home/user/Pictures/shot one.png");
         assert.strictEqual(spec.until, 6000);
-        assert.strictEqual(spec.data.picture, "file:///home/me/Pictures/shot%20one.png");
-        assert.strictEqual(spec.data.folder, "/home/me/Pictures");
+        assert.strictEqual(spec.data.picture, "file:///home/user/Pictures/shot%20one.png");
+        assert.strictEqual(spec.data.folder, "/home/user/Pictures");
         assert.strictEqual(spec.detail, "shot one.png");
         assert.deepStrictEqual(spec.actions.map(a => a.name), ["copy", "edit", "folder", "delete"]);
         assert.strictEqual(spec.pressable, true);
@@ -137,7 +137,7 @@ test.describe("copied preview", () => {
 
 test.describe("deleted screenshot", () => {
     test.it("offers an undo row that lasts 5 to 10 seconds", () => {
-        const spec = M.trashedSpec("/home/a/shot.png");
+        const spec = M.trashedSpec("/home/user/shot.png");
         assert.strictEqual(spec.style, "undo");
         assert.deepStrictEqual(spec.actions.map(a => a.name), ["undo"]);
         assert.strictEqual(M.TRASHED_MS >= 5000 && M.TRASHED_MS <= 10000, true);

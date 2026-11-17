@@ -36,7 +36,7 @@ test("a localhost link reads as a local server on its port", () => assert.deepSt
 test("a 127.0.0.1 link with a path reads as a local server", () => assert.strictEqual(shown("http://127.0.0.1:9117/api").kind, "Local server"));
 test("a tailnet device link reads as the device name and port", () => assert.deepStrictEqual(shown("https://box.example-tailnet.ts.net:8787/"), { kind: "Device on your tailnet", title: "box:8787" }));
 test("a single-label host reads as a device on your network", () => assert.deepStrictEqual(shown("https://printer"), { kind: "Device on your network", title: "printer" }));
-test("hosts sort into tailnet, network and web places", () => assert.deepStrictEqual(["100.100.1.2", "192.168.1.20", "example.com"].map(Links.placeOf), ["tailnet", "network", "web"]));
+test("hosts sort into tailnet, network and web places", () => assert.deepStrictEqual(["100.64.0.2", "192.168.1.20", "example.com"].map(Links.placeOf), ["tailnet", "network", "web"]));
 
 test("a .mp4 link reads as a video file", () => assert.deepStrictEqual(shown("https://example.com/clips/intro.mp4"), { kind: "Video file", title: "intro.mp4" }));
 test("a .png link reads as an image file", () => assert.strictEqual(shown("https://example.com/img/logo.png").kind, "Image file"));
@@ -121,7 +121,7 @@ test("a page title that only names the site gives way to what the link points at
 });
 
 test("only public web pages are fetched for a preview, never local machines or one-time links", () => {
-    for (const url of ["http://localhost:8080/api/reset", "http://192.168.1.20/reboot.cgi", "https://box.example-tailnet.ts.net/", "http://printer/status", "http://100.100.1.2:8000/"])
+    for (const url of ["http://localhost:8080/api/reset", "http://192.168.1.20/reboot.cgi", "https://box.example-tailnet.ts.net/", "http://printer/status", "http://100.64.0.2:8000/"])
         assert.strictEqual(Links.fetchable(url), false, url);
     for (const url of ["https://accounts.example.com/reset/9f8a7b6c5d", "https://example.com/verify-email/abc", "https://example.com/a/0123456789abcdef0123456789abcdef01"])
         assert.strictEqual(Links.fetchable(url), false, url);

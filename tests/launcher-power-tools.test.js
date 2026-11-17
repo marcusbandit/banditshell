@@ -106,17 +106,17 @@ test.describe("script commands", () => {
     });
 
     test.it("reads several script folders and drops repeats", () => {
-        assert.deepStrictEqual(Scripts.foldersFrom("~/a, /b/\n~/a", "/home/u", "/fallback"), ["/home/u/a", "/b"]);
-        assert.deepStrictEqual(Scripts.foldersFrom("", "/home/u", "/fallback"), ["/fallback"]);
+        assert.deepStrictEqual(Scripts.foldersFrom("~/a, /b/\n~/a", "/home/user", "/fallback"), ["/home/user/a", "/b"]);
+        assert.deepStrictEqual(Scripts.foldersFrom("", "/home/user", "/fallback"), ["/fallback"]);
     });
 
     test.it("runs a script in its own folder unless a header says otherwise", () => {
         const plain = Scripts.parseScript("/s/a.sh", "#!/bin/sh\n# @raycast.title A\n", true);
-        assert.strictEqual(Scripts.workingFolder(plain, "/home/u"), "/s");
+        assert.strictEqual(Scripts.workingFolder(plain, "/home/user"), "/s");
         const home = Scripts.parseScript("/s/a.sh", "# @raycast.currentDirectoryPath ~/Projects\n", true);
-        assert.strictEqual(Scripts.workingFolder(home, "/home/u"), "/home/u/Projects");
+        assert.strictEqual(Scripts.workingFolder(home, "/home/user"), "/home/user/Projects");
         const relative = Scripts.parseScript("/s/a.sh", "# @raycast.currentDirectoryPath data\n", true);
-        assert.strictEqual(Scripts.workingFolder(relative, "/home/u"), "/s/data");
+        assert.strictEqual(Scripts.workingFolder(relative, "/home/user"), "/s/data");
     });
 
     test.it("ships an example that reads as a Raycast script", () => {
@@ -129,7 +129,7 @@ test.describe("script commands", () => {
 
 test.describe("projects", () => {
     test.it("expands folder lists", () => {
-        assert.deepStrictEqual(Projects.listFrom("~/Projects, ~/src/ ,~/Projects", "/home/a"), ["/home/a/Projects", "/home/a/src"]);
+        assert.deepStrictEqual(Projects.listFrom("~/Projects, ~/src/ ,~/Projects", "/home/user"), ["/home/user/Projects", "/home/user/src"]);
     });
 
     test.it("reads the scan and ranks by name, then by what was touched last", () => {
@@ -427,16 +427,16 @@ test.describe("colour picks", () => {
 });
 
 test.describe("vaults left out", () => {
-    const vaults = [{ name: "Agent", path: "/home/u/Obsidian/Agent" }, { name: "Thoughts", path: "/home/u/Obsidian/Thoughts" }, { name: "Work", path: "/home/u/Work" }];
+    const vaults = [{ name: "Agent", path: "/home/user/Obsidian/Agent" }, { name: "Thoughts", path: "/home/user/Obsidian/Thoughts" }, { name: "Work", path: "/home/user/Work" }];
 
     test.it("drops vaults named by name or by folder, with ~ for home", () => {
-        assert.deepStrictEqual(Notes.withoutSkipped(vaults, "Agent, ~/Work", "/home/u").map(v => v.name), ["Thoughts"]);
-        assert.deepStrictEqual(Notes.withoutSkipped(vaults, "/home/u/Obsidian/Agent/", "/home/u").map(v => v.name), ["Thoughts", "Work"]);
+        assert.deepStrictEqual(Notes.withoutSkipped(vaults, "Agent, ~/Work", "/home/user").map(v => v.name), ["Thoughts"]);
+        assert.deepStrictEqual(Notes.withoutSkipped(vaults, "/home/user/Obsidian/Agent/", "/home/user").map(v => v.name), ["Thoughts", "Work"]);
     });
 
     test.it("keeps every vault when nothing is left out", () => {
-        assert.strictEqual(Notes.withoutSkipped(vaults, "", "/home/u").length, 3);
-        assert.strictEqual(Notes.withoutSkipped(vaults, " , ", "/home/u").length, 3);
+        assert.strictEqual(Notes.withoutSkipped(vaults, "", "/home/user").length, 3);
+        assert.strictEqual(Notes.withoutSkipped(vaults, " , ", "/home/user").length, 3);
     });
 });
 
@@ -571,11 +571,11 @@ test.describe("list scripts", () => {
                     valid: false,
                     autocomplete: "more "
                 }]
-        }), "/s", "/home/a", 50);
+        }), "/s", "/home/user", 50);
         assert.deepStrictEqual(items.map(i => i.title), ["Leftwards Arrow", "Report", "Docs", "More"]);
         assert.strictEqual(items[0].glyph, "←");
         assert.strictEqual(items[1].file, true);
-        assert.strictEqual(items[1].arg, "/home/a/report.pdf");
+        assert.strictEqual(items[1].arg, "/home/user/report.pdf");
         assert.strictEqual(items[1].iconFile, "/s/icons/pdf.png");
         assert.strictEqual(items[2].icon, "menu_book");
         assert.strictEqual(items[2].url, "https://example.org");
@@ -666,13 +666,13 @@ test.describe("list script safety", () => {
         assert.strictEqual(Scripts.linkRefusal("https://example.org"), "");
         assert.strictEqual(Scripts.linkRefusal("http://example.org"), "");
         assert.strictEqual(Scripts.linkRefusal("mailto:a@b.c"), "");
-        assert.strictEqual(Scripts.linkRefusal("file:///home/a/x.pdf"), "");
+        assert.strictEqual(Scripts.linkRefusal("file:///home/user/x.pdf"), "");
         assert.strictEqual(Scripts.linkRefusal("file://host/x"), "refused a file: link");
         assert.strictEqual(Scripts.linkRefusal("steam://run/1"), "refused a steam: link");
         assert.strictEqual(Scripts.linkRefusal("javascript:alert(1)"), "refused a javascript: link");
         assert.strictEqual(Scripts.linkRefusal("--help"), "refused a link starting with -");
         assert.strictEqual(Scripts.linkRefusal("example.org"), "refused a link with no scheme");
-        assert.strictEqual(Scripts.fileRefusal("/home/a/x"), "");
+        assert.strictEqual(Scripts.fileRefusal("/home/user/x"), "");
         assert.strictEqual(Scripts.fileRefusal("x.pdf"), "refused a file path that is not absolute");
         assert.strictEqual(Scripts.fileRefusal("-rf"), "refused a file starting with -");
     });
@@ -698,7 +698,7 @@ test.describe("list script safety", () => {
             }, {
                 title: "Remote icon",
                 icon: "https://tracker.example/pixel.png"
-            }]), "/s", "/home/a", 50);
+            }]), "/s", "/home/user", 50);
         assert.strictEqual(Scripts.refusalOf(items[0]), "refused a steam: link");
         assert.strictEqual(Scripts.itemAction(items[0], false), "refused");
         assert.strictEqual(Scripts.itemAction(items[1], false), "copy");
