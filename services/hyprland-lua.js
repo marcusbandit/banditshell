@@ -1280,8 +1280,13 @@ function literalValue(raw) {
     return stringLiteral(t) !== null || /^-?(\d+\.?\d*|\.\d+)$/.test(t) || t === "true" || t === "false";
 }
 
+function numberTable(s, table) {
+    return !table.loose && table.fields.length > 0 && table.fields.every(f => !f.table && /^-?(\d+\.?\d*|\.\d+)$/.test(s.slice(f.valueStart, f.valueEnd).trim()));
+}
+
 function readTableFields(s, open) {
     const fields = [];
+    let loose = false;
     let i = open + 1;
 
     function skipBlank() {
@@ -1324,9 +1329,9 @@ function readTableFields(s, open) {
     for (;;) {
         skipBlank();
         if (i >= s.length)
-            return { open, close: -1, fields };
+            return { open, close: -1, fields, loose };
         if (s[i] === "}")
-            return { open, close: i, fields };
+            return { open, close: i, fields, loose };
         if (s[i] === "," || s[i] === ";") {
             i++;
             continue;
@@ -1337,6 +1342,7 @@ function readTableFields(s, open) {
         const head = named ?? quoted;
         const keyStart = i;
         if (!head) {
+            loose = true;
             skipValue();
             continue;
         }
@@ -1515,7 +1521,7 @@ function locateOption(files, request) {
                 for (const field of tables[at].table.fields) {
                     const path = tables[at].path.concat(optionSegments(field.key));
                     if (field.table && path.join(":") === segments.join(":"))
-                        set.push({ file, s, depth: call.depth, field: Object.assign({}, field, { literal: field.table.fields.every(f => f.literal) }) });
+                        set.push({ file, s, depth: call.depth, field: Object.assign({}, field, { literal: numberTable(s, field.table) }) });
                     else if (field.table)
                         tables.push({ path, table: field.table });
                     else if (path.join(":") === segments.join(":"))
@@ -1593,7 +1599,7 @@ function planOption(files, request) {
 
 function optionValue(files, path, device) {
     const located = locateOption(files, { path, device });
-    if (!located.found)
+    if (!located.found || located.found.field.table)
         return undefined;
     const raw = located.found.s.slice(located.found.field.valueStart, located.found.field.valueEnd).trim();
     const text = stringLiteral(raw);
