@@ -46,6 +46,8 @@ PanelWindow {
 
     readonly property LazyPanel settings: settingsLayer
 
+    readonly property LazyPanel whatsNew: whatsNewLayer
+
     readonly property Island island: islandLayer
     readonly property Chassis frame: chassis
     readonly property QuickControls quickControls: quickLayer
@@ -57,7 +59,7 @@ PanelWindow {
     readonly property var usage: Usage
     readonly property var clipboardHistory: Clipboard
 
-    readonly property var panels: [launcherLayer, wallpaperLayer, sessionLayer, cheatLayer, calcLayer, mediaLayer]
+    readonly property var panels: [launcherLayer, wallpaperLayer, sessionLayer, cheatLayer, calcLayer, mediaLayer, whatsNewLayer]
 
     readonly property bool panelOpen: win.panels.some(panel => panel.open)
     readonly property bool covering: win.panels.some(panel => panel.open && panel !== mediaLayer)
@@ -356,6 +358,11 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: settingsLayer.open ? settingsLayer.maskItem : null
+        }
+
+        Region {
+            intersection: Intersection.Combine
+            item: whatsNewLayer.open ? whatsNewLayer.maskItem : null
         }
 
         Region {
@@ -870,6 +877,26 @@ PanelWindow {
                 band: win.border
                 menuOpen: menuLayer.open
                 yielded: win.panelOpen || menuLayer.open || Prompts.awayIn(settingsLayer.QsWindow.window) || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
+            }
+        }
+
+        LazyPanel {
+            id: whatsNewLayer
+
+            name: "whatsnew"
+            anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
+
+            onOpenChanged: if (open)
+                win.closeOthers(whatsNewLayer)
+
+            panel: WhatsNewLog {
+                entries: WhatsNew.log(WhatsNew.entries, WhatsNew.pending)
+                unread: WhatsNew.pending.reduce((n, e) => n + e.changes.length, 0)
+                holeX: chassis.holeX
+                holeY: chassis.holeY
+                holeWidth: chassis.holeWidth
+                holeHeight: chassis.holeHeight
             }
         }
 

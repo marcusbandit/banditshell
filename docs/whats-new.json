@@ -13,6 +13,24 @@
       ]
     },
     {
+      "id": "2026-11-17-whats-new-log",
+      "date": "2026-11-17",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Expand the What's new card into a big log that stays open",
+          "go": "panel update open"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "New features in What's new have a Take me there button",
+          "go": "panel update open"
+        }
+      ]
+    },
+    {
       "id": "2026-11-17-media-lyrics-stream",
       "date": "2026-11-17",
       "changes": [
@@ -107,7 +125,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Type 1,2;3,4 in the launcher to get a 2x2 matrix"
+          "text": "Type 1,2;3,4 in the launcher to get a 2x2 matrix",
+          "go": "panel launcher open 1,2;3,4"
         }
       ]
     },
@@ -118,12 +137,14 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "The volume mixer shows which apps are making sound, in a window"
+          "text": "The volume mixer shows which apps are making sound, in a window",
+          "go": "panel mixer open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Open it from the sound menu, or type mixer in the launcher"
+          "text": "Open it from the sound menu, or type mixer in the launcher",
+          "go": "panel audio open"
         }
       ]
     },
@@ -177,7 +198,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Drag a pinned app in the launcher to put it somewhere else"
+          "text": "Drag a pinned app in the launcher to put it somewhere else",
+          "go": "panel launcher open"
         },
         {
           "type": "ui",
@@ -192,7 +214,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Ctrl+Enter on a launcher app opens its menu"
+          "text": "Ctrl+Enter on a launcher app opens its menu",
+          "go": "panel launcher open"
         }
       ]
     },
@@ -217,22 +240,26 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "A key expands the snippet keyword you just typed, in any app"
+          "text": "A key expands the snippet keyword you just typed, in any app",
+          "go": "panel settings open launcher"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Snippets can be pinned and duplicated"
+          "text": "Snippets can be pinned and duplicated",
+          "go": "panel launcher open snip"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Quicklinks show the site's icon and take up to three arguments"
+          "text": "Quicklinks show the site's icon and take up to three arguments",
+          "go": "panel settings open launcher"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Quicklinks can be duplicated and copy their name"
+          "text": "Quicklinks can be duplicated and copy their name",
+          "go": "panel settings open launcher"
         }
       ]
     },
@@ -243,17 +270,20 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Speak to ask in Settings turns launcher dictation into an AI ask"
+          "text": "Speak to ask in Settings turns launcher dictation into an AI ask",
+          "go": "panel settings open dictateAsk"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Dictation history can be deleted in one go"
+          "text": "Dictation history can be deleted in one go",
+          "go": "panel clipboard open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Dictation's microphone, language and where text goes are in Settings"
+          "text": "Dictation's microphone, language and where text goes are in Settings",
+          "go": "panel settings open dictMic"
         }
       ]
     },
@@ -264,42 +294,50 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Ask can include your selection, clipboard or the focused window"
+          "text": "Ask can include your selection, clipboard or the focused window",
+          "go": "panel launcher open ask"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "AI answers can search the web with Claude Code and Codex"
+          "text": "AI answers can search the web with Claude Code and Codex",
+          "go": "panel settings open aiWeb"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Improve writing joins the AI rewrite actions"
+          "text": "Improve writing joins the AI rewrite actions",
+          "go": "panel launcher open improve writing"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "An AI answer finishing while the launcher is closed notifies you"
+          "text": "An AI answer finishing while the launcher is closed notifies you",
+          "go": "panel launcher open ask"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Copy chat copies the whole AI conversation"
+          "text": "Copy chat copies the whole AI conversation",
+          "go": "panel launcher open ask"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Try another model asks again with a different model"
+          "text": "Try another model asks again with a different model",
+          "go": "panel launcher open ask"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "reminders lists pending reminders to push back or clear"
+          "text": "reminders lists pending reminders to push back or clear",
+          "go": "panel launcher open reminders"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Settings shows the AI sign-in, with sign in, out and a check"
+          "text": "Settings shows the AI sign-in, with sign in, out and a check",
+          "go": "panel settings open aiOn"
         }
       ]
     },
@@ -310,22 +348,26 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "jot saves a quick note, with or without an Obsidian vault"
+          "text": "jot saves a quick note, with or without an Obsidian vault",
+          "go": "panel launcher open jot"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Note search also finds words inside notes"
+          "text": "Note search also finds words inside notes",
+          "go": "panel launcher open notes"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Focus rounds take a goal, and focus until 16:30 sets the end"
+          "text": "Focus rounds take a goal, and focus until 16:30 sets the end",
+          "go": "panel launcher open focus 25"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "dnd until 16:30 keeps notifications quiet until then"
+          "text": "dnd until 16:30 keeps notifications quiet until then",
+          "go": "panel launcher open dnd until"
         }
       ]
     },
@@ -336,22 +378,26 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Script commands load from more than one folder"
+          "text": "Script commands load from more than one folder",
+          "go": "panel settings open scriptsFolder"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "A script can say which folder it runs in"
+          "text": "A script can say which folder it runs in",
+          "go": "panel launcher open scripts"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Make your own theme from four colours, saved as a new theme"
+          "text": "Make your own theme from four colours, saved as a new theme",
+          "go": "panel settings open colour"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Light and dark mode can each use their own theme"
+          "text": "Light and dark mode can each use their own theme",
+          "go": "panel settings open lightTheme"
         }
       ]
     },
@@ -362,37 +408,44 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Weather answers in the launcher for here or any city"
+          "text": "Weather answers in the launcher for here or any city",
+          "go": "panel launcher open weather"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "time diff tokyo says how many hours ahead or behind a place is"
+          "text": "time diff tokyo says how many hours ahead or behind a place is",
+          "go": "panel launcher open time diff tokyo"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Colours convert to and from hwb, lab, lch, oklab and oklch"
+          "text": "Colours convert to and from hwb, lab, lch, oklab and oklch",
+          "go": "panel launcher open #ff0000 to oklch"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "translate to french translates the text you have selected"
+          "text": "translate to french translates the text you have selected",
+          "go": "panel launcher open translate to french"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Emoji can be pinned to the top, and symbols copy as their code point"
+          "text": "Emoji can be pinned to the top, and symbols copy as their code point",
+          "go": "panel launcher open emoji"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Screenshot search takes dates and, with tesseract, the text inside"
+          "text": "Screenshot search takes dates and, with tesseract, the text inside",
+          "go": "panel launcher open screenshots"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "File search can skip git-ignored files, in settings"
+          "text": "File search can skip git-ignored files, in settings",
+          "go": "panel settings open ignoredFiles"
         }
       ]
     },
@@ -403,37 +456,44 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "File rows can open with another app or move to the trash"
+          "text": "File rows can open with another app or move to the trash",
+          "go": "panel launcher open ~/"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Shift+Tab in a typed path goes up to the parent folder"
+          "text": "Shift+Tab in a typed path goes up to the parent folder",
+          "go": "panel launcher open ~/"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher can always open on one chosen screen"
+          "text": "The launcher can always open on one chosen screen",
+          "go": "panel settings open launcherScreen"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Escape can close the launcher at once instead of stepping back"
+          "text": "Escape can close the launcher at once instead of stepping back",
+          "go": "panel settings open launcherEscape"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "An app hotkey can hide the app when pressed again"
+          "text": "An app hotkey can hide the app when pressed again",
+          "go": "panel settings open launcher"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Hotkeys and aliases switch off without deleting, and filter by state"
+          "text": "Hotkeys and aliases switch off without deleting, and filter by state",
+          "go": "panel settings open launcher"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Single plugin commands can be switched off in Settings"
+          "text": "Single plugin commands can be switched off in Settings",
+          "go": "panel settings open pluginRank"
         }
       ]
     },
@@ -444,22 +504,26 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Floating windows nudge by a step, and Restore returns their old size"
+          "text": "Floating windows nudge by a step, and Restore returns their old size",
+          "go": "panel launcher open move window"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Window arrangements save as named presets you can reapply"
+          "text": "Window arrangements save as named presets you can reapply",
+          "go": "panel launcher open save window preset desk"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher switches microphones and mutes the app you were in"
+          "text": "The launcher switches microphones and mutes the app you were in",
+          "go": "panel launcher open microphone"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Open trash, hidden files and Bluetooth on or off are launcher rows"
+          "text": "Open trash, hidden files and Bluetooth on or off are launcher rows",
+          "go": "panel launcher open open trash"
         }
       ]
     },
@@ -470,22 +534,26 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Clipboard history can forget entries after a day, a week or a month"
+          "text": "Clipboard history can forget entries after a day, a week or a month",
+          "go": "panel settings open clipDays"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Copies made in password managers are never recorded"
+          "text": "Copies made in password managers are never recorded",
+          "go": "panel settings open clipIgnore"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Enter on a clipboard entry can copy instead of paste"
+          "text": "Enter on a clipboard entry can copy instead of paste",
+          "go": "panel settings open clipEnter"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Text in clipboard history can be saved as a snippet"
+          "text": "Text in clipboard history can be saved as a snippet",
+          "go": "panel clipboard open"
         }
       ]
     },
@@ -496,7 +564,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Calculator answers show as a card: what you asked beside the answer"
+          "text": "Calculator answers show as a card: what you asked beside the answer",
+          "go": "panel launcher open 12 * 7"
         },
         {
           "type": "issues",
@@ -506,7 +575,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Clipboard history opens in the launcher, with a preview of each copy"
+          "text": "Clipboard history opens in the launcher, with a preview of each copy",
+          "go": "panel clipboard open"
         },
         {
           "type": "ui",
@@ -516,12 +586,14 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Copied colours, links, emails, code and files get their own actions"
+          "text": "Copied colours, links, emails, code and files get their own actions",
+          "go": "panel clipboard open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Emoji open as a grid of big tiles you move through with the arrows"
+          "text": "Emoji open as a grid of big tiles you move through with the arrows",
+          "go": "panel launcher open emoji"
         }
       ]
     },
@@ -537,7 +609,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "SSH key prompts name the git push or ssh login waiting on them"
+          "text": "SSH key prompts name the git push or ssh login waiting on them",
+          "go": "panel launcher open ssh"
         }
       ]
     },
@@ -564,7 +637,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Plugin commands take arguments in boxes right in the launcher search"
+          "text": "Plugin commands take arguments in boxes right in the launcher search",
+          "go": "panel settings open pluginRank"
         }
       ]
     },
@@ -575,7 +649,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Plugin list pages can have a dropdown beside their filter"
+          "text": "Plugin list pages can have a dropdown beside their filter",
+          "go": "panel settings open pluginRank"
         }
       ]
     },
@@ -586,7 +661,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Hotkeys on plugin rows work even when the launcher is closed"
+          "text": "Hotkeys on plugin rows work even when the launcher is closed",
+          "go": "panel settings open pluginRank"
         }
       ]
     },
@@ -597,7 +673,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Plugin rows can list facts in the preview beside the launcher"
+          "text": "Plugin rows can list facts in the preview beside the launcher",
+          "go": "panel settings open pluginRank"
         }
       ]
     },
@@ -608,7 +685,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Plugins can notify you at any time and keep state in their own folder"
+          "text": "Plugins can notify you at any time and keep state in their own folder",
+          "go": "panel settings open pluginRank"
         }
       ]
     },
@@ -619,7 +697,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Plugins can show a live icon in the sidebar or a row in the island"
+          "text": "Plugins can show a live icon in the sidebar or a row in the island",
+          "go": "panel settings open pluginRank"
         }
       ]
     },
@@ -630,7 +709,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Plugin actions can have their own key chords, shown in the Ctrl+K menu"
+          "text": "Plugin actions can have their own key chords, shown in the Ctrl+K menu",
+          "go": "panel settings open pluginRank"
         }
       ]
     },
@@ -641,7 +721,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Plugins can run in the background and hear the launcher open and close"
+          "text": "Plugins can run in the background and hear the launcher open and close",
+          "go": "panel settings open pluginRank"
         }
       ]
     },
@@ -657,7 +738,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Right-click the sidebar for Sidebar settings or to fold it"
+          "text": "Right-click the sidebar for Sidebar settings or to fold it",
+          "go": "panel settings open sidebar"
         }
       ]
     },
@@ -711,7 +793,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Settings search opens the folded list so you can read it"
+          "text": "Settings search opens the folded list so you can read it",
+          "go": "panel settings open"
         },
         {
           "type": "ui",
@@ -721,12 +804,14 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Hold a plus or minus button in Settings to keep stepping"
+          "text": "Hold a plus or minus button in Settings to keep stepping",
+          "go": "panel settings open updates"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Each Settings page can reset all its changed rows, with undo"
+          "text": "Each Settings page can reset all its changed rows, with undo",
+          "go": "panel settings open colour"
         },
         {
           "type": "bugs",
@@ -808,7 +893,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Enter in the clipboard pastes, and deleted entries can be undone"
+          "text": "Enter in the clipboard pastes, and deleted entries can be undone",
+          "go": "panel clipboard open"
         },
         {
           "type": "bugs",
@@ -823,7 +909,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Clipboard rows have a View action and the header a search button"
+          "text": "Clipboard rows have a View action and the header a search button",
+          "go": "panel clipboard open"
         },
         {
           "type": "ui",
@@ -864,7 +951,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Notifications under a fullscreen window are listed after it ends"
+          "text": "Notifications under a fullscreen window are listed after it ends",
+          "go": "panel notifications open"
         },
         {
           "type": "bugs",
@@ -895,17 +983,20 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Ctrl+K or Shift+F10 opens a launcher row's actions"
+          "text": "Ctrl+K or Shift+F10 opens a launcher row's actions",
+          "go": "panel launcher open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Press and hold a pinned app to open its actions"
+          "text": "Press and hold a pinned app to open its actions",
+          "go": "panel launcher open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The pinned app you pick with the keys shows its name"
+          "text": "The pinned app you pick with the keys shows its name",
+          "go": "panel launcher open"
         },
         {
           "type": "bugs",
@@ -941,7 +1032,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Battery menu has a power mode row"
+          "text": "Battery menu has a power mode row",
+          "go": "panel battery open"
         },
         {
           "type": "bugs",
@@ -961,7 +1053,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Long menu pages fade at the edge where more follows"
+          "text": "Long menu pages fade at the edge where more follows",
+          "go": "panel network open"
         },
         {
           "type": "bugs",
@@ -987,22 +1080,26 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Files is an app: type files in the launcher, the tour shows it"
+          "text": "Files is an app: type files in the launcher, the tour shows it",
+          "go": "panel launcher open files"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Drop files from other apps into Files; Ctrl-drag copies"
+          "text": "Drop files from other apps into Files; Ctrl-drag copies",
+          "go": "panel files open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Ctrl+F searches and Ctrl+H shows hidden files in Files"
+          "text": "Ctrl+F searches and Ctrl+H shows hidden files in Files",
+          "go": "panel files open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Files shows how many items a folder has and what you selected"
+          "text": "Files shows how many items a folder has and what you selected",
+          "go": "panel files open"
         },
         {
           "type": "bugs",
@@ -1048,7 +1145,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Open with lists the apps that handle the file"
+          "text": "Open with lists the apps that handle the file",
+          "go": "panel files open"
         },
         {
           "type": "bugs",
@@ -1109,12 +1207,14 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Removing a timer, alarm or place can be undone for a few seconds"
+          "text": "Removing a timer, alarm or place can be undone for a few seconds",
+          "go": "panel clock open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Click a time field and type digits; presets now include 15 and 30"
+          "text": "Click a time field and type digits; presets now include 15 and 30",
+          "go": "panel clock open"
         }
       ]
     },
@@ -1125,22 +1225,26 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Calendars have previous and next month buttons"
+          "text": "Calendars have previous and next month buttons",
+          "go": "panel calendar open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Pick the first day of the week and week numbers in Language"
+          "text": "Pick the first day of the week and week numbers in Language",
+          "go": "panel settings open firstDay"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The forecast always offers Change place"
+          "text": "The forecast always offers Change place",
+          "go": "panel clock open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The island tour step introduces the weather"
+          "text": "The island tour step introduces the weather",
+          "go": "panel settings open about"
         },
         {
           "type": "bugs",
@@ -1155,7 +1259,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Desktop Now playing wraps long titles and opens the media card"
+          "text": "Desktop Now playing wraps long titles and opens the media card",
+          "go": "panel media open"
         }
       ]
     },
@@ -1181,7 +1286,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Ctrl+2 lets the arrow and page keys scroll the preview"
+          "text": "Ctrl+2 lets the arrow and page keys scroll the preview",
+          "go": "panel files open"
         },
         {
           "type": "bugs",
@@ -1196,12 +1302,14 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Going up or back selects the folder you came from"
+          "text": "Going up or back selects the folder you came from",
+          "go": "panel files open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Page keys move a screen; Home and End jump to the ends"
+          "text": "Page keys move a screen; Home and End jump to the ends",
+          "go": "panel files open"
         }
       ]
     },
@@ -1263,7 +1371,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Bluetooth pairing asks for the PIN or number check it needs"
+          "text": "Bluetooth pairing asks for the PIN or number check it needs",
+          "go": "panel bluetooth open"
         },
         {
           "type": "bugs",
@@ -1273,17 +1382,20 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Join a hidden Wi-Fi network from the menu, Settings or a code"
+          "text": "Join a hidden Wi-Fi network from the menu, Settings or a code",
+          "go": "panel network open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Wi-Fi passwords have a show button and a Caps Lock warning"
+          "text": "Wi-Fi passwords have a show button and a Caps Lock warning",
+          "go": "panel network open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "The Wi-Fi menu shows your IP address and copies it"
+          "text": "The Wi-Fi menu shows your IP address and copies it",
+          "go": "panel network open"
         },
         {
           "type": "bugs",
@@ -1314,17 +1426,20 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Hovering a tray icon names the app"
+          "text": "Hovering a tray icon names the app",
+          "go": "panel settings open tray"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Tray icons past the cap sit behind a +N you can open"
+          "text": "Tray icons past the cap sit behind a +N you can open",
+          "go": "panel settings open tray"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Tap or swipe the rail on a touchscreen to open it"
+          "text": "Tap or swipe the rail on a touchscreen to open it",
+          "go": "panel settings open sidebar"
         },
         {
           "type": "bugs",
@@ -1349,7 +1464,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "VPN and Keep awake show in the full sidebar"
+          "text": "VPN and Keep awake show in the full sidebar",
+          "go": "panel settings open sidebar"
         },
         {
           "type": "ui",
@@ -1370,7 +1486,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Ctrl+C and Ctrl+X in Files work with other apps"
+          "text": "Ctrl+C and Ctrl+X in Files work with other apps",
+          "go": "panel files open"
         },
         {
           "type": "bugs",
@@ -1385,17 +1502,20 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "A long paste shows its progress and has a Stop button"
+          "text": "A long paste shows its progress and has a Stop button",
+          "go": "panel files open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "New, renamed and pasted items are selected and shown"
+          "text": "New, renamed and pasted items are selected and shown",
+          "go": "panel files open"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Delete says it can be undone, and cut items are dimmed"
+          "text": "Delete says it can be undone, and cut items are dimmed",
+          "go": "panel files open"
         }
       ]
     },
@@ -1411,12 +1531,14 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "One mouse wheel notch over the workspace column switches one"
+          "text": "One mouse wheel notch over the workspace column switches one",
+          "go": "panel settings open sidebar"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Clicking an app icon on a workspace plate focuses that window"
+          "text": "Clicking an app icon on a workspace plate focuses that window",
+          "go": "panel settings open sidebar"
         },
         {
           "type": "ui",
@@ -1484,7 +1606,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Launcher AI can answer through Claude Code or Codex, no API key"
+          "text": "Launcher AI can answer through Claude Code or Codex, no API key",
+          "go": "panel launcher open ?"
         },
         {
           "type": "config",
@@ -1500,7 +1623,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Plugin list pages show tall rows, tags, previews and QML rows"
+          "text": "Plugin list pages show tall rows, tags, previews and QML rows",
+          "go": "panel settings open launcher"
         }
       ]
     },
@@ -1538,7 +1662,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Plugin rows can be taller, show a preview and draw their own QML"
+          "text": "Plugin rows can be taller, show a preview and draw their own QML",
+          "go": "panel settings open launcher"
         }
       ]
     },
@@ -1549,7 +1674,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Desktop widgets show the time, month, music, weather, load and timers"
+          "text": "Desktop widgets show the time, month, music, weather, load and timers",
+          "go": "panel settings open widgets"
         },
         {
           "type": "ui",
@@ -1581,7 +1707,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "banditshell plugin new, dev and install make and share plugins"
+          "text": "banditshell plugin new, dev and install make and share plugins",
+          "go": "panel settings open launcher"
         },
         {
           "type": "ui",
@@ -1597,7 +1724,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Launcher plugins can open detail, list and form pages"
+          "text": "Launcher plugins can open detail, list and form pages",
+          "go": "panel settings open launcher"
         }
       ]
     },
@@ -1608,12 +1736,14 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Plugins in any language add their own results to the launcher"
+          "text": "Plugins in any language add their own results to the launcher",
+          "go": "panel settings open launcher"
         },
         {
           "type": "features",
           "severity": "minor",
-          "text": "Settings, Launcher lists your plugins with a switch and their settings"
+          "text": "Settings, Launcher lists your plugins with a switch and their settings",
+          "go": "panel settings open launcher"
         }
       ]
     },
@@ -1707,7 +1837,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Tools can add their own launcher rows with banditshell launcher add"
+          "text": "Tools can add their own launcher rows with banditshell launcher add",
+          "go": "panel launcher open"
         }
       ]
     },
@@ -1756,7 +1887,8 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "The docs now describe launcher plugins and their JSON protocol"
+          "text": "The docs now describe launcher plugins and their JSON protocol",
+          "go": "panel settings open launcher"
         }
       ]
     },

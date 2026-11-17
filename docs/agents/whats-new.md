@@ -54,6 +54,30 @@ Each change carries:
 | `type`    | One of: `issues` (a tracked issue was fixed), `bugs` (something broken was fixed), `features` (something new it can do), `ui` (something looks or moves differently), `config` (config.json keys or files the shell writes changed). |
 | `severity`| `major` or `minor`.                                                                                     |
 | `text`    | The bullet the recipient reads, 70 characters at most. See Short, always.                               |
+| `go`      | The destination, a place in the shell where the reader can try the change. Required on every `features` bullet; see Destinations. |
+
+## Destinations
+
+Set by the owner on 2026-11-06: "I can just, oh, that sounds cool, click, and then I'm instantly taken
+to where I can try it out." Every `features` bullet names where its feature lives, and the log shows a
+Take me there button on it that opens that place.
+
+`go` is a `banditshell panel <name> open [argument]` command written without the program name. It
+reuses the verbs the shell already answers, so nothing new has to be built per feature:
+
+| `go`                                  | Opens                                           |
+| ------------------------------------- | ----------------------------------------------- |
+| `panel settings open launcher`        | a Settings page, by page id                     |
+| `panel settings open firstDay`        | the page holding one row, by that row's key     |
+| `panel launcher open files`           | the launcher with a query typed in              |
+| `panel clipboard open`                | a panel: launcher, clipboard, media, calculator, files, notifications, hotkeys and the others in `banditshell panel` |
+| `panel battery open`                  | a sidebar menu: audio, network, bluetooth, vpn, awake, battery, layout, brightness, calendar, clock, update |
+
+Pick the place where the reader first meets the feature, not where it is configured when those differ. A
+bullet about a menu opens that menu. A bullet about a shortcut inside a panel opens the panel. The shell
+runs only `panel ... open`; anything else in `go` is ignored, and `tests/whatsnew.test.js` fails a
+`features` bullet with no destination, or one that names a panel, menu or Settings page that does not
+exist. Other types (`ui`, `bugs`, `config`, `issues`) may carry a `go` too when there is a place to look.
 
 ## Impact
 
@@ -123,6 +147,10 @@ notes without anything else to do. Agents never run `dev release` without `--dry
 `docs/architecture/updates.md` has the whole loop and the channels.
 
 ## The card
+
+The update menu has an Open the full log button. It opens `modules/menu/WhatsNewLog.qml`, a large card in
+the middle of the screen with every entry newest first. It stays until X or Esc closes it, and a Take me
+there press closes it too.
 
 `services/WhatsNew.qml` reads this file; entries newer than the marker
 (`whats-new-seen` in the shell's state dir; older copies kept `updates.seen` in config.json, which is copied over once and then left alone) accumulate and surface in the
