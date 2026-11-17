@@ -19,6 +19,7 @@ Column {
     readonly property var card: root.cardKind === "incoming" ? root.incoming : root.cardKind === "running" ? Update.notes : WhatsNew.pending
 
     property bool declineConfirm: false
+    property bool gapsDeclineConfirm: false
     property bool goBackConfirm: false
     property bool reinstallConfirm: false
     property bool reportOpen: false
@@ -61,7 +62,9 @@ Column {
 
     readonly property bool wentBack: Update.wentBackByHand && Update.resultPending
 
-    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, root.listed.length > 0 && root.unreadCount > 0 ? titleRow.implicitWidth + Appearance.padding.normal + markRead.implicitWidth : 0, goBackOffer.implicitWidth, logButton.implicitWidth, goBackRow.implicitWidth, Update.diverged ? pullRow.fullWidth : 0, reinstallRow.implicitWidth, reportRow.implicitWidth)
+    readonly property bool gapsShown: (ScrollingGaps.stale || ScrollingGaps.failure !== "") && !root.asking
+
+    readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, gapsOfferRow.implicitWidth, gapsConfirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, root.listed.length > 0 && root.unreadCount > 0 ? titleRow.implicitWidth + Appearance.padding.normal + markRead.implicitWidth : 0, goBackOffer.implicitWidth, logButton.implicitWidth, goBackRow.implicitWidth, Update.diverged ? pullRow.fullWidth : 0, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
     onShowingChanged: if (root.showing) {
         root.settled = true;
@@ -70,6 +73,20 @@ Column {
         root.reinstallConfirm = false;
         root.reportOpen = false;
         root.reportHanded = false;
+        root.gapsDeclineConfirm = false;
+        ScrollingGaps.dismiss();
+    }
+
+    Connections {
+        target: ScrollingGaps
+
+        function onStaleChanged(): void {
+            root.gapsDeclineConfirm = false;
+        }
+
+        function onRefusalChanged(): void {
+            root.gapsDeclineConfirm = false;
+        }
     }
 
     onReportAskingChanged: if (root.reportAsking) {
@@ -182,6 +199,65 @@ Column {
             text: "The report opens in a terminal. Nothing is sent until you answer y there."
             color: Appearance.colour.textFaint
             wrapMode: Text.WordWrap
+        }
+    }
+
+    Separator {
+        width: parent.width
+        visible: root.gapsShown
+    }
+
+    Column {
+        width: parent.width
+        visible: root.gapsShown
+        spacing: Appearance.padding.small
+
+        InkText {
+            width: parent.width
+            alignInk: true
+            text: ScrollingGaps.failure ? `Could not even out the gaps: ${ScrollingGaps.failure}` : ScrollingGaps.refusal ? `${ScrollingGaps.summary}. The shell can't change them: ${ScrollingGaps.refusal}` : ScrollingGaps.summary
+            color: ScrollingGaps.failure ? Appearance.colour.updateFailed : Appearance.colour.accent
+            wrapMode: Text.WordWrap
+        }
+
+        ButtonPair {
+            id: gapsOfferRow
+
+            rest: "ring"
+            visible: ScrollingGaps.stale && !root.gapsDeclineConfirm
+            actions: ScrollingGaps.refusal ? [{ text: "Leave it" }] : [{ text: ScrollingGaps.fixing ? "Fixing..." : "Fix it" }, { text: "Leave it" }]
+
+            onTriggered: index => {
+                if (ScrollingGaps.refusal || index === 1)
+                    root.gapsDeclineConfirm = true;
+                else
+                    ScrollingGaps.fix();
+            }
+        }
+
+        InkText {
+            width: parent.width
+            visible: ScrollingGaps.stale && root.gapsDeclineConfirm
+            alignInk: true
+            text: "Leave the gaps as they are? This offer will not come back."
+            color: Appearance.colour.updateFailed
+            wrapMode: Text.WordWrap
+        }
+
+        ButtonPair {
+            id: gapsConfirmRow
+
+            rest: "ring"
+            visible: ScrollingGaps.stale && root.gapsDeclineConfirm
+            actions: ScrollingGaps.refusal ? [{ text: "Leave it" }, { text: "Back" }] : [{ text: "Fix it" }, { text: "Leave it" }]
+
+            onTriggered: index => {
+                root.gapsDeclineConfirm = false;
+                if (ScrollingGaps.refusal ? index === 0 : index === 1)
+                    ScrollingGaps.decline();
+                else if (!ScrollingGaps.refusal)
+                    ScrollingGaps.fix();
+            }
         }
     }
 

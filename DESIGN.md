@@ -2203,6 +2203,22 @@ look.lua's gaps and rounding and the chrome still down, because the flag was onl
 chrome's and the numbers were never the shell's to remember. `screen border` still reads the
 compositor live, so the two halves can be compared when they disagree.
 
+**ONE ASKED-FOR EXCEPTION, 2026-11-12: uneven scrolling gaps.** Hyprland 0.57.0 (hyprwm/Hyprland#16581)
+puts `gaps_in` outside the first and last column of the scrolling layout too, so an even
+`gaps_out` leaves windows further from the frame on the scroll axis than on the other one.
+`services/ScrollingGaps.qml` reads the live layout, direction, gaps and version and works out
+how far windows sit from the frame on each side. While those distances differ and `gaps_out` is
+either even or the exact table the shell last wrote, the sidebar's update icon lights up and its
+menu names the distances and offers to fix them. The fix is the user's click, never automatic:
+`HyprConfig.setOption` writes `gaps_out` as a four-sided table with `gaps_in` taken off the
+scroll axis, verified and reloaded like any other option write, and `compositor.scrollingGapsFix`
+remembers that table and the even value it stands for. Change the direction, `gaps_in` or the
+layout and the check runs again from that even value; on a layout that adds nothing the fix
+writes the plain number back. A table the user wrote by hand is theirs and never flagged. A
+`gaps_out` the writer can't own (computed, conditional, a `.conf` config) says why in the title
+and gets no button. "Leave it" asks once more, then sets `compositor.scrollingGapsDeclined` for
+good and the check stops reading.
+
 **BUT THE TOGGLE'S OWN HALF CANNOT RUN IN THE SHELL.** A toggle writes the flag, the write
 hot-reloads the shell, and the teardown eats that generation's in-flight eval - measured as
 chrome down with the windows still rounded, which is exactly what a bare mode must not be.

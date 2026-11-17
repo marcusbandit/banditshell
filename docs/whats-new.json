@@ -1,6 +1,18 @@
 {
   "entries": [
     {
+      "id": "2026-11-17-scrolling-gaps",
+      "date": "2026-11-17",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The update menu offers to even out uneven window gaps on Hyprland",
+          "go": "panel update open"
+        }
+      ]
+    },
+    {
       "id": "2026-11-17-whats-new-log",
       "date": "2026-11-17",
       "changes": [

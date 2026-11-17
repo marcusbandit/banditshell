@@ -144,7 +144,7 @@ Item {
                 id: update
 
                 readonly property string shows: SettingsState.v("sbUpdate")
-                readonly property bool pending: Update.state !== Update.idle || CliMigration.stale
+                readonly property bool pending: Update.state !== Update.idle || CliMigration.stale || ScrollingGaps.stale
                 readonly property var look: Update.state === Update.available ? ["system_update_alt", Appearance.colour.updateAvailable, 20] : Update.busy ? ["cloud_download", Appearance.colour.updateAvailable, 20] : Update.state === Update.updated ? ["download_done", Appearance.colour.updateReady, 20] : ["sync", Appearance.colour.textDim, 16]
 
                 width: root.width

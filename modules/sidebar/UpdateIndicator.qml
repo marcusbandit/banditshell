@@ -12,7 +12,7 @@ Item {
 
     readonly property bool busy: Update.busy
 
-    readonly property bool stale: CliMigration.stale
+    readonly property bool stale: CliMigration.stale || ScrollingGaps.stale
 
     readonly property bool quiet: root.state === Update.idle && !root.stale
 
