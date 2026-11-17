@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "stream-follow.js" as StreamFollow
 
 Singleton {
     id: root
@@ -46,12 +47,16 @@ Singleton {
 
     readonly property string flagPath: `${Quickshell.env("XDG_STATE_HOME") || `${Quickshell.env("HOME")}/.local/state`}/hypr/streamer`
 
-    function follow(streaming: bool): void {
+    property bool flagSeen: false
+
+    function follow(event: string): void {
         if (!Config.writable)
             return;
-        if (streaming && !root.enabled && root.screen !== "")
+        const next = StreamFollow.step({ seen: root.flagSeen }, event, root.enabled, root.screen);
+        root.flagSeen = next.seen;
+        if (next.action === "on")
             root.setOn(root.screen);
-        else if (!streaming && root.enabled)
+        else if (next.action === "off")
             root.setOff();
     }
 
@@ -61,8 +66,8 @@ Singleton {
         path: root.flagPath
         printErrors: false
 
-        onLoaded: root.follow(true)
-        onLoadFailed: root.follow(false)
+        onLoaded: root.follow("loaded")
+        onLoadFailed: root.follow("missing")
     }
 
     Connections {

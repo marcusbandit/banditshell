@@ -104,6 +104,24 @@ function role(kind) {
     return "";
 }
 
+const REFUSED = {
+    StartStream: "Could not go live",
+    StopStream: "Could not end the stream",
+    StartRecord: "Could not start recording",
+    StopRecord: "Could not stop recording",
+    SetCurrentProgramScene: "Could not switch scene",
+    SetSceneItemEnabled: "Could not show or hide that source",
+    SetInputMute: "Could not change the mute"
+};
+
+function refusal(type, status) {
+    const label = REFUSED[type];
+    if (!label)
+        return "";
+    const reason = String(status?.comment ?? "").trim().replace(/[.\s]+$/, "");
+    return reason !== "" ? `${label}: ${reason}` : `${label}, OBS refused (code ${status?.code ?? "unknown"})`;
+}
+
 function sceneNames(scenes) {
     return (scenes ?? []).slice().sort((a, b) => b.sceneIndex - a.sceneIndex).map(s => s.sceneName);
 }
