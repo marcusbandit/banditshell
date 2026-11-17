@@ -55,7 +55,9 @@ Singleton {
 
                 pushBorders: true,
 
-                scrollingGapsDeclined: false
+                scrollingGapsDeclined: false,
+
+                scrollingGapsFix: {}
             },
 
             rounding: {

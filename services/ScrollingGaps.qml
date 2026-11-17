@@ -13,30 +13,47 @@ Singleton {
     property var found: null
 
     readonly property bool declined: Config.values.compositor.scrollingGapsDeclined === true
+    readonly property var written: Config.values.compositor.scrollingGapsFix
     readonly property bool uneven: root.found !== null
     readonly property bool stale: Config.writable && !root.declined && root.uneven
     readonly property string summary: Gaps.describe(root.found)
     readonly property string refusal: root.uneven && HyprConfig.scanned ? HyprConfig.optionRefusal("general:gaps_out", "") : ""
 
     property bool fixing: false
-    property string lastResult: ""
+    property var fixed: null
+    property string failure: ""
+    property bool again: false
 
     function refresh(): void {
-        if (!Compositor.isHyprland)
+        if (!Compositor.isHyprland || root.declined)
             return;
-        if (root.version === null)
+        if (versionReader.running || optionReader.running)
+            root.again = true;
+        else if (root.version === null)
             versionReader.running = true;
         else
             optionReader.running = true;
+    }
+
+    function settled(): void {
+        if (!root.again)
+            return;
+        root.again = false;
+        root.refresh();
     }
 
     function fix(): void {
         if (!root.found || root.fixing)
             return;
         root.fixing = true;
-        root.lastResult = "";
+        root.failure = "";
+        root.fixed = root.found;
         if (!HyprConfig.setOption("general:gaps_out", root.found.want, ""))
             root.fixing = false;
+    }
+
+    function dismiss(): void {
+        root.failure = "";
     }
 
     function decline(): void {
@@ -44,16 +61,24 @@ Singleton {
             Config.set("compositor.scrollingGapsDeclined", true);
     }
 
+    onDeclinedChanged: if (!root.declined)
+        root.refresh()
+
     Process {
         id: versionReader
 
         command: ["hyprctl", "-j", "version"]
 
         stdout: StdioCollector {
-            onStreamFinished: {
-                root.version = Gaps.readVersion(text);
-                if (root.version)
-                    optionReader.running = true;
+            onStreamFinished: root.version = Gaps.readVersion(text)
+        }
+
+        onExited: {
+            if (root.version) {
+                root.again = false;
+                optionReader.running = true;
+            } else {
+                root.settled();
             }
         }
     }
@@ -64,10 +89,18 @@ Singleton {
         command: ["hyprctl", "-j", "--batch", Gaps.batch()]
 
         stdout: StdioCollector {
-            onStreamFinished: root.found = Gaps.check(Object.assign({
-                    version: root.version
-                }, Gaps.readOptions(text)))
+            onStreamFinished: {
+                const next = Gaps.check(Object.assign({
+                        version: root.version,
+                        fix: root.written
+                    }, Gaps.readOptions(text)));
+                if (JSON.stringify(next) !== JSON.stringify(root.found))
+                    root.failure = "";
+                root.found = next;
+            }
         }
+
+        onExited: root.settled()
     }
 
     Component.onCompleted: root.refresh()
@@ -87,7 +120,10 @@ Singleton {
             if (path !== "general:gaps_out" || !root.fixing)
                 return;
             root.fixing = false;
-            root.lastResult = ok ? "Fixed. The gaps are even now." : `Could not fix it: ${said}`;
+            if (ok)
+                Config.set("compositor.scrollingGapsFix", Gaps.remembered(root.fixed));
+            else
+                root.failure = said;
             root.refresh();
         }
     }

@@ -62,6 +62,8 @@ Column {
 
     readonly property bool wentBack: Update.wentBackByHand && Update.resultPending
 
+    readonly property bool gapsShown: (ScrollingGaps.stale || ScrollingGaps.failure !== "") && !root.asking
+
     readonly property real menuWidthHint: Math.max(refreshRow.implicitWidth, updateRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth, gapsOfferRow.implicitWidth, gapsConfirmRow.implicitWidth, actionRow.implicitWidth, reportLink.implicitWidth, root.listed.length > 0 && root.unreadCount > 0 ? titleRow.implicitWidth + Appearance.padding.normal + markRead.implicitWidth : 0, goBackOffer.implicitWidth, goBackRow.implicitWidth, Update.diverged ? pullRow.fullWidth : 0, reinstallRow.implicitWidth, reportRow.implicitWidth)
 
     onShowingChanged: if (root.showing) {
@@ -72,6 +74,19 @@ Column {
         root.reportOpen = false;
         root.reportHanded = false;
         root.gapsDeclineConfirm = false;
+        ScrollingGaps.dismiss();
+    }
+
+    Connections {
+        target: ScrollingGaps
+
+        function onStaleChanged(): void {
+            root.gapsDeclineConfirm = false;
+        }
+
+        function onRefusalChanged(): void {
+            root.gapsDeclineConfirm = false;
+        }
     }
 
     onReportAskingChanged: if (root.reportAsking) {
@@ -189,28 +204,19 @@ Column {
 
     Separator {
         width: parent.width
-        visible: ScrollingGaps.stale || ScrollingGaps.lastResult !== ""
+        visible: root.gapsShown
     }
 
     Column {
         width: parent.width
-        visible: ScrollingGaps.stale || ScrollingGaps.lastResult !== ""
+        visible: root.gapsShown
         spacing: Appearance.padding.small
 
         InkText {
             width: parent.width
-            visible: ScrollingGaps.stale
             alignInk: true
-            text: "Your window gaps are uneven"
-            color: Appearance.colour.accent
-            wrapMode: Text.WordWrap
-        }
-
-        StyledText {
-            width: parent.width
-            visible: ScrollingGaps.stale
-            text: ScrollingGaps.refusal ? `${ScrollingGaps.summary} The shell can't change it for you: ${ScrollingGaps.refusal}` : ScrollingGaps.summary
-            color: Appearance.colour.textDim
+            text: ScrollingGaps.failure ? `Could not even out the gaps: ${ScrollingGaps.failure}` : ScrollingGaps.refusal ? `${ScrollingGaps.summary}. The shell can't change them: ${ScrollingGaps.refusal}` : ScrollingGaps.summary
+            color: ScrollingGaps.failure ? Appearance.colour.updateFailed : Appearance.colour.accent
             wrapMode: Text.WordWrap
         }
 
@@ -252,14 +258,6 @@ Column {
                 else if (!ScrollingGaps.refusal)
                     ScrollingGaps.fix();
             }
-        }
-
-        StyledText {
-            width: parent.width
-            visible: ScrollingGaps.lastResult !== ""
-            text: ScrollingGaps.lastResult
-            color: Appearance.colour.textFaint
-            wrapMode: Text.WordWrap
         }
     }
 

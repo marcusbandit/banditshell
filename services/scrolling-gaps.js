@@ -60,33 +60,61 @@ function atLeast(version, floor) {
     return true;
 }
 
-function check(state) {
-    const version = state?.version;
-    const inner = state?.gapsIn;
-    const outer = state?.gapsOut;
-    if (!version || !atLeast(version, FIRST_UNEVEN) || state.layout !== "scrolling" || !inner || !outer)
-        return null;
-    const even = outer.top === outer.right && outer.right === outer.bottom && outer.bottom === outer.left;
-    if (!even)
-        return null;
+const SIDES = ["top", "right", "bottom", "left"];
+
+function even(gaps) {
+    return SIDES.every(side => gaps[side] === gaps.top);
+}
+
+function same(a, b) {
+    return !!a && !!b && SIDES.every(side => a[side] === b[side]);
+}
+
+function additions(state) {
+    const add = { top: 0, right: 0, bottom: 0, left: 0 };
+    if (state.layout !== "scrolling" || !atLeast(state.version, FIRST_UNEVEN))
+        return add;
     const vertical = state.direction === "up" || state.direction === "down";
-    const ends = vertical ? ["top", "bottom"] : ["left", "right"];
-    if (ends.every(side => inner[side] <= 0) || ends.some(side => inner[side] > outer[side]))
+    for (const side of vertical ? ["top", "bottom"] : ["left", "right"])
+        add[side] = state.gapsIn[side];
+    return add;
+}
+
+function check(state) {
+    const outer = state?.gapsOut;
+    if (!state?.version || !state.gapsIn || !outer)
         return null;
-    const want = Object.assign({}, outer);
-    for (const side of ends)
-        want[side] = outer[side] - inner[side];
+    const ours = same(outer, state.fix) && Number.isFinite(state.fix.even);
+    if (!even(outer) && !ours)
+        return null;
+    const add = additions(state);
+    const edges = {};
+    for (const side of SIDES)
+        edges[side] = outer[side] + add[side];
+    if (even(edges))
+        return null;
+    const intended = ours ? state.fix.even : outer.top;
+    const sides = {};
+    for (const side of SIDES)
+        sides[side] = intended - add[side];
+    if (SIDES.some(side => sides[side] < 0))
+        return null;
     return {
-        axis: vertical ? "vertical" : "horizontal",
-        edge: outer.top,
-        extra: Math.max(...ends.map(side => inner[side])),
-        want
+        edges,
+        intended,
+        want: SIDES.some(side => add[side] > 0) ? sides : intended
     };
+}
+
+function remembered(found) {
+    return found && typeof found.want === "object" ? Object.assign({ even: found.intended }, found.want) : {};
 }
 
 function describe(found) {
     if (!found)
         return "";
-    const ends = found.axis === "vertical" ? ["top and bottom", "sides"] : ["sides", "top and bottom"];
-    return `Windows sit ${found.edge + found.extra}px from the frame at the ${ends[0]} and ${found.edge}px at the ${ends[1]}, because Hyprland's scrolling layout adds gaps_in there.`;
+    const e = found.edges;
+    if (e.left === e.right && e.top === e.bottom)
+        return `Window gaps: ${e.left}px at the sides, ${e.top}px top and bottom`;
+    return `Window gaps: ${e.top}px top, ${e.right}px right, ${e.bottom}px bottom, ${e.left}px left`;
 }
