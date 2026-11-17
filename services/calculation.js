@@ -10,11 +10,254 @@ function looksLikeCalculation(text) {
         return t.length > 1;
     if (/[+\-*/×÷^]$/.test(t) || !/\d/.test(t))
         return false;
-    return /^[\d(.\-+√]/.test(t) || /^[a-z]\w*\s*\(/i.test(t) || /[+\-*/×÷^%!]/.test(t);
+    return /^[\d(.\-+√]/.test(t) || /^\[[^\]]*[,;\s][^\]]*\]/.test(t) || /^[a-z]\w*\s*\(/i.test(t) || /[+\-*/×÷^%!]/.test(t);
+}
+
+var CELL = "[+\\-−]?(?:\\d+\\.?\\d*|\\.\\d+)";
+var NUMBER = new RegExp(`^${CELL}$`);
+
+function bareRows(expr) {
+    if (!/;/.test(expr))
+        return false;
+    const rows = expr.split(";").map(row => row.trim().split(/\s*,\s*|\s+/));
+    return rows.every(row => row.length === rows[0].length && row.every(cell => NUMBER.test(cell)));
+}
+
+var ROW = `${CELL}(?:(?:\\s*,\\s*|\\s+)${CELL})*`;
+var BARE_MATRIX = new RegExp(`(^|[^\\w.])(${ROW}(?:\\s*;\\s*${ROW})+)(?![\\w.])`, "g");
+
+function bracketRows(expr) {
+    if (/=/.test(expr))
+        return expr;
+    return expr.split(/(\[[^\]]*\])/).map(chunk => chunk[0] === "[" ? chunk : chunk.replace(BARE_MATRIX, (whole, before, rows) => bareRows(rows) ? `${before}[${rows.trim()}]` : whole)).join("");
+}
+
+function splitTop(text, at) {
+    const out = [];
+    let depth = 0;
+    let piece = "";
+    for (const c of text) {
+        depth += c === "(" ? 1 : c === ")" ? -1 : 0;
+        if (depth === 0 && c === at) {
+            out.push(piece);
+            piece = "";
+            continue;
+        }
+        piece += c;
+    }
+    out.push(piece);
+    return out;
+}
+
+function mathSigns(text) {
+    return text.replace(/\*/g, "×").replace(/\//g, "÷").replace(/-/g, "−");
+}
+
+function typedRows(inner) {
+    const rows = splitTop(inner, ";").map(row => {
+        const t = row.trim();
+        const commas = splitTop(t, ",");
+        const cells = commas.length > 1 ? commas : t.split(/\s+/);
+        return cells.map(cell => mathSigns(cell.trim()));
+    });
+    const across = rows[0].length;
+    return rows.every(row => row.length === across && row.every(cell => cell !== "")) ? rows : null;
+}
+
+var OPERATORS = {
+    "*": "×",
+    "×": "×",
+    "/": "÷",
+    "÷": "÷",
+    "+": "+",
+    "-": "−",
+    "−": "−"
+};
+
+function readFormula(text) {
+    const whole = bracketRows(String(text || "").trim().replace(/^=\s*/, "")).replace(/\*\*/g, "^");
+    const cut = whole.search(/\s(?:to|->|→)\s/i);
+    const t = cut < 0 ? whole : whole.slice(0, cut);
+    const parts = [];
+    let run = "";
+    const flush = () => {
+        const words = mathSigns(run.trim());
+        if (words)
+            parts.push({
+                kind: "text",
+                text: words
+            });
+        run = "";
+    };
+    let i = 0;
+    while (i < t.length) {
+        const c = t[i];
+        if (c === "[") {
+            const end = t.indexOf("]", i);
+            const rows = end < 0 || t.slice(i + 1, end).indexOf("[") >= 0 ? null : typedRows(t.slice(i + 1, end));
+            if (!rows)
+                return null;
+            flush();
+            parts.push({
+                kind: "matrix",
+                rows: rows
+            });
+            i = end + 1;
+            continue;
+        }
+        if (c === "]")
+            return null;
+        if (c === "^") {
+            const m = /^\^\s*(?:\(([^()]*)\)|([−+-]?[\w.]+))/.exec(t.slice(i));
+            flush();
+            if (!m || !parts.length || parts[parts.length - 1].kind === "power")
+                return null;
+            parts.push({
+                kind: "power",
+                text: mathSigns((m[1] ?? m[2]).trim())
+            });
+            i += m[0].length;
+            continue;
+        }
+        const last = parts[parts.length - 1];
+        const before = run.trim() ? run.trim().slice(-1) : !last || last.kind === "operator" ? "" : "]";
+        const sign = c === "+" || c === "-" || c === "−";
+        const glued = /\s$/.test(run) && !/\s/.test(t[i + 1] ?? " ");
+        if (OPERATORS[c] && before && (!sign || /[\w)\]]/.test(before) && !glued && !/\d[eE]$/.test(run.trim()))) {
+            flush();
+            parts.push({
+                kind: "operator",
+                text: OPERATORS[c]
+            });
+            i++;
+            continue;
+        }
+        run += c;
+        i++;
+    }
+    flush();
+    for (let k = 1; k < parts.length - 1; k++) {
+        const open = parts[k - 1];
+        const close = parts[k + 1];
+        const raised = close.text === ")" && parts[k + 2]?.kind === "power";
+        if (parts[k].kind === "matrix" && open.kind === "text" && open.text.endsWith("(") && close.kind === "text" && close.text.startsWith(")") && !raised) {
+            open.text = open.text.slice(0, -1).trim();
+            close.text = close.text.slice(1).trim();
+        }
+    }
+    if (cut >= 0)
+        parts.push({
+            kind: "text",
+            text: whole.slice(cut).trim()
+        });
+    const kept = parts.filter(part => part.kind !== "text" || part.text);
+    return kept.some(part => part.kind === "matrix") ? kept : null;
+}
+
+var TEMPERATURE_UNIT = "(°\\s*[cfk]|deg\\s*[cfk]|℃|℉|[cfk]|celsius|fahrenheit|kelvin)";
+var TEMPERATURE = new RegExp(`^([−+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:e[−+-]?\\d+)?)\\s*${TEMPERATURE_UNIT}\\s+(to|in|->|→)\\s+${TEMPERATURE_UNIT}$`, "i");
+
+function temperatureUnit(word) {
+    const w = word.replace(/[°\s]|deg/gi, "").replace("℃", "c").replace("℉", "f").toLowerCase();
+    return w[0] === "c" ? "°C" : w[0] === "f" ? "°F" : "K";
+}
+
+function temperatures(expr) {
+    const m = expr.match(TEMPERATURE);
+    if (!m)
+        return expr;
+    return `${m[1]} ${temperatureUnit(m[2])} ${m[3].toLowerCase() === "in" ? "to" : m[3]} ${temperatureUnit(m[4])}`;
 }
 
 function qalcExpression(text) {
-    return String(text || "").trim().replace(/^=\s*/, "").replace(/(\s)(to|->|→)\s+([^\s\-+].*)$/i, (whole, gap, word, target) => CONVERSION_WORDS.test(target) || /^\d/.test(target) ? whole : `${gap}${word} -${target}`);
+    return bracketRows(temperatures(String(text || "").trim().replace(/^=\s*/, ""))).replace(/(\s)(to|->|→)\s+([^\s\-+].*)$/i, (whole, gap, word, target) => CONVERSION_WORDS.test(target) || /^\d/.test(target) ? whole : `${gap}${word} -${target}`);
+}
+
+function outsideBrackets(expr) {
+    let depth = 0;
+    let out = "";
+    for (const c of expr) {
+        depth += c === "[" ? 1 : c === "]" ? -1 : 0;
+        if (depth === 0 && c !== "]")
+            out += c;
+    }
+    return out;
+}
+
+function unwrap(cell) {
+    if (/^(["']).*\1$/.test(cell))
+        return cell.slice(1, -1);
+    if (!/^\(.*\)$/.test(cell))
+        return cell;
+    let depth = 0;
+    for (let i = 0; i < cell.length - 1; i++) {
+        depth += cell[i] === "(" ? 1 : cell[i] === ")" ? -1 : 0;
+        if (depth === 0)
+            return cell;
+    }
+    return cell.slice(1, -1);
+}
+
+function readMatrix(text) {
+    const t = String(text || "").trim();
+    if (!/^\[.*\]$/.test(t))
+        return null;
+    const rows = [[]];
+    let depth = 0;
+    let quote = "";
+    let cell = "";
+    const close = () => {
+        if (cell)
+            rows[rows.length - 1].push(unwrap(cell));
+        cell = "";
+    };
+    for (const c of t.slice(1, -1)) {
+        if (quote) {
+            cell += c;
+            if (c === quote)
+                quote = "";
+            continue;
+        }
+        if (c === "[" || c === "]")
+            return null;
+        if (c === "\"" || c === "'")
+            quote = c;
+        depth += c === "(" ? 1 : c === ")" ? -1 : 0;
+        if (depth === 0 && (c === ";" || /\s/.test(c))) {
+            close();
+            if (c === ";")
+                rows.push([]);
+            continue;
+        }
+        cell += c;
+    }
+    close();
+    const across = rows[0].length;
+    return across > 0 && depth === 0 && !quote && rows.every(row => row.length === across) ? rows : null;
+}
+
+var SUPERSCRIPT = {
+    "0": "⁰",
+    "1": "¹",
+    "2": "²",
+    "3": "³",
+    "4": "⁴",
+    "5": "⁵",
+    "6": "⁶",
+    "7": "⁷",
+    "8": "⁸",
+    "9": "⁹",
+    "−": "⁻",
+    "-": "⁻",
+    "+": ""
+};
+
+var DIGIT_BASES = /\b(base|bases|bijective|duo|duodecimal|sexa|sexagesimal|roman)\b/i;
+
+function readable(text, query) {
+    if (DIGIT_BASES.test(query || ""))
+        return String(text || "");
+    return String(text || "").replace(/(^|[^\w#.])(\d+(?:\.\d+)?)[eE]([−+-]?\d+)(?=$|[^\w.]|i(?![\w.]))/g, (whole, before, mantissa, power) => `${before}${mantissa === "1" ? "" : `${mantissa} × `}10${power.split("").map(c => SUPERSCRIPT[c]).join("")}`);
 }
 
 function squeeze(text) {
@@ -23,10 +266,10 @@ function squeeze(text) {
 
 function readQalc(output, text) {
     const lines = String(output || "").split("\n").map(l => l.trim()).filter(l => l && !/^(error|warning)\b/i.test(l));
-    if (lines.length !== 1)
+    if (lines.length !== 1 || /;/.test(outsideBrackets(qalcExpression(text))))
         return "";
     const out = lines[0].replace(/^"(.*)"$/, "$1");
-    if (/[·×]|[A-Za-z]\(/.test(out) || squeeze(out) === squeeze(qalcExpression(text)) || squeeze(out) === squeeze(text))
+    if (/[·×]|[A-Za-z]\(/.test(out) || !readMatrix(out) && (squeeze(out) === squeeze(qalcExpression(text)) || squeeze(out) === squeeze(text)))
         return "";
     return out;
 }

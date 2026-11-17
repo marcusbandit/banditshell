@@ -37,13 +37,14 @@ Singleton {
         onExited: code => root.notifier = code === 0
     }
 
-    function begin(phase: string, minutes: int, round: int, focusMinutes: int, breakMinutes: int): void {
+    function begin(phase: string, minutes: int, round: int, focusMinutes: int, breakMinutes: int, goal: string): void {
         const next = {
             timer: "",
             phase: phase,
             round: Math.max(0, round),
             focusMinutes: focusMinutes,
-            breakMinutes: breakMinutes
+            breakMinutes: breakMinutes,
+            goal: goal ?? ""
         };
         const length = Math.max(1, minutes);
         root.startedAt = Date.now();
@@ -60,10 +61,10 @@ Singleton {
     function start(ask: var): void {
         if (ask.phase === "break") {
             const longBreak = !!ask.long;
-            root.begin(longBreak ? "long" : "break", ask.minutes || (longBreak ? root.settings.longBreak : root.settings.breakMinutes), root.state?.round ?? 0, root.state?.focusMinutes ?? 0, root.state?.breakMinutes ?? 0);
+            root.begin(longBreak ? "long" : "break", ask.minutes || (longBreak ? root.settings.longBreak : root.settings.breakMinutes), root.state?.round ?? 0, root.state?.focusMinutes ?? 0, root.state?.breakMinutes ?? 0, root.state?.goal ?? "");
             return;
         }
-        root.begin("focus", ask.minutes || root.settings.focus, 1, ask.minutes, ask.breakMinutes);
+        root.begin("focus", ask.minutes || root.settings.focus, 1, ask.until ? 0 : ask.minutes, ask.breakMinutes, ask.goal ?? "");
     }
 
     function pause(): void {
@@ -75,7 +76,7 @@ Singleton {
         if (!root.state)
             return;
         const next = Logic.nextRound(root.state, root.settings);
-        root.begin(next.phase, next.minutes, next.round, root.state.focusMinutes, root.state.breakMinutes);
+        root.begin(next.phase, next.minutes, next.round, root.state.focusMinutes, root.state.breakMinutes, root.state.goal ?? "");
     }
 
     function stop(): void {
@@ -112,7 +113,7 @@ Singleton {
                     body: said.body,
                     kind: "alarm"
                 });
-            root.begin(next.phase, next.minutes, next.round, finished.focusMinutes, finished.breakMinutes);
+            root.begin(next.phase, next.minutes, next.round, finished.focusMinutes, finished.breakMinutes, finished.goal ?? "");
         }
 
         function onLoadedChanged(): void {

@@ -1,6 +1,9 @@
 module qs.modules.launcher
 AlphabetLauncher 1.0 AlphabetLauncher.qml
 AlphabetRow 1.0 AlphabetRow.qml
+AnswerCard 1.0 AnswerCard.qml
+AnswerFormula 1.0 AnswerFormula.qml
+AnswerMatrix 1.0 AnswerMatrix.qml
 AnswerRow 1.0 AnswerRow.qml
 ArgumentBox 1.0 ArgumentBox.qml
 AssistantCard 1.0 AssistantCard.qml

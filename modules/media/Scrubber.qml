@@ -4,11 +4,13 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import "scrubber-ticks.js" as Ticks
 
 Item {
     id: root
 
     property bool watched: true
+    property bool perPixel: false
 
     property color ink: Appearance.colour.text
 
@@ -23,7 +25,8 @@ Item {
     readonly property real centre: root.band / 2
 
     readonly property real travel: Math.max(1, width - root.stroke)
-    readonly property real pipX: root.shown * root.travel
+    readonly property real ratio: Screen.devicePixelRatio
+    readonly property real pipX: root.perPixel ? Ticks.pixelOf(root.shown, root.travel, root.ratio) : root.shown * root.travel
     readonly property real playedEnd: root.timed ? Math.max(0, root.pipX - root.gap) : width
 
     readonly property bool active: pointer.pressed || pointer.containsMouse
@@ -47,9 +50,22 @@ Item {
     implicitHeight: root.band + Appearance.padding.small + elapsed.implicitHeight
 
     FrameAnimation {
-        running: root.watched && root.visible && Media.playing && root.timed
+        running: !root.perPixel && root.watched && root.visible && Media.playing && root.timed
 
         onTriggered: root.live = Media.progressNow()
+    }
+
+    Timer {
+        id: stepper
+
+        interval: 1000
+        repeat: true
+        triggeredOnStart: true
+        running: root.perPixel && root.watched && root.visible && Media.playing && root.timed
+        onTriggered: {
+            root.catchUp();
+            stepper.interval = Ticks.nextTick(Media.now(), Media.length, Media.rate, root.travel * root.ratio);
+        }
     }
 
     function catchUp(): void {
@@ -67,8 +83,7 @@ Item {
         enabled: root.watched
 
         function onPositionChanged(): void {
-            if (!Media.playing)
-                root.live = Media.progress;
+            root.live = Media.progressNow();
         }
 
         function onTrackKeyChanged(): void {
@@ -262,6 +277,12 @@ Item {
             Media.seekTo(root.dragged * Media.length);
         }
 
-        onWheel: wheel => Media.seekBy(wheel.angleDelta.y / 120 * Config.values.media.wheelSeek)
+        onWheel: wheel => {
+            if (wheel.angleDelta.y === 0) {
+                wheel.accepted = false;
+                return;
+            }
+            Media.seekBy(wheel.angleDelta.y / 120 * Config.values.media.wheelSeek);
+        }
     }
 }

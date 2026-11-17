@@ -391,6 +391,13 @@ test.describe("zone conversion keeps am and pm on the time", () => {
         assert.deepStrictEqual(Search.zoneConvertAsk("3pm ist in cet"), { clock: { hour: 15, minute: 0 }, from: "ist", to: "cet" });
     });
 
+    test.it("reads here, local and my time as the clock on this machine", () => {
+        assert.deepStrictEqual(Search.zoneConvertAsk("12pm here in london"), { clock: { hour: 12, minute: 0 }, from: "", to: "london" });
+        assert.deepStrictEqual(Search.zoneConvertAsk("9:30 local time to tokyo"), { clock: { hour: 9, minute: 30 }, from: "", to: "tokyo" });
+        assert.deepStrictEqual(Search.zoneConvertAsk("3pm tokyo in my time"), { clock: { hour: 15, minute: 0 }, from: "tokyo", to: "" });
+        assert.strictEqual(Search.zoneConvertAsk("12pm here"), null);
+    });
+
     test.it("never takes am or pm for a place", () => {
         for (const t of ["3 pm", "3 am", "3 pm in", "10 pm time"])
             assert.strictEqual(Search.zoneConvertAsk(t), null, t);

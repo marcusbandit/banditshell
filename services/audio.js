@@ -30,3 +30,10 @@ function uniqueLabels(entries) {
     }
     return labels;
 }
+
+function isMeter(props) {
+    const p = props || {};
+    if (String(p["stream.monitor"] ?? "") === "true")
+        return true;
+    return String(p["application.name"] ?? "") === "Quickshell Peak Detect" || String(p["media.name"] ?? "") === "Peak detect";
+}

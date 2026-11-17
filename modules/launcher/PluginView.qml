@@ -185,17 +185,9 @@ Item {
     }
 
     function claimSheetKey(event: var): bool {
+        if (sheet.key(event))
+            return true;
         switch (event.key) {
-        case Qt.Key_Down:
-            sheet.move(1);
-            break;
-        case Qt.Key_Up:
-            sheet.move(-1);
-            break;
-        case Qt.Key_Return:
-        case Qt.Key_Enter:
-            sheet.activate(sheet.selected);
-            break;
         case Qt.Key_Shift:
         case Qt.Key_Control:
         case Qt.Key_Alt:

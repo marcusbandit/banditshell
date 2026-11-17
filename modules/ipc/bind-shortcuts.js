@@ -1,7 +1,7 @@
 .pragma library
 
 var VERBS = ["toggle", "open", "close"];
-var BARE = ["session", "clipboard", "media", "calculator", "quickcontrols"];
+var BARE = ["session", "clipboard", "media", "calculator", "quickcontrols", "mixer"];
 var SCREENED = ["keyboard", "notifications", "island", "hotkeys", "files", "wallpaper"];
 var MENUS = ["audio", "network", "bluetooth", "battery", "calendar", "clock", "update"];
 
@@ -49,7 +49,7 @@ function describe(shortcut) {
 
 function callsFor(shortcut) {
     if (shortcut === "panel.close")
-        return [["panels", "closeAll"], ["files", "close"], ["penmap", "cancel"]];
+        return [["panels", "closeAll"], ["files", "close"], ["mixer", "close"], ["penmap", "cancel"]];
     if (shortcut === "launcher")
         return [["launcher", "toggle"]];
     if (shortcut === "launcher.open")

@@ -116,7 +116,7 @@ end
 
 local VERBS = { toggle = true, open = true, close = true }
 local SERVED = {}
-for name in ("launcher session clipboard media calculator quickcontrols keyboard notifications island hotkeys files wallpaper audio network bluetooth battery calendar clock update"):gmatch("%S+") do
+for name in ("launcher session clipboard media calculator quickcontrols mixer keyboard notifications island hotkeys files wallpaper audio network bluetooth battery calendar clock update"):gmatch("%S+") do
     SERVED[name] = true
 end
 

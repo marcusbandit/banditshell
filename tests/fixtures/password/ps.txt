@@ -1,0 +1,27 @@
+      1       0  90000 /sbin/init
+   1200       1  90000 /usr/lib/systemd/systemd --user
+   4100    1200  80000 /usr/lib/gcr-ssh-agent --base-dir /run/user/1000/gcr
+   4101    4100  80000 /usr/bin/ssh-agent -D -a /run/user/1000/gcr/.ssh
+   4300    1200  70000 /usr/bin/gpg-agent --supervised
+   4310    4300      2 /usr/bin/pinentry-gnome3
+   3000    1200  60000 kitty
+   3001    3000  60000 /usr/bin/zsh
+   5000    3001     12 git push origin main
+   5001    5000     12 /usr/bin/ssh -o SendEnv=GIT_PROTOCOL git@github.com git-receive-pack 'you/project.git'
+   5090    3001    400 ssh -p 2222 -l admin build.example.com
+   5100    1200   3000 claude
+   5150    5100      5 /bin/zsh -c -l source /home/you/.claude/snap.sh && eval 'git pull --rebase'
+   5160    5150      5 git pull --rebase
+   5170    5160      5 git fetch --update-head-ok
+   5203    5170      4 /usr/bin/ssh -o SendEnv=GIT_PROTOCOL git@github.com git-upload-pack 'you/project.git'
+   5300    3001      3 git -C /home/you/notes commit -S -m wip
+   5401    5300      3 gpg --status-fd=2 -bsau ABCDEF0123456789
+   6000    1200   5000 tmux: server
+   6001    6000   5000 -zsh
+   6010    6001      2 git push origin main
+   6011    6010      2 /usr/bin/ssh -o SendEnv=GIT_PROTOCOL git@github.com git-receive-pack 'you/project.git'
+   6100    3001      2 git commit -m wip
+   6110    6100      2 /bin/sh .git/hooks/pre-commit
+   6120    6110      2 gpg -d secrets.gpg
+   6200    3001      2 git commit -S -m wip
+   6210    6200      2 ssh-keygen -Y sign -n git -f /home/you/.ssh/id_ed25519 /tmp/.git_signing_buffer

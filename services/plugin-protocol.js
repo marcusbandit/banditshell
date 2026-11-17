@@ -316,6 +316,16 @@ function statusLine(id, action) {
     return activateLine(0, id, action, "", "status");
 }
 
+function withoutCommands(plugin, id, off) {
+    var dropped = ((plugin && plugin.commands) || []).map(c => c.word).filter(w => (off || []).indexOf(`${id}:${w}`) >= 0);
+    if (!dropped.length)
+        return plugin;
+    return Object.assign({}, plugin, {
+        commands: plugin.commands.filter(c => dropped.indexOf(c.word) < 0),
+        prefix: plugin.prefix.filter(w => dropped.indexOf(w) < 0)
+    });
+}
+
 function commandOf(plugin, text) {
     var typed = text.replace(/^\s+/, "");
     var lower = typed.toLowerCase();

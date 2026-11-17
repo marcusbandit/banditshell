@@ -1,5 +1,6 @@
 import QtQuick
 import qs.services
+import "../search.js" as Search
 import "../../../services/pomodoro.js" as Logic
 
 QtObject {
@@ -9,7 +10,19 @@ QtObject {
 
     readonly property var kinds: ["pomodoro", "pomodorostart"]
 
-    readonly property var ask: Logic.pomodoroAsk(root.search.text)
+    readonly property var typedAsk: Logic.pomodoroAsk(root.search.text)
+
+    function resolved(typed: var): var {
+        if (!typed?.until)
+            return typed;
+        const clock = Search.clockOf(typed.until, false);
+        const minutes = clock ? Logic.minutesToClock(clock, Date.now()) : 0;
+        return minutes ? Object.assign({}, typed, {
+            minutes: minutes
+        }) : null;
+    }
+
+    readonly property var ask: root.resolved(root.typedAsk)
 
     readonly property bool intent: !!root.ask
 
@@ -46,10 +59,10 @@ QtObject {
         const minutes = ask.minutes || (ask.phase === "focus" ? root.settings.focus : ask.long ? root.settings.longBreak : root.settings.breakMinutes);
         const what = ask.phase === "focus" ? "Focus" : ask.long ? "Long break" : "Break";
         return {
-            key: `pomodorostart:${ask.long ? "long" : ask.phase}:${minutes}:0`,
+            key: `pomodorostart:${ask.long ? "long" : ask.phase}:${minutes}:0:${ask.goal ?? ""}`,
             kind: "pomodorostart",
             ask: ask,
-            label: `${what} for ${minutes} min`,
+            label: ask.goal ? `${what} for ${minutes} min: ${ask.goal}` : `${what} for ${minutes} min`,
             detail: `until ${TimeFormat.time(new Date(Date.now() + minutes * 60000), false)}`,
             icon: ask.phase === "focus" ? "timer_play" : "coffee",
             score: Infinity
@@ -101,8 +114,9 @@ QtObject {
             Pomodoro.pause();
             return;
         }
-        const ask = row.ask;
-        root.search.leave(() => Pomodoro.start(ask));
+        const ask = root.resolved(row.ask.until ? root.typedAsk : row.ask);
+        if (ask)
+            root.search.leave(() => Pomodoro.start(ask));
     }
 
     function actionsFor(row: var): var {

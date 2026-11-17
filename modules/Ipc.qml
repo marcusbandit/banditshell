@@ -9,8 +9,10 @@ import qs.modules.ipc
 import qs.modules.island
 import qs.modules.keyboard
 import qs.modules.launcher
+import qs.modules.launcher.snippets
 import qs.modules.media
 import qs.modules.menu
+import qs.modules.mixer
 import qs.modules.password
 import qs.modules.pen
 import qs.modules.picker
@@ -69,6 +71,9 @@ Scope {
     MenuIpc {
         id: menuIpc
     }
+    MixerIpc {
+        id: mixerIpc
+    }
     ModeIpc {}
     NotificationsIpc {
         id: notificationsIpc
@@ -87,6 +92,7 @@ Scope {
         id: sessionIpc
     }
     SettingsIpc {}
+    SnippetsIpc {}
     SidebarIpc {}
     StreamIpc {}
     TraceIpc {}
@@ -110,7 +116,8 @@ Scope {
             island: islandIpc,
             hotkeys: hotkeysIpc,
             wallpapers: wallpaperIpc.handler,
-            menu: menuIpc
+            menu: menuIpc,
+            mixer: mixerIpc
         };
         for (const call of BindShortcuts.callsFor(name))
             handlers[call[0]][call[1]](...call.slice(2));

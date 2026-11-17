@@ -5,9 +5,9 @@
   "owns": {
     "qml": ["modules/password"],
     "services": ["Keyring", "PasswordRequest"],
-    "js": ["services/keyring-windows.js"],
+    "js": ["services/keyring-windows.js", "services/password-asks.js"],
     "scripts": ["scripts/keyring-prompter.py", "scripts/keyring-waiter.sh", "scripts/polkit-takeover.sh"],
-    "tests": ["tests/fixtures/keyring", "tests/keyring-activation.test.js", "tests/keyring-prompter.test.js", "tests/keyring-windows.test.js", "tests/polkit-takeover.test.js"]
+    "tests": ["tests/fixtures/keyring", "tests/fixtures/password", "tests/password-asks.test.js", "tests/keyring-activation.test.js", "tests/keyring-prompter.test.js", "tests/keyring-windows.test.js", "tests/polkit-takeover.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor"],
@@ -15,7 +15,7 @@
   },
   "provides": {
     "singletons": [],
-    "ipc": ["keyring", "polkit"]
+    "ipc": ["keyring", "polkit", "password"]
   },
   "config": {
     "namespace": [],

@@ -113,7 +113,11 @@ Singleton {
 
                 surface: 3,
 
-                accent: "mid"
+                accent: "mid",
+
+                lightTheme: "",
+
+                darkTheme: ""
             },
 
             edge: {
@@ -276,6 +280,10 @@ Singleton {
             launcher: {
                 width: 840,
 
+                screen: "",
+
+                escape: "back",
+
                 iconSize: 36,
 
                 halfLifeDays: 14,
@@ -301,6 +309,7 @@ Singleton {
                 },
 
                 contents: true,
+                ignoredFiles: false,
 
                 aliases: ({}),
 
@@ -309,12 +318,16 @@ Singleton {
                 plugins: {
                     off: [],
 
+                    commandsOff: [],
+
                     values: ({}),
 
                     rank: "first"
                 },
 
                 hiddenFiles: ".config",
+
+                windowPresets: [],
 
                 animatePreview: true,
 
@@ -325,14 +338,20 @@ Singleton {
 
                     backend: "ollama",
                     model: "",
+                    webSearch: false,
 
                     ollamaAddress: "http://localhost:11434",
                     openaiAddress: "https://api.openai.com/v1"
                 },
 
+                latest: {
+                    screenshotFolders: ""
+                },
+
                 online: {
                     translate: true,
                     translateTo: "",
+                    weather: true,
                     define: true,
                     packages: true,
                     github: true,
@@ -382,6 +401,7 @@ Singleton {
                     noteFolders: "~/Obsidian",
                     noteVault: "",
                     noteSkip: "",
+                    quickNoteFolder: "",
 
                     focusMinutes: 25,
                     breakMinutes: 5,
@@ -429,6 +449,8 @@ Singleton {
                     landedMs: 700,
                     lostMs: 5000
                 },
+
+                dictateToAsk: false,
 
                 typing: {
                     skinTone: "none",
@@ -485,6 +507,12 @@ Singleton {
                 record: true,
 
                 maxEntries: 400,
+
+                keepDays: 0,
+
+                ignoreApps: "keepassxc, 1password, bitwarden, org.gnome.seahorse.application",
+
+                enterAction: "paste",
 
                 maxText: 1048576,
                 maxBlob: 33554432,

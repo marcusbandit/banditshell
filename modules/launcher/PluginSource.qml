@@ -12,7 +12,7 @@ QtObject {
 
     property string pluginId: ""
 
-    readonly property var plugin: PluginHost.pluginOf(root.pluginId)
+    readonly property var plugin: Protocol.withoutCommands(PluginHost.pluginOf(root.pluginId), root.pluginId, Config.values.launcher.plugins.commandsOff)
 
     readonly property string kind: `plugin-${root.pluginId}`
 

@@ -1,0 +1,24 @@
+{
+  "name": "mixer",
+  "summary": "the mixer: which apps are making sound, their volume and their output",
+  "layer": 3,
+  "owns": {
+    "qml": ["modules/mixer", "previews/MixerPreview.qml"],
+    "services": ["Mixer"],
+    "js": ["services/mixer.js"],
+    "assets": ["assets/applications/banditshell-mixer.desktop"],
+    "tests": ["tests/mixer.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "apps", "audio"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Mixer"],
+    "ipc": ["mixer"]
+  },
+  "config": {
+    "namespace": [],
+    "reads": ["volume.step"]
+  }
+}

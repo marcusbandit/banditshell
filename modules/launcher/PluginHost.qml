@@ -232,6 +232,11 @@ Singleton {
                         global: !!e.plugin?.global,
                         background: !!e.plugin?.background,
                         preferences: e.plugin?.preferences ?? [],
+                        commands: (e.plugin?.commands ?? []).map(c => ({
+                                    word: c.word,
+                                    title: c.title,
+                                    icon: c.icon
+                                })),
                         error: e.error ?? "",
                         crashed: root.stateOf(e.id).off,
                         log: root.logOf(e.id)

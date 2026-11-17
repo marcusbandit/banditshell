@@ -172,6 +172,8 @@ Singleton {
 
     property bool finished: false
 
+    signal drained
+
     function settle(): void {
         if (!root.busy || sender.running)
             return;
@@ -183,6 +185,8 @@ Singleton {
             root.pending = left;
         }
         root.pump();
+        if (!root.busy && !root.pending.length)
+            root.drained();
     }
 
     Process {

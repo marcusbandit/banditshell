@@ -3,13 +3,22 @@ pragma ComponentBehavior: Bound
 import QtQml
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
+import qs.config
 import qs.services
 import qs.modules.panel
+import "../../services/chords.js" as Chords
 
 Scope {
     id: root
 
     property alias handler: served
+
+    Binding {
+        target: Shell
+        property: "launcherScreen"
+        value: Config.values.launcher.screen
+    }
 
     Component {
         id: rowRunner
@@ -23,6 +32,29 @@ Scope {
         }
     }
 
+    function toggleApp(entry: var): string {
+        const windows = Hyprland.toplevels.values.filter(t => Hypr.keyOf(t) !== "" && Apps.entryFor(t.lastIpcObject?.class || t.lastIpcObject?.initialClass || "")?.id === entry.id).map(t => ({
+                    address: Hypr.windowAddress(t.address),
+                    workspace: Hypr.workspaceOf(t).name ?? ""
+                }));
+        const focused = Hypr.windowAddress(Hyprland.activeToplevel?.address ?? "");
+        const todo = Chords.toggleStep(windows, focused);
+        const here = Hyprland.focusedMonitor?.activeWorkspace;
+        switch (todo.step) {
+        case "hide":
+            todo.addresses.forEach(a => Hypr.sendToWorkspace(a, Chords.HIDING_PLACE, false));
+            return `hid ${entry.name}`;
+        case "bring":
+            todo.addresses.forEach(a => Hypr.moveToWorkspace(a, String(here?.id ?? "")));
+            Hypr.focusAddress(todo.addresses[0]);
+            return `brought back ${entry.name}`;
+        case "focus":
+            Hypr.focusAddress(todo.addresses[0]);
+            return `focused ${entry.name}`;
+        }
+        return "";
+    }
+
     IpcHandler {
         id: served
 
@@ -33,7 +65,7 @@ Scope {
         }
 
         function open(query: string): string {
-            const win = Shell.forScreen("");
+            const win = Shell.launcherHome();
             if (!win)
                 return PanelWindows.missing("");
             win.launcher.show(query);
@@ -54,7 +86,13 @@ Scope {
             return win?.launcher.concept?.input?.text ?? "";
         }
 
-        function run(id: string): string {
+        function run(id: string, how: string): string {
+            if (how === "toggle") {
+                const wanted = /^app:/.test(id) ? Apps.entryById(id.slice(4)) : /^[a-z]+:/.test(id) ? null : Apps.entryById(id) ?? Apps.search(id)[0];
+                const settled = wanted ? root.toggleApp(wanted) : "";
+                if (settled)
+                    return settled;
+            }
             if (/^[a-z]+:/.test(id)) {
                 const runner = rowRunner.createObject(root, {
                     query: "",

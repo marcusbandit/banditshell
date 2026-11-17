@@ -188,7 +188,7 @@ LauncherConcept {
 
     readonly property var results: root.capture ? search.keyed([Object.assign({}, root.capture.row, {
                     detail: root.capture.said || root.capture.row.detail
-                })]) : search.rows
+                })]) : root.answer?.row ? Search.withoutRow(search.rows, root.answer.row.key) : search.rows
     readonly property var detailStarts: Search.sharedStarts(root.results.map(r => r.header ? "" : String(r.detail ?? "")))
     property int selected: 0
     property bool intoList: false
@@ -220,19 +220,69 @@ LauncherConcept {
         root.input.forceActiveFocus();
     }
 
+    readonly property bool filtering: !!root.shownView?.filters
+    property string queryBeforeView: ""
+    property bool backCloses: false
+
     function present(view: var): void {
-        Appearance.instant = false;
+        if (view.filters)
+            Appearance.instantly();
+        else
+            Appearance.instant = false;
         root.morph();
+        if (view.filters)
+            root.queryBeforeView = view.restore ?? query.text;
         root.viewWord = view.text ?? "";
         root.viewComponent = view.component;
-        root.shownView = view;
+        root.shownView = root.pageChoice ? Object.assign({}, view, {
+            choice: root.pageChoice
+        }) : view;
+        root.pageChoice = "";
+        if (view.filters) {
+            query.text = view.filter ?? "";
+            query.cursorPosition = query.text.length;
+            viewIn.snap();
+            widen.snap();
+            reshape.snap();
+        }
         Qt.callLater(query.forceActiveFocus);
     }
 
     function closeView(): void {
+        if (root.backCloses) {
+            root.hide();
+            return;
+        }
+        if (root.filtering)
+            Appearance.instantly();
         root.morph();
+        if (root.filtering) {
+            query.text = root.queryBeforeView;
+            query.cursorPosition = query.text.length;
+        }
         root.shownView = null;
         Qt.callLater(query.forceActiveFocus);
+    }
+
+    property string pageChoice: ""
+
+    function showPage(text: string, choice: string): void {
+        root.show(text);
+        root.backCloses = true;
+        root.pageChoice = choice ?? "";
+        search.openPending();
+    }
+
+    function chooseFilter(): void {
+        const page = viewLoader.item;
+        if (!page?.choices?.length)
+            return;
+        const at = choicePill.mapToItem(sheet, choicePill.width / 2, choicePill.height);
+        sheet.popup(at.x, at.y, page.choices.map((c, i) => ({
+                    icon: c.icon,
+                    label: c.label,
+                    run: () => page.choose(i)
+                })), page.choice);
     }
 
     function morph(): void {
@@ -256,10 +306,12 @@ LauncherConcept {
 
     answerless: search.intent || !!root.capture || !!root.shownView || assistantCard.shown
 
+    spokenAnswer: root.capture || root.shownView || assistantCard.shown ? null : search.timeAnswer
+
     LauncherSearch {
         id: search
 
-        query: root.input?.text ?? ""
+        query: root.filtering ? root.queryBeforeView : root.input?.text ?? ""
         screenName: root.screenName
         quiet: !!root.capture || !!root.shownView
         active: root.open
@@ -308,6 +360,11 @@ LauncherConcept {
     readonly property bool quick: !root.capture && !root.shownView && !query.text && root.tiles.length > 0
     property int tile: 0
     property bool tileKeyed: false
+    property var tileTrail: null
+
+    property int lifted: -1
+    property int liftedTo: -1
+    property var landing: null
 
     readonly property bool asking: sheet.open
 
@@ -330,11 +387,14 @@ LauncherConcept {
 
     onQuickChanged: {
         root.tile = 0;
+        root.tileTrail = null;
         root.tileKeyed = false;
     }
     onTilesChanged: root.tile = Math.min(root.tile, Math.max(0, root.tiles.length - 1))
 
     onShowing: {
+        root.backCloses = false;
+        root.pageChoice = "";
         root.intoList = false;
         root.tileKeyed = false;
         root.unsized = true;
@@ -346,6 +406,7 @@ LauncherConcept {
         search.arrangeNow();
         root.selected = Math.max(0, Search.nextPickable(root.results, 0, 1));
         root.tile = 0;
+        root.tileTrail = null;
         if (root.unsized) {
             root.unsized = false;
             grow.value = panel.implicitHeight;
@@ -356,10 +417,15 @@ LauncherConcept {
     onHidden: {
         FileSearch.halt();
         sheet.close();
+        root.lifted = -1;
+        root.liftedTo = -1;
+        root.landing = null;
         Assistant.following = false;
         if (!Assistant.inPlace)
-            Assistant.stop();
+            Assistant.launcherClosed();
         root.capture = null;
+        if (root.filtering)
+            root.input.text = "";
         root.shownView = null;
         root.morphing = false;
         viewIn.snap();
@@ -419,20 +485,51 @@ LauncherConcept {
     }
 
     function stepRow(direction: int): void {
-        const from = root.tiles[root.tile];
-        let best = -1;
-        root.tiles.forEach((t, i) => {
-            if (t.row === from.row + direction && (best < 0 || Math.abs(t.slot - from.slot) < Math.abs(root.tiles[best].slot - from.slot)))
-                best = i;
-        });
-        if (best >= 0)
-            root.tile = best;
+        const step = Search.trailStep(root.tiles, root.tile, direction, root.tileTrail);
+        if (step.to < 0)
+            return;
+        root.tileTrail = step.trail;
+        root.tile = step.to;
     }
 
     function shiftTile(step: int): void {
         const t = root.tiles[root.tile];
         if (t?.pinned && Search.shiftTarget(root.pinnedApps.indexOf(t.entry), step, root.pinnedApps.length) >= 0 && Apps.moveStarred(t.entry, step))
             root.tile += step;
+    }
+
+    function lift(index: int): void {
+        root.lifted = index;
+        root.liftedTo = index;
+        root.tile = index;
+    }
+
+    function dragTile(x: real, y: real): void {
+        root.liftedTo = Search.nearestTile(x, y, root.pinnedApps.length, root.tileColumns, quickLaunch.cell, quickLaunch.width / 2);
+    }
+
+    function dropTile(x: real, y: real): void {
+        if (root.lifted < 0)
+            return;
+        root.landing = {
+            id: root.pinnedApps[root.lifted]?.id ?? "",
+            from: root.lifted,
+            to: root.liftedTo,
+            x: x,
+            y: y
+        };
+        Qt.callLater(root.landTile);
+    }
+
+    function landTile(): void {
+        const landing = root.landing;
+        if (!landing)
+            return;
+        root.lifted = -1;
+        root.liftedTo = -1;
+        if (landing.to >= 0 && landing.from !== landing.to && Apps.moveStarred(root.pinnedApps[landing.from], landing.to - landing.from))
+            root.tile = landing.to;
+        root.landing = null;
     }
 
     function claimTileKey(event: var): bool {
@@ -517,9 +614,16 @@ LauncherConcept {
             return true;
         const row = root.capture.row;
         const holder = got.chord ? LauncherHotkeys.holderOf(got.chord, row.key) : "";
+        const own = got.chord ? LauncherHotkeys.ownHolderOf(got.chord, row.key) : "";
+        if (own && root.capture.overwrite === got.chord) {
+            LauncherHotkeys.take(row.key, got.chord, row.label);
+            root.endCapture(root.beforeCapture);
+            return true;
+        }
         if (got.said || holder) {
             root.capture = Object.assign({}, root.capture, {
-                said: got.said || `taken by ${holder}`
+                said: got.said || (own ? `taken by ${holder}, press it again to take it over` : `taken by ${holder}`),
+                overwrite: own ? got.chord : ""
             });
             return true;
         }
@@ -560,28 +664,26 @@ LauncherConcept {
 
         if (root.shownView && !sheet.open) {
             if (event.key === Qt.Key_Escape && !(event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier))) {
-                root.closeView();
+                if (!viewLoader.item?.claimEscape?.()) {
+                    if (Config.values.launcher.escape === "close")
+                        root.hide();
+                    else
+                        root.closeView();
+                }
                 return true;
             }
-            return !!viewLoader.item?.claimKey(event);
+            if (viewLoader.item?.claimKey(event))
+                return true;
+            if (event.key === Qt.Key_P && (event.modifiers & Qt.ControlModifier) && viewLoader.item?.choices?.length) {
+                root.chooseFilter();
+                return true;
+            }
+            return false;
         }
 
         if (sheet.open) {
-            switch (event.key) {
-            case Qt.Key_Down:
-                sheet.move(1);
-                break;
-            case Qt.Key_Up:
-                sheet.move(-1);
-                break;
-            case Qt.Key_Return:
-            case Qt.Key_Enter:
-                sheet.activate(sheet.selected);
-                break;
-            default:
+            if (!sheet.key(event))
                 sheet.close();
-                break;
-            }
             return true;
         }
 
@@ -590,7 +692,16 @@ LauncherConcept {
             return true;
         }
 
-        if (Search.opensSheet(event.key, event.modifiers)) {
+        if (event.key === Qt.Key_Escape && !(event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier)) && Config.values.launcher.escape === "close") {
+            root.hide();
+            return true;
+        }
+
+        if (Search.opensSheet(event.key, event.modifiers) && root.answerHolds && root.answer?.row) {
+            root.ask(answerCard, root.answer.row, answerCard.width / 2, answerCard.height / 2);
+            return true;
+        }
+        if (Search.opensSheet(event.key, event.modifiers, root.quick)) {
             const item = root.quick ? tileRepeater.itemAt(root.tile) : list.itemAtIndex(root.selected);
             if (item)
                 root.ask(item, root.quick ? root.tiles[root.tile].entry : root.results[root.selected], item.width / 2, item.height / 2);
@@ -602,6 +713,11 @@ LauncherConcept {
 
         if (Search.caretKey(event.key, query.text !== "", root.intoList))
             return false;
+
+        if (event.key === Qt.Key_Backtab && search.path) {
+            search.retype(Search.parentQuery(query.text, System.home));
+            return true;
+        }
 
         const row = root.results[root.selected];
         if (event.key === Qt.Key_Tab && (search.complete(row) || search.complete(root.results.find(r => r.kind === "suggest")) || search.complete(root.results.find(r => r.tab))))
@@ -615,7 +731,7 @@ LauncherConcept {
             return true;
         }
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
-            root.actionsFor(row).slice(1).find(a => !a.tucked)?.run();
+            Search.sectioned(root.actionsFor(row)).slice(1).find(a => !a.tucked && a.run)?.run();
             return true;
         }
 
@@ -658,6 +774,7 @@ LauncherConcept {
             {
                 icon: "label",
                 label: alias ? `Change alias · ${alias}` : "Add alias",
+                section: "Shortcuts",
                 tucked: true,
                 run: () => root.startCapture("alias", row)
             }
@@ -666,13 +783,23 @@ LauncherConcept {
             acts.push({
                 icon: "keyboard",
                 label: hotkey ? `Change hotkey · ${Chords.chordText(hotkey)}` : "Set hotkey",
+                section: "Shortcuts",
                 tucked: true,
                 run: () => root.startCapture("hotkey", row)
+            });
+        if (hotkey && row.kind === "app")
+            acts.push({
+                icon: "visibility_off",
+                label: LauncherHotkeys.toggles(id) ? "Hotkey only opens the app" : "Hotkey also hides the app",
+                section: "Shortcuts",
+                tucked: true,
+                run: () => LauncherHotkeys.setToggle(id, !LauncherHotkeys.toggles(id))
             });
         if (alias)
             acts.push({
                 icon: "label_off",
                 label: "Remove alias",
+                section: "Shortcuts",
                 tucked: true,
                 run: () => Config.set("launcher.aliases", Search.withAlias(Config.values.launcher.aliases, id, "", ""))
             });
@@ -680,6 +807,7 @@ LauncherConcept {
             acts.push({
                 icon: "keyboard_hide",
                 label: "Remove hotkey",
+                section: "Shortcuts",
                 tucked: true,
                 run: () => LauncherHotkeys.clear(id)
             });
@@ -702,6 +830,7 @@ LauncherConcept {
         const full = !kept && Config.values.launcher.list.pinned && Apps.starredApps.length >= root.pinnedLimit;
         acts.push({
             icon: "push_pin",
+            section: "Favorites",
             fill: kept,
             label: kept ? "Unpin" : full ? `Pinned grid is full (${root.pinnedLimit})` : "Pin",
             short: full ? "Grid full" : undefined,
@@ -713,24 +842,25 @@ LauncherConcept {
 
         acts.push(...search.appActions(entry));
 
-        for (const action of entry.actions ?? [])
-            acts.push({
-                icon: "open_in_new",
-                label: action.name,
-                run: () => root.launch(() => Apps.launchAction(entry, action))
-            });
+        acts.push(...Search.foldedActions((entry.actions ?? []).map(action => ({
+                        icon: "open_in_new",
+                        label: action.name,
+                        run: () => root.launch(() => Apps.launchAction(entry, action))
+                    })), `${entry.name} actions`, 4));
 
         const at = root.quick ? root.pinnedApps.indexOf(entry) : -1;
         if (at > 0)
             acts.push({
                 icon: "arrow_back",
                 label: "Move left",
+                section: "Manage",
                 run: () => root.shiftTile(-1)
             });
         if (at >= 0 && at < root.pinnedApps.length - 1)
             acts.push({
                 icon: "arrow_forward",
                 label: "Move right",
+                section: "Manage",
                 run: () => root.shiftTile(1)
             });
 
@@ -752,6 +882,19 @@ LauncherConcept {
         return acts;
     }
 
+    property point askedAt: Qt.point(0, 0)
+
+    Connections {
+        target: Files
+
+        function onOpenersFound(path: string, kind: string, apps: var, who: string): void {
+            if (who !== "launcher" || !root.open || path !== search.openersFor)
+                return;
+            search.openersFor = "";
+            sheet.popup(root.askedAt.x, root.askedAt.y, Files.openerRows(path, kind, apps, what => root.launch(what)), 0);
+        }
+    }
+
     function ask(item: Item, entry: var, x: real, y: real): void {
         if (!entry || entry.header)
             return;
@@ -759,8 +902,9 @@ LauncherConcept {
         if (!acts.length)
             return;
         root.answerHolds = false;
-        const at = item.mapToItem(panel, x, y);
-        sheet.popup(at.x, at.y, acts);
+        const at = item.mapToItem(sheet, x, y);
+        root.askedAt = at;
+        sheet.popup(at.x, at.y, Search.sectioned(acts));
     }
 
     function chooseRow(index: int): void {
@@ -880,7 +1024,10 @@ LauncherConcept {
 
     property bool unsized: false
 
-    onShownChanged: panel.unjudge()
+    onShownChanged: {
+        panel.unjudge();
+        Assistant.watching = root.shown;
+    }
     onDraggingChanged: {
         panel.unjudge();
         panel.follow();
@@ -1069,7 +1216,7 @@ LauncherConcept {
 
         width: tabShapeWidth + (root.panelWidth / (1 + bodyStretch) - tabShapeWidth) * wide.value
 
-        implicitHeight: Math.min(root.shownView ? Math.round(root.height * 0.75) : tallest, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
+        implicitHeight: Math.min(root.shownView ? Math.round(root.height * 0.75) : tallest, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + answerCard.height + (answerCard.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.shownView ? viewLoader.implicitHeight : root.quick ? quickLaunch.full : list.needed))
 
         height: Math.min(lift, tabShapeHeight + (fullHeight * (1 + bodyStretch) - tabShapeHeight) * wide.value)
 
@@ -1129,7 +1276,8 @@ LauncherConcept {
 
                         anchors.left: searchGlyph.right
                         anchors.leftMargin: Appearance.padding.normal
-                        anchors.right: parent.right
+                        anchors.right: choicePill.visible ? choicePill.left : parent.right
+                        anchors.rightMargin: choicePill.visible ? Appearance.padding.normal : 0
                         anchors.verticalCenter: parent.verticalCenter
 
                         font.family: Appearance.font.family
@@ -1140,17 +1288,19 @@ LauncherConcept {
                         selectedTextColor: Appearance.colour.accentText
                         clip: true
 
-                        readOnly: !!root.shownView || !!root.argCommand
-                        opacity: viewIn.listShown
-                        cursorVisible: !root.shownView && activeFocus
+                        readOnly: !!root.shownView && !root.filtering || !!root.argCommand
+                        opacity: root.filtering ? 1 : viewIn.listShown
+                        cursorVisible: (!root.shownView || root.filtering) && activeFocus
 
                         Keys.onPressed: event => root.pressKey(event)
+                        onTextChanged: if (!root.shownView && !root.capture)
+                            search.openPending()
 
                         StyledText {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
 
-                            text: !root.capture ? "Search, or ? for help" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
+                            text: root.filtering ? root.shownView.placeholder ?? "" : !root.capture ? "Search, or ? for help" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
                         }
@@ -1192,11 +1342,69 @@ LauncherConcept {
                         anchors.left: query.left
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        visible: viewIn.viewShown > 0
+                        visible: viewIn.viewShown > 0 && !root.filtering
                         opacity: viewIn.viewShown
                         text: root.viewWord
                         font.pixelSize: Appearance.font.size.normal
                         elide: Text.ElideRight
+                    }
+
+                    Item {
+                        id: choicePill
+
+                        readonly property var choices: root.shownView ? viewLoader.item?.choices ?? [] : []
+                        readonly property var chosen: choicePill.choices[viewLoader.item?.choice ?? 0] ?? null
+
+                        visible: choicePill.choices.length > 0
+                        opacity: viewIn.viewShown
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: choiceRow.implicitWidth + Appearance.padding.normal * 2
+                        height: choiceRow.implicitHeight + Appearance.padding.small * 2
+
+                        SquircleRect {
+                            anchors.fill: parent
+                            pill: "object"
+                            color: choiceHover.hovered ? Appearance.colour.fillStrong : Appearance.colour.fill
+                        }
+
+                        Row {
+                            id: choiceRow
+
+                            anchors.centerIn: parent
+                            spacing: Appearance.padding.small
+
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: choicePill.chosen?.icon ?? ""
+                                size: Appearance.icon.small
+                                color: Appearance.colour.textDim
+                            }
+
+                            StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: choicePill.chosen?.label ?? ""
+                                font.pixelSize: Appearance.font.size.small
+                                color: Appearance.colour.textDim
+                            }
+
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: "expand_more"
+                                size: Appearance.icon.small
+                                color: Appearance.colour.textFaint
+                            }
+                        }
+
+                        HoverHandler {
+                            id: choiceHover
+
+                            cursorShape: Qt.PointingHandCursor
+                        }
+
+                        TapHandler {
+                            onTapped: root.chooseFilter()
+                        }
                     }
                 }
 
@@ -1214,8 +1422,26 @@ LauncherConcept {
                     rowHeight: root.rowPitch
                     labelSize: Appearance.font.size.normal
 
-                    result: root.answer
+                    result: root.answer?.missing ? root.answer : null
                     expression: query.text
+                    holds: root.answerHolds
+
+                    offersSymbols: true
+                    symbolsOpen: root.symbolsOpen
+                    onSymbols: root.symbolsOpen = !root.symbolsOpen
+
+                    onCopied: {
+                        root.answerHolds = true;
+                        root.accept();
+                    }
+                }
+
+                AnswerCard {
+                    id: answerCard
+
+                    width: parent.width
+                    answer: root.answer?.missing ? null : root.answer
+                    typed: query.text
                     holds: root.answerHolds
 
                     offersSymbols: true
@@ -1243,6 +1469,10 @@ LauncherConcept {
                     onReplaced: {
                         root.hide();
                         Assistant.replace();
+                    }
+                    onChatCopied: {
+                        Assistant.copyChat();
+                        root.hide();
                     }
                     onContinued: {
                         Assistant.followUp();
@@ -1301,6 +1531,27 @@ LauncherConcept {
                             when: viewLoader.status === Loader.Ready
                         }
 
+                        Binding {
+                            target: viewLoader.item
+                            property: "query"
+                            value: query.text
+                            when: viewLoader.status === Loader.Ready && root.filtering
+                        }
+
+                        Binding {
+                            target: viewLoader.item
+                            property: "view"
+                            value: root.shownView
+                            when: viewLoader.status === Loader.Ready && root.filtering
+                        }
+
+                        Binding {
+                            target: viewLoader.item
+                            property: "selection"
+                            value: query.selectedText
+                            when: viewLoader.status === Loader.Ready && root.filtering
+                        }
+
                         Connections {
                             target: viewLoader.item
                             ignoreUnknownSignals: true
@@ -1320,6 +1571,11 @@ LauncherConcept {
 
                             function onRetitle(text: string): void {
                                 root.viewWord = text;
+                            }
+
+                            function onAsks(item: Item, actions: var, x: real, y: real): void {
+                                const at = item.mapToItem(sheet, x, y);
+                                sheet.popup(at.x, at.y, actions);
                             }
                         }
                     }
@@ -1357,15 +1613,54 @@ LauncherConcept {
                                 required property int index
 
                                 readonly property bool chosen: cell.index === root.tile
-                                readonly property bool named: cell.chosen && root.quick && root.tileKeyed && !root.asking
+                                readonly property bool named: cell.chosen && root.quick && root.tileKeyed && !root.asking && root.lifted < 0
                                 readonly property real drop: (cell.height + quickLaunch.icon) / 2 + Appearance.padding.card
 
+                                readonly property bool grabbed: root.lifted === cell.index
+                                readonly property real homeX: quickLaunch.width / 2 + (cell.modelData.slot - 0.5) * quickLaunch.cell
+                                readonly property real homeY: cell.modelData.row * quickLaunch.cell + (cell.modelData.pinned ? 0 : quickLaunch.gap)
+                                readonly property var shownSpot: cell.modelData.pinned ? Search.gridSpot(Search.draggedSlot(cell.index, root.lifted, root.liftedTo), root.pinnedApps.length, root.tileColumns) : null
                                 onNamedChanged: root.tip(cell, cell.modelData.entry.name ?? "", cell.drop, cell.named)
+                                onGrabbedChanged: if (!cell.grabbed) {
+                                    slideX.release();
+                                    slideY.release();
+                                }
 
-                                x: quickLaunch.width / 2 + (cell.modelData.slot - 0.5) * quickLaunch.cell
-                                y: cell.modelData.row * quickLaunch.cell + (cell.modelData.pinned ? 0 : quickLaunch.gap)
+                                Component.onCompleted: {
+                                    const landing = root.landing;
+                                    if (!landing || !cell.modelData.pinned || landing.id !== cell.modelData.entry.id)
+                                        return;
+                                    slideX.value = landing.x - cell.homeX;
+                                    slideY.value = landing.y - cell.homeY;
+                                    rise.value = 1.1;
+                                }
+
+                                x: cell.homeX + slideX.value
+                                y: cell.homeY + slideY.value
+                                z: cell.grabbed ? 2 : 0
                                 width: quickLaunch.cell
                                 height: quickLaunch.cell
+                                scale: rise.value
+
+                                Spring {
+                                    id: slideX
+
+                                    target: cell.shownSpot ? (cell.shownSpot.slot - cell.modelData.slot) * quickLaunch.cell : 0
+                                }
+
+                                Spring {
+                                    id: slideY
+
+                                    target: cell.shownSpot ? (cell.shownSpot.row - cell.modelData.row) * quickLaunch.cell : 0
+                                }
+
+                                Spring {
+                                    id: rise
+
+                                    value: 1
+                                    epsilon: 0.002
+                                    target: cell.grabbed ? 1.1 : 1
+                                }
 
                                 SquircleRect {
                                     anchors.centerIn: parent
@@ -1411,25 +1706,76 @@ LauncherConcept {
                                     anchors.fill: parent
                                     enabled: !root.asking
                                     hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
+                                    preventStealing: true
+                                    cursorShape: cell.grabbed ? Qt.ClosedHandCursor : Qt.PointingHandCursor
                                     acceptedButtons: Qt.LeftButton | Qt.RightButton
 
                                     property bool held: false
+                                    property bool moved: false
+                                    property point from: Qt.point(0, 0)
 
                                     pressAndHoldInterval: Appearance.animation.longPress
 
-                                    onContainsMouseChanged: root.tip(cell, cell.modelData.entry.name ?? "", cell.drop, pointer.containsMouse)
+                                    onContainsMouseChanged: root.tip(cell, cell.modelData.entry.name ?? "", cell.drop, pointer.containsMouse && root.lifted < 0)
 
-                                    onPressed: pointer.held = false
+                                    onPressed: mouse => {
+                                        pointer.held = false;
+                                        pointer.moved = false;
+                                        pointer.from = Qt.point(mouse.x, mouse.y);
+                                    }
+
+                                    onPositionChanged: mouse => {
+                                        if (!pointer.pressed || !(mouse.buttons & Qt.LeftButton) || !cell.modelData.pinned)
+                                            return;
+                                        if (!pointer.moved) {
+                                            if (!cell.grabbed && Math.hypot(mouse.x - pointer.from.x, mouse.y - pointer.from.y) < Qt.styleHints.startDragDistance)
+                                                return;
+                                            pointer.moved = true;
+                                            root.tip(cell, "", cell.drop, false);
+                                            root.lift(cell.index);
+                                        }
+                                        const at = cell.mapToItem(quickLaunch, mouse.x, mouse.y);
+                                        slideX.hold(at.x - pointer.from.x - cell.homeX);
+                                        slideY.hold(at.y - pointer.from.y - cell.homeY);
+                                        root.dragTile(at.x - pointer.from.x + cell.width / 2, at.y - pointer.from.y + cell.height / 2);
+                                    }
 
                                     onPressAndHold: mouse => {
+                                        if (pointer.moved)
+                                            return;
                                         pointer.held = true;
                                         root.tile = cell.index;
+                                        if (!cell.modelData.pinned) {
+                                            root.ask(cell, cell.modelData.entry, mouse.x, mouse.y);
+                                            return;
+                                        }
+                                        root.tip(cell, "", cell.drop, false);
+                                        root.lift(cell.index);
+                                    }
+
+                                    onReleased: mouse => {
+                                        if (!cell.grabbed)
+                                            return;
+                                        if (pointer.moved) {
+                                            root.dropTile(cell.x, cell.y);
+                                            return;
+                                        }
+                                        root.lifted = -1;
+                                        root.liftedTo = -1;
                                         root.ask(cell, cell.modelData.entry, mouse.x, mouse.y);
                                     }
 
+                                    onCanceled: {
+                                        if (!cell.grabbed)
+                                            return;
+                                        if (pointer.moved)
+                                            root.dropTile(cell.x, cell.y);
+                                        else
+                                            root.lifted = -1;
+                                    }
+
                                     onClicked: mouse => {
-                                        if (pointer.held)
+                                        if (pointer.held || pointer.moved)
                                             return;
                                         root.tile = cell.index;
                                         if (mouse.button === Qt.RightButton)
@@ -1718,7 +2064,7 @@ LauncherConcept {
                                     return search.confirmActions(line.modelData);
                                 const all = root.actionsFor(line.modelData);
                                 const acts = all[0]?.button ? all : all.slice(1);
-                                const shown = acts.filter(a => !a.tucked);
+                                const shown = acts.filter(a => !a.tucked && !a.children);
                                 return shown.length === acts.length && shown.length <= root.buttonLimit ? shown : [...shown.slice(0, root.buttonLimit - 1), {
                                         icon: "more_horiz",
                                         label: "More",
@@ -1774,22 +2120,34 @@ LauncherConcept {
 
             onColourPicked: (hex, done) => root.takeColour(hex, done)
         }
+    }
 
-        ActionSheet {
-            id: sheet
+    ActionSheet {
+        id: sheet
 
-            anchors.fill: parent
+        anchors.fill: parent
+        z: 100
 
-            Connections {
-                target: list
-
-                function onContentYChanged(): void {
-                    sheet.close();
-                }
+        Keys.onPressed: event => {
+            event.accepted = true;
+            if (sheet.key(event) || [Qt.Key_Shift, Qt.Key_Control, Qt.Key_Alt, Qt.Key_Meta].includes(event.key))
+                return;
+            sheet.close();
+            if (event.text && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) && event.text.charCodeAt(0) >= 32) {
+                query.forceActiveFocus();
+                query.insert(query.cursorPosition, event.text);
             }
-
-            onClosed: if (root.open)
-                Qt.callLater(query.forceActiveFocus)
         }
+
+        Connections {
+            target: list
+
+            function onContentYChanged(): void {
+                sheet.close();
+            }
+        }
+
+        onClosed: if (root.open)
+            Qt.callLater(query.forceActiveFocus)
     }
 }
