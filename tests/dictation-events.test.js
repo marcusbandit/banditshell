@@ -56,7 +56,7 @@ test.describe("the key that starts dictation", () => {
     });
 
     test.it("finds voice when it is run through a path", () => {
-        assert.strictEqual(Events.startKey([bind("SUPER + SHIFT + D", "/home/me/bin/voice up")]), "Super + Shift + D");
+        assert.strictEqual(Events.startKey([bind("SUPER + SHIFT + D", "/home/user/bin/voice up")]), "Super + Shift + D");
     });
 
     test.it("skips the binds that stop or cancel", () => {
