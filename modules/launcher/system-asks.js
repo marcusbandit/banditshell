@@ -8,6 +8,12 @@ var DIMMER = /^(?:dimmer|dim the screen|dim screen|(?:brightness|backlight) down
 var WIFI_HEAD = /^(?:wifi networks?|wi-fi networks?|wireless networks?|wifi|wi-fi|wlan)(?: (.+))?$/;
 var WIFI_LOOSE = /^(?:wireless|join(?: (?:the )?(?:wifi|wi-fi|network))?)(?: (.+))?$/;
 var WIFI_ON = /^(?:on|enable|turn on)$/;
+var WIFI_SHARE = /^(?:share|password|pass|key|qr share|share qr(?: code)?|share code)$/;
+var WIFI_SCAN = /^(?:scan|scan qr(?: code)?|scan (?:a )?code|camera|join qr(?: code)?|join (?:with|from) (?:a )?(?:qr(?: code)?|code)|qr join)$/;
+var WIFI_QR = /^(?:qr|qr code|code)$/;
+var SHARE_WIFI = /^share (?:the |my |this )?(?:wifi|wi-fi|network|internet|wlan)(?: (?:qr|qr code|code|password))?$/;
+var SCAN_WIFI = /^(?:scan (?:a |the )?(?:wifi|wi-fi)(?: (?:qr|qr code|code))?|(?:scan|join)(?: (?:with|from))? (?:a )?qr(?: code)?)$/;
+var QR_ONLY = /^qr(?: ?codes?)?$/;
 var WIFI_OFF = /^(?:off|disable|turn off)$/;
 
 var VPN_HEAD = /^(?:vpn|vpns|tunnel|tunnels|wireguard)(?: (.+))?$/;
@@ -75,6 +81,12 @@ function seen(names, wanted) {
 
 function wifiAsk(text, names) {
     var t = tidy(text);
+    if (SHARE_WIFI.test(t))
+        return { name: "", qr: "share" };
+    if (SCAN_WIFI.test(t))
+        return { name: "", qr: "scan" };
+    if (QR_ONLY.test(t))
+        return { name: "", qr: "both" };
     var m = WIFI_HEAD.exec(t);
     if (m) {
         var rest = m[1] || "";
@@ -82,6 +94,12 @@ function wifiAsk(text, names) {
             return { name: "", power: true };
         if (WIFI_OFF.test(rest))
             return { name: "", power: false };
+        if (WIFI_SHARE.test(rest))
+            return { name: "", qr: "share" };
+        if (WIFI_SCAN.test(rest))
+            return { name: "", qr: "scan" };
+        if (WIFI_QR.test(rest))
+            return { name: "", qr: "both" };
         return { name: rest };
     }
     m = WIFI_LOOSE.exec(t);

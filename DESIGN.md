@@ -1491,7 +1491,13 @@ banditshell/
 │   │   │                        category dropdown at its right and a footer
 │   │   │                        naming Enter and Ctrl K. The clipboard page is
 │   │   │                        a list by day beside a preview and facts that
-│   │   │                        fit the kind; the emoji page is a grid
+│   │   │                        fit the kind; the emoji page is a grid.
+│   │   │                        WifiPage.qml is the Wi-Fi page: a network's
+│   │   │                        join as live steps (password in the field,
+│   │   │                        school sign-in, the network's sign-in page),
+│   │   │                        `wifi share` as a QR code and `wifi scan`
+│   │   │                        reading one from the camera, screen or
+│   │   │                        clipboard.
 │   │   ├── search.js            the pure part of it: paths, links, sections,
 │   │   │                        reading timer, reminder, volume, zone and
 │   │   │                        kill phrases, a time moved between places

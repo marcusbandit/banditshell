@@ -1,0 +1,14 @@
+wlan0: deactivating
+wlan0: disconnected
+wlan0: using connection 'Example Cafe'
+wlan0: connecting (prepare)
+wlan0: connecting (configuring)
+wlan0: connecting (need authentication)
+wlan0: connecting (getting IP configuration)
+wlan0: connecting (checking IP connectivity)
+wlan0: connecting (starting secondary connections)
+wlan0: connected
+Connectivity is now 'portal'
+NetworkManager is now in the 'connected (site only)' state
+p2p-dev-wlan0: unavailable
+eth0: connected (externally)
