@@ -19,6 +19,7 @@ const LOOPING_CLOCKS = [
     { file: "components/ScrollingText.qml", scope: "infinite", reason: "the scrolling-text marquee" },
     { file: "modules/island/ActivityBubble.qml", scope: "infinite", reason: "the activity bubble spinner" },
     { file: "modules/island/ActivityRow.qml", scope: "infinite", reason: "the activity row spinner" },
+    { file: "modules/launcher/sources/WifiSteps.qml", scope: "infinite", reason: "the Wi-Fi join step spinner" },
     { file: "modules/media/Equalizer.qml", scope: "infinite", reason: "the equalizer" },
     { file: "modules/media/LyricLine.qml", scope: "infinite", reason: "the lyric line's sung-gap clock" },
     { file: "modules/media/MediaController.qml", scope: "infinite", reason: "the lyrics loading pulse" },
