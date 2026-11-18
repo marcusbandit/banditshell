@@ -9,10 +9,13 @@
       "modules/launcher/sources/RecordSource.qml",
       "modules/launcher/sources/SoundSource.qml",
       "modules/launcher/sources/VpnSource.qml",
+      "modules/launcher/sources/WifiPage.qml",
       "modules/launcher/sources/WifiSource.qml",
+      "modules/launcher/sources/WifiSteps.qml",
       "modules/launcher/sources/WorkshopSource.qml"
     ],
-    "tests": ["tests/launcher-system-controls.test.js", "tests/launcher-system.test.js"]
+    "tests": ["tests/launcher-system-controls.test.js", "tests/launcher-system.test.js"],
+    "scripts": ["scripts/wifi-qr.sh"]
   },
   "requires": {
     "packages": ["core", "compositor", "launcher", "network", "display", "audio", "capture", "mixer"],

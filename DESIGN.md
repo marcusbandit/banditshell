@@ -730,6 +730,8 @@ banditshell/
 │   ├── IdentityField.qml        the same slot for a network that wants to know WHO
 │   │                            you are: a username, a password, and the method
 │   │                            the two of them travel in (802.1X)
+│   ├── Facts.qml                labelled rows in two aligned columns, the way the
+│   │                            password card and the Wi-Fi page explain things
 │   ├── AspectMark.qml           two rectangles: the screen as an outline, the
 │   │                            picture solid inside it, both fitted to one box
 │   ├── DropShadow.qml           the soft shadow under a floating thing, drawn
@@ -1491,7 +1493,13 @@ banditshell/
 │   │   │                        category dropdown at its right and a footer
 │   │   │                        naming Enter and Ctrl K. The clipboard page is
 │   │   │                        a list by day beside a preview and facts that
-│   │   │                        fit the kind; the emoji page is a grid
+│   │   │                        fit the kind; the emoji page is a grid.
+│   │   │                        WifiPage.qml is the Wi-Fi page: a network's
+│   │   │                        join as live steps (password in the field,
+│   │   │                        school sign-in, the network's sign-in page),
+│   │   │                        `wifi share` as a QR code and `wifi scan`
+│   │   │                        reading one from the camera, screen or
+│   │   │                        clipboard.
 │   │   ├── search.js            the pure part of it: paths, links, sections,
 │   │   │                        reading timer, reminder, volume, zone and
 │   │   │                        kill phrases, a time moved between places

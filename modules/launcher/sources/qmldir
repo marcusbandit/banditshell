@@ -50,7 +50,9 @@ TraySource 1.0 TraySource.qml
 VideoDownloadSource 1.0 VideoDownloadSource.qml
 VpnSource 1.0 VpnSource.qml
 WeatherSource 1.0 WeatherSource.qml
+WifiPage 1.0 WifiPage.qml
 WifiSource 1.0 WifiSource.qml
+WifiSteps 1.0 WifiSteps.qml
 WordView 1.0 WordView.qml
 WorkshopSource 1.0 WorkshopSource.qml
 WorkspaceSource 1.0 WorkspaceSource.qml

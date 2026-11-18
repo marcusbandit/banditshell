@@ -82,6 +82,7 @@ Singleton {
     readonly property bool managed: !!wifiDevice?.nmManaged
     readonly property bool scanning: !!wifiDevice?.scannerEnabled
     readonly property string deviceName: wifiDevice?.name ?? ""
+    readonly property string stage: NetworkEvents.stages[root.deviceName] ?? ""
 
     property string ipAddress: ""
 
@@ -752,61 +753,6 @@ Singleton {
         id: discard
     }
 
-    function parseQr(text: string): var {
-        if (!text || text.slice(0, 5).toUpperCase() !== "WIFI:")
-            return null;
-
-        const body = text.slice(5);
-        const card = {
-            ssid: "",
-            security: "",
-            password: "",
-            hidden: false
-        };
-
-        let key = "";
-        let buf = "";
-        let onKey = true;
-
-        for (let i = 0; i < body.length; i++) {
-            const c = body[i];
-            if (c === "\\") {
-                buf += body[++i] ?? "";
-                continue;
-            }
-            if (onKey) {
-
-                if (c === ";")
-                    continue;
-                if (c === ":") {
-                    key = buf.toUpperCase();
-                    buf = "";
-                    onKey = false;
-                    continue;
-                }
-                buf += c;
-                continue;
-            }
-            if (c === ";") {
-                if (key === "S")
-                    card.ssid = buf;
-                else if (key === "T")
-                    card.security = buf.toUpperCase();
-                else if (key === "P")
-                    card.password = buf;
-                else if (key === "H")
-                    card.hidden = buf.toLowerCase() === "true";
-                key = "";
-                buf = "";
-                onKey = true;
-                continue;
-            }
-            buf += c;
-        }
-
-        return card.ssid ? card : null;
-    }
-
     property string hiddenName: ""
     property string hiddenLastName: ""
     property string hiddenTrouble: ""
@@ -878,7 +824,7 @@ Singleton {
     }
 
     function joinQr(text: string): string {
-        const card = root.parseQr(text);
+        const card = WifiList.parseCard(text);
         if (!card)
             return "that code is not a Wi-Fi network";
 
@@ -900,13 +846,18 @@ Singleton {
         return "";
     }
 
-    property bool sharing: false
+    property var sharers: []
+    readonly property bool sharing: root.sharers.length > 0
 
     property string secret: ""
     property string secretTrouble: ""
 
-    function share(on: bool): void {
-        root.sharing = on;
+    function share(viewer: var, on: bool): void {
+        const held = root.sharers.indexOf(viewer) >= 0;
+        if (on && !held)
+            root.sharers = root.sharers.concat([viewer]);
+        else if (!on && held)
+            root.sharers = root.sharers.filter(other => other !== viewer);
     }
 
     onSharingChanged: {
@@ -1021,25 +972,13 @@ Singleton {
         }
     }
 
-    function escapeQr(s: string): string {
-        return s.replace(/([\\;,:"])/g, "\\$1");
-    }
-
     function cardSecurity(n: var): string {
         if (!root.secured(n))
             return "nopass";
         return root.securityLabel(n).indexOf("wep") >= 0 ? "WEP" : "WPA";
     }
 
-    readonly property string card: {
-        if (!root.activeName || root.enterprise(root.active))
-            return "";
-        const kind = root.cardSecurity(root.active);
-        const head = `WIFI:T:${kind};S:${root.escapeQr(root.activeName)};`;
-        if (kind === "nopass")
-            return `${head};`;
-        return root.secret ? `${head}P:${root.escapeQr(root.secret)};;` : "";
-    }
+    readonly property string card: !root.activeName || root.enterprise(root.active) ? "" : WifiList.cardText(root.cardSecurity(root.active), root.activeName, root.secret)
 
     readonly property string cardTrouble: !root.connected ? "join a network first" : root.enterprise(root.active) ? `${root.activeName} signs in with a profile, and a card cannot carry one` : root.secretTrouble
 

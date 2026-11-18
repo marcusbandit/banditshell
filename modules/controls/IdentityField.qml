@@ -324,6 +324,10 @@ Item {
     onSurfaceActiveChanged: if (root.surfaceActive && root.visible && !root.refusal)
         identity.input.forceActiveFocus()
 
+    function focusFirst(): void {
+        identity.input.forceActiveFocus();
+    }
+
     function claim(): void {
         identity.text = "";
         password.text = "";

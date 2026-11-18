@@ -221,6 +221,33 @@ LauncherConcept {
     }
 
     readonly property bool filtering: !!root.shownView?.filters
+    readonly property var pageSecret: root.shownView ? viewLoader.item?.secretAsk ?? null : null
+
+    function focusInput(): void {
+        if (root.pageSecret)
+            pageSecretField.land();
+        else if (root.pageHolds)
+            viewLoader.item.takeFocus();
+        else
+            query.forceActiveFocus();
+    }
+
+    readonly property bool pageHolds: !!root.shownView && !!viewLoader.item?.holdsFocus
+
+    onPageSecretChanged: {
+        pageSecretField.clear();
+        Qt.callLater(root.focusInput);
+    }
+    onPageHoldsChanged: Qt.callLater(root.focusInput)
+
+    function escapeView(): void {
+        if (viewLoader.item?.claimEscape?.())
+            return;
+        if (Config.values.launcher.escape === "close")
+            root.hide();
+        else
+            root.closeView();
+    }
     property string queryBeforeView: ""
     property bool backCloses: false
 
@@ -245,7 +272,7 @@ LauncherConcept {
             widen.snap();
             reshape.snap();
         }
-        Qt.callLater(query.forceActiveFocus);
+        Qt.callLater(root.focusInput);
     }
 
     function closeView(): void {
@@ -261,7 +288,7 @@ LauncherConcept {
             query.cursorPosition = query.text.length;
         }
         root.shownView = null;
-        Qt.callLater(query.forceActiveFocus);
+        Qt.callLater(root.focusInput);
     }
 
     property string pageChoice: ""
@@ -664,12 +691,7 @@ LauncherConcept {
 
         if (root.shownView && !sheet.open) {
             if (event.key === Qt.Key_Escape && !(event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier))) {
-                if (!viewLoader.item?.claimEscape?.()) {
-                    if (Config.values.launcher.escape === "close")
-                        root.hide();
-                    else
-                        root.closeView();
-                }
+                root.escapeView();
                 return true;
             }
             if (viewLoader.item?.claimKey(event))
@@ -1306,6 +1328,32 @@ LauncherConcept {
                         }
                     }
 
+                    SecretField {
+                        id: pageSecretField
+
+                        anchors.left: searchGlyph.right
+                        anchors.leftMargin: Appearance.padding.normal
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: parent.height
+                        visible: !!root.pageSecret
+                        framed: false
+                        capsLock: Keymap.capsLock
+                        textSize: Appearance.font.size.normal
+                        markSize: Appearance.font.size.normal
+                        placeholder: root.pageSecret?.placeholder ?? ""
+                        alarm: !!root.pageSecret?.alarm
+                        busy: !!root.pageSecret?.busy
+
+                        onCapsAsked: Keymap.refresh()
+                        onAccepted: secret => viewLoader.item?.takeSecret?.(secret)
+                        onCancelled: root.escapeView()
+                        onKeyPressed: event => {
+                            if (Search.opensSheet(event.key, event.modifiers) && root.claimKey(event))
+                                event.accepted = true;
+                        }
+                    }
+
                     Row {
                         id: argRow
 
@@ -1342,7 +1390,7 @@ LauncherConcept {
                         anchors.left: query.left
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        visible: viewIn.viewShown > 0 && !root.filtering
+                        visible: viewIn.viewShown > 0 && !root.filtering && !root.pageSecret
                         opacity: viewIn.viewShown
                         text: root.viewWord
                         font.pixelSize: Appearance.font.size.normal
@@ -1571,6 +1619,10 @@ LauncherConcept {
 
                             function onRetitle(text: string): void {
                                 root.viewWord = text;
+                            }
+
+                            function onCommit(): void {
+                                pageSecretField.submit();
                             }
 
                             function onAsks(item: Item, actions: var, x: real, y: real): void {
@@ -2148,6 +2200,6 @@ LauncherConcept {
         }
 
         onClosed: if (root.open)
-            Qt.callLater(query.forceActiveFocus)
+            Qt.callLater(root.focusInput)
     }
 }

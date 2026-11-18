@@ -1,6 +1,41 @@
 {
   "entries": [
     {
+      "id": "2026-11-18-wifi-launcher-page",
+      "date": "2026-11-18",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Joining Wi-Fi in the launcher shows each step as it happens",
+          "go": "panel launcher open wifi"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Passwords, school sign-ins and sign-in pages stay in the launcher",
+          "go": "panel launcher open wifi"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type wifi share to show your network as a QR code",
+          "go": "panel launcher open wifi share"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type wifi scan to join from a QR code on camera or screen",
+          "go": "panel launcher open wifi scan"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Enter on your own network opens its page; Disconnect is in Ctrl K"
+        }
+      ]
+    },
+    {
       "id": "2026-11-17-scrolling-gaps",
       "date": "2026-11-17",
       "changes": [

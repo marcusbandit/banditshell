@@ -99,6 +99,16 @@ test.describe("wifi asks", () => {
         assert.strictEqual(Asks.wifiAsk("wifey"), null);
     });
 
+    test.it("reads asks to share or scan a Wi-Fi code", () => {
+        for (const text of ["wifi share", "share wifi", "share the Wi-Fi", "wifi password", "share wifi qr"])
+            assert.deepStrictEqual(Asks.wifiAsk(text), { name: "", qr: "share" }, text);
+        for (const text of ["wifi scan", "scan wifi", "join qr", "join with qr code", "scan qr", "wifi join qr"])
+            assert.deepStrictEqual(Asks.wifiAsk(text), { name: "", qr: "scan" }, text);
+        for (const text of ["qr", "QR code", "wifi qr"])
+            assert.deepStrictEqual(Asks.wifiAsk(text), { name: "", qr: "both" }, text);
+        assert.deepStrictEqual(Asks.wifiAsk("wifi shared office"), { name: "shared office" });
+    });
+
     test.it("claims wireless and join only for a network that is there", () => {
         const names = ["Cafe Guest", "CR1500"];
         assert.deepStrictEqual(Asks.wifiAsk("join Cafe Guest", names), { name: "cafe guest", join: true });

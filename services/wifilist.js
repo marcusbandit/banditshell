@@ -450,3 +450,166 @@ function qrSecurity(type) {
         return "sae";
     return "";
 }
+
+function parseCard(text) {
+    const raw = String(text ?? "").trim();
+    if (raw.slice(0, 5).toUpperCase() !== "WIFI:")
+        return null;
+    const body = raw.slice(5);
+    const card = { ssid: "", security: "", password: "", hidden: false };
+    const keep = (key, value) => {
+        if (key === "S")
+            card.ssid = value;
+        else if (key === "T")
+            card.security = value.toUpperCase();
+        else if (key === "P")
+            card.password = value;
+        else if (key === "H")
+            card.hidden = value.toLowerCase() === "true";
+    };
+    let key = "";
+    let buf = "";
+    let onKey = true;
+    for (let i = 0; i < body.length; i++) {
+        const c = body[i];
+        if (c === "\\") {
+            buf += body[++i] ?? "";
+            continue;
+        }
+        if (onKey) {
+            if (c === ";")
+                continue;
+            if (c === ":") {
+                key = buf.toUpperCase();
+                buf = "";
+                onKey = false;
+                continue;
+            }
+            buf += c;
+            continue;
+        }
+        if (c === ";") {
+            keep(key, buf);
+            key = "";
+            buf = "";
+            onKey = true;
+            continue;
+        }
+        buf += c;
+    }
+    if (!onKey)
+        keep(key, buf);
+    return card.ssid ? card : null;
+}
+
+function escapeCard(text) {
+    return String(text ?? "").replace(/([\\;,:"])/g, "\\$1");
+}
+
+function cardText(kind, ssid, secret) {
+    if (!ssid)
+        return "";
+    const head = `WIFI:T:${kind};S:${escapeCard(ssid)};`;
+    if (kind === "nopass")
+        return `${head};`;
+    return secret ? `${head}P:${escapeCard(secret)};;` : "";
+}
+
+const DEVICE_STAGES = [
+    [/^connecting \(prepare\)$/, "prepare"],
+    [/^connecting \(configuring\)$/, "configure"],
+    [/^connecting \(need authentication\)$/, "auth"],
+    [/^connecting \(getting IP configuration\)$/, "address"],
+    [/^connecting \(checking IP connectivity\)$/, "check"],
+    [/^connecting \(starting secondary connections\)$/, "secondary"],
+    [/^connected\b/, "connected"],
+    [/^deactivating\b/, "leaving"],
+    [/^disconnected$/, "disconnected"],
+    [/^connection failed$|^failed$/, "failed"],
+    [/^unavailable$|^unmanaged$/, "unavailable"]
+];
+
+function parseDeviceStage(line) {
+    const m = /^([^\s:]+): (.+)$/.exec(String(line ?? "").trim());
+    if (!m)
+        return null;
+    for (const [pattern, stage] of DEVICE_STAGES)
+        if (pattern.test(m[2]))
+            return { device: m[1], stage: stage };
+    return null;
+}
+
+const LINKED = ["address", "check", "secondary", "connected"];
+const ADDRESSED = ["check", "secondary", "connected"];
+
+function joinSteps(state) {
+    const s = state ?? {};
+    const steps = [];
+    const linked = !!s.connected || LINKED.includes(s.stage);
+    const addressed = !!s.connected || ADDRESSED.includes(s.stage);
+    const joining = !!s.started && !s.asking;
+    const step = (key, label, state, note) => steps.push({ key, label, state, note: note ?? "" });
+    const pick = (done, active) => done ? "done" : active ? "active" : "waiting";
+
+    if (s.asks)
+        step("secret", s.asks === "identity" ? "Sign in" : "Password", pick(!s.asking, s.asking), s.asking ? s.warning ?? "" : "");
+    step("link", s.looking ? "Looking for the network" : "Connecting", pick(linked, joining && !linked));
+    step("address", "Getting an address", pick(addressed, joining && linked && !addressed));
+    if (s.checks) {
+        const known = s.connectivity === "full" || s.connectivity === "portal";
+        const cut = addressed && !known && !!s.settled;
+        step("internet", "Checking the internet", cut ? "warning" : pick(addressed && known, joining && addressed && !known), cut ? "This network has no internet" : "");
+        if (s.portalSeen || s.connectivity === "portal")
+            step("portal", "Sign in on the network's page", pick(addressed && s.connectivity === "full", addressed && s.connectivity === "portal"));
+    }
+    if (s.failure && !s.asking) {
+        const at = steps.find(st => st.state === "active") ?? steps.find(st => st.state === "waiting");
+        if (at) {
+            at.state = "failed";
+            at.note = s.failure;
+        }
+    }
+    return steps;
+}
+
+function joinPhase(steps) {
+    const list = steps ?? [];
+    if (list.some(st => st.state === "failed"))
+        return "failed";
+    const active = list.find(st => st.state === "active");
+    if (active)
+        return active.key === "secret" ? "asking" : active.key === "portal" ? "portal" : "joining";
+    if (list.some(st => st.state === "waiting"))
+        return "idle";
+    return list.some(st => st.state === "warning") ? "offline" : "online";
+}
+
+function codesIn(output) {
+    const found = [];
+    for (const line of String(output ?? "").split("\n")) {
+        const text = line.trim();
+        if (!text)
+            continue;
+        if (text[0] !== "{") {
+            found.push(text);
+            continue;
+        }
+        try {
+            const read = JSON.parse(text);
+            if (typeof read?.Text === "string" && read.Text)
+                found.push(read.Text);
+        } catch (e) {
+            found.push(text);
+        }
+    }
+    return found;
+}
+
+function cardIn(output) {
+    for (const text of codesIn(output)) {
+        const card = parseCard(text);
+        if (card)
+            return card;
+    }
+    return null;
+}

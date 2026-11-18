@@ -12,7 +12,11 @@ Item {
 
     property string note: ""
 
-    readonly property string status: root.trouble || (root.active ? root.lensTrouble : "") || root.note || (root.reading ? "reading" : "point it at the code")
+    property bool hints: true
+
+    readonly property string problem: root.trouble || (root.active ? root.lensTrouble : "") || root.note
+
+    readonly property string status: root.problem || (root.reading ? "reading" : "point it at the code")
 
     property string trouble: ""
 
@@ -132,7 +136,8 @@ Item {
         StyledText {
             width: parent.width
             leftPadding: Appearance.padding.normal
-            text: root.status
+            visible: text !== ""
+            text: root.hints ? root.status : root.problem
             color: root.trouble ? Appearance.colour.accent : Appearance.colour.textFaint
             font.pixelSize: Appearance.font.size.small
             wrapMode: Text.WordWrap

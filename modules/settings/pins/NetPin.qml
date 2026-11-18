@@ -26,9 +26,9 @@ Column {
         root.password = "";
         root.error = "";
     }
-    onOnChanged: Network.share(root.on && root.secured)
-    Component.onCompleted: Network.share(root.on && root.secured)
-    Component.onDestruction: Network.share(false)
+    onOnChanged: Network.share(root, root.on && root.secured)
+    Component.onCompleted: Network.share(root, root.on && root.secured)
+    Component.onDestruction: Network.share(root, false)
 
     function join(): void {
         if (!root.n)

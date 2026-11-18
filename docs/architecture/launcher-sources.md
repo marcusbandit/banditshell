@@ -138,3 +138,12 @@ with `choices` (a list of `{ label, icon }`), `choice` and `choose(index)`
 gets a dropdown at the right of the field, opened by a click, or by Ctrl+P
 when the page does not take that key itself.
 
+A page can borrow the field for a secret. While its `secretAsk` is an object
+(`placeholder`, `alarm`, `busy`), the field turns into the masked field the
+password card uses, Enter hands the typed secret to the page's
+`takeSecret(secret)` and clears it, Esc leaves the page, and the page's
+`commit()` signal submits it as Enter would. Ctrl K still reaches the page.
+Set `secretAsk` back to null and the field returns. A page that puts its own
+input on screen sets `holdsFocus` and answers `takeFocus()`, so the launcher
+leaves the keyboard with that input instead of taking it back.
+

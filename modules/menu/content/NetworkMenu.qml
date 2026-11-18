@@ -46,7 +46,7 @@ Column {
 
     readonly property bool showingCard: root.showing && root.opened === "share"
 
-    onShowingCardChanged: Network.share(root.showingCard)
+    onShowingCardChanged: Network.share(root, root.showingCard)
 
     function tookCode(text: string): void {
         const trouble = Network.joinQr(text);
@@ -134,7 +134,10 @@ Column {
         Network.setViewing(root, root.showing);
         Qt.callLater(root.takeSignIn);
     }
-    Component.onDestruction: Network.setViewing(root, false)
+    Component.onDestruction: {
+        Network.setViewing(root, false);
+        Network.share(root, false);
+    }
 
     component Choice: MenuRow {
         id: choice

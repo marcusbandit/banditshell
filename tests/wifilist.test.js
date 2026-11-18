@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/wifilist.js"), "utf8");
-const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, pick, secretLine, signInSecrets, signInMethods, signInRefusal, knownServer, serverDomain, filePath, outerIdentity, outerIdentityFor, innerMethods, innerMethod, innerName, signInArgs, serverCheckArgs, serverCheckSecrets, serverTrouble, serverLabel, serverMessage, serverSeenMessage, schoolCertificate, schoolFor, realmOf, trustedAuthority, checkAuthority, serverMatch, SCHOOL_CERTIFICATES, failureLabel, failureMessage, failureReason, parseAddresses, parseHiddenEvent, qrSecurity };")();
+const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, pick, secretLine, signInSecrets, signInMethods, signInRefusal, knownServer, serverDomain, filePath, outerIdentity, outerIdentityFor, innerMethods, innerMethod, innerName, signInArgs, serverCheckArgs, serverCheckSecrets, serverTrouble, serverLabel, serverMessage, serverSeenMessage, schoolCertificate, schoolFor, realmOf, trustedAuthority, checkAuthority, serverMatch, SCHOOL_CERTIFICATES, failureLabel, failureMessage, failureReason, parseAddresses, parseHiddenEvent, qrSecurity, parseCard, cardText, parseDeviceStage, joinSteps, joinPhase, codesIn, cardIn };")();
 
 const STEPS = 4;
 
@@ -655,5 +655,125 @@ test.describe("hidden network helpers", () => {
         assert.strictEqual(WifiList.qrSecurity("nopass"), "open");
         assert.strictEqual(WifiList.qrSecurity(""), "open");
         assert.strictEqual(WifiList.qrSecurity("WEP"), "");
+    });
+});
+
+const fixture = name => fs.readFileSync(path.join(ROOT, "tests/fixtures/network", name), "utf8");
+
+test.describe("Wi-Fi codes", () => {
+    test("a code with escaped characters reads back whole", () => {
+        assert.deepStrictEqual(WifiList.parseCard(String.raw`WIFI:T:WPA;S:Cafe\;Corner;P:se\:cr\\et\,1;H:true;;`), { ssid: "Cafe;Corner", security: "WPA", password: String.raw`se:cr\et,1`, hidden: true });
+    });
+
+    test("any order, a lower-case head and a missing last semicolon still read", () => {
+        assert.deepStrictEqual(WifiList.parseCard("wifi:P:abc12345;T:wpa;S:Home"), { ssid: "Home", security: "WPA", password: "abc12345", hidden: false });
+    });
+
+    test("a last field without its semicolon still counts", () => {
+        assert.deepStrictEqual(WifiList.parseCard("WIFI:S:Home;T:WPA;P:abc12345"), { ssid: "Home", security: "WPA", password: "abc12345", hidden: false });
+        assert.strictEqual(WifiList.parseCard("WIFI:S:Home;T:WPA;P:abc;H:true").hidden, true);
+    });
+
+    test("anything that is not a Wi-Fi code gives nothing", () => {
+        for (const text of ["", "hello", "https://example.com", "WIFI:T:WPA;P:nossid;;", null])
+            assert.strictEqual(WifiList.parseCard(text), null, String(text));
+    });
+
+    test("a written code reads back to the same network and password", () => {
+        for (const secret of ["plain", String.raw`a;b:c\d,e"f`, "  spaced  "]) {
+            const card = WifiList.parseCard(WifiList.cardText("WPA", "Net;work", secret));
+            assert.strictEqual(card.ssid, "Net;work");
+            assert.strictEqual(card.password, secret);
+        }
+    });
+
+    test("an open network needs no password and a locked one without it gives nothing", () => {
+        assert.strictEqual(WifiList.cardText("nopass", "Guest", ""), "WIFI:T:nopass;S:Guest;;");
+        assert.strictEqual(WifiList.cardText("WPA", "Home", ""), "");
+        assert.strictEqual(WifiList.cardText("WPA", "", "secret"), "");
+    });
+
+    test("the decoder's output gives every code and the first Wi-Fi one", () => {
+        const out = fixture("zxing-codes.txt");
+        assert.deepStrictEqual(WifiList.codesIn(out), ["hello", String.raw`WIFI:T:WPA;S:Example Net;P:pass\;word;;`]);
+        assert.deepStrictEqual(WifiList.cardIn(out), { ssid: "Example Net", security: "WPA", password: "pass;word", hidden: false });
+    });
+
+    test("copied text counts as a code, and empty output finds nothing", () => {
+        assert.strictEqual(WifiList.cardIn("WIFI:T:nopass;S:Guest;;").ssid, "Guest");
+        assert.strictEqual(WifiList.cardIn(""), null);
+        assert.strictEqual(WifiList.cardIn("{not json"), null);
+    });
+});
+
+test.describe("device stages from nmcli monitor", () => {
+    test("each connecting step of the Wi-Fi device is read", () => {
+        const stages = fixture("monitor.txt").split("\n").map(WifiList.parseDeviceStage).filter(Boolean);
+        assert.deepStrictEqual(stages.filter(s => s.device === "wlan0").map(s => s.stage), ["leaving", "disconnected", "prepare", "configure", "auth", "address", "check", "secondary", "connected"]);
+    });
+
+    test("other devices keep their own name and other lines are skipped", () => {
+        assert.deepStrictEqual(WifiList.parseDeviceStage("eth0: connected (externally)"), { device: "eth0", stage: "connected" });
+        assert.strictEqual(WifiList.parseDeviceStage("Connectivity is now 'portal'"), null);
+        assert.strictEqual(WifiList.parseDeviceStage("wlan0: using connection 'Example Cafe'"), null);
+    });
+});
+
+test.describe("join steps", () => {
+    const states = steps => steps.map(s => `${s.key}:${s.state}`).join(" ");
+
+    test("a locked network starts on the password with the rest waiting", () => {
+        const steps = WifiList.joinSteps({ asks: "password", asking: true, checks: true });
+        assert.strictEqual(states(steps), "secret:active link:waiting address:waiting internet:waiting");
+        assert.strictEqual(WifiList.joinPhase(steps), "asking");
+    });
+
+    test("a wrong password goes back to the password with the reason", () => {
+        const steps = WifiList.joinSteps({ asks: "password", asking: true, warning: "That password did not work" });
+        assert.strictEqual(steps[0].note, "That password did not work");
+        assert.strictEqual(WifiList.joinPhase(steps), "asking");
+    });
+
+    test("the stages move the steps along", () => {
+        const at = stage => states(WifiList.joinSteps({ started: true, stage, checks: true, connectivity: "none" }));
+        assert.strictEqual(at(""), "link:active address:waiting internet:waiting");
+        assert.strictEqual(at("auth"), "link:active address:waiting internet:waiting");
+        assert.strictEqual(at("address"), "link:done address:active internet:waiting");
+        assert.strictEqual(at("check"), "link:done address:done internet:active");
+    });
+
+    test("a joined network with internet is online", () => {
+        const steps = WifiList.joinSteps({ started: true, connected: true, checks: true, connectivity: "full" });
+        assert.strictEqual(states(steps), "link:done address:done internet:done");
+        assert.strictEqual(WifiList.joinPhase(steps), "online");
+    });
+
+    test("a sign-in page adds a step that finishes once the internet works", () => {
+        const portal = WifiList.joinSteps({ started: true, connected: true, checks: true, connectivity: "portal", portalSeen: true });
+        assert.strictEqual(states(portal), "link:done address:done internet:done portal:active");
+        assert.strictEqual(WifiList.joinPhase(portal), "portal");
+        const after = WifiList.joinSteps({ started: true, connected: true, checks: true, connectivity: "full", portalSeen: true });
+        assert.strictEqual(WifiList.joinPhase(after), "online");
+    });
+
+    test("no internet after the wait is a warning, not a failure", () => {
+        const steps = WifiList.joinSteps({ started: true, connected: true, checks: true, connectivity: "limited", settled: true });
+        assert.strictEqual(steps[2].state, "warning");
+        assert.strictEqual(WifiList.joinPhase(steps), "offline");
+    });
+
+    test("without internet checks the steps end at the address", () => {
+        assert.strictEqual(states(WifiList.joinSteps({ started: true, connected: true })), "link:done address:done");
+    });
+
+    test("a failure lands on the step that was running", () => {
+        const steps = WifiList.joinSteps({ started: true, stage: "address", failure: "The router did not answer" });
+        assert.strictEqual(steps[1].state, "failed");
+        assert.strictEqual(steps[1].note, "The router did not answer");
+        assert.strictEqual(WifiList.joinPhase(steps), "failed");
+    });
+
+    test("a network that is still being looked for says so", () => {
+        assert.strictEqual(WifiList.joinSteps({ started: true, looking: true })[0].label, "Looking for the network");
     });
 });

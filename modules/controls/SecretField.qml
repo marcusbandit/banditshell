@@ -41,6 +41,7 @@ Item {
 
     signal accepted(string secret)
     signal cancelled
+    signal keyPressed(var event)
 
     function clear(): void {
         root.revealed = false;
@@ -135,6 +136,7 @@ Item {
         Keys.onPressed: event => {
             if (event.key === Qt.Key_CapsLock)
                 Qt.callLater(() => root.capsAsked());
+            root.keyPressed(event);
         }
 
         onCursorPositionChanged: root.reveal()

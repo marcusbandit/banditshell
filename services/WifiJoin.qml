@@ -8,6 +8,7 @@ Singleton {
     id: root
 
     property string pending: ""
+    property string onPage: ""
     property string screenName: ""
     property string signIn: ""
     property string signInScreen: ""
@@ -105,6 +106,8 @@ Singleton {
         target: Network
 
         function onJoinFailed(name: string, kind: string): void {
+            if (root.onPage === name)
+                return;
             const asked = root.pending === name;
             if (asked)
                 root.pending = "";
