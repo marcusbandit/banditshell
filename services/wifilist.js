@@ -457,6 +457,16 @@ function parseCard(text) {
         return null;
     const body = raw.slice(5);
     const card = { ssid: "", security: "", password: "", hidden: false };
+    const keep = (key, value) => {
+        if (key === "S")
+            card.ssid = value;
+        else if (key === "T")
+            card.security = value.toUpperCase();
+        else if (key === "P")
+            card.password = value;
+        else if (key === "H")
+            card.hidden = value.toLowerCase() === "true";
+    };
     let key = "";
     let buf = "";
     let onKey = true;
@@ -479,14 +489,7 @@ function parseCard(text) {
             continue;
         }
         if (c === ";") {
-            if (key === "S")
-                card.ssid = buf;
-            else if (key === "T")
-                card.security = buf.toUpperCase();
-            else if (key === "P")
-                card.password = buf;
-            else if (key === "H")
-                card.hidden = buf.toLowerCase() === "true";
+            keep(key, buf);
             key = "";
             buf = "";
             onKey = true;
@@ -494,8 +497,8 @@ function parseCard(text) {
         }
         buf += c;
     }
-    if (!onKey && key === "S" && !card.ssid)
-        card.ssid = buf;
+    if (!onKey)
+        keep(key, buf);
     return card.ssid ? card : null;
 }
 

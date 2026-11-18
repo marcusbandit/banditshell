@@ -669,6 +669,11 @@ test.describe("Wi-Fi codes", () => {
         assert.deepStrictEqual(WifiList.parseCard("wifi:P:abc12345;T:wpa;S:Home"), { ssid: "Home", security: "WPA", password: "abc12345", hidden: false });
     });
 
+    test("a last field without its semicolon still counts", () => {
+        assert.deepStrictEqual(WifiList.parseCard("WIFI:S:Home;T:WPA;P:abc12345"), { ssid: "Home", security: "WPA", password: "abc12345", hidden: false });
+        assert.strictEqual(WifiList.parseCard("WIFI:S:Home;T:WPA;P:abc;H:true").hidden, true);
+    });
+
     test("anything that is not a Wi-Fi code gives nothing", () => {
         for (const text of ["", "hello", "https://example.com", "WIFI:T:WPA;P:nossid;;", null])
             assert.strictEqual(WifiList.parseCard(text), null, String(text));

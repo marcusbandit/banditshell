@@ -9,7 +9,6 @@
       "modules/launcher/sources/RecordSource.qml",
       "modules/launcher/sources/SoundSource.qml",
       "modules/launcher/sources/VpnSource.qml",
-      "modules/launcher/sources/WifiFacts.qml",
       "modules/launcher/sources/WifiPage.qml",
       "modules/launcher/sources/WifiSource.qml",
       "modules/launcher/sources/WifiSteps.qml",

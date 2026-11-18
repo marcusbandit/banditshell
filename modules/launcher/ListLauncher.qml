@@ -226,13 +226,28 @@ LauncherConcept {
     function focusInput(): void {
         if (root.pageSecret)
             pageSecretField.land();
-        else if (root.shownView && viewLoader.item?.holdsFocus)
+        else if (root.pageHolds)
             viewLoader.item.takeFocus();
         else
             query.forceActiveFocus();
     }
 
-    onPageSecretChanged: Qt.callLater(root.focusInput)
+    readonly property bool pageHolds: !!root.shownView && !!viewLoader.item?.holdsFocus
+
+    onPageSecretChanged: {
+        pageSecretField.clear();
+        Qt.callLater(root.focusInput);
+    }
+    onPageHoldsChanged: Qt.callLater(root.focusInput)
+
+    function escapeView(): void {
+        if (viewLoader.item?.claimEscape?.())
+            return;
+        if (Config.values.launcher.escape === "close")
+            root.hide();
+        else
+            root.closeView();
+    }
     property string queryBeforeView: ""
     property bool backCloses: false
 
@@ -676,12 +691,7 @@ LauncherConcept {
 
         if (root.shownView && !sheet.open) {
             if (event.key === Qt.Key_Escape && !(event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier))) {
-                if (!viewLoader.item?.claimEscape?.()) {
-                    if (Config.values.launcher.escape === "close")
-                        root.hide();
-                    else
-                        root.closeView();
-                }
+                root.escapeView();
                 return true;
             }
             if (viewLoader.item?.claimKey(event))
@@ -1337,7 +1347,7 @@ LauncherConcept {
 
                         onCapsAsked: Keymap.refresh()
                         onAccepted: secret => viewLoader.item?.takeSecret?.(secret)
-                        onCancelled: root.back()
+                        onCancelled: root.escapeView()
                         onKeyPressed: event => {
                             if (Search.opensSheet(event.key, event.modifiers) && root.claimKey(event))
                                 event.accepted = true;

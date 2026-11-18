@@ -9,6 +9,7 @@ Column {
 
     property var facts: []
     property real textSize: Appearance.font.size.normal
+    property color valueColour: Appearance.colour.text
 
     readonly property real labelWidth: {
         let widest = 0;
@@ -50,8 +51,8 @@ Column {
                 width: root.width - x
                 text: fact.modelData[1]
                 font.pixelSize: root.textSize
-                color: fact.modelData[2] === "alarm" ? Appearance.colour.alarm : fact.modelData[2] === "dim" ? Appearance.colour.textDim : Appearance.colour.text
-                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                color: fact.modelData[2] === "alarm" ? Appearance.colour.alarm : fact.modelData[2] === "dim" ? Appearance.colour.textDim : root.valueColour
+                wrapMode: Text.Wrap
             }
         }
     }

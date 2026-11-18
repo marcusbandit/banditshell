@@ -75,8 +75,6 @@ Item {
 
     readonly property color tone: root.ask.family === "admin" ? Appearance.colour.warning : Appearance.colour.accent
 
-    readonly property real factLabelWidth: Math.max(0, ...root.ask.facts.map(fact => factMetrics.advanceWidth(fact[0])))
-    readonly property real detailLabelWidth: Math.max(0, ...root.ask.details.map(detail => detailMetrics.advanceWidth(detail[0])))
 
     readonly property string goLabel: root.sentence(root.source.continueLabel || (root.asksForSecret ? "unlock" : "continue"))
     readonly property string stopLabel: root.sentence(root.source.cancelLabel || "cancel")
@@ -270,39 +268,10 @@ Item {
                         wrapMode: Text.Wrap
                     }
 
-                    Column {
+                    Facts {
                         width: page.width
                         visible: root.ask.facts.length > 0
-                        spacing: Appearance.padding.small
-
-                        Repeater {
-                            model: root.ask.facts
-
-                            Item {
-                                id: fact
-
-                                required property var modelData
-
-                                width: page.width
-                                height: factValue.implicitHeight
-
-                                StyledText {
-                                    text: fact.modelData[0]
-                                    font.pixelSize: Appearance.font.size.normal
-                                    color: Appearance.colour.textFaint
-                                }
-
-                                StyledText {
-                                    id: factValue
-
-                                    x: root.factLabelWidth + Appearance.padding.large
-                                    width: page.width - x
-                                    text: fact.modelData[1]
-                                    font.pixelSize: Appearance.font.size.normal
-                                    wrapMode: Text.Wrap
-                                }
-                            }
-                        }
+                        facts: root.ask.facts
                     }
 
                     StyledText {
@@ -340,38 +309,12 @@ Item {
                         }
                     }
 
-                    Column {
+                    Facts {
                         width: page.width
                         visible: root.detailed
-                        spacing: Appearance.padding.small
-
-                        Repeater {
-                            model: root.ask.details
-
-                            Item {
-                                id: detail
-
-                                required property var modelData
-
-                                width: page.width
-                                height: detailValue.implicitHeight
-
-                                StyledText {
-                                    text: detail.modelData[0]
-                                    color: Appearance.colour.textFaint
-                                }
-
-                                StyledText {
-                                    id: detailValue
-
-                                    x: root.detailLabelWidth + Appearance.padding.large
-                                    width: page.width - x
-                                    text: detail.modelData[1]
-                                    color: Appearance.colour.textDim
-                                    wrapMode: Text.Wrap
-                                }
-                            }
-                        }
+                        facts: root.ask.details
+                        textSize: Appearance.font.size.small
+                        valueColour: Appearance.colour.textDim
                     }
                 }
 
@@ -440,20 +383,6 @@ Item {
                 }
             }
         }
-    }
-
-    FontMetrics {
-        id: factMetrics
-
-        font.family: Appearance.font.family
-        font.pixelSize: Appearance.font.size.normal
-    }
-
-    FontMetrics {
-        id: detailMetrics
-
-        font.family: Appearance.font.family
-        font.pixelSize: Appearance.font.size.small
     }
 
     component Action: Row {

@@ -42,6 +42,7 @@ Item {
     property bool portalSeen: false
     property bool fresh: false
     property bool settled: false
+    property bool landed: false
     property real since: Date.now()
     property real now: Date.now()
 
@@ -52,6 +53,7 @@ Item {
     property string flash: ""
 
     readonly property var network: root.name ? Network.find(root.name) : null
+    readonly property bool enrolling: root.needs === "identity" && Network.enrollingName === root.name
     readonly property bool joined: Network.connected && Network.activeName === root.name
     readonly property bool checks: Network.canCheck && Network.checking
     readonly property string connectivity: {
@@ -117,7 +119,7 @@ Item {
         return `Join ${root.name}`;
     }
 
-    readonly property bool shareable: Network.connected && !Network.enterprise(Network.active)
+    readonly property bool shareable: root.source.shareable
 
     readonly property var joinFacts: {
         const n = root.network;
@@ -188,8 +190,7 @@ Item {
 
     Component.onDestruction: {
         Network.setViewing(root, false);
-        if (root.mode === "share")
-            Network.share(false);
+        Network.share(root, false);
         if (WifiJoin.onPage === root.name)
             WifiJoin.onPage = "";
     }
@@ -200,8 +201,7 @@ Item {
     }
 
     function show(mode: string, order: var): void {
-        if (root.mode === "share" || mode === "share")
-            Network.share(mode === "share");
+        Network.share(root, mode === "share");
         root.mode = mode;
         root.scanNote = order.note ?? "";
         root.flash = "";
@@ -232,6 +232,7 @@ Item {
         root.portalSeen = false;
         root.fresh = false;
         root.settled = false;
+        root.landed = false;
     }
 
     function prepare(): void {
@@ -239,6 +240,7 @@ Item {
         if (root.joined) {
             root.started = true;
             root.settled = true;
+            root.landed = true;
             return;
         }
         if (root.card) {
@@ -276,6 +278,14 @@ Item {
             return;
         }
         Network.join(n, secret);
+    }
+
+    function enrollSettled(): void {
+        if (root.needs !== "identity" || Network.enrollingName === root.name || Network.enrollFailedName !== root.name)
+            return;
+        root.asking = true;
+        root.started = false;
+        root.warning = Network.enrollDetail || `Could not sign in: ${Network.enrollTrouble}`;
     }
 
     function takeSecret(secret: string): void {
@@ -325,9 +335,20 @@ Item {
     }
 
     onJoinedChanged: {
-        if (!root.joined || root.mode !== "join")
+        if (root.mode !== "join")
             return;
+        if (!root.joined) {
+            if (root.landed && !root.asking) {
+                root.landed = false;
+                root.started = false;
+                root.settled = false;
+                root.fresh = false;
+                root.portalSeen = false;
+            }
+            return;
+        }
         root.started = true;
+        root.landed = true;
         root.asking = false;
         root.failure = "";
         Network.checkNow();
@@ -347,7 +368,7 @@ Item {
     Timer {
         interval: 3000
         repeat: true
-        running: root.mode === "join" && root.joined && root.checks && root.connectivity !== "full"
+        running: root.mode === "join" && root.joined && root.checks && (root.connectivity === "portal" || root.connectivity !== "full" && !root.settled)
         onTriggered: Network.checkNow()
     }
 
@@ -394,11 +415,11 @@ Item {
         }
 
         function onEnrollingNameChanged(): void {
-            if (root.needs !== "identity" || Network.enrollingName || Network.enrollFailedName !== root.name)
-                return;
-            root.asking = true;
-            root.started = false;
-            root.warning = Network.enrollDetail || `Could not sign in: ${Network.enrollTrouble}`;
+            root.enrollSettled();
+        }
+
+        function onEnrollFailedNameChanged(): void {
+            root.enrollSettled();
         }
     }
 
@@ -624,7 +645,7 @@ Item {
 
             Loader {
                 width: parent.width
-                active: root.needs === "identity" && root.asking
+                active: root.needs === "identity" && (root.asking || root.enrolling)
                 visible: active
                 onItemChanged: root.identityForm = item
 
@@ -657,7 +678,9 @@ Item {
                         root.warning = "";
                         root.started = true;
                         root.fresh = false;
+                        Network.clearEnroll(root.name);
                         Network.joinEnterprise(root.name, kind, form, password);
+                        root.enrollSettled();
                     }
                     onCheck: form => {
                         if (root.network)
@@ -669,12 +692,12 @@ Item {
 
             WifiSteps {
                 width: parent.width
-                steps: root.steps.filter(step => !(step.key === "secret" && root.needs === "identity" && root.asking))
+                steps: root.steps.filter(step => !(step.key === "secret" && root.identityForm))
                 since: root.since
                 now: root.now
             }
 
-            WifiFacts {
+            Facts {
                 width: parent.width
                 visible: root.joinFacts.length > 0
                 facts: root.joinFacts
@@ -719,7 +742,7 @@ Item {
                     wrapMode: Text.Wrap
                 }
 
-                WifiFacts {
+                Facts {
                     width: parent.width
                     facts: root.shareFacts
                 }

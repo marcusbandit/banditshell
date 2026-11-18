@@ -753,10 +753,6 @@ Singleton {
         id: discard
     }
 
-    function parseQr(text: string): var {
-        return WifiList.parseCard(text);
-    }
-
     property string hiddenName: ""
     property string hiddenLastName: ""
     property string hiddenTrouble: ""
@@ -828,7 +824,7 @@ Singleton {
     }
 
     function joinQr(text: string): string {
-        const card = root.parseQr(text);
+        const card = WifiList.parseCard(text);
         if (!card)
             return "that code is not a Wi-Fi network";
 
@@ -850,13 +846,18 @@ Singleton {
         return "";
     }
 
-    property bool sharing: false
+    property var sharers: []
+    readonly property bool sharing: root.sharers.length > 0
 
     property string secret: ""
     property string secretTrouble: ""
 
-    function share(on: bool): void {
-        root.sharing = on;
+    function share(viewer: var, on: bool): void {
+        const held = root.sharers.indexOf(viewer) >= 0;
+        if (on && !held)
+            root.sharers = root.sharers.concat([viewer]);
+        else if (!on && held)
+            root.sharers = root.sharers.filter(other => other !== viewer);
     }
 
     onSharingChanged: {

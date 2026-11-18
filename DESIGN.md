@@ -730,6 +730,8 @@ banditshell/
 │   ├── IdentityField.qml        the same slot for a network that wants to know WHO
 │   │                            you are: a username, a password, and the method
 │   │                            the two of them travel in (802.1X)
+│   ├── Facts.qml                labelled rows in two aligned columns, the way the
+│   │                            password card and the Wi-Fi page explain things
 │   ├── AspectMark.qml           two rectangles: the screen as an outline, the
 │   │                            picture solid inside it, both fitted to one box
 │   ├── DropShadow.qml           the soft shadow under a floating thing, drawn

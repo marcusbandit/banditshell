@@ -223,11 +223,13 @@ QtObject {
             return [];
         const out = [];
         if (ask.qr) {
+            if (!root.paging)
+                return [];
             if (!Network.enabled)
                 return [root.powerRow()];
             if (ask.qr !== "scan" && root.shareable)
                 out.push(root.shareRow());
-            if (ask.qr !== "share" && root.paging)
+            if (ask.qr !== "share")
                 out.push(root.scanRow());
             if (!out.length)
                 out.push({
