@@ -65,8 +65,13 @@ const articles = posts(join(SITE, "blog"), SITE, REPO, { drafts: DRAFTS });
 
 const hasBlog = articles.length > 0;
 
+const jsonLd = (...items) => items.map((item) => `<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", ...item }).replace(/</g, "\\u003c")}</script>`).join("\n");
+const author = { "@type": "Person", name: "Marcus Rosado", url: "https://marcusrosado.com" };
+const indexed = [];
+
 const page = (values) => {
-    const merged = { roadmapCurrent: "", blogCurrent: "", robots: "", scripts: "", ...values };
+    const merged = { roadmapCurrent: "", blogCurrent: "", robots: "", scripts: "", structured: "", ...values };
+    if (!merged.robots && merged.canonical !== "") indexed.push({ url: merged.url, lastmod: merged.lastmod });
     merged.canonical ??= `<link rel="canonical" href="${merged.url}">`;
     return fill(template("layout.html"), {
         repo: REPO,
@@ -90,6 +95,22 @@ writeFileSync(
         description,
         url: `${ORIGIN}/`,
         page: "home",
+        structured: jsonLd(
+            { "@type": "WebSite", name: "banditshell", url: `${ORIGIN}/` },
+            {
+                "@type": "SoftwareApplication",
+                name: "banditshell",
+                description,
+                applicationCategory: "DesktopEnhancementApplication",
+                operatingSystem: "Linux",
+                offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+                license: "https://www.gnu.org/licenses/gpl-3.0.html",
+                url: `${ORIGIN}/`,
+                codeRepository: REPO,
+                sameAs: [REPO],
+                author,
+            },
+        ),
         main: fill(template("home.html"), {
             repo: REPO,
             deck,
@@ -106,6 +127,7 @@ writeFileSync(
         title: escape(roadmap.title),
         description: escape(vision),
         url: `${ORIGIN}/roadmap/`,
+        lastmod: updated,
         page: "roadmap-page",
         roadmapCurrent: ' aria-current="page"',
         main: fill(template("roadmap.html"), {
@@ -128,6 +150,7 @@ if (hasBlog) {
             title: "Blog | banditshell",
             description: blogLead,
             url: `${ORIGIN}/blog/`,
+            lastmod: articles.map((entry) => entry.date).sort().at(-1),
             page: "blog-page",
             blogCurrent: ' aria-current="page"',
             main: fill(template("blog.html"), { posts: articles.map(card).join("\n") }),
@@ -143,9 +166,22 @@ for (const entry of articles) {
             title: `${escape(entry.title)} | banditshell`,
             description: escape(entry.summary),
             url: `${ORIGIN}/blog/${entry.slug}/`,
+            lastmod: entry.date,
             page: "blog-post",
             blogCurrent: ' aria-current="page"',
             robots: entry.draft ? '<meta name="robots" content="noindex">' : "",
+            structured: jsonLd({
+                "@type": "BlogPosting",
+                headline: entry.title,
+                description: entry.summary,
+                datePublished: entry.date,
+                dateModified: entry.date,
+                image: `${ORIGIN}/images/og.jpg`,
+                url: `${ORIGIN}/blog/${entry.slug}/`,
+                mainEntityOfPage: `${ORIGIN}/blog/${entry.slug}/`,
+                author,
+                publisher: author,
+            }),
             main: fill(template("post.html"), {
                 heading: escape(entry.title),
                 byline: `${entry.draft ? '<span class="chip">Draft</span> ' : ""}<time datetime="${entry.date}">${longDate(entry.date)}</time>${
@@ -174,7 +210,13 @@ writeFileSync(
     }),
 );
 
-for (const name of ["style.css", "site.js", "favicon.svg"]) copyFileSync(join(SITE, name), join(DIST, name));
+writeFileSync(
+    join(DIST, "sitemap.xml"),
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${indexed.map(({ url, lastmod }) => `  <url><loc>${escape(url)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}</url>`).join("\n")}\n</urlset>\n`,
+);
+writeFileSync(join(DIST, "robots.txt"), `User-agent: *\nAllow: /\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
+
+for (const name of ["style.css", "site.js", "favicon.svg", "favicon.ico", "icon-192.png", "apple-touch-icon.png"]) copyFileSync(join(SITE, name), join(DIST, name));
 cpSync(join(SITE, "fonts"), join(DIST, "fonts"), { recursive: true });
 cpSync(join(SITE, "images"), join(DIST, "images"), { recursive: true });
 
