@@ -71,7 +71,7 @@ const indexed = [];
 
 const page = (values) => {
     const merged = { roadmapCurrent: "", blogCurrent: "", robots: "", scripts: "", structured: "", ...values };
-    if (!merged.robots && merged.canonical !== "") indexed.push(merged.url);
+    if (!merged.robots && merged.canonical !== "") indexed.push({ url: merged.url, lastmod: merged.lastmod });
     merged.canonical ??= `<link rel="canonical" href="${merged.url}">`;
     return fill(template("layout.html"), {
         repo: REPO,
@@ -127,6 +127,7 @@ writeFileSync(
         title: escape(roadmap.title),
         description: escape(vision),
         url: `${ORIGIN}/roadmap/`,
+        lastmod: updated,
         page: "roadmap-page",
         roadmapCurrent: ' aria-current="page"',
         main: fill(template("roadmap.html"), {
@@ -149,6 +150,7 @@ if (hasBlog) {
             title: "Blog | banditshell",
             description: blogLead,
             url: `${ORIGIN}/blog/`,
+            lastmod: articles.map((entry) => entry.date).sort().at(-1),
             page: "blog-page",
             blogCurrent: ' aria-current="page"',
             main: fill(template("blog.html"), { posts: articles.map(card).join("\n") }),
@@ -164,6 +166,7 @@ for (const entry of articles) {
             title: `${escape(entry.title)} | banditshell`,
             description: escape(entry.summary),
             url: `${ORIGIN}/blog/${entry.slug}/`,
+            lastmod: entry.date,
             page: "blog-post",
             blogCurrent: ' aria-current="page"',
             robots: entry.draft ? '<meta name="robots" content="noindex">' : "",
@@ -172,6 +175,8 @@ for (const entry of articles) {
                 headline: entry.title,
                 description: entry.summary,
                 datePublished: entry.date,
+                dateModified: entry.date,
+                image: `${ORIGIN}/images/og.jpg`,
                 url: `${ORIGIN}/blog/${entry.slug}/`,
                 mainEntityOfPage: `${ORIGIN}/blog/${entry.slug}/`,
                 author,
@@ -207,7 +212,7 @@ writeFileSync(
 
 writeFileSync(
     join(DIST, "sitemap.xml"),
-    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${indexed.map((url) => `  <url><loc>${escape(url)}</loc></url>`).join("\n")}\n</urlset>\n`,
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${indexed.map(({ url, lastmod }) => `  <url><loc>${escape(url)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}</url>`).join("\n")}\n</urlset>\n`,
 );
 writeFileSync(join(DIST, "robots.txt"), `User-agent: *\nAllow: /\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
 
