@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Load = lib("modules/desktop/load.js", ["cpuTimes", "cpuShare", "memoryShare"]);
+const Load = lib("modules/desktop/load.js", ["cpuTimes", "cpuShare", "coreTimes", "coreShares", "memoryShare", "memoryDetail", "gpuShare", "gpuStats", "swapDevices", "pushCoreHistories", "tempShare", "pushHistory", "linePath", "areaPath", "tipPoint", "tipValue"]);
 
 test("cpu share is the busy part of the time between two samples", () => {
     const before = Load.cpuTimes("cpu  100 0 100 700 100 0 0 0 0 0\ncpu0 1 2 3 4");
@@ -32,6 +32,71 @@ test("memory share counts what is not available", () => {
     assert.strictEqual(m.totalGb, 16);
     assert.strictEqual(m.usedGb, 12);
     assert.deepStrictEqual(Load.memoryShare("garbage"), { share: 0, usedGb: 0, totalGb: 0 });
+});
+
+test("gpu share reads single or multi-gpu percentages", () => {
+    assert.strictEqual(Load.gpuShare("35\n"), 0.35);
+    assert.strictEqual(Load.gpuShare("12\n88\n"), 0.88);
+    assert.strictEqual(Load.gpuShare("not a number"), null);
+    const stats = Load.gpuStats("75, 6144, 24576, 68.9, NVIDIA GeForce RTX 3090\n");
+    assert.deepStrictEqual(stats, { share: 0.75, vramUsedGb: 6, vramTotalGb: 24, vramShare: 0.25, tempC: 69, name: "NVIDIA GeForce RTX 3090" });
+    assert.strictEqual(Load.gpuStats("35\n").share, 0.35);
+    assert.strictEqual(Load.gpuStats("garbage"), null);
+});
+
+test("per-core cpu shares and memory breakdown parse cleanly", () => {
+    const before = Load.coreTimes("cpu 0 0 0 0\ncpu0 100 0 0 100 0 0 0 0\ncpu1 50 0 50 100 0 0 0 0\n");
+    const after = Load.coreTimes("cpu 0 0 0 0\ncpu0 200 0 0 100 0 0 0 0\ncpu1 50 0 50 200 0 0 0 0\n");
+    assert.deepStrictEqual(Load.coreShares(before, after), [{ id: 0, share: 1 }, { id: 1, share: 0 }]);
+    const d = Load.memoryDetail("MemTotal: 16777216 kB\nMemAvailable: 4194304 kB\nCached: 2097152 kB\nBuffers: 1048576 kB\nSwapTotal: 8388608 kB\nSwapFree: 6291456 kB\n");
+    assert.strictEqual(d.usedGb, 12);
+    assert.strictEqual(d.availableGb, 4);
+    assert.strictEqual(d.cachedGb, 3);
+    assert.strictEqual(d.swapUsedGb, 2);
+    assert.strictEqual(d.swapTotalGb, 8);
+    assert.strictEqual(d.swapShare, 0.25);
+});
+
+test("swap devices sort by priority and core histories update in lockstep", () => {
+    const swaps = Load.swapDevices("Filename Type Size Used Priority\n/swapfile file 16777216 1048576 -1\n/dev/zram0 partition 8388608 4194304 100\n");
+    assert.strictEqual(swaps.length, 2);
+    assert.strictEqual(swaps[0].name, "zram0");
+    assert.strictEqual(swaps[0].share, 0.5);
+    assert.strictEqual(swaps[1].name, "/swapfile");
+    assert.strictEqual(swaps[1].totalGb, 16);
+    const h1 = Load.pushCoreHistories([], [{ id: 0, share: 0.2 }, { id: 1, share: 0.8 }], 3);
+    const h2 = Load.pushCoreHistories(h1, [{ id: 0, share: 0.4 }, { id: 1, share: 0.6 }], 3);
+    assert.deepStrictEqual(h2, [[0.2, 0.4], [0.8, 0.6]]);
+    assert.strictEqual(Load.tempShare(68), 0.68);
+});
+
+test("history ring clamps values and caps length", () => {
+    let h = [];
+    for (const v of [-0.2, 0.5, 1.4, 0.25])
+        h = Load.pushHistory(h, v, 3);
+    assert.deepStrictEqual(h, [0.5, 1, 0.25]);
+});
+
+test("line, area and tip map samples cleanly to the right edge", () => {
+    assert.strictEqual(Load.linePath([0.5], 100, 50, 5), "");
+    assert.strictEqual(Load.areaPath([0.5], 100, 50, 5), "");
+    assert.strictEqual(Load.linePath([0, 1], 100, 50, 5, 1), "M75.0 50.0 L100.0 0.0");
+    assert.strictEqual(Load.areaPath([0, 1], 100, 50, 5, 1), "M75.0 50.0 L100.0 0.0 L100.0 50.0 L75.0 50.0 Z");
+    assert.ok(Load.linePath([0, 0.5, 1], 100, 50, 3, 1).startsWith("M0.0 50.0 C"));
+    assert.ok(Load.linePath([0, 0.5, 1], 100, 50, 3, 1).endsWith("100.0 0.0"));
+    assert.deepStrictEqual(Load.tipPoint([0.2, 0.75], 100, 40, 24, 1), { x: 100, y: 10 });
+    assert.strictEqual(Load.tipPoint([], 100, 40, 24, 1), null);
+});
+
+test("one-tick delayed interpolation eases smoothly and stays continuous across tick boundaries", () => {
+    assert.strictEqual(Load.tipValue([0.2, 0.8], 0), 0.2);
+    assert.ok(Load.tipValue([0.2, 0.8], 0.25) < 0.35);
+    assert.ok(Math.abs(Load.tipValue([0.2, 0.8], 0.5) - 0.5) < 1e-9);
+    assert.ok(Load.tipValue([0.2, 0.8], 0.75) > 0.65);
+    assert.strictEqual(Load.tipValue([0.2, 0.8], 1), 0.8);
+    assert.strictEqual(Load.linePath([0, 0.5, 1], 100, 50, 3, 1), Load.linePath([0, 0.5, 1, 0.2], 100, 50, 3, 0));
+    assert.strictEqual(Load.areaPath([0, 0.5, 1], 100, 50, 3, 1), Load.areaPath([0, 0.5, 1, 0.2], 100, 50, 3, 0));
+    assert.deepStrictEqual(Load.tipPoint([0, 0.5, 1], 100, 50, 3, 1), Load.tipPoint([0, 0.5, 1, 0.2], 100, 50, 3, 0));
 });
 
 const Month = lib("modules/desktop/month.js", ["cells", "keyOf", "title", "shifted"]);

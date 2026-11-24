@@ -49,6 +49,23 @@ function number(value) {
     return isFinite(n) ? n : NaN;
 }
 
+function wholeDegrees(value) {
+    const n = Math.round(number(value));
+    return n === 0 ? 0 : n;
+}
+
+function cleanDegrees(value) {
+    if (value === undefined || value === null || value === "")
+        return value;
+    const n = wholeDegrees(value);
+    return isNaN(n) ? value : n;
+}
+
+function temperatureText(value, imperial) {
+    const n = cleanDegrees(value);
+    return n + "°" + (imperial ? "F" : "C");
+}
+
 function placeOf(data) {
     const area = data && data.nearest_area && data.nearest_area[0];
     const name = area && area.areaName && area.areaName[0] && area.areaName[0].value;
@@ -97,8 +114,8 @@ function wttrDays(data, imperial) {
         }
         days.push({
             date: String(day.date),
-            high: Math.round(high),
-            low: Math.round(low),
+            high: wholeDegrees(high),
+            low: wholeDegrees(low),
             icon: wttrIcon(noon ? number(noon.weatherCode) : 0, false),
             summary: desc ? String(desc).trim() : "",
             rain: rain
@@ -125,8 +142,8 @@ function outlookDays(data) {
         const rain = daily.precipitation_probability_max ? daily.precipitation_probability_max[i] : null;
         days.push({
             date: String(daily.time[i]),
-            high: Math.round(high),
-            low: Math.round(low),
+            high: wholeDegrees(high),
+            low: wholeDegrees(low),
             icon: info.icon,
             summary: info.summary,
             rain: rain === null || rain === undefined || isNaN(number(rain)) ? -1 : Math.round(number(rain)),
@@ -430,17 +447,17 @@ function nowOf(data) {
         code: Number(now.weatherCode || 0),
         daytime: now.isdaytime === undefined ? null : now.isdaytime === "yes",
         summary: String(now.weatherDesc && now.weatherDesc[0] && now.weatherDesc[0].value || "").trim(),
-        tempC: now.temp_C,
-        tempF: now.temp_F,
-        feelsC: now.FeelsLikeC,
-        feelsF: now.FeelsLikeF,
+        tempC: cleanDegrees(now.temp_C),
+        tempF: cleanDegrees(now.temp_F),
+        feelsC: cleanDegrees(now.FeelsLikeC),
+        feelsF: cleanDegrees(now.FeelsLikeF),
         humidity: now.humidity,
         windKmph: now.windspeedKmph,
         windMph: now.windspeedMiles,
-        highC: today && today.maxtempC,
-        highF: today && today.maxtempF,
-        lowC: today && today.mintempC,
-        lowF: today && today.mintempF
+        highC: today ? cleanDegrees(today.maxtempC) : undefined,
+        highF: today ? cleanDegrees(today.maxtempF) : undefined,
+        lowC: today ? cleanDegrees(today.mintempC) : undefined,
+        lowF: today ? cleanDegrees(today.mintempF) : undefined
     };
 }
 
