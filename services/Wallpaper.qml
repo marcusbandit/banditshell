@@ -527,13 +527,11 @@ Singleton {
     }
 
     property string cutout: ""
-    property string cutoutError: ""
 
     function installCutout(): void {
         if (installer.running)
             return;
         root.cutout = "installing";
-        root.cutoutError = "";
         installer.exec(["python3", root.transitions, "install"]);
     }
 
@@ -551,10 +549,6 @@ Singleton {
 
     Process {
         id: installer
-
-        stderr: StdioCollector {
-            onStreamFinished: root.cutoutError = text.trim().split("\n").pop() ?? ""
-        }
 
         onExited: code => {
             root.cutout = code === 0 ? "installed" : "failed";

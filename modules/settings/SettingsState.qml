@@ -1454,7 +1454,7 @@ Singleton {
     readonly property string cutoutNote: ({
             installing: "downloading",
             installed: "",
-            failed: Wallpaper.cutoutError || "could not install"
+            failed: "could not install"
         })[Wallpaper.cutout] ?? "about 1 GB download"
     readonly property bool aiSignedIn: Assistant.agent && Assistant.phase === "ready"
     readonly property string aiAccountNote: Assistant.agent ? ({

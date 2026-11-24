@@ -1,5 +1,3 @@
-// Adapted from WallpaperFx.qml in pocket-dots by Diego Malagrida, GPL-3.0:
-// https://github.com/diegoMalagrida/pocket-dots/blob/main/home/.config/quickshell/WallpaperFx.qml
 import QtQuick
 
 ShaderEffect {
@@ -12,8 +10,8 @@ ShaderEffect {
 
     property real t: 0
     property bool outline: false
-    property color ember: "orange"
-    property color ink: "white"
+    property color ember
+    property color ink
     property real seed: 0
 
     readonly property var under: root.underItem ? capture : root.source

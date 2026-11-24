@@ -9,9 +9,11 @@ import heapq
 import json
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
+import time
 
 HOME = os.path.expanduser("~")
 CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME") or os.path.join(HOME, ".cache"), "banditshell", "wallpaper-transition")
@@ -27,6 +29,8 @@ WIDE = 48.0
 STILLS = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
 CUTOUT_CAP = "8G"
 CUTOUT_ROOM = 9 << 30
+PACKAGES = ["rembg", "onnxruntime", "opencv-python-headless", "numpy", "pillow"]
+MAP_NAME = re.compile(r"map-(\d+)-(\d+)\.png")
 
 
 def has_numpy():
@@ -158,23 +162,46 @@ def pool_dir(gw, gh):
     return d
 
 
-def pool_pair(d, k):
-    return os.path.join(d, f"map-{k}.png"), os.path.join(d, f"map-{k}-smooth.png")
+def pair_of(d, k, gen):
+    return os.path.join(d, f"map-{k}-{gen}.png"), os.path.join(d, f"map-{k}-{gen}-smooth.png")
+
+
+def pool(d):
+    newest = {}
+    for name in os.listdir(d):
+        m = MAP_NAME.fullmatch(name)
+        if not m:
+            continue
+        k, gen = int(m[1]), int(m[2])
+        if gen > newest.get(k, -1) and os.path.exists(pair_of(d, k, gen)[1]):
+            newest[k] = gen
+    return newest
 
 
 def fill(d, k, gw, gh):
-    path, smooth = pool_pair(d, k)
+    path, smooth = pair_of(d, k, time.time_ns())
     write_pair(path, smooth, contagion_map(random.randrange(1 << 30), gw, gh))
-    return path, smooth
+
+
+def prune(d, k):
+    keep = pool(d).get(k)
+    for name in os.listdir(d):
+        m = MAP_NAME.fullmatch(name)
+        if m and int(m[1]) == k and int(m[2]) != keep:
+            for path in pair_of(d, k, int(m[2])):
+                try:
+                    os.remove(path)
+                except FileNotFoundError:
+                    pass
 
 
 def spread(gw, gh):
     d = pool_dir(gw, gh)
-    made = [k for k in range(POOL) if all(os.path.exists(p) for p in pool_pair(d, k))]
-    if made:
-        k = random.choice(made)
-        return k, pool_pair(d, k)
-    return 0, fill(d, 0, gw, gh)
+    newest = pool(d)
+    if not newest:
+        return None, None
+    k = random.choice(sorted(newest))
+    return k, pair_of(d, k, newest[k])
 
 
 def detach():
@@ -189,21 +216,23 @@ def detach():
 
 
 def renew(k, gw, gh):
-    import time
     lock = open(os.path.join(CACHE, ".renew.lock"), "w")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         return
+    d = pool_dir(gw, gh)
     time.sleep(4)
-    fill(pool_dir(gw, gh), k, gw, gh)
+    fill(d, k, gw, gh)
+    time.sleep(10)
+    prune(d, k)
 
 
 def contagion(gw, gh):
     k, pair = spread(gw, gh)
     if detach():
         try:
-            renew(k, gw, gh)
+            renew(k if k is not None else 0, gw, gh)
         finally:
             os._exit(0)
     return pair
@@ -278,13 +307,6 @@ def outline(img, force=False):
     if os.path.exists(mask_path):
         mask = Image.open(mask_path).convert("L")
     else:
-        gate = open(os.path.join(CACHE, ".cutout.lock"), "w")
-        try:
-            fcntl.flock(gate, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            return None
-        if not room():
-            return None
         mask = cutout(im).convert("L")
         mask.save(mask_path)
     m = np.asarray(mask.resize(im.size), np.float32) / 255.0
@@ -426,36 +448,81 @@ def room():
     return False
 
 
-def outline_capped(img):
-    cmd = [VENV_PY, os.path.abspath(__file__), "outline", img]
+def capped_command(images):
+    cmd = [VENV_PY, os.path.abspath(__file__), "outline", *images]
     run = shutil.which("systemd-run")
     if run:
         cmd = [run, "--user", "--scope", "-q", "-p", f"MemoryMax={CUTOUT_CAP}", "-p", "MemorySwapMax=0", *cmd]
-    done = subprocess.run(cmd, check=False, capture_output=True, text=True, env=dict(os.environ, OMP_NUM_THREADS="4"))
-    base = outline_base(img)
-    if done.returncode not in (0, 1) and not cached_outline(base)[1]:
-        json.dump({"img": img, "ok": False, "failed": done.returncode}, open(base + ".json", "w"))
-    return done.returncode == 0
+    return cmd
+
+
+def outline_capped(images):
+    if images:
+        subprocess.run(capped_command(images), check=False, env=dict(os.environ, OMP_NUM_THREADS="4"))
+
+
+def give_up(base, img, why):
+    with open(base + ".json", "w") as f:
+        json.dump({"img": img, "ok": False, "failed": why}, f)
+
+
+def outline_batch(images, force=False):
+    os.makedirs(CACHE, exist_ok=True)
+    gate = open(os.path.join(CACHE, ".cutout.lock"), "w")
+    try:
+        fcntl.flock(gate, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return 1
+    for img in images:
+        if not is_still(img):
+            continue
+        base = outline_base(img)
+        trying = base + ".trying"
+        if os.path.exists(trying):
+            os.remove(trying)
+            if not cached_outline(base)[1]:
+                give_up(base, img, "stopped")
+            continue
+        if not force and cached_outline(base)[1]:
+            continue
+        if not os.path.exists(base + "-mask.png") and not room():
+            return 1
+        open(trying, "w").close()
+        try:
+            print("outline" if outline(img, force) else "contagion", img, flush=True)
+        except Exception as e:
+            give_up(base, img, str(e)[:200])
+        finally:
+            if os.path.exists(trying):
+                os.remove(trying)
+    return 0
 
 
 def outline_later(img):
     if detach():
         try:
-            outline_capped(img)
+            outline_capped([img])
         finally:
             os._exit(0)
 
 
-def pick(img, width, height):
+def pick(img, width, height, token):
     gw, gh = grid_of(width, height)
     found = None
     if is_still(img):
         found, known = cached_outline(outline_base(img))
         if not known and cutout_ready():
             outline_later(img)
-    kind, pair = ("outline", found) if found else ("contagion", contagion(gw, gh))
-    found = tint(img) if is_still(img) else None
-    print(img, kind, *pair, *(found or ("-", "-")), sep="\t")
+    if found:
+        kind, pair = "outline", found
+    else:
+        pair = contagion(gw, gh)
+        kind = "contagion" if pair else "none"
+    if not pair:
+        print(token, "none", "-", "-", "-", "-", sep="\t")
+        return
+    shade = tint(img) if is_still(img) else None
+    print(token, kind, *pair, *(shade or ("-", "-")), sep="\t")
 
 
 def warm(sizes, images):
@@ -469,37 +536,43 @@ def warm(sizes, images):
     for size in sizes.split(","):
         gw, gh = grid_of(*(int(n) for n in size.split("x")))
         d = pool_dir(gw, gh)
+        made = pool(d)
         for k in range(POOL):
-            if not all(os.path.exists(p) for p in pool_pair(d, k)):
+            if k not in made:
                 fill(d, k, gw, gh)
-    for img in images:
-        if is_still(img):
-            tint(img)
-    if not cutout_ready():
-        return
-    for img in images:
-        if not is_still(img) or cached_outline(outline_base(img))[1]:
-            continue
-        print("outline" if outline_capped(img) else "contagion", img, flush=True)
+    stills = [img for img in images if is_still(img)]
+    for img in stills:
+        tint(img)
+    if cutout_ready():
+        outline_capped([img for img in stills if not cached_outline(outline_base(img))[1]])
+
+
+def install_steps(uv, has_venv):
+    venv = os.path.join(CUTOUT, "venv")
+    steps = []
+    if uv:
+        if not has_venv:
+            steps.append([uv, "venv", "-q", "--python", "3.12", venv])
+        steps.append([uv, "pip", "install", "-q", "--python", VENV_PY, *PACKAGES])
+    else:
+        if not has_venv:
+            steps.append([sys.executable, "-m", "venv", venv])
+        steps.append([VENV_PY, "-m", "pip", "install", "-q", *PACKAGES])
+    steps.append([VENV_PY, "-c", f"from rembg import new_session; new_session({MODEL!r})"])
+    return steps
 
 
 def install():
-    uv = shutil.which("uv")
-    if not uv:
-        print("needs uv", file=sys.stderr)
-        return 1
     os.makedirs(CUTOUT, exist_ok=True)
     try:
         os.remove(os.path.join(CUTOUT, "ready"))
     except FileNotFoundError:
         pass
-    venv = os.path.join(CUTOUT, "venv")
-    if not os.path.exists(VENV_PY):
-        subprocess.run([uv, "venv", "-q", "--python", "3.12", venv], check=True)
-    subprocess.run([uv, "pip", "install", "-q", "--python", VENV_PY, "rembg", "onnxruntime",
-                    "opencv-python-headless", "numpy", "pillow"], check=True)
     env = dict(os.environ, U2NET_HOME=os.path.join(CUTOUT, "models"))
-    subprocess.run([VENV_PY, "-c", f"from rembg import new_session; new_session({MODEL!r})"], check=True, env=env)
+    with open(os.path.join(CUTOUT, "install.log"), "w") as log:
+        for step in install_steps(shutil.which("uv"), os.path.exists(VENV_PY)):
+            if subprocess.run(step, stdout=log, stderr=subprocess.STDOUT, env=env).returncode != 0:
+                return 1
     open(os.path.join(CUTOUT, "ready"), "w").close()
     return 0
 
@@ -508,28 +581,21 @@ def main(argv):
     cmd, rest = (argv[0], argv[1:]) if argv else ("", [])
     if cmd in ("pick", "warm") and not has_numpy():
         reexec_in_venv()
-    if cmd == "pick" and len(rest) == 3:
-        pick(rest[0], int(rest[1]), int(rest[2]))
+    if cmd == "pick" and len(rest) == 4:
+        pick(rest[0], int(rest[1]), int(rest[2]), rest[3])
         return 0
     if cmd == "warm" and rest:
         warm(rest[0], rest[1:])
         return 0
     if cmd == "outline" and rest:
         reexec_in_venv()
-        try:
-            r = outline(rest[0], force="--force" in rest)
-        except Exception as e:
-            print(e, file=sys.stderr)
-            return 3
-        if r:
-            print(*r)
-        return 0 if r else 1
+        return outline_batch([a for a in rest if a != "--force"], force="--force" in rest)
     if cmd == "status":
         print("installed" if cutout_ready() else "missing")
         return 0
     if cmd == "install":
         return install()
-    print("usage: wallpaper-transition.py pick IMG W H | warm WxH[,WxH] [IMG...] | outline IMG | status | install", file=sys.stderr)
+    print("usage: wallpaper-transition.py pick IMG W H TOKEN | warm WxH[,WxH] [IMG...] | outline IMG... | status | install", file=sys.stderr)
     return 2
 
 
