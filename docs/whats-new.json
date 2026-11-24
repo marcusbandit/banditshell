@@ -11,7 +11,7 @@
         },
         {
           "type": "issues",
-          "severity": "minor",
+          "severity": "major",
           "text": "The lock screen unlocks with your face if Gaze or Howdy is installed"
         },
         {

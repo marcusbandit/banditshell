@@ -151,6 +151,7 @@ Singleton {
             root.opening = false;
             root.releasing = false;
             fold.stop();
+            root.unseal();
             return;
         }
         if (root.active || root.arming)
@@ -798,8 +799,13 @@ Singleton {
 
         configDirectory: LockPam.directory(root.pamRoom)
 
-        onResponseRequiredChanged: if (face.responseRequired)
-            face.abort()
+        onResponseRequiredChanged: {
+            if (!face.responseRequired)
+                return;
+            face.abort();
+            if (root.active && !root.granted)
+                root.miss();
+        }
 
         onCompleted: res => {
             root.lookedAt = Date.now();
@@ -813,10 +819,6 @@ Singleton {
             root.miss();
         }
 
-        onError: err => {
-            console.warn(`Lock: face check failed: ${PamError.toString(err)}`);
-            if (root.active && !root.granted)
-                root.miss();
-        }
+        onError: err => console.warn(`Lock: face check failed: ${PamError.toString(err)}`)
     }
 }
