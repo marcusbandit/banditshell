@@ -1583,9 +1583,14 @@ banditshell/
 │   │                            refusal, a red arc that counts a lockout down,
 │   │                            and all lit in the accent as the shackle swings
 │   │                            open, before the drop sinks back into the edge.
-│   │                            The face is howdy's, through its own PAM file
-│   │                            next to the password's, whenever pam_howdy.so
-│   │                            is installed and lock.face is on. It looks on a
+│   │                            The face is Gaze's, with howdy behind it
+│   │                            whenever Gaze says no, for a dark room where
+│   │                            only howdy's IR camera sees, through one PAM file
+│   │                            of its own next to the password's, made of
+│   │                            whichever of the two is installed (lock.face:
+│   │                            auto, gaze, howdy or off). Gaze won a trial
+│   │                            (#885): 1.1 s a look, and its liveness check
+│   │                            refused a phone photo that matched. It looks on a
 │   │                            key, move or touch once the lock has stood for
 │   │                            a moment, never as it comes up, so locking in
 │   │                            front of the camera does not undo itself; three

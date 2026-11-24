@@ -6,18 +6,36 @@ const stack = "auth required pam_unix.so nullok nodelay\n";
 
 const faceService = "banditshell-face";
 
-const faceStack = "auth required pam_howdy.so\n";
+const faces = ["gaze", "howdy"];
 
-const faceModules = [
-    "/usr/lib/security/pam_howdy.so",
-    "/lib/security/pam_howdy.so",
-    "/usr/lib64/security/pam_howdy.so",
-    "/lib64/security/pam_howdy.so",
-    "/usr/lib/x86_64-linux-gnu/security/pam_howdy.so",
-    "/lib/x86_64-linux-gnu/security/pam_howdy.so",
-    "/usr/lib/aarch64-linux-gnu/security/pam_howdy.so",
-    "/lib/aarch64-linux-gnu/security/pam_howdy.so"
+const securityDirs = [
+    "/usr/lib/security",
+    "/lib/security",
+    "/usr/lib64/security",
+    "/lib64/security",
+    "/usr/lib/x86_64-linux-gnu/security",
+    "/lib/x86_64-linux-gnu/security",
+    "/usr/lib/aarch64-linux-gnu/security",
+    "/lib/aarch64-linux-gnu/security"
 ];
+
+function faceStack(chosen) {
+    const known = (chosen || []).filter(face => faces.indexOf(face) >= 0);
+    return known.map((face, i) => `auth ${i < known.length - 1 ? "sufficient" : "required"} pam_${face}.so\n`).join("");
+}
+
+function faceModules() {
+    const paths = [];
+    for (const face of faces)
+        for (const dir of securityDirs)
+            paths.push(`${dir}/pam_${face}.so`);
+    return paths;
+}
+
+function faceOf(path) {
+    const found = /\/pam_([a-z]+)\.so$/.exec(path || "");
+    return found && faces.indexOf(found[1]) >= 0 ? found[1] : "";
+}
 
 function directory(room) {
     return room ? `${room}/banditshell/pam.d` : "";
@@ -29,5 +47,5 @@ function file(room, name) {
 }
 
 function findFace() {
-    return ["sh", "-c", 'for m in "$@"; do [ -e "$m" ] && exit 0; done; exit 1', "sh"].concat(faceModules);
+    return ["sh", "-c", 'for m in "$@"; do [ -e "$m" ] && echo "$m"; done; exit 0', "sh"].concat(faceModules());
 }

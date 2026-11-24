@@ -984,7 +984,7 @@ Singleton {
 
                 revealSpeed: 9,
 
-                face: true,
+                face: "auto",
 
                 tab: "dots",
 

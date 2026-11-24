@@ -28,11 +28,13 @@ Singleton {
 
     readonly property bool busy: pam.active
 
-    readonly property bool faceWanted: Config.values.lock.face
+    readonly property string faceWanted: LockFace.wanted(Config.values.lock.face)
 
-    property bool faceInstalled: false
+    property var faceFound: []
 
-    readonly property bool faceReady: root.faceWanted && root.faceInstalled
+    readonly property var faces: LockFace.choose(root.faceWanted, root.faceFound, LockPam.faces)
+
+    readonly property bool faceReady: root.faces.length > 0
 
     readonly property bool looking: face.active
 
@@ -382,7 +384,7 @@ Singleton {
     }
 
     function placeFace(): bool {
-        return root.place(faceStack, LockPam.faceStack);
+        return root.place(faceStack, LockPam.faceStack(root.faces));
     }
 
     function check(secret: string): void {
@@ -774,7 +776,19 @@ Singleton {
 
         command: LockPam.findFace()
 
-        onExited: code => root.faceInstalled = code === 0
+        stdout: StdioCollector {
+            id: faceProbeReply
+        }
+
+        onExited: code => {
+            const found = [];
+            for (const line of faceProbeReply.text.split("\n")) {
+                const face = LockPam.faceOf(line);
+                if (face && found.indexOf(face) < 0)
+                    found.push(face);
+            }
+            root.faceFound = found;
+        }
     }
 
     PamContext {

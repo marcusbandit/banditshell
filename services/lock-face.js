@@ -21,3 +21,18 @@ function waitLeft(retryAt, span, now) {
         return 0;
     return Math.min(1, (retryAt - now) / span);
 }
+
+function wanted(value) {
+    if (value === true)
+        return "auto";
+    if (value === false)
+        return "off";
+    return ["auto", "gaze", "howdy", "off"].indexOf(value) >= 0 ? value : "auto";
+}
+
+function choose(want, found, order) {
+    const have = order.filter(face => found.indexOf(face) >= 0);
+    if (want === "auto")
+        return have;
+    return have.indexOf(want) >= 0 ? [want] : [];
+}

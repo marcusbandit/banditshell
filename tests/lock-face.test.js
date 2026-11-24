@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/lock-face.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Face = new Function(src + "\nreturn { settle, pause, tries, mayLook, waitLeft };")();
+const Face = new Function(src + "\nreturn { settle, pause, tries, mayLook, waitLeft, wanted, choose };")();
 
 const sealedAt = 100000;
 
@@ -73,5 +73,29 @@ test.describe("how much of a lockout is left", () => {
 
     test.it("never reads more than a full ring when the clock goes backwards", () => {
         assert.strictEqual(Face.waitLeft(20000, 5000, 0), 1);
+    });
+});
+
+test.describe("which face modules the lock asks", () => {
+    const order = ["gaze", "howdy"];
+
+    test.it("asks every installed one, Gaze first, on auto", () => {
+        assert.deepStrictEqual(Face.choose("auto", ["howdy", "gaze"], order), ["gaze", "howdy"]);
+        assert.deepStrictEqual(Face.choose("auto", ["howdy"], order), ["howdy"]);
+        assert.deepStrictEqual(Face.choose("auto", [], order), []);
+    });
+
+    test.it("asks only the one named, and nothing when it is missing", () => {
+        assert.deepStrictEqual(Face.choose("howdy", ["gaze", "howdy"], order), ["howdy"]);
+        assert.deepStrictEqual(Face.choose("gaze", ["howdy"], order), []);
+        assert.deepStrictEqual(Face.choose("off", ["gaze", "howdy"], order), []);
+    });
+
+    test.it("reads an older on or off setting as auto or off", () => {
+        assert.strictEqual(Face.wanted(true), "auto");
+        assert.strictEqual(Face.wanted(false), "off");
+        assert.strictEqual(Face.wanted("gaze"), "gaze");
+        assert.strictEqual(Face.wanted("nonsense"), "auto");
+        assert.strictEqual(Face.wanted(undefined), "auto");
     });
 });
