@@ -5,6 +5,7 @@ import QtQuick.Effects
 import Quickshell
 import qs.config
 import qs.components
+import qs.components.blob
 import qs.services
 import "../../components/font-axes.js" as FontAxes
 
@@ -24,6 +25,26 @@ Item {
     property bool bloom: Lock.seeingThrough
 
     property bool awake: Lock.awake
+
+    property bool looking: Lock.looking
+
+    property bool granted: Lock.granted
+
+    property real waitLeft: Lock.waitLeft
+
+    property bool faceReady: Lock.faceReady
+
+    property string tabStyle: Config.values.lock.tab
+
+    property string powerPlace: Config.values.lock.power
+
+    readonly property bool tabOn: root.tabStyle === "dots" || root.tabStyle === "ticks"
+
+    readonly property real edgeOut: 4
+
+    readonly property real hidden: Appearance.rounding.large * 2 + root.edgeOut + Appearance.sizes.melt
+
+    readonly property real powerPad: Appearance.padding.normal
 
     readonly property real rested: 1 - presence.value
 
@@ -80,6 +101,11 @@ Item {
         scattered.target = 1;
     }
 
+    function flash(): void {
+        missed.target = 1;
+        missing.restart();
+    }
+
     onTypedChanged: if (root.typed > 0)
         alarmed.target = 0
 
@@ -94,6 +120,10 @@ Item {
             root.refuse();
         }
 
+        function onUnseen(): void {
+            root.flash();
+        }
+
         function onSleepingChanged(): void {
             if (Lock.sleeping)
                 Qt.callLater(root.place);
@@ -101,12 +131,14 @@ Item {
     }
 
     readonly property real restingY: root.height * 0.46 - field.y - field.height / 2
-    readonly property real clearingY: power.y - Appearance.padding.large - (info.y + info.reach)
+    readonly property real floorY: root.powerPlace === "edge" ? power.y - Appearance.padding.large : root.height - Appearance.padding.huge
+    readonly property real clearingY: root.floorY - (info.y + info.reach)
+    readonly property real ceilingY: root.tabOn ? tab.height + Appearance.padding.large : Appearance.padding.huge
 
     Follow {
         id: lift
 
-        target: Math.max(Appearance.padding.huge, Math.min(root.restingY, root.clearingY))
+        target: Math.max(root.ceilingY, Math.min(root.restingY, root.clearingY))
         speed: Appearance.animation.trackSpeed * 0.5
         Component.onCompleted: lift.snap()
     }
@@ -155,6 +187,28 @@ Item {
 
         speed: Appearance.animation.revealSpeed
         epsilon: 0.002
+    }
+
+    Follow {
+        id: missed
+
+        speed: Appearance.animation.revealSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+    }
+
+    Timer {
+        id: missing
+
+        interval: 700
+        onTriggered: missed.target = 0
+    }
+
+    Follow {
+        id: edgesOut
+
+        target: root.contentIn > 0.5 && !(root.opening && gathered.value > 0.3) ? 1 : 0
+        speed: Appearance.animation.revealSpeed
+        epsilon: Appearance.animation.fadeEpsilon
     }
 
     readonly property bool sealed: cover.value === 1
@@ -241,6 +295,55 @@ Item {
             anchors.fill: parent
             color: Appearance.colour.ink
             opacity: root.veil * Math.min(1, Appearance.sizes.lockDim * 0.6 + root.rested * 0.25 + (Appearance.light ? 0.2 : 0))
+        }
+
+        BlobField {
+            id: edges
+
+            readonly property var tabBlob: root.tabOn && edgesOut.value > 0.001 ? {
+                x: (root.width - tab.width) / 2,
+                y: -root.hidden,
+                w: tab.width,
+                h: root.hidden + edgesOut.value * tab.height,
+                radius: Appearance.rounding.large
+            } : null
+
+            readonly property var powerBlob: root.powerPlace === "tab" && edgesOut.value > 0.001 ? {
+                x: power.x - root.powerPad,
+                y: root.height - edgesOut.value * (power.height + root.powerPad * 2),
+                w: power.width + root.powerPad * 2,
+                h: root.hidden + edgesOut.value * (power.height + root.powerPad * 2),
+                radius: power.bubble / 2 + root.powerPad
+            } : null
+
+            anchors.fill: parent
+            visible: edges.panels.length > 0
+
+            panels: [edges.tabBlob, edges.powerBlob].filter(blob => blob !== null)
+            content: Qt.vector4d(-root.width, -root.edgeOut, root.width * 3, root.height + root.edgeOut * 2)
+            gap: 0
+            band: 0
+            frameOn: 0
+        }
+
+        LockTab {
+            id: tab
+
+            x: (root.width - tab.width) / 2
+            y: (edgesOut.value - 1) * tab.height
+            width: implicitWidth
+            height: implicitHeight
+            visible: root.tabOn && edgesOut.value > 0.01
+
+            style: root.tabStyle
+            looking: root.looking
+            granted: root.granted
+            canLook: root.faceReady && !root.granted
+            alarm: Math.max(alarmed.value, missed.value)
+            waitLeft: root.waitLeft
+            presence: presence.value
+
+            onAsked: Lock.look(true)
         }
 
         Column {
@@ -387,13 +490,25 @@ Item {
         LockPower {
             id: power
 
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: Appearance.padding.huge * 2
+            x: {
+                if (root.powerPlace === "edge")
+                    return (root.width - power.width) / 2;
+                return Appearance.padding.huge + (root.powerPlace === "tab" ? root.powerPad : 0);
+            }
+            y: {
+                if (root.powerPlace === "edge")
+                    return root.height - Appearance.padding.huge * 2 - power.height;
+                if (root.powerPlace === "tab")
+                    return root.height - root.powerPad - power.height + (1 - edgesOut.value) * (power.height + root.powerPad * 2);
+                return root.height - Appearance.padding.huge - power.height;
+            }
+            width: implicitWidth
+            height: implicitHeight
 
             family: root.family
+            placement: root.powerPlace
             open: root.awake && root.cursor.y > root.height - Appearance.padding.huge * 6
-            opacity: root.contentIn
+            opacity: root.contentIn * (root.powerPlace === "edge" ? 1 : 0.6 + 0.4 * presence.value)
         }
     }
 

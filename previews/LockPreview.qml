@@ -13,6 +13,11 @@ ShellRoot {
         [1200, () => face.awake = false],
         [1800, () => {
                 face.awake = true;
+                face.looking = true;
+            }],
+        [1600, () => {
+                face.looking = false;
+                face.flash();
                 face.typed = 1;
             }],
         [140, () => face.typed = 2],
@@ -42,8 +47,9 @@ ShellRoot {
         [500, () => {
                 face.typed = 0;
                 face.send(7);
-                face.opening = true;
-            }]
+                face.granted = true;
+            }],
+        [400, () => face.opening = true]
     ]
 
     Timer {
@@ -86,6 +92,10 @@ ShellRoot {
             status: ""
             bloom: true
             awake: true
+            looking: false
+            granted: false
+            waitLeft: 0
+            faceReady: true
         }
     }
 }

@@ -7,6 +7,7 @@ import Quickshell.Services.Pam
 import qs.config
 import "lock-hint.js" as LockHint
 import "lock-pam.js" as LockPam
+import "lock-face.js" as LockFace
 
 Singleton {
     id: root
@@ -27,6 +28,22 @@ Singleton {
 
     readonly property bool busy: pam.active
 
+    readonly property bool faceWanted: Config.values.lock.face
+
+    property bool faceInstalled: false
+
+    readonly property bool faceReady: root.faceWanted && root.faceInstalled
+
+    readonly property bool looking: face.active
+
+    readonly property bool granted: root.releasing || root.opening
+
+    property real sealedAt: 0
+
+    property real lookedAt: 0
+
+    property int misses: 0
+
     readonly property int typed: entry.secret.length
 
     property string message: ""
@@ -39,6 +56,7 @@ Singleton {
 
     signal sent(int marks)
     signal refused
+    signal unseen
 
     readonly property int freeAttempts: 3
     readonly property int firstWait: 5000
@@ -53,6 +71,7 @@ Singleton {
 
     readonly property int waitSeconds: Math.max(0, Math.ceil((attempts.retryAt - root.now) / 1000))
     readonly property bool waiting: root.waitSeconds > 0
+    readonly property real waitLeft: LockFace.waitLeft(attempts.retryAt, attempts.span, root.now)
 
     readonly property string user: Quickshell.env("USER")
 
@@ -116,6 +135,7 @@ Singleton {
     Component.onCompleted: {
         root.placeStack();
         root.relockWithoutLogind();
+        faceProbe.running = true;
     }
 
     Binding {
@@ -140,6 +160,7 @@ Singleton {
         root.forget();
         root.message = "";
         root.failed = false;
+        root.unseal();
         root.stir();
         root.arming = true;
         root.seeThrough(true, () => {
@@ -158,6 +179,7 @@ Singleton {
         root.forget();
         root.message = "";
         root.failed = false;
+        root.unseal();
         root.stir();
         if (root.seeingThrough)
             root.seeThrough(false, null);
@@ -172,6 +194,7 @@ Singleton {
         if (!root.active || root.opening || root.releasing)
             return;
         pam.abort();
+        face.abort();
         root.forget();
         root.releasing = true;
         root.seeThrough(true, () => {
@@ -188,8 +211,44 @@ Singleton {
     }
 
     function covered(): void {
+        if (root.active && !root.opening && !root.sealedAt)
+            root.sealedAt = Date.now();
         if (root.active && !root.opening && root.seeingThrough)
             root.seeThrough(false, null);
+    }
+
+    function unseal(): void {
+        root.sealedAt = 0;
+        root.lookedAt = 0;
+        root.misses = 0;
+        faceProbe.running = true;
+    }
+
+    function look(asked: bool): void {
+        const allowed = LockFace.mayLook({
+            ready: root.faceReady,
+            active: root.active,
+            opening: root.granted,
+            sleeping: root.sleeping,
+            looking: face.active,
+            sealedAt: root.sealedAt,
+            endedAt: root.lookedAt,
+            misses: root.misses,
+            now: Date.now(),
+            asked: asked
+        });
+        if (!allowed)
+            return;
+        if (asked)
+            root.misses = 0;
+        if (!root.placeFace() || !face.start())
+            root.miss();
+    }
+
+    function miss(): void {
+        root.lookedAt = Date.now();
+        root.misses += 1;
+        root.unseen();
     }
 
     function opened(): void {
@@ -228,12 +287,15 @@ Singleton {
 
     function finish(): void {
         pam.abort();
+        face.abort();
+        root.sealedAt = 0;
         root.forget();
         fold.stop();
         root.message = "";
         root.failed = false;
         attempts.failures = 0;
         attempts.retryAt = 0;
+        attempts.span = 0;
         root.secure = false;
         root.opening = false;
         root.releasing = false;
@@ -252,6 +314,7 @@ Singleton {
             inhibitor.running = true;
             return;
         }
+        face.abort();
         root.lock();
         sleepCap.restart();
         root.letSleep();
@@ -265,8 +328,11 @@ Singleton {
     }
 
     function stir(): void {
+        if (!root.awake)
+            root.misses = 0;
         root.awake = true;
         rest.restart();
+        root.look(false);
     }
 
     function type(text: string): void {
@@ -301,14 +367,22 @@ Singleton {
         return true;
     }
 
-    function placeStack(): bool {
-        if (!pamStack.path)
+    function place(view: var, text: string): bool {
+        if (!view.path)
             return false;
-        if (pamStack.text() === LockPam.stack)
+        if (view.text() === text)
             return true;
-        pamStack.written = false;
-        pamStack.setText(LockPam.stack);
-        return pamStack.written;
+        view.written = false;
+        view.setText(text);
+        return view.written;
+    }
+
+    function placeStack(): bool {
+        return root.place(pamStack, LockPam.stack);
+    }
+
+    function placeFace(): bool {
+        return root.place(faceStack, LockPam.faceStack);
     }
 
     function check(secret: string): void {
@@ -363,7 +437,8 @@ Singleton {
         if (beyond < 0)
             return;
         root.now = Date.now();
-        attempts.retryAt = root.now + Math.min(root.firstWait * Math.pow(2, beyond), root.longestWait);
+        attempts.span = Math.min(root.firstWait * Math.pow(2, beyond), root.longestWait);
+        attempts.retryAt = root.now + attempts.span;
     }
 
     Timer {
@@ -487,6 +562,7 @@ Singleton {
 
         property int failures: 0
         property real retryAt: 0
+        property real span: 0
 
         onReloaded: root.tick()
     }
@@ -677,6 +753,56 @@ Singleton {
         onError: err => {
             console.warn(`Lock: PAM failed: ${PamError.toString(err)}`);
             root.settle("couldn't check the password, try again", false);
+        }
+    }
+
+    FileView {
+        id: faceStack
+
+        property bool written: false
+
+        path: LockPam.file(root.pamRoom, LockPam.faceService)
+        blockWrites: true
+        printErrors: false
+
+        onSaved: faceStack.written = true
+        onSaveFailed: err => console.warn(`Lock: could not write the face PAM stack to ${faceStack.path}: ${FileViewError.toString(err)}`)
+    }
+
+    Process {
+        id: faceProbe
+
+        command: LockPam.findFace()
+
+        onExited: code => root.faceInstalled = code === 0
+    }
+
+    PamContext {
+        id: face
+
+        config: LockPam.faceService
+
+        configDirectory: LockPam.directory(root.pamRoom)
+
+        onResponseRequiredChanged: if (face.responseRequired)
+            face.abort()
+
+        onCompleted: res => {
+            root.lookedAt = Date.now();
+            if (!root.active || root.granted)
+                return;
+            if (res === PamResult.Success) {
+                verdict.stop();
+                root.release();
+                return;
+            }
+            root.miss();
+        }
+
+        onError: err => {
+            console.warn(`Lock: face check failed: ${PamError.toString(err)}`);
+            if (root.active && !root.granted)
+                root.miss();
         }
     }
 }

@@ -12,6 +12,10 @@ Item {
 
     property bool open: false
 
+    property string placement: "edge"
+
+    readonly property bool side: root.placement !== "edge"
+
     readonly property var choices: [
         {
             key: "suspend",
@@ -61,13 +65,20 @@ Item {
             Power.run(entry);
     }
 
-    implicitWidth: row.implicitWidth
-    implicitHeight: label.implicitHeight + Appearance.padding.normal + root.bubble
+    implicitWidth: row.implicitWidth + (root.side ? reach.value : 0)
+    implicitHeight: root.side ? root.bubble : label.implicitHeight + Appearance.padding.normal + root.bubble
+
+    Follow {
+        id: reach
+
+        target: root.hint !== "" ? Appearance.padding.large + label.implicitWidth : 0
+        speed: Appearance.animation.revealSpeed
+    }
 
     Follow {
         id: rise
 
-        target: root.open || root.held >= 0 ? 1 : 0
+        target: root.side || root.open || root.held >= 0 ? 1 : 0
         speed: Appearance.animation.revealSpeed
         epsilon: 0.004
     }
@@ -93,7 +104,8 @@ Item {
         Text {
             id: label
 
-            anchors.horizontalCenter: parent.horizontalCenter
+            x: root.side ? row.width + Appearance.padding.large : (parent.width - label.width) / 2
+            y: root.side ? (root.bubble - label.height) / 2 : 0
             text: root.shownHint
             color: Appearance.colour.textDim
             opacity: telling.value
@@ -105,9 +117,9 @@ Item {
         Row {
             id: row
 
-            anchors.bottom: parent.bottom
-            anchors.horizontalCenter: parent.horizontalCenter
-            spacing: Appearance.padding.large
+            x: root.side ? 0 : (parent.width - row.width) / 2
+            y: parent.height - row.height
+            spacing: root.side ? Appearance.padding.normal : Appearance.padding.large
 
             Repeater {
                 model: root.choices
