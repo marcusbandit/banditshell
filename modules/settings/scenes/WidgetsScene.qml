@@ -179,23 +179,49 @@ Item {
                 }
             }
 
-            Card {
+            Row {
                 visible: SettingsState.v("widgetSystem")
-                height: root.column * 0.3
+                width: root.column
+                height: root.column * 0.34
+                spacing: Math.max(2, root.column * 0.05)
 
-                Row {
-                    anchors.centerIn: parent
-                    spacing: root.column * 0.2
+                Repeater {
+                    model: [
+                        { tone: Appearance.huedOr(Appearance.hue.processor, Appearance.colour.accent), pts: [0.8, 0.55, 0.25, 0.4, 0.2] },
+                        { tone: Appearance.huedOr(Appearance.hue.graphics, Appearance.colour.accent), pts: [0.85, 0.78, 0.5, 0.58, 0.65] },
+                        { tone: Appearance.huedOr(Appearance.hue.memory, Appearance.colour.accent), pts: [0.55, 0.52, 0.48, 0.46, 0.45] }
+                    ]
 
-                    Repeater {
-                        model: [0.35, 0.6]
+                    delegate: SquircleRect {
+                        id: miniWell
 
-                        delegate: ProgressRing {
-                            required property real modelData
+                        required property var modelData
 
-                            size: root.column * 0.18
-                            thickness: Math.max(1.5, root.column * 0.025)
-                            value: modelData
+                        width: (parent.width - parent.spacing * 2) / 3
+                        height: parent.height
+                        radius: Math.max(3, Appearance.rounding.large * root.ratio * 1.6)
+                        color: Appearance.colour.surface
+
+                        Shape {
+                            id: miniTrace
+
+                            x: Math.max(2, root.column * 0.04)
+                            y: miniWell.height * 0.46
+                            width: miniWell.width - x * 2
+                            height: miniWell.height * 0.42
+                            preferredRendererType: Shape.CurveRenderer
+
+                            ShapePath {
+                                fillColor: "transparent"
+                                strokeColor: miniWell.modelData.tone
+                                strokeWidth: Math.max(1, root.column * 0.016)
+                                capStyle: ShapePath.RoundCap
+                                joinStyle: ShapePath.RoundJoin
+
+                                PathSvg {
+                                    path: miniWell.modelData.pts.map((p, i) => `${i === 0 ? "M" : "L"}${miniTrace.width * i / 4} ${miniTrace.height * p}`).join(" ")
+                                }
+                            }
                         }
                     }
                 }

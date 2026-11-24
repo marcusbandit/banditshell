@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const src = fs.readFileSync(path.join(__dirname, "..", "services/weather.js"), "utf8");
-const Forecast = new Function(src + "\nreturn { wttrIcon, wmo, placeOf, coordsOf, wttrDays, outlookUrl, outlookDays, dateOf, upcoming, isToday, weekRange, barOf, rainText, readWttr, failureLook, ago, suggestionQueries, geocodeUrl, editDistance, geocodeResults, suggestPlace, suggestionCommand, typeaheadCommand, placeMatches, weatherAsk, nowOf, nowText };")();
+const Forecast = new Function(src + "\nreturn { wttrIcon, wmo, placeOf, coordsOf, wttrDays, outlookUrl, outlookDays, dateOf, upcoming, isToday, weekRange, barOf, rainText, readWttr, failureLook, ago, suggestionQueries, geocodeUrl, editDistance, geocodeResults, suggestPlace, suggestionCommand, typeaheadCommand, placeMatches, weatherAsk, nowOf, nowText, temperatureText };")();
 
 function hour(time, code, desc, rain) {
     return { time, weatherCode: String(code), weatherDesc: [{ value: desc }], chanceofrain: String(rain) };
@@ -336,4 +336,20 @@ test("current conditions read into a short line in either unit", () => {
     assert.deepStrictEqual(Forecast.nowText(now, false), { label: "9°C, Partly cloudy", detail: "Kongens Lyngby, Denmark · feels like 6° · 6° to 11° · wind 15 km/h" });
     assert.strictEqual(Forecast.nowText(now, true).label, "48°F, Partly cloudy");
     assert.strictEqual(Forecast.nowOf({}), null);
+});
+
+test("negative zero degrees is normalised to zero", () => {
+    assert.strictEqual(Forecast.temperatureText("-0", false), "0°C");
+    assert.strictEqual(Forecast.temperatureText(-0, true), "0°F");
+    assert.strictEqual(Forecast.temperatureText("-0.3", false), "0°C");
+    assert.strictEqual(Forecast.temperatureText("-1", false), "-1°C");
+    const wttr = Forecast.wttrDays({ weather: [{ date: "2026-11-24", maxtempC: "-0", mintempC: "-0.2" }] }, false);
+    assert.ok(Object.is(wttr[0].high, 0));
+    assert.ok(Object.is(wttr[0].low, 0));
+    const meteo = Forecast.outlookDays({ daily: { time: ["2026-11-24"], temperature_2m_max: [-0.1], temperature_2m_min: [-0.4], weather_code: [0] } });
+    assert.ok(Object.is(meteo[0].high, 0));
+    assert.ok(Object.is(meteo[0].low, 0));
+    const now = Forecast.nowOf({ nearest_area: [], current_condition: [{ temp_C: "-0", FeelsLikeC: "-0", weatherDesc: [{ value: "Clear" }] }], weather: [{ maxtempC: "-0", mintempC: "-0" }] });
+    assert.strictEqual(Forecast.nowText(now, false).label, "0°C, Clear");
+    assert.strictEqual(Forecast.nowText(now, false).detail, "0° to 0°");
 });

@@ -43,6 +43,11 @@ PanelWindow {
 
     mask: Region {
         item: column
+
+        Region {
+            intersection: Intersection.Combine
+            item: column.systemPopout
+        }
     }
 
     Timer {
@@ -76,6 +81,7 @@ PanelWindow {
         x: column.fromRight ? win.width - width - win.margin : win.margin
         y: win.margin
         room: win.height - win.margin * 2
+        availWidth: Math.max(0, win.width - column.width - win.margin * 2)
         fromRight: win.cfg.side === "right"
         opacity: shown.value
         running: win.live

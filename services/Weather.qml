@@ -44,7 +44,7 @@ Singleton {
     readonly property bool suggesting: suggester.running
     readonly property bool findingPlaces: placeDelay.running || placeFinder.running
     readonly property var placeSuggestion: root.failed && root.failure === "place" && root.failedFor === root.location && root.suggestedFor === root.location ? root.suggestion : null
-    readonly property string temperature: root.current ? `${root.imperial ? root.current.temp_F : root.current.temp_C}°${root.imperial ? "F" : "C"}` : ""
+    readonly property string temperature: root.current ? Forecast.temperatureText(root.imperial ? root.current.temp_F : root.current.temp_C, root.imperial) : ""
     readonly property string summary: root.current?.weatherDesc?.[0]?.value ?? ""
     readonly property var forecast: root.outlook.length > 0 && root.outlookImperial === root.imperial ? root.outlook : Forecast.wttrDays(root.wttrData, root.imperial)
     readonly property bool forecastReady: root.forecast.length > 0 && (root.failure === "" || root.ready)

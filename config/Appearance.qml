@@ -241,6 +241,7 @@ Singleton {
         readonly property color tunnel: ansi.cyan
         readonly property color battery: ansi.green
         readonly property color processor: ansi.blue
+        readonly property color graphics: ansi.green
         readonly property color memory: ansi.magenta
         readonly property color input: ansi.cyan
         readonly property color focus: ansi.blue
