@@ -117,6 +117,8 @@ Singleton {
 
                 accent: "mid",
 
+                hues: "panels",
+
                 lightTheme: "",
 
                 darkTheme: ""

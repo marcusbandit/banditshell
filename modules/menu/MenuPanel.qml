@@ -95,6 +95,7 @@ Item {
         const page = pages.itemAt(next);
         if (page) {
             page.pageTitle = root.title;
+            page.pageKey = root.key;
 
             if (!page.warm && (page.heldKey !== root.key || page.pageBody !== root.body)) {
                 page.holds = false;
@@ -163,6 +164,8 @@ Item {
                 readonly property bool warm: !!page.modelData.body
 
                 property string pageTitle: ""
+
+                property string pageKey: ""
 
                 property Component pageBody: page.modelData.body ?? null
 
@@ -238,9 +241,53 @@ Item {
 
                 readonly property bool titled: page.pageTitle !== ""
 
+                readonly property color headingHue: Appearance.hue.of(page.pageKey)
+
+                readonly property string headingIcon: {
+                    switch (page.pageKey) {
+                    case "audio":
+                        return Audio.icon(Audio.volume, Audio.muted);
+                    case "network":
+                        return Network.icon();
+                    case "bluetooth":
+                        return Bluetooth.statusIcon();
+                    case "brightness":
+                        return "brightness_6";
+                    default:
+                        return "";
+                    }
+                }
+
+                readonly property bool headingOn: {
+                    switch (page.pageKey) {
+                    case "audio":
+                        return !Audio.muted && Audio.volume > 0;
+                    case "network":
+                        return Network.linked;
+                    case "bluetooth":
+                        return Bluetooth.enabled;
+                    case "brightness":
+                        return Display.levelKnown;
+                    default:
+                        return false;
+                    }
+                }
+
+                readonly property bool headingMarked: page.titled && Appearance.hued && page.headingIcon !== "" && page.headingHue.a > 0
+
+                Icon {
+                    id: headingMark
+
+                    visible: page.headingMarked
+                    anchors.verticalCenter: heading.verticalCenter
+                    name: page.headingIcon
+                    color: page.headingOn ? page.headingHue : Appearance.colour.textDim
+                }
+
                 StyledText {
                     id: heading
 
+                    x: page.headingMarked ? headingMark.width + Appearance.padding.small : 0
                     visible: page.titled
                     height: page.titled ? implicitHeight : 0
                     text: page.pageTitle.toUpperCase()

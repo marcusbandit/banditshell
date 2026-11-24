@@ -308,6 +308,7 @@ Item {
                 alarm: modelData.reading.alarm ?? false
                 warning: modelData.reading.warning ?? false
                 available: modelData.reading.available ?? true
+                hue: Appearance.hue.of(key)
                 clickable: hasMenu || modelData.press !== undefined
 
                 onHoveredChanged: {

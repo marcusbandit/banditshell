@@ -20,7 +20,11 @@ Item {
 
     readonly property bool hovered: mouse.containsMouse
 
-    readonly property color markColour: !root.available ? Appearance.colour.textFaint : root.alarm ? Appearance.colour.alarm : root.warning ? Appearance.colour.warning : root.alert ? Appearance.colour.accent : root.hovered || root.active ? Appearance.colour.text : Appearance.colour.textDim
+    property color hue: "transparent"
+
+    readonly property bool wearsHue: Appearance.hued && root.hue.a > 0 && root.active && (root.hovered || Appearance.huedAtRest)
+
+    readonly property color markColour: !root.available ? Appearance.colour.textFaint : root.alarm ? Appearance.colour.alarm : root.warning ? Appearance.colour.warning : root.alert ? Appearance.colour.accent : root.wearsHue ? root.hue : root.hovered || root.active ? Appearance.colour.text : Appearance.colour.textDim
 
     implicitWidth: drawing.width
     implicitHeight: drawing.height

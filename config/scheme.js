@@ -82,6 +82,13 @@ function lightAccent(hex, floor) {
     return fromLch(Math.max(floor ?? HUE_FLOOR, Math.min(HUE_CEILING, 2 * PIVOT - s.l)), s.c * (floor ? 1.6 : HUE_CHROMA), s.h);
 }
 
+function lightHues(hues) {
+    const out = {};
+    for (const k in hues ?? {})
+        out[k] = lightAccent(String(hues[k]), WARNING_FLOOR);
+    return out;
+}
+
 function lightTheme(theme) {
     return {
         name: theme.name,
@@ -91,7 +98,8 @@ function lightTheme(theme) {
         bright: lightAccent(String(theme.bright)),
         alarm: lightAccent(String(theme.alarm)),
         brass: theme.brass ? lightAccent(String(theme.brass), WARNING_FLOOR) : undefined,
-        error: theme.error ? lightAccent(String(theme.error), WARNING_FLOOR) : undefined
+        error: theme.error ? lightAccent(String(theme.error), WARNING_FLOOR) : undefined,
+        hues: lightHues(theme.hues)
     };
 }
 

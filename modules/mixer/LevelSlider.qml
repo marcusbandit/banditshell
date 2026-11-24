@@ -12,7 +12,7 @@ Item {
     property real peak: 0
     property bool live: true
     property bool dimmed: false
-    property color lit: Appearance.colour.accent
+    property color lit: Appearance.huedOr(Appearance.hue.sound, Appearance.colour.accent)
 
     signal moved(real value)
 
