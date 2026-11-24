@@ -984,7 +984,13 @@ Singleton {
 
                 restAfter: 10,
 
-                revealSpeed: 9
+                revealSpeed: 9,
+
+                face: "auto",
+
+                tab: "dots",
+
+                power: "tab"
             },
 
             control: {

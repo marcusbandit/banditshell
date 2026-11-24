@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-11-24-lock-unlock-tab",
+      "date": "2026-11-24",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A top tab on the lock screen shows unlock status around a padlock"
+        },
+        {
+          "type": "issues",
+          "severity": "major",
+          "text": "The lock screen unlocks with your face if Gaze or Howdy is installed"
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Lock screen power buttons stay visible in the bottom left corner"
+        }
+      ]
+    },
+    {
       "id": "2026-11-24-wallpaper-transitions",
       "date": "2026-11-24",
       "changes": [

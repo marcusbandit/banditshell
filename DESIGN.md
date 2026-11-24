@@ -211,7 +211,8 @@ bug, with exactly one exception: a **looping clock** with no target being chased
 whole list: the mic indicator's processing ripple and typing caret, the battery charge sweep and
 low-charge throb, the scrolling-text marquee, the equalizer, the lyric
 line's sung-gap clock, the lyrics loading pulse, the activity bubble's and the settings keyboard
-widget's spinners, and the demo clocks of the settings scenes. Every one of them stops or freezes
+widget's spinners, the lock tab's sweep while it looks for a face, and the demo clocks of the
+settings scenes. Every one of them stops or freezes
 when `Appearance.lessMotion` is true. No overshoot, bounce or flourish anywhere except under the
 hand: the shell starts from no play at all, and anything playful comes back one deliberate piece
 at a time. The first piece is the Spring's small bounce on what can be grabbed.
@@ -1564,11 +1565,39 @@ banditshell/
 │   │                            each peeking out by half of its OWN size, all on
 │   │                            one baseline so the smaller ones ride lower; not a
 │   │                            word of what they say. LockPower: sleep, restart
-│   │                            and shut down as island bubbles that rise when
-│   │                            the pointer reaches the bottom edge, each firing
+│   │                            and shut down as island bubbles, each firing
 │   │                            only after a held press fills its ring, so a
 │   │                            guest can leave without a stray click costing
-│   │                            the session its unsaved work. No glow anywhere. One family on the whole
+│   │                            the session its unsaved work. Since #881 they
+│   │                            wait in the bottom-left corner at rest, in a
+│   │                            drop of the chassis rising out of the bottom
+│   │                            edge that grows sideways to say "hold to
+│   │                            restart" (lock.power: tab, corner without the
+│   │                            drop, or edge for the old centred row that
+│   │                            rises when the pointer reaches the bottom).
+│   │                            LockTab: a second drop melts out of the top
+│   │                            edge, centred, holding a padlock drawn here in
+│   │                            a ring of marks (lock.tab: dots, ticks, off).
+│   │                            The ring is the lock's state: faint at rest, a
+│   │                            sweep while it looks for a face, red on a
+│   │                            refusal, a red arc that counts a lockout down,
+│   │                            and all lit in the accent as the shackle swings
+│   │                            open, before the drop sinks back into the edge.
+│   │                            The face is Gaze's, with howdy behind it
+│   │                            whenever Gaze says no, for a dark room where
+│   │                            only howdy's IR camera sees, through one PAM file
+│   │                            of its own next to the password's, made of
+│   │                            whichever of the two is installed (lock.face:
+│   │                            auto, gaze, howdy or off). Gaze won a trial
+│   │                            (#885): 1.1 s a look, and its liveness check
+│   │                            refused a phone photo that matched. It looks on a
+│   │                            key, move or touch once the lock has stood for
+│   │                            a moment, never as it comes up, so locking in
+│   │                            front of the camera does not undo itself; three
+│   │                            misses in a row and only a press on the tab or
+│   │                            the screen waking from rest looks again. Both
+│   │                            drops are one BlobField with the screen's top
+│   │                            and bottom edges as its body. No glow anywhere. One family on the whole
 │   │                            face, lock.font (Adwaita Sans, the desktop's own
 │   │                            UI face): LockClock sets the time in it on its
 │   │                            variable weight axis, sized from the screen's
@@ -2258,7 +2287,7 @@ with the zeros again, the same contract `pushBorders` runs on. There is no half-
 to fall out of: the toggle, the boot and the reload all land in the same place. The pair is
 bound (`SUPER + SHIFT + K`; the on-screen keyboard took its `SUPER + SHIFT + Z`). Bare is
 persisted like `wallpaper.enabled`: a shell turned
-off on purpose is off when it comes back. The lock face draws no chassis, so it looks the same
+off on purpose is off when it comes back. The lock face draws no band, only its two drops, so it looks the same
 bare or not; a shell reduced to a wallpaper runner is still the machine looking like itself.
 
 ## 9. Driving it from a terminal
