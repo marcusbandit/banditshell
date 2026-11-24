@@ -153,6 +153,7 @@ Singleton {
             wallAnim: "wallpaper.animate",
             wallAudio: "wallpaper.audio",
             wallReveal: "wallpaper.reveal",
+            wallTransition: "wallpaper.transition",
             wallFit: "wallpaper.fit",
             font: "font.family",
             iconFont: "font.icon",
@@ -1446,6 +1447,16 @@ Singleton {
     }
 
     readonly property string aiCheckNote: Assistant.checkNote
+    readonly property bool cutoutBusy: Wallpaper.cutout === "installing" || Wallpaper.cutout === "installed"
+    readonly property string cutoutButton: ({
+            installing: "Installing",
+            installed: "Installed"
+        })[Wallpaper.cutout] ?? "Install"
+    readonly property string cutoutNote: ({
+            installing: "downloading",
+            installed: "",
+            failed: "could not install"
+        })[Wallpaper.cutout] ?? "about 1 GB download"
     readonly property bool aiSignedIn: Assistant.agent && Assistant.phase === "ready"
     readonly property string aiAccountNote: Assistant.agent ? ({
             ready: `signed in, ${Assistant.agentInfo.plan}`,

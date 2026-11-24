@@ -149,6 +149,8 @@ Singleton {
 
         readonly property color accentFill: Qt.rgba(accent.r, accent.g, accent.b, root.config.material.accentFill)
 
+        readonly property color accentBright: Qt.hsla(accent.hslHue, Math.max(accent.hslSaturation, 0.55), Math.min(Math.max(accent.hslLightness, 0.62), 0.82), 1)
+
         readonly property color accentGrey: {
             const l = accent.r * 0.2126 + accent.g * 0.7152 + accent.b * 0.0722;
             return Qt.rgba(l, l, l, 1);

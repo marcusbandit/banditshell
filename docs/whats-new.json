@@ -1,6 +1,24 @@
 {
   "entries": [
     {
+      "id": "2026-11-24-wallpaper-transitions",
+      "date": "2026-11-24",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Wallpapers change with a pixel transition by default",
+          "go": "panel settings open wallTransition"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Pixel transitions can outline characters after an install in Settings",
+          "go": "panel settings open wallpaper"
+        }
+      ]
+    },
+    {
       "id": "2026-11-24-colour-coding",
       "date": "2026-11-24",
       "changes": [

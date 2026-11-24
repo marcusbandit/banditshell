@@ -138,6 +138,8 @@ build_table() {
     add_step python-gobject                "python3 -c 'import gi'"                  python-gobject                2 "the keyring prompter's bus side"
     add_step python-cryptography           "python3 -c 'import cryptography'"        python-cryptography           2 "the keyring prompter's secret exchange"
     add_step python-evdev                  "python3 -c 'import evdev'"               python-evdev                  2 "the pen tablet's pad buttons"
+    add_step python-numpy                  "python3 -c 'import numpy'"               python-numpy                  2 "the maps behind the wallpaper transitions"
+    add_step python-pillow                 "python3 -c 'import PIL'"                 python-pillow                 2 "the maps behind the wallpaper transitions"
     add_step glib2                         "command -v gdbus"                        glib2                         2 "the portal calls"
     add_step zenity                        "command -v zenity"                       zenity                        2 "the one dialog qml cannot draw"
     add_step qrencode                      "command -v qrencode"                     qrencode                      2 "the qr the shell hands out"
@@ -516,6 +518,8 @@ python                         python3                   python3                
 python-gobject                 python3-gi                python3-gobject         python3-gobject          python3-gobject        py3-gobject3
 python-cryptography            python3-cryptography      python3-cryptography    python3-cryptography     python3-cryptography   py3-cryptography
 python-evdev                   python3-evdev             python3-evdev           python3-evdev            python3-evdev          py3-evdev
+python-numpy                   python3-numpy             python3-numpy           python3-numpy            python3-numpy          py3-numpy
+python-pillow                  python3-pil               python3-pillow          python3-Pillow           python3-Pillow         py3-pillow
 glib2                          libglib2.0-bin            =                       glib2-tools              glib                   glib
 zenity                         =                         =                       =                        =                      =
 qrencode                       =                         =                       =                        =                      libqrencode-tools

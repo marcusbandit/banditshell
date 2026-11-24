@@ -182,6 +182,10 @@ a terminal, `git pull` and `banditshell restart` do the same.
   [Material Symbols](https://fonts.google.com/icons) for the icons.
 - [Spicy Lyrics](https://github.com/Spikerko/spicy-lyrics) and
   [Spicetify](https://spicetify.app), for the word-timed lyrics.
+- [pocket-dots](https://github.com/diegoMalagrida/pocket-dots) by Diego
+  Malagrida, for the wallpaper transitions: the pixel contagion and the
+  character outline are his shader, map maker and timing, carried over with
+  only the hand-over to awww taken out. Also GPL-3.0.
 - [caelestia](https://github.com/caelestia-dots/shell), where this started.
   It is finished and excellent, and banditshell exists because I wanted to
   know how every part of a shell works. A few ideas came from it, the metaball
