@@ -240,7 +240,6 @@ Singleton {
         readonly property color battery: ansi.green
         readonly property color processor: ansi.blue
         readonly property color memory: ansi.magenta
-        readonly property color notices: ansi.red
         readonly property color input: ansi.cyan
         readonly property color focus: ansi.blue
 
@@ -258,9 +257,7 @@ Singleton {
                 return tunnel;
             if (k === "battery" || k === "powermode" || k === "power")
                 return battery;
-            if (k === "notifications" || k === "alerts")
-                return notices;
-            if (k === "keyboard" || k === "pointer" || k === "tablet" || k === "pen" || k === "layout" || k === "input" || k === "shortcuts")
+            if (k === "keyboard" || k === "pointer" || k === "tablet" || k === "pen" || k === "input" || k === "shortcuts")
                 return input;
             if (k === "focus" || k === "modes" || k === "clock" || k === "screentime")
                 return focus;

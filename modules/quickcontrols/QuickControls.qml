@@ -227,7 +227,7 @@ Item {
                     width: root.iconColumn
 
                     name: Audio.icon(Audio.volume, Audio.muted)
-                    color: Audio.muted ? Appearance.colour.textFaint : Appearance.huedOr(Appearance.hue.sound, Appearance.colour.textDim)
+                    color: Audio.muted ? Appearance.colour.textFaint : Audio.volume > 0 ? Appearance.huedOr(Appearance.hue.sound, Appearance.colour.textDim) : Appearance.colour.textDim
 
                     MouseArea {
                         anchors.fill: parent

@@ -258,6 +258,21 @@ Item {
                     }
                 }
 
+                readonly property bool headingOn: {
+                    switch (page.pageKey) {
+                    case "audio":
+                        return !Audio.muted && Audio.volume > 0;
+                    case "network":
+                        return Network.linked;
+                    case "bluetooth":
+                        return Bluetooth.enabled;
+                    case "brightness":
+                        return Display.levelKnown;
+                    default:
+                        return false;
+                    }
+                }
+
                 readonly property bool headingMarked: page.titled && Appearance.hued && page.headingIcon !== "" && page.headingHue.a > 0
 
                 Icon {
@@ -266,7 +281,7 @@ Item {
                     visible: page.headingMarked
                     anchors.verticalCenter: heading.verticalCenter
                     name: page.headingIcon
-                    color: page.headingHue
+                    color: page.headingOn ? page.headingHue : Appearance.colour.textDim
                 }
 
                 StyledText {

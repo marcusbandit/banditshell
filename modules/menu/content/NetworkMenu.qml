@@ -384,7 +384,7 @@ Column {
         label: "Wi-Fi"
         hue: Appearance.hue.network
         lit: Network.enabled && Network.connected
-        iconLit: Network.enabled
+        iconLit: Network.managerRunning && Network.available && Network.hardwareEnabled && Network.enabled
 
         detail: !Network.managerRunning ? "needs NetworkManager" : !Network.available ? "no adapter" : !Network.hardwareEnabled ? "blocked by hardware switch" : !Network.enabled ? "off" : !Network.connected ? "not connected" : Network.reachFor("wifi") ? `${Network.activeName} · ${Network.reachFor("wifi")}` : Network.activeName
         interactive: Network.available && Network.hardwareEnabled

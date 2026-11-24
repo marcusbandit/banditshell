@@ -556,7 +556,7 @@ Item {
             FollowColour {
                 id: markTone
 
-                target: Appearance.hued && rr.hue.a > 0 ? rr.hue : rr.on || rr.lit || hover.hovered ? Appearance.colour.text : Appearance.colour.textDim
+                target: Appearance.hued && rr.hue.a > 0 && !rr.dimmed ? rr.hue : rr.on || rr.lit || hover.hovered ? Appearance.colour.text : Appearance.colour.textDim
                 speed: Appearance.animation.revealSpeed
             }
         }
