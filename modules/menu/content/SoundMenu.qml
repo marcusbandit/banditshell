@@ -41,7 +41,7 @@ Column {
             anchors.verticalCenter: parent.verticalCenter
 
             name: level.glyph
-            color: !level.muted ? Appearance.colour.text : level.urgent ? Appearance.colour.accent : Appearance.colour.textFaint
+            color: !level.muted ? Appearance.huedOr(Appearance.hue.sound, Appearance.colour.text) : level.urgent ? Appearance.colour.accent : Appearance.colour.textFaint
 
             readonly property bool keyable: true
 
@@ -75,6 +75,7 @@ Column {
             to: level.max
             warnAbove: 1
             dimmed: level.muted
+            hue: Appearance.hue.sound
             onMoved: v => level.requested(v)
         }
 
@@ -205,6 +206,7 @@ Column {
             to: Audio.maxVolume
             warnAbove: 1
             dimmed: channel.muted
+            hue: Appearance.hue.sound
             onMoved: v => Audio.setStreamVolume(channel.node, v)
         }
 

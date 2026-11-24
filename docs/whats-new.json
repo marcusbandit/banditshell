@@ -1,6 +1,23 @@
 {
   "entries": [
     {
+      "id": "2026-11-24-colour-coding",
+      "date": "2026-11-24",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Icons, levels and numbers now have a colour per part of the system"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Colour coding in Settings turns this off or colours the sidebar too",
+          "go": "panel settings open hues"
+        }
+      ]
+    },
+    {
       "id": "2026-11-18-wifi-launcher-page",
       "date": "2026-11-18",
       "changes": [

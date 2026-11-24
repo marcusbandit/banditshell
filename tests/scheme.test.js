@@ -110,4 +110,15 @@ test.describe("light mode", () => {
             assert.ok(light.c > dark.c * 0.99, hex);
         }
     });
+
+    test.it("darkens every system hue with the theme, and a theme without hues still turns light", () => {
+        const Themes = lib(path.join(ROOT, "config/scheme.js"), ["lightTheme", "toLch"]);
+        const theme = { name: "slate", ramp: slate, dim: "#5B8FB0", mid: "#7FB3D4", bright: "#B8DCF0", alarm: "#FF7A4D" };
+        const hues = { red: "#F29BA8", green: "#85CB94", yellow: "#D1B565", blue: "#72C2F2", magenta: "#DAA0DD", cyan: "#58CDC9" };
+        const light = Themes.lightTheme(Object.assign({ hues }, theme));
+        assert.deepStrictEqual(Object.keys(light.hues), Object.keys(hues));
+        for (const k in hues)
+            assert.ok(Math.abs(Themes.toLch(light.hues[k]).l - 0.52) < 0.01, k);
+        assert.deepStrictEqual(Themes.lightTheme(theme).hues, {});
+    });
 });

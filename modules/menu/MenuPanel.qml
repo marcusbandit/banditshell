@@ -95,6 +95,7 @@ Item {
         const page = pages.itemAt(next);
         if (page) {
             page.pageTitle = root.title;
+            page.pageKey = root.key;
 
             if (!page.warm && (page.heldKey !== root.key || page.pageBody !== root.body)) {
                 page.holds = false;
@@ -163,6 +164,8 @@ Item {
                 readonly property bool warm: !!page.modelData.body
 
                 property string pageTitle: ""
+
+                property string pageKey: ""
 
                 property Component pageBody: page.modelData.body ?? null
 
@@ -238,9 +241,38 @@ Item {
 
                 readonly property bool titled: page.pageTitle !== ""
 
+                readonly property color headingHue: Appearance.hue.of(page.pageKey)
+
+                readonly property string headingIcon: {
+                    switch (page.pageKey) {
+                    case "audio":
+                        return Audio.icon(Audio.volume, Audio.muted);
+                    case "network":
+                        return Network.icon();
+                    case "bluetooth":
+                        return Bluetooth.statusIcon();
+                    case "brightness":
+                        return "brightness_6";
+                    default:
+                        return "";
+                    }
+                }
+
+                readonly property bool headingMarked: page.titled && Appearance.hued && page.headingIcon !== "" && page.headingHue.a > 0
+
+                Icon {
+                    id: headingMark
+
+                    visible: page.headingMarked
+                    anchors.verticalCenter: heading.verticalCenter
+                    name: page.headingIcon
+                    color: page.headingHue
+                }
+
                 StyledText {
                     id: heading
 
+                    x: page.headingMarked ? headingMark.width + Appearance.padding.small : 0
                     visible: page.titled
                     height: page.titled ? implicitHeight : 0
                     text: page.pageTitle.toUpperCase()

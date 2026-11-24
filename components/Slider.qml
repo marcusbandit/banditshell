@@ -16,6 +16,8 @@ Item {
 
     property var litOverride: null
 
+    property color hue: "transparent"
+
     signal moved(real value)
 
     readonly property bool keyable: root.enabled
@@ -29,7 +31,7 @@ Item {
     readonly property bool active: pointer.pressed || pointer.containsMouse
     readonly property bool held: pointer.pressed
 
-    readonly property color lit: root.dimmed ? Appearance.colour.textFaint : root.value > root.warnAbove ? (root.litOverride === null ? Appearance.colour.accent : root.litOverride) : Appearance.colour.text
+    readonly property color lit: root.dimmed ? Appearance.colour.textFaint : root.value > root.warnAbove ? (root.litOverride === null ? Appearance.colour.accent : root.litOverride) : root.hue.a > 0 ? Appearance.huedOr(root.hue, Appearance.colour.text) : Appearance.colour.text
 
     readonly property real rail: Appearance.sizes.sliderHeight
 

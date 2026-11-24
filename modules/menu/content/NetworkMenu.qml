@@ -335,6 +335,8 @@ Column {
         visible: Network.wiredShowing
         icon: "lan"
         label: "Ethernet"
+        hue: Appearance.hue.network
+        lit: Network.wiredConnected
 
         detail: !Network.wiredManaged ? "nothing is driving it" : Network.wiredConnecting ? "connecting" : Network.reachFor("wired") ? `${Network.wiredLabel} · ${Network.reachFor("wired")}` : Network.wiredLabel
         interactive: false
@@ -380,6 +382,9 @@ Column {
         width: root.width
         icon: Network.wifiIcon()
         label: "Wi-Fi"
+        hue: Appearance.hue.network
+        lit: Network.enabled && Network.connected
+        iconLit: Network.enabled
 
         detail: !Network.managerRunning ? "needs NetworkManager" : !Network.available ? "no adapter" : !Network.hardwareEnabled ? "blocked by hardware switch" : !Network.enabled ? "off" : !Network.connected ? "not connected" : Network.reachFor("wifi") ? `${Network.activeName} · ${Network.reachFor("wifi")}` : Network.activeName
         interactive: Network.available && Network.hardwareEnabled
@@ -549,6 +554,8 @@ Column {
                         label: entry.name
                         detail: Network.stateLabel(entry.modelData)
                         selected: entry.modelData.connected
+                        hue: Appearance.hue.network
+                        lit: entry.modelData.connected
 
                         onActivated: {
                             const n = Network.find(entry.name);
@@ -583,7 +590,7 @@ Column {
                             SignalBars {
                                 anchors.verticalCenter: parent.verticalCenter
                                 strength: Network.percent(entry.modelData)
-                                activeColour: entry.modelData.connected ? Appearance.colour.text : Appearance.colour.textDim
+                                activeColour: entry.modelData.connected ? Appearance.huedOr(Appearance.hue.network, Appearance.colour.text) : Appearance.colour.textDim
 
                                 HoverTip {
                                     text: `${Network.percent(entry.modelData)}%`

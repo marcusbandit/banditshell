@@ -34,7 +34,7 @@ Item {
         dimmed: root.muted
         peak: root.peak
         live: Mixer.watching
-        lit: root.listening ? Appearance.colour.warning : Appearance.colour.accent
+        lit: root.listening ? Appearance.colour.warning : Appearance.huedOr(Appearance.hue.sound, Appearance.colour.accent)
         onMoved: v => root.moved(v)
     }
 

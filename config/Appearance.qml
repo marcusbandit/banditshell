@@ -216,6 +216,58 @@ Singleton {
         readonly property color tile: root.veil(0.075)
     }
 
+    readonly property bool hued: root.config.colour.hues === "panels" || root.config.colour.hues === "everywhere"
+
+    readonly property bool huedAtRest: root.config.colour.hues === "everywhere"
+
+    function huedOr(hue: color, plain: color): color {
+        return root.hued ? hue : plain;
+    }
+
+    function hueFor(key: string, plain: color): color {
+        const c = root.hue.of(key);
+        return root.hued && c.a > 0 ? c : plain;
+    }
+
+    readonly property QtObject hue: QtObject {
+        readonly property var ansi: root.theme.hues ?? Themes.slate.hues
+
+        readonly property color sound: ansi.magenta
+        readonly property color light: ansi.yellow
+        readonly property color network: ansi.green
+        readonly property color bluetooth: ansi.blue
+        readonly property color tunnel: ansi.cyan
+        readonly property color battery: ansi.green
+        readonly property color processor: ansi.blue
+        readonly property color memory: ansi.magenta
+        readonly property color notices: ansi.red
+        readonly property color input: ansi.cyan
+        readonly property color focus: ansi.blue
+
+        function of(key: string): color {
+            const k = String(key ?? "");
+            if (k === "audio" || k === "sound" || k === "output" || k === "mic" || k === "mixer")
+                return sound;
+            if (k === "brightness" || k === "light" || k === "screens" || k === "display")
+                return light;
+            if (k === "network" || k === "wifi" || k === "wired" || k === "connections")
+                return network;
+            if (k === "bluetooth")
+                return bluetooth;
+            if (k === "vpn" || k === "tunnel")
+                return tunnel;
+            if (k === "battery" || k === "powermode" || k === "power")
+                return battery;
+            if (k === "notifications" || k === "alerts")
+                return notices;
+            if (k === "keyboard" || k === "pointer" || k === "tablet" || k === "pen" || k === "layout" || k === "input" || k === "shortcuts")
+                return input;
+            if (k === "focus" || k === "modes" || k === "clock" || k === "screentime")
+                return focus;
+            return "transparent";
+        }
+    }
+
     readonly property QtObject opacity: QtObject {
         readonly property real disabled: 0.4
         readonly property real trail: 0.55

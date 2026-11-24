@@ -26,6 +26,12 @@ Item {
     property var columns: []
     property real trailingRoom: 0
     property bool selected: false
+
+    property color hue: "transparent"
+    property bool lit: false
+    property bool iconLit: root.lit
+    readonly property bool wearsHue: Appearance.hued && root.lit && root.hue.a > 0
+    readonly property bool iconHued: Appearance.hued && root.iconLit && root.hue.a > 0
     property bool interactive: true
 
     property string tip: ""
@@ -118,7 +124,7 @@ Item {
         size: root.iconSize
         name: root.icon
         glyph: root.glyph
-        color: root.selected ? Appearance.colour.text : Appearance.colour.textDim
+        color: root.iconHued ? root.hue : root.selected ? Appearance.colour.text : Appearance.colour.textDim
     }
 
     Image {
@@ -184,7 +190,7 @@ Item {
             visible: !!root.detail && !root.columns.length && detail.room > 0
             text: detail.trimmed ? `…${root.detail.slice(root.detailShared)}` : root.detail
             font.pixelSize: Appearance.font.size.small
-            color: Appearance.colour.textFaint
+            color: root.wearsHue ? root.hue : Appearance.colour.textFaint
             elide: Text.ElideRight
         }
     }

@@ -227,7 +227,7 @@ Item {
                     width: root.iconColumn
 
                     name: Audio.icon(Audio.volume, Audio.muted)
-                    color: Audio.muted ? Appearance.colour.textFaint : Appearance.colour.textDim
+                    color: Audio.muted ? Appearance.colour.textFaint : Appearance.huedOr(Appearance.hue.sound, Appearance.colour.textDim)
 
                     MouseArea {
                         anchors.fill: parent
@@ -252,6 +252,7 @@ Item {
                     warnAbove: 1
                     step: root.step
                     dimmed: Audio.muted
+                    hue: Appearance.hue.sound
 
                     onMoved: value => Audio.setVolume(value)
                 }
@@ -388,7 +389,7 @@ Item {
                     width: root.iconColumn
 
                     name: "brightness_6"
-                    color: Display.levelKnown ? Appearance.colour.textDim : Appearance.colour.textFaint
+                    color: Display.levelKnown ? Appearance.huedOr(Appearance.hue.light, Appearance.colour.textDim) : Appearance.colour.textFaint
                 }
 
                 Slider {
@@ -403,6 +404,7 @@ Item {
                     from: Display.floor
                     to: 1
                     dimmed: !Display.levelKnown
+                    hue: Appearance.hue.light
 
                     onMoved: value => Display.setLevel(value)
                 }

@@ -333,6 +333,7 @@ Item {
                         width: parent.width
                         icon: cat.modelData.icon
                         label: cat.modelData.name
+                        hue: Appearance.hue.of(cat.modelData.id)
                         on: SettingsView.current === cat.modelData.id
                         lit: cat.open
                         onClicked: SettingsView.go(cat.modelData.id)
@@ -393,6 +394,7 @@ Item {
                                     iconScale: 0.9
                                     inset: Appearance.padding.small
                                     label: Catalogue.nameOf(sub.modelData, SettingsState)
+                                    hue: Appearance.hue.of(sub.modelData.id)
                                     on: SettingsView.current === sub.modelData.id
                                     dimmed: !!sub.modelData.off && sub.modelData.off(SettingsState)
                                     onClicked: SettingsView.go(sub.modelData.id)
@@ -525,6 +527,7 @@ Item {
         property bool on: false
         property bool lit: false
         property bool dimmed: false
+        property color hue: "transparent"
         property real iconScale: 1
         property real inset: Appearance.padding.normal
 
@@ -553,7 +556,7 @@ Item {
             FollowColour {
                 id: markTone
 
-                target: rr.on || rr.lit || hover.hovered ? Appearance.colour.text : Appearance.colour.textDim
+                target: Appearance.hued && rr.hue.a > 0 ? rr.hue : rr.on || rr.lit || hover.hovered ? Appearance.colour.text : Appearance.colour.textDim
                 speed: Appearance.animation.revealSpeed
             }
         }
@@ -565,8 +568,15 @@ Item {
             visible: !root.tiny
             text: rr.label
             elide: Text.ElideRight
-            color: mark.color
+            color: labelTone.value
             opacity: rr.dimmed ? Appearance.opacity.disabled : 1
+
+            FollowColour {
+                id: labelTone
+
+                target: rr.on || rr.lit || hover.hovered ? Appearance.colour.text : Appearance.colour.textDim
+                speed: Appearance.animation.revealSpeed
+            }
         }
 
         HoverHandler {

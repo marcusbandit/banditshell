@@ -143,6 +143,7 @@ Singleton {
             fromWall: "themeFromWallpaper",
             scheme: "colour.mode",
             accent: "colour.accent",
+            hues: "colour.hues",
             lightTheme: "colour.lightTheme",
             darkTheme: "colour.darkTheme",
             surface: "colour.surface",
