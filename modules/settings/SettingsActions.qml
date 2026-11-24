@@ -37,6 +37,8 @@ Singleton {
                 Clipboard.importFromClipse();
                 return SettingsView.drop(waiting ? `clipse’s history is over · ${waiting} entries` : "clipse had nothing to bring over", "move_to_inbox");
             }
+        case "installCutout":
+            return Wallpaper.installCutout();
         case "aiCheck":
             return SettingsState.checkAssistant();
         case "aiAccount":
