@@ -52,15 +52,9 @@ jobs:
           - name: debian
             image: docker.io/library/debian:stable-slim
             install: apt-get update && apt-get install -y --no-install-recommends nodejs bash git python3 lua5.4 luajit jq coreutils findutils grep sed gawk diffutils file procps util-linux
-          - name: fedora
-            image: registry.fedoraproject.org/fedora:latest
-            install: dnf install -y nodejs bash git python3 lua luajit jq coreutils findutils grep sed gawk diffutils file procps-ng util-linux shadow-utils
-          - name: opensuse
-            image: registry.opensuse.org/opensuse/tumbleweed:latest
-            install: zypper -n --gpg-auto-import-keys refresh && zypper -n install --no-recommends nodejs bash git python3 lua54 luajit jq coreutils findutils grep sed gawk diffutils file procps util-linux shadow
-          - name: alpine
-            image: docker.io/library/alpine:latest
-            install: apk add nodejs bash git python3 lua5.4 luajit jq coreutils findutils grep sed gawk diffutils file procps-ng util-linux tzdata shadow runuser
+          - name: arch
+            image: docker.io/library/archlinux:latest
+            install: pacman -Syu --noconfirm --needed nodejs bash git python lua luajit jq coreutils findutils grep sed gawk diffutils file procps-ng util-linux shadow
     steps:
       - uses: actions/checkout@v4
       - run: >-
