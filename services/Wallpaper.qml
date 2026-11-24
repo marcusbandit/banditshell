@@ -506,6 +506,61 @@ Singleton {
         if (changed || !Object.keys(root.colours).length)
             root.measureColours();
         root.reconcile();
+        root.warmTransitions();
+    }
+
+    readonly property string transitions: Quickshell.shellPath("scripts/wallpaper-transition.py")
+    readonly property bool pixels: Config.values.wallpaper.transition === "pixels"
+
+    onPixelsChanged: root.warmTransitions()
+
+    function warmTransitions(): void {
+        if (!root.pixels || !root.available.length || warmer.running)
+            return;
+        const sizes = Quickshell.screens.map(s => `${Math.round(s.width * s.devicePixelRatio)}x${Math.round(s.height * s.devicePixelRatio)}`).filter((size, i, all) => all.indexOf(size) === i);
+        const stills = root.available.filter(p => root.kindOf(p) === "still");
+        warmer.exec(["python3", root.transitions, "warm", sizes.join(","), ...stills]);
+    }
+
+    Process {
+        id: warmer
+    }
+
+    property string cutout: ""
+    property string cutoutError: ""
+
+    function installCutout(): void {
+        if (installer.running)
+            return;
+        root.cutout = "installing";
+        root.cutoutError = "";
+        installer.exec(["python3", root.transitions, "install"]);
+    }
+
+    Process {
+        id: cutoutProbe
+
+        running: true
+        command: ["python3", root.transitions, "status"]
+
+        stdout: StdioCollector {
+            onStreamFinished: if (root.cutout === "")
+                root.cutout = text.trim()
+        }
+    }
+
+    Process {
+        id: installer
+
+        stderr: StdioCollector {
+            onStreamFinished: root.cutoutError = text.trim().split("\n").pop() ?? ""
+        }
+
+        onExited: code => {
+            root.cutout = code === 0 ? "installed" : "failed";
+            if (code === 0)
+                root.warmTransitions();
+        }
     }
 
     function measured(shapes: var, posters: var, frozen: var): void {

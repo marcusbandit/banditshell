@@ -311,6 +311,8 @@ const PAGES_SOURCE = {
             { t: "Motion", rows: [
                 { n: 38, icon: "animation", label: "Play animated ones", k: "wallAnim", kind: "toggle", cfg: "wallpaper.animate", why: "Plays moving wallpapers. They pause under full-screen windows.", kw: "animated wallpapers" },
                 { n: 39, icon: "volume_up", label: "Play their sound", k: "wallAudio", kind: "toggle", cfg: "wallpaper.audio", dis: s => !s.v("wallAnim"), kw: "wallpaper audio" },
+                { n: [], icon: "grain", label: "Transition", k: "wallTransition", kind: "seg", o: [["pixels", "pixels"], ["reveal", "reveal"]], cfg: "wallpaper.transition", kw: "wallpaper transition contagion pixels reveal" },
+                { n: [], icon: "person", label: "Character outlines", kind: "button", btn: s => s.cutoutButton, act: "installCutout", state: s => s.cutoutNote, dis: s => s.v("wallTransition") !== "pixels" || s.cutoutBusy, kw: "wallpaper transition outline character cut out" },
                 { n: 40, icon: "blur_circular", label: "Reveal", k: "wallReveal", kind: "slider", min: 0, max: 2000, step: 50, fmt: v => v ? `${v} ms` : "cut", cfg: "wallpaper.reveal", extra: { icon: "play_arrow", tip: "play it", act: "previewReveal" }, kw: "reveal animation",
                     why: "How long a new wallpaper takes to grow out from where you clicked." },
                 { n: 41, icon: "crop", label: "Crop allowance", k: "wallFit", kind: "slider", min: 1, max: 2, step: 0.05, fmt: v => `${v.toFixed(2)}×`, cfg: "wallpaper.fit", kw: "wallpaper fit",

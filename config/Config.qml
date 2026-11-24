@@ -250,6 +250,8 @@ Singleton {
 
                 reveal: 900,
 
+                transition: "pixels",
+
                 audio: false
             },
 
