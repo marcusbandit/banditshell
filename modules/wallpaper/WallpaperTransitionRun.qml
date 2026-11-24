@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.services
+import "../../services/wallpaper-transition.js" as Transition
 
 Item {
     id: root
@@ -63,19 +64,18 @@ Item {
     }
 
     function hear(text: string): void {
-        const bits = text.trim().split("\t");
-        const still = Wallpaper.kindOf(root.asked) === "still";
-        if (bits.length < 6 || bits[0] !== (still ? root.asked : "-"))
+        const found = Transition.readPick(text, Wallpaper.kindOf(root.asked) === "still" ? root.asked : "-");
+        if (!found)
             return;
-        if (bits[1] !== "contagion" && bits[1] !== "outline") {
+        if (found.failed) {
             root.failed = true;
             return;
         }
-        root.ember = bits[4] !== "-" ? bits[4] : root.lifted(Appearance.colour.accent);
-        root.ink = bits[5] !== "-" ? bits[5] : "white";
-        root.fieldPath = bits[2];
-        root.linePath = bits[3];
-        root.kind = bits[1];
+        root.ember = found.ember || root.lifted(Appearance.colour.accent);
+        root.ink = found.ink || "white";
+        root.fieldPath = found.field;
+        root.linePath = found.line;
+        root.kind = found.kind;
     }
 
     Process {
