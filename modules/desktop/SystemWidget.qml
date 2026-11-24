@@ -68,12 +68,14 @@ WidgetCard {
             width: (parent.width - parent.spacing) / 2
             label: "Processor"
             value: root.cpu
+            hue: Appearance.hue.processor
         }
 
         Gauge {
             width: (parent.width - parent.spacing) / 2
             label: "Memory"
             value: root.memory.share
+            hue: Appearance.hue.memory
             strained: root.memory.share > 0.9
         }
     }
@@ -84,6 +86,9 @@ WidgetCard {
         property string label: ""
         property real value: 0
         property bool strained: false
+        property color hue: Appearance.colour.accent
+
+        readonly property color tone: gauge.strained ? Appearance.colour.warning : Appearance.huedOr(gauge.hue, Appearance.colour.accent)
 
         height: ring.height
 
@@ -101,7 +106,7 @@ WidgetCard {
             size: 52
             thickness: 5
             value: eased.value
-            colour: gauge.strained ? Appearance.colour.warning : Appearance.colour.accent
+            colour: gauge.tone
         }
 
         Column {
@@ -111,6 +116,7 @@ WidgetCard {
 
             StyledText {
                 text: `${Math.round(gauge.value * 100)}%`
+                color: Appearance.hued ? gauge.tone : Appearance.colour.text
                 font.pixelSize: Appearance.font.size.large
                 font.weight: Font.DemiBold
             }

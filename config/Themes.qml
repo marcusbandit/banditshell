@@ -96,7 +96,11 @@ Singleton {
             bright: p.bright,
             alarm: p.alarm,
             brass: colour(p.brass) ? p.brass : root.slate.brass,
-            error: colour(p.ansi?.red) ? p.ansi.red : root.slate.error
+            error: colour(p.ansi?.red) ? p.ansi.red : root.slate.error,
+            hues: Object.keys(root.slate.hues).reduce((all, k) => {
+                all[k] = colour(p.ansi?.[k]) ? p.ansi[k] : root.slate.hues[k];
+                return all;
+            }, {})
         };
     }
 
@@ -170,6 +174,7 @@ Singleton {
         alarm: o.alarm ?? (p ? p.alarm : root.slate.alarm)
         brass: p ? p.brass : root.slate.brass
         error: p ? p.error : root.slate.error
+        hues: p ? p.hues : root.slate.hues
     }
 
     FileView {
@@ -231,6 +236,7 @@ Singleton {
         required property color alarm
         required property color brass
         required property color error
+        required property var hues
     }
 
     readonly property Theme slate: Theme {
@@ -243,5 +249,13 @@ Singleton {
         alarm: "#ff7a4d"
         brass: "#d8c48c"
         error: "#f29ba8"
+        hues: ({
+                red: "#f29ba8",
+                green: "#85cb94",
+                yellow: "#d1b565",
+                blue: "#72c2f2",
+                magenta: "#daa0dd",
+                cyan: "#58cdc9"
+            })
     }
 }

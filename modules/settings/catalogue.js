@@ -292,6 +292,8 @@ const PAGES_SOURCE = {
                 { n: 43, icon: "colorize", label: "Take it from the wallpaper", k: "fromWall", kind: "toggle", cfg: "themeFromWallpaper", state: s => s.v("fromWall") ? s.wallName : "", kw: "theme from wallpaper" },
                 { n: 44, icon: "format_color_fill", label: "Highlight colour", k: "accent", kind: "seg", o: [["dim", "soft"], ["mid", "normal"], ["bright", "strong"]], swatches: true, cfg: "colour.accent", kw: "accent strength dim mid bright",
                     why: "Which of the theme’s three highlight colours paints everything that’s on. Soft sits back, strong jumps out." },
+                { n: [], icon: "colors", label: "Colour coding", k: "hues", kind: "seg", o: [["off", "off"], ["panels", "panels"], ["everywhere", "everywhere"]], cfg: "colour.hues", kw: "colour coding hues colourful icons system colours network bluetooth sound brightness memory processor flat grey",
+                    why: "Gives sound, network and other parts their own theme colour. Panels keeps sidebar icons grey until pointed at, while everywhere colours them when they're on." },
                 { n: 45, icon: "layers", label: "Panel shade", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmtS: (s, v) => shadeWord(s?.lightShell, v), cfg: "colour.surface", kw: "surface depth ramp background darker lighter",
                     why: "Which of the theme’s own shades paints the frame and panels. Lower is darker in a dark look and lighter in a light one." },
                 { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0, max: 0.5, step: 0.01, fmt: pct, cfg: "material.surfaceAlpha", kw: "transparency" }

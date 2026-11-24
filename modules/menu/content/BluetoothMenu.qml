@@ -84,6 +84,9 @@ Column {
         width: root.width
         icon: Bluetooth.statusIcon()
         label: "Bluetooth"
+        hue: Appearance.hue.bluetooth
+        lit: Bluetooth.enabled && Bluetooth.anyConnected
+        iconLit: Bluetooth.enabled
         detail: !Bluetooth.available ? "no adapter" : !Bluetooth.enabled ? "off" : Bluetooth.anyConnected ? `${Bluetooth.connectedDevices.length} connected` : Bluetooth.discovering ? "scanning" : "none connected"
         interactive: Bluetooth.available
         onActivated: Bluetooth.setEnabled(!Bluetooth.enabled)
@@ -169,6 +172,8 @@ Column {
                 label: entry.modelData.name || entry.modelData.address
                 detail: Bluetooth.stateLabel(entry.modelData)
                 selected: entry.modelData.connected
+                hue: Appearance.hue.bluetooth
+                lit: entry.modelData.connected
 
                 onActivated: Bluetooth.toggleDevice(entry.modelData)
 

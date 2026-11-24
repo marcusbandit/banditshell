@@ -471,6 +471,21 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   highlight, plus one `alarm` outside the family and the theme's `brass` as `warning`, a second
   colour outside it for what needs a hand soon but is no alarm. A third, `error`, is the
   palette's `ansi.red`, kept for what failed.
+  - **Every system wears its own hue.** Decided 2026-11-24 in #880, after the owner called the
+    shell flat next to a control centre where Wi-Fi was green, Bluetooth blue and each meter its
+    own colour. `Appearance.hue` names one hue per system the shell reports on (`sound`,
+    `light`, `network`, `bluetooth`, `tunnel`, `battery`, `processor`, `memory`, `input`,
+    `focus`) and `hue.of(key)` finds it by menu, gauge or settings page key. The hues
+    are the theme's own `ansi` colours, so a theme switch recolours them with everything else.
+    A hue goes on small marks only: the icon, a level's fill, a reading's number, the status line
+    of the one thing that is connected. Cards, panels, titles and labels stay in the ramp, which
+    is why it reads as colour and not as noise. A hue means the thing is on: an off radio or a
+    muted output drops back to the ramp's greys, and `warning`, `alarm` and the accent's alert
+    still win over any hue. Red stays out of the set: `ansi.red` is `error`, and a red icon
+    reads as something that failed. In Settings the label carries hover and selection, so a
+    hued icon keeps its colour there; a page that is off or closed drops it. `colour.hues` picks `off`, `panels` (the default: the rail stays grey
+    at rest and an icon takes its hue under the pointer) or `everywhere` (the rail wears them at
+    rest too). Code asks `Appearance.huedOr(hue, plain)` so `off` is exactly the old look.
   - **The Monocraft constraint is load-bearing.** Pixel-font stems are one device pixel, so
     anti-aliasing has nothing to work with and mid-tones turn text to mush. Pixel text goes a bright
     stop on a dark one. **Never on a mid tone.** That is why the panel is the darkest ramp stop and

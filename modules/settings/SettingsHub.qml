@@ -209,6 +209,7 @@ Column {
                 width: root.width
                 card: true
                 icon: page.modelData.icon
+                iconColour: page.closed ? Appearance.colour.textDim : Appearance.hueFor(page.modelData.id, Appearance.colour.textDim)
                 label: Catalogue.nameOf(page.modelData, SettingsState)
                 detail: String(page.modelData.status(root.s) ?? "")
                 off: false
