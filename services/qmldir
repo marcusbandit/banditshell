@@ -1,5 +1,6 @@
 module qs.services
 singleton Activities 1.0 Activities.qml
+singleton AgentLimits 1.0 AgentLimits.qml
 singleton AlertSounds 1.0 AlertSounds.qml
 singleton AppIcons 1.0 AppIcons.qml
 singleton AppNotifications 1.0 AppNotifications.qml

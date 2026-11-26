@@ -8,7 +8,7 @@
     "tests": ["tests/sidebar-anomalies.test.js", "tests/sidebar-placement.test.js", "tests/sidebar-workspaces.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor", "apps", "audio", "network", "display", "plugin-status"],
+    "packages": ["core", "compositor", "apps", "audio", "network", "display", "plugin-status", "agent-limits"],
     "optional": []
   },
   "provides": {
@@ -17,6 +17,6 @@
   },
   "config": {
     "namespace": ["sidebar", "calendar"],
-    "reads": ["control", "island", "volume"]
+    "reads": ["agentLimits", "control", "island", "volume"]
   }
 }

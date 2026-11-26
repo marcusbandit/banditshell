@@ -228,6 +228,32 @@ Item {
             }
 
             Card {
+                visible: SettingsState.v("widgetLimits")
+                height: root.column * 0.3
+
+                Column {
+                    x: root.column * 0.08
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: root.column * 0.84
+                    spacing: Math.max(2, root.column * 0.04)
+
+                    SquircleRect {
+                        width: parent.width * 0.55
+                        height: Math.max(2, root.column * 0.055)
+                        pill: "place"
+                        color: Appearance.colour.providerClaude
+                    }
+
+                    SquircleRect {
+                        width: parent.width * 0.78
+                        height: Math.max(2, root.column * 0.055)
+                        pill: "place"
+                        color: Appearance.colour.providerAntigravity
+                    }
+                }
+            }
+
+            Card {
                 visible: SettingsState.v("widgetTimers")
                 height: root.column * 0.26
 

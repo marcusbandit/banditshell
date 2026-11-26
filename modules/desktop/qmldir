@@ -1,4 +1,5 @@
 module qs.modules.desktop
+AgentLimitsWidget 1.0 AgentLimitsWidget.qml
 Backdrop 1.0 Backdrop.qml
 CalendarWidget 1.0 CalendarWidget.qml
 ClockWidget 1.0 ClockWidget.qml

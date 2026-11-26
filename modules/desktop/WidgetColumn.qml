@@ -64,6 +64,12 @@ Flow {
         availWidth: root.availWidth
     }
 
+    AgentLimitsWidget {
+        width: root.cardWidth
+        visible: root.cfg.limits && AgentLimits.anyEnabled
+        running: root.running && root.cfg.limits
+    }
+
     TimersWidget {
         width: root.cardWidth
         visible: root.cfg.timers

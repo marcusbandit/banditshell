@@ -44,7 +44,7 @@ const LAYOUTS = [
     { id: "custom", name: "add custom", detail: "your own · drawn in the layout workshop" }
 ];
 
-const WIDGET_CARDS = ["widgetClock", "widgetCalendar", "widgetMedia", "widgetWeather", "widgetSystem", "widgetTimers"];
+const WIDGET_CARDS = ["widgetClock", "widgetCalendar", "widgetMedia", "widgetWeather", "widgetSystem", "widgetLimits", "widgetTimers"];
 
 const WIDGET_TITLES = {
     winLayouts: "Layout", via: "VIA layout", modes: "Modes", usage: "Today", recent: "Recent changes", nets: "Networks",
@@ -405,6 +405,13 @@ const PAGES_SOURCE = {
             { t: "Tray", rows: [
                 { n: 64, icon: "apps", label: "Tray", k: "tray", kind: "toggle", cfg: "sidebar.tray.enabled", state: s => `${s.trayCount} apps`, kw: "tray" },
                 { n: 64, icon: "more_horiz", label: "Most icons", k: "trayMax", kind: "step", min: 1, max: 12, cfg: "sidebar.tray.max", fmt: v => `${v}`, why: "How many tray icons show. The rest fold away.", dis: s => !s.v("tray") }
+            ] },
+            { t: "AI limits", rows: [
+                { n: [], icon: "speed", label: "Show in sidebar", k: "agentLimitsSidebar", kind: "toggle", cfg: "agentLimits.sidebar", kw: "ai agent limits claude antigravity codex quota sidebar rail",
+                    why: "Keeps compact 5-hour and weekly limit bars in the sidebar and collapsed rail. Hover them for full details." },
+                { n: [], icon: "neurology", label: "Claude", k: "agentLimitsClaude", kind: "toggle", cfg: "agentLimits.claude", kw: "ai agent limits claude anthropic quota" },
+                { n: [], icon: "neurology", label: "Antigravity", k: "agentLimitsAntigravity", kind: "toggle", cfg: "agentLimits.antigravity", kw: "ai agent limits antigravity gemini quota" },
+                { n: [], icon: "neurology", label: "Codex", k: "agentLimitsCodex", kind: "toggle", cfg: "agentLimits.codex", kw: "ai agent limits codex openai quota" }
             ] }
         ]
     },
@@ -622,6 +629,8 @@ const PAGES_SOURCE = {
                     why: "The temperature and the sky where you are. It follows the Weather setting under Clock." },
                 { n: [], icon: "memory", label: "System", k: "widgetSystem", kind: "toggle", cfg: "widgets.system", dis: s => !s.v("widgetsOn"), kw: "desktop widget cpu memory ram load",
                     why: "How busy the processor is and how much memory is in use, read every two seconds while you can see it." },
+                { n: [], icon: "speed", label: "AI limits", k: "widgetLimits", kind: "toggle", cfg: "widgets.limits", dis: s => !s.v("widgetsOn"), kw: "desktop widget ai agent limits claude antigravity codex quota",
+                    why: "Five-hour and weekly usage limits for Claude, Antigravity and Codex." },
                 { n: [], icon: "timer", label: "Timers", k: "widgetTimers", kind: "toggle", cfg: "widgets.timers", dis: s => !s.v("widgetsOn"), kw: "desktop widget timer countdown",
                     why: "Running timers, and buttons that start a 5, 10 or 25 minute one." }
             ] }

@@ -683,6 +683,18 @@ PanelWindow {
                 }
                 win.openMenu("update", deliberate);
             }
+
+            function onAgentLimitsRequested(deliberate: bool): void {
+                if (deliberate && menuLayer.pinned && menuLayer.currentKey === "agentLimits") {
+                    menuLayer.hide();
+                    return;
+                }
+                win.openMenu("agentLimits", deliberate);
+            }
+
+            function onAgentLimitsReleased(): void {
+                menuLayer.release();
+            }
         }
 
         NotificationCorner {
