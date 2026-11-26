@@ -1,6 +1,24 @@
 {
   "entries": [
     {
+      "id": "2026-11-26-agent-limits",
+      "date": "2026-11-26",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Sidebar and rail show AI usage limits with an expanded hover card",
+          "go": "panel settings open sidebar"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Desktop widgets show AI limits for Claude, Antigravity and Codex",
+          "go": "panel settings open widgets"
+        }
+      ]
+    },
+    {
       "id": "2026-11-24-lock-unlock-tab",
       "date": "2026-11-24",
       "changes": [

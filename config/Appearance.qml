@@ -205,6 +205,9 @@ Singleton {
         readonly property color changeFixed: root.legible("#8fcfa6")
         readonly property color changeSettings: root.legible("#e3c58f")
 
+        readonly property color providerClaude: "#d97757"
+        readonly property color providerAntigravity: "#8c7bd1"
+
         readonly property color frame: root.config.edge.outerColour
 
         readonly property color scrim: Qt.rgba(0, 0, 0, 0.45)

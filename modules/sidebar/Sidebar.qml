@@ -71,11 +71,20 @@ Item {
 
     signal updateRequested(bool deliberate)
 
+    signal agentLimitsRequested(bool deliberate)
+    signal agentLimitsReleased
+
     signal markPressed(var opens)
     signal menuAsked(real x, real y, var actions)
 
-    readonly property var menuItems: [...tray.items, root.updateEntry, root.clockEntry, root.calendarEntry, ...status.items]
+    readonly property var menuItems: [...tray.items, root.updateEntry, root.agentLimitsEntry, root.clockEntry, root.calendarEntry, ...status.items]
     readonly property var menuKeys: root.menuItems.map(i => i.key)
+
+    readonly property var agentLimitsEntry: ({
+            key: "agentLimits",
+            title: "AI limits",
+            body: agentLimitsMenu
+        })
 
     readonly property var calendarEntry: ({
             key: "calendar",
@@ -97,11 +106,11 @@ Item {
         })
 
     function entryFor(key: string): var {
-        return tray.entryFor(key) ?? (key === "update" ? root.updateEntry : key === "clock" ? root.clockEntry : key === "calendar" ? root.calendarEntry : null) ?? status.entryFor(key);
+        return tray.entryFor(key) ?? (key === "update" ? root.updateEntry : key === "agentLimits" ? root.agentLimitsEntry : key === "clock" ? root.clockEntry : key === "calendar" ? root.calendarEntry : null) ?? status.entryFor(key);
     }
 
     function iconFor(key: string): Item {
-        return tray.iconFor(key) ?? (key === "update" ? (update.visible ? update : clock.timeItem) : key === "clock" ? clock.timeItem : key === "calendar" ? clock.dateItem : null) ?? status.iconFor(key);
+        return tray.iconFor(key) ?? (key === "update" ? (update.visible ? update : clock.timeItem) : key === "agentLimits" ? (root.rail && root.revealed < 0.5 && resting.item?.limitsItem ? resting.item.limitsItem : agentLimits) : key === "clock" ? clock.timeItem : key === "calendar" ? clock.dateItem : null) ?? status.iconFor(key);
     }
 
     function cornerRise(inset: real): real {
@@ -197,6 +206,16 @@ Item {
                 onRequested: deliberate => root.updateRequested(deliberate)
             }
 
+            AgentLimitsGlance {
+                id: agentLimits
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+
+                onRequested: deliberate => root.agentLimitsRequested(deliberate)
+                onReleased: root.agentLimitsReleased()
+            }
+
             SidebarClock {
                 id: clock
 
@@ -278,9 +297,26 @@ Item {
         Item {
             id: rest
 
-            readonly property bool holdsRest: anomalies.pointing || pips.pressing
+            readonly property Item limitsItem: railLimits
+            readonly property bool holdsRest: anomalies.pointing || pips.pressing || railLimits.hovered
             readonly property int slotsReserved: 4
-            readonly property var place: Placement.rail(pips.implicitHeight, rest.height, glance.headEdge + Appearance.padding.large, rest.height - anomalies.anchors.bottomMargin, (Appearance.sizes.statusSlot + Appearance.sizes.statusGap) * rest.slotsReserved, Appearance.padding.huge)
+            readonly property real limitsFloor: railLimits.visible ? railLimits.y + railLimits.height : glance.headEdge
+            readonly property var place: Placement.rail(pips.implicitHeight, rest.height, Math.max(glance.headEdge, rest.limitsFloor) + Appearance.padding.large, rest.height - anomalies.anchors.bottomMargin, (Appearance.sizes.statusSlot + Appearance.sizes.statusGap) * rest.slotsReserved, Appearance.padding.huge)
+
+            AgentLimitsGlance {
+                id: railLimits
+
+                rail: true
+                anchors.left: parent.left
+                anchors.right: parent.right
+                y: Math.round(glance.headEdge > 0 ? glance.headEdge + Appearance.padding.normal : root.endMargin(root.tray))
+
+                onRequested: deliberate => {
+                    root.pressedAtRest = true;
+                    root.agentLimitsRequested(deliberate);
+                }
+                onReleased: root.agentLimitsReleased()
+            }
 
             RailPips {
                 id: pips
@@ -412,5 +448,11 @@ Item {
         id: updateMenu
 
         UpdateMenu {}
+    }
+
+    Component {
+        id: agentLimitsMenu
+
+        AgentLimitsMenu {}
     }
 }

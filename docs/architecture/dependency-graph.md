@@ -7,7 +7,7 @@ this page is out of date. The rules behind it are in [modules.md](modules.md).
 
 ## Packages
 
-42 packages. An arrow points from a package to one it requires; a dotted arrow is an
+43 packages. An arrow points from a package to one it requires; a dotted arrow is an
 optional requirement. Arrows that a longer path already implies are left out, so a package also
 reaches everything below its arrows.
 
@@ -15,6 +15,7 @@ reaches everything below its arrows.
 flowchart BT
     core["core<br/><small>layer 0</small>"]
     compositor["compositor<br/><small>layer 1</small>"]
+    agent_limits["agent-limits<br/><small>layer 2</small>"]
     apps["apps<br/><small>layer 2</small>"]
     audio["audio<br/><small>layer 2</small>"]
     capture["capture<br/><small>layer 2</small>"]
@@ -56,6 +57,7 @@ flowchart BT
     events["events<br/><small>layer 6</small>"]
     launcher_shell["launcher-shell<br/><small>layer 6</small>"]
     compositor --> core
+    agent_limits --> core
     apps --> compositor
     audio --> compositor
     capture --> compositor
@@ -70,12 +72,14 @@ flowchart BT
     pen --> compositor
     plugin_status --> compositor
     wallpaper --> compositor
+    bar --> agent_limits
     bar --> apps
     bar --> audio
     bar --> display
     bar --> network
     bar --> plugin_status
     calculator --> network
+    desktop --> agent_limits
     desktop --> clock
     desktop --> media
     desktop --> wallpaper
@@ -149,8 +153,9 @@ further than its manifest allows, `node scripts/check-modules.js --explain <pack
 
 | package | layer | summary | owns QML | requires | required by |
 |---|---|---|---|---|---|
-| core | 0 | config singletons, theme tokens, generic components and the controls kit | `config`, `modules/cli.js`, `modules/controls`, `modules/gallery`, `modules/ipc/CoreIpc.qml`, `modules/ipc/TraceIpc.qml`, `modules/panel`, `previews/GalleryPreview.qml`, `previews/QrPreview.qml`, `services/LevelCover.qml`, `services/qmldir`, `services/FileDialogs.qml`, `services/Focus.qml`, `services/Lookup.qml`, `services/Notify.qml`, `services/Panels.qml`, `services/Polkit.qml`, `services/PrivateFile.qml`, `services/Prompts.qml`, `services/Relaunch.qml`, `services/SessionControl.qml`, `services/System.qml`, `services/SystemBinaries.qml`, `services/TimeFormat.qml`, `services/ToolInstaller.qml`, `services/Tooltips.qml`, `services/Trace.qml` | none | compositor, apps, audio, capture, cheatsheet, clipboard, clock, display, files, media, network, password, pen, plugin-status, wallpaper, bar, calculator, desktop, keyboard, launcher, mixer, notifications, settings, stream, windows, launcher-ai, launcher-devops, launcher-system, launcher-tools, power, quickcontrols, tour, updates, host, island, launcher-online, lock, screentime, session, events, launcher-shell |
+| core | 0 | config singletons, theme tokens, generic components and the controls kit | `config`, `modules/cli.js`, `modules/controls`, `modules/gallery`, `modules/ipc/CoreIpc.qml`, `modules/ipc/TraceIpc.qml`, `modules/panel`, `previews/GalleryPreview.qml`, `previews/QrPreview.qml`, `services/LevelCover.qml`, `services/qmldir`, `services/FileDialogs.qml`, `services/Focus.qml`, `services/Lookup.qml`, `services/Notify.qml`, `services/Panels.qml`, `services/Polkit.qml`, `services/PrivateFile.qml`, `services/Prompts.qml`, `services/Relaunch.qml`, `services/SessionControl.qml`, `services/System.qml`, `services/SystemBinaries.qml`, `services/TimeFormat.qml`, `services/ToolInstaller.qml`, `services/Tooltips.qml`, `services/Trace.qml` | none | compositor, agent-limits, apps, audio, capture, cheatsheet, clipboard, clock, display, files, media, network, password, pen, plugin-status, wallpaper, bar, calculator, desktop, keyboard, launcher, mixer, notifications, settings, stream, windows, launcher-ai, launcher-devops, launcher-system, launcher-tools, power, quickcontrols, tour, updates, host, island, launcher-online, lock, screentime, session, events, launcher-shell |
 | compositor | 1 | the Hyprland bridge: windows, monitors, config files, chords | `modules/ipc/CompositorIpc.qml`, `services/CliMigration.qml`, `services/CompositorSync.qml`, `services/Hypr.qml`, `services/HyprConfig.qml`, `services/Keymap.qml`, `services/Monitors.qml`, `services/ScrollingGaps.qml`, `services/WorkspaceSlide.qml` | core | apps, audio, capture, cheatsheet, clipboard, clock, display, files, media, network, password, pen, plugin-status, wallpaper, bar, calculator, desktop, keyboard, launcher, mixer, notifications, settings, stream, windows, launcher-ai, launcher-devops, launcher-system, launcher-tools, power, quickcontrols, tour, updates, host, island, launcher-online, lock, screentime, session, events, launcher-shell |
+| agent-limits | 2 | Claude, Antigravity and Codex usage limits | `services/AgentLimits.qml` | core | bar, desktop |
 | apps | 2 | installed applications, launching and startup apps | `services/AppIcons.qml`, `services/Apps.qml`, `services/DefaultApps.qml`, `services/DesktopIndex.qml`, `services/LauncherMemory.qml`, `services/Launching.qml`, `services/StartupApps.qml` | core, compositor | bar, launcher, mixer, notifications, stream, windows, launcher-tools, tour, island, launcher-online |
 | audio | 2 | audio devices and Bluetooth | `modules/ipc/AudioIpc.qml`, `services/Audio.qml`, `services/Bluetooth.qml` | core, compositor | bar, mixer, stream, launcher-system, quickcontrols, island |
 | capture | 2 | screen recording and region picking | `modules/picker`, `services/ScreenRecorder.qml`, `services/Screenshots.qml` | core, compositor | launcher-system, island |
@@ -165,9 +170,9 @@ further than its manifest allows, `node scripts/check-modules.js --explain <pack
 | pen | 2 | pen mapping and pen buttons | `modules/pen`, `services/PenButtons.qml`, `services/PenMap.qml` | core, compositor | none |
 | plugin-status | 2 | the live items launcher plugins put in the rail and the island | `services/PluginStatus.qml` | core, compositor | bar, launcher, island |
 | wallpaper | 2 | the wallpaper, its picker and palette | `modules/wallpaper`, `services/Wallpaper.qml` | core, compositor | desktop, lock |
-| bar | 3 | the sidebar, status icons and menus | `modules/menu`, `modules/sidebar`, `previews/SidebarPreview.qml`, `services/SidebarState.qml`, `services/Tray.qml` | core, compositor, apps, audio, display, network, plugin-status | island, launcher-shell |
+| bar | 3 | the sidebar, status icons and menus | `modules/menu`, `modules/sidebar`, `previews/SidebarPreview.qml`, `services/SidebarState.qml`, `services/Tray.qml` | core, compositor, agent-limits, apps, audio, display, network, plugin-status | island, launcher-shell |
 | calculator | 3 | the calculator and currency rates | `modules/calculator`, `previews/CalculatorPreview.qml`, `services/Calculator.qml`, `services/Currency.qml` | core, compositor, network | island |
-| desktop | 3 | widgets on the desktop, under the windows | `modules/desktop` | core, compositor, clock, media, wallpaper | host |
+| desktop | 3 | widgets on the desktop, under the windows | `modules/desktop` | core, compositor, agent-limits, clock, media, wallpaper | host |
 | keyboard | 3 | the on-screen keyboard | `modules/keyboard`, `services/Keystrokes.qml` | core, compositor, display | launcher-tools |
 | launcher | 3 | the launcher: search, concepts, edge and hotkeys | `modules/launcher/AlphabetLauncher.qml`, `modules/launcher/AlphabetRow.qml`, `modules/launcher/AnswerCard.qml`, `modules/launcher/AnswerFormula.qml`, `modules/launcher/AnswerMatrix.qml`, `modules/launcher/AnswerRow.qml`, `modules/launcher/ArgumentBox.qml`, `modules/launcher/ColourPicker.qml`, `modules/launcher/LaunchEdge.qml`, `modules/launcher/Launcher.qml`, `modules/launcher/LauncherConcept.qml`, `modules/launcher/LauncherIpc.qml`, `modules/launcher/LauncherSearch.qml`, `modules/launcher/ListLauncher.qml`, `modules/launcher/Peek.qml`, `modules/launcher/PluginContext.qml`, `modules/launcher/PluginFacts.qml`, `modules/launcher/PluginHost.qml`, `modules/launcher/PluginPreview.qml`, `modules/launcher/PluginProcess.qml`, `modules/launcher/PluginRow.qml`, `modules/launcher/PluginSource.qml`, `modules/launcher/PluginView.qml`, `modules/launcher/RowTag.qml`, `modules/launcher/module.json`, `modules/launcher/placement.js`, `modules/launcher/prefixes.js`, `modules/launcher/qmldir`, `modules/launcher/search.js`, `modules/launcher/shellcli.js`, `modules/launcher/sources/FallbackSource.qml`, `modules/launcher/sources/MediaSource.qml`, `modules/launcher/sources/PrefixSource.qml`, `modules/launcher/sources/PushSource.qml`, `modules/launcher/sources/qmldir`, `modules/launcher/system-asks.js`, `services/LauncherHotkeys.qml`, `services/LauncherSources.qml`, `services/PushedRows.qml` | core, compositor, apps, files, plugin-status | launcher-ai, launcher-devops, launcher-system, launcher-tools, launcher-online, launcher-shell |
 | mixer | 3 | the mixer: which apps are making sound, their volume and their output | `modules/mixer`, `previews/MixerPreview.qml`, `services/Mixer.qml` | core, compositor, apps, audio | launcher-system, quickcontrols, host |

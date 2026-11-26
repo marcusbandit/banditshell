@@ -668,6 +668,14 @@ Singleton {
                 minutes: 30
             },
 
+            agentLimits: {
+                claude: true,
+                antigravity: true,
+                codex: false,
+                sidebar: true,
+                minutes: 2
+            },
+
             widgets: {
 
                 enabled: true,
@@ -681,6 +689,7 @@ Singleton {
                 media: true,
                 weather: true,
                 system: true,
+                limits: true,
                 timers: true
             },
 

@@ -1,4 +1,5 @@
 module qs.modules.menu.content
+AgentLimitsMenu 1.0 AgentLimitsMenu.qml
 BatteryMenu 1.0 BatteryMenu.qml
 BluetoothMenu 1.0 BluetoothMenu.qml
 BluetoothPrompt 1.0 BluetoothPrompt.qml

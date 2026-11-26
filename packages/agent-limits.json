@@ -1,0 +1,23 @@
+{
+  "name": "agent-limits",
+  "summary": "Claude, Antigravity and Codex usage limits",
+  "layer": 2,
+  "owns": {
+    "services": ["AgentLimits"],
+    "js": ["services/agent-limits.js"],
+    "scripts": ["scripts/agent-limits.py"],
+    "tests": ["tests/agent-limits.test.js"]
+  },
+  "requires": {
+    "packages": ["core"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["AgentLimits"],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["agentLimits"],
+    "reads": ["widgets"]
+  }
+}

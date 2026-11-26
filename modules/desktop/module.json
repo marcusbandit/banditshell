@@ -7,7 +7,7 @@
     "tests": ["tests/desktop-load.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor", "clock", "media", "wallpaper"],
+    "packages": ["core", "compositor", "clock", "media", "wallpaper", "agent-limits"],
     "optional": []
   },
   "provides": {

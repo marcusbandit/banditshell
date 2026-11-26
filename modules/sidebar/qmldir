@@ -1,4 +1,5 @@
 module qs.modules.sidebar
+AgentLimitsGlance 1.0 AgentLimitsGlance.qml
 BatteryGlance 1.0 BatteryGlance.qml
 BatteryReading 1.0 BatteryReading.qml
 PluginStatusMenu 1.0 PluginStatusMenu.qml

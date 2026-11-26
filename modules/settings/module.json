@@ -21,6 +21,7 @@
     "namespace": ["settings", "corner", "menu"],
     "reads": [
       "access",
+      "agentLimits",
       "anim",
       "colour",
       "control",
