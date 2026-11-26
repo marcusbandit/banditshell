@@ -3,9 +3,9 @@
 var PROVIDER_ORDER = ["claude", "antigravity", "codex"];
 
 var PROVIDER_META = {
-    claude: { name: "Claude", color: "#d97757" },
-    antigravity: { name: "Antigravity", color: "#8c7bd1" },
-    codex: { name: "Codex", color: "" }
+    claude: { name: "Claude" },
+    antigravity: { name: "Antigravity" },
+    codex: { name: "Codex" }
 };
 
 function enabledProviders(cfg) {
@@ -120,14 +120,20 @@ function compactEntries(providers) {
         out.push({
             id: p.id,
             name: p.name || (PROVIDER_META[p.id] ? PROVIDER_META[p.id].name : p.id),
-            color: PROVIDER_META[p.id] ? PROVIDER_META[p.id].color : "",
             windows: primary
         });
     }
     return out;
 }
 
-function providerColor(id, fallback) {
-    var meta = PROVIDER_META[id];
-    return meta && meta.color ? meta.color : fallback;
+var BAR_HEIGHTS = {
+    small: { rail: 48, full: 36 },
+    normal: { rail: 76, full: 56 },
+    tall: { rail: 112, full: 80 },
+    huge: { rail: 156, full: 110 }
+};
+
+function barHeight(size, rail) {
+    var entry = BAR_HEIGHTS[size] || BAR_HEIGHTS.tall;
+    return rail ? entry.rail : entry.full;
 }

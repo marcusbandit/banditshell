@@ -56,8 +56,17 @@ test("compactEntries excludes extra windows like Antigravity partnership group",
     ];
     const compact = Logic.compactEntries(providers);
     assert.equal(compact.length, 1);
-    assert.equal(compact[0].color, "#8c7bd1");
+    assert.equal(compact[0].id, "antigravity");
     assert.deepEqual(compact[0].windows, [{ id: "gemini-5h", usedPercent: 20 }]);
+});
+
+test("barHeight maps size presets for rail and expanded sidebar", () => {
+    assert.equal(Logic.barHeight("small", true), 48);
+    assert.equal(Logic.barHeight("normal", true), 76);
+    assert.equal(Logic.barHeight("tall", true), 112);
+    assert.equal(Logic.barHeight("huge", true), 156);
+    assert.equal(Logic.barHeight("tall", false), 80);
+    assert.equal(Logic.barHeight("unknown", true), 112);
 });
 
 test("mergeReadings keeps last good reading when a poll errors", () => {

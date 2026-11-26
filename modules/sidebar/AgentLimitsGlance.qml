@@ -12,7 +12,7 @@ Item {
 
     readonly property bool shown: AgentLimits.sidebarWanted && AgentLimits.ready
     readonly property bool hovered: area.containsMouse
-    readonly property real barHeight: root.rail ? 54 : 44
+    readonly property real barHeight: AgentLimits.barHeight(root.rail)
 
     signal requested(bool deliberate)
     signal released
@@ -123,7 +123,7 @@ Item {
                                 visible: !root.rail
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: col.pct + "%"
-                                font.pixelSize: Math.max(9, Appearance.font.size.small - 2)
+                                font.pixelSize: Appearance.font.size.small
                                 color: Appearance.colour.textDim
                             }
                         }

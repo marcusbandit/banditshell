@@ -184,6 +184,7 @@ Singleton {
             widgetLimits: "widgets.limits",
             widgetTimers: "widgets.timers",
             agentLimitsSidebar: "agentLimits.sidebar",
+            agentLimitsSize: "agentLimits.size",
             agentLimitsClaude: "agentLimits.claude",
             agentLimitsAntigravity: "agentLimits.antigravity",
             agentLimitsCodex: "agentLimits.codex",
