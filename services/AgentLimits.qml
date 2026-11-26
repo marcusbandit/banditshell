@@ -24,7 +24,15 @@ Singleton {
     readonly property bool ready: root.compact.length > 0
 
     function colorFor(id: string): color {
-        return Logic.providerColor(id, Appearance.colour.text);
+        if (id === "claude")
+            return Appearance.colour.providerClaude;
+        if (id === "antigravity")
+            return Appearance.colour.providerAntigravity;
+        return Appearance.colour.text;
+    }
+
+    function barHeight(rail: bool): real {
+        return Logic.barHeight(root.cfg?.size ?? "tall", rail);
     }
 
     function remainingPercent(usedPercent: real): int {

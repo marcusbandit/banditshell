@@ -1,6 +1,18 @@
 {
   "entries": [
     {
+      "id": "2026-11-26-agent-limits-size",
+      "date": "2026-11-26",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Sidebar AI limit bars can be sized small, normal, tall or huge",
+          "go": "panel settings open sidebar"
+        }
+      ]
+    },
+    {
       "id": "2026-11-26-agent-limits",
       "date": "2026-11-26",
       "changes": [

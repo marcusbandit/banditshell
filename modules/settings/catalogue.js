@@ -409,6 +409,7 @@ const PAGES_SOURCE = {
             { t: "AI limits", rows: [
                 { n: [], icon: "speed", label: "Show in sidebar", k: "agentLimitsSidebar", kind: "toggle", cfg: "agentLimits.sidebar", kw: "ai agent limits claude antigravity codex quota sidebar rail",
                     why: "Keeps compact 5-hour and weekly limit bars in the sidebar and collapsed rail. Hover them for full details." },
+                { n: [], icon: "height", label: "Bar size", k: "agentLimitsSize", kind: "seg", o: ["small", "normal", "tall", "huge"], cfg: "agentLimits.size", dis: s => !s.v("agentLimitsSidebar"), kw: "ai agent limits bar height size length tall huge small normal" },
                 { n: [], icon: "neurology", label: "Claude", k: "agentLimitsClaude", kind: "toggle", cfg: "agentLimits.claude", kw: "ai agent limits claude anthropic quota" },
                 { n: [], icon: "neurology", label: "Antigravity", k: "agentLimitsAntigravity", kind: "toggle", cfg: "agentLimits.antigravity", kw: "ai agent limits antigravity gemini quota" },
                 { n: [], icon: "neurology", label: "Codex", k: "agentLimitsCodex", kind: "toggle", cfg: "agentLimits.codex", kw: "ai agent limits codex openai quota" }

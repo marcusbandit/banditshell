@@ -187,7 +187,6 @@ Item {
             y: 0
             width: 2
             height: track.height
-            radius: 1
             color: Appearance.colour.text
         }
 
@@ -219,7 +218,7 @@ Item {
                 StyledText {
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.resetText
-                    font.pixelSize: Math.max(10, Appearance.font.size.small - 1)
+                    font.pixelSize: Appearance.font.size.small
                     color: Appearance.colour.text
                 }
             }

@@ -673,6 +673,7 @@ Singleton {
                 antigravity: true,
                 codex: false,
                 sidebar: true,
+                size: "tall",
                 minutes: 2
             },
 
