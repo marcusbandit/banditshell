@@ -261,6 +261,7 @@ Column {
         label: "Open volume mixer"
         onActivated: {
             PanelWindows.close("menus");
+            PanelWindows.close("quickControls");
             Panels.open("mixer");
         }
     }

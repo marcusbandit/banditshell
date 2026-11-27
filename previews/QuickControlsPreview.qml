@@ -24,7 +24,7 @@ ShellRoot {
 
             Component.onCompleted: {
                 pinned = true;
-                page = Quickshell.env("QUICKCONTROLS_PAGE");
+                page = Quickshell.env("QUICKCONTROLS_PAGE") ?? "";
             }
         }
     }

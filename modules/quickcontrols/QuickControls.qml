@@ -75,13 +75,30 @@ Item {
             }
         })
 
-    function openPage(key: string): void {
+    property bool pointerPin: false
+
+    function openPage(key: string, keyed: bool): void {
+        if (!root.pinned)
+            root.pointerPin = !keyed;
         root.pinned = true;
         root.page = key;
+        if (keyed)
+            chain.start();
     }
 
-    function back(): void {
+    function back(keyed: bool): void {
         root.page = "";
+        if (keyed)
+            chain.start();
+    }
+
+    function hide(): void {
+        root.pinned = false;
+    }
+
+    onShownPageChanged: {
+        pageWheel.stop();
+        pageView.contentY = 0;
     }
 
     Follow {
@@ -122,7 +139,9 @@ Item {
     onPinnedChanged: {
         if (root.pinned) {
             keys.forceActiveFocus();
-            chain.start();
+            if (!root.pointerPin)
+                chain.start();
+            root.pointerPin = false;
         } else {
             chain.reset();
             root.page = "";
@@ -139,13 +158,14 @@ Item {
         scope: root.page !== "" ? pageColumn : main
         area: cardZone
         holder: keys
+        scroller: root.page !== "" ? pageWheel : null
     }
 
     Keys.onPressed: event => {
         if (!root.pinned)
             return;
         if (event.key === Qt.Key_Escape && root.page !== "") {
-            root.back();
+            root.back(true);
             event.accepted = true;
         } else if (root.page === "" && event.key === Qt.Key_M && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
             Audio.toggleMute();
@@ -302,9 +322,8 @@ Item {
                         detail: Switches.networkState(Network.available, Network.enabled, Network.activeName, Network.wiredConnected)
                         on: Network.available ? Network.enabled : Network.wiredConnected
 
-                        onToggled: if (Network.available)
-                            Network.setEnabled(!Network.enabled)
-                        onOpened: root.openPage("network")
+                        onToggled: Network.available ? Network.setEnabled(!Network.enabled) : root.openPage("network", false)
+                        onOpened: keyed => root.openPage("network", keyed)
                     }
 
                     QuickTile {
@@ -318,7 +337,7 @@ Item {
                         on: Bluetooth.enabled
 
                         onToggled: Bluetooth.setEnabled(!Bluetooth.enabled)
-                        onOpened: root.openPage("bluetooth")
+                        onOpened: keyed => root.openPage("bluetooth", keyed)
                     }
 
                     QuickTile {
@@ -332,7 +351,7 @@ Item {
                         on: !Audio.muted
 
                         onToggled: Audio.toggleMute()
-                        onOpened: root.openPage("sound")
+                        onOpened: keyed => root.openPage("sound", keyed)
                     }
 
                     QuickTile {
@@ -345,9 +364,8 @@ Item {
                         detail: Switches.powerDetail(PowerProfile.available ? PowerProfile.label(PowerProfile.profile) : "", Battery.available, Battery.percentage)
                         on: Switches.powerRaised(PowerProfile.profile)
 
-                        onToggled: if (PowerProfile.available)
-                            PowerProfile.set(Switches.nextProfile(PowerProfile.choices, PowerProfile.profile))
-                        onOpened: root.openPage("power")
+                        onToggled: PowerProfile.available ? PowerProfile.set(Switches.nextProfile(PowerProfile.choices, PowerProfile.profile)) : root.openPage("power", false)
+                        onOpened: keyed => root.openPage("power", keyed)
                     }
                 }
 
@@ -435,6 +453,7 @@ Item {
                         visible: Tunnels.list.length > 0
                         icon: "vpn_lock"
                         label: Tunnels.anyOn && Tunnels.activeName ? Tunnels.activeName : "VPN"
+                        measured: "VPN"
                         on: Tunnels.anyOn
 
                         onToggled: Tunnels.setFirst(!Tunnels.anyOn)
@@ -511,7 +530,7 @@ Item {
                         readonly property bool keyable: true
 
                         function press(): void {
-                            root.back();
+                            root.back(true);
                         }
 
                         width: parent.height
@@ -553,7 +572,7 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
 
-                            onClicked: root.back()
+                            onClicked: root.back(false)
                         }
                     }
 
@@ -581,6 +600,8 @@ Item {
                     interactive: pageView.contentHeight > pageView.height
 
                     WheelStep {
+                        id: pageWheel
+
                         flick: pageView
                     }
 

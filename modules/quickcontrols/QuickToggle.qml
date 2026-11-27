@@ -11,6 +11,8 @@ Item {
 
     property string label: ""
 
+    property string measured: root.label
+
     property bool on: false
 
     signal toggled
@@ -34,7 +36,7 @@ Item {
 
         font.family: Appearance.font.family
         font.pixelSize: Appearance.font.size.small
-        text: root.label
+        text: root.measured
     }
 
     scale: squeeze.value

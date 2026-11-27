@@ -18,12 +18,12 @@ IpcHandler {
         const win = Shell.forScreen("");
         if (!win)
             return PanelWindows.missing("");
-        if (key && !win.quickControls.pages[key])
+        if (key && !Object.prototype.hasOwnProperty.call(win.quickControls.pages, key))
             return `no page ${key}; pages: ${Object.keys(win.quickControls.pages).join(", ")}`;
         if (key)
-            win.quickControls.openPage(key);
+            win.quickControls.openPage(key, true);
         else
-            win.quickControls.back();
+            win.quickControls.back(true);
         return key ? `page ${key}` : "back";
     }
 
