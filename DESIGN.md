@@ -76,8 +76,10 @@ month and the rest. Settings can turn the column off, or keep it to an empty des
 **AMENDED 2026-11-27: free widgets on clear glass (#891).** The column is gone; it wrapped
 like text and the owner hated it. Each widget sits where it was dropped, anchored to the two
 screen edges nearest its centre, so it grows away from them. Each has a small, medium and
-large form: hover peeks a small one up to medium, a click opens large, and a pin on the
-corner makes the shown size the resting one. The surface is glass with no tint: the
+large form: a click opens large in place, above the others, which show through its frost;
+hover only lights the rim; and a pin on the corner makes the shown size the resting one.
+Drops settle on a soft grid, so neighbours line up one gap apart, and widgets never overlap
+at rest. The surface is glass with no tint: the
 wallpaper behind it, lightly blurred at rest and frosted while it is in use, bent by a
 convex rim the way Apple's Liquid Glass bends it (`components/glass.frag`), lit by a thin
 highlight from the top left and dimmed only as far as white text needs. The clock keeps no

@@ -8,6 +8,8 @@ Item {
     id: root
 
     property var actions: []
+    property GlassSource backdrop: null
+    property point origin: Qt.point(0, 0)
     property bool open: false
 
     property int selected: 0
@@ -214,6 +216,8 @@ Item {
         width: implicitWidth
         height: implicitHeight
 
+        backdrop: root.backdrop
+        origin: Qt.point(root.origin.x + main.x, root.origin.y + main.y)
         actions: root.actions
         selected: root.selected
         worn: root.worn
@@ -238,6 +242,8 @@ Item {
         width: implicitWidth
         height: implicitHeight
 
+        backdrop: root.backdrop
+        origin: Qt.point(root.origin.x + sub.x, root.origin.y + sub.y)
         actions: root.innerActions
         selected: root.innerSelected
         sized: root.sized

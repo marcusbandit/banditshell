@@ -29,6 +29,7 @@ Glass 1.0 Glass.qml
 GlassPanel 1.0 GlassPanel.qml
 GlassSource 1.0 GlassSource.qml
 GlideList 1.0 GlideList.qml
+GridLines 1.0 GridLines.qml
 Icon 1.0 Icon.qml
 singleton IconAudit 1.0 IconAudit.qml
 ImagePalette 1.0 ImagePalette.qml

@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Place = lib("modules/desktop/placement.js", ["topLeft", "placeAt", "stacked", "sizeUp", "validSize", "isPlace", "badgeSide"]);
+const Place = lib("modules/desktop/placement.js", ["topLeft", "placeAt", "stacked", "validSize", "isPlace", "badgeSide", "grid", "span", "boxOf", "snapPlace", "crowds", "freeSpot", "opening"]);
 const Facts = lib("modules/desktop/weather-facts.js", ["facts", "hours"]);
 
 const area = { x: 40, y: 30, width: 1000, height: 600 };
@@ -50,11 +50,58 @@ test("unplaced widgets stack in their column, skipping hidden ones", () => {
     assert.deepStrictEqual(Place.stacked("limits", heights, 10), { side: "left", edge: "top", x: 0, y: 130 });
 });
 
-test("hover peeks a small widget up to medium and leaves bigger ones alone", () => {
-    assert.strictEqual(Place.sizeUp("small"), "medium");
-    assert.strictEqual(Place.sizeUp("medium"), "medium");
-    assert.strictEqual(Place.sizeUp("large"), "large");
+test("an unknown size falls back", () => {
     assert.strictEqual(Place.validSize("huge", "medium"), "medium");
+});
+
+const grid = Place.grid({ x: 0, y: 0, width: 984, height: 584 }, 32, 16);
+
+test("the grid stretches its pitch so the area ends on a cell", () => {
+    assert.strictEqual(grid.px, 1000 / 31);
+    assert.strictEqual(grid.py, 600 / 19);
+});
+
+test("a widget box covers whole cells, so neighbours one gap apart line up", () => {
+    const g = Place.grid({ x: 0, y: 0, width: 304, height: 304 }, 32, 16);
+    assert.strictEqual(Place.span(100, g.px, g.gap), 4 * 32 - 16);
+    assert.strictEqual(Place.span(112, g.px, g.gap), 112);
+    assert.strictEqual(Place.span(0, g.px, g.gap), 0);
+    assert.deepStrictEqual(Place.boxOf(100, 40, g), { width: 112, height: 48 });
+});
+
+test("a saved place snaps to the nearest cell from its anchored edges", () => {
+    const g = Place.grid({ x: 0, y: 0, width: 304, height: 304 }, 32, 16);
+    assert.deepStrictEqual(Place.snapPlace({ side: "right", edge: "top", x: 50, y: 15 }, g), { side: "right", edge: "top", x: 64, y: 0 });
+});
+
+test("two boxes one gap apart do not crowd; closer ones do", () => {
+    const a = { x: 0, y: 0, width: 112, height: 112 };
+    assert.strictEqual(Place.crowds(a, { x: 128, y: 0, width: 112, height: 112 }, 16), false);
+    assert.strictEqual(Place.crowds(a, { x: 96, y: 0, width: 112, height: 112 }, 16), true);
+});
+
+test("a drop onto another widget lands on the nearest free cell", () => {
+    const g = Place.grid({ x: 0, y: 0, width: 496, height: 496 }, 32, 16);
+    const taken = [{ x: 0, y: 0, width: 240, height: 240 }];
+    assert.deepStrictEqual(Place.freeSpot(0, 0, 112, 112, [], g), { x: 0, y: 0 });
+    const spot = Place.freeSpot(40, 10, 112, 112, taken, g);
+    assert.deepStrictEqual(spot, { x: 256, y: 0 });
+    assert.strictEqual(Place.crowds({ ...spot, width: 112, height: 112 }, taken[0], 16), false);
+});
+
+test("an opening widget grows from its anchored corner when nothing is in the way", () => {
+    const area = { x: 0, y: 0, width: 1000, height: 600 };
+    const rest = { x: 700, y: 0, width: 300, height: 100 };
+    assert.deepStrictEqual(Place.opening(rest, { side: "right", edge: "top" }, 500, 400, [], area), { side: "right", edge: "top", x: 500, y: 0, width: 500, height: 400 });
+});
+
+test("an opening widget turns to the corner that covers the fewest neighbours", () => {
+    const area = { x: 0, y: 0, width: 1000, height: 1000 };
+    const rest = { x: 400, y: 400, width: 200, height: 200 };
+    const below = [{ x: 400, y: 640, width: 200, height: 200 }];
+    const open = Place.opening(rest, { side: "left", edge: "top" }, 400, 400, below, area);
+    assert.strictEqual(open.edge, "bottom");
+    assert.strictEqual(open.y, 200);
 });
 
 test("a saved place must name its edges and offsets", () => {
@@ -94,4 +141,15 @@ test("hourly slots follow the clock of the weather's place, not the machine's", 
     const place = Object.assign({ current_condition: [{ localObsDateTime: "2026-03-04 01:30 PM", observation_time: "06:30 PM" }] }, twoDays);
     const now = Date.UTC(2026, 2, 4, 18, 30);
     assert.deepStrictEqual(Facts.hours(place, now, false, 3).map(s => s.hour), [12, 15, 18]);
+});
+
+test("the default stack, measured in whole cells, stays on the grid and never crowds", () => {
+    const g = Place.grid({ x: 0, y: 0, width: 1000, height: 800 }, 32, 16);
+    const heights = { clock: Place.boxOf(220, 90, g).height, weather: Place.boxOf(220, 150, g).height };
+    const weather = Place.stacked("weather", heights, g.gap);
+    const snapped = Place.snapPlace(weather, g);
+    assert.strictEqual(snapped.y, weather.y);
+    const clockBox = { x: 0, y: 0, width: 220, height: heights.clock };
+    const weatherBox = { x: 0, y: snapped.y, width: 220, height: heights.weather };
+    assert.strictEqual(Place.crowds(clockBox, weatherBox, g.gap), false);
 });

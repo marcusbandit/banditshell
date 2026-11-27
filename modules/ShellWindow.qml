@@ -523,10 +523,21 @@ PanelWindow {
             }
         }
 
+        ScreenBackdrop {
+            id: behind
+
+            anchors.fill: parent
+            output: win.screen?.name ?? ""
+            screenOrigin: Qt.point(win.screen?.x ?? 0, win.screen?.y ?? 0)
+            live: chassis.reachesIn && !chassis.bare
+            active: !chassis.bare
+        }
+
         Chassis {
             id: chassis
 
             anchors.fill: parent
+            backdrop: behind
 
             railWanted: sidebar.railWanted
             readable: settingsLayer.open
@@ -717,6 +728,8 @@ PanelWindow {
         NotificationCorner {
             id: corner
 
+            backdrop: behind
+
             onStage: !win.screen?.name || !Focus.offStageScreen || win.screen.name === Focus.offStageScreen
 
             anchors.fill: parent
@@ -744,6 +757,7 @@ PanelWindow {
 
             anchors.fill: parent
             z: 200
+            backdrop: behind
 
             Keys.onPressed: event => event.accepted = sidebarSheet.key(event)
 
