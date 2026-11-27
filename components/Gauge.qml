@@ -10,7 +10,7 @@ Item {
 
     property real mark: -1
 
-    property color fill: Appearance.colour.accent
+    property color fill: Appearance.colour.textDim
     property color track: Appearance.colour.fillStronger
     property color notch: Appearance.colour.text
 

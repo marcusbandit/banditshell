@@ -138,7 +138,13 @@ void main() {
 
         float ring = inside(abs(d + sheenWidth * 0.5) - sheenWidth * 0.5);
 
-        vec4 edge = sheenColour * ring;
+        vec2 across = vec2(dFdx(p.x), dFdy(p.y));
+        vec2 slope = vec2(dFdx(d) / (abs(across.x) > 0.0 ? across.x : 1.0), dFdy(d) / (abs(across.y) > 0.0 ? across.y : 1.0));
+        vec2 normal = length(slope) > 0.0 ? normalize(slope) : vec2(0.0);
+        float facing = dot(normal, normalize(vec2(-0.55, -0.85)));
+        float lit = facing > 0.0 ? pow(facing, 1.5) : 0.6 * pow(-facing, 1.5);
+
+        vec4 edge = sheenColour * ring * (0.35 + 0.65 * lit);
         result = edge + result * (1.0 - edge.a);
     }
 

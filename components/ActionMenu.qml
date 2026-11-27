@@ -134,9 +134,8 @@ Item {
     SquircleRect {
         anchors.fill: parent
         radius: root.groupRadius
-        color: Appearance.colour.surfaceSolid
-        stroke: Appearance.colour.separator
-        strokeWidth: Appearance.stroke.ring
+        color: Appearance.colour.readableSurface
+        rim: 1
     }
 
     SquircleRect {
@@ -222,20 +221,19 @@ Item {
                         FollowColour {
                             id: markTone
 
-                            target: cell.modelData.alarm ? Appearance.colour.alarm : cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                            target: cell.worn ? Qt.alpha(Appearance.colour.text, 0) : cell.modelData.alarm ? Appearance.colour.alarm : cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
                             speed: Appearance.animation.trackSpeed
                         }
                     }
 
-                    SquircleRect {
+                    Icon {
                         visible: cell.worn
 
                         anchors.centerIn: mark
 
-                        width: mark.width
-                        height: width
-                        pill: "object"
-                        color: Appearance.colour.accent
+                        name: "check"
+                        size: root.iconSize
+                        color: Appearance.colour.text
                     }
 
                     StyledText {

@@ -8,7 +8,7 @@ Item {
     property real value: 0
     property real size: Appearance.font.iconSize
     property real thickness: Math.max(2, Math.round(root.size / 9))
-    property color colour: Appearance.colour.accent
+    property color colour: Appearance.colour.text
     property color track: Appearance.colour.fillStrong
 
     implicitWidth: root.size

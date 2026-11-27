@@ -15,13 +15,15 @@ layout(std140, binding = 0) uniform buf {
 
     float down;
 
-    float rim;
+    float weight;
 
     vec4 radii;
 
     vec4 colour;
 
     vec4 line;
+
+    vec4 glint;
 };
 
 float share(float own, float other, float length) {
@@ -55,12 +57,24 @@ void main() {
 
     float reach = max(length(vec2(dFdx(d), dFdy(d))), 0.0001);
     float cover = clamp(0.5 - d / reach, 0.0, 1.0);
-    float inner = clamp(0.5 - (d + rim) / reach, 0.0, 1.0);
+    float inner = clamp(0.5 - (d + weight) / reach, 0.0, 1.0);
     float ring = max(cover - inner, 0.0);
-    float filled = clamp(0.5 - (d + rim * 0.5) / reach, 0.0, 1.0);
+    float filled = clamp(0.5 - (d + weight * 0.5) / reach, 0.0, 1.0);
 
     vec4 body = colour * filled;
     vec4 edge = line * ring;
+    vec4 shape = edge + body * (1.0 - edge.a);
 
-    fragColor = (edge + body * (1.0 - edge.a)) * (size.x > 0.0 && size.y > 0.0 ? qt_Opacity : 0.0);
+    if (glint.a > 0.0) {
+        vec2 across = vec2(dFdx(p.x), dFdy(p.y));
+        vec2 slope = vec2(dFdx(d) / (abs(across.x) > 0.0 ? across.x : 1.0), dFdy(d) / (abs(across.y) > 0.0 ? across.y : 1.0));
+        vec2 normal = length(slope) > 0.0 ? normalize(slope) : vec2(0.0);
+        float facing = dot(normal, normalize(vec2(-0.55, -0.85)));
+        float lit = facing > 0.0 ? pow(facing, 1.5) : 0.6 * pow(-facing, 1.5);
+        float band = clamp(0.5 - (abs(d + 0.75) - 0.75) / reach, 0.0, 1.0);
+        vec4 shine = glint * band * (0.35 + 0.65 * lit);
+        shape = shine + shape * (1.0 - shine.a);
+    }
+
+    fragColor = shape * (size.x > 0.0 && size.y > 0.0 ? qt_Opacity : 0.0);
 }

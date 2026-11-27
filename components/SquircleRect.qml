@@ -21,11 +21,13 @@ Item {
     property color stroke: "transparent"
     property real strokeWidth: 0
 
+    property real rim: 0
+
     default property alias content: inner.data
 
     property bool shaded: true
 
-    readonly property bool drawn: root.color.a > 0 || (root.strokeWidth > 0 && root.stroke.a > 0)
+    readonly property bool drawn: root.color.a > 0 || (root.strokeWidth > 0 && root.stroke.a > 0) || (root.rim > 0 && root.onShader)
 
     readonly property real inset: root.strokeWidth / 2
     readonly property bool onShader: root.shaded && root.topLeftRadius >= 0 && root.topRightRadius >= 0 && root.bottomRightRadius >= 0 && root.bottomLeftRadius >= 0
@@ -55,10 +57,11 @@ Item {
             property real bleed: 1
             property real across: root.width
             property real down: root.height
-            property real rim: root.strokeWidth
+            property real weight: root.strokeWidth
             property vector4d radii: Qt.vector4d(root.topLeftRadius, root.topRightRadius, root.bottomRightRadius, root.bottomLeftRadius)
             property color colour: root.color
             property color line: root.stroke
+            property color glint: Appearance.withAlpha(Appearance.colour.rim, Appearance.colour.rim.a * Math.max(0, root.rim))
 
             fragmentShader: "squirclefill.frag.qsb"
         }

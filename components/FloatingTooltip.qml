@@ -59,9 +59,8 @@ Item {
     SquircleRect {
         anchors.fill: parent
         radius: Appearance.rounding.small
-        color: Appearance.colour.surfaceSolid
-        stroke: Appearance.colour.fillStrong
-        strokeWidth: Appearance.stroke.line
+        color: Appearance.colour.readableSurface
+        rim: 1
     }
 
     StyledText {

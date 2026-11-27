@@ -30,7 +30,7 @@ ShaderEffect {
     property color outlineColour: Appearance.colour.accent
 
     property real sheenWidth: Appearance.sizes.seam
-    property color sheenColour: Appearance.colour.seam
+    property color sheenColour: Appearance.colour.rim
     property real pad2: 0
     property real pad3: 0
 
