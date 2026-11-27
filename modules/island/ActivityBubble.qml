@@ -12,6 +12,8 @@ Item {
     property bool live: true
     property real markOpacity: 1
     property real stateShown: 1
+    property GlassSource backdrop: null
+    property point origin: Qt.point(0, 0)
 
     readonly property var items: root.group?.items ?? []
     readonly property var front: root.items[0] ?? null
@@ -244,7 +246,10 @@ Item {
     }
 
     Item {
+        id: badge
+
         readonly property real across: Math.round(Appearance.font.line.small * 0.85)
+        readonly property real hem: Math.max(1, Math.round(root.thickness / 2))
 
         x: root.width - width * 0.7
         y: -height * 0.3
@@ -253,11 +258,13 @@ Item {
         opacity: root.stateShown * root.markOpacity * badgeIn.value
         visible: !!root.shownBadge && opacity > 0.01
 
-        SquircleRect {
+        IslandGlass {
             anchors.fill: parent
-            anchors.margins: -Math.max(1, Math.round(root.thickness / 2))
+            anchors.margins: -badge.hem
             pill: "object"
-            color: Appearance.colour.island
+            backdrop: root.backdrop
+            origin: Qt.point(root.origin.x + badge.x - badge.hem, root.origin.y + badge.y - badge.hem)
+            raise: 1
         }
 
         SquircleRect {

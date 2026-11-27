@@ -672,11 +672,6 @@ banditshell/
 │   ├── squirclefill.frag        the convex path of it, drawn by a shader (+ .qsb)
 │   ├── SquircleImage.qml              a picture cut to that same corner, by mask
 │   ├── BlurredImage.qml         the same cut, the picture blurred to colour
-│   ├── ImagePalette.qml         a picture's main colours and how much of it each
-│   │                            covers, read off a 24px copy in a Canvas
-│   ├── ColourField.qml          up to four colours blended into a slow, soft
-│   │                            field, each as large as its share, all fields
-│   │                            on one clock so two of them agree (+ .frag)
 │   ├── Waveform.qml             levels as one smooth mirrored curve: a ring of
 │   │                            levels, a playhead gliding through it, a shader
 │   │                            drawing a B-spline with soft ends (+ .frag)
@@ -4269,12 +4264,19 @@ the eye already is.
 
 The first version melted out of the band like the notch it replaced and stacked
 cards inside it. It read as a notch with things in it, and that is what it was.
-The island is its own object: the theme's surface colour, the one the panels
-wear, opaque, floating a gap below the band with a soft shadow and the chassis'
-sheen along its edge. It is not part of the chassis field, so it never bridges
-into the band. It was the darkest stop of the ramp until 2026-10-18, and against
-a coloured theme that read as a black hole cut out of the screen rather than a
-thing of ours; `colour.island` names the surface it wears now.
+The island is its own object, floating a gap below the band. It is not part of
+the chassis field, so it never bridges into the band. Since 2026-11-27 (#904) it
+is the same clear glass as the chassis and the desktop widgets
+(`docs/architecture/desktop-widgets.md`): its window keeps its own
+`ScreenBackdrop` of the screen behind it, the wallpaper plus still frames of the
+windows under it, live while it is open, and `island.frag` bends that picture at
+the rim and lights the edge from the top left. It is clear-ish at rest, a third
+of the way to frosted so the row reads over a busy wallpaper, and frosts fully
+as it opens or grows into a card. The stack layers, the side bubbles' shells and
+the voice capsule are the same glass (`IslandGlass`), a little more frosted per
+layer instead of tinted. Before that it was an opaque fill, and once the chassis
+turned to glass it was the one solid shape on the desktop. `colour.island`
+remains the fallback when there is no wallpaper to sample.
 
 It has three sizes and no others. Compact is a capsule as tall as a button.
 Large is one width, `island.width`, for a notification or for the overview. A
@@ -4327,14 +4329,11 @@ and a bubble can never disagree.
 
 ### Lit by the music
 
-The media card made the cover its light, and the island borrows that. Behind
-everything in the overview sits a field of the cover's own colours: its main
-colours are picked out (the same clustering the wallpaper theming uses, run on a
-tiny copy of the cover) and blended into a slow, soft wash, each colour as large
-as its share of the cover, darkened enough to keep the words readable. A blurred
-cover read as a smudge of the picture; the colours read as the song. The island
-takes that tint, a track-change glance in compact form glows the same way more
-faintly, and the card itself uses the same field (`ArtGlow`). The player in the overview is the card's anatomy at a
+The cover is the only colour the music brings. Until 2026-11-27 a slow wash of
+the cover's main colours (`ArtGlow`) sat behind the overview, the compact
+glance and the media card, with drop shadows under the card and its cover. It
+was tint and glow at once, against the no-glow call and the zero-tint glass, so
+it was cut (#904). The player in the overview is the card's anatomy at a
 smaller scale, without the lyrics: those belong to the card. Its words are never
 cut to the cover's height; a long title takes two lines and the row grows to
 hold it. The expand
@@ -4484,9 +4483,9 @@ and no pin; reading the history is the launcher either way.
 
 **Each notification is its own tile, and the tiles are joined.** In the
 overview and the history a notification is a tile of `colour.tile`, a veil of
-paper over whatever the island shows, so the cover's colour field behind the
-overview comes through the cards as it does through the rest of the island;
-they were solid at first and read as grey slabs on a coloured island. A tile is
+paper over whatever the island shows, so the glass behind the overview comes
+through the cards as it does through the rest of the island; they were solid at
+first and read as grey slabs on a coloured island. A tile is
 set a small padding in from the island's
 edge so the column's corners are concentric with the island's. Tiles that
 border each other are joined into one column, as on Android: a hairline seam

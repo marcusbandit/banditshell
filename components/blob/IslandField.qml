@@ -24,6 +24,26 @@ ShaderEffect {
 
     property var source: null
 
+    property Item backdrop: null
+    property point origin: Qt.point(0, 0)
+    property real raised: 0
+    property real bandRaised: 0
+    property real bezel: Appearance.padding.large * 1.25
+    property real bend: root.bezel * 0.9
+    property real spread: 0.05
+
+    readonly property bool glassy: (root.backdrop?.ready ?? false) && root.width > 0 && root.height > 0
+    readonly property real glass: root.glassy ? 1 : 0
+    readonly property vector2d view: Qt.vector2d(Math.max(1, root.backdrop?.width ?? 1), Math.max(1, root.backdrop?.height ?? 1))
+    readonly property variant soft: root.glassy ? root.backdrop.soft : blank
+    readonly property variant frost: root.glassy ? root.backdrop.frost : blank
+
+    Image {
+        id: blank
+
+        visible: false
+    }
+
     readonly property vector4d size: Qt.vector4d(width, height, 0, 0)
     readonly property vector4d pill: Qt.vector4d(pillRect.x, pillRect.y, pillRect.width, pillRect.height)
     readonly property vector4d bud0: root.slot(0)

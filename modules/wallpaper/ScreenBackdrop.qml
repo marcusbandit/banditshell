@@ -12,6 +12,17 @@ GlassSource {
     required property string output
     property point screenOrigin: Qt.point(0, 0)
     property bool live: false
+    property rect region: Qt.rect(0, 0, 0, 0)
+
+    function within(client: var): bool {
+        if (root.region.width <= 0 || root.region.height <= 0)
+            return true;
+        const at = client.lastIpcObject?.at ?? [0, 0];
+        const span = client.lastIpcObject?.size ?? [0, 0];
+        const x = at[0] - root.screenOrigin.x;
+        const y = at[1] - root.screenOrigin.y;
+        return x < root.region.x + root.region.width && x + span[0] > root.region.x && y < root.region.y + root.region.height && y + span[1] > root.region.y;
+    }
 
     readonly property var monitor: Hyprland.monitors.values.find(m => m.name === root.output) ?? null
     readonly property int workspace: root.monitor?.activeWorkspace?.id ?? Hypr.activeOn(root.output)
@@ -28,7 +39,7 @@ GlassSource {
             const w = t.workspace;
             if (!w || !t.lastIpcObject?.mapped || t.lastIpcObject?.hidden)
                 return false;
-            return w.id === root.workspace || (root.special !== "" && w.name === root.special);
+            return (w.id === root.workspace || (root.special !== "" && w.name === root.special)) && root.within(t);
         });
         return out.sort((a, b) => root.rank(a) - root.rank(b));
     }
