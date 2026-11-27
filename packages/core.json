@@ -95,7 +95,8 @@
       "tests/trace.test.js",
       "tests/user-folders.test.js",
       "tests/wall-clock.test.js",
-      "tests/weekdays.test.js"
+      "tests/weekdays.test.js",
+      "tests/wheel-pass.test.js"
     ]
   },
   "requires": {
