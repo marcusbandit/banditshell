@@ -142,3 +142,14 @@ test("hourly slots follow the clock of the weather's place, not the machine's", 
     const now = Date.UTC(2026, 2, 4, 18, 30);
     assert.deepStrictEqual(Facts.hours(place, now, false, 3).map(s => s.hour), [12, 15, 18]);
 });
+
+test("the default stack, measured in whole cells, stays on the grid and never crowds", () => {
+    const g = Place.grid({ x: 0, y: 0, width: 1000, height: 800 }, 32, 16);
+    const heights = { clock: Place.boxOf(220, 90, g).height, weather: Place.boxOf(220, 150, g).height };
+    const weather = Place.stacked("weather", heights, g.gap);
+    const snapped = Place.snapPlace(weather, g);
+    assert.strictEqual(snapped.y, weather.y);
+    const clockBox = { x: 0, y: 0, width: 220, height: heights.clock };
+    const weatherBox = { x: 0, y: snapped.y, width: 220, height: heights.weather };
+    assert.strictEqual(Place.crowds(clockBox, weatherBox, g.gap), false);
+});

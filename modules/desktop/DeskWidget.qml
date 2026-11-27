@@ -47,9 +47,10 @@ Item {
     readonly property var restBox: Placement.boxOf(root.restWidth, root.restHeight, root.grid)
     readonly property var restSpot: Placement.topLeft(root.place, root.restBox.width, root.restBox.height, root.area)
     readonly property rect restRect: Qt.rect(root.restSpot.x, root.restSpot.y, root.restBox.width, root.restBox.height)
-    readonly property var opened: root.expanded && root.restHeight > 0 ? Placement.opening(root.restRect, root.place, root.box.width, root.box.height, root.neighbours, root.area) : null
+    readonly property var opening: root.expanded && root.restHeight > 0 && root.shown === largeView.item && root.shownHeight > 0 ? Placement.opening(root.restRect, root.place, root.box.width, root.box.height, root.neighbours, root.area) : null
     readonly property bool resting: !root.expanded && wide.settled && tall.settled
     property bool turned: false
+    readonly property bool overlaid: root.expanded || root.turned
     property string turnedSide: "left"
     property string turnedEdge: "top"
     readonly property string side: root.turned ? root.turnedSide : root.place.side
@@ -106,9 +107,9 @@ Item {
 
     onVisibleChanged: if (!root.visible)
         root.close()
-    onOpenedChanged: if (root.opened) {
-        root.turnedSide = root.opened.side;
-        root.turnedEdge = root.opened.edge;
+    onOpeningChanged: if (root.opening && !root.turned) {
+        root.turnedSide = root.opening.side;
+        root.turnedEdge = root.opening.edge;
         root.turned = true;
     }
     onRestingChanged: if (root.resting)
@@ -122,7 +123,7 @@ Item {
     y: root.dragging ? root.dragTo.y : root.spot.y + slideY.value
     width: wide.value
     height: tall.value
-    z: root.dragging ? 30 : root.expanded ? 20 : root.lifted ? 10 : 0
+    z: root.dragging ? 30 : root.overlaid ? 20 : root.lifted ? 10 : 0
 
     Follow {
         id: slideX

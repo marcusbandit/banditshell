@@ -12,6 +12,7 @@ GlassSource {
     required property string output
     property point screenOrigin: Qt.point(0, 0)
     property bool live: false
+    property bool active: true
 
     readonly property var monitor: Hyprland.monitors.values.find(m => m.name === root.output) ?? null
     readonly property int workspace: root.monitor?.activeWorkspace?.id ?? Hypr.activeOn(root.output)
@@ -41,7 +42,7 @@ GlassSource {
     Timer {
         interval: 1500
         repeat: true
-        running: !root.live && root.shown.length > 0
+        running: root.active && !root.live && root.shown.length > 0
         onTriggered: {
             for (let i = 0; i < captures.count; i++)
                 captures.itemAt(i)?.captureFrame();
@@ -51,7 +52,7 @@ GlassSource {
     Repeater {
         id: captures
 
-        model: root.shown
+        model: root.active ? root.shown : []
 
         ScreencopyView {
             required property var modelData
