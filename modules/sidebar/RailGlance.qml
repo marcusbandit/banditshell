@@ -77,12 +77,6 @@ Item {
                 text: TimeFormat.minutePart(clock.date)
                 font.pixelSize: root.timeSize
             }
-
-            TapHandler {
-                margin: Math.max(0, (root.width - parent.width) / 2)
-                cursorShape: Qt.PointingHandCursor
-                onTapped: root.clockRequested(true)
-            }
         }
 
         Item {
@@ -100,12 +94,6 @@ Item {
                 text: TimeFormat.time(clock.date, false)
                 font.pixelSize: root.timeSize
                 rotation: -90
-            }
-
-            TapHandler {
-                margin: Math.max(0, (root.width - parent.width) / 2)
-                cursorShape: Qt.PointingHandCursor
-                onTapped: root.clockRequested(true)
             }
         }
 
@@ -130,12 +118,6 @@ Item {
                 font.pixelSize: Appearance.font.size.small
                 color: Appearance.colour.textFaint
             }
-
-            TapHandler {
-                margin: Math.max(0, (root.width - parent.width) / 2)
-                cursorShape: Qt.PointingHandCursor
-                onTapped: root.calendarRequested(true)
-            }
         }
 
         Item {
@@ -154,12 +136,6 @@ Item {
                 font.pixelSize: Appearance.font.size.small
                 color: Appearance.colour.textFaint
                 rotation: -90
-            }
-
-            TapHandler {
-                margin: Math.max(0, (root.width - parent.width) / 2)
-                cursorShape: Qt.PointingHandCursor
-                onTapped: root.calendarRequested(true)
             }
         }
 
@@ -234,17 +210,37 @@ Item {
                 text: TimeFormat.minutePart(clock.date)
                 font.pixelSize: Appearance.font.size.normal
             }
-
-            TapHandler {
-                margin: Math.max(0, (root.width - parent.width) / 2)
-                cursorShape: Qt.PointingHandCursor
-                onTapped: root.clockRequested(true)
-            }
         }
 
         BatteryReading {
             anchors.horizontalCenter: parent.horizontalCenter
             stacked: true
+        }
+    }
+
+    Item {
+        x: 0
+        y: root.timeItem ? root.timeItem.parent.y + root.timeItem.y : 0
+        width: root.width
+        height: root.timeItem?.height ?? 0
+        visible: root.timeItem !== null
+
+        TapHandler {
+            cursorShape: Qt.PointingHandCursor
+            onTapped: root.clockRequested(true)
+        }
+    }
+
+    Item {
+        x: 0
+        y: root.dateItem ? root.dateItem.parent.y + root.dateItem.y : 0
+        width: root.width
+        height: root.dateItem?.height ?? 0
+        visible: root.dateItem !== null
+
+        TapHandler {
+            cursorShape: Qt.PointingHandCursor
+            onTapped: root.calendarRequested(true)
         }
     }
 }

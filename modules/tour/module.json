@@ -9,7 +9,7 @@
     "tests": ["tests/tour.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor", "apps", "settings", "clock", "files"],
+    "packages": ["core", "compositor", "apps", "settings", "clock", "files", "bar"],
     "optional": []
   },
   "provides": {
@@ -18,6 +18,6 @@
   },
   "config": {
     "namespace": [],
-    "reads": ["weather"]
+    "reads": ["weather", "sidebar.glance", "sidebar.clock.style"]
   }
 }

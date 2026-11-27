@@ -373,7 +373,7 @@ const PAGES_SOURCE = {
             ] },
             { t: "Workspaces", rows: [
                 { n: 61, icon: "palette", label: "App marks", k: "iconMode", kind: "seg", o: ["colour", "mono"], cfg: "sidebar.workspaces.iconMode", kw: "workspace icons",
-                    why: "Plates show the apps inside each workspace. Mono tints the marks to match the text." },
+                    why: "Mono tints the marks to match the text." },
                 { n: 62, icon: "filter_5", label: "Always there", k: "persistent", kind: "step", min: 1, max: 10, cfg: "sidebar.workspaces.persistent", fmt: v => `${v}`, why: "Workspaces the sidebar always shows. More show up when busy.", kw: "always-shown workspaces" },
                 { n: 63, icon: "stacks", label: "Special workspaces", k: "specialsShown", kind: "toggle", cfg: "sidebar.workspaces.rack", state: s => s.specialNames.join(" · ") || "none yet", kw: "scratchpad special", layer: [
                     { n: 63, kind: "w", w: "specials" }
@@ -384,7 +384,7 @@ const PAGES_SOURCE = {
                     why: "The clock on the resting rail. It applies when Clock and battery is rail bottom or rail top." },
                 { n: [], icon: "format_size", label: "Size at rest", k: "sbClockSize", kind: "seg", o: ["small", "large"], cfg: "sidebar.clock.size", dis: s => !["rail", "rail top"].includes(s.v("sbGlance")) || s.v("sbClock") === "off", kw: "sidebar clock size big small large rail rest compact" },
                 { n: [], icon: "calendar_today", label: "Date", k: "sbDate", kind: "seg", o: [["day and month", "14 oct"], ["day", "14"], ["off", "off"]], cfg: "sidebar.clock.date", kw: "sidebar calendar date hide",
-                    why: "The date under the clock. It still opens the calendar when you tap or pull it." }
+                    why: "The date under the clock. It still opens the calendar when you tap it." }
             ] },
             { t: "Status", rows: [
                 { n: [], icon: "sync", label: "Update button", k: "sbUpdate", kind: "seg", o: [["always", "always"], ["new", "when new"], ["never", "never"]], cfg: "sidebar.update", kw: "sidebar update button hide",
@@ -394,7 +394,7 @@ const PAGES_SOURCE = {
             ] },
             { t: "AI limits", rows: [
                 { n: [], icon: "speed", label: "Show in sidebar", k: "agentLimitsSidebar", kind: "toggle", cfg: "agentLimits.sidebar", kw: "ai agent limits claude antigravity codex quota sidebar rail",
-                    why: "Keeps compact 5-hour and weekly limit bars in the sidebar and collapsed rail. Hover them for full details." },
+                    why: "Keeps compact 5-hour and weekly limit bars in the rail. Hover them for full details." },
                 { n: [], icon: "height", label: "Bar size", k: "agentLimitsSize", kind: "seg", o: ["small", "normal", "tall", "huge"], cfg: "agentLimits.size", dis: s => !s.v("agentLimitsSidebar"), kw: "ai agent limits bar height size length tall huge small normal" },
                 { n: [], icon: "neurology", label: "Claude", k: "agentLimitsClaude", kind: "toggle", cfg: "agentLimits.claude", kw: "ai agent limits claude anthropic quota" },
                 { n: [], icon: "neurology", label: "Antigravity", k: "agentLimitsAntigravity", kind: "toggle", cfg: "agentLimits.antigravity", kw: "ai agent limits antigravity gemini quota" },

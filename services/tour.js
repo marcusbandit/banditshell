@@ -126,7 +126,7 @@ function plan(env) {
         else if (id === "island" && !env.bare)
             gesture = "top";
         else if (id === "sidebar")
-            gesture = env.sidebar === "rail" ? "rail" : env.sidebar === "full" ? "column" : "";
+            gesture = env.sidebar === "rail" ? (env.railTime === false ? "" : "rail") : env.sidebar === "full" ? "column" : "";
         else if (id === "settings")
             gesture = env.bare ? "launcher" : "corner";
         if (id === "sidebar" && !gesture)

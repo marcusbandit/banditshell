@@ -27,6 +27,8 @@ Item {
 
     property real glanceReach: 0
 
+    property Item glanceTime: null
+
     readonly property var slotEntry: Anomalies.modeEntry({
         modeIcon: root.modeIcon,
         modeName: root.modeName,
@@ -304,7 +306,7 @@ Item {
 
             function anchorFor(key: string): Item {
                 if (key === "clock")
-                    return glance.timeItem ?? railFoot;
+                    return glance.timeItem ?? root.glanceTime ?? railFoot;
                 if (key === "calendar")
                     return glance.dateItem ?? glance.timeItem ?? railFoot;
                 if (key === "agentLimits")

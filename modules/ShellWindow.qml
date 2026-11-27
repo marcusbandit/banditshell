@@ -407,6 +407,11 @@ PanelWindow {
 
         Region {
             intersection: Intersection.Combine
+            item: glance.timeItem
+        }
+
+        Region {
+            intersection: Intersection.Combine
             item: quickLayer.active ? quickLayer.maskItem : null
         }
 
@@ -559,6 +564,7 @@ PanelWindow {
             awake: Idle.awake
 
             glanceReach: Math.max(0, glance.footReach - win.border)
+            glanceTime: glance.timeItem
 
             onMarkPressed: opens => win.pressMark(opens)
             onMenuAsked: (x, y, actions) => {
@@ -584,6 +590,8 @@ PanelWindow {
             bare: chassis.bare
             islandOut: islandLayer.out
             yielded: win.underFullscreen || fullscreenBorder.yielded
+
+            onClockRequested: deliberate => sidebar.clockRequested(deliberate)
         }
 
         Loader {
