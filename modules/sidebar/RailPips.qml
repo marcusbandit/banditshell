@@ -98,7 +98,7 @@ Item {
             SquircleRect {
                 anchors.fill: parent
                 radius: pip.radius
-                color: Appearance.colour.accent
+                color: Appearance.colour.chosen
                 opacity: lit.value * (1 - 0.6 * ring.value)
             }
 
@@ -106,7 +106,7 @@ Item {
                 anchors.fill: parent
                 anchors.margins: -Math.max(2, Math.round(root.mark * 0.4))
                 radius: Math.min(Appearance.rounding.small, Math.min(width, height) / 2)
-                stroke: Appearance.colour.accent
+                stroke: Appearance.colour.chosen
                 strokeWidth: Math.max(1.5, root.mark / 4)
                 opacity: ring.value
                 visible: ring.value > 0.01

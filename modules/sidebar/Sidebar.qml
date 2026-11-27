@@ -245,7 +245,7 @@ Item {
                     anchors.centerIn: parent
                     name: root.slotIcon || "radio_button_unchecked"
                     fill: 1
-                    color: Appearance.colour.accent
+                    color: Appearance.colour.text
                 }
 
                 MouseArea {
