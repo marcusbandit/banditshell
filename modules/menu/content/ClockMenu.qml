@@ -160,7 +160,7 @@ Column {
         height: visible ? answers.y + answers.height + Appearance.padding.normal : 0
         radius: Appearance.rounding.normal
 
-        color: Appearance.colour.accentFill
+        color: Appearance.colour.alarmFill
 
         StyledText {
             id: ringTime
@@ -172,7 +172,7 @@ Column {
 
             text: ringing.visible ? TimeFormat.time(new Date(ringing.due), false) : ""
             font.pixelSize: Appearance.font.size.large
-            color: Appearance.colour.accent
+            color: Appearance.colour.alarm
         }
 
         StyledText {
@@ -501,7 +501,7 @@ Column {
                 text: root.clockText(timerCard.remainingMs)
                 font.pixelSize: Appearance.font.size.large
 
-                color: timerCard.modelData.finished ? Appearance.colour.accent : timerCard.modelData.paused ? Appearance.colour.textDim : Appearance.colour.text
+                color: timerCard.modelData.finished ? Appearance.colour.alarm : timerCard.modelData.paused ? Appearance.colour.textDim : Appearance.colour.text
             }
 
             Icon {

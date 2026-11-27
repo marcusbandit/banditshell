@@ -366,7 +366,7 @@ Column {
             FollowColour {
                 id: plateTone
 
-                target: key.lit ? Appearance.colour.accentFill : press.containsMouse || press.pressed ? key.raised : key.rest
+                target: key.lit ? Appearance.colour.chosen : press.containsMouse || press.pressed ? key.raised : key.rest
                 speed: Appearance.animation.revealSpeed
             }
         }
@@ -396,7 +396,7 @@ Column {
             FollowColour {
                 id: labelTone
 
-                target: key.lit ? Appearance.colour.accent : key.ink
+                target: key.lit ? Appearance.colour.onChosen : key.ink
                 speed: Appearance.animation.revealSpeed
             }
         }

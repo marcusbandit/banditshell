@@ -20,7 +20,7 @@ Item {
     SquircleRect {
         anchors.fill: parent
         radius: Appearance.rounding.normal
-        color: Appearance.colour.accentFill
+        color: Appearance.colour.fill
     }
 
     Column {
@@ -45,7 +45,7 @@ Item {
             width: parent.width
             visible: !!root.digits
             text: root.digits
-            color: Appearance.colour.accent
+            color: Appearance.colour.text
             font.pixelSize: Appearance.font.size.large
             font.letterSpacing: Appearance.font.size.small
         }

@@ -172,13 +172,13 @@ Item {
     SquircleRect {
         anchors.fill: parent
         radius: Appearance.rounding.normal
-        color: Appearance.colour.fill
+        color: root.grabbed || root.typing ? Appearance.colour.fillStrong : Appearance.colour.fill
         opacity: hoverFade.value
 
         Follow {
             id: hoverFade
 
-            target: root.grabbed || pointer.containsMouse || pointer.pressed || scroll.active ? 1 : 0
+            target: root.grabbed || root.typing || pointer.containsMouse || pointer.pressed || scroll.active ? 1 : 0
             speed: Appearance.animation.revealSpeed
             epsilon: Appearance.animation.fadeEpsilon
             startsAtTarget: true
@@ -197,7 +197,7 @@ Item {
         visible: !root.typing
         text: Clock.twoDigits(root.shown)
         font.pixelSize: Appearance.font.size.large
-        color: root.grabbed ? Appearance.colour.accent : root.zeroIsEmpty && root.shown === 0 ? Appearance.colour.textFaint : Appearance.colour.text
+        color: root.grabbed ? Appearance.colour.text : root.zeroIsEmpty && root.shown === 0 ? Appearance.colour.textFaint : Appearance.colour.text
     }
 
     TextInput {
@@ -219,9 +219,9 @@ Item {
         font.family: Appearance.font.family
         font.pixelSize: Appearance.font.size.large
         renderType: Text.NativeRendering
-        color: Appearance.colour.accent
-        selectionColor: Appearance.colour.accent
-        selectedTextColor: Appearance.colour.accentText
+        color: Appearance.colour.text
+        selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
+        selectedTextColor: Appearance.colour.text
 
         onEditingFinished: root.finish(true)
 

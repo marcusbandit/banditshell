@@ -41,7 +41,7 @@ Column {
             anchors.verticalCenter: parent.verticalCenter
 
             name: level.glyph
-            color: !level.muted ? (level.value > 0 ? Appearance.huedOr(Appearance.hue.sound, Appearance.colour.text) : Appearance.colour.text) : level.urgent ? Appearance.colour.accent : Appearance.colour.textFaint
+            color: !level.muted ? (level.value > 0 ? Appearance.huedOr(Appearance.hue.sound, Appearance.colour.text) : Appearance.colour.text) : level.urgent ? Appearance.colour.warning : Appearance.colour.textFaint
 
             readonly property bool keyable: true
 

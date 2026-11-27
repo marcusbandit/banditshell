@@ -72,7 +72,7 @@ Column {
                 Icon {
                     visible: entry.button === QsMenuButtonType.RadioButton
                     name: entry.ticked ? "radio_button_checked" : "radio_button_unchecked"
-                    color: entry.ticked ? Appearance.colour.accent : Appearance.colour.textFaint
+                    color: entry.ticked ? Appearance.colour.chosen : Appearance.colour.textFaint
                 }
 
                 Expander {
