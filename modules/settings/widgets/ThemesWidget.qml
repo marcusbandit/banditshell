@@ -113,15 +113,9 @@ Item {
                     anchors.fill: parent
                     visible: card.on
                     radius: Appearance.rounding.normal
-                    color: Appearance.colour.accent
-                }
-
-                SquircleRect {
-                    anchors.fill: parent
-                    anchors.margins: 2
-                    visible: card.on
-                    radius: Appearance.rounding.normal - 2
-                    color: Appearance.colour.surfaceSolid
+                    color: "transparent"
+                    stroke: Appearance.colour.chosen
+                    strokeWidth: 2
                 }
 
                 SquircleRect {

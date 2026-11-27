@@ -420,14 +420,14 @@ Item {
             const r = status.r;
             const w = status.w;
             if (!r)
-                return w ? `last wrote ${root.tone(Appearance.colour.accent, `${w.key} = ${w.value}`)}` : "";
+                return w ? `last wrote ${root.tone(Appearance.colour.text, `${w.key} = ${w.value}`)}` : "";
             const parts = [];
             if (r.cfg)
                 parts.push(`config ${root.tone(Appearance.colour.textDim, r.cfg)}`);
             if (status.fallback)
                 parts.push(`default ${root.tone(Appearance.colour.textDim, status.fallback)}`);
             if (w && r.cfg === w.key)
-                parts.push(`wrote ${root.tone(Appearance.colour.accent, `${w.key} = ${w.value}`)}`);
+                parts.push(`wrote ${root.tone(Appearance.colour.text, `${w.key} = ${w.value}`)}`);
             return parts.join("&nbsp;&nbsp;&nbsp;");
         }
     }

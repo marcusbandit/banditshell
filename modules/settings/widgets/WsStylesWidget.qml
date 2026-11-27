@@ -56,7 +56,9 @@ Item {
                     SquircleRect {
                         anchors.fill: parent
                         radius: Appearance.rounding.normal
-                        color: Appearance.colour.accentFill
+                        color: "transparent"
+                        stroke: Appearance.colour.chosen
+                        strokeWidth: Appearance.stroke.ring
                         visible: card.on
                     }
                 }

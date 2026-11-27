@@ -12,8 +12,6 @@ Item {
     property string detail: ""
     property color detailColour: Appearance.colour.textFaint
     property int detailLines: 1
-    property string note: ""
-    property int noteLines: 4
     property bool card: false
     property string pending: ""
     property bool selected: false
@@ -79,7 +77,7 @@ Item {
 
         anchors.fill: parent
         radius: Appearance.rounding.normal
-        color: root.notice ? Appearance.colour.accentFill : Appearance.colour.fill
+        color: root.notice ? Appearance.colour.fillStrong : Appearance.colour.fill
         opacity: plateShown.value
 
         Follow {
@@ -97,7 +95,7 @@ Item {
 
         anchors.fill: parent
         radius: Appearance.rounding.normal
-        color: Appearance.colour.accentFill
+        color: Qt.alpha(Appearance.colour.chosen, 0.22)
         opacity: flashLevel.value
 
         Follow {
@@ -158,7 +156,7 @@ Item {
             visible: !leadLoader.active
             name: root.icon
             fill: root.iconFill
-            color: root.notice ? Appearance.colour.accent : root.iconColour
+            color: root.notice ? Appearance.colour.text : root.iconColour
         }
 
         Loader {
@@ -184,7 +182,7 @@ Item {
             text: root.label
             elide: Text.ElideRight
             wrapMode: root.wrapped ? Text.Wrap : Text.NoWrap
-            color: root.notice ? Appearance.colour.accent : root.card || root.hot || root.selected ? Appearance.colour.text : Appearance.colour.textDim
+            color: root.notice || root.card || root.hot || root.selected ? Appearance.colour.text : Appearance.colour.textDim
             visible: root.label !== ""
         }
 
@@ -200,19 +198,6 @@ Item {
             visible: root.detail !== ""
         }
 
-        StyledText {
-            id: noteText
-
-            width: parent.width
-            topPadding: detailText.visible ? 2 : 0
-            text: root.note
-            elide: Text.ElideRight
-            wrapMode: Text.Wrap
-            maximumLineCount: root.noteLines
-            color: Appearance.colour.textFaint
-            visible: root.note !== ""
-        }
-
         Row {
             visible: root.pending !== ""
             spacing: Appearance.padding.small
@@ -222,14 +207,14 @@ Item {
                 width: 6
                 height: 6
                 pill: "object"
-                color: Appearance.colour.accent
+                color: Appearance.colour.chosen
             }
 
             StyledText {
                 width: words.width - 6 - Appearance.padding.small
                 text: root.pending
                 wrapMode: Text.Wrap
-                color: Appearance.colour.accent
+                color: Appearance.colour.text
             }
         }
 

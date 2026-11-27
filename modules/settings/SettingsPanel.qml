@@ -13,6 +13,8 @@ FocusScope {
 
     property bool yielded: false
     property bool menuOpen: false
+    property GlassSource backdrop: null
+    property point glassAt: Qt.point(0, 0)
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
@@ -304,14 +306,14 @@ FocusScope {
                     rail.focusSearch();
                 }
 
-                SquircleRect {
+                GlassPanel {
                     x: rail.x - Appearance.padding.small
                     y: rail.y - Appearance.padding.small
                     width: rail.width + Appearance.padding.small * 2
                     height: rail.height + Appearance.padding.small * 2
                     z: 3
-                    radius: Appearance.rounding.large
-                    color: Appearance.colour.surfaceSolid
+                    backdrop: root.backdrop
+                    origin: Qt.point(root.glassAt.x + body.x + inside.x + x, root.glassAt.y + body.y + inside.y + y)
                     visible: root.tiny && rail.width > root.railSlim + 1
                 }
 
@@ -388,13 +390,11 @@ FocusScope {
                         anchors.margins: -paneHolder.inset
                     }
 
-                    SquircleRect {
+                    GlassPanel {
                         anchors.fill: parent
                         anchors.margins: -paneHolder.inset
-                        radius: Appearance.rounding.large
-                        color: Appearance.colour.surfaceSolid
-                        stroke: Appearance.colour.separator
-                        strokeWidth: 1
+                        backdrop: root.backdrop
+                        origin: Qt.point(root.glassAt.x + body.x + inside.x + paneHolder.x - paneHolder.inset, root.glassAt.y + body.y + inside.y + paneHolder.y - paneHolder.inset)
                     }
 
                     SettingsPane {

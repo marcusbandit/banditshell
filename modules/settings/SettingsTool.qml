@@ -26,7 +26,7 @@ Item {
     SquircleRect {
         anchors.fill: parent
         pill: "object"
-        color: root.on ? Appearance.colour.accentFill : Appearance.colour.fill
+        color: root.on ? Appearance.colour.chosen : Appearance.colour.fill
         opacity: backdrop.value
 
         Follow {
@@ -57,7 +57,7 @@ Item {
         FollowColour {
             id: glyphTone
 
-            target: root.on ? Appearance.colour.accent : root.hovered ? Appearance.colour.text : root.tint
+            target: root.on ? Appearance.colour.onChosen : root.hovered ? Appearance.colour.text : root.tint
             speed: Appearance.animation.revealSpeed
         }
     }
