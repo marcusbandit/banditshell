@@ -10,27 +10,27 @@
           "text": "The launcher, menus, wallpaper picker and island move to clear glass"
         },
         {
-          "type": "bugs",
-          "severity": "minor",
+          "type": "issues",
+          "severity": "major",
           "text": "Secrets typed in the launcher no longer reach other programs",
           "go": "panel launcher open"
         },
         {
-          "type": "bugs",
-          "severity": "minor",
+          "type": "issues",
+          "severity": "major",
           "text": "Ctrl+Enter never quits or kills; Force quit asks first",
           "go": "panel launcher open"
         },
         {
-          "type": "bugs",
+          "type": "issues",
           "severity": "minor",
           "text": "Tapping the clock in the open sidebar opens the clock menu",
           "go": "panel clock open"
         },
         {
-          "type": "bugs",
-          "severity": "minor",
-          "text": "The wheel scrolls menus and settings instead of changing values"
+          "type": "issues",
+          "severity": "major",
+          "text": "The wheel scrolls long pages instead of changing the slider under it"
         }
       ]
     },
