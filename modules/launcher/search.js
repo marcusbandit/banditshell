@@ -1443,9 +1443,18 @@ function masked(text, span) {
     return raw.slice(0, span.start) + "•".repeat(Math.min(raw.length, span.end) - span.start) + raw.slice(span.end);
 }
 
+function looksLikeKey(text) {
+    var typed = String(text || "").trim();
+    if (!looksLikeSecret(typed))
+        return false;
+    if (/(?:^|\s)eyJ/.test(typed))
+        return true;
+    return !/\.[A-Za-z][A-Za-z0-9]{0,4}$/.test(typed) && !/\d{4}-\d{2}-\d{2}/.test(typed);
+}
+
 function sendableQuery(text, claimed) {
     var typed = String(text || "");
-    return claimed || looksLikeSecret(typed) ? "" : typed;
+    return claimed || looksLikeKey(typed) ? "" : typed;
 }
 
 function fallbackRows(chosen, text, webTemplate) {

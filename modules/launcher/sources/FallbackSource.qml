@@ -14,7 +14,7 @@ QtObject {
         {
             key: "fallbacks",
             title: "Elsewhere",
-            items: (root.search.secretSpan ? [] : Search.fallbackRows(Config.values.launcher.fallbacks, root.search.text, Config.values.launcher.webSearch)).map(f => ({
+            items: (root.search.sourceSecret ? [] : Search.fallbackRows(Config.values.launcher.fallbacks, root.search.text, Config.values.launcher.webSearch)).map(f => ({
                         key: `fallback:${f.id}`,
                         kind: "fallback",
                         fallback: f,

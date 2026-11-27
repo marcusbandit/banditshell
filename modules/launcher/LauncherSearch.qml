@@ -369,7 +369,9 @@ QtObject {
             FileSearch.list(typed.dir);
     }
 
-    readonly property bool secretTyped: Search.looksLikeSecret(root.text) || root.sources.some(s => !!s.secret)
+    readonly property bool sourceSecret: root.sources.some(s => !!s.secret)
+
+    readonly property bool secretTyped: Search.looksLikeKey(root.text) || root.sourceSecret
 
     readonly property var secretSpan: root.sources.reduce((found, s) => found ?? s.secretSpan ?? null, null)
 

@@ -228,8 +228,8 @@ function secretSpan(scripts, text) {
     var found = null;
     for (var i = 0; i < (scripts || []).length; i++) {
         var span = secretSpanOf(scripts[i], text);
-        if (span && (!found || span.start < found.start))
-            found = span;
+        if (span)
+            found = found ? { start: Math.min(found.start, span.start), end: Math.max(found.end, span.end) } : span;
     }
     return found;
 }

@@ -18,7 +18,7 @@ const Pomodoro = lib("services/pomodoro.js", ["pomodoroAsk", "nextRound", "round
 const Lorem = lib("services/lorem.js", ["loremAsk", "generate", "describe", "preview"]);
 const Picks = lib("services/colour-picks.js", ["colourAsk", "readPicked", "remember", "forget", "readHistory"]);
 const Ranking = lib("services/ranking.js", ["place", "EXACT", "PREFIX", "WORD", "ANYWHERE"]);
-const Search = lib("modules/launcher/search.js", ["masked", "sendableQuery"]);
+const Search = lib("modules/launcher/search.js", ["masked", "sendableQuery", "looksLikeKey"]);
 const os = require("node:os");
 const { execFileSync } = require("node:child_process");
 
@@ -819,6 +819,22 @@ test.describe("a script's password argument", () => {
         assert.strictEqual(shown, "unlock vault alex •••••••");
         assert.strictEqual(shown.length, typed.length);
         assert.strictEqual(Search.masked("say hi", null), "say hi");
+    });
+
+    test.it("covers every matching script's password, not just the first one found", () => {
+        const first = script("Go", [{ type: "password" }, { type: "text" }]);
+        const last = script("Go x", [{ type: "text" }, { type: "password" }]);
+        const typed = "go x y hunter2";
+        const span = Scripts.secretSpan([first, last], typed);
+        assert.deepStrictEqual(span, { start: 3, end: typed.length });
+        assert.strictEqual(Search.masked(typed, span), "go " + "•".repeat(11));
+    });
+
+    test.it("keeps dated and long file names searchable while keys stay out", () => {
+        for (const t of ["screenshot_2026-11-27_14-30-05.png", "2026-11-27-meeting-notes-final.md", "holiday photos", "report_v2_final_FINAL_2024_reviewed.pdf"])
+            assert.strictEqual(Search.sendableQuery(t, false), t, t);
+        for (const t of ["ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8", "sk-proj-4f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.x"])
+            assert.ok(Search.looksLikeKey(t), t);
     });
 
     test.it("never goes to a search outside the shell", () => {
