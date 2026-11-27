@@ -6,42 +6,42 @@ import qs.components
 import qs.services
 import "month.js" as Month
 
-WidgetCard {
+Column {
     id: root
 
-    property bool running: true
+    required property date today
 
-    property int shownYear: clock.date.getFullYear()
-    property int shownMonth: clock.date.getMonth()
-    readonly property int todayKey: Month.keyOf(clock.date)
-    readonly property real gutter: TimeFormat.weekNumbers ? Math.round(Appearance.font.size.small * 2.5) : 0
-    readonly property real cell: Math.floor((root.width - root.pad * 2 - root.gutter) / 7)
+    property real span: 0
+    readonly property real cell: root.span > 0 ? Math.floor((root.span - root.gutter) / 7) : Math.round(Appearance.font.size.small * 2.3)
+    property int shownYear: root.today.getFullYear()
+    property int shownMonth: root.today.getMonth()
+
+    readonly property int todayKey: Month.keyOf(root.today)
+    readonly property real gutter: TimeFormat.weekNumbers ? Math.round(Appearance.font.size.small * 2.2) : 0
+    readonly property real rowHeight: Math.round(Math.min(root.cell, Appearance.font.size.small * 2.6) * 0.78)
 
     function page(by: int): void {
         const to = Month.shifted(root.shownYear, root.shownMonth, by);
         root.shownYear = to.year;
         root.shownMonth = to.month;
+        wander.restart();
     }
 
-    WallClock {
-        id: clock
-
-        precision: WallClock.Minutes
-        enabled: root.running
-        onDateChanged: if (!wander.running) {
-            root.shownYear = clock.date.getFullYear();
-            root.shownMonth = clock.date.getMonth();
-        }
+    function home(): void {
+        root.shownYear = root.today.getFullYear();
+        root.shownMonth = root.today.getMonth();
     }
+
+    onTodayChanged: if (!wander.running)
+        root.home()
+
+    spacing: Appearance.padding.small
 
     Timer {
         id: wander
 
         interval: 60000
-        onTriggered: {
-            root.shownYear = clock.date.getFullYear();
-            root.shownMonth = clock.date.getMonth();
-        }
+        onTriggered: root.home()
     }
 
     WheelHandler {
@@ -53,40 +53,32 @@ WidgetCard {
                 root.page(gathered < 0 ? 1 : -1);
                 gathered -= gathered < 0 ? -120 : 120;
             }
-            wander.restart();
         }
     }
 
     Item {
-        width: parent.width
-        height: 28
+        width: root.gutter + root.cell * 7
+        height: Math.round(root.cell * 0.9)
 
         StyledText {
             anchors.verticalCenter: parent.verticalCenter
+            x: root.gutter + Math.round((root.cell - Appearance.font.size.small) / 2)
             text: Month.title(root.shownYear, root.shownMonth)
-            font.pixelSize: Appearance.font.size.normal
             font.weight: Font.DemiBold
         }
 
         Row {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 2
 
             Arrow {
                 icon: "chevron_left"
-                onClicked: {
-                    root.page(-1);
-                    wander.restart();
-                }
+                onClicked: root.page(-1)
             }
 
             Arrow {
                 icon: "chevron_right"
-                onClicked: {
-                    root.page(1);
-                    wander.restart();
-                }
+                onClicked: root.page(1)
             }
         }
     }
@@ -97,7 +89,7 @@ WidgetCard {
 
             Item {
                 width: root.gutter
-                height: Math.round(root.cell * 0.6)
+                height: root.rowHeight
             }
 
             Repeater {
@@ -107,12 +99,11 @@ WidgetCard {
                     required property var modelData
 
                     width: root.gutter
-                    height: Math.round(root.cell * 0.72)
+                    height: root.rowHeight
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                     text: TimeFormat.weekNumber(modelData.rowStart)
-                    font.pixelSize: Appearance.font.size.small
-                    color: Appearance.colour.textDim
+                    color: Appearance.colour.textFaint
                 }
             }
         }
@@ -127,11 +118,11 @@ WidgetCard {
                     required property int modelData
 
                     width: root.cell
-                    height: Math.round(root.cell * 0.6)
+                    height: root.rowHeight
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                     text: TimeFormat.weekdayInitial(modelData)
-                    color: Appearance.colour.textDim
+                    color: Appearance.colour.textFaint
                 }
             }
 
@@ -146,22 +137,22 @@ WidgetCard {
                     readonly property bool today: day.modelData.key === root.todayKey
 
                     width: root.cell
-                    height: Math.round(root.cell * 0.72)
+                    height: root.rowHeight
 
                     SquircleRect {
                         anchors.centerIn: parent
-                        width: Math.min(parent.width, parent.height) - 4
+                        width: Math.min(parent.width, parent.height) - 2
                         height: width
                         pill: "object"
                         visible: day.today
-                        color: Appearance.colour.accent
+                        color: Appearance.colour.text
                     }
 
                     StyledText {
                         anchors.centerIn: parent
                         text: day.modelData.day
-                        font.weight: day.today ? Font.DemiBold : Font.Normal
-                        color: day.today ? Appearance.colour.accentText : day.modelData.inMonth ? Appearance.colour.text : Appearance.colour.textDim
+                        font.weight: day.today ? Font.Bold : Font.Normal
+                        color: day.today ? Appearance.colour.ink : day.modelData.inMonth ? Appearance.colour.text : Appearance.colour.textFaint
                         opacity: day.modelData.inMonth || day.today ? 1 : 0.5
                     }
                 }
@@ -176,23 +167,14 @@ WidgetCard {
 
         signal clicked
 
-        width: 28
-        height: 28
+        width: Math.round(root.cell * 0.9)
+        height: arrow.width
 
         SquircleRect {
             anchors.fill: parent
             pill: "object"
             color: Appearance.colour.fill
-            opacity: lit.value
-
-            Follow {
-                id: lit
-
-                target: arrowHover.hovered ? 1 : 0
-                speed: Appearance.animation.revealSpeed
-                epsilon: Appearance.animation.fadeEpsilon
-                startsAtTarget: true
-            }
+            opacity: arrowHover.hovered ? 1 : 0
         }
 
         Icon {

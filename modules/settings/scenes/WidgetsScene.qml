@@ -26,7 +26,6 @@ Item {
     readonly property real column: Math.max(28, Appearance.font.size.small * 26 * root.ratio)
 
     readonly property bool on: SettingsState.v("widgetsOn")
-    readonly property bool atRight: SettingsState.v("widgetsSide") === "right"
 
     Item {
         id: mini
@@ -66,15 +65,13 @@ Item {
             }
         }
 
-        Flow {
+        Item {
             id: cards
 
-            x: root.atRight ? mini.width - root.band - root.gap - width : root.band + root.bar + root.gap
+            x: root.band + root.bar + root.gap
             y: root.band + root.gap
+            width: mini.width - x - root.band - root.gap
             height: mini.height - (root.band + root.gap) * 2
-            flow: Flow.TopToBottom
-            layoutDirection: root.atRight ? Qt.RightToLeft : Qt.LeftToRight
-            spacing: Math.max(2, root.gap * 0.6)
             opacity: shown.value
 
             Follow {
@@ -87,189 +84,157 @@ Item {
             }
 
             Column {
-                visible: SettingsState.v("widgetClock")
-                spacing: -Math.round(root.column * 0.08)
+                anchors.right: parent.right
+                spacing: Math.max(2, root.gap * 0.6)
 
-                StyledText {
-                    text: "14"
-                    font.family: Appearance.font.lock
-                    font.pixelSize: Appearance.font.size.large
-                    font.weight: Font.Bold
-                    lineHeight: Math.round(root.column * 0.4)
+                Column {
+                    anchors.right: parent.right
+                    visible: SettingsState.v("widgetClock")
+                    spacing: -Math.round(root.column * 0.08)
+
+                    StyledText {
+                        anchors.right: parent.right
+                        text: "14"
+                        font.family: Appearance.font.lock
+                        font.pixelSize: Appearance.font.size.large
+                        font.weight: Font.Bold
+                        lineHeight: Math.round(root.column * 0.4)
+                    }
+
+                    StyledText {
+                        anchors.right: parent.right
+                        text: "32"
+                        font.family: Appearance.font.lock
+                        font.pixelSize: Appearance.font.size.large
+                        font.weight: Font.Bold
+                        lineHeight: Math.round(root.column * 0.4)
+                        color: Appearance.colour.textDim
+                    }
                 }
 
-                StyledText {
-                    text: "32"
-                    font.family: Appearance.font.lock
-                    font.pixelSize: Appearance.font.size.large
-                    font.weight: Font.Bold
-                    lineHeight: Math.round(root.column * 0.4)
-                    color: Appearance.colour.textDim
+                Card {
+                    visible: SettingsState.v("widgetWeather")
+                    height: root.column * 0.3
+
+                    Icon {
+                        x: root.column * 0.08
+                        anchors.verticalCenter: parent.verticalCenter
+                        name: "partly_cloudy_day"
+                        size: parent.height * 0.6
+                        fill: 1
+                        color: Appearance.colour.text
+                    }
+
+                    Bar {
+                        x: root.column * 0.36
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: root.column * 0.3
+                    }
                 }
-            }
 
-            Card {
-                visible: SettingsState.v("widgetCalendar")
-                height: root.column * 0.82
+                Card {
+                    visible: SettingsState.v("widgetMedia")
+                    height: root.column * 0.34
 
-                Grid {
-                    anchors.centerIn: parent
-                    columns: 7
-                    spacing: Math.max(1, root.column * 0.035)
+                    SquircleRect {
+                        x: root.column * 0.08
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.height * 0.62
+                        height: width
+                        radius: 3
+                        color: Appearance.colour.fillStronger
+                    }
 
-                    Repeater {
-                        model: 35
+                    Bar {
+                        x: parent.height * 0.8
+                        y: parent.height * 0.32
+                        width: root.column * 0.45
+                    }
 
-                        delegate: SquircleRect {
-                            required property int index
-
-                            width: Math.max(2, root.column * 0.07)
-                            height: width
-                            pill: "object"
-                            color: index === 13 ? Appearance.colour.accent : Appearance.colour.textGhost
-                        }
+                    Bar {
+                        x: parent.height * 0.8
+                        y: parent.height * 0.56
+                        width: root.column * 0.3
+                        faint: true
                     }
                 }
             }
 
-            Card {
-                visible: SettingsState.v("widgetMedia")
-                height: root.column * 0.34
+            Column {
+                spacing: Math.max(2, root.gap * 0.6)
 
-                SquircleRect {
-                    x: root.column * 0.08
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: parent.height * 0.62
-                    height: width
-                    radius: 3
-                    color: Appearance.colour.accentFill
-                }
+                Row {
+                    visible: SettingsState.v("widgetSystem")
+                    width: root.column
+                    height: root.column * 0.34
+                    spacing: Math.max(2, root.column * 0.05)
 
-                Bar {
-                    x: parent.height * 0.8
-                    y: parent.height * 0.32
-                    width: root.column * 0.45
-                }
+                    Repeater {
+                        model: [
+                            { tone: Appearance.huedOr(Appearance.hue.processor, Appearance.colour.accent), pts: [0.8, 0.55, 0.25, 0.4, 0.2] },
+                            { tone: Appearance.huedOr(Appearance.hue.graphics, Appearance.colour.accent), pts: [0.85, 0.78, 0.5, 0.58, 0.65] },
+                            { tone: Appearance.huedOr(Appearance.hue.memory, Appearance.colour.accent), pts: [0.55, 0.52, 0.48, 0.46, 0.45] }
+                        ]
 
-                Bar {
-                    x: parent.height * 0.8
-                    y: parent.height * 0.56
-                    width: root.column * 0.3
-                    faint: true
-                }
-            }
+                        delegate: SquircleRect {
+                            id: miniWell
 
-            Card {
-                visible: SettingsState.v("widgetWeather")
-                height: root.column * 0.3
+                            required property var modelData
 
-                Icon {
-                    x: root.column * 0.08
-                    anchors.verticalCenter: parent.verticalCenter
-                    name: "partly_cloudy_day"
-                    size: parent.height * 0.6
-                    fill: 1
-                    color: Appearance.colour.accent
-                }
+                            width: (parent.width - parent.spacing * 2) / 3
+                            height: parent.height
+                            radius: Math.max(3, Appearance.rounding.large * root.ratio * 1.6)
+                            color: Appearance.colour.fill
+                            stroke: Appearance.colour.separator
+                            strokeWidth: 1
 
-                Bar {
-                    x: root.column * 0.36
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: root.column * 0.3
-                }
-            }
+                            Shape {
+                                id: miniTrace
 
-            Row {
-                visible: SettingsState.v("widgetSystem")
-                width: root.column
-                height: root.column * 0.34
-                spacing: Math.max(2, root.column * 0.05)
+                                x: Math.max(2, root.column * 0.04)
+                                y: miniWell.height * 0.46
+                                width: miniWell.width - x * 2
+                                height: miniWell.height * 0.42
+                                preferredRendererType: Shape.CurveRenderer
 
-                Repeater {
-                    model: [
-                        { tone: Appearance.huedOr(Appearance.hue.processor, Appearance.colour.accent), pts: [0.8, 0.55, 0.25, 0.4, 0.2] },
-                        { tone: Appearance.huedOr(Appearance.hue.graphics, Appearance.colour.accent), pts: [0.85, 0.78, 0.5, 0.58, 0.65] },
-                        { tone: Appearance.huedOr(Appearance.hue.memory, Appearance.colour.accent), pts: [0.55, 0.52, 0.48, 0.46, 0.45] }
-                    ]
+                                ShapePath {
+                                    fillColor: "transparent"
+                                    strokeColor: miniWell.modelData.tone
+                                    strokeWidth: Math.max(1, root.column * 0.016)
+                                    capStyle: ShapePath.RoundCap
+                                    joinStyle: ShapePath.RoundJoin
 
-                    delegate: SquircleRect {
-                        id: miniWell
-
-                        required property var modelData
-
-                        width: (parent.width - parent.spacing * 2) / 3
-                        height: parent.height
-                        radius: Math.max(3, Appearance.rounding.large * root.ratio * 1.6)
-                        color: Appearance.colour.surface
-
-                        Shape {
-                            id: miniTrace
-
-                            x: Math.max(2, root.column * 0.04)
-                            y: miniWell.height * 0.46
-                            width: miniWell.width - x * 2
-                            height: miniWell.height * 0.42
-                            preferredRendererType: Shape.CurveRenderer
-
-                            ShapePath {
-                                fillColor: "transparent"
-                                strokeColor: miniWell.modelData.tone
-                                strokeWidth: Math.max(1, root.column * 0.016)
-                                capStyle: ShapePath.RoundCap
-                                joinStyle: ShapePath.RoundJoin
-
-                                PathSvg {
-                                    path: miniWell.modelData.pts.map((p, i) => `${i === 0 ? "M" : "L"}${miniTrace.width * i / 4} ${miniTrace.height * p}`).join(" ")
+                                    PathSvg {
+                                        path: miniWell.modelData.pts.map((p, i) => `${i === 0 ? "M" : "L"}${miniTrace.width * i / 4} ${miniTrace.height * p}`).join(" ")
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            Card {
-                visible: SettingsState.v("widgetLimits")
-                height: root.column * 0.3
+                Card {
+                    visible: SettingsState.v("widgetLimits")
+                    height: root.column * 0.3
 
-                Column {
-                    x: root.column * 0.08
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: root.column * 0.84
-                    spacing: Math.max(2, root.column * 0.04)
+                    Column {
+                        x: root.column * 0.08
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: root.column * 0.84
+                        spacing: Math.max(2, root.column * 0.04)
 
-                    SquircleRect {
-                        width: parent.width * 0.55
-                        height: Math.max(2, root.column * 0.055)
-                        pill: "place"
-                        color: Appearance.colour.providerClaude
-                    }
+                        SquircleRect {
+                            width: parent.width * 0.55
+                            height: Math.max(2, root.column * 0.055)
+                            pill: "place"
+                            color: Appearance.colour.providerClaude
+                        }
 
-                    SquircleRect {
-                        width: parent.width * 0.78
-                        height: Math.max(2, root.column * 0.055)
-                        pill: "place"
-                        color: Appearance.colour.providerAntigravity
-                    }
-                }
-            }
-
-            Card {
-                visible: SettingsState.v("widgetTimers")
-                height: root.column * 0.26
-
-                Row {
-                    x: root.column * 0.08
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: root.column * 0.05
-
-                    Repeater {
-                        model: 3
-
-                        delegate: SquircleRect {
-                            width: root.column * 0.22
-                            height: root.column * 0.08
-                            pill: "object"
-                            color: Appearance.colour.fillStrong
+                        SquircleRect {
+                            width: parent.width * 0.78
+                            height: Math.max(2, root.column * 0.055)
+                            pill: "place"
+                            color: Appearance.colour.providerAntigravity
                         }
                     }
                 }
@@ -280,7 +245,9 @@ Item {
     component Card: SquircleRect {
         width: root.column
         radius: Math.max(3, Appearance.rounding.large * root.ratio * 1.6)
-        color: Appearance.colour.surface
+        color: Appearance.colour.fill
+        stroke: Appearance.colour.separator
+        strokeWidth: 1
     }
 
     component Bar: SquircleRect {
