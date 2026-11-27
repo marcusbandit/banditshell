@@ -1310,8 +1310,7 @@ Item {
                     radius: root.pillRadius
                     cornerPower: root.pillPower
                     color: Appearance.blend(Appearance.colour.island, Appearance.colour.paper, layer.depth < 1 ? 0.06 * layer.depth : 0.09 - 0.03 * layer.depth)
-                    stroke: Appearance.colour.seam
-                    strokeWidth: Appearance.stroke.line
+                    rim: 1
                     opacity: Math.max(layer.shown * layer.kept, layer.ghostness)
                     visible: layer.opacity > 0.01
 
@@ -1359,16 +1358,6 @@ Item {
                     }
                     readonly property real fade: (under?.twin?.grown ?? 0) * (1 - (under?.twin?.travel ?? 0)) * presence.value
 
-                    DropShadow {
-                        x: under?.twin?.x ?? 0
-                        y: under?.twin?.y ?? 0
-                        width: under?.twin?.width ?? 0
-                        height: under?.twin?.height ?? 0
-                        pill: "object"
-                        opacity: settle.value * Appearance.opacity.glow * (under?.fade ?? 0)
-                        visible: opacity > 0.01
-                    }
-
                     Repeater {
                         model: 2
 
@@ -1394,8 +1383,7 @@ Item {
                             height: width
                             pill: "object"
                             color: Appearance.blend(Appearance.colour.island, Appearance.colour.paper, 0.06 * behind.d)
-                            stroke: Appearance.colour.seam
-                            strokeWidth: Appearance.stroke.line
+                            rim: 1
                             opacity: (under?.fade ?? 0) * behindShown.value
                             visible: opacity > 0.01
                         }
@@ -1423,18 +1411,11 @@ Item {
                     target: root.voiceAside ? 1 : 0
                 }
 
-                DropShadow {
-                    anchors.fill: parent
-                    pill: "object"
-                    opacity: settle.value * Appearance.opacity.glow * voiceCapsule.shown
-                }
-
                 SquircleRect {
                     anchors.fill: parent
                     pill: "object"
                     color: Appearance.colour.island
-                    stroke: Appearance.colour.seam
-                    strokeWidth: Appearance.stroke.line
+                    rim: 1
                 }
 
                 ActivityRow {
@@ -1445,15 +1426,6 @@ Item {
                     activity: root.voiceActivity
                     live: voiceCapsule.visible
                 }
-            }
-
-            DropShadow {
-                x: root.pillX
-                y: root.pillY + root.dealY
-                width: root.pillWidth
-                height: root.pillHeight
-                radius: root.pillRadius
-                opacity: settle.value * Appearance.opacity.glow * deal.value
             }
 
             IslandField {

@@ -183,7 +183,7 @@ Item {
             width: Math.max(parent.height, parent.width * meterShown.value)
             height: parent.height
             pill: "place"
-            color: root.look.tone ?? Appearance.colour.accent
+            color: root.look.tone ?? Appearance.colour.text
         }
     }
 
@@ -243,7 +243,7 @@ Item {
             anchors.centerIn: parent
             visible: root.look.trailing === "beat"
             playing: Media.playing
-            color: Appearance.colour.accent
+            color: Appearance.colour.text
         }
 
         StyledText {
@@ -299,7 +299,7 @@ Item {
                         anchors.centerIn: parent
                         visible: !root.iconic
                         text: pill.modelData.label
-                        color: pill.primary ? Appearance.colour.ink : Appearance.colour.text
+                        color: pill.primary ? Appearance.colour.onChosen : Appearance.colour.text
                     }
 
                     InkIcon {
@@ -307,7 +307,7 @@ Item {
                         visible: root.iconic
                         name: pill.modelData.icon ?? ""
                         size: Math.round(root.slot * 0.85)
-                        color: pill.primary ? Appearance.colour.ink : Appearance.colour.text
+                        color: pill.primary ? Appearance.colour.onChosen : Appearance.colour.text
                     }
 
                     MouseArea {

@@ -57,14 +57,6 @@ Item {
                 width: root.artSize
                 height: root.artSize
 
-                DropShadow {
-                    anchors.fill: parent
-                    radius: Appearance.rounding.normal
-                    blur: Appearance.padding.normal
-                    offset.y: Appearance.padding.hair
-                    opacity: art.ready ? Appearance.opacity.glow : 0
-                }
-
                 SquircleRect {
                     anchors.fill: parent
                     radius: Appearance.rounding.normal
@@ -251,7 +243,7 @@ Item {
                     anchors.right: parent.right
                     y: words.groupLine - height
                     playing: Media.playing
-                    color: Appearance.colour.accent
+                    color: Appearance.colour.text
                 }
             }
         }

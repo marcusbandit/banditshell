@@ -18,7 +18,7 @@ Item {
     readonly property real pad: Appearance.padding.card
     readonly property real natural: Appearance.padding.large + column.implicitHeight + root.pad
 
-    readonly property color tone: Update.state === Update.failed ? Appearance.colour.updateFailed : Update.restartNeeded ? Appearance.colour.updateReady : Update.state === Update.available ? Appearance.colour.updateAvailable : Appearance.colour.accent
+    readonly property color tone: Update.state === Update.failed ? Appearance.colour.updateFailed : Update.restartNeeded ? Appearance.colour.updateReady : Update.state === Update.available ? Appearance.colour.updateAvailable : Appearance.colour.text
 
     implicitHeight: root.maxHeight > 0 ? Math.min(root.natural, root.maxHeight) : root.natural
 

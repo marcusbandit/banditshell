@@ -34,7 +34,7 @@ Item {
         size: root.size
         thickness: Math.max(2, Math.round(root.size / 11))
         track: Appearance.colour.fillStrong
-        colour: root.look.tone ?? Appearance.colour.accent
+        colour: root.look.tone ?? Appearance.colour.text
         value: remaining.value
     }
 

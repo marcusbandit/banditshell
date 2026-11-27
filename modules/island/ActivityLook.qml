@@ -21,13 +21,13 @@ QtObject {
                 dim: a.state === "lost",
                 trailing: a.state === "waiting" ? "ring" : "icon",
                 trailingIcon: a.state === "lost" ? "error" : "check_circle",
-                trailingTone: a.state === "lost" ? Appearance.colour.failed : Appearance.colour.accent
+                trailingTone: a.state === "lost" ? Appearance.colour.failed : Appearance.colour.text
             };
         case "music":
             return {
                 art: Media.artUrl,
                 icon: "music_note",
-                tone: Appearance.colour.accent,
+                tone: Appearance.colour.text,
                 text: Media.title,
                 trailing: "beat"
             };
@@ -45,7 +45,7 @@ QtObject {
                 };
             return {
                 icon: "mic",
-                tone: Appearance.colour.accent,
+                tone: Appearance.colour.text,
                 bars: true,
                 trailing: root.lit && Dictation.cancellable ? "actions" : Dictation.langTag ? "text" : "",
                 trailingText: Dictation.langTag,
@@ -68,7 +68,7 @@ QtObject {
         case "download":
             return {
                 icon: "download_done",
-                tone: Appearance.colour.accent,
+                tone: Appearance.colour.text,
                 text: a.more > 0 ? `${a.name} +${a.more}` : a.name,
                 trailing: "icon",
                 trailingIcon: "arrow_outward"
@@ -85,11 +85,11 @@ QtObject {
         case "kernel":
             return {
                 glyph: "",
-                tone: Appearance.colour.accent,
+                tone: Appearance.colour.text,
                 text: `Linux ${a.version}`,
                 trailing: "icon",
                 trailingIcon: a.upgrading ? "hourglass_top" : "download",
-                trailingTone: Appearance.colour.accent
+                trailingTone: Appearance.colour.text
             };
         case "config":
             return {
@@ -104,7 +104,7 @@ QtObject {
         case "configRead":
             return {
                 icon: "check_circle",
-                tone: Appearance.colour.accent,
+                tone: Appearance.colour.text,
                 text: "Config read again"
             };
         case "upgrade": {
@@ -114,18 +114,18 @@ QtObject {
             return {
                 glyph: SystemUpgrade.kernelTo ? "\u{f31a}" : "",
                 icon: SystemUpgrade.kernelTo ? "" : "system_update_alt",
-                tone: failed ? Appearance.colour.failed : Appearance.colour.accent,
+                tone: failed ? Appearance.colour.failed : Appearance.colour.text,
                 text: SystemUpgrade.running ? (asking ? "The update has a question" : SystemUpgrade.brief) : SystemUpgrade.headline,
                 trailing: SystemUpgrade.running && !asking ? "ring" : "icon",
                 progress: SystemUpgrade.progress,
                 trailingIcon: asking ? "help" : SystemUpgrade.good ? "check_circle" : failed ? "error" : "cancel",
-                trailingTone: failed ? Appearance.colour.failed : state === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent
+                trailingTone: failed ? Appearance.colour.failed : state === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.text
             };
         }
         case "restart":
             return {
                 icon: "restart_alt",
-                tone: Appearance.colour.accent,
+                tone: Appearance.colour.text,
                 text: `Restart for Linux ${a.version}`,
                 trailing: "icon",
                 trailingIcon: "power_settings_new"
@@ -136,12 +136,12 @@ QtObject {
                 return {
                     art: a.data?.picture,
                     icon: a.icon,
-                    tone: Appearance.colour.accent,
+                    tone: Appearance.colour.text,
                     text: ended ? "Done" : a.text,
                     detail: a.detail,
                     trailing: ended ? "icon" : "actions",
                     trailingIcon: "check_circle",
-                    trailingTone: Appearance.colour.accent,
+                    trailingTone: Appearance.colour.text,
                     actions: (a.actions ?? []).map(x => Object.assign({
                             icon: ({
                                     copy: "content_copy",
@@ -155,7 +155,7 @@ QtObject {
             if (a.style === "copied")
                 return {
                     icon: a.data?.secret ? "visibility_off" : a.icon,
-                    tone: a.data?.secret ? Appearance.colour.textDim : Appearance.colour.accent,
+                    tone: a.data?.secret ? Appearance.colour.textDim : Appearance.colour.text,
                     text: a.text
                 };
             if (a.style === "wifi")
@@ -165,7 +165,7 @@ QtObject {
                     text: a.text,
                     trailing: ended ? "" : "actions",
                     actions: a.actions ?? [],
-                    actionTone: Appearance.colour.accent
+                    actionTone: Appearance.colour.chosen
                 };
             if (a.style === "undo")
                 return {
@@ -175,7 +175,7 @@ QtObject {
                     text: a.text,
                     trailing: ended ? "" : "actions",
                     actions: a.actions ?? [],
-                    actionTone: Appearance.colour.accent
+                    actionTone: Appearance.colour.chosen
                 };
             if (a.style === "plugin")
                 return {
@@ -184,19 +184,19 @@ QtObject {
                             plain: Appearance.colour.textDim,
                             warning: Appearance.colour.warning,
                             alarm: Appearance.colour.alarm
-                        })[a.data?.tone] ?? Appearance.colour.accent,
+                        })[a.data?.tone] ?? Appearance.colour.text,
                     text: a.text,
                     detail: a.detail,
                     trailing: (a.actions ?? []).length ? "actions" : a.progress >= 0 ? "ring" : "",
                     actions: a.actions ?? [],
-                    actionTone: Appearance.colour.accent,
+                    actionTone: Appearance.colour.chosen,
                     ringValue: Math.max(0, a.progress)
                 };
             if (a.style === "bluetooth") {
                 const battery = a.data?.battery ?? -1;
                 return {
                     icon: a.icon,
-                    tone: Appearance.colour.accent,
+                    tone: Appearance.colour.text,
                     text: a.text,
                     detail: a.detail,
                     trailing: battery >= 0 ? "text" : "",
@@ -205,7 +205,7 @@ QtObject {
                     trailingTone: Appearance.colour.textDim
                 };
             }
-            const tone = !ended ? Appearance.colour.accent : a.outcome === "failed" ? Appearance.colour.failed : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent;
+            const tone = !ended ? Appearance.colour.text : a.outcome === "failed" ? Appearance.colour.failed : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.text;
             const failed = ended && a.outcome === "failed";
             return {
                 app: a.mark,
@@ -233,7 +233,7 @@ QtObject {
         case "timer":
             return {
                 icon: a.paused ? "pause" : "timer",
-                tone: a.ending ? Appearance.colour.alarm : Appearance.colour.accent,
+                tone: a.ending ? Appearance.colour.alarm : Appearance.colour.text,
                 text: a.text,
                 markRing: a.progress,
                 trailing: "text",
@@ -252,7 +252,7 @@ QtObject {
         case "level":
             return {
                 icon: a.icon,
-                tone: a.muted ? Appearance.colour.textFaint : Appearance.colour.accent,
+                tone: a.muted ? Appearance.colour.textFaint : Appearance.hueFor(a.level === "volume" ? "sound" : a.level, Appearance.colour.text),
                 text: a.text,
                 meter: a.meter,
                 trailing: a.readout ? "text" : "",

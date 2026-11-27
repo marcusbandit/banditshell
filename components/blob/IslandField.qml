@@ -10,7 +10,7 @@ ShaderEffect {
     property real pillRadius: 0
 
     property real sheenWidth: Appearance.sizes.seam
-    property color sheenColour: Appearance.colour.seam
+    property color sheenColour: Appearance.colour.rim
 
     property color colour: Appearance.colour.island
     property color bandColour: Appearance.colour.surface
