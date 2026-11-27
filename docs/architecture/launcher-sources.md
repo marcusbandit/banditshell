@@ -50,7 +50,7 @@ members instead: `WorkshopSource` only adds commands.
 | `groups` | rows | list of groups | The rows to show for the current query, see Groups. |
 | `activate(row)` | rows | function | Enter on one of its rows. |
 | `actionsFor(row)` | rows | function | The actions menu for one of its rows: a list of actions, the first one being what Enter does. |
-| `intent` | no | bool | True when the query is clearly meant for this source, such as a prefix word. Content search and the closest-match guess stand down while any source has intent. |
+| `intent` | no | bool | True when the query is clearly meant for this source, such as a prefix word. File name search, content search, global plugins and the closest-match guess stand down while any source has intent. |
 | `alone` | no | bool | True when this source takes the whole list, like the `?` page. Only its groups show. |
 | `caps` | no | object | Row limits per group key, merged over the launcher's own. A group with no cap shows every row. |
 | `commands` | no | list of commands | Commands added to the Commands group, in the shape of the launcher's own (`id`, `icon`, `label`, `words`, `run`). |
@@ -64,6 +64,8 @@ members instead: `WorkshopSource` only adds commands.
 | `opening` | no | bool | True when the query asks for this source's page, such as `clip ` with its space. The launcher then calls `openPage` in the same step, so the plain list never shows for a frame. |
 | `openPage` | no | function | Presents this source's page, see Pages. |
 | `claimsApps` | no | list of ids | Desktop entry ids this source stands in for. The launcher leaves those apps out of its app rows, so a page such as the mixer shows once and not again as an app. |
+| `secret` | no | bool | True when the query may hold a secret this source knows about, such as a script's password argument. The launcher then keeps the query away from file search, content search, global plugins and the web fallbacks. |
+| `secretSpan` | no | object | `{ start, end }` of the secret inside the query. The search field draws that part as dots, one per character. |
 
 ## Groups
 
