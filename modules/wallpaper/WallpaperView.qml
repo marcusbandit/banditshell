@@ -174,7 +174,6 @@ Item {
                 t: run.t
                 outline: run.outline
                 ember: run.ember
-                ink: run.ink
                 seed: slot.seed
             }
         }

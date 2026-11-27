@@ -6,6 +6,7 @@ import colorsys
 import fcntl
 import hashlib
 import heapq
+import importlib.util
 import json
 import os
 import random
@@ -31,6 +32,16 @@ CUTOUT_CAP = "8G"
 CUTOUT_ROOM = 9 << 30
 PACKAGES = ["rembg", "onnxruntime", "opencv-python-headless", "numpy", "pillow"]
 MAP_NAME = re.compile(r"map-(\d+)-(\d+)\.png")
+
+
+def sibling(name, file):
+    spec = importlib.util.spec_from_file_location(name, os.path.join(os.path.dirname(os.path.abspath(__file__)), file))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+Outline = sibling("wallpaper_outline", "wallpaper-outline.py")
 
 
 def has_numpy():
@@ -243,10 +254,34 @@ def key_of(img):
     return hashlib.sha1(f"{os.path.realpath(img)}|{st.st_size}|{int(st.st_mtime)}".encode()).hexdigest()[:16]
 
 
-def outline_base(img):
+def overrides():
+    return Outline.overrides_dir(os.environ)
+
+
+def outline_dir():
     d = os.path.join(CACHE, "outline")
     os.makedirs(d, exist_ok=True)
-    return os.path.join(d, key_of(img))
+    return d
+
+
+def outline_base(img):
+    return os.path.join(outline_dir(), key_of(img) + Outline.override_tag(overrides(), img))
+
+
+def model_mask_path(img, prep=None):
+    tag = Outline.prep_tag(prep)
+    return os.path.join(outline_dir(), key_of(img)) + (f"-mask-{tag}.png" if tag else "-mask.png")
+
+
+def hand_mask_path(img, over):
+    if not over or not over["edited"]:
+        return None
+    path = Outline.override_paths(overrides(), img)["mask"]
+    return path if os.path.exists(path) else None
+
+
+def needs_model(img, over):
+    return hand_mask_path(img, over) is None and not os.path.exists(model_mask_path(img, over["prep"] if over else None))
 
 
 def cached_outline(base):
@@ -281,37 +316,63 @@ def cutout(im):
     return remove(im, session=session, only_mask=True)
 
 
-def outline(img, force=False):
-    base = outline_base(img)
-    if not force:
-        found, known = cached_outline(base)
-        if known:
-            return found
-    try:
-        import cv2
-        import numpy as np
-        from PIL import Image
-    except ImportError:
-        return None
+def cutout_for(im, prep):
+    if Outline.is_identity(prep):
+        return cutout(im).convert("L")
+    import numpy as np
+    from PIL import Image
+    p = Outline.clean_prep(prep)
+    rgb = Outline.preprocess(np.asarray(im), p)
+    run = cutout_alone if p["aspect"] == "tiles" else lambda a: np.asarray(cutout(Image.fromarray(a)).convert("L"))
+    return Image.fromarray(Outline.cut(rgb, p["aspect"], run), "L")
 
-    lock = open(base + ".lock", "w")
-    fcntl.flock(lock, fcntl.LOCK_EX)
-    if not force:
-        found, known = cached_outline(base)
-        if known:
-            return found
 
+def cutout_alone(a):
+    import tempfile
+    import numpy as np
+    from PIL import Image
+    os.makedirs(CACHE, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=CACHE) as d:
+        src, out = os.path.join(d, "in.png"), os.path.join(d, "out.png")
+        Image.fromarray(a).save(src)
+        subprocess.run([sys.executable, os.path.abspath(__file__), "cutout-one", src, out], check=True)
+        return np.asarray(Image.open(out).convert("L"))
+
+
+def thumbnail(img):
+    from PIL import Image
     im = Image.open(img).convert("RGB")
     im.thumbnail((FIELD_MAX, FIELD_MAX))
-    mask_path = base + "-mask.png"
-    if os.path.exists(mask_path):
-        mask = Image.open(mask_path).convert("L")
-    else:
-        mask = cutout(im).convert("L")
-        mask.save(mask_path)
-    m = np.asarray(mask.resize(im.size), np.float32) / 255.0
+    return im
+
+
+def model_mask(img, im, prep=None):
+    from PIL import Image
+    path = model_mask_path(img, prep)
+    if os.path.exists(path):
+        return Image.open(path).convert("L")
+    mask = cutout_for(im, prep)
+    tmp = f"{path}.{os.getpid()}.tmp.png"
+    mask.save(tmp)
+    os.replace(tmp, path)
+    return mask
+
+
+def subject_mask(img, im, over):
+    from PIL import Image
+    hand = hand_mask_path(img, over)
+    if hand:
+        mask = Image.open(hand).convert("L")
+        if mask.size == im.size:
+            return mask
+    return model_mask(img, im, over["prep"] if over else None)
+
+
+def shape(m, threshold=Outline.THRESHOLD, seed=None, key="0"):
+    import cv2
+    import numpy as np
     h, w = m.shape
-    b = (m > 0.5).astype(np.uint8)
+    b = (m > threshold).astype(np.uint8)
     n, lab, stats, _ = cv2.connectedComponentsWithStats(b, connectivity=8)
     keep = np.zeros(n, bool)
     keep[1:] = stats[1:, cv2.CC_STAT_AREA] >= 0.002 * w * h
@@ -319,18 +380,22 @@ def outline(img, force=False):
     cover = float(b.mean())
     unsure = float(((m > 0.1) & (m < 0.9)).mean())
     ok = 0.008 <= cover <= 0.72 and unsure <= 0.06
-    meta = {"img": img, "ok": ok, "cover": round(cover, 3), "unsure": round(unsure, 3), "w": w, "h": h}
+    contours, _ = cv2.findContours(b, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+    contours = [c for c in contours if len(c) >= 40 and abs(cv2.contourArea(c)) >= 0.0008 * w * h]
+    found = {"ok": ok, "cover": cover, "unsure": unsure, "contours": len(contours), "w": w, "h": h}
     if not ok:
-        json.dump(meta, open(base + ".json", "w"))
-        return None
+        return found, None, None
 
     din = cv2.distanceTransform(b, cv2.DIST_L2, 5)
     dout = cv2.distanceTransform(1 - b, cv2.DIST_L2, 5)
     sd = dout - din
 
-    inner = np.clip(din / max(np.percentile(din[b > 0], 99), 1.0), 0, 1)
+    if seed:
+        inner = Outline.seed_order(b, seed, arrival)
+    else:
+        inner = np.clip(din / max(np.percentile(din[b > 0], 99), 1.0), 0, 1)
 
-    rng = np.random.default_rng(int(key_of(img)[:8], 16))
+    rng = np.random.default_rng(int(key[:8], 16))
     noise = (0.6 * value_noise(rng, w, h, w / 9.0) + 0.4 * value_noise(rng, w, h, w / 28.0))
     warped = dout * (0.75 + 0.5 * noise) + noise * 0.08 * max(w, h)
     outside = b == 0
@@ -342,10 +407,7 @@ def outline(img, force=False):
 
     edge = np.zeros((h, w), np.uint8)
     param_at = np.zeros((h, w), np.float32)
-    contours, _ = cv2.findContours(b, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
     for c in contours:
-        if len(c) < 40 or abs(cv2.contourArea(c)) < 0.0008 * w * h:
-            continue
         c = c[:, 0, :]
         seg = np.sqrt((np.diff(c, axis=0, append=c[:1]) ** 2).sum(1))
         s = np.concatenate([[0], np.cumsum(seg)[:-1]])
@@ -370,7 +432,42 @@ def outline(img, force=False):
     rgb[..., 1] = np.clip(inner * 255, 0, 255)
     rgb[..., 2] = np.clip((sd + SD_RANGE) / (2 * SD_RANGE) * 255, 0, 255)
     smooth = cv2.GaussianBlur(order.astype(np.float32), (0, 0), 4.0)
-    lines = rgb16(smooth, extra=line)
+    return found, rgb, rgb16(smooth, extra=line)
+
+
+def outline(img, force=False):
+    base = outline_base(img)
+    if not force:
+        found, known = cached_outline(base)
+        if known:
+            return found
+    try:
+        import cv2
+        import numpy as np
+        from PIL import Image
+    except ImportError:
+        return None
+
+    lock = open(base + ".lock", "w")
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    if not force:
+        found, known = cached_outline(base)
+        if known:
+            return found
+
+    over, digest = Outline.read_override(overrides(), img)
+    im = thumbnail(img)
+    mask = subject_mask(img, im, over)
+    m = np.asarray(mask.resize(im.size), np.float32) / 255.0
+    found, rgb, lines = shape(m, over["threshold"] if over else Outline.THRESHOLD, over["seed"] if over else None, key_of(img))
+    meta = {"img": img, "ok": found["ok"], "cover": round(found["cover"], 3), "unsure": round(found["unsure"], 3), "w": found["w"], "h": found["h"]}
+    if over:
+        meta["override"] = digest
+        meta["contours"] = found["contours"]
+    if not found["ok"]:
+        json.dump(meta, open(base + ".json", "w"))
+        return None
+
     for suffix, arr in (("-field.png", rgb), ("-line.png", lines)):
         tmp = f"{base}{suffix}.{os.getpid()}.tmp.png"
         Image.fromarray(arr, "RGB").save(tmp)
@@ -448,17 +545,29 @@ def room():
     return False
 
 
-def capped_command(images):
-    cmd = [VENV_PY, os.path.abspath(__file__), "outline", *images]
+def capped(args):
+    cmd = [VENV_PY, os.path.abspath(__file__), *args]
     run = shutil.which("systemd-run")
     if run:
         cmd = [run, "--user", "--scope", "-q", "-p", f"MemoryMax={CUTOUT_CAP}", "-p", "MemorySwapMax=0", *cmd]
     return cmd
 
 
+def capped_command(images):
+    return capped(["outline", *images])
+
+
+def capped_mask_command(img, prep):
+    return capped(["mask", img, json.dumps(Outline.clean_prep(prep), sort_keys=True)])
+
+
+def capped_env():
+    return dict(os.environ, OMP_NUM_THREADS="4")
+
+
 def outline_capped(images):
     if images:
-        subprocess.run(capped_command(images), check=False, env=dict(os.environ, OMP_NUM_THREADS="4"))
+        subprocess.run(capped_command(images), check=False, env=capped_env())
 
 
 def give_up(base, img, why):
@@ -485,7 +594,7 @@ def outline_batch(images, force=False):
             continue
         if not force and cached_outline(base)[1]:
             continue
-        if not os.path.exists(base + "-mask.png") and not room():
+        if needs_model(img, Outline.read_override(overrides(), img)[0]) and not room():
             return 1
         open(trying, "w").close()
         try:
@@ -495,6 +604,30 @@ def outline_batch(images, force=False):
         finally:
             if os.path.exists(trying):
                 os.remove(trying)
+    return 0
+
+
+def mask_job(img, prep):
+    if not is_still(img):
+        return 2
+    path = model_mask_path(img, prep)
+    if os.path.exists(path):
+        print(path, flush=True)
+        return 0
+    os.makedirs(CACHE, exist_ok=True)
+    gate = open(os.path.join(CACHE, ".cutout.lock"), "w")
+    try:
+        fcntl.flock(gate, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return 1
+    if not room():
+        return 3
+    try:
+        model_mask(img, thumbnail(img), prep)
+    except Exception as e:
+        print(str(e)[:200], file=sys.stderr)
+        return 4
+    print(path, flush=True)
     return 0
 
 
@@ -519,10 +652,15 @@ def pick(img, width, height, token):
         pair = contagion(gw, gh)
         kind = "contagion" if pair else "none"
     if not pair:
-        print(token, "none", "-", "-", "-", "-", sep="\t")
+        print(token, "none", "-", "-", "-", sep="\t")
         return
     shade = tint(img) if is_still(img) else None
-    print(token, kind, *pair, *(shade or ("-", "-")), sep="\t")
+    if kind == "outline":
+        over = Outline.read_override(overrides(), img)[0]
+        colour = Outline.line_colour(shade, over["line"] if over else Outline.LINES[0])
+    else:
+        colour = shade[0] if shade else None
+    print(token, kind, *pair, colour or "-", sep="\t")
 
 
 def warm(sizes, images):
@@ -590,12 +728,24 @@ def main(argv):
     if cmd == "outline" and rest:
         reexec_in_venv()
         return outline_batch([a for a in rest if a != "--force"], force="--force" in rest)
+    if cmd == "mask" and len(rest) == 2:
+        reexec_in_venv()
+        try:
+            prep = json.loads(rest[1])
+        except ValueError:
+            return 2
+        return mask_job(rest[0], prep)
+    if cmd == "cutout-one" and len(rest) == 2:
+        reexec_in_venv()
+        from PIL import Image
+        cutout(Image.open(rest[0]).convert("RGB")).convert("L").save(rest[1])
+        return 0
     if cmd == "status":
         print("installed" if cutout_ready() else "missing")
         return 0
     if cmd == "install":
         return install()
-    print("usage: wallpaper-transition.py pick IMG W H TOKEN | warm WxH[,WxH] [IMG...] | outline IMG... | status | install", file=sys.stderr)
+    print("usage: wallpaper-transition.py pick IMG W H TOKEN | warm WxH[,WxH] [IMG...] | outline IMG... | mask IMG PREP | status | install", file=sys.stderr)
     return 2
 
 

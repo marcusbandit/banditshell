@@ -23,7 +23,6 @@ layout(std140, binding = 0) uniform buf {
     float hasUnder;
     vec4 cropMap;
     vec4 ember;
-    vec4 ink;
 };
 layout(binding = 1) uniform sampler2D source;
 layout(binding = 2) uniform sampler2D under;
