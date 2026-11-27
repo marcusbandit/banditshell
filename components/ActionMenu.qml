@@ -14,7 +14,6 @@ Item {
     property real sized: 1
     property real widest: 4000
     property GlassSource backdrop: null
-    property point origin: Qt.point(0, 0)
 
     signal hovered(int index)
     signal clicked(int index)
@@ -137,7 +136,6 @@ Item {
         anchors.fill: parent
         radius: root.groupRadius
         backdrop: root.backdrop
-        origin: root.origin
     }
 
     SquircleRect {

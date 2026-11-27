@@ -14,6 +14,7 @@ Item {
 
     readonly property bool open: root.item?.open ?? false
     readonly property var blobs: root.item?.blobs ?? []
+    readonly property bool glassBeneath: root.blobs.length > 0
     readonly property Item maskItem: root.item?.maskItem ?? null
 
     readonly property bool built: loader.status === Loader.Ready

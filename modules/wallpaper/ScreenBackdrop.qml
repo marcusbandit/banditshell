@@ -12,6 +12,17 @@ GlassSource {
     required property string output
     property point screenOrigin: Qt.point(0, 0)
     property bool live: false
+    property string offered: ""
+
+    function offerSelf(): void {
+        Backdrops.withdraw(root.offered, root);
+        root.offered = root.output;
+        Backdrops.offer(root.output, root);
+    }
+
+    onOutputChanged: root.offerSelf()
+    Component.onCompleted: root.offerSelf()
+    Component.onDestruction: Backdrops.withdraw(root.offered, root)
 
     readonly property var monitor: Hyprland.monitors.values.find(m => m.name === root.output) ?? null
     readonly property int workspace: root.monitor?.activeWorkspace?.id ?? Hypr.activeOn(root.output)
