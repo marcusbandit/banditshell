@@ -11,7 +11,6 @@ ShellRoot {
     readonly property string shots: Quickshell.env("BANDITSHELL_SHOTS") ?? ""
     readonly property bool rail: Appearance.sizes.sidebarRail
 
-    property bool forced: false
     property int step: 0
 
     function shoot(name: string, then: var): void {
@@ -60,12 +59,7 @@ ShellRoot {
                 return;
             }
             if (preview.step === 5) {
-                preview.shoot(preview.rail ? "rest-layout-variant" : "full-layout-variant", () => preview.forced = preview.rail);
-                preview.step = preview.rail ? 3 : 4;
-                return;
-            }
-            if (preview.step === 3) {
-                preview.shoot("open");
+                preview.shoot(preview.rail ? "rest-layout-variant" : "full-layout-variant");
                 preview.step = 4;
                 return;
             }
@@ -92,8 +86,6 @@ ShellRoot {
                 id: chassis
 
                 anchors.fill: parent
-
-                railWanted: sidebar.railWanted || preview.forced
 
                 panels: sidebar.blobs
             }

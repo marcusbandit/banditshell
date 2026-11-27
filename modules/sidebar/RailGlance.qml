@@ -11,6 +11,9 @@ Item {
     property real bottomInset: 0
     property real tabsReach: 0
 
+    signal clockRequested(bool deliberate)
+    signal calendarRequested(bool deliberate)
+
     readonly property string place: Config.values.sidebar.glance
     readonly property bool inRail: root.place === "rail" || root.place === "rail top"
     readonly property bool atHead: root.place === "rail top"
@@ -25,6 +28,9 @@ Item {
 
     readonly property bool footInUse: (stack.visible && !root.atHead) || wide.visible || root.tabsReach > 0
     readonly property real headEdge: stack.visible && root.atHead ? stack.y + stack.height : 0
+    readonly property Item timeItem: stack.visible ? (stackedTime.visible ? stackedTime : sidewaysTime.visible ? sidewaysTime : null) : wide.visible && wideTime.visible ? wideTime : null
+    readonly property Item dateItem: stack.visible ? (stackedDate.visible ? stackedDate : sidewaysDate.visible ? sidewaysDate : null) : null
+
     readonly property real topEdge: stack.visible && !root.atHead ? stack.y : wide.visible ? wide.y : root.height - root.tabsReach
 
     function footY(column: Item): real {
@@ -71,6 +77,12 @@ Item {
                 text: TimeFormat.minutePart(clock.date)
                 font.pixelSize: root.timeSize
             }
+
+            TapHandler {
+                margin: Math.max(0, (root.width - parent.width) / 2)
+                cursorShape: Qt.PointingHandCursor
+                onTapped: root.clockRequested(true)
+            }
         }
 
         Item {
@@ -88,6 +100,12 @@ Item {
                 text: TimeFormat.time(clock.date, false)
                 font.pixelSize: root.timeSize
                 rotation: -90
+            }
+
+            TapHandler {
+                margin: Math.max(0, (root.width - parent.width) / 2)
+                cursorShape: Qt.PointingHandCursor
+                onTapped: root.clockRequested(true)
             }
         }
 
@@ -112,6 +130,12 @@ Item {
                 font.pixelSize: Appearance.font.size.small
                 color: Appearance.colour.textFaint
             }
+
+            TapHandler {
+                margin: Math.max(0, (root.width - parent.width) / 2)
+                cursorShape: Qt.PointingHandCursor
+                onTapped: root.calendarRequested(true)
+            }
         }
 
         Item {
@@ -130,6 +154,12 @@ Item {
                 font.pixelSize: Appearance.font.size.small
                 color: Appearance.colour.textFaint
                 rotation: -90
+            }
+
+            TapHandler {
+                margin: Math.max(0, (root.width - parent.width) / 2)
+                cursorShape: Qt.PointingHandCursor
+                onTapped: root.calendarRequested(true)
             }
         }
 
@@ -203,6 +233,12 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: TimeFormat.minutePart(clock.date)
                 font.pixelSize: Appearance.font.size.normal
+            }
+
+            TapHandler {
+                margin: Math.max(0, (root.width - parent.width) / 2)
+                cursorShape: Qt.PointingHandCursor
+                onTapped: root.clockRequested(true)
             }
         }
 

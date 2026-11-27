@@ -421,11 +421,6 @@ PanelWindow {
         }
 
         Region {
-            intersection: Intersection.Combine
-            item: sidebar.touchOpen ? touchAway : null
-        }
-
-        Region {
             intersection: Intersection.Intersect
             width: win.underFullscreen ? 0 : win.width
             height: win.underFullscreen ? 0 : win.height
@@ -512,17 +507,6 @@ PanelWindow {
             wanted: wallpaperLayer.open
         }
 
-        Item {
-            id: touchAway
-
-            anchors.fill: parent
-            visible: sidebar.touchOpen
-
-            TapHandler {
-                onTapped: sidebar.touched = false
-            }
-        }
-
         ScreenBackdrop {
             id: behind
 
@@ -538,7 +522,6 @@ PanelWindow {
             anchors.fill: parent
             backdrop: behind
 
-            railWanted: sidebar.railWanted
             readable: settingsLayer.open
 
             panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs, ...keyringLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs), ...body.lowered(glance.blobs)]
@@ -568,8 +551,6 @@ PanelWindow {
             expansion: chassis.railOpen
 
             menusShown: menuLayer.open
-            openKey: menuLayer.currentKey
-            menuOpen: sidebarSheet.open
 
             pullSpan: Math.hypot(win.width, win.height)
 
