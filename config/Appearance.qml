@@ -125,13 +125,26 @@ Singleton {
         return root.mix(root.tint, root.tint, 0, alpha);
     }
 
+    function glassAt(i: real, alpha: real): color {
+        const c = root.rampAt(i, 1);
+        const grey = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+        const keep = Math.max(0, Math.min(1, root.config.material.surfaceHue));
+        return Qt.rgba(grey + (c.r - grey) * keep, grey + (c.g - grey) * keep, grey + (c.b - grey) * keep, alpha);
+    }
+
     readonly property QtObject colour: QtObject {
 
-        readonly property color surface: root.rampAt(root.config.colour.surface, root.config.material.surfaceAlpha)
+        readonly property color surface: root.glassAt(root.config.colour.surface, root.config.material.surfaceAlpha)
 
-        readonly property color surfaceSolid: root.rampAt(root.config.colour.surface, 1)
+        readonly property color surfaceSolid: root.glassAt(root.config.colour.surface, 1)
 
-        readonly property color readableSurface: root.rampAt(root.config.colour.surface, root.readableAlpha)
+        readonly property color readableSurface: root.glassAt(root.config.colour.surface, root.readableAlpha)
+
+        readonly property color rim: Qt.rgba(1, 1, 1, root.config.material.rim)
+
+        readonly property color chosen: root.colour.text
+
+        readonly property color onChosen: root.colour.ink
 
         readonly property color text: root.veil(root.labelAlphas[0])
         readonly property color textDim: root.veil(root.labelAlphas[1])

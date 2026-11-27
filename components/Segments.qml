@@ -90,7 +90,7 @@ Item {
     SquircleRect {
         anchors.fill: parent
         pill: "place"
-        color: Appearance.colour.fillStrong
+        color: Appearance.colour.fill
     }
 
     SquircleRect {
@@ -98,7 +98,7 @@ Item {
         width: span.value
         height: parent.height
         pill: "place"
-        color: Appearance.colour.accent
+        color: Appearance.colour.chosen
         visible: root.current >= 0 && root.current < root.count
     }
 
@@ -135,7 +135,7 @@ Item {
                 text: seg.modelData
                 font.pixelSize: root.textSize
 
-                color: seg.covered > 0.5 ? Appearance.colour.accentText : Appearance.colour.text
+                color: seg.covered > 0.5 ? Appearance.colour.onChosen : Appearance.colour.text
             }
 
             SquircleRect {

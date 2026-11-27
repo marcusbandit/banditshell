@@ -37,6 +37,10 @@ Singleton {
 
                 surfaceAlpha: 0.88,
 
+                surfaceHue: 0,
+
+                rim: 0.24,
+
                 label: [0.92, 0.58, 0.45, 0.16],
 
                 lightLabel: [0.92, 0.7, 0.6, 0.2],

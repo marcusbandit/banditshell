@@ -52,13 +52,13 @@ Item {
 
     readonly property var skins: ({
             accent: {
-                bg: Appearance.colour.accent,
-                fg: Appearance.colour.accentText,
+                bg: Appearance.colour.chosen,
+                fg: Appearance.colour.onChosen,
                 ring: "transparent",
                 ringW: 0
             },
             plate: {
-                bg: Appearance.colour.accentFill,
+                bg: Appearance.colour.fillStrong,
                 fg: Appearance.colour.text,
                 ring: "transparent",
                 ringW: 0

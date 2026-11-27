@@ -31,8 +31,8 @@ Item {
     SquircleRect {
         anchors.fill: parent
         pill: "place"
-        color: Appearance.blend(Appearance.colour.fill, Appearance.colour.accent, lit.value)
-        stroke: Appearance.blend(Appearance.colour.textFaint, Appearance.colour.accent, lit.value)
+        color: Appearance.blend(Appearance.colour.fill, Appearance.colour.chosen, lit.value)
+        stroke: Appearance.blend(Appearance.colour.textFaint, Appearance.colour.chosen, lit.value)
         strokeWidth: Appearance.stroke.ring
     }
 
@@ -51,7 +51,7 @@ Item {
         width: root.height - knob.gap * 2
         height: width
         pill: "object"
-        color: Appearance.blend(Appearance.colour.textDim, Appearance.colour.accentText, lit.value)
+        color: Appearance.blend(Appearance.colour.textDim, Appearance.colour.onChosen, lit.value)
     }
 
     MouseArea {
