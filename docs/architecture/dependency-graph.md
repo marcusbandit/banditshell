@@ -111,8 +111,8 @@ flowchart BT
     launcher_tools --> launcher
     launcher_tools --> notifications
     power --> compositor
-    tour --> apps
     tour --> files
+    tour --> bar
     tour --> settings
     updates --> compositor
     host --> desktop
@@ -144,7 +144,6 @@ flowchart BT
     events --> updates
     events --> host
     events --> island
-    launcher_shell --> bar
     launcher_shell --> host
 ```
 
@@ -172,7 +171,7 @@ further than its manifest allows, `node scripts/check-modules.js --explain <pack
 | pen | 2 | pen mapping and pen buttons | `modules/pen`, `services/PenButtons.qml`, `services/PenMap.qml` | core, compositor | none |
 | plugin-status | 2 | the live items launcher plugins put in the rail and the island | `services/PluginStatus.qml` | core, compositor | bar, launcher, island |
 | wallpaper | 2 | the wallpaper, its picker and palette | `modules/wallpaper`, `services/Wallpaper.qml` | core, compositor | desktop, lock |
-| bar | 3 | the sidebar, status icons and menus | `modules/menu`, `modules/sidebar`, `previews/SidebarPreview.qml`, `services/SidebarState.qml`, `services/Tray.qml` | core, compositor, agent-limits, apps, audio, display, network, plugin-status | island, quickcontrols, launcher-shell |
+| bar | 3 | the sidebar, status icons and menus | `modules/menu`, `modules/sidebar`, `previews/SidebarPreview.qml`, `services/SidebarState.qml`, `services/Tray.qml` | core, compositor, agent-limits, apps, audio, display, network, plugin-status | tour, island, quickcontrols, launcher-shell |
 | calculator | 3 | the calculator and currency rates | `modules/calculator`, `previews/CalculatorPreview.qml`, `services/Calculator.qml`, `services/Currency.qml` | core, compositor, network | island |
 | desktop | 3 | widgets on the desktop, under the windows | `modules/desktop`, `services/DesktopLayout.qml` | core, compositor, agent-limits, clock, media, wallpaper | host |
 | keyboard | 3 | the on-screen keyboard | `modules/keyboard`, `services/Keystrokes.qml` | core, compositor, display | launcher-tools |
@@ -187,7 +186,7 @@ further than its manifest allows, `node scripts/check-modules.js --explain <pack
 | launcher-system | 4 | the launcher's system control sources | `modules/launcher/sources/BrightnessSource.qml`, `modules/launcher/sources/MixerPage.qml`, `modules/launcher/sources/RecordSource.qml`, `modules/launcher/sources/SoundSource.qml`, `modules/launcher/sources/VpnSource.qml`, `modules/launcher/sources/WifiPage.qml`, `modules/launcher/sources/WifiSource.qml`, `modules/launcher/sources/WifiSteps.qml`, `modules/launcher/sources/WorkshopSource.qml` | core, compositor, audio, capture, display, network, launcher, mixer | none |
 | launcher-tools | 4 | the launcher's power tools, typing and utility sources | `modules/launcher/sources/ClipboardPage.qml`, `modules/launcher/sources/ClipboardSource.qml`, `modules/launcher/sources/ColourSource.qml`, `modules/launcher/sources/DevSource.qml`, `modules/launcher/sources/EmojiPage.qml`, `modules/launcher/sources/EmojiSource.qml`, `modules/launcher/sources/Keycap.qml`, `modules/launcher/sources/LatestSource.qml`, `modules/launcher/sources/LoremSource.qml`, `modules/launcher/sources/NotesSource.qml`, `modules/launcher/sources/NotificationSource.qml`, `modules/launcher/sources/PageFooter.qml`, `modules/launcher/sources/QuickNotePage.qml`, `modules/launcher/sources/PomodoroSource.qml`, `modules/launcher/sources/ProjectSource.qml`, `modules/launcher/sources/QuicklinkSource.qml`, `modules/launcher/sources/ScriptSource.qml`, `modules/launcher/sources/SnippetSource.qml`, `modules/launcher/snippets/SnippetsIpc.qml`, `modules/launcher/snippets/qmldir`, `modules/launcher/sources/TimerSource.qml`, `services/ColourPicks.qml`, `services/DevUtilities.qml`, `services/Emoji.qml`, `services/FileSearch.qml`, `services/LatestFiles.qml`, `services/LinkPreviews.qml`, `services/Notes.qml`, `services/Pomodoro.qml`, `services/Projects.qml`, `services/ScriptCommands.qml`, `services/SnippetExpander.qml`, `services/Snippets.qml` | core, compositor, apps, clipboard, clock, files, keyboard, launcher, notifications | host, launcher-shell |
 | power | 4 | battery, charge limit, power profile, lid and idle | `previews/BatteryPreview.qml`, `services/Battery.qml`, `services/ChargeLimit.qml`, `services/Idle.qml`, `services/Lid.qml`, `services/Power.qml`, `services/PowerProfile.qml`, `services/Suspension.qml` | core, compositor | lock, quickcontrols, screentime, session |
-| tour | 4 | the first-run tour over the real desktop | `modules/tour`, `services/Tour.qml` | core, compositor, apps, clock, files, settings | host |
+| tour | 4 | the first-run tour over the real desktop | `modules/tour`, `services/Tour.qml` | core, compositor, apps, clock, files, bar, settings | host |
 | updates | 4 | update checks, pacman and what's new | `services/Pacman.qml`, `services/SystemUpgrade.qml`, `services/Update.qml`, `services/WhatsNew.qml` | core, compositor | island, events |
 | host | 5 | the shell window, chassis, window registry and the IPC front | `modules/BandProgress.qml`, `modules/Chassis.qml`, `modules/FrameExclusions.qml`, `modules/FullscreenBorder.qml`, `modules/Ipc.qml`, `modules/ShellWindow.qml`, `modules/Tooltip.qml`, `modules/ipc/HostIpc.qml`, `modules/ipc/qmldir`, `modules/qmldir`, `preview.qml`, `previews/qmldir`, `shell.qml`, `services/Shell.qml` | core, compositor, desktop, mixer, launcher-tools, tour | events, launcher-shell |
 | island | 5 | the dynamic island and its activities | `modules/island`, `previews/IslandPreview.qml`, `services/Activities.qml`, `services/Levels.qml`, `services/Moments.qml`, `services/Notices.qml`, `services/Privacy.qml`, `services/PluginActivities.qml` | core, compositor, apps, audio, capture, clipboard, clock, display, files, media, network, plugin-status, bar, calculator, notifications, updates | events |

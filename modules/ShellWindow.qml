@@ -407,6 +407,11 @@ PanelWindow {
 
         Region {
             intersection: Intersection.Combine
+            item: glance.timeItem
+        }
+
+        Region {
+            intersection: Intersection.Combine
             item: quickLayer.active ? quickLayer.maskItem : null
         }
 
@@ -418,11 +423,6 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: Appearance.bare ? null : settingsCorner.maskItem
-        }
-
-        Region {
-            intersection: Intersection.Combine
-            item: sidebar.touchOpen ? touchAway : null
         }
 
         Region {
@@ -512,15 +512,14 @@ PanelWindow {
             wanted: wallpaperLayer.open
         }
 
-        Item {
-            id: touchAway
+        ScreenBackdrop {
+            id: behind
 
             anchors.fill: parent
-            visible: sidebar.touchOpen
-
-            TapHandler {
-                onTapped: sidebar.touched = false
-            }
+            output: win.screen?.name ?? ""
+            screenOrigin: Qt.point(win.screen?.x ?? 0, win.screen?.y ?? 0)
+            live: chassis.reachesIn && !chassis.bare
+            active: !chassis.bare
         }
 
         ScreenBackdrop {
@@ -539,7 +538,6 @@ PanelWindow {
             anchors.fill: parent
             backdrop: behind
 
-            railWanted: sidebar.railWanted
             readable: settingsLayer.open
 
             panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs, ...keyringLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs), ...body.lowered(glance.blobs)]
@@ -569,8 +567,6 @@ PanelWindow {
             expansion: chassis.railOpen
 
             menusShown: menuLayer.open
-            openKey: menuLayer.currentKey
-            menuOpen: sidebarSheet.open
 
             pullSpan: Math.hypot(win.width, win.height)
 
@@ -579,6 +575,7 @@ PanelWindow {
             awake: Idle.awake
 
             glanceReach: Math.max(0, glance.footReach - win.border)
+            glanceTime: glance.timeItem
 
             onMarkPressed: opens => win.pressMark(opens)
             onMenuAsked: (x, y, actions) => {
@@ -604,6 +601,8 @@ PanelWindow {
             bare: chassis.bare
             islandOut: islandLayer.out
             yielded: win.underFullscreen || fullscreenBorder.yielded
+
+            onClockRequested: deliberate => sidebar.clockRequested(deliberate)
         }
 
         Loader {

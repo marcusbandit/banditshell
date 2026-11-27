@@ -101,8 +101,8 @@ test("every page lands in exactly one category", () => {
         assert.ok(Catalogue.CAT_BY_ID[p.cat].pages.includes(p));
 });
 
-test("every row number from the settings list 1 to 121 has a row", () => {
-    const covered = new Set();
+test("every row number from the settings list 1 to 121 has a row, bar the ones the rail retired", () => {
+    const covered = new Set([59, 60, 64]);
     for (const r of Catalogue.ROWS)
         for (const n of [].concat(r.n === undefined ? [] : r.n))
             covered.add(n);
@@ -402,19 +402,17 @@ test("pages count the settings they cover and the new ones among them", () => {
 
 test("sidebar rows point the replica at the part they change", () => {
     assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.sbClock), "clock");
-    assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.trayMax), "tray");
-    assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.sidebarW), "");
+    assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.persistent), "workspaces");
+    assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.sbGlance), "");
     assert.strictEqual(Catalogue.zoneOf(null), "");
 });
 
-test("the sidebar style row offers full and rail and defaults to rail", () => {
-    const row = Catalogue.ROW_BY_KEY.sbStyle;
-    assert.strictEqual(row.cfg, "sidebar.style");
-    assert.deepStrictEqual(row.o, ["full", "rail"]);
+test("the sidebar is the rail: no style choice and no rows for the open sidebar", () => {
+    for (const k of ["sbStyle", "sidebarW", "sbClockWide", "sbClockWideSize", "sbNet", "sbBt", "sbBright", "tray", "trayMax"])
+        assert.strictEqual(Catalogue.ROW_BY_KEY[k], undefined, k);
+    assert.ok(!Catalogue.ROWS.some(r => r.w === "wsStyles"));
+    assert.ok(!Catalogue.ROWS.some(r => String(r.dis ?? "").includes("sbStyle")));
     assert.strictEqual(lookup(DEFAULTS, "sidebar.style"), "rail");
-    assert.strictEqual(lookup(DEFAULTS, "sidebar.status.brightness"), false);
-    assert.strictEqual(CONFIG_BACKED.sbStyle, "sidebar.style");
-    assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.sbBright), "status");
 });
 
 test("the launcher position says when the screen moved it to fit", () => {
