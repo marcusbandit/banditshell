@@ -126,7 +126,7 @@ function plan(env) {
         else if (id === "island" && !env.bare)
             gesture = "top";
         else if (id === "sidebar")
-            gesture = env.sidebar === "rail" ? "rail" : env.sidebar === "full" ? "column" : "";
+            gesture = env.sidebar === "rail" ? (env.railTime === false ? "" : "rail") : env.sidebar === "full" ? "column" : "";
         else if (id === "settings")
             gesture = env.bare ? "launcher" : "corner";
         if (id === "sidebar" && !gesture)
@@ -231,9 +231,9 @@ function words(step, facts, explain) {
         return {
             title: step.gesture === "rail" ? "The rail" : "The sidebar",
             payoff: (f.workspaces > 0 ? "Your " + f.workspaces + " workspaces" : "Your workspaces") + ", and a mark only when something needs you.",
-            ask: step.gesture === "rail" ? "Rest the pointer on the rail at the left edge." : "Press a mark in the column on the left.",
-            open: step.gesture === "rail" ? "Open the rail" : "Open a menu",
-            away: step.gesture === "rail" ? "It grows into the full column. Move away and it rests again." : "Press it again, or Esc, to close the menu.",
+            ask: step.gesture === "rail" ? "Press the time on the rail at the left edge." : "Press a mark in the column on the left.",
+            open: step.gesture === "rail" ? "Open the clock menu" : "Open a menu",
+            away: "Press it again, or Esc, to close the menu.",
             note: note
         };
     case "files":

@@ -22,6 +22,10 @@ Item {
 
     readonly property BatteryGlance battery: BatteryGlance {}
 
+    signal clockRequested(bool deliberate)
+
+    readonly property Item timeItem: !root.clockShown ? null : top.value > 0.5 ? pillTime : tabs.value > 0.5 ? timeTab : null
+
     readonly property bool restful: !root.yielded && !root.bare && (!root.sidebarShown || root.rail)
 
     readonly property bool topWanted: root.restful && !root.islandOut && root.place === "top" && (root.clockShown || root.battery.shown)
@@ -106,10 +110,17 @@ Item {
             spacing: Appearance.padding.large
 
             StyledText {
+                id: pillTime
+
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.clockShown
                 text: TimeFormat.time(clock.date, false)
                 font.pixelSize: Appearance.font.size.normal
+
+                TapHandler {
+                    cursorShape: Qt.PointingHandCursor
+                    onTapped: root.clockRequested(true)
+                }
             }
 
             BatteryReading {
@@ -131,6 +142,11 @@ Item {
             visible: root.clockShown
             text: TimeFormat.time(clock.date, false)
             font.pixelSize: Appearance.font.size.normal
+
+            TapHandler {
+                cursorShape: Qt.PointingHandCursor
+                onTapped: root.clockRequested(true)
+            }
         }
 
         BatteryReading {

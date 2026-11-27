@@ -241,3 +241,8 @@ test("the file browser step names the key that opens it, or the launcher word", 
     const bareStep = Tour.plan({ bare: false, sidebar: "rail", chords: {} }).find(s => s.id === "files");
     assert.match(Tour.words(bareStep, {}).ask, /`files`/);
 });
+
+test("the rail step drops out when the rail shows no time to press", () => {
+    assert.ok(Tour.plan({ bare: false, sidebar: "rail", chords: {} }).some(s => s.id === "sidebar"));
+    assert.ok(!Tour.plan({ bare: false, sidebar: "rail", railTime: false, chords: {} }).some(s => s.id === "sidebar"));
+});

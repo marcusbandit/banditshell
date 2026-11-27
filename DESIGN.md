@@ -2175,10 +2175,8 @@ waiting or stuck. One mark is not about the unusual: with more than one keyboard
 always shows the current one's code (`DK`, `US`) on a small chip of its own, so it never reads as part of the time below it, because the switch bind changes every key with
 nothing else moving; it is dim on the first layout and plain light on any other, and a press moves
 every keyboard to the next layout. Every mark's tooltip says what it is and then what a press does ("VPN on,
-click for settings"). Battery, sound, airplane and update open their sidebar menus, so the rail
-grows under them; VPN, a mode and quiet open their Settings page; keep-awake and a screen
-recording stop. Pointing at a mark holds the rail at rest so it can be pressed before the rail
-grows; after the press the rail stays at rest until the pointer leaves it. The workspace marks
+click for settings"). Battery, sound, airplane and update open their menus beside the rail, level with the mark; VPN, a mode and quiet open their Settings page; keep-awake and a screen
+recording stop. The workspace marks
 never move for a status mark: they keep their place, leave four status slots under them wherever
 the rail is tall enough, and the status marks stay a clear gap below, so they read as their own
 group and never as one more workspace. Every mark shows while
@@ -2202,10 +2200,9 @@ it the same way: a small time on top, the battery as a level rather than a batte
 
 - `rail` (the default): at the rail's foot, the time, the date under it, and under that the
   battery as an upright level bar with a nub on top and its percent below. The time and date read
-  sideways when the clock is one line. The resting clock (`sidebar.clock.style` and `size`)
-  and the open one (`wideStyle` and `wideSize`) are chosen apart: stacked or one line, small or
-  large. One line turns the time on its side so it reads as 14:32. The defaults are one line small
-  at rest and stacked large when open, so the wide column is used for something.
+  sideways when the clock is one line. `sidebar.clock.style` and `size` pick stacked or one line,
+  small or large; one line turns the time on its side so it reads as 14:32. A press on the time
+  opens the clock menu and a press on the date the calendar, both beside the rail.
 - `rail top`: the same at the rail's head, where the Duo puts it.
 - `top`: a pill melts out of the top band at the centre with the time and the battery meter and
   percent. It steps back while the island is out, since the island owns that spot.
@@ -2222,15 +2219,16 @@ nothing. The clock style `off` and the sidebar's battery toggle still hide each 
 mode draws no glance outside the rail. `wide` widens the rail but not its workspace marks. This
 bends 2.1 for two readings everyone asks for; nothing else joins them at rest.
 
-Pointing anywhere on the rail, workspace marks included, for `anim.dwell` grows it into the full column: the clock, tray, status
-icons and mode icon, with the workspaces turning from marks into plates. It is not a new panel.
-`Chassis` smooths one number (`railOpen`, through `Follow`) and the cutout's left edge simply
-moves, so the growth is the band swelling over the windows, and the content fades in as the
-edge passes it. Leaving for `anim.grace` collapses it, and it holds open while a menu opened
-from one of its icons is up, so every door the full column has is still there. The windows do
-not re-tile: the reservation stays at the rail, and the column only overlaps them while you are
-pointing at it. Scrolling the sound icon changes the volume in both styles, and the optional
-brightness icon (`sidebar.status.brightness`) does the same for the screen.
+**THE RAIL ONLY, 2026-11-27 (#923): the full column is retired.** The sidebar is always the
+rail. `Appearance.sizes.sidebarRail` is fixed true, so a saved `sidebar.style: "full"` reads as
+the rail, and nothing grows it: no dwell, no press, no touch or drag, no open menu. `Chassis`
+keeps `railOpen` at 0. The full body's code stays in `Sidebar.qml` until its contents have a new
+home (sound, network, Bluetooth and battery go to quick controls in #903); it is never visible,
+so it takes no input, and its workspace plates are not built at all. Its status icons still
+supply the menus the rail's marks open. Every menu asked of the rail opens beside it at the item
+that asked: the time, the date, the AI limit bars or the mark; a menu with no item on the rail
+(a tray app, or sound while no mark shows) opens at the rail's head or foot. Settings lost the
+style choice and every row that only changed the open column.
 
 **BARE, same day, the rest of the promise.** `edge.bare` is the chrome's master switch: the
 chassis draws nothing on any screen (a full-window hole, zero inset, zero radius, no
