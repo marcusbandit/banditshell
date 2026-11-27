@@ -1,6 +1,39 @@
 {
   "entries": [
     {
+      "id": "2026-11-27-desktop-glass",
+      "date": "2026-11-27",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Desktop widgets sit on clear glass and can be dragged anywhere",
+          "go": "panel settings open widgets"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Every widget has a small, medium and large size; right-click to pick",
+          "go": "panel settings open widgets"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Click the clock for the month; the calendar and timers cards are gone"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Weather shows feels-like, wind, the next hours and the week"
+        },
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "Widget side, calendar and timers settings are removed"
+        }
+      ]
+    },
+    {
       "id": "2026-11-26-agent-limits-size",
       "date": "2026-11-26",
       "changes": [

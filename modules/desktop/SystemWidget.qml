@@ -7,17 +7,11 @@ import qs.config
 import qs.components
 import "load.js" as Load
 
-Item {
+DeskWidget {
     id: root
 
     property bool running: true
-    property bool fromRight: false
-    property real room: 0
-    property real availWidth: 0
-    property string expanded: ""
-    property string showing: ""
-
-    readonly property Item popoutItem: detailCard.visible ? detailCard : null
+    property string showing: "cpu"
 
     property var lastTimes: null
     property var lastCores: null
@@ -69,15 +63,19 @@ Item {
     readonly property color gpuTone: Appearance.huedOr(Appearance.hue.graphics, Appearance.colour.accent)
     readonly property color memoryTone: root.memory.share > 0.9 ? Appearance.colour.warning : Appearance.huedOr(Appearance.hue.memory, Appearance.colour.accent)
 
-    implicitHeight: strip.implicitHeight
+    readonly property real pad: Appearance.padding.card
+    readonly property real column: Math.round(Appearance.font.size.small * 6.6)
+    readonly property var meters: root.hasGpu ? ["cpu", "gpu", "memory"] : ["cpu", "memory"]
 
-    function toggle(key: string): void {
-        if (root.expanded === key) {
-            root.expanded = "";
-        } else {
-            root.showing = key;
-            root.expanded = key;
-        }
+    key: "system"
+    fallbackSize: "medium"
+
+    onTapped: (x, y) => {
+        if (root.form !== "medium")
+            return;
+        const step = root.column + Appearance.padding.normal;
+        const at = Math.floor((x - root.pad + Appearance.padding.normal / 2) / step);
+        root.showing = root.meters[Math.max(0, Math.min(root.meters.length - 1, at))];
     }
 
     function sample(): void {
@@ -117,7 +115,7 @@ Item {
             root.lastTimes = null;
             root.lastCores = null;
         } else {
-            root.expanded = "";
+            root.close();
         }
     }
 
@@ -243,148 +241,140 @@ Item {
         }
     }
 
-    Row {
-        id: strip
+    function labelOf(which: string): string {
+        return which === "cpu" ? "CPU" : which === "gpu" ? "GPU" : "Mem";
+    }
 
-        width: parent.width
-        spacing: Appearance.padding.normal
+    function historyOf(which: string): var {
+        return which === "cpu" ? root.cpuHistory : which === "gpu" ? root.gpuHistory : root.memoryHistory;
+    }
 
-        readonly property real tileWidth: (width - spacing * (root.tileCount - 1)) / root.tileCount
+    function toneOf(which: string): color {
+        return which === "cpu" ? root.cpuTone : which === "gpu" ? root.gpuTone : root.memoryTone;
+    }
 
-        Tile {
-            width: strip.tileWidth
-            key: "cpu"
-            label: "CPU"
-            value: root.cpu
-            tone: root.cpuTone
-            history: root.cpuHistory
-            phase: root.phase
-            active: root.expanded === "cpu"
-        }
+    function reading(which: string): real {
+        const history = root.historyOf(which);
+        return history.length >= 2 ? Load.tipValue(history, root.phase) : which === "cpu" ? root.cpu : which === "gpu" ? root.gpu : root.memory.share;
+    }
 
-        Tile {
-            width: strip.tileWidth
-            visible: root.hasGpu
-            key: "gpu"
-            label: "GPU"
-            value: root.gpu
-            tone: root.gpuTone
-            history: root.gpuHistory
-            phase: root.phase
-            active: root.expanded === "gpu"
-        }
+    small: Item {
+        implicitWidth: smallRow.implicitWidth + root.pad * 2
+        implicitHeight: smallRow.implicitHeight + Appearance.padding.normal * 2
 
-        Tile {
-            width: strip.tileWidth
-            key: "memory"
-            label: "Mem"
-            value: root.memory.share
-            tone: root.memoryTone
-            history: root.memoryHistory
-            phase: root.phase
-            active: root.expanded === "memory"
+        Row {
+            id: smallRow
+
+            x: root.pad
+            y: Appearance.padding.normal
+            spacing: Appearance.padding.large
+
+            Repeater {
+                model: root.meters
+
+                delegate: Column {
+                    id: chip
+
+                    required property string modelData
+
+                    spacing: 2
+
+                    Row {
+                        id: chipHead
+
+                        spacing: Appearance.padding.small
+
+                        StyledText {
+                            anchors.baseline: chipValue.baseline
+                            text: root.labelOf(chip.modelData)
+                            color: Appearance.colour.textFaint
+                            font.pixelSize: Appearance.font.size.small
+                        }
+
+                        StyledText {
+                            id: chipValue
+
+                            text: `${Math.round(root.reading(chip.modelData) * 100)}%`
+                            color: Appearance.hued ? root.toneOf(chip.modelData) : Appearance.colour.text
+                            font.weight: Font.DemiBold
+                        }
+                    }
+
+                    Trace {
+                        width: chipHead.width
+                        height: Math.round(Appearance.font.size.small * 0.9)
+                        history: root.historyOf(chip.modelData)
+                        phase: root.phase
+                        tone: root.toneOf(chip.modelData)
+                        fadeLeft: Appearance.padding.small
+                        fadeRight: Appearance.padding.small
+                        strokeWidth: 1.5
+                        filled: false
+                    }
+                }
+            }
         }
     }
 
-    Follow {
-        id: popoutOpen
+    medium: Item {
+        implicitWidth: mediumRow.implicitWidth + root.pad * 2
+        implicitHeight: mediumRow.implicitHeight + root.pad * 2
 
-        target: root.expanded !== "" ? 1 : 0
-        speed: Appearance.animation.revealSpeed
-        epsilon: Appearance.animation.fadeEpsilon
-        startsAtTarget: true
-    }
+        Row {
+            id: mediumRow
 
-    Item {
-        id: detailCard
-
-        readonly property real preferredWidth: Math.round(Appearance.font.size.small * 30)
-        readonly property real sideGap: Appearance.padding.card
-        readonly property bool fitsBeside: root.availWidth >= preferredWidth + sideGap
-        readonly property real sideX: root.fromRight ? -(width + sideGap) : root.width + sideGap
-        readonly property real clampedX: root.fromRight ? Math.max(-root.availWidth, sideX) : Math.min(root.availWidth - width + root.width, sideX)
-        readonly property real openX: fitsBeside ? sideX : clampedX
-        readonly property real clampedY: root.room > 0 ? Math.max(-root.y, Math.min(0, root.room - root.y - height)) : 0
-
-        z: 10
-        visible: popoutOpen.value > 0.002 && root.showing !== ""
-        opacity: popoutOpen.value
-        width: Math.min(preferredWidth, Math.max(root.width, root.availWidth))
-        height: detailBody.implicitHeight + Appearance.padding.card * 2
-        x: openX + (root.fromRight ? 1 : -1) * (1 - popoutOpen.value) * Appearance.padding.large
-        y: clampedY
-
-        SquircleRect {
-            anchors.fill: parent
-            radius: Appearance.rounding.large
-            color: Appearance.colour.surface
-            stroke: Appearance.colour.separator
-            strokeWidth: Appearance.stroke.line
-        }
-
-        Column {
-            id: detailBody
-
-            x: Appearance.padding.card
-            y: Appearance.padding.card
-            width: detailCard.width - Appearance.padding.card * 2
+            x: root.pad
+            y: root.pad
             spacing: Appearance.padding.normal
 
-            Item {
+            Repeater {
+                model: root.meters
+
+                delegate: Meter {
+                    required property string modelData
+
+                    width: root.column
+                    which: modelData
+                }
+            }
+        }
+    }
+
+    large: Item {
+        implicitWidth: Math.round(Appearance.font.size.small * 30) + root.pad * 2
+        implicitHeight: largeBody.implicitHeight + root.pad * 2
+
+        Column {
+            id: largeBody
+
+            x: root.pad
+            y: root.pad
+            width: parent.width - root.pad * 2
+            spacing: Appearance.padding.large
+
+            Row {
+                id: largeRow
+
                 width: parent.width
-                height: Math.max(detailTitle.implicitHeight, closeBtn.height)
+                spacing: Appearance.padding.normal
 
-                StyledText {
-                    id: detailTitle
+                Repeater {
+                    model: root.meters
 
-                    width: closeBtn.x - detailValue.implicitWidth - Appearance.padding.normal * 2
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.showing === "cpu" ? `Processor (${root.cores.length} cores)` : root.showing === "gpu" ? (root.gpuInfo.name || "GPU") : "Memory"
-                    color: Appearance.colour.textDim
-                    elide: Text.ElideRight
-                }
+                    delegate: Meter {
+                        id: pick
 
-                StyledText {
-                    id: detailValue
+                        required property string modelData
 
-                    anchors.right: closeBtn.left
-                    anchors.rightMargin: Appearance.padding.small
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.showing === "cpu" ? `${Math.round(root.cpu * 100)}%` : root.showing === "gpu" ? `${Math.round(root.gpu * 100)}%` : `${Math.round(root.memory.share * 100)}%`
-                    color: Appearance.hued ? (root.showing === "cpu" ? root.cpuTone : root.showing === "gpu" ? root.gpuTone : root.memoryTone) : Appearance.colour.text
-                    font.weight: Font.DemiBold
-                }
+                        width: (largeRow.width - largeRow.spacing * (root.meters.length - 1)) / root.meters.length
+                        which: modelData
+                        chosen: root.showing === modelData
 
-                Item {
-                    id: closeBtn
-
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 24
-                    height: 24
-
-                    SquircleRect {
-                        anchors.fill: parent
-                        pill: "object"
-                        color: Appearance.colour.fill
-                        opacity: closeHover.hovered ? 1 : 0
-                    }
-
-                    Icon {
-                        anchors.centerIn: parent
-                        name: "close"
-                        size: Appearance.icon.small
-                        color: Appearance.colour.textFaint
-                    }
-
-                    HoverHandler {
-                        id: closeHover
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.expanded = ""
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.showing = pick.modelData
+                        }
                     }
                 }
             }
@@ -563,6 +553,7 @@ Item {
         property real fadeLeft: Appearance.padding.normal * 1.8
         property real fadeRight: Appearance.padding.normal * 1.4
         property real strokeWidth: 2
+        property bool filled: true
 
         layer.enabled: true
         layer.effect: ShaderEffect {
@@ -606,7 +597,7 @@ Item {
                 }
 
                 PathSvg {
-                    path: Load.areaPath(traceBox.history, traceShape.width, traceShape.height, root.historyLimit, traceBox.phase)
+                    path: traceBox.filled ? Load.areaPath(traceBox.history, traceShape.width, traceShape.height, root.historyLimit, traceBox.phase) : ""
                 }
             }
 
@@ -704,119 +695,52 @@ Item {
         }
     }
 
-    component Tile: Item {
-        id: tile
+    component Meter: Item {
+        id: meterView
 
-        property string key: ""
-        property string label: ""
-        property real value: 0
-        property color tone: Appearance.colour.accent
-        property var history: []
-        property real phase: 1
-        property bool active: false
-        property bool dwelled: false
+        property string which: ""
+        property bool chosen: false
 
-        readonly property int pad: Appearance.padding.normal
-        readonly property real displayed: tile.history.length >= 2 ? Load.tipValue(tile.history, tile.phase) : tile.value
+        readonly property real inset: Appearance.padding.small
 
-        implicitHeight: header.y + header.height + Appearance.padding.small + 46 + Appearance.padding.small
-
-        Timer {
-            id: dwellTimer
-
-            interval: Appearance.animation.dwell
-            running: tileHover.hovered && !tile.active
-            onTriggered: tile.dwelled = true
-        }
-
-        Follow {
-            id: hoverGlow
-
-            target: tileHover.hovered ? 1 : 0
-            speed: Appearance.animation.revealSpeed
-            epsilon: Appearance.animation.fadeEpsilon
-            startsAtTarget: true
-        }
-
-        Follow {
-            id: cueFade
-
-            target: tile.dwelled || tile.active ? 1 : 0
-            speed: Appearance.animation.revealSpeed
-            epsilon: Appearance.animation.fadeEpsilon
-            startsAtTarget: true
-        }
+        implicitHeight: meterHead.y + meterHead.height + Appearance.padding.hair + 46 + meterView.inset
 
         SquircleRect {
             anchors.fill: parent
-            radius: Appearance.rounding.large
-            color: Appearance.colour.surface
-            stroke: tile.active ? tile.tone : Appearance.colour.separator
-            strokeWidth: tile.active ? Appearance.stroke.ring : (tileHover.hovered ? Appearance.stroke.line : 0)
-        }
-
-        SquircleRect {
-            anchors.fill: parent
-            radius: Appearance.rounding.large
+            radius: Appearance.rounding.normal
             color: Appearance.colour.fill
-            opacity: hoverGlow.value
-        }
-
-        Icon {
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.rightMargin: tile.pad - 2
-            anchors.topMargin: tile.pad
-            name: tile.active ? "close" : (root.fromRight ? "chevron_left" : "chevron_right")
-            size: Appearance.icon.small
-            color: tile.active ? tile.tone : Appearance.colour.textFaint
-            opacity: cueFade.value
+            opacity: meterView.chosen ? 1 : 0
         }
 
         Column {
-            id: header
+            id: meterHead
 
-            x: tile.pad
-            y: tile.pad
-            width: tile.width - tile.pad * 2
+            x: meterView.inset
+            y: meterView.inset
 
             StyledText {
-                text: tile.label
+                text: root.labelOf(meterView.which)
                 color: Appearance.colour.textDim
                 font.pixelSize: Appearance.font.size.small
             }
 
             StyledText {
-                text: `${Math.round(tile.displayed * 100)}%`
-                color: Appearance.hued ? tile.tone : Appearance.colour.text
+                text: `${Math.round(root.reading(meterView.which) * 100)}%`
+                color: Appearance.hued ? root.toneOf(meterView.which) : Appearance.colour.text
                 font.pixelSize: Appearance.font.size.normal
                 font.weight: Font.DemiBold
             }
         }
 
         Trace {
-            x: 0
-            y: header.y + header.height + Appearance.padding.small
-            width: tile.width
+            y: meterHead.y + meterHead.height + Appearance.padding.hair
+            width: meterView.width
             height: 46
-            history: tile.history
-            phase: tile.phase
-            tone: tile.tone
-            fadeLeft: tile.pad * 1.8
-            fadeRight: tile.pad * 1.4
-        }
-
-        HoverHandler {
-            id: tileHover
-
-            onHoveredChanged: if (!hovered)
-                tile.dwelled = false
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.toggle(tile.key)
+            history: root.historyOf(meterView.which)
+            phase: root.phase
+            tone: root.toneOf(meterView.which)
+            fadeLeft: meterView.inset * 1.8
+            fadeRight: meterView.inset * 1.4
         }
     }
 }

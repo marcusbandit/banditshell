@@ -1,12 +1,10 @@
 module qs.modules.desktop
 AgentLimitsWidget 1.0 AgentLimitsWidget.qml
 Backdrop 1.0 Backdrop.qml
-CalendarWidget 1.0 CalendarWidget.qml
 ClockWidget 1.0 ClockWidget.qml
+DeskWidget 1.0 DeskWidget.qml
 DesktopWidgets 1.0 DesktopWidgets.qml
 MediaWidget 1.0 MediaWidget.qml
+MonthGrid 1.0 MonthGrid.qml
 SystemWidget 1.0 SystemWidget.qml
-TimersWidget 1.0 TimersWidget.qml
 WeatherWidget 1.0 WeatherWidget.qml
-WidgetCard 1.0 WidgetCard.qml
-WidgetColumn 1.0 WidgetColumn.qml

@@ -44,7 +44,7 @@ const LAYOUTS = [
     { id: "custom", name: "add custom", detail: "your own · drawn in the layout workshop" }
 ];
 
-const WIDGET_CARDS = ["widgetClock", "widgetCalendar", "widgetMedia", "widgetWeather", "widgetSystem", "widgetLimits", "widgetTimers"];
+const WIDGET_CARDS = ["widgetClock", "widgetMedia", "widgetWeather", "widgetSystem", "widgetLimits"];
 
 const WIDGET_TITLES = {
     winLayouts: "Layout", via: "VIA layout", modes: "Modes", usage: "Today", recent: "Recent changes", nets: "Networks",
@@ -610,20 +610,17 @@ const PAGES_SOURCE = {
     },
     widgets: {
         id: "widgets", name: "Widgets", icon: "widgets", preview: "widgets",
-        status: s => s.v("widgetsOn") ? `${WIDGET_CARDS.filter(k => s.v(k)).length} cards · ${s.v("widgetsSide")}` : "off",
+        status: s => s.v("widgetsOn") ? `${WIDGET_CARDS.filter(k => s.v(k)).length} widgets` : "off",
         groups: [
             { rows: [
-                { n: [], icon: "widgets", label: "Desktop widgets", k: "widgetsOn", kind: "toggle", cfg: "widgets.enabled", kw: "desktop widgets on screen wallpaper column cards clock calendar",
-                    why: "A column of cards on the desktop, under your windows: the time, the month, what is playing, the weather, how busy the computer is and your timers." },
-                { n: [], icon: "align_horizontal_left", label: "Side", k: "widgetsSide", kind: "seg", o: ["left", "right"], cfg: "widgets.side", dis: s => !s.v("widgetsOn"), kw: "desktop widgets side left right position" },
+                { n: [], icon: "widgets", label: "Desktop widgets", k: "widgetsOn", kind: "toggle", cfg: "widgets.enabled", kw: "desktop widgets on screen wallpaper glass drag move size clock calendar",
+                    why: "Shows widgets on your desktop, under your windows, for the clock, media, weather, system load and AI limits. You can drag each one anywhere on its screen." },
                 { n: [], icon: "visibility", label: "Show them", k: "widgetsShown", kind: "seg", o: [["always", "always"], ["empty", "empty desktop"]], cfg: "widgets.shown", dis: s => !s.v("widgetsOn"), kw: "desktop widgets hide windows empty workspace",
                     why: "Always keeps them on the desktop, under your windows. Empty desktop fades them out as soon as a window opens on that screen." }
             ] },
-            { t: "Cards", rows: [
-                { n: [], icon: "schedule", label: "Clock", k: "widgetClock", kind: "toggle", cfg: "widgets.clock", dis: s => !s.v("widgetsOn"), kw: "desktop widget clock time big",
-                    why: "The time in large figures, hours over minutes, with the date under it." },
-                { n: [], icon: "calendar_month", label: "Calendar", k: "widgetCalendar", kind: "toggle", cfg: "widgets.calendar", dis: s => !s.v("widgetsOn"), kw: "desktop widget calendar month",
-                    why: "This month, with today marked. Scroll it or use the arrows to see other months." },
+            { t: "On the desktop", rows: [
+                { n: [], icon: "schedule", label: "Clock", k: "widgetClock", kind: "toggle", cfg: "widgets.clock", dis: s => !s.v("widgetsOn"), kw: "desktop widget clock time big calendar month",
+                    why: "Shows the time in large figures, hours over minutes, with the date under it. Opening it adds this month's calendar, your world clocks and your next alarm." },
                 { n: [], icon: "music_note", label: "Now playing", k: "widgetMedia", kind: "toggle", cfg: "widgets.media", dis: s => !s.v("widgetsOn"), kw: "desktop widget media music player",
                     why: "Shows only while something is playing or was just playing, with buttons to pause and skip." },
                 { n: [], icon: "partly_cloudy_day", label: "Weather", k: "widgetWeather", kind: "toggle", cfg: "widgets.weather", dis: s => !s.v("widgetsOn"), kw: "desktop widget weather temperature",
@@ -631,9 +628,7 @@ const PAGES_SOURCE = {
                 { n: [], icon: "memory", label: "System", k: "widgetSystem", kind: "toggle", cfg: "widgets.system", dis: s => !s.v("widgetsOn"), kw: "desktop widget cpu memory ram load",
                     why: "How busy the processor is and how much memory is in use, read every two seconds while you can see it." },
                 { n: [], icon: "speed", label: "AI limits", k: "widgetLimits", kind: "toggle", cfg: "widgets.limits", dis: s => !s.v("widgetsOn"), kw: "desktop widget ai agent limits claude antigravity codex quota",
-                    why: "Five-hour and weekly usage limits for Claude, Antigravity and Codex." },
-                { n: [], icon: "timer", label: "Timers", k: "widgetTimers", kind: "toggle", cfg: "widgets.timers", dis: s => !s.v("widgetsOn"), kw: "desktop widget timer countdown",
-                    why: "Running timers, and buttons that start a 5, 10 or 25 minute one." }
+                    why: "Five-hour and weekly usage limits for Claude, Antigravity and Codex." }
             ] }
         ]
     },

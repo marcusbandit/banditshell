@@ -4,7 +4,8 @@
   "layer": 3,
   "owns": {
     "qml": ["modules/desktop"],
-    "tests": ["tests/desktop-load.test.js"]
+    "services": ["DesktopLayout"],
+    "tests": ["tests/desktop-load.test.js", "tests/desktop-placement.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor", "clock", "media", "wallpaper", "agent-limits"],

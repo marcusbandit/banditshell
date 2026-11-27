@@ -681,17 +681,13 @@ Singleton {
 
                 enabled: true,
 
-                side: "right",
-
                 shown: "always",
 
                 clock: true,
-                calendar: true,
                 media: true,
                 weather: true,
                 system: true,
-                limits: true,
-                timers: true
+                limits: true
             },
 
             packages: {

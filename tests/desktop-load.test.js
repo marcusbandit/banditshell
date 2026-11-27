@@ -131,16 +131,6 @@ test("paging months crosses years", () => {
     assert.strictEqual(Month.title(2026, 10), "November 2026");
 });
 
-const Countdown = lib("modules/desktop/countdown.js", ["text"]);
-
-test("a countdown rounds up to the next whole second", () => {
-    assert.strictEqual(Countdown.text(0), "0:00");
-    assert.strictEqual(Countdown.text(1), "0:01");
-    assert.strictEqual(Countdown.text(299001), "5:00");
-    assert.strictEqual(Countdown.text(3600000 + 61000), "1:01:01");
-    assert.strictEqual(Countdown.text(-5), "0:00");
-});
-
 const Backdrop = lib("modules/desktop/backdrop.js", ["placement", "shrunk", "luminance", "contrast", "judge"]);
 
 function patch(pixels) {

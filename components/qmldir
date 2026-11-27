@@ -25,6 +25,8 @@ FoldedText 1.0 FoldedText.qml
 Follow 1.0 Follow.qml
 FollowColour 1.0 FollowColour.qml
 Gauge 1.0 Gauge.qml
+Glass 1.0 Glass.qml
+GlassSource 1.0 GlassSource.qml
 GlideList 1.0 GlideList.qml
 Icon 1.0 Icon.qml
 singleton IconAudit 1.0 IconAudit.qml
