@@ -23,9 +23,13 @@ Item {
 
     readonly property bool glassy: root.source?.ready ?? false
     readonly property real depth: root.layered ? 1 : 0
-    readonly property GlassSource sampled: root.glassy && root.place.shown ? root.source : null
+    readonly property GlassSource sampled: root.glassy && root.visible && root.opacity > 0 ? root.source : null
 
-    onSampledChanged: Backdrops.hold(root, root.sampled)
+    function holdSampled(): void {
+        Backdrops.hold(root, root.sampled);
+    }
+
+    onSampledChanged: Qt.callLater(root.holdSampled)
     Component.onDestruction: Backdrops.hold(root, null)
 
     Loader {
