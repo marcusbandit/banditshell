@@ -140,7 +140,7 @@ Singleton {
 
         readonly property color readableSurface: root.glassAt(root.config.colour.surface, root.readableAlpha)
 
-        readonly property color rim: Qt.rgba(1, 1, 1, root.config.material.rim)
+        readonly property color rim: root.light ? root.veil(root.config.material.rim * 0.6) : Qt.rgba(1, 1, 1, root.config.material.rim)
 
         readonly property color chosen: root.colour.text
 

@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-11-27-glass-controls",
+      "date": "2026-11-27",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Panels, menus and tooltips drop their tint and catch a rim of light"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Selections, switches and choices turn white instead of the accent"
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "Config gains material.surfaceHue and material.rim for the glass look"
+        }
+      ]
+    },
+    {
       "id": "2026-11-27-desktop-glass",
       "date": "2026-11-27",
       "changes": [

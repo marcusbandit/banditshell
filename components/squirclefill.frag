@@ -15,7 +15,7 @@ layout(std140, binding = 0) uniform buf {
 
     float down;
 
-    float rim;
+    float weight;
 
     vec4 radii;
 
@@ -57,9 +57,9 @@ void main() {
 
     float reach = max(length(vec2(dFdx(d), dFdy(d))), 0.0001);
     float cover = clamp(0.5 - d / reach, 0.0, 1.0);
-    float inner = clamp(0.5 - (d + rim) / reach, 0.0, 1.0);
+    float inner = clamp(0.5 - (d + weight) / reach, 0.0, 1.0);
     float ring = max(cover - inner, 0.0);
-    float filled = clamp(0.5 - (d + rim * 0.5) / reach, 0.0, 1.0);
+    float filled = clamp(0.5 - (d + weight * 0.5) / reach, 0.0, 1.0);
 
     vec4 body = colour * filled;
     vec4 edge = line * ring;

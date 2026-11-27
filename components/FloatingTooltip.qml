@@ -59,7 +59,7 @@ Item {
     SquircleRect {
         anchors.fill: parent
         radius: Appearance.rounding.small
-        color: Appearance.colour.surface
+        color: Appearance.colour.readableSurface
         rim: 1
     }
 

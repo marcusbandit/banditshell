@@ -33,6 +33,12 @@ FocusScope {
         strokeWidth: Appearance.stroke.line
     }
 
+    MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.IBeamCursor
+        onPressed: input.forceActiveFocus()
+    }
+
     Icon {
         id: mark
 
