@@ -19,6 +19,7 @@ test("app ids are escaped the way systemd unit names need", () => {
     assert.strictEqual(Scope.escapeId("example-editor.desktop"), "example\\x2deditor");
     assert.strictEqual(Scope.escapeId(".hidden"), "\\x2ehidden");
     assert.strictEqual(Scope.escapeId("café app"), "caf\\xc3\\xa9\\x20app");
+    assert.strictEqual(Scope.escapeId("note\u{1F4DD}"), "note\\xf0\\x9f\\x93\\x9d");
     assert.strictEqual(Scope.escapeId(""), "app");
 });
 

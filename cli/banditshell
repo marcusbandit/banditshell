@@ -1076,7 +1076,7 @@ end_helpers() {
     local sid pid
     for sid in "$@"; do
         for pid in $(pgrep -U "$(id -u)" -s "$sid" 2>/dev/null); do
-            if tr '\0' '\n' <"/proc/$pid/environ" 2>/dev/null | grep -qx 'BANDITSHELL_HELPER=1'; then
+            if grep -qzx 'BANDITSHELL_HELPER=1' "/proc/$pid/environ" 2>/dev/null; then
                 kill "$pid" 2>/dev/null || true
             fi
         done
@@ -1089,12 +1089,11 @@ stop_pid() {
     session=$(shell_session "$1")
     kill "$1" 2>/dev/null || return 0
     for ((tries = 0; tries < 40; tries++)); do
-        if ! kill -0 "$1" 2>/dev/null; then
-            [ -z "$session" ] || end_helpers "$session"
-            return 0
-        fi
+        kill -0 "$1" 2>/dev/null || break
         sleep 0.05
     done
+    [ -z "$session" ] || end_helpers "$session"
+    return 0
 }
 
 launch_failed() {

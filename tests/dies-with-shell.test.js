@@ -55,6 +55,15 @@ test("a wrapped helper still runs where setpriv is missing", () => {
     assert.strictEqual(run.stdout, "ran");
 });
 
+test("a wrapped helper still runs where setpriv has no --pdeathsig", () => {
+    const bin = directory("oldsetpriv");
+    fs.symlinkSync(spawnSync("sh", ["-c", "command -v sh"], { encoding: "utf8" }).stdout.trim(), path.join(bin, "sh"));
+    fs.writeFileSync(path.join(bin, "setpriv"), "#!/bin/sh\necho 'setpriv: unrecognized option' >&2\nexit 1\n", { mode: 0o755 });
+    fs.writeFileSync(path.join(bin, "say"), "#!/bin/sh\nprintf ran\n", { mode: 0o755 });
+    const run = spawnSync(path.join(bin, "sh"), Helper.command(["say"]).slice(1), { encoding: "utf8", env: { PATH: bin } });
+    assert.strictEqual(run.stdout, "ran");
+});
+
 test("a wrapped helper dies when the process that started it dies", { skip: !hasSetpriv && "setpriv is not installed" }, async () => {
     const parent = spawn("bash", ["-c", '"$@" & echo $!; wait', "bash", ...Helper.command(["sleep", "300"])], { stdio: ["ignore", "pipe", "ignore"] });
     const pid = Number(await firstLine(parent));

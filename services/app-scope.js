@@ -15,9 +15,8 @@ function prefixFor(answer) {
 function escapeId(id) {
     const text = String(id ?? "").replace(/\.desktop$/, "");
     let out = "";
-    for (let i = 0; i < text.length; i++) {
-        const c = text[i];
-        if (KEPT.test(c) && !(i === 0 && c === "."))
+    for (const c of text) {
+        if (KEPT.test(c) && !(out === "" && c === "."))
             out += c;
         else if (c.charCodeAt(0) < 128)
             out += "\\x" + c.charCodeAt(0).toString(16).padStart(2, "0");
