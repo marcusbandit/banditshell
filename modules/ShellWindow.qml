@@ -522,16 +522,6 @@ PanelWindow {
             active: !chassis.bare
         }
 
-        ScreenBackdrop {
-            id: behind
-
-            anchors.fill: parent
-            output: win.screen?.name ?? ""
-            screenOrigin: Qt.point(win.screen?.x ?? 0, win.screen?.y ?? 0)
-            live: chassis.reachesIn && !chassis.bare
-            active: !chassis.bare
-        }
-
         Chassis {
             id: chassis
 
