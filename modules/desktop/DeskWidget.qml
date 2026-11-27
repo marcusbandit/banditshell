@@ -40,7 +40,6 @@ Item {
     readonly property bool lifted: root.form !== root.rest || root.dragging
     readonly property var saved: DesktopLayout.placeOf(root.output, root.key)
     readonly property var place: Placement.snapPlace(Placement.isPlace(root.saved) ? root.saved : Placement.stacked(root.key, root.heights, root.gap), root.grid)
-    readonly property var spot: Placement.topLeft(root.place, root.width, root.height, root.area)
     readonly property Item shown: root.form === "small" ? smallView.item : root.form === "large" ? largeView.item : mediumView.item
     readonly property real shownHeight: root.shown ? root.shown.implicitHeight : 0
     readonly property real shownWidth: root.shown ? root.shown.implicitWidth : 0
@@ -48,6 +47,17 @@ Item {
     readonly property var restBox: Placement.boxOf(root.restWidth, root.restHeight, root.grid)
     readonly property var restSpot: Placement.topLeft(root.place, root.restBox.width, root.restBox.height, root.area)
     readonly property rect restRect: Qt.rect(root.restSpot.x, root.restSpot.y, root.restBox.width, root.restBox.height)
+    readonly property var opened: root.expanded && root.restHeight > 0 ? Placement.opening(root.restRect, root.place, root.box.width, root.box.height, root.neighbours, root.area) : null
+    readonly property bool resting: !root.expanded && wide.settled && tall.settled
+    property bool turned: false
+    property string turnedSide: "left"
+    property string turnedEdge: "top"
+    readonly property string side: root.turned ? root.turnedSide : root.place.side
+    readonly property string edge: root.turned ? root.turnedEdge : root.place.edge
+    readonly property var spot: ({
+            x: Placement.clamp(root.side === "right" ? root.restRect.x + root.restRect.width - root.width : root.restRect.x, root.area.x, Math.max(root.area.x, root.area.x + root.area.width - root.width)),
+            y: Placement.clamp(root.edge === "bottom" ? root.restRect.y + root.restRect.height - root.height : root.restRect.y, root.area.y, Math.max(root.area.y, root.area.y + root.area.height - root.height))
+        })
     readonly property var landing: root.dragging ? Placement.freeSpot(root.dragTo.x, root.dragTo.y, root.restBox.width, root.restBox.height, root.neighbours, root.grid) : root.restSpot
     readonly property Item badge: badgeButton.visible ? badgeButton : null
 
@@ -96,6 +106,13 @@ Item {
 
     onVisibleChanged: if (!root.visible)
         root.close()
+    onOpenedChanged: if (root.opened) {
+        root.turnedSide = root.opened.side;
+        root.turnedEdge = root.opened.edge;
+        root.turned = true;
+    }
+    onRestingChanged: if (root.resting)
+        root.turned = false
     onShownHeightChanged: root.noteRest()
     onShownWidthChanged: root.noteRest()
     onFormChanged: root.noteRest()
@@ -194,6 +211,8 @@ Item {
             const at = grip.mapToItem(root.parent, m.x, m.y);
             if (!root.dragging && Math.hypot(at.x - grip.pressAt.x, at.y - grip.pressAt.y) < Appearance.padding.small)
                 return;
+            if (!root.dragging)
+                root.close();
             root.dragging = true;
             root.dragged = true;
             root.dragTo = Qt.point(at.x - root.grabAt.x, at.y - root.grabAt.y);
@@ -253,7 +272,9 @@ Item {
     Item {
         id: badgeButton
 
-        readonly property bool leftSide: Placement.badgeSide(root.place) === "left"
+        readonly property bool leftSide: Placement.badgeSide({
+            side: root.side
+        }) === "left"
 
         width: Math.round(Appearance.font.iconSize * 1.6)
         height: badgeButton.width
@@ -319,8 +340,8 @@ Item {
 
         width: loader.item ? loader.item.implicitWidth : 0
         height: loader.item ? loader.item.implicitHeight : 0
-        x: root.place.side === "right" ? root.width - view.width - (view.box.width - view.width) / 2 : (view.box.width - view.width) / 2
-        y: root.place.edge === "bottom" ? root.height - view.height - (view.box.height - view.height) / 2 : (view.box.height - view.height) / 2
+        x: root.side === "right" ? root.width - view.width - (view.box.width - view.width) / 2 : (view.box.width - view.width) / 2
+        y: root.edge === "bottom" ? root.height - view.height - (view.box.height - view.height) / 2 : (view.box.height - view.height) / 2
         opacity: fade.value
         visible: fade.value > 0.002
 

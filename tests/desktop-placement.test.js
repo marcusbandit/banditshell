@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Place = lib("modules/desktop/placement.js", ["topLeft", "placeAt", "stacked", "validSize", "isPlace", "badgeSide", "grid", "span", "boxOf", "snapPlace", "crowds", "freeSpot"]);
+const Place = lib("modules/desktop/placement.js", ["topLeft", "placeAt", "stacked", "validSize", "isPlace", "badgeSide", "grid", "span", "boxOf", "snapPlace", "crowds", "freeSpot", "opening"]);
 const Facts = lib("modules/desktop/weather-facts.js", ["facts", "hours"]);
 
 const area = { x: 40, y: 30, width: 1000, height: 600 };
@@ -87,6 +87,21 @@ test("a drop onto another widget lands on the nearest free cell", () => {
     const spot = Place.freeSpot(40, 10, 112, 112, taken, g);
     assert.deepStrictEqual(spot, { x: 256, y: 0 });
     assert.strictEqual(Place.crowds({ ...spot, width: 112, height: 112 }, taken[0], 16), false);
+});
+
+test("an opening widget grows from its anchored corner when nothing is in the way", () => {
+    const area = { x: 0, y: 0, width: 1000, height: 600 };
+    const rest = { x: 700, y: 0, width: 300, height: 100 };
+    assert.deepStrictEqual(Place.opening(rest, { side: "right", edge: "top" }, 500, 400, [], area), { side: "right", edge: "top", x: 500, y: 0, width: 500, height: 400 });
+});
+
+test("an opening widget turns to the corner that covers the fewest neighbours", () => {
+    const area = { x: 0, y: 0, width: 1000, height: 1000 };
+    const rest = { x: 400, y: 400, width: 200, height: 200 };
+    const below = [{ x: 400, y: 640, width: 200, height: 200 }];
+    const open = Place.opening(rest, { side: "left", edge: "top" }, 400, 400, below, area);
+    assert.strictEqual(open.edge, "bottom");
+    assert.strictEqual(open.y, 200);
 });
 
 test("a saved place must name its edges and offsets", () => {

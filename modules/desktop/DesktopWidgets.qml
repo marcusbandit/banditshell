@@ -234,16 +234,15 @@ PanelWindow {
         onClicked: win.closeAll(null)
     }
 
-    DotGrid {
-        x: win.area.x
-        y: win.area.y
-        width: win.area.width
-        height: win.area.height
+    GridLines {
+        x: win.area.x - win.grid.gap / 2
+        y: win.area.y - win.grid.gap / 2
+        width: win.area.width + win.grid.gap
+        height: win.area.height + win.grid.gap
         pitch: Qt.vector2d(win.grid.px, win.grid.py)
-        centre: win.carried ? Qt.point(win.carried.x + win.carried.width / 2 - win.area.x, win.carried.y + win.carried.height / 2 - win.area.y) : Qt.point(0, 0)
-        reach: Math.max(win.carried?.width ?? 0, win.carried?.height ?? 0) * 1.5 + Appearance.padding.huge * 8
-        colour: Appearance.withAlpha(Appearance.colour.text, 0.55)
-        dot: 1.75
+        centre: win.carried ? Qt.point(win.carried.dragTo.x + win.carried.grabAt.x - x, win.carried.dragTo.y + win.carried.grabAt.y - y) : Qt.point(0, 0)
+        reach: Appearance.padding.huge * 14
+        colour: Appearance.withAlpha(Appearance.colour.text, 0.28)
         opacity: gridShown.value
         visible: gridShown.value > 0.002
 
@@ -254,19 +253,6 @@ PanelWindow {
             speed: Appearance.animation.revealSpeed
             epsilon: Appearance.animation.fadeEpsilon
         }
-    }
-
-    SquircleRect {
-        x: win.carried?.landing.x ?? 0
-        y: win.carried?.landing.y ?? 0
-        width: win.carried?.restBox.width ?? 0
-        height: win.carried?.restBox.height ?? 0
-        radius: Appearance.rounding.large
-        color: Appearance.colour.fill
-        stroke: Appearance.colour.rim
-        strokeWidth: 1.5
-        opacity: gridShown.value
-        visible: win.carried !== null
     }
 
     Item {

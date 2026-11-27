@@ -118,9 +118,9 @@ Each widget is placed on its own and remembered per screen in
   with `padding.large` between cells. A widget's glass covers whole cells, so two neighbours one
   cell apart sit exactly one gap apart and their edges line up. The pitch is stretched rather
   than fixed so a right- or bottom-anchored widget lands on the same grid as a left one.
-- The widget stays exactly under the pointer while dragged, with no snapping or lag. While it is
-  held, a faint dot grid fades in around it and an outline shows the cell it will land in. On
-  release it glides into that cell. While any widget is held, the whole screen takes pointer
+- The widget stays exactly under the pointer while dragged, and nothing snaps while it is held.
+  The grid shows as thin lines in the gutters between cells, brightest at the pointer and fading
+  to nothing a few cells away. On release the widget glides softly into the nearest free cell. While any widget is held, the whole screen takes pointer
   input, so a fast drag that outruns the widget keeps going.
 - Widgets never overlap at rest. A drop, a resize or a pin that would crowd another widget sends
   the one just touched to the nearest free cell; the others keep their places.
@@ -137,7 +137,10 @@ Every widget has a small, medium and large form. The form it rests at is the own
 widget; nothing about it is global.
 
 - Hovering never changes the size. It only lights the rim, the same on every widget.
-- A click opens the large form in place, growing away from the anchored edges. Only one widget is
+- A click opens the large form in place, on the grid: its size is whole cells and it grows from
+  one corner of its resting cell block. It takes the corner whose growth covers the fewest
+  neighbours and stays on screen, preferring the one away from its anchored edges; closing
+  shrinks it back into the same corner. Only one widget is
   large at a time; a click on it or on the empty desktop closes it. The open widget is drawn above
   the rest, and its glass samples the desk with the other widgets on it, so whatever it covers
   shows through its frost instead of hiding behind it.

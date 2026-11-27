@@ -15,7 +15,6 @@ ColourField 1.0 ColourField.qml
 CommandJob 1.0 CommandJob.qml
 CommandQueue 1.0 CommandQueue.qml
 CrossfadeText 1.0 CrossfadeText.qml
-DotGrid 1.0 DotGrid.qml
 DropShadow 1.0 DropShadow.qml
 FittedImage 1.0 FittedImage.qml
 FloatingTooltip 1.0 FloatingTooltip.qml
@@ -30,6 +29,7 @@ Glass 1.0 Glass.qml
 GlassPanel 1.0 GlassPanel.qml
 GlassSource 1.0 GlassSource.qml
 GlideList 1.0 GlideList.qml
+GridLines 1.0 GridLines.qml
 Icon 1.0 Icon.qml
 singleton IconAudit 1.0 IconAudit.qml
 ImagePalette 1.0 ImagePalette.qml

@@ -125,3 +125,43 @@ function freeSpot(x, y, width, height, others, g) {
     const fallback = { x: g.x + wantCol * g.px, y: g.y + wantRow * g.py };
     return best ? { x: best.x, y: best.y } : fallback;
 }
+
+function overlapArea(a, b) {
+    const w = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+    const h = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+    return w > 0 && h > 0 ? w * h : 0;
+}
+
+function openFrom(rest, side, edge, width, height, area) {
+    const x = side === "right" ? rest.x + rest.width - width : rest.x;
+    const y = edge === "bottom" ? rest.y + rest.height - height : rest.y;
+    return {
+        side,
+        edge,
+        x: clamp(x, area.x, Math.max(area.x, area.x + area.width - width)),
+        y: clamp(y, area.y, Math.max(area.y, area.y + area.height - height)),
+        width,
+        height
+    };
+}
+
+function opening(rest, natural, width, height, others, area) {
+    let best = null;
+    let bestScore = Infinity;
+    for (const side of ["left", "right"]) {
+        for (const edge of ["top", "bottom"]) {
+            const r = openFrom(rest, side, edge, width, height, area);
+            const anchorX = side === "right" ? rest.x + rest.width - width : rest.x;
+            const anchorY = edge === "bottom" ? rest.y + rest.height - height : rest.y;
+            const pushed = Math.abs(r.x - anchorX) + Math.abs(r.y - anchorY);
+            const covered = others.reduce((sum, o) => sum + overlapArea(r, o), 0);
+            const turned = (side !== natural.side ? 1 : 0) + (edge !== natural.edge ? 1 : 0);
+            const score = covered + pushed * 64 + turned;
+            if (score < bestScore) {
+                best = r;
+                bestScore = score;
+            }
+        }
+    }
+    return best;
+}
