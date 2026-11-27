@@ -15,14 +15,11 @@ Item {
 
     default property alias content: inner.data
 
-    readonly property var host: root.QsWindow.window ?? null
-    readonly property var hostAt: Place.windowOffset(root.host, ExclusionMode.Ignore)
-    readonly property GlassSource found: root.hostAt ? Backdrops.on(root.host?.screen?.name ?? "") : null
+    readonly property GlassSource found: Backdrops.on(root.QsWindow.window ?? null)
     readonly property GlassSource source: root.backdrop ?? root.found
     readonly property var place: Place.placeOf(root)
     readonly property point placed: {
-        const source = root.source;
-        const at = source ? Place.originOn(root.hostAt, root.place, Place.windowOffset(source.QsWindow.window ?? null, ExclusionMode.Ignore), Place.placeOf(source)) : null;
+        const at = root.source ? Place.originOn(root.place, Place.placeOf(root.source)) : null;
         return at ? Qt.point(at.x, at.y) : Qt.point(0, 0);
     }
 

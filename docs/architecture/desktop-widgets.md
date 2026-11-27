@@ -108,19 +108,20 @@ enough that they would not read (the existing ink check in `Backdrop.qml`).
 ## Glass everywhere, without wiring
 
 The widgets own their glass sources, but every other card in the shell (sheets, menus, the
-what's new log, the wallpaper picker's pills, the workspace card) gets
-glass by default. `components/GlassPanel.qml` finds what to sample on its own:
+what's new log, the wallpaper picker's pills, the workspace card) gets glass by default.
+`components/GlassPanel.qml` finds what to sample on its own:
 
-- Each screen's `ScreenBackdrop` (made in `modules/ShellWindow.qml`) offers itself to the
-  `Backdrops` registry under its screen's name. A panel looks up the screen of the window it is
-  in. A caller can still pass a `backdrop` of its own, as the desktop widgets do.
-- A panel works out where it reads the backdrop from: its window's place on the screen plus its
-  place in the window, minus the backdrop's. The window's place comes from its layer anchors and
-  margins (`components/glass-place.js`), so a window that is not full screen, such as the island,
-  still lines up. A layer that other layers' exclusive zones can push aside has no known place,
-  so it gets the solid material below instead of glass that reads the wrong spot.
-- The place follows every parent's position, so a card inside a scrolled list or a sliding sheet
-  keeps sampling what is really behind it.
+- Each `ScreenBackdrop` offers itself to the `Backdrops` registry under the window it lives in,
+  and a panel uses the one in its own window. It has to be the same window: a window renders
+  with its own scene graph, and a texture from another window's backdrop comes out black. A
+  caller can still pass a `backdrop` of its own, as the desktop widgets do.
+- The shell window has one per screen. Another layer window that wants glass makes its own
+  `ScreenBackdrop`, screen-sized, at minus its place on the screen, so the picture lines up with
+  the wallpaper.
+- A panel works out where it reads the backdrop from: its place in the window minus the
+  backdrop's (`components/glass-place.js`). The place follows every parent's position, so a card
+  inside a scrolled list or a sliding sheet keeps sampling what is really behind it.
+- A window with no backdrop of its own gets the solid material described under Floating windows.
 
 ### Glass on glass
 

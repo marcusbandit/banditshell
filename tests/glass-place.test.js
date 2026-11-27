@@ -5,48 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "components/glass-place.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const { windowOffset, placeOf, originOn } = new Function(src + "\nreturn { windowOffset, placeOf, originOn };")();
-
-const IGNORE = 2;
-const screen = { width: 2560, height: 1440 };
-
-function layer(anchors, margins, width, height, mode = IGNORE) {
-    return {
-        anchors: Object.assign({ left: false, right: false, top: false, bottom: false }, anchors),
-        margins: Object.assign({ left: 0, right: 0, top: 0, bottom: 0 }, margins),
-        width,
-        height,
-        screen,
-        exclusionMode: mode
-    };
-}
-
-test.describe("where a window sits on its screen", () => {
-    test.it("puts a full-screen layer at the corner", () => {
-        assert.deepStrictEqual(windowOffset(layer({ left: true, right: true, top: true, bottom: true }, {}, 2560, 1440), IGNORE), { x: 0, y: 0 });
-    });
-
-    test.it("reads a top-left layer from its margins, the way the island sits", () => {
-        assert.deepStrictEqual(windowOffset(layer({ left: true, top: true }, { left: 900, top: 12 }, 760, 300), IGNORE), { x: 900, y: 12 });
-    });
-
-    test.it("measures a right or bottom layer from the far edge", () => {
-        assert.deepStrictEqual(windowOffset(layer({ right: true, bottom: true }, { right: 20, bottom: 30 }, 400, 200), IGNORE), { x: 2140, y: 1210 });
-    });
-
-    test.it("centres a layer anchored to neither side", () => {
-        assert.deepStrictEqual(windowOffset(layer({}, {}, 560, 440), IGNORE), { x: 1000, y: 500 });
-    });
-
-    test.it("gives up on a layer that other layers can push aside", () => {
-        assert.strictEqual(windowOffset(layer({ left: true, top: true }, {}, 100, 100, 0), IGNORE), null);
-    });
-
-    test.it("gives up on a floating window, which has no anchors", () => {
-        assert.strictEqual(windowOffset({ width: 800, height: 600, screen }, IGNORE), null);
-        assert.strictEqual(windowOffset(null, IGNORE), null);
-    });
-});
+const { placeOf, originOn, sourceIn } = new Function(src + "\nreturn { placeOf, originOn, sourceIn };")();
 
 test.describe("where an item sits in its window", () => {
     test.it("adds every parent's position, scrolled content included", () => {
@@ -68,13 +27,23 @@ test.describe("where an item sits in its window", () => {
 });
 
 test.describe("where an item reads the backdrop", () => {
-    test.it("subtracts the backdrop's own window and place", () => {
-        assert.deepStrictEqual(originOn({ x: 900, y: 12 }, { x: 30, y: 40 }, { x: 0, y: 0 }, { x: 0, y: 0 }), { x: 930, y: 52 });
-        assert.deepStrictEqual(originOn({ x: 0, y: 0 }, { x: 300, y: 200 }, { x: 0, y: 0 }, { x: 100, y: 50 }), { x: 200, y: 150 });
+    test.it("reads its own spot from a full-window backdrop", () => {
+        assert.deepStrictEqual(originOn({ x: 930, y: 52 }, { x: 0, y: 0 }), { x: 930, y: 52 });
     });
 
-    test.it("has no answer when either window cannot be placed", () => {
-        assert.strictEqual(originOn(null, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }), null);
-        assert.strictEqual(originOn({ x: 0, y: 0 }, { x: 0, y: 0 }, null, { x: 0, y: 0 }), null);
+    test.it("reads from a screen-sized backdrop shifted to a small window's place on the screen", () => {
+        assert.deepStrictEqual(originOn({ x: 30, y: 40 }, { x: -900, y: -12 }), { x: 930, y: 52 });
+    });
+});
+
+test.describe("which backdrop a window has", () => {
+    test.it("finds the source offered by the same window and nothing for another", () => {
+        const shell = {};
+        const picker = {};
+        const behind = {};
+        const entries = [{ window: shell, source: behind }];
+        assert.strictEqual(sourceIn(entries, shell), behind);
+        assert.strictEqual(sourceIn(entries, picker), null);
+        assert.strictEqual(sourceIn([], shell), null);
     });
 });
