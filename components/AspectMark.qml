@@ -41,6 +41,6 @@ Item {
         width: root.spanW(root.aspect, root.inner)
         height: root.spanH(root.aspect, root.inner)
         radius: Appearance.rounding.small / 2
-        color: root.fits ? Appearance.colour.accent : Appearance.colour.textFaint
+        color: root.fits ? Appearance.colour.chosen : Appearance.colour.textFaint
     }
 }

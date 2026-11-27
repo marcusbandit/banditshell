@@ -60,6 +60,7 @@ FocusScope {
         clip: true
         font.family: Appearance.font.family
         font.pixelSize: root.textSize
+        renderType: Text.NativeRendering
         color: Appearance.colour.text
         selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
         selectedTextColor: Appearance.colour.text
