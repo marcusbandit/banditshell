@@ -61,7 +61,7 @@ Item {
         anchors.topMargin: Appearance.padding.small
         anchors.bottomMargin: Appearance.padding.small
         radius: Appearance.rounding.small
-        color: Appearance.colour.fillStrong
+        color: input.activeFocus ? Appearance.colour.fillStrong : Appearance.colour.fill
     }
 
     TextInput {
@@ -80,8 +80,8 @@ Item {
         font.pixelSize: Appearance.font.size.small
         renderType: Text.NativeRendering
         color: Appearance.colour.text
-        selectionColor: Appearance.colour.accent
-        selectedTextColor: Appearance.colour.accentText
+        selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
+        selectedTextColor: Appearance.colour.text
 
         onAccepted: root.accepted(input.text)
         onEditingFinished: if (input.text !== root.seed)

@@ -467,7 +467,7 @@ Column {
 
                             readonly property date day: new Date(pane.first.getFullYear(), pane.first.getMonth(), 1 - pane.lead + cellText.index)
                             readonly property bool inMonth: cellText.day.getMonth() === pane.first.getMonth()
-                            readonly property bool onAccent: cellText.index === pane.todayIndex
+                            readonly property bool isToday: cellText.index === pane.todayIndex
 
                             readonly property var usage: cellText.inMonth ? Usage.forDay(cellText.day) : null
 
@@ -485,13 +485,13 @@ Column {
                             text: `${cellText.day.getDate()}`
                             font.pixelSize: Appearance.font.size.normal
 
-                            color: cellText.onAccent ? Appearance.colour.accentText : cellText.inMonth ? Appearance.colour.text : Appearance.colour.textFaint
+                            color: cellText.isToday ? Appearance.blend(Appearance.colour.text, Appearance.colour.onChosen, pane.glow) : cellText.inMonth ? Appearance.colour.text : Appearance.colour.textFaint
 
                             Loader {
                                 id: tile
 
                                 z: -1
-                                active: cellText.onAccent || cellText.level > 0
+                                active: cellText.isToday || cellText.level > 0
                                 x: (root.cell - tile.width) / 2
                                 y: (root.cell - tile.height) / 2
                                 width: root.cell - Appearance.padding.small
@@ -499,9 +499,9 @@ Column {
 
                                 sourceComponent: SquircleRect {
                                     radius: Appearance.rounding.normal
-                                    color: cellText.onAccent ? Appearance.colour.accent : root.usageTones[cellText.level - 1]
+                                    color: cellText.isToday ? Appearance.colour.chosen : root.usageTones[cellText.level - 1]
 
-                                    opacity: cellText.onAccent ? pane.glow : 1
+                                    opacity: cellText.isToday ? pane.glow : 1
                                 }
                             }
                         }

@@ -74,7 +74,7 @@ Column {
             level: Battery.percentage
             charging: Battery.charging
 
-            liquid: Battery.low ? Appearance.colour.warning : Appearance.colour.accent
+            liquid: Battery.low ? Appearance.colour.warning : Appearance.huedOr(Appearance.hue.battery, Appearance.colour.text)
         }
 
         Column {

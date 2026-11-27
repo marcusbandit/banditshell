@@ -187,7 +187,7 @@ Column {
         SquircleRect {
             anchors.fill: parent
             pill: "object"
-            color: tool.on ? Appearance.colour.accentFill : Appearance.colour.fill
+            color: tool.on ? Appearance.colour.chosen : Appearance.colour.fill
             opacity: toolFade.value
 
             Follow {
@@ -210,7 +210,7 @@ Column {
 
             name: tool.icon
             fill: toolFill.value
-            color: tool.on ? Appearance.colour.accent : tool.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+            color: tool.on ? Appearance.blend(Appearance.colour.text, Appearance.colour.onChosen, toolFade.value) : tool.hovered ? Appearance.colour.text : Appearance.colour.textFaint
 
             Follow {
                 id: toolFill
@@ -263,7 +263,7 @@ Column {
         SquircleRect {
             anchors.fill: parent
             radius: Appearance.rounding.normal
-            color: Appearance.colour.accentFill
+            color: Appearance.colour.warningFill
         }
 
         MenuRow {
@@ -277,13 +277,13 @@ Column {
                 Icon {
                     name: notice.icon
                     size: line.iconSize
-                    color: Appearance.colour.accent
+                    color: Appearance.colour.warning
                 }
             }
 
             Icon {
                 name: notice.action
-                color: Appearance.colour.accent
+                color: Appearance.colour.warning
             }
         }
     }
@@ -830,7 +830,7 @@ Column {
 
                         visible: !!text
                         text: card.trouble || Network.cardTrouble || (Network.card ? "" : "reading the passphrase")
-                        color: card.trouble || Network.cardTrouble ? Appearance.colour.accent : Appearance.colour.textFaint
+                        color: card.trouble || Network.cardTrouble ? Appearance.colour.warning : Appearance.colour.textFaint
                         font.pixelSize: Appearance.font.size.small
                         wrapMode: Text.WordWrap
                     }

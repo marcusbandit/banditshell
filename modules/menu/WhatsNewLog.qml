@@ -71,7 +71,7 @@ Item {
 
     function hue(key: string): color {
         if (key === "major")
-            return Appearance.colour.accent;
+            return Appearance.colour.text;
         if (key === "features")
             return Appearance.colour.changeNew;
         if (key === "ui")
@@ -123,11 +123,8 @@ Item {
         enabled: root.open
         opacity: reveal.value
 
-        SquircleRect {
+        GlassPanel {
             anchors.fill: parent
-
-            radius: Appearance.rounding.large
-            color: Appearance.colour.surface
 
             Item {
                 anchors.fill: parent
@@ -155,7 +152,7 @@ Item {
                         anchors.leftMargin: Appearance.padding.normal
                         anchors.verticalCenter: parent.verticalCenter
                         text: root.unread > 0 ? `${root.unread} unread` : ""
-                        color: Appearance.colour.accent
+                        color: Appearance.colour.textDim
                     }
 
                     Button {
@@ -206,7 +203,7 @@ Item {
                                 width: Math.max(3, Appearance.font.stem * 3)
                                 height: Math.round(Appearance.font.line.small * 0.6)
                                 pill: "object"
-                                color: Appearance.colour.accent
+                                color: Appearance.colour.textDim
                             }
 
                             StyledText {

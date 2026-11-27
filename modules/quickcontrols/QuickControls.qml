@@ -278,13 +278,13 @@ Item {
                         width: parent.width + Appearance.padding.small * 2
                         height: width
                         pill: "object"
-                        color: root.mixing ? Appearance.colour.accentFill : mixHover.hovered ? Appearance.colour.fill : "transparent"
+                        color: root.mixing ? Appearance.colour.chosen : mixHover.hovered ? Appearance.colour.fill : "transparent"
                     }
 
                     Icon {
                         anchors.centerIn: parent
                         name: "tune"
-                        color: root.mixing ? Appearance.colour.accent : Appearance.colour.textDim
+                        color: root.mixing ? Appearance.colour.onChosen : Appearance.colour.textDim
                     }
 
                     HoverHandler {
@@ -339,32 +339,17 @@ Item {
                         font.pixelSize: Appearance.font.size.small
                     }
 
-                    Item {
-                        width: parent.width
-                        height: openLabel.implicitHeight + Appearance.padding.small * 2
+                    Button {
+                        id: mixerOpen
 
-                        StyledText {
-                            id: openLabel
+                        x: root.iconColumn + root.columnGap - mixerOpen.padX
+                        style: "bare"
+                        text: "Open volume mixer"
 
-                            x: root.iconColumn + root.columnGap
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "Open volume mixer"
-                            color: openHover.hovered ? Appearance.colour.text : Appearance.colour.accent
-                            font.pixelSize: Appearance.font.size.small
-
-                            HoverHandler {
-                                id: openHover
-
-                                cursorShape: Qt.PointingHandCursor
-                            }
-
-                            TapHandler {
-                                onTapped: {
-                                    root.pinned = false;
-                                    root.mixing = false;
-                                    Mixer.show();
-                                }
-                            }
+                        onClicked: {
+                            root.pinned = false;
+                            root.mixing = false;
+                            Mixer.show();
                         }
                     }
                 }

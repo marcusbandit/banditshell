@@ -109,56 +109,31 @@ Column {
         width: root.width
         height: Math.max(toggles.implicitHeight, refreshButton.implicitHeight)
 
-        Row {
+        Flow {
             id: toggles
 
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
+            width: parent.width - refreshButton.width - Appearance.padding.small
             spacing: Appearance.padding.small
 
             Repeater {
                 model: root.toggleList
 
-                delegate: SquircleRect {
+                delegate: Button {
                     id: chip
 
                     required property var modelData
 
                     readonly property bool active: Config.values.agentLimits?.[chip.modelData.id] ?? false
-                    readonly property color tone: AgentLimits.colorFor(chip.modelData.id)
 
-                    width: chipRow.implicitWidth + Appearance.padding.normal
-                    height: chipRow.implicitHeight + Appearance.padding.small
-                    pill: "object"
-                    color: chip.active ? Appearance.withAlpha(chip.tone, 0.22) : Appearance.colour.fill
+                    size: 0
+                    style: "ring"
+                    checkable: true
+                    checked: chip.active
+                    text: chip.modelData.name
 
-                    Row {
-                        id: chipRow
-
-                        anchors.centerIn: parent
-                        spacing: 5
-
-                        SquircleRect {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 6
-                            height: 6
-                            pill: "object"
-                            color: chip.active ? chip.tone : Appearance.colour.textGhost
-                        }
-
-                        StyledText {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: chip.modelData.name
-                            font.pixelSize: Appearance.font.size.small
-                            color: chip.active ? Appearance.colour.text : Appearance.colour.textDim
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: Config.set("agentLimits." + chip.modelData.id, !chip.active)
-                    }
+                    onToggled: Config.set("agentLimits." + chip.modelData.id, !chip.active)
                 }
             }
         }
@@ -179,7 +154,7 @@ Column {
                 anchors.centerIn: parent
                 name: "refresh"
                 size: Appearance.font.size.normal
-                color: AgentLimits.loading ? Appearance.colour.accent : Appearance.colour.textDim
+                color: AgentLimits.loading ? Appearance.colour.text : Appearance.colour.textDim
             }
 
             MouseArea {

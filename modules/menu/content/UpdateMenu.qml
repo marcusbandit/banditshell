@@ -216,7 +216,7 @@ Column {
             width: parent.width
             alignInk: true
             text: ScrollingGaps.failure ? `Could not even out the gaps: ${ScrollingGaps.failure}` : ScrollingGaps.refusal ? `${ScrollingGaps.summary}. The shell can't change them: ${ScrollingGaps.refusal}` : ScrollingGaps.summary
-            color: ScrollingGaps.failure ? Appearance.colour.updateFailed : Appearance.colour.accent
+            color: ScrollingGaps.failure ? Appearance.colour.updateFailed : Appearance.colour.text
             wrapMode: Text.WordWrap
         }
 
@@ -281,9 +281,12 @@ Column {
             SquircleRect {
                 anchors.fill: parent
                 radius: Appearance.rounding.small
-                color: Appearance.colour.fillStrong
-                stroke: reportBody.activeFocus ? Appearance.colour.accent : "transparent"
-                strokeWidth: reportBody.activeFocus ? Appearance.stroke.ring : 0
+                color: reportBody.activeFocus ? Appearance.colour.fillStrong : Appearance.colour.fill
+            }
+
+            FocusMark {
+                shown: reportBody.activeFocus
+                around: Appearance.rounding.small
             }
 
             TextEdit {
@@ -298,8 +301,8 @@ Column {
                 font.pixelSize: Appearance.font.size.small
                 renderType: Text.NativeRendering
                 color: Appearance.colour.text
-                selectionColor: Appearance.colour.accent
-                selectedTextColor: Appearance.colour.accentText
+                selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
+                selectedTextColor: Appearance.colour.text
                 selectByMouse: true
 
                 onActiveFocusChanged: {
@@ -342,7 +345,7 @@ Column {
             width: parent.width
             height: reportPreview.implicitHeight + Appearance.padding.normal * 2
             radius: Appearance.rounding.small
-            color: Appearance.colour.fillStrong
+            color: Appearance.colour.fill
 
             StyledText {
                 id: reportPreview
@@ -491,7 +494,7 @@ Column {
                         width: root.unreadBar
                         height: Math.round(parent.height * 0.6)
                         pill: "object"
-                        color: Appearance.colour.accent
+                        color: Appearance.colour.textDim
                     }
 
                     StyledText {
@@ -500,7 +503,7 @@ Column {
                         x: newMark.x + newMark.width + Appearance.padding.small
                         anchors.verticalCenter: parent.verticalCenter
                         text: `${root.unreadCount} unread`
-                        color: Appearance.blend(Appearance.colour.text, Appearance.colour.accent, 0.55)
+                        color: Appearance.colour.text
                     }
                 }
             }
@@ -552,7 +555,7 @@ Column {
                     width: root.unreadBar
                     height: tagged.height
                     pill: "object"
-                    color: Appearance.colour.accent
+                    color: Appearance.colour.textDim
                 }
 
                 StyledText {
@@ -601,7 +604,7 @@ Column {
                 width: root.width
                 height: sectionBody.implicitHeight + Appearance.padding.normal * 2
                 radius: Appearance.rounding.small
-                color: Appearance.withAlpha(section.hue, 0.07)
+                color: Appearance.colour.fill
 
                 Column {
                     id: sectionBody
@@ -757,7 +760,7 @@ Column {
             height: Appearance.font.line.small + Appearance.padding.small * 2
             anchors.verticalCenter: parent.verticalCenter
             radius: Appearance.rounding.small
-            color: Appearance.colour.fillStrong
+            color: Appearance.colour.fill
 
             StyledText {
                 id: pullText
@@ -857,7 +860,7 @@ Column {
             width: parent.width
             alignInk: true
             text: "Your keybinds are deprecated"
-            color: Appearance.colour.accent
+            color: Appearance.colour.warning
             wrapMode: Text.WordWrap
         }
 
@@ -912,7 +915,7 @@ Column {
 
     function hue(key: string): color {
         if (key === "major")
-            return Appearance.colour.accent;
+            return Appearance.colour.text;
         if (key === "features")
             return Appearance.colour.changeNew;
         if (key === "ui")
