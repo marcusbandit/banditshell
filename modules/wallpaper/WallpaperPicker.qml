@@ -516,6 +516,7 @@ Item {
                         anchors.fill: parent
                         radius: Appearance.rounding.normal
                         rim: 1
+                        opacity: Math.min(1, card.width / Appearance.padding.huge)
                     }
 
                     Button {
@@ -745,8 +746,14 @@ Item {
                     onTextChanged: root.keepPlace(() => {
                         root.query = query.text;
                     })
-                    onAccepted: root.forceActiveFocus()
-
+                    Keys.onReturnPressed: event => {
+                        root.forceActiveFocus();
+                        event.accepted = true;
+                    }
+                    Keys.onEnterPressed: event => {
+                        root.forceActiveFocus();
+                        event.accepted = true;
+                    }
                     Keys.onEscapePressed: event => {
                         root.stopSearch();
                         event.accepted = true;
