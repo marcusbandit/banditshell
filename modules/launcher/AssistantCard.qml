@@ -89,7 +89,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 size: root.iconSize
                 name: root.rewriting ? Assistant.action?.icon ?? "auto_awesome" : "auto_awesome"
-                color: Assistant.streaming ? Appearance.colour.accent : Appearance.colour.textDim
+                color: Assistant.streaming ? Appearance.colour.text : Appearance.colour.textDim
 
                 Behavior on color {
                     ColorAnimation {

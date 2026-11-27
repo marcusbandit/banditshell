@@ -45,7 +45,7 @@ Item {
             width: Math.min(implicitWidth, parent.width - x)
             text: root.note || root.title
             font.pixelSize: Appearance.font.size.small
-            color: root.note ? Appearance.colour.accent : Appearance.colour.textDim
+            color: root.note ? Appearance.colour.text : Appearance.colour.textDim
             elide: Text.ElideRight
 
             HoverHandler {

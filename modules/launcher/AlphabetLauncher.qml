@@ -614,7 +614,7 @@ LauncherConcept {
 
                         readonly property string glyph: root.keyIcon(modelData)
                         readonly property bool active: modelData === root.marked
-                        readonly property color tint: active ? Appearance.colour.accent : rail.containsMouse ? Appearance.colour.textDim : Appearance.colour.textFaint
+                        readonly property color tint: active ? Appearance.colour.text : rail.containsMouse ? Appearance.colour.textDim : Appearance.colour.textFaint
 
                         readonly property real slot: rail.height / root.keys.length
 
@@ -665,7 +665,7 @@ LauncherConcept {
 
                 visible: bow.value > 0.01 && !!root.marked
                 opacity: bow.value
-                color: Appearance.colour.accent
+                color: Appearance.colour.chosen
 
                 InkText {
                     id: discLetter
@@ -676,7 +676,7 @@ LauncherConcept {
                     visible: !disc.glyph
                     text: root.marked
                     font.pixelSize: Appearance.font.size.large
-                    color: Appearance.colour.accentText
+                    color: Appearance.colour.onChosen
                 }
 
                 InkIcon {
@@ -688,7 +688,7 @@ LauncherConcept {
                     visible: !!disc.glyph
                     size: Appearance.font.size.large
                     name: disc.glyph
-                    color: Appearance.colour.accentText
+                    color: Appearance.colour.onChosen
                 }
             }
 
@@ -711,7 +711,7 @@ LauncherConcept {
                     width: root.gutter
                     size: Appearance.font.size.normal
                     name: "search"
-                    color: query.text ? Appearance.colour.accent : Appearance.colour.textGhost
+                    color: query.text ? Appearance.colour.textDim : Appearance.colour.textGhost
                 }
 
                 StyledText {
@@ -737,8 +737,8 @@ LauncherConcept {
                     font.pixelSize: Appearance.font.size.normal
                     renderType: Text.NativeRendering
                     color: Appearance.colour.text
-                    selectionColor: Appearance.colour.accent
-                    selectedTextColor: Appearance.colour.accentText
+                    selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
+                    selectedTextColor: Appearance.colour.text
                     clip: true
 
                     onTextChanged: {

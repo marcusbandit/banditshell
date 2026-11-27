@@ -28,7 +28,7 @@ Item {
     readonly property bool chosen: index === root.launcher.selected
     readonly property bool under: index === root.launcher.hovered
     readonly property bool away: !!entry && Apps.isHidden(entry)
-    readonly property color ring: Appearance.colour.accent
+    readonly property color ring: Appearance.colour.chosen
 
     readonly property int unread: root.folder ? AppNotifications.countForAll(root.inside) : root.entry ? AppNotifications.countFor(root.entry) : 0
     readonly property var newest: root.entry ? AppNotifications.newestFor(root.entry) : null
@@ -196,7 +196,7 @@ Item {
             size: root.launcher.iconSize / 2
             name: root.canOpen ? "folder_open" : "clear_all"
             opacity: marks.reach
-            color: marks.ready ? Appearance.colour.accent : Appearance.colour.textFaint
+            color: marks.ready ? Appearance.colour.text : Appearance.colour.textFaint
 
             Behavior on color {
                 ColorAnimation {
@@ -217,7 +217,7 @@ Item {
             size: root.launcher.iconSize / 2
             name: "clear_all"
             opacity: marks.reach
-            color: marks.ready ? Appearance.colour.accent : Appearance.colour.textFaint
+            color: marks.ready ? Appearance.colour.text : Appearance.colour.textFaint
 
             Behavior on color {
                 ColorAnimation {
@@ -254,7 +254,7 @@ Item {
             visible: root.isSection && !root.glyph
             text: root.modelData.section
             font.pixelSize: Appearance.font.size.large
-            color: root.modelData.section === root.launcher.marked ? Appearance.colour.accent : Appearance.colour.textDim
+            color: root.modelData.section === root.launcher.marked ? Appearance.colour.text : Appearance.colour.textDim
 
             Behavior on color {
                 ColorAnimation {
@@ -274,7 +274,7 @@ Item {
             visible: root.isSection && !!root.glyph
             size: Appearance.font.size.large
             name: root.glyph
-            color: root.isBack && root.under ? Appearance.colour.text : root.modelData.section === root.launcher.marked ? Appearance.colour.accent : Appearance.colour.textDim
+            color: root.isBack && root.under ? Appearance.colour.text : root.modelData.section === root.launcher.marked ? Appearance.colour.text : Appearance.colour.textDim
 
             Behavior on color {
                 ColorAnimation {
@@ -406,7 +406,7 @@ Item {
                 pill: "object"
 
                 visible: root.unread > 0
-                color: Appearance.colour.accent
+                color: Appearance.colour.chosen
 
                 InkText {
                     id: unreadCount
@@ -417,7 +417,7 @@ Item {
 
                     text: root.unread > 9 ? "9+" : `${root.unread}`
                     font.pixelSize: Appearance.font.size.small
-                    color: Appearance.colour.accentText
+                    color: Appearance.colour.onChosen
                 }
             }
         }

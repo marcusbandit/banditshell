@@ -1306,8 +1306,8 @@ LauncherConcept {
                         font.pixelSize: Appearance.font.size.normal
                         renderType: Text.NativeRendering
                         color: Appearance.colour.text
-                        selectionColor: Appearance.colour.accent
-                        selectedTextColor: Appearance.colour.accentText
+                        selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
+                        selectedTextColor: Appearance.colour.text
                         clip: true
 
                         readOnly: !!root.shownView && !root.filtering || !!root.argCommand

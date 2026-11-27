@@ -161,12 +161,9 @@ Item {
         longestFrame: root.longestFrame
     }
 
-    SquircleRect {
+    GlassPanel {
         anchors.fill: parent
         radius: Appearance.rounding.normal
-        color: Appearance.colour.surfaceSolid
-        stroke: Appearance.colour.fillStrong
-        strokeWidth: 1
     }
 
     Item {
@@ -271,7 +268,7 @@ Item {
                                 visible: textLine.hit
                                 anchors.fill: parent
                                 radius: Appearance.rounding.small
-                                color: Appearance.colour.accentFill
+                                color: Appearance.colour.fillStrong
                             }
 
                             StyledText {
