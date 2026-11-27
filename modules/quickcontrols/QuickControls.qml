@@ -5,7 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
-import qs.modules.mixer
+import qs.modules.menu.content
 import "quick-switches.js" as Switches
 
 Item {
@@ -17,81 +17,85 @@ Item {
 
     readonly property real step: Config.values.volume.step
 
-    readonly property real iconColumn: Appearance.font.iconSize
+    readonly property real gap: Appearance.padding.small
 
-    readonly property real columnGap: Appearance.padding.small
+    readonly property real sectionGap: Appearance.padding.large
 
-    readonly property real rowGap: Appearance.padding.normal
+    readonly property bool hasNetwork: Network.available || Network.wiredAvailable
+    readonly property bool hasBluetooth: Bluetooth.available
+    readonly property bool hasSound: !!Audio.sink
+    readonly property bool hasPower: PowerProfile.available && PowerProfile.choices.length > 1 || Battery.available
 
-    readonly property real sliderWidth: root.contentWidth - root.iconColumn - root.valueWidth - root.actionColumn - root.columnGap * 3
+    readonly property real tileNeed: Math.max(root.hasNetwork ? network.implicitWidth : 0, root.hasBluetooth ? bluetooth.implicitWidth : 0, root.hasSound ? sound.implicitWidth : 0, root.hasPower ? power.implicitWidth : 0)
 
-    readonly property real valueWidth: Appearance.sizes.screenValueWidth
+    readonly property real switchNeed: Math.max(quiet.implicitWidth, awake.implicitWidth, Audio.source ? microphone.implicitWidth : 0, dark.implicitWidth, ScreenRecorder.enabled && ScreenRecorder.ready ? record.implicitWidth : 0, Tunnels.list.length > 0 ? vpn.implicitWidth : 0)
 
-    readonly property real actionColumn: root.iconColumn
-
-    readonly property real levelsWidth: root.iconColumn + root.columnGap + Appearance.sizes.screenSliderWidth + root.columnGap + root.valueWidth + root.columnGap + root.actionColumn
-
-    readonly property real chevronRoom: Math.round(Appearance.sizes.rowHeight * 0.8) + Appearance.button.seam
-
-    readonly property real tileWidth: Math.ceil(Math.max(plainLabel.advanceWidth, Math.max(detailedLabel.advanceWidth, saverLabel.advanceWidth) + root.chevronRoom) + Appearance.padding.normal * 2 + Appearance.font.iconSize + Appearance.padding.small)
-
-    readonly property real contentWidth: Math.max(root.levelsWidth, root.tileWidth * 2 + root.columnGap)
-
-    TextMetrics {
-        id: plainLabel
-
-        font.family: Appearance.font.family
-        font.pixelSize: Appearance.font.size.small
-        text: "Do not disturb"
-    }
-
-    TextMetrics {
-        id: detailedLabel
-
-        font.family: Appearance.font.family
-        font.pixelSize: Appearance.font.size.small
-        text: "Performance"
-    }
-
-    TextMetrics {
-        id: saverLabel
-
-        font.family: Appearance.font.family
-        font.pixelSize: Appearance.font.size.small
-        text: "Energy saver"
-    }
+    readonly property real contentWidth: Math.max(Appearance.sizes.menuWidth - Appearance.padding.large * 2, root.tileNeed * 2 + root.gap, root.switchNeed * 2 + root.gap)
 
     readonly property real panelWidth: root.contentWidth + Appearance.padding.large * 2
 
     readonly property real panelHeight: root.contentHeight + Appearance.padding.large * 2
 
-    readonly property real contentHeight: rows.implicitHeight
+    readonly property real mainHeight: main.implicitHeight
+
+    readonly property real pageRoom: Math.max(Appearance.sizes.rowHeight * 4, Math.min(Appearance.sizes.menuMaxHeight, root.height - Appearance.padding.large * 4) - Appearance.padding.large * 2)
+
+    readonly property real pageHeight: Math.min(root.pageRoom, header.height + root.sectionGap + (pageBody.item?.implicitHeight ?? pageBody.item?.height ?? 0))
+
+    readonly property real contentHeight: Math.round(root.mainHeight + (root.pageHeight - root.mainHeight) * paging.value)
 
     readonly property real panelY: {
-        const rest = (root.height - (root.panelHeight - mixerFold.height)) / 2;
+        const rest = (root.height - root.panelHeight) / 2;
         return Math.max(Appearance.padding.large, Math.min(rest, root.height - root.panelHeight - Appearance.padding.large));
     }
 
-    property bool mixing: false
+    property string page: ""
 
-    onActiveChanged: if (!root.active)
-        root.mixing = false
+    property string shownPage: ""
 
-    readonly property bool mixerShown: root.mixing || fold.value > 0.001
+    onPageChanged: if (root.page !== "")
+        root.shownPage = root.page
 
-    onMixerShownChanged: Mixer.watch(root, root.mixerShown)
+    readonly property var pages: ({
+            network: {
+                title: "Network",
+                body: networkPage
+            },
+            bluetooth: {
+                title: "Bluetooth",
+                body: bluetoothPage
+            },
+            sound: {
+                title: "Sound",
+                body: soundPage
+            },
+            power: {
+                title: Battery.available ? "Battery" : "Power mode",
+                body: powerPage
+            }
+        })
 
-    Component.onDestruction: Mixer.watch(root, false)
-
-    Follow {
-        id: fold
-
-        target: root.mixing ? 1 : 0
-        speed: Appearance.animation.resizeSpeed
-        epsilon: 0.002
+    function openPage(key: string): void {
+        root.pinned = true;
+        root.page = key;
     }
 
-    readonly property real rowHeight: Math.max(root.iconColumn, Appearance.sizes.sliderHeight * 2.2 * 1.35)
+    function back(): void {
+        root.page = "";
+    }
+
+    Follow {
+        id: paging
+
+        target: root.page !== "" ? 1 : 0
+        speed: Appearance.animation.resizeSpeed
+        epsilon: 0.002
+        onValueChanged: if (paging.value === 0 && root.page === "")
+            root.shownPage = ""
+    }
+
+    onActiveChanged: if (!root.active)
+        root.page = ""
 
     readonly property bool active: root.pinned || linger.running || rail.pressed || root.dwelt && (root.held || grace.running)
 
@@ -121,21 +125,8 @@ Item {
             chain.start();
         } else {
             chain.reset();
+            root.page = "";
         }
-    }
-
-    function hasMenu(key: string): bool {
-        return (QsWindow.window?.statusKeys ?? []).includes(key);
-    }
-
-    function openMenu(key: string, keyed: bool): void {
-        const win = QsWindow.window;
-        root.pinned = false;
-        root.mixing = false;
-        if (!win?.openMenu(key, true) || !keyed)
-            return;
-        win.takeKeyboard();
-        win.menus.startKeys();
     }
 
     Item {
@@ -145,7 +136,7 @@ Item {
     FocusChain {
         id: chain
 
-        scope: rows
+        scope: root.page !== "" ? pageColumn : main
         area: cardZone
         holder: keys
     }
@@ -153,7 +144,10 @@ Item {
     Keys.onPressed: event => {
         if (!root.pinned)
             return;
-        if (event.key === Qt.Key_M && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
+        if (event.key === Qt.Key_Escape && root.page !== "") {
+            root.back();
+            event.accepted = true;
+        } else if (root.page === "" && event.key === Qt.Key_M && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
             Audio.toggleMute();
             event.accepted = true;
         } else if (chain.handle(event)) {
@@ -177,29 +171,6 @@ Item {
         const natural = wheel.inverted || (touchpad ? Compositor.naturalScrollTouchpad : Compositor.naturalScrollMouse);
         const notches = wheel.angleDelta.y / 120 * (natural ? -1 : 1);
         Audio.setVolume(Audio.volume + notches * root.step);
-    }
-
-    function warmthHue(k: int): color {
-        if (k <= 0)
-            return Appearance.colour.textFaint;
-
-        const t = k / 100.0;
-        let r, g, b;
-        if (t <= 66) {
-            r = 255;
-            g = 99.4708025861 * Math.log(t) - 161.1195681661;
-        } else {
-            r = 329.698727446 * Math.pow(t - 60, -0.1332047592);
-            g = 288.1221695283 * Math.pow(t - 60, -0.0755148492);
-        }
-        if (t >= 66)
-            b = 255;
-        else if (t <= 19)
-            b = 0;
-        else
-            b = 138.5177312231 * Math.log(t - 10) - 305.0447927307;
-        const m = Math.max(r, g, b);
-        return Appearance.legible(Appearance.rgb(r / m * 0.7 + 0.3, g / m * 0.7 + 0.3, b / m * 0.7 + 0.3));
     }
 
     Follow {
@@ -281,420 +252,378 @@ Item {
         acceptedButtons: Qt.NoButton
         enabled: reveal.value > 0.01
 
-        onWheel: wheel => root.nudge(wheel)
+        onWheel: wheel => {
+            if (root.page === "")
+                root.nudge(wheel);
+        }
 
-        Column {
-            id: rows
+        Item {
+            id: stage
 
             x: Appearance.padding.large
-            anchors.verticalCenter: parent.verticalCenter
+            y: Appearance.padding.large
             width: root.contentWidth
-            spacing: 0
+            height: root.contentHeight
+            clip: paging.value > 0 && paging.value < 1
             opacity: reveal.value
 
-            Grid {
-                id: switches
+            Column {
+                id: main
 
-                readonly property string focusGroup: "switches"
+                readonly property real tileWidth: (root.contentWidth - root.gap) / 2
 
-                readonly property real tileWidth: (width - columnSpacing) / 2
+                x: -paging.value * Appearance.padding.huge * 2
+                width: root.contentWidth
+                spacing: root.sectionGap
+                opacity: (1 - paging.value) * (1 - paging.value)
+                visible: paging.value < 0.999
+                enabled: root.page === ""
 
-                width: parent.width
-                columns: 2
-                columnSpacing: root.columnGap
-                rowSpacing: root.columnGap
+                Flow {
+                    id: tiles
 
-                QuickSwitch {
-                    width: switches.tileWidth
-                    visible: Network.available
-                    icon: Network.enabled ? "wifi" : "wifi_off"
-                    label: Network.enabled && Network.activeName ? Network.activeName : "Wi-Fi"
-                    on: Network.enabled
-                    detailed: root.hasMenu("network")
+                    readonly property int count: [root.hasNetwork, root.hasBluetooth, root.hasSound, root.hasPower].filter(v => v).length
 
-                    onToggled: Network.setEnabled(!Network.enabled)
-                    onOpened: keyed => root.openMenu("network", keyed)
-                }
-
-                QuickSwitch {
-                    width: switches.tileWidth
-                    visible: Bluetooth.available
-                    icon: Bluetooth.enabled ? "bluetooth" : "bluetooth_disabled"
-                    label: Bluetooth.enabled && Bluetooth.anyConnected ? Bluetooth.connectedDevices[0].name || "Bluetooth" : "Bluetooth"
-                    on: Bluetooth.enabled
-                    detailed: root.hasMenu("bluetooth")
-
-                    onToggled: Bluetooth.setEnabled(!Bluetooth.enabled)
-                    onOpened: keyed => root.openMenu("bluetooth", keyed)
-                }
-
-                QuickSwitch {
-                    width: switches.tileWidth
-                    icon: Notifications.quiet ? "do_not_disturb_on" : "do_not_disturb_off"
-                    label: "Do not disturb"
-                    on: Notifications.quiet
-
-                    onToggled: Notifications.setQuiet(!Notifications.quiet, "")
-                }
-
-                QuickSwitch {
-                    width: switches.tileWidth
-                    icon: "coffee"
-                    label: "Keep awake"
-                    on: Idle.awake
-
-                    onToggled: Idle.awake = !Idle.awake
-                }
-
-                QuickSwitch {
-                    width: switches.tileWidth
-                    visible: !!Audio.source
-                    icon: Audio.sourceMuted ? "mic_off" : "mic"
-                    label: "Microphone"
-                    on: !Audio.sourceMuted
-                    detailed: root.hasMenu("audio")
-
-                    onToggled: Audio.toggleSourceMute()
-                    onOpened: keyed => root.openMenu("audio", keyed)
-                }
-
-                QuickSwitch {
-                    width: switches.tileWidth
-                    visible: PowerProfile.available && PowerProfile.choices.length > 1
-                    icon: Switches.powerIcon(PowerProfile.profile)
-                    label: Switches.powerLabel(PowerProfile.profile)
-                    on: Switches.powerRaised(PowerProfile.profile)
-                    detailed: root.hasMenu("battery")
-
-                    onToggled: PowerProfile.set(Switches.nextProfile(PowerProfile.choices, PowerProfile.profile))
-                    onOpened: keyed => root.openMenu("battery", keyed)
-                }
-
-                QuickSwitch {
-                    width: switches.tileWidth
-                    icon: Appearance.light ? "light_mode" : "dark_mode"
-                    label: "Dark mode"
-                    on: !Appearance.light
-
-                    onToggled: DarkMode.choose(Appearance.light ? "dark" : "light")
-                }
-
-                QuickSwitch {
-                    width: switches.tileWidth
-                    visible: ScreenRecorder.enabled && ScreenRecorder.ready
-                    icon: ScreenRecorder.recording ? "stop_circle" : "screen_record"
-                    label: ScreenRecorder.recording ? ScreenRecorder.clock : "Record"
-                    on: ScreenRecorder.busy
-
-                    onToggled: {
-                        if (ScreenRecorder.recording) {
-                            ScreenRecorder.stop();
-                            return;
-                        }
-                        if (ScreenRecorder.busy)
-                            return;
-                        const screen = QsWindow.window?.screen?.name ?? "";
-                        root.pinned = false;
-                        ScreenRecorder.start("screen", false, screen, "");
+                    function span(last: bool): real {
+                        return last && tiles.count % 2 === 1 ? root.contentWidth : main.tileWidth;
                     }
-                }
-
-                QuickSwitch {
-                    width: switches.tileWidth
-                    visible: Tunnels.list.length > 0
-                    icon: "vpn_lock"
-                    label: Tunnels.anyOn && Tunnels.activeName ? Tunnels.activeName : "VPN"
-                    on: Tunnels.anyOn
-
-                    onToggled: Tunnels.setFirst(!Tunnels.anyOn)
-                }
-            }
-
-            Item {
-                width: 1
-                height: root.rowGap * 1.5
-            }
-
-            Item {
-                id: soundRow
-
-                width: parent.width
-                height: Math.max(root.iconColumn, soundSlider.height)
-
-                Icon {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: root.iconColumn
-
-                    name: Audio.icon(Audio.volume, Audio.muted)
-                    color: Audio.muted ? Appearance.colour.textFaint : Audio.volume > 0 ? Appearance.huedOr(Appearance.hue.sound, Appearance.colour.textDim) : Appearance.colour.textDim
-
-                    readonly property bool keyable: true
-
-                    function press(): void {
-                        Audio.toggleMute();
-                    }
-
-                    FocusMark {
-                        shown: parent.activeFocus
-                        pill: "object"
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        anchors.margins: -Appearance.padding.small
-                        cursorShape: Qt.PointingHandCursor
-
-                        onClicked: Audio.toggleMute()
-                    }
-                }
-
-                Slider {
-                    id: soundSlider
-
-                    anchors.left: parent.left
-                    anchors.leftMargin: root.iconColumn + root.columnGap
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: root.sliderWidth
-
-                    value: Audio.volume
-                    from: 0
-                    to: Audio.maxVolume
-                    warnAbove: 1
-                    step: root.step
-                    dimmed: Audio.muted
-                    hue: Appearance.hue.sound
-
-                    onMoved: value => Audio.setVolume(value)
-                }
-
-                StyledText {
-                    anchors.right: parent.right
-                    anchors.rightMargin: root.actionColumn + root.columnGap
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: root.valueWidth
-
-                    text: `${Math.round(Audio.volume * 100)}%`
-                    color: Appearance.colour.textDim
-                }
-
-                Item {
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: root.actionColumn
-                    height: root.actionColumn
-
-                    readonly property bool keyable: true
-
-                    function press(): void {
-                        root.mixing = !root.mixing;
-                    }
-
-                    FocusMark {
-                        anchors.margins: -Appearance.padding.small - reach
-                        shown: parent.activeFocus
-                        pill: "object"
-                    }
-
-                    SquircleRect {
-                        anchors.centerIn: parent
-                        width: parent.width + Appearance.padding.small * 2
-                        height: width
-                        pill: "object"
-                        color: root.mixing ? Appearance.colour.chosen : mixHover.hovered ? Appearance.colour.fill : "transparent"
-                    }
-
-                    Icon {
-                        anchors.centerIn: parent
-                        name: "tune"
-                        color: root.mixing ? Appearance.colour.onChosen : Appearance.colour.textDim
-                    }
-
-                    HoverHandler {
-                        id: mixHover
-
-                        cursorShape: Qt.PointingHandCursor
-                    }
-
-                    TapHandler {
-                        onTapped: root.mixing = !root.mixing
-                    }
-                }
-            }
-
-            Item {
-                id: mixerFold
-
-                width: parent.width
-                height: Math.round((mixerList.implicitHeight + root.rowGap) * fold.value)
-                clip: true
-
-                Column {
-                    id: mixerList
 
                     width: parent.width
-                    y: root.rowGap + (fold.value - 1) * Appearance.padding.large
-                    opacity: fold.value * fold.value
-                    spacing: root.rowGap
+                    spacing: root.gap
+                    visible: tiles.count > 0
 
-                    Repeater {
-                        model: ScriptModel {
-                            values: root.mixerShown ? Mixer.outputApps.map(a => a.key) : []
+                    QuickTile {
+                        id: network
+
+                        width: tiles.span(!root.hasBluetooth && !root.hasSound && !root.hasPower)
+                        visible: root.hasNetwork
+                        icon: !Network.available ? "lan" : Network.enabled ? "wifi" : "wifi_off"
+                        label: Network.available ? "Wi-Fi" : "Ethernet"
+                        detail: Switches.networkState(Network.available, Network.enabled, Network.activeName, Network.wiredConnected)
+                        on: Network.available ? Network.enabled : Network.wiredConnected
+
+                        onToggled: if (Network.available)
+                            Network.setEnabled(!Network.enabled)
+                        onOpened: root.openPage("network")
+                    }
+
+                    QuickTile {
+                        id: bluetooth
+
+                        width: tiles.span(!root.hasSound && !root.hasPower)
+                        visible: root.hasBluetooth
+                        icon: Bluetooth.enabled ? "bluetooth" : "bluetooth_disabled"
+                        label: "Bluetooth"
+                        detail: !Bluetooth.enabled ? "Off" : Bluetooth.anyConnected ? Bluetooth.connectedDevices[0].name || "Connected" : "On"
+                        on: Bluetooth.enabled
+
+                        onToggled: Bluetooth.setEnabled(!Bluetooth.enabled)
+                        onOpened: root.openPage("bluetooth")
+                    }
+
+                    QuickTile {
+                        id: sound
+
+                        width: tiles.span(!root.hasPower)
+                        visible: root.hasSound
+                        icon: Audio.icon(Audio.volume, Audio.muted)
+                        label: "Sound"
+                        detail: Audio.muted ? "Muted" : Audio.deviceLabel(Audio.sink)
+                        on: !Audio.muted
+
+                        onToggled: Audio.toggleMute()
+                        onOpened: root.openPage("sound")
+                    }
+
+                    QuickTile {
+                        id: power
+
+                        width: tiles.span(true)
+                        visible: root.hasPower
+                        icon: PowerProfile.icon(PowerProfile.profile)
+                        label: Battery.available ? "Battery" : "Power mode"
+                        detail: Switches.powerDetail(PowerProfile.available ? PowerProfile.label(PowerProfile.profile) : "", Battery.available, Battery.percentage)
+                        on: Switches.powerRaised(PowerProfile.profile)
+
+                        onToggled: if (PowerProfile.available)
+                            PowerProfile.set(Switches.nextProfile(PowerProfile.choices, PowerProfile.profile))
+                        onOpened: root.openPage("power")
+                    }
+                }
+
+                Grid {
+                    id: toggles
+
+                    columns: 2
+                    width: parent.width
+                    columnSpacing: root.gap
+                    rowSpacing: 0
+
+                    readonly property real cell: (root.contentWidth - root.gap) / 2
+
+                    QuickToggle {
+                        id: quiet
+
+                        width: toggles.cell
+                        icon: Notifications.quiet ? "do_not_disturb_on" : "do_not_disturb_off"
+                        label: "Do not disturb"
+                        on: Notifications.quiet
+
+                        onToggled: Notifications.setQuiet(!Notifications.quiet, "")
+                    }
+
+                    QuickToggle {
+                        id: awake
+
+                        width: toggles.cell
+                        icon: "coffee"
+                        label: "Keep awake"
+                        on: Idle.awake
+
+                        onToggled: Idle.awake = !Idle.awake
+                    }
+
+                    QuickToggle {
+                        id: microphone
+
+                        width: toggles.cell
+                        visible: !!Audio.source
+                        icon: Audio.sourceMuted ? "mic_off" : "mic"
+                        label: "Microphone"
+                        on: !Audio.sourceMuted
+
+                        onToggled: Audio.toggleSourceMute()
+                    }
+
+                    QuickToggle {
+                        id: dark
+
+                        width: toggles.cell
+                        icon: Appearance.light ? "light_mode" : "dark_mode"
+                        label: "Dark mode"
+                        on: !Appearance.light
+
+                        onToggled: DarkMode.choose(Appearance.light ? "dark" : "light")
+                    }
+
+                    QuickToggle {
+                        id: record
+
+                        width: toggles.cell
+                        visible: ScreenRecorder.enabled && ScreenRecorder.ready
+                        icon: ScreenRecorder.recording ? "stop_circle" : "screen_record"
+                        label: ScreenRecorder.recording ? ScreenRecorder.clock : "Record"
+                        on: ScreenRecorder.busy
+
+                        onToggled: {
+                            if (ScreenRecorder.recording) {
+                                ScreenRecorder.stop();
+                                return;
+                            }
+                            if (ScreenRecorder.busy)
+                                return;
+                            const screen = QsWindow.window?.screen?.name ?? "";
+                            root.pinned = false;
+                            ScreenRecorder.start("screen", false, screen, "");
+                        }
+                    }
+
+                    QuickToggle {
+                        id: vpn
+
+                        width: toggles.cell
+                        visible: Tunnels.list.length > 0
+                        icon: "vpn_lock"
+                        label: Tunnels.anyOn && Tunnels.activeName ? Tunnels.activeName : "VPN"
+                        on: Tunnels.anyOn
+
+                        onToggled: Tunnels.setFirst(!Tunnels.anyOn)
+                    }
+                }
+
+                Column {
+                    width: parent.width
+                    spacing: root.gap
+
+                    LevelBar {
+                        width: parent.width
+                        icon: Audio.icon(Audio.volume, Audio.muted)
+                        value: Audio.volume
+                        from: 0
+                        to: Audio.maxVolume
+                        warnAbove: 1
+                        step: root.step
+                        dimmed: Audio.muted
+                        reading: `${Math.round(Audio.volume * 100)}%`
+
+                        onMoved: value => Audio.setVolume(value)
+                    }
+
+                    LevelBar {
+                        width: parent.width
+                        visible: Display.brightnessReady
+                        icon: "brightness_6"
+                        value: Display.levelKnown ? Display.level : 0
+                        from: Display.floor
+                        to: 1
+                        dimmed: !Display.levelKnown
+                        reading: Display.levelKnown ? `${Math.round(Display.level * 100)}%` : "..."
+
+                        onMoved: value => Display.setLevel(value)
+                    }
+
+                    LevelBar {
+                        width: parent.width
+                        icon: "nightlight"
+                        value: Display.kelvin > 0 ? Display.kelvin : Display.lastWarm
+                        from: Display.warmest
+                        to: Display.neutral
+                        step: (Display.neutral - Display.warmest) / 20
+                        dimmed: !Display.warm
+                        toggles: true
+                        reading: Display.kelvin > 0 ? `${Display.kelvin}K` : "Off"
+
+                        onMoved: value => Display.setWarmth(Math.round(value))
+                        onToggled: Display.toggleWarm()
+                    }
+                }
+            }
+
+            Column {
+                id: pageColumn
+
+                x: (1 - paging.value) * Appearance.padding.huge * 2
+                width: root.contentWidth
+                spacing: root.sectionGap
+                opacity: paging.value * paging.value
+                visible: root.shownPage !== ""
+                enabled: root.page !== ""
+
+                Item {
+                    id: header
+
+                    width: parent.width
+                    height: Appearance.sizes.rowHeight
+
+                    Item {
+                        id: backButton
+
+                        readonly property bool keyable: true
+
+                        function press(): void {
+                            root.back();
                         }
 
-                        delegate: MixerQuickRow {
-                            required property string modelData
+                        width: parent.height
+                        height: parent.height
+                        scale: backPress.value
 
-                            width: mixerList.width
-                            appKey: modelData
-                            iconColumn: root.iconColumn
-                            gap: root.columnGap
-                            sliderWidth: root.sliderWidth
-                            valueWidth: root.valueWidth
+                        Follow {
+                            id: backPress
+
+                            target: backPointer.pressed ? Appearance.press.plate : 1
+                            speed: Appearance.animation.revealSpeed
+                            epsilon: Appearance.animation.fadeEpsilon
+                            startsAtTarget: true
+                        }
+
+                        SquircleRect {
+                            anchors.fill: parent
+                            pill: "object"
+                            color: backPointer.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
+                            rim: 1
+                        }
+
+                        FocusMark {
+                            shown: backButton.activeFocus
+                            pill: "object"
+                        }
+
+                        Icon {
+                            anchors.centerIn: parent
+                            anchors.horizontalCenterOffset: -Appearance.padding.hair
+                            name: "chevron_left"
+                            color: Appearance.colour.text
+                        }
+
+                        MouseArea {
+                            id: backPointer
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+
+                            onClicked: root.back()
                         }
                     }
 
                     StyledText {
-                        visible: !Mixer.outputApps.length
-                        x: root.iconColumn + root.columnGap
-                        text: "No app has sound open"
-                        color: Appearance.colour.textFaint
-                        font.pixelSize: Appearance.font.size.small
+                        anchors.left: backButton.right
+                        anchors.leftMargin: Appearance.padding.normal
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.pages[root.shownPage]?.title ?? ""
+                        color: Appearance.colour.text
+                        font.pixelSize: Appearance.font.size.large
+                        elide: Text.ElideRight
+                    }
+                }
+
+                Flickable {
+                    id: pageView
+
+                    width: parent.width
+                    height: Math.max(0, root.pageHeight - header.height - root.sectionGap)
+                    contentWidth: width
+                    contentHeight: pageBody.height
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    interactive: pageView.contentHeight > pageView.height
+
+                    WheelStep {
+                        flick: pageView
                     }
 
-                    Button {
-                        id: mixerOpen
+                    Loader {
+                        id: pageBody
 
-                        x: root.iconColumn + root.columnGap - mixerOpen.padX
-                        style: "bare"
-                        text: "Open volume mixer"
+                        width: pageView.width
+                        active: root.shownPage !== ""
+                        sourceComponent: root.pages[root.shownPage]?.body ?? null
 
-                        onClicked: {
-                            root.pinned = false;
-                            root.mixing = false;
-                            Mixer.show();
+                        onLoaded: {
+                            pageBody.item.width = Qt.binding(() => pageBody.width);
+                            if (pageBody.item.showing !== undefined)
+                                pageBody.item.showing = Qt.binding(() => root.page !== "" && root.active);
                         }
                     }
                 }
             }
-
-            Item {
-                width: 1
-                height: root.rowGap
-                visible: brightRow.visible
-            }
-
-            Item {
-                id: brightRow
-
-                width: parent.width
-                height: Math.max(root.iconColumn, brightSlider.height)
-                visible: Display.brightnessReady
-
-                Icon {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: root.iconColumn
-
-                    name: "brightness_6"
-                    color: Display.levelKnown ? Appearance.huedOr(Appearance.hue.light, Appearance.colour.textDim) : Appearance.colour.textFaint
-                }
-
-                Slider {
-                    id: brightSlider
-
-                    anchors.left: parent.left
-                    anchors.leftMargin: root.iconColumn + root.columnGap
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: root.sliderWidth
-
-                    value: Display.levelKnown ? Display.level : 0
-                    from: Display.floor
-                    to: 1
-                    dimmed: !Display.levelKnown
-                    hue: Appearance.hue.light
-
-                    onMoved: value => Display.setLevel(value)
-                }
-
-                StyledText {
-                    anchors.right: parent.right
-                    anchors.rightMargin: root.actionColumn + root.columnGap
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: root.valueWidth
-
-                    text: Display.levelKnown ? `${Math.round(Display.level * 100)}%` : "..."
-                    color: Appearance.colour.textDim
-                }
-            }
-
-            Item {
-                width: 1
-                height: root.rowGap
-            }
-
-            Item {
-                id: warmRow
-
-                width: parent.width
-                height: Math.max(root.iconColumn, warmSlider.height)
-
-                Icon {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: root.iconColumn
-
-                    name: "nightlight"
-                    color: Display.warm ? root.warmthHue(Display.kelvin) : Appearance.colour.textFaint
-
-                    readonly property bool keyable: true
-
-                    function press(): void {
-                        Display.toggleWarm();
-                    }
-
-                    FocusMark {
-                        shown: parent.activeFocus
-                        pill: "object"
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        anchors.margins: -Appearance.padding.small
-                        cursorShape: Qt.PointingHandCursor
-
-                        onClicked: Display.toggleWarm()
-                    }
-                }
-
-                Slider {
-                    id: warmSlider
-
-                    anchors.left: parent.left
-                    anchors.leftMargin: root.iconColumn + root.columnGap
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: root.sliderWidth
-
-                    value: Display.kelvin > 0 ? Display.kelvin : Display.lastWarm
-                    from: Display.warmest
-                    to: Display.neutral
-                    dimmed: !Display.warm
-                    litOverride: root.warmthHue(Display.kelvin > 0 ? Display.kelvin : Display.lastWarm)
-
-                    onMoved: value => Display.setWarmth(Math.round(value))
-                }
-
-                StyledText {
-                    anchors.right: parent.right
-                    anchors.rightMargin: root.actionColumn + root.columnGap
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: root.valueWidth
-
-                    text: Display.kelvin > 0 ? `${Display.kelvin}K` : "off"
-                    color: Appearance.colour.textDim
-                }
-            }
         }
+    }
+
+    Component {
+        id: networkPage
+
+        NetworkMenu {}
+    }
+
+    Component {
+        id: bluetoothPage
+
+        BluetoothMenu {}
+    }
+
+    Component {
+        id: soundPage
+
+        SoundMenu {}
+    }
+
+    Component {
+        id: powerPage
+
+        BatteryMenu {}
     }
 
     MouseArea {

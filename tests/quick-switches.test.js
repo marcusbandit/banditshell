@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "modules/quickcontrols/quick-switches.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const Switches = new Function(`${src}\nreturn { powerLabel, powerIcon, nextProfile, powerRaised };`)();
+const Switches = new Function(`${src}\nreturn { nextProfile, powerRaised };`)();
 
 test("the power switch steps through the modes the daemon offers and wraps", () => {
     const all = ["saver", "balanced", "fast"];
@@ -28,9 +28,19 @@ test("only a mode away from balanced lights the switch", () => {
     assert.strictEqual(Switches.powerRaised(""), false);
 });
 
-test("every mode has a label and an icon, and an unknown one falls back", () => {
-    assert.strictEqual(Switches.powerLabel("fast"), "Performance");
-    assert.strictEqual(Switches.powerIcon("saver"), "eco");
-    assert.strictEqual(Switches.powerLabel("custom-tuned"), "Power mode");
-    assert.strictEqual(Switches.powerIcon("custom-tuned"), "bolt");
+const More = new Function(`${src}\nreturn { networkState, powerDetail };`)();
+
+test("the network tile names the Wi-Fi network, then a cable, then says why it is offline", () => {
+    assert.strictEqual(More.networkState(true, true, "Example Net", false), "Example Net");
+    assert.strictEqual(More.networkState(true, true, "Example Net", true), "Example Net");
+    assert.strictEqual(More.networkState(true, false, "", true), "Ethernet");
+    assert.strictEqual(More.networkState(true, false, "", false), "Off");
+    assert.strictEqual(More.networkState(true, true, "", false), "Not connected");
+    assert.strictEqual(More.networkState(false, false, "", false), "Not connected");
+});
+
+test("the power tile reads the battery first when there is one", () => {
+    assert.strictEqual(More.powerDetail("Performance", false, 0), "Performance");
+    assert.strictEqual(More.powerDetail("Balanced", true, 81.6), "82%, Balanced");
+    assert.strictEqual(More.powerDetail("", true, 40), "40%");
 });

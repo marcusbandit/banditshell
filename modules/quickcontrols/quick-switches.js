@@ -1,19 +1,5 @@
 .pragma library
 
-const powerModes = {
-    saver: { label: "Energy saver", icon: "eco" },
-    balanced: { label: "Balanced", icon: "balance" },
-    fast: { label: "Performance", icon: "speed" }
-};
-
-function powerLabel(profile) {
-    return powerModes[profile]?.label ?? "Power mode";
-}
-
-function powerIcon(profile) {
-    return powerModes[profile]?.icon ?? "bolt";
-}
-
 function nextProfile(choices, profile) {
     const list = Array.isArray(choices) ? choices : [];
     if (!list.length)
@@ -24,4 +10,19 @@ function nextProfile(choices, profile) {
 
 function powerRaised(profile) {
     return !!profile && profile !== "balanced";
+}
+
+function networkState(wifi, enabled, name, wired) {
+    if (wifi && enabled && name)
+        return name;
+    if (wired)
+        return "Ethernet";
+    return wifi && !enabled ? "Off" : "Not connected";
+}
+
+function powerDetail(mode, battery, percent) {
+    if (!battery)
+        return mode;
+    const level = `${Math.round(percent)}%`;
+    return mode ? `${level}, ${mode}` : level;
 }

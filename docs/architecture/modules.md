@@ -100,7 +100,7 @@ launcher's groups in the config.
 | island | 5 | modules/island, Notices, Activities, Levels | core, compositor, notifications, media, apps, clock, audio, display (optional: clipboard, capture, updates, files) | island, inspect, activity | island |
 | launcher-online | 5 | browser, define, github, packages, speedtest, translate and video sources | core, compositor, launcher, files, apps | none | launcher.online |
 | lock | 5 | Lock, modules/lock | core, compositor, media, wallpaper, clock, power, notifications | none | lock |
-| quickcontrols | 5 | modules/quickcontrols | core, compositor, audio, display, mixer, network, notifications, power, capture | quickcontrols | screen.grabFraction, screen.linger |
+| quickcontrols | 5 | modules/quickcontrols | core, compositor, audio, bar, display, network, notifications, power, capture | quickcontrols | screen.grabFraction, screen.linger |
 | screentime | 5 | Usage, UsageApps, UsageLimits | core, compositor, power | none | usage |
 | session | 5 | modules/session | core, compositor, power | session | session |
 | host | 5 | shell.qml, ShellWindow, Chassis, Ipc (the list of every target), the Shell window registry | core, compositor, tour | border | none |

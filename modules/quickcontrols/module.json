@@ -7,7 +7,7 @@
     "tests": ["tests/quick-switches.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor", "audio", "display", "mixer", "network", "notifications", "power", "capture"],
+    "packages": ["core", "compositor", "audio", "bar", "display", "network", "notifications", "power", "capture"],
     "optional": []
   },
   "provides": {
