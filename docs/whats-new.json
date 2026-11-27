@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-27-bright-outline",
+      "date": "2026-11-27",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The wallpaper outline line is bright and thicker on dark pictures"
+        }
+      ]
+    },
+    {
       "id": "2026-11-27-glass-surfaces",
       "date": "2026-11-27",
       "changes": [
