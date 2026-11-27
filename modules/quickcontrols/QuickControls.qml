@@ -33,7 +33,7 @@ Item {
 
     readonly property real chevronRoom: Math.round(Appearance.sizes.rowHeight * 0.8) + Appearance.button.seam
 
-    readonly property real tileWidth: Math.ceil(Math.max(plainLabel.advanceWidth, detailedLabel.advanceWidth + root.chevronRoom) + Appearance.padding.normal * 2 + Appearance.font.iconSize + Appearance.padding.small)
+    readonly property real tileWidth: Math.ceil(Math.max(plainLabel.advanceWidth, Math.max(detailedLabel.advanceWidth, saverLabel.advanceWidth) + root.chevronRoom) + Appearance.padding.normal * 2 + Appearance.font.iconSize + Appearance.padding.small)
 
     readonly property real contentWidth: Math.max(root.levelsWidth, root.tileWidth * 2 + root.columnGap)
 
@@ -51,6 +51,14 @@ Item {
         font.family: Appearance.font.family
         font.pixelSize: Appearance.font.size.small
         text: "Performance"
+    }
+
+    TextMetrics {
+        id: saverLabel
+
+        font.family: Appearance.font.family
+        font.pixelSize: Appearance.font.size.small
+        text: "Energy saver"
     }
 
     readonly property real panelWidth: root.contentWidth + Appearance.padding.large * 2
@@ -137,7 +145,8 @@ Item {
     FocusChain {
         id: chain
 
-        scope: cardZone
+        scope: rows
+        area: cardZone
         holder: keys
     }
 
@@ -283,8 +292,6 @@ Item {
             spacing: 0
             opacity: reveal.value
 
-            readonly property string focusGroup: "levels"
-
             Grid {
                 id: switches
 
@@ -384,6 +391,8 @@ Item {
                             ScreenRecorder.stop();
                             return;
                         }
+                        if (ScreenRecorder.busy)
+                            return;
                         const screen = QsWindow.window?.screen?.name ?? "";
                         root.pinned = false;
                         ScreenRecorder.start("screen", false, screen, "");

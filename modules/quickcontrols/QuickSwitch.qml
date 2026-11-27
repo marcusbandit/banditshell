@@ -119,8 +119,7 @@ Item {
             cursorShape: Qt.PointingHandCursor
 
             onClicked: root.toggled()
-            onPressAndHold: if (root.detailed)
-                root.opened(false)
+            onPressAndHold: root.detailed ? root.opened(false) : root.toggled()
         }
     }
 
