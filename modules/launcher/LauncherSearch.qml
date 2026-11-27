@@ -2009,6 +2009,7 @@ QtObject {
                 label: "Force quit",
                 tucked: true,
                 destructive: true,
+                arms: "forcequit",
                 run: () => root.armForceQuit(entry)
             }
         ];
