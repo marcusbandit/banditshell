@@ -1,6 +1,40 @@
 {
   "entries": [
     {
+      "id": "2026-11-27-glass-surfaces",
+      "date": "2026-11-27",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The launcher, menus, wallpaper picker and island move to clear glass"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Secrets typed in the launcher no longer reach other programs",
+          "go": "panel launcher open"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Ctrl+Enter never quits or kills; Force quit asks first",
+          "go": "panel launcher open"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Tapping the clock in the open sidebar opens the clock menu",
+          "go": "panel clock open"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The wheel scrolls menus and settings instead of changing values"
+        }
+      ]
+    },
+    {
       "id": "2026-11-27-glass-controls",
       "date": "2026-11-27",
       "changes": [
