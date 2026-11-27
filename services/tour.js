@@ -231,9 +231,9 @@ function words(step, facts, explain) {
         return {
             title: step.gesture === "rail" ? "The rail" : "The sidebar",
             payoff: (f.workspaces > 0 ? "Your " + f.workspaces + " workspaces" : "Your workspaces") + ", and a mark only when something needs you.",
-            ask: step.gesture === "rail" ? "Rest the pointer on the rail at the left edge." : "Press a mark in the column on the left.",
-            open: step.gesture === "rail" ? "Open the rail" : "Open a menu",
-            away: step.gesture === "rail" ? "It grows into the full column. Move away and it rests again." : "Press it again, or Esc, to close the menu.",
+            ask: step.gesture === "rail" ? "Press the time on the rail at the left edge." : "Press a mark in the column on the left.",
+            open: step.gesture === "rail" ? "Open the clock menu" : "Open a menu",
+            away: "Press it again, or Esc, to close the menu.",
             note: note
         };
     case "files":
