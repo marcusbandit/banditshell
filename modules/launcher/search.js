@@ -67,6 +67,14 @@ function sectioned(actions) {
     }));
 }
 
+function destructive(action) {
+    return !!(action && (action.alarm || action.destructive));
+}
+
+function secondaryAction(actions) {
+    return sectioned(actions).slice(1).find(a => !a.tucked && a.run && !destructive(a)) ?? null;
+}
+
 var PICTURE = /\.(?:png|jpe?g|webp|gif|bmp|svg|avif|tiff?)$/i;
 
 function streamName(label) {
@@ -1426,6 +1434,27 @@ var TOKENISH = /(?:^|\s)(?:eyJ[\w-]{8,}\.[\w-]{8,}|(?=[A-Za-z0-9+\/=_.-]*\d)(?=[
 
 function looksLikeSecret(text) {
     return TOKENISH.test(String(text || ""));
+}
+
+function masked(text, span) {
+    var raw = String(text || "");
+    if (!span || span.end <= span.start)
+        return raw;
+    return raw.slice(0, span.start) + "•".repeat(Math.min(raw.length, span.end) - span.start) + raw.slice(span.end);
+}
+
+function looksLikeKey(text) {
+    var typed = String(text || "").trim();
+    if (!looksLikeSecret(typed))
+        return false;
+    if (/(?:^|\s)eyJ/.test(typed))
+        return true;
+    return !/\.[A-Za-z][A-Za-z0-9]{0,4}$/.test(typed) && !/\d{4}-\d{2}-\d{2}/.test(typed);
+}
+
+function sendableQuery(text, claimed) {
+    var typed = String(text || "");
+    return claimed || looksLikeKey(typed) ? "" : typed;
 }
 
 function fallbackRows(chosen, text, webTemplate) {

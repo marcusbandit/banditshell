@@ -64,7 +64,7 @@ function last(lines) {
 
 function first(rects, width) {
     for (let i = 0; i < rects.length; i++)
-        if (rects[i].w >= width / 2)
+        if (rects[i].w >= width * 0.45)
             return i;
     return rects.length ? 0 : -1;
 }

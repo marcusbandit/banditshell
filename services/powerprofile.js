@@ -14,6 +14,18 @@ const tunedFamilies = {
 
 const order = ["saver", "balanced", "fast"];
 
+const labels = { saver: "Energy saver", balanced: "Balanced", fast: "Performance" };
+
+const icons = { saver: "eco", balanced: "balance", fast: "speed" };
+
+function labelOf(profile) {
+    return labels[profile] ?? "Power mode";
+}
+
+function iconOf(profile) {
+    return icons[profile] ?? "bolt";
+}
+
 function nameFor(daemon, profile) {
     return daemons[daemon]?.[profile] ?? "";
 }

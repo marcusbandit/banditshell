@@ -2,6 +2,7 @@ import QtQuick
 import qs.config
 import qs.components
 import "../../services/mixer.js" as Logic
+import "../../components/wheel-pass.js" as WheelPass
 
 Item {
     id: root
@@ -121,6 +122,12 @@ Item {
             if (pressed)
                 report(mouse.x);
         }
-        onWheel: wheel => root.ask(root.value + wheel.angleDelta.y / 120 * root.step)
+        onWheel: wheel => {
+            if (wheel.angleDelta.y === 0 || WheelPass.passes(root, root.activeFocus, pointer.pressed)) {
+                wheel.accepted = false;
+                return;
+            }
+            root.ask(root.value + wheel.angleDelta.y / 120 * root.step);
+        }
     }
 }

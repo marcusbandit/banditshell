@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "system-upgrade.js" as Upgrade
+import "dies-with-shell.js" as DiesWithShell
 
 Singleton {
     id: root
@@ -169,7 +170,7 @@ Singleton {
     function follow(pid: int): void {
         root.followed = true;
         root.work = Upgrade.create(root.tool);
-        follower.command = pid > 0 ? ["tail", "-c", "+1", "-f", `--pid=${pid}`, "-s", "0.5", "--", `${root.dir}/log`] : ["cat", "--", `${root.dir}/log`];
+        follower.command = pid > 0 ? DiesWithShell.command(["tail", "-c", "+1", "-f", `--pid=${pid}`, "-s", "0.5", "--", `${root.dir}/log`]) : ["cat", "--", `${root.dir}/log`];
         follower.running = true;
     }
 

@@ -6,6 +6,7 @@ import Quickshell.Io
 import qs.config
 import "desktop-entries.js" as Entries
 import "ranking.js" as Ranking
+import "app-scope.js" as AppScope
 
 Singleton {
     id: root
@@ -525,14 +526,37 @@ Singleton {
     function launch(entry: var): void {
         root.record(entry);
         Launching.start(entry);
-
-        entry?.execute();
+        root.run(entry, entry);
     }
 
     function launchAction(entry: var, action: var): void {
         root.record(entry);
         Launching.start(entry);
-        action?.execute();
+        root.run(entry, action);
+    }
+
+    property var scopePrefix: []
+    property int launches: 0
+
+    function run(entry: var, runnable: var): void {
+        const argv = runnable?.command ? Array.from(runnable.command) : [];
+        if (argv.length === 0 || root.scopePrefix.length === 0) {
+            runnable?.execute();
+            return;
+        }
+        root.launches += 1;
+        Quickshell.execDetached({
+            command: AppScope.command(root.scopePrefix, entry?.id, `${Date.now().toString(16)}_${root.launches}`, argv),
+            workingDirectory: entry?.workingDirectory ?? ""
+        });
+    }
+
+    Process {
+        running: true
+        command: ["sh", "-c", AppScope.PROBE]
+        stdout: StdioCollector {
+            onStreamFinished: root.scopePrefix = AppScope.prefixFor(text)
+        }
     }
 
     readonly property real halfLifeDays: Config.values.launcher.halfLifeDays

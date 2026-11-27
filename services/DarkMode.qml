@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "dark-mode.js" as Schemes
+import "dies-with-shell.js" as DiesWithShell
 
 Singleton {
     id: root
@@ -144,7 +145,7 @@ Singleton {
 
     Process {
         running: root.available
-        command: ["gsettings", "monitor", "org.gnome.desktop.interface", "color-scheme"]
+        command: DiesWithShell.command(["gsettings", "monitor", "org.gnome.desktop.interface", "color-scheme"])
         stdout: SplitParser {
             onRead: line => root.take(line)
         }

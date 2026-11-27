@@ -6,7 +6,6 @@ const placedText = (v, at) => {
     const got = Math.round(at * 100);
     return at < 0 || got === want ? `${want}% from top` : `${want}% from top, moved ${got < want ? "up" : "down"} to fit`;
 };
-const PEN_BUTTONS_WHY = "Right click and middle click are what the stylus buttons send as they come. Erase turns the pen to its eraser for as long as the button is held. Changing them makes the shell sit between the pen and Hyprland, so a pen on its defaults is left untouched.";
 const signed = v => Math.abs(v) < 0.01 ? "as is" : (v > 0 ? "+" : "") + v.toFixed(2);
 const kelvin = (s, v) => {
     const top = s.neutral || 6500;
@@ -62,25 +61,6 @@ const SEARCH_TITLES = {
     tunnels: "Tunnels", shortcuts: "Aliases and hotkeys", snippets: "Snippets", quicklinks: "Quicklinks", plugins: "Launcher plugins"
 };
 
-const WIDGET_WHY = {
-    winLayouts: "How Hyprland tiles windows on this screen. Scrolling and hy3 are plugins and need installing first. Custom opens the layout workshop: draw regions, pick where each new window goes, and the shell writes a Lua layout and loads it into Hyprland without touching your config files.",
-    via: "Pick Custom under Board, then import the .json your keyboard’s maker publishes for usevia.app. Import lists the VIA files in Downloads; Browse opens any other. The sheet then draws your exact board, split halves and odd keys included. Add a keymap saved from VIA (Save + Load, Save) and the keys you bind light up on it. Open the file to edit it into your own board; the sheet follows your edits.",
-    modes: "Like a focus on a phone. Pick one and it changes a handful of settings; pick none and they go back.",
-    usage: "Time with each app in front of you today, counted only while you are active.",
-    recent: "Every setting you change lands here with a way back. The search field shows the same list when it is empty.",
-    nets: "Click a network to join, share or forget it in the pane. The camera button reads a Wi-Fi code.",
-    devices: "Click a device to connect, trust, forget or block it in the pane.",
-    volume: "Scroll the speaker in the sidebar to change it from anywhere.",
-    themes: "Themes come from ~/.config/theme. The theme’s shades paint the panels; its highlight colours paint everything that’s on.",
-    wsStyles: "Plates stack the apps in each workspace. Map draws a bar per window. Blocks draws a square per window.",
-    walls: "A new wallpaper grows out from where you clicked.",
-    battery: "Charge over the last day. The dashed lines are the hold point and the warning.",
-    keys: "Click a key to change it in the pane.",
-    snippets: "Type a snippet's keyword or name in the launcher and press Enter to type it into the app you were in. {date}, {time} and {clipboard} fill in as it is typed; {cursor} is where the caret ends up. To expand a keyword typed in any app, bind a key to snippets.expand in Aliases and hotkeys, type the keyword and press it.",
-    quicklinks: "Type a keyword, a space and what to look for. {query} in the address is where it goes. Up to three different words in braces, like {from} and {to}, take a value each, in the order they first appear.",
-    plugins: "A plugin is a folder in ~/.config/banditshell/plugins with a plugin.json and a program in any language. It adds rows to the launcher under its own word, and some to plain searches. It runs as you, so only add plugins you would run yourself."
-};
-
 const PAGES_SOURCE = {
     wifi: {
         id: "wifi", name: "Wi-Fi", icon: "wifi", preview: "network", closed: s => !!s.networkMissing,
@@ -90,19 +70,14 @@ const PAGES_SOURCE = {
                 { n: [], kind: "w", w: "networkManager" }
             ] },
             { away: s => !!s.networkMissing, rows: [
-                { n: 1, icon: "wifi", label: "Wi-Fi", k: "wifi", kind: "toggle", state: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "",
-                    why: "Turns the radio off. Ethernet keeps working." },
+                { n: 1, icon: "wifi", label: "Wi-Fi", k: "wifi", kind: "toggle", state: s => s.networkMissing || (s.v("wifi") ? s.wifiState : "off"), dis: s => s.networkMissing !== "" },
                 { n: [2, 3, 6], kind: "w", w: "nets", kw: "networks join password forget qr share scan portal sign in" },
-                { n: 4, icon: "autorenew", label: "Join on its own", k: "autoJoin", kind: "toggle", state: s => s.v("autoJoin") ? "" : "waits to be told", dis: s => !s.v("wifi"),
-                    why: "Saved networks reconnect when they come in range.", kw: "auto-join known networks" },
-                { n: 8, icon: "radar", label: "Keep the list fresh", k: "keepFresh", kind: "toggle", cfg: "network.keepListFresh",
-                    why: "Rescans in the background so the list is current when you open it. Each scan holds the radio for a moment." }
+                { n: 4, icon: "autorenew", label: "Join on its own", k: "autoJoin", kind: "toggle", state: s => s.v("autoJoin") ? "" : "waits to be told", dis: s => !s.v("wifi"), kw: "auto-join known networks" },
+                { n: 8, icon: "radar", label: "Keep the list fresh", k: "keepFresh", kind: "toggle", cfg: "network.keepListFresh" }
             ] },
             { t: "Checks", away: s => !!s.networkMissing, rows: [
-                { n: 7, icon: "public", label: "Check for internet", k: "netCheck", kind: "toggle", cfg: "network.checkForInternet", state: s => s.v("netCheck") ? s.reach : "", kw: "internet check",
-                    why: "Pings a check server so the sidebar can tell you when a network has no way out. Off, it guesses." },
-                { n: 6, icon: "login", label: "Sign-in page", k: "portalUri", kind: "text", cfg: "network.portalUri", placeholder: "the network decides", kw: "captive portal",
-                    why: "Where to send you when a café or hotel network wants you to sign in. Empty lets the network say where." }
+                { n: 7, icon: "public", label: "Check for internet", k: "netCheck", kind: "toggle", cfg: "network.checkForInternet", state: s => s.v("netCheck") ? s.reach : "", kw: "internet check" },
+                { n: 6, icon: "login", label: "Sign-in page", k: "portalUri", kind: "text", cfg: "network.portalUri", placeholder: "the network decides", kw: "captive portal" }
             ] }
         ]
     },
@@ -112,7 +87,7 @@ const PAGES_SOURCE = {
         groups: [
             { rows: [
                 { n: 11, icon: "bluetooth", label: "Bluetooth", k: "bt", kind: "toggle", state: s => s.v("bt") ? `shows up as ${s.btName}` : "off" },
-                { n: 12, icon: "visibility", label: "Visible to others", k: "btVisible", kind: "toggle", why: "Lets other devices find this one to pair. Hides again after 3 min.", dis: s => !s.v("bt"), kw: "discoverable visibility" },
+                { n: 12, icon: "visibility", label: "Visible to others", k: "btVisible", kind: "toggle", dis: s => !s.v("bt"), kw: "discoverable visibility" },
                 { n: 12, icon: "handshake", label: "Take pairing requests", k: "btPairable", kind: "toggle", dis: s => !s.v("bt"), kw: "pairable" }
             ] },
             { t: "Devices", rows: [
@@ -128,8 +103,7 @@ const PAGES_SOURCE = {
                 { n: [], kind: "w", w: "networkManager" }
             ] },
             { away: s => !!s.networkMissing, rows: [
-                { n: 5, icon: "lan", label: "Ethernet", k: "wired", kind: "toggle", state: s => s.v("wired") ? s.wiredDetail : "off", kw: "wired connection",
-                    why: "The dock’s port.", layer: [
+                { n: 5, icon: "lan", label: "Ethernet", k: "wired", kind: "toggle", state: s => s.v("wired") ? s.wiredDetail : "off", kw: "wired connection", layer: [
                         { n: 5, icon: "autorenew", label: "Join on its own", k: "wiredAuto", kind: "toggle", state: s => s.v("wiredAuto") ? "" : "waits to be told" },
                         { n: 5, kind: "fact", text: s => s.wiredFact }
                     ] }
@@ -144,8 +118,7 @@ const PAGES_SOURCE = {
                 { n: [], kind: "w", w: "networkManager" }
             ] },
             { t: "Hotspot", away: s => !!s.networkMissing, rows: [
-                { n: 9, icon: "wifi_tethering", label: "Share this connection", k: "hotspot", kind: "toggle", state: s => s.hotspotStatus, dis: s => s.hotspotBlocked,
-                    why: "Lends your ethernet connection to other devices over Wi-Fi. Wi-Fi stops joining networks while it runs.", layer: [
+                { n: 9, icon: "wifi_tethering", label: "Share wired network over Wi-Fi", k: "hotspot", kind: "toggle", state: s => s.hotspotStatus, dis: s => s.hotspotBlocked, layer: [
                         { n: 9, icon: "badge", label: "Name", k: "hotspotName", kind: "text" },
                         { n: 9, icon: "key", label: "Password", k: "hotspotPass", kind: "secret", state: s => s.hotspotPasswordTrouble, bad: s => s.hotspotPasswordTrouble !== "" },
                         { n: 9, icon: "settings_input_antenna", label: "Band", k: "hotspotBand", kind: "seg", o: ["2.4 GHz", "5 GHz"] }
@@ -162,14 +135,12 @@ const PAGES_SOURCE = {
         groups: [
             { topic: "Volume", rows: [
                 { n: 17, kind: "w", w: "volume", kw: "volume mute", fmt: pct },
-                { n: 15, icon: "speaker", label: "Play through", k: "output", kind: "choice", o: s => s.outputs, kw: "output device",
-                    why: "Where sound goes. The speaker in the sidebar switches it too." },
+                { n: 15, icon: "speaker", label: "Play through", k: "output", kind: "choice", o: s => s.outputs, kw: "output device" },
                 { n: 18, icon: "unfold_more", label: "Keys step by", k: "volStep", kind: "seg", o: [[0.02, "2%"], [0.05, "5%"], [0.1, "10%"]], cfg: "volume.step", kw: "volume step" },
-                { n: 19, icon: "campaign", label: "Past 100%", k: "overAmp", kind: "toggle", cfg: "volume.boost", kw: "volume above 100 boost",
-                    why: "Lets the slider run to 150%, louder but some sources can crackle. The bead turns accent once it passes the mark at 100%." }
+                { n: 19, icon: "campaign", label: "Allow volume up to 150%", k: "overAmp", kind: "toggle", cfg: "volume.boost", kw: "volume above past 100 150 boost" }
             ] },
             { t: "Speakers and headphones", rows: [
-                { n: 20, icon: "speaker", label: "Speakers", k: "roleSpeakers", kind: "choice", cfg: "audio.speakers", o: s => s.outputs, why: "Super + F12 flips between these two.", kw: "roles" },
+                { n: 20, icon: "speaker", label: "Speakers", k: "roleSpeakers", kind: "choice", cfg: "audio.speakers", o: s => s.outputs, kw: "roles" },
                 { n: 20, icon: "headphones", label: "Headphones", k: "roleHeadphones", kind: "choice", cfg: "audio.headphones", o: s => s.outputs, kw: "roles" }
             ] }
         ]
@@ -183,13 +154,10 @@ const PAGES_SOURCE = {
                 { n: 16, icon: "graphic_eq", label: "Input level", k: "micLevel", kind: "slider", min: 0, max: 1, step: 0.01, fmt: pct }
             ] },
             { t: "Dictation", rows: [
-                { n: [], icon: "keyboard_voice", label: "Dictate with", k: "dictMic", kind: "choice", o: s => s.dictationInputs, kw: "dictation microphone voice input device system default",
-                    why: "System default follows whatever the microphone above is, so unplugging a headset needs no setup. Takes effect on the next dictation." },
+                { n: [], icon: "keyboard_voice", label: "Dictate with", k: "dictMic", kind: "choice", o: s => s.dictationInputs, kw: "dictation microphone voice input device system default" },
                 { n: [], icon: "translate", label: "Language", k: "dictLang", kind: "choice", o: s => s.dictationLanguages, kw: "dictation language voice speech" },
-                { n: [], icon: "auto_awesome", label: "Speak to ask", k: "dictateAsk", kind: "toggle", cfg: "launcher.dictateToAsk", dis: s => !s.v("aiOn"), kw: "dictation ask assistant launcher voice",
-                    why: "With the launcher open and empty, what you dictate becomes a question for the assistant. Needs the assistant on." },
-                { n: [], icon: "input", label: "Text goes", k: "dictOutput", kind: "choice", o: s => s.dictationOutputs, kw: "dictation output type paste copy clipboard voice",
-                    why: "Automatic types into games and pastes elsewhere. Only copy leaves the text on the clipboard. Takes effect on the next dictation." }
+                { n: [], icon: "auto_awesome", label: "Speak to ask", k: "dictateAsk", kind: "toggle", cfg: "launcher.dictateToAsk", dis: s => !s.v("aiOn"), kw: "dictation ask assistant launcher voice" },
+                { n: [], icon: "input", label: "Text goes", k: "dictOutput", kind: "choice", o: s => s.dictationOutputs, kw: "dictation output type paste copy clipboard voice" }
             ] }
         ]
     },
@@ -207,8 +175,7 @@ const PAGES_SOURCE = {
         status: s => `${s.v("notifPlace") === "island" ? "in the island" : "in the corner"} · ${s.v("notifTimeout")} s · ${s.v("notifPopups")} at once`,
         groups: [
             { rows: [
-                { n: [], icon: "call_to_action", label: "Show them", k: "notifPlace", kind: "seg", o: [["corner", "corner"], ["island", "island"]], cfg: "notifications.placement", kw: "notification position place island dynamic island top centre corner",
-                    why: "The corner is the top right, where they always were. The island drops them from the top centre instead, where a wide screen keeps them in view. The corner still opens the history either way." },
+                { n: [], icon: "call_to_action", label: "Show them", k: "notifPlace", kind: "seg", o: [["corner", "corner"], ["island", "island"]], cfg: "notifications.placement", kw: "notification position place island dynamic island top centre corner" },
                 { n: 77, icon: "timer", label: "Stay for", k: "notifTimeout", kind: "step", min: 1, max: 30, unit: " s", cfg: "notifications.timeout", extra: { icon: "send", tip: "send a test", act: "testNotif" }, kw: "notification timeout" },
                 { n: 78, icon: "stacks", label: "At once", k: "notifPopups", kind: "step", min: 1, max: 8, cfg: "notifications.maxPopups", fmt: v => `${v}`, kw: "notification popups at once" },
                 { n: 79, icon: "inbox", label: "Remember", k: "notifHistory", kind: "step", min: 10, max: 500, step: 10, cfg: "notifications.maxHistory", fmt: v => `${v}`, kw: "notification history length" }
@@ -217,12 +184,9 @@ const PAGES_SOURCE = {
                 { n: 81, kind: "w", w: "rules", cfg: "notifications.rules", kw: "per-app notification rules" }
             ] },
             { t: "The island", rows: [
-                { n: [], icon: "download_done", label: "Downloads", k: "islandDownloads", kind: "toggle", cfg: "island.downloads", state: s => s.v("islandDownloads") ? "says when a file lands" : "says nothing", kw: "island finished downloads announce",
-                    why: "Watches your downloads folder and says when a file has finished arriving. Needs inotifywait (inotify-tools)." },
-                { n: [], icon: "music_note", label: "Now playing", k: "islandMusic", kind: "toggle", cfg: "island.nowPlaying", state: s => s.v("islandMusic") ? "shows a new track unless its app is in front" : "only when you go up to it", kw: "island now playing track change music song",
-                    why: "When the track changes, the island shows the cover, the title and a moving equalizer for a few seconds. Pressing it opens the media card." },
-                { n: [], icon: "hourglass_bottom", label: "Says it for", k: "islandGlance", kind: "step", min: 2, max: 30, unit: " s", cfg: "island.glanceSeconds", kw: "island notice glance time",
-                    why: "How long a new track, a download, an update or a new kernel shows by itself. Updates and kernels then wait in the island, under the clock, until you deal with them." }
+                { n: [], icon: "download_done", label: "Downloads", k: "islandDownloads", kind: "toggle", cfg: "island.downloads", state: s => s.v("islandDownloads") ? "says when a file lands" : "says nothing", kw: "island finished downloads announce" },
+                { n: [], icon: "music_note", label: "Now playing", k: "islandMusic", kind: "toggle", cfg: "island.nowPlaying", state: s => s.v("islandMusic") ? "shows a new track unless its app is in front" : "only when you go up to it", kw: "island now playing track change music song" },
+                { n: [], icon: "hourglass_bottom", label: "Says it for", k: "islandGlance", kind: "step", min: 2, max: 30, unit: " s", cfg: "island.glanceSeconds", kw: "island notice glance time" }
             ] }
         ]
     },
@@ -231,12 +195,12 @@ const PAGES_SOURCE = {
         status: s => s.v("alerts") ? `${s.v("alertSet")} alerts` : "alerts off",
         groups: [
             { t: "Alerts", rows: [
-                { n: 22, icon: "notifications_active", label: "Alert sounds", k: "alerts", kind: "toggle", cfg: "sound.alerts", state: s => s.alertsDetail, why: "Plays a sound for notifications, low battery and errors." },
+                { n: 22, icon: "notifications_active", label: "Alert sounds", k: "alerts", kind: "toggle", cfg: "sound.alerts", state: s => s.alertsDetail },
                 { n: 22, icon: "music_note", label: "Sound set", k: "alertSet", kind: "seg", o: ["soft", "clear", "wood"], cfg: "sound.alertSet", dis: s => !s.v("alerts") },
                 { n: 22, icon: "volume_down", label: "Alert volume", k: "alertVol", kind: "slider", min: 0, max: 1, step: 0.01, fmt: pct, cfg: "sound.alertVolume", dis: s => !s.v("alerts") }
             ] },
             { t: "Media", rows: [
-                { n: 82, icon: "swap_vert", label: "Wheel seeks", k: "wheelSeek", kind: "step", min: 0, max: 30, unit: " s", cfg: "media.wheelSeek", why: "How far each notch of the wheel seeks on the player. 0 turns it off.", kw: "media controls scroll to seek" },
+                { n: 82, icon: "swap_vert", label: "Wheel seeks", k: "wheelSeek", kind: "step", min: 0, max: 30, unit: " s", cfg: "media.wheelSeek", kw: "media controls scroll to seek" },
                 { n: 82, icon: "replay_5", label: "Short skip", k: "seekSmall", kind: "step", min: 1, max: 30, unit: " s", cfg: "media.seekSmall", kw: "skip lengths" },
                 { n: 82, icon: "forward_30", label: "Long skip", k: "seekLarge", kind: "step", min: 5, max: 120, step: 5, unit: " s", cfg: "media.seekLarge", kw: "skip lengths" }
             ] }
@@ -247,15 +211,14 @@ const PAGES_SOURCE = {
         status: s => s.screensOn.join(" · "),
         groups: [
             { t: s => `${s.selMon} · ${s.selMonWhat}`, rows: [
-                { n: 23, icon: "drag_pan", label: "Arrangement", k: "scr:layout", kind: "fact", text: "drag a screen to line it up with your desk. it snaps to edges, corners and centres, and the arrow keys nudge it. nothing changes until you press apply.",
-                    why: "Moves, resolutions, rates, scale, turns, turning a screen off and mirroring wait for Apply, then go to Hyprland's monitor lines together. A change to the picture asks you to keep it, and goes back by itself after 15 seconds if you can't. Hold ctrl while dragging to move freely; shift with the arrows moves 10 px; tab picks the next screen.", kw: "screen arrangement position monitors layout drag snap centre nudge apply" },
+                { n: 23, icon: "drag_pan", label: "Arrangement", k: "scr:layout", kind: "fact", text: "drag a screen to line it up with your desk. it snaps to edges, corners and centres, and the arrow keys nudge it. nothing changes until you press apply.", kw: "screen arrangement position monitors layout drag snap centre nudge apply" },
                 { n: 29, icon: "power_settings_new", label: "Use this screen", k: "scr:on", kind: "toggle", state: s => s.onlyOn ? "the last one stays on" : "", pending: s => s.pendingNote("on"), dis: s => s.onlyOn, kw: "turn a screen off" },
                 { n: 29, icon: "flip", label: "Mirror", k: "scr:mirror", kind: "choice", o: s => [["", "nothing"]].concat(s.mirrorChoices.map(m => [m, m])), pending: s => s.pendingNote("mirror"), dis: s => !s.v("scr:on"), kw: "clone duplicate screen" },
                 { n: 24, icon: "aspect_ratio", label: "Resolution", k: "scr:res", kind: "choice", o: s => s.resolutions, pending: s => s.pendingNote("res"), dis: s => !s.v("scr:on") },
                 { n: 25, icon: "speed", label: "Refresh rate", k: "scr:hz", kind: "choice", o: s => s.rates, pending: s => s.pendingNote("hz"), dis: s => !s.v("scr:on") },
                 { n: 26, icon: "zoom_in", label: "Scale", k: "scr:scale", kind: "seg", o: [[1, "1"], [1.25, "1.25"], [1.5, "1.5"], [2, "2"]], pending: s => s.pendingNote("scale"), dis: s => !s.v("scr:on") },
                 { n: 27, icon: "screen_rotation", label: "Turn", k: "scr:rot", kind: "seg", o: [[0, "0°"], [90, "90°"], [180, "180°"], [270, "270°"]], pending: s => s.pendingNote("rot"), dis: s => !s.v("scr:on"), kw: "rotation portrait" },
-                { n: 28, icon: "motion_photos_auto", label: "Variable refresh", k: "scr:vrr", kind: "toggle", pending: s => s.pendingNote("vrr"), why: "Lets the screen follow a game’s frame rate. Smoother games, but some screens flicker.", dis: s => !s.v("scr:on"), kw: "vrr freesync" },
+                { n: 28, icon: "motion_photos_auto", label: "Variable refresh", k: "scr:vrr", kind: "toggle", pending: s => s.pendingNote("vrr"), dis: s => !s.v("scr:on"), kw: "vrr freesync" },
                 { n: 30, icon: "grid_view", label: "Workspaces here", k: "scr:ws", kind: "choice", o: s => s.bandChoices, dis: s => !s.v("scr:on"), kw: "workspaces per screen" },
                 { n: 31, icon: "side_navigation", label: "Sidebar here", k: "scr:bar", kind: "toggle", cfg: "sidebar.perScreen", dis: s => !s.v("scr:on") || !s.v("sidebar"), kw: "sidebar per screen" }
             ] }
@@ -267,8 +230,7 @@ const PAGES_SOURCE = {
         groups: [
             { rows: [
                 { n: 32, icon: "brightness_6", label: "Level", k: "level", kind: "slider", min: 5, max: 100, fmt: v => `${Math.round(v)}%`, cfg: "screen.level", kw: "brightness" },
-                { n: 33, icon: "nightlight", label: "Warmth", k: "warmth", kind: "slider", min: 0, max: 100, fmtS: kelvin, cfg: "screen.warmth", kw: "night light warmth",
-                    why: "Pulls blue out of every screen. All the way over it reaches the warmest point below." },
+                { n: 33, icon: "nightlight", label: "Warmth", k: "warmth", kind: "slider", min: 0, max: 100, fmtS: kelvin, cfg: "screen.warmth", kw: "night light warmth" },
                 { n: 33, icon: "thermostat", label: "Warmest point", k: "warmest", kind: "step", min: 1500, max: 4000, step: 100, unit: " K", cfg: "screen.warmest", kw: "night light" },
                 { n: 34, icon: "schedule", label: "On a schedule", k: "nightSched", kind: "seg", o: ["off", "sunset", "set times"], cfg: "screen.schedule", state: s => s.scheduleDetail, kw: "night light schedule" },
                 { n: 34, icon: "bedtime", label: "Warm from", k: "warmFrom", kind: "slider", min: 0, max: 1425, step: 15, fmtS: (s, v) => s.minuteText(v), cfg: "screen.warmFrom", dis: s => s.v("nightSched") !== "set times", kw: "night light schedule start" },
@@ -281,21 +243,15 @@ const PAGES_SOURCE = {
         status: s => s.v("fromWall") ? "wallpaper" : s.v("theme"),
         groups: [
             { rows: [
-                { n: [], icon: "dark_mode", label: "Light or dark", k: "scheme", kind: "seg", o: ["light", "dark", "auto"], cfg: "colour.mode", state: s => s.schemeDetail, extra: { icon: "schedule", tip: "set night light’s schedule", act: "nightSchedule" }, kw: "dark mode dark apps light mode night theme colour scheme apps appearance auto",
-                    why: "Sets the shell and every app that follows the system colour scheme. Auto goes dark while night light warms the screens, on its schedule under Light and warmth. If apps drift, pick the same choice again." },
+                { n: [], icon: "dark_mode", label: "Light or dark", k: "scheme", kind: "seg", o: ["light", "dark", "auto"], cfg: "colour.mode", state: s => s.schemeDetail, extra: { icon: "schedule", tip: "set night light’s schedule", act: "nightSchedule" }, kw: "dark mode dark apps light mode night theme colour scheme apps appearance auto" },
                 { n: 42, kind: "w", w: "themes", kw: "theme palette" },
                 { n: [], kind: "w", w: "themeEditor", kw: "theme editor studio custom colours create own theme save" },
-                { n: [], icon: "light_mode", label: "Theme in light mode", k: "lightTheme", kind: "choice", o: s => s.themeChoices, cfg: "colour.lightTheme", kw: "theme light mode day set as light theme",
-                    why: "Light mode switches to this theme. Leave it on the picked theme to keep one theme for both." },
-                { n: [], icon: "bedtime", label: "Theme in dark mode", k: "darkTheme", kind: "choice", o: s => s.themeChoices, cfg: "colour.darkTheme", kw: "theme dark mode night set as dark theme",
-                    why: "Dark mode switches to this theme. Leave it on the picked theme to keep one theme for both." },
+                { n: [], icon: "light_mode", label: "Theme in light mode", k: "lightTheme", kind: "choice", o: s => s.themeChoices, cfg: "colour.lightTheme", kw: "theme light mode day set as light theme" },
+                { n: [], icon: "bedtime", label: "Theme in dark mode", k: "darkTheme", kind: "choice", o: s => s.themeChoices, cfg: "colour.darkTheme", kw: "theme dark mode night set as dark theme" },
                 { n: 43, icon: "colorize", label: "Take it from the wallpaper", k: "fromWall", kind: "toggle", cfg: "themeFromWallpaper", state: s => s.v("fromWall") ? s.wallName : "", kw: "theme from wallpaper" },
-                { n: 44, icon: "format_color_fill", label: "Highlight colour", k: "accent", kind: "seg", o: [["dim", "soft"], ["mid", "normal"], ["bright", "strong"]], swatches: true, cfg: "colour.accent", kw: "accent strength dim mid bright",
-                    why: "Which of the theme’s three highlight colours paints everything that’s on. Soft sits back, strong jumps out." },
-                { n: [], icon: "colors", label: "Colour coding", k: "hues", kind: "seg", o: [["off", "off"], ["panels", "panels"], ["everywhere", "everywhere"]], cfg: "colour.hues", kw: "colour coding hues colourful icons system colours network bluetooth sound brightness memory processor flat grey",
-                    why: "Gives sound, network and other parts their own theme colour. Panels keeps sidebar icons grey until pointed at, while everywhere colours them when they're on." },
-                { n: 45, icon: "layers", label: "Panel shade", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmtS: (s, v) => shadeWord(s?.lightShell, v), cfg: "colour.surface", kw: "surface depth ramp background darker lighter",
-                    why: "Which of the theme’s own shades paints the frame and panels. Lower is darker in a dark look and lighter in a light one." },
+                { n: 44, icon: "format_color_fill", label: "Highlight colour", k: "accent", kind: "seg", o: [["dim", "soft"], ["mid", "normal"], ["bright", "strong"]], swatches: true, cfg: "colour.accent", kw: "accent strength dim mid bright" },
+                { n: [], icon: "colors", label: "Colour coding", k: "hues", kind: "seg", o: [["off", "off"], ["panels", "panels"], ["everywhere", "everywhere"]], cfg: "colour.hues", kw: "colour coding hues colourful icons system colours network bluetooth sound brightness memory processor flat grey" },
+                { n: 45, icon: "layers", label: "Panel shade", k: "surface", kind: "slider", min: 0, max: 6, step: 1, fmtS: (s, v) => shadeWord(s?.lightShell, v), cfg: "colour.surface", kw: "surface depth ramp background darker lighter" },
                 { n: 46, icon: "opacity", label: "See-through", k: "surfaceAlpha", kind: "slider", min: 0, max: 0.5, step: 0.01, fmt: pct, cfg: "material.surfaceAlpha", kw: "transparency" }
             ] }
         ]
@@ -311,14 +267,12 @@ const PAGES_SOURCE = {
                 { n: 37, icon: "folder", label: "Folder", k: "wallDir", kind: "path", cfg: "wallpaper.dir", kw: "wallpaper folder" }
             ] },
             { t: "Motion", rows: [
-                { n: 38, icon: "animation", label: "Play animated ones", k: "wallAnim", kind: "toggle", cfg: "wallpaper.animate", why: "Plays moving wallpapers. They pause under full-screen windows.", kw: "animated wallpapers" },
+                { n: 38, icon: "animation", label: "Play animated ones", k: "wallAnim", kind: "toggle", cfg: "wallpaper.animate", kw: "animated wallpapers" },
                 { n: 39, icon: "volume_up", label: "Play their sound", k: "wallAudio", kind: "toggle", cfg: "wallpaper.audio", dis: s => !s.v("wallAnim"), kw: "wallpaper audio" },
                 { n: [], icon: "grain", label: "Transition", k: "wallTransition", kind: "seg", o: [["pixels", "pixels"], ["reveal", "reveal"]], cfg: "wallpaper.transition", kw: "wallpaper transition contagion pixels reveal" },
                 { n: [], icon: "person", label: "Character outlines", kind: "button", btn: s => s.cutoutButton, act: "installCutout", state: s => s.cutoutNote, dis: s => s.v("wallTransition") !== "pixels" || s.cutoutBusy, kw: "wallpaper transition outline character cut out" },
-                { n: 40, icon: "blur_circular", label: "Reveal", k: "wallReveal", kind: "slider", min: 0, max: 2000, step: 50, fmt: v => v ? `${v} ms` : "cut", cfg: "wallpaper.reveal", extra: { icon: "play_arrow", tip: "play it", act: "previewReveal" }, kw: "reveal animation",
-                    why: "How long a new wallpaper takes to grow out from where you clicked." },
-                { n: 41, icon: "crop", label: "Crop allowance", k: "wallFit", kind: "slider", min: 1, max: 2, step: 0.05, fmt: v => `${v.toFixed(2)}×`, cfg: "wallpaper.fit", kw: "wallpaper fit",
-                    why: "How far a picture may be cropped to fill a screen. Shapes further off than this get bands instead." }
+                { n: 40, icon: "blur_circular", label: "Reveal", k: "wallReveal", kind: "slider", min: 0, max: 2000, step: 50, fmt: v => v ? `${v} ms` : "cut", cfg: "wallpaper.reveal", extra: { icon: "play_arrow", tip: "play it", act: "previewReveal" }, kw: "reveal animation" },
+                { n: 41, icon: "crop", label: "Crop allowance", k: "wallFit", kind: "slider", min: 1, max: 2, step: 0.05, fmt: v => `${v.toFixed(2)}×`, cfg: "wallpaper.fit", kw: "wallpaper fit" }
             ] }
         ]
     },
@@ -327,11 +281,9 @@ const PAGES_SOURCE = {
         status: s => `${s.v("font")} · ${(s.v("largerText") ? s.largerBase : s.v("fontBase")) * 2} px`,
         groups: [
             { rows: [
-                { n: 47, icon: "text_fields", label: "Font", k: "font", kind: "choice", o: s => s.fonts, cfg: "font.family",
-                    why: "Monocraft is drawn on a 9 px grid, so text sizes stay whole multiples of the base." },
+                { n: 47, icon: "text_fields", label: "Font", k: "font", kind: "choice", o: s => s.fonts, cfg: "font.family" },
                 { n: 48, icon: "interests", label: "Icons", k: "iconFont", kind: "seg", o: [["Material Symbols Rounded", "rounded"], ["Material Symbols Outlined", "outlined"], ["Material Symbols Sharp", "sharp"]], cfg: "font.icon", kw: "icon fonts" },
-                { n: 49, icon: "format_size", label: "Text size", k: "fontBase", kind: "seg", o: [[8, "16"], [9, "18"], [10, "20"]], cfg: "font.base", dis: s => s.v("largerText"), state: s => s.v("largerText") ? "set by larger text" : "",
-                    why: "The small size in px. Sizes step from the base: small is twice it, normal three times, large four." },
+                { n: 49, icon: "format_size", label: "Text size", k: "fontBase", kind: "seg", o: [[8, "16"], [9, "18"], [10, "20"]], cfg: "font.base", dis: s => s.v("largerText"), state: s => s.v("largerText") ? "set by larger text" : "" },
                 { n: 50, icon: "photo_size_select_small", label: "Icon size", k: "iconScale", kind: "slider", min: 0.8, max: 1.6, step: 0.05, fmt: v => `${v.toFixed(2)}×`, cfg: "font.iconScale" }
             ] }
         ]
@@ -341,24 +293,18 @@ const PAGES_SOURCE = {
         status: s => s.v("follow") ? "following hyprland" : `${s.v("rounding")} px · power ${s.v("power")}`,
         groups: [
             { rows: [
-                { n: 55, icon: "sync_alt", label: "Follow Hyprland", k: "follow", kind: "toggle", cfg: "compositor.follow", state: s => s.v("follow") ? s.followDetail : "uses the values below", dis: s => s.v("bare"), kw: "compositor corners gaps",
-                    why: "Reads rounding, gaps and border size from Hyprland so the frame lines up with your windows." },
+                { n: 55, icon: "sync_alt", label: "Follow Hyprland", k: "follow", kind: "toggle", cfg: "compositor.follow", state: s => s.v("follow") ? s.followDetail : "uses the values below", dis: s => s.v("bare"), kw: "compositor corners gaps" },
                 { n: 51, icon: "rounded_corner", label: "Rounding", k: "rounding", kind: "slider", min: 0, max: 30, fmt: v => `${v} px`, cfg: "rounding.base", dis: s => s.v("follow"), kw: "corner rounding" },
-                { n: 51, icon: "crop_square", label: "Squareness", k: "power", kind: "slider", min: 2, max: 10, step: 0.5, fmt: v => v <= 2 ? "circle" : `power ${v}`, cfg: "rounding.power", dis: s => s.v("follow"), kw: "corner rounding squircle",
-                    why: "Corners are superellipses. Power 2 is a plain circle; higher keeps the edge straight longer before it turns." },
+                { n: 51, icon: "crop_square", label: "Squareness", k: "power", kind: "slider", min: 2, max: 10, step: 0.5, fmt: v => v <= 2 ? "circle" : `power ${v}`, cfg: "rounding.power", dis: s => s.v("follow"), kw: "corner rounding squircle" },
                 { n: 52, icon: "border_outer", label: "Frame", k: "border", kind: "slider", min: 0, max: 24, fmt: v => `${v} px`, cfg: "edge.border", dis: s => s.v("follow"), kw: "gaps window border band" },
                 { n: 53, icon: "rounded_corner", label: "Round the screen", k: "roundOuter", kind: "toggle", cfg: "edge.roundOuter", kw: "outer screen corners" },
-                { n: 53, icon: "fit_screen", label: "Edge over fullscreen", k: "fullscreenEdge", kind: "toggle", cfg: "edge.fullscreen", state: s => s.v("fullscreenEdge") ? "takes the colour of the picture" : "plain fullscreen", dis: s => s.v("bare"), kw: "fullscreen border ring film letterbox",
-                    why: "Keeps the screen's rounded edge round a fullscreen window, coloured from the window's own edge so black bars stay black. Off gives the window the whole screen." },
-                { n: 56, icon: "border_color", label: "Paint window borders", k: "pushBorders", kind: "toggle", cfg: "compositor.pushBorders", state: s => s.v("sourceEdits") ? "" : "needs Hyprland edits on", why: "Writes the accent to Hyprland’s window borders.", dis: s => !s.v("sourceEdits"), kw: "push theme window borders" },
-                { n: 54, icon: "crop_free", label: "Bare", k: "bare", kind: "toggle", cfg: "edge.bare", kw: "bare mode",
-                    why: "Drops the frame and the sidebar’s band. Panels float on their own." }
+                { n: 53, icon: "fit_screen", label: "Edge over fullscreen", k: "fullscreenEdge", kind: "toggle", cfg: "edge.fullscreen", state: s => s.v("fullscreenEdge") ? "takes the colour of the picture" : "plain fullscreen", dis: s => s.v("bare"), kw: "fullscreen border ring film letterbox" },
+                { n: 56, icon: "border_color", label: "Paint window borders", k: "pushBorders", kind: "toggle", cfg: "compositor.pushBorders", state: s => s.v("sourceEdits") ? "" : "needs Hyprland edits on", dis: s => !s.v("sourceEdits"), kw: "push theme window borders" },
+                { n: 54, icon: "crop_free", label: "Bare", k: "bare", kind: "toggle", cfg: "edge.bare", kw: "bare mode" }
             ] },
             { t: "Motion", rows: [
-                { n: 57, icon: "motion_blur", label: "Pace", k: "anim", kind: "slider", min: 80, max: 500, step: 10, fmt: v => `${v} ms`, cfg: "anim.base", dis: s => s.v("reduceMotion"), kw: "animation speed",
-                    why: "The normal animation length. Fast and slow scale from it." },
-                { n: 57, icon: "swipe_vertical", label: "Workspace slide", k: "workspaceSlide", kind: "slider", min: 0, max: 250, step: 10, fmt: v => v > 0 ? `${v} ms` : "off", cfg: "anim.workspaceSlide", dis: s => s.v("reduceMotion"), kw: "workspace switch animation hyprland slide",
-                    why: "How long Hyprland slides the desktop when you change workspace. Off switches at once. The shell sets it live, so your Hyprland config is not edited." }
+                { n: 57, icon: "motion_blur", label: "Pace", k: "anim", kind: "slider", min: 80, max: 500, step: 10, fmt: v => `${v} ms`, cfg: "anim.base", dis: s => s.v("reduceMotion"), kw: "animation speed" },
+                { n: 57, icon: "swipe_vertical", label: "Workspace slide", k: "workspaceSlide", kind: "slider", min: 0, max: 250, step: 10, fmt: v => v > 0 ? `${v} ms` : "off", cfg: "anim.workspaceSlide", dis: s => s.v("reduceMotion"), kw: "workspace switch animation hyprland slide" }
             ] }
         ]
     },
@@ -368,47 +314,39 @@ const PAGES_SOURCE = {
         groups: [
             { rows: [
                 { n: 58, icon: "side_navigation", label: "Sidebar", k: "sidebar", kind: "toggle", cfg: "sidebar.enabled", keys: "shell:screen.sidebar.toggle" },
-                { n: [], icon: "view_column_2", label: "Style", k: "sbStyle", kind: "seg", o: ["full", "rail"], cfg: "sidebar.style", dis: s => !s.v("sidebar"), kw: "sidebar rail simplified expand hover pips anomalies",
-                    why: "Full keeps everything on show. Rail rests as workspace marks and shows a status icon only when something is unusual; point at it and it grows into the full column." },
-                { n: [], icon: "schedule", label: "Clock and battery", k: "sbGlance", kind: "choice", o: [["rail", "rail bottom"], ["rail top", "rail top"], ["top", "pill at the top"], ["tabs", "tabs off the rail"], ["wide", "wider rail"], ["off", "off"]], cfg: "sidebar.glance", dis: s => s.v("sbStyle") !== "rail", kw: "clock time battery glance rest resting place where rail bottom top pill tabs wide wider",
-                    why: "Where the time and the battery sit while the rail rests. At the rail's bottom or top, the time stacks over a battery level bar inside the rail. A pill hangs them from the top edge, tabs grow them out of the rail, and a wider rail makes room for them." },
+                { n: [], icon: "view_column_2", label: "Style", k: "sbStyle", kind: "seg", o: ["full", "rail"], cfg: "sidebar.style", dis: s => !s.v("sidebar"), kw: "sidebar rail simplified expand hover pips anomalies" },
+                { n: [], icon: "schedule", label: "Clock and battery", k: "sbGlance", kind: "choice", o: [["rail", "rail bottom"], ["rail top", "rail top"], ["top", "pill at the top"], ["tabs", "tabs off the rail"], ["wide", "wider rail"], ["off", "off"]], cfg: "sidebar.glance", dis: s => s.v("sbStyle") !== "rail", kw: "clock time battery glance rest resting place where rail bottom top pill tabs wide wider" },
                 { n: 59, icon: "width", label: "Width", k: "sidebarW", kind: "slider", min: 40, max: 72, fmt: v => `${v} px`, cfg: "sidebar.width", dis: s => !s.v("sidebar") }
             ] },
             { t: "Workspaces", rows: [
                 { n: 60, kind: "w", w: "wsStyles", kw: "workspace style plates map blocks" },
-                { n: 61, icon: "palette", label: "App marks", k: "iconMode", kind: "seg", o: ["colour", "mono"], cfg: "sidebar.workspaces.iconMode", kw: "workspace icons",
-                    why: "Plates show the apps inside each workspace. Mono tints the marks to match the text." },
-                { n: 62, icon: "filter_5", label: "Always there", k: "persistent", kind: "step", min: 1, max: 10, cfg: "sidebar.workspaces.persistent", fmt: v => `${v}`, why: "Workspaces the sidebar always shows. More show up when busy.", kw: "always-shown workspaces" },
+                { n: 61, icon: "palette", label: "App marks", k: "iconMode", kind: "seg", o: ["colour", "mono"], cfg: "sidebar.workspaces.iconMode", kw: "workspace icons" },
+                { n: 62, icon: "filter_5", label: "Always there", k: "persistent", kind: "step", min: 1, max: 10, cfg: "sidebar.workspaces.persistent", fmt: v => `${v}`, kw: "always-shown workspaces" },
                 { n: 63, icon: "stacks", label: "Special workspaces", k: "specialsShown", kind: "toggle", cfg: "sidebar.workspaces.rack", state: s => s.specialNames.join(" · ") || "none yet", kw: "scratchpad special", layer: [
                     { n: 63, kind: "w", w: "specials" }
                 ] }
             ] },
             { t: "Clock and date", rows: [
-                { n: [], icon: "schedule", label: "Clock when open", k: "sbClockWide", kind: "seg", o: ["stacked", "one line", "off"], cfg: "sidebar.clock.wideStyle", kw: "sidebar clock style wide open stacked one line hide",
-                    why: "The clock in the open sidebar. Stacked is hours over minutes. One line turns the time on its side so it reads as 14:32." },
+                { n: [], icon: "schedule", label: "Clock when open", k: "sbClockWide", kind: "seg", o: ["stacked", "one line", "off"], cfg: "sidebar.clock.wideStyle", kw: "sidebar clock style wide open stacked one line hide" },
                 { n: [], icon: "format_size", label: "Size when open", k: "sbClockWideSize", kind: "seg", o: ["large", "small"], cfg: "sidebar.clock.wideSize", dis: s => s.v("sbClockWide") === "off", kw: "sidebar clock size big small large wide open" },
-                { n: [], icon: "schedule", label: "Clock at rest", k: "sbClock", kind: "seg", o: ["stacked", "one line", "off"], cfg: "sidebar.clock.style", dis: s => s.v("sbStyle") !== "rail" || !["rail", "rail top"].includes(s.v("sbGlance")), kw: "sidebar clock style rail rest compact stacked one line hide",
-                    why: "The clock on the resting rail. It sits at the same height as the clock in the open sidebar, so it stays put when the rail grows. It applies when Clock and battery is rail bottom or rail top." },
+                { n: [], icon: "schedule", label: "Clock at rest", k: "sbClock", kind: "seg", o: ["stacked", "one line", "off"], cfg: "sidebar.clock.style", dis: s => s.v("sbStyle") !== "rail" || !["rail", "rail top"].includes(s.v("sbGlance")), kw: "sidebar clock style rail rest compact stacked one line hide" },
                 { n: [], icon: "format_size", label: "Size at rest", k: "sbClockSize", kind: "seg", o: ["small", "large"], cfg: "sidebar.clock.size", dis: s => s.v("sbStyle") !== "rail" || !["rail", "rail top"].includes(s.v("sbGlance")) || s.v("sbClock") === "off", kw: "sidebar clock size big small large rail rest compact" },
-                { n: [], icon: "calendar_today", label: "Date", k: "sbDate", kind: "seg", o: [["day and month", "14 oct"], ["day", "14"], ["off", "off"]], cfg: "sidebar.clock.date", kw: "sidebar calendar date hide",
-                    why: "The date under the clock. It still opens the calendar when you tap or pull it." }
+                { n: [], icon: "calendar_today", label: "Date", k: "sbDate", kind: "seg", o: [["day and month", "14 oct"], ["day", "14"], ["off", "off"]], cfg: "sidebar.clock.date", kw: "sidebar calendar date hide" }
             ] },
             { t: "Status", rows: [
-                { n: [], icon: "sync", label: "Update button", k: "sbUpdate", kind: "seg", o: [["always", "always"], ["new", "when new"], ["never", "never"]], cfg: "sidebar.update", kw: "sidebar update button hide",
-                    why: "When new keeps the sidebar clean until there is something to install. Updates stay reachable from System either way." },
+                { n: [], icon: "sync", label: "Update button", k: "sbUpdate", kind: "seg", o: [["always", "always"], ["new", "when new"], ["never", "never"]], cfg: "sidebar.update", kw: "sidebar update button hide" },
                 { n: [], icon: "volume_up", label: "Sound", k: "sbSound", kind: "toggle", cfg: "sidebar.status.sound", kw: "sidebar status icons" },
                 { n: [], icon: "wifi", label: "Network", k: "sbNet", kind: "toggle", cfg: "sidebar.status.network", kw: "sidebar status icons" },
                 { n: [], icon: "bluetooth", label: "Bluetooth", k: "sbBt", kind: "toggle", cfg: "sidebar.status.bluetooth", kw: "sidebar status icons" },
-                { n: [], icon: "brightness_6", label: "Brightness", k: "sbBright", kind: "toggle", cfg: "sidebar.status.brightness", why: "Shows the screen’s brightness in the sidebar. Scroll it to change brightness.", kw: "sidebar status icons screen backlight" },
+                { n: [], icon: "brightness_6", label: "Brightness", k: "sbBright", kind: "toggle", cfg: "sidebar.status.brightness", kw: "sidebar status icons screen backlight" },
                 { n: [], icon: "battery_5_bar", label: "Battery", k: "sbBatt", kind: "toggle", cfg: "sidebar.status.battery", state: s => s.hasBattery ? "" : "no battery in this machine", dis: s => !s.hasBattery, kw: "sidebar status icons" }
             ] },
             { t: "Tray", rows: [
                 { n: 64, icon: "apps", label: "Tray", k: "tray", kind: "toggle", cfg: "sidebar.tray.enabled", state: s => `${s.trayCount} apps`, kw: "tray" },
-                { n: 64, icon: "more_horiz", label: "Most icons", k: "trayMax", kind: "step", min: 1, max: 12, cfg: "sidebar.tray.max", fmt: v => `${v}`, why: "How many tray icons show. The rest fold away.", dis: s => !s.v("tray") }
+                { n: 64, icon: "more_horiz", label: "Most icons", k: "trayMax", kind: "step", min: 1, max: 12, cfg: "sidebar.tray.max", fmt: v => `${v}`, dis: s => !s.v("tray") }
             ] },
             { t: "AI limits", rows: [
-                { n: [], icon: "speed", label: "Show in sidebar", k: "agentLimitsSidebar", kind: "toggle", cfg: "agentLimits.sidebar", kw: "ai agent limits claude antigravity codex quota sidebar rail",
-                    why: "Keeps compact 5-hour and weekly limit bars in the sidebar and collapsed rail. Hover them for full details." },
+                { n: [], icon: "speed", label: "Show in sidebar", k: "agentLimitsSidebar", kind: "toggle", cfg: "agentLimits.sidebar", kw: "ai agent limits claude antigravity codex quota sidebar rail" },
                 { n: [], icon: "height", label: "Bar size", k: "agentLimitsSize", kind: "seg", o: ["small", "normal", "tall", "huge"], cfg: "agentLimits.size", dis: s => !s.v("agentLimitsSidebar"), kw: "ai agent limits bar height size length tall huge small normal" },
                 { n: [], icon: "neurology", label: "Claude", k: "agentLimitsClaude", kind: "toggle", cfg: "agentLimits.claude", kw: "ai agent limits claude anthropic quota" },
                 { n: [], icon: "neurology", label: "Antigravity", k: "agentLimitsAntigravity", kind: "toggle", cfg: "agentLimits.antigravity", kw: "ai agent limits antigravity gemini quota" },
@@ -424,15 +362,14 @@ const PAGES_SOURCE = {
                 { n: [], kind: "w", w: "winLayouts", kw: "tiling layout dwindle master scrolling hy3 custom workshop draw lua" }
             ] },
             { t: "Moving", rows: [
-                { n: 66, icon: "vertical_align_top", label: "Bottom edge lifts windows", k: "edgeLift", kind: "toggle", cfg: "windows.edge", why: "Push down at the bottom edge to peek under your windows." },
-                { n: 67, icon: "swap_horiz", label: "Dropping on a window", k: "dropMode", kind: "seg", o: ["move", "swap"], cfg: "windows.mode", kw: "move swap",
-                    why: "Move takes the spot and nudges the other aside. Swap trades the two." },
+                { n: 66, icon: "vertical_align_top", label: "Bottom edge lifts windows", k: "edgeLift", kind: "toggle", cfg: "windows.edge" },
+                { n: 67, icon: "swap_horiz", label: "Dropping on a window", k: "dropMode", kind: "seg", o: ["move", "swap"], cfg: "windows.mode", kw: "move swap" },
                 { n: 68, icon: "trending_flat", label: "Follow a sent window", k: "followSent", kind: "toggle", cfg: "windows.follow", state: s => s.v("followSent") ? "you go with it" : "you stay put" }
             ] },
             { t: "Panel widths", rows: [
                 { n: 65, icon: "search", label: "Launcher", k: "launcherW", kind: "slider", min: 600, max: 1200, step: 20, fmt: v => `${v}`, cfg: "launcher.width", kw: "panel sizes" },
                 { n: 65, icon: "menu", label: "Menus", k: "menuW", kind: "slider", min: 320, max: 560, step: 10, fmt: v => `${v}`, cfg: "menu.width", kw: "panel sizes" },
-                { n: 65, icon: "tune", label: "Settings", k: "settingsW", kind: "slider", min: 1040, max: 1440, step: 20, fmt: v => `${v}`, cfg: "settings.width", why: "How wide this panel opens.", kw: "panel sizes settings window" }
+                { n: 65, icon: "tune", label: "Settings", k: "settingsW", kind: "slider", min: 1040, max: 1440, step: 20, fmt: v => `${v}`, cfg: "settings.width", kw: "panel sizes settings window" }
             ] }
         ]
     },
@@ -441,31 +378,21 @@ const PAGES_SOURCE = {
         status: s => `${s.v("concept")} · ${s.starredCount} starred`,
         groups: [
             { t: "Layout", rows: [
-                { n: 69, icon: "view_agenda", label: "Concept", k: "concept", kind: "seg", o: ["list", "alphabet"], cfg: "launcher.concept", kw: "launcher layout",
-                    why: "List is a plain search list. Alphabet is a thumb-sized rail of letters with favourites on a bow." },
-                { n: [], icon: "vertical_align_center", label: "Position", k: "searchAt", kind: "slider", min: 0, max: 1, step: 0.01, ends: ["top", "bottom"], fmtS: (s, v) => placedText(v, s.launcherPlaced ?? -1), cfg: "launcher.list.searchAt", dis: s => s.v("concept") !== "list", kw: "launcher position height vertical move up down raise lower top centre center search bar",
-                    why: "How far down the screen the middle of the search bar sits, as a share of the screen's height. When the full list would not fit below, the launcher moves up until it does." },
-                { n: [], icon: "desktop_windows", label: "Open on", k: "launcherScreen", kind: "choice", o: s => [["", "The focused screen"]].concat(s.monitorNames.map(m => [m, m])), cfg: "launcher.screen", kw: "launcher screen monitor display open on primary multi monitor pin",
-                    why: "The focused screen opens the launcher wherever you are working. A named screen always opens it there. If that screen is unplugged, the focused one is used." },
-                { n: [], icon: "keyboard_return", label: "Escape", k: "launcherEscape", kind: "seg", o: [["back", "step back"], ["close", "close"]], cfg: "launcher.escape", kw: "escape esc key close step back launcher",
-                    why: "Step back leaves a page, the symbol picker or a confirmation first, then closes the launcher. Close shuts it at once." },
-                { n: [], icon: "push_pin", label: "Show pinned", k: "listPinned", kind: "toggle", cfg: "launcher.list.pinned", dis: s => s.v("concept") !== "list", kw: "pinned favourites quick launch grid icons",
-                    why: "Pick an app in the list and press Pin to put it here." },
+                { n: 69, icon: "view_agenda", label: "Concept", k: "concept", kind: "seg", o: ["list", "alphabet"], cfg: "launcher.concept", kw: "launcher layout" },
+                { n: [], icon: "vertical_align_center", label: "Position", k: "searchAt", kind: "slider", min: 0, max: 1, step: 0.01, ends: ["top", "bottom"], fmtS: (s, v) => placedText(v, s.launcherPlaced ?? -1), cfg: "launcher.list.searchAt", dis: s => s.v("concept") !== "list", kw: "launcher position height vertical move up down raise lower top centre center search bar" },
+                { n: [], icon: "desktop_windows", label: "Open on", k: "launcherScreen", kind: "choice", o: s => [["", "The focused screen"]].concat(s.monitorNames.map(m => [m, m])), cfg: "launcher.screen", kw: "launcher screen monitor display open on primary multi monitor pin" },
+                { n: [], icon: "keyboard_return", label: "Escape", k: "launcherEscape", kind: "seg", o: [["back", "step back"], ["close", "close"]], cfg: "launcher.escape", kw: "escape esc key close step back launcher" },
+                { n: [], icon: "push_pin", label: "Show pinned", k: "listPinned", kind: "toggle", cfg: "launcher.list.pinned", dis: s => s.v("concept") !== "list", kw: "pinned favourites quick launch grid icons" },
                 { n: [], icon: "schedule", label: "Show recents", k: "listRecents", kind: "toggle", cfg: "launcher.list.recents", dis: s => s.v("concept") !== "list", kw: "recent apps launcher icons" },
-                { n: [], icon: "animation", label: "Animate preview", k: "animatePreview", kind: "toggle", cfg: "launcher.animatePreview", dis: s => s.v("concept") !== "list", kw: "preview peek card animate resize frame motion",
-                    why: "The card beside the list grows and shrinks to fit the next preview instead of jumping to its size." },
+                { n: [], icon: "animation", label: "Animate preview", k: "animatePreview", kind: "toggle", cfg: "launcher.animatePreview", dis: s => s.v("concept") !== "list", kw: "preview peek card animate resize frame motion" },
                 { n: 70, icon: "photo_size_select_large", label: "Icon size", k: "launcherIcon", kind: "slider", min: 18, max: 48, step: 2, fmt: v => `${v} px`, cfg: "launcher.iconSize", kw: "launcher icon size" },
-                { n: 71, icon: "trending_up", label: "Habit fades over", k: "halfLife", kind: "step", min: 1, max: 60, unit: " days", cfg: "launcher.halfLifeDays", why: "Apps you use rise in the launcher. This is how long a launch keeps counting.", extra: { icon: "history", tip: "forget what it learned", act: "forgetHabit" }, kw: "app ranking by habit" }
+                { n: 71, icon: "trending_up", label: "Habit fades over", k: "halfLife", kind: "step", min: 1, max: 60, unit: " days", cfg: "launcher.halfLifeDays", extra: { icon: "history", tip: "forget what it learned", act: "forgetHabit" }, kw: "app ranking by habit" }
             ] },
             { t: "Search results", rows: [
-                { n: [], icon: "visibility", label: "Hidden files", k: "hiddenFiles", kind: "seg", o: ["off", ".config", "all"], cfg: "launcher.hiddenFiles", kw: "hidden files dotfiles .config search results",
-                    why: "Which hidden files the launcher finds by name. .config is where most apps keep their settings." },
-                { n: [], icon: "filter_alt_off", label: "Skip ignored files", k: "ignoredFiles", kind: "toggle", cfg: "launcher.ignoredFiles", kw: "gitignore ignore ignored files build node_modules search names",
-                    why: "Off by default. When on, names listed in a git project's own .gitignore, such as build folders and dependencies, stay out of the results. A repository kept in your home folder with a broad .gitignore would hide most files, so turn it on only if you have none." },
-                { n: [], icon: "currency_exchange", label: "Currency", k: "currency", kind: "choice", o: s => s.currencies, cfg: "launcher.currency", state: s => s.ratesNote, kw: "currency money exchange rates convert",
-                    why: "Typing an amount like 5 eur shows it in this currency. Rates come from the European Central Bank once a day and are kept for when you are offline." },
-                { n: [], icon: "find_in_page", label: "Inside files", k: "contents", kind: "toggle", cfg: "launcher.contents", kw: "search inside files contents text ripgrep grep",
-                    why: "Words you type are also looked for inside the files in your home folder, and inside .config when Hidden files lets it in. Other hidden files, node_modules, caches, Python environments, the Android SDK, images, audio, archives and anything that looks like a key are skipped. A search that takes more than 2 seconds is stopped, and the results say so." },
+                { n: [], icon: "visibility", label: "Hidden files", k: "hiddenFiles", kind: "seg", o: ["off", ".config", "all"], cfg: "launcher.hiddenFiles", kw: "hidden files dotfiles .config search results" },
+                { n: [], icon: "filter_alt_off", label: "Skip ignored files", k: "ignoredFiles", kind: "toggle", cfg: "launcher.ignoredFiles", kw: "gitignore ignore ignored files build node_modules search names" },
+                { n: [], icon: "currency_exchange", label: "Currency", k: "currency", kind: "choice", o: s => s.currencies, cfg: "launcher.currency", state: s => s.ratesNote, kw: "currency money exchange rates convert" },
+                { n: [], icon: "find_in_page", label: "Inside files", k: "contents", kind: "toggle", cfg: "launcher.contents", kw: "search inside files contents text ripgrep grep" },
                 { n: [], icon: "travel_explore", label: "Search engine", k: "webSearch", kind: "choice", o: [["https://duckduckgo.com/?q=%s", "DuckDuckGo"], ["https://www.google.com/search?q=%s", "Google"], ["https://www.bing.com/search?q=%s", "Bing"], ["https://search.brave.com/search?q=%s", "Brave"], ["https://www.startpage.com/do/search?q=%s", "Startpage"], ["https://www.ecosia.org/search?q=%s", "Ecosia"], ["https://kagi.com/search?q=%s", "Kagi"]], cfg: "launcher.webSearch", kw: "web search engine google duckduckgo bing" }
             ] },
             { t: "When nothing fits", rows: [
@@ -476,12 +403,9 @@ const PAGES_SOURCE = {
                 { n: [], icon: "terminal", label: "Run in a terminal", k: "fallbackTerminal", kind: "toggle", cfg: "launcher.fallbacks.terminal", kw: "fallback run command terminal shell" }
             ] },
             { t: "Typing", rows: [
-                { n: [], icon: "front_hand", label: "Skin tone", k: "skinTone", kind: "choice", o: [["none", "✋ default"], ["light", "✋🏻 light"], ["medium-light", "✋🏼 medium light"], ["medium", "✋🏽 medium"], ["medium-dark", "✋🏾 medium dark"], ["dark", "✋🏿 dark"]], cfg: "launcher.typing.skinTone", kw: "emoji skin tone hands people colour",
-                    why: "Emoji with people and hands come in this tone. More on an emoji row still offers every tone." },
-                { n: [], icon: "content_paste_search", label: "Clipboard in search", k: "clipboardInSearch", kind: "toggle", cfg: "launcher.typing.clipboard", kw: "clipboard history search results paste",
-                    why: "Words you type also find recent clipboard entries. Typing clip shows them either way." },
-                { n: [], icon: "notifications", label: "Notifications in search", k: "notificationsInSearch", kind: "toggle", cfg: "launcher.typing.notifications", kw: "notification history search results messages private",
-                    why: "Words you type also find the text of recent notifications. Off by default because message text on screen is private. Typing notifications shows them either way." }
+                { n: [], icon: "front_hand", label: "Skin tone", k: "skinTone", kind: "choice", o: [["none", "✋ default"], ["light", "✋🏻 light"], ["medium-light", "✋🏼 medium light"], ["medium", "✋🏽 medium"], ["medium-dark", "✋🏾 medium dark"], ["dark", "✋🏿 dark"]], cfg: "launcher.typing.skinTone", kw: "emoji skin tone hands people colour" },
+                { n: [], icon: "content_paste_search", label: "Clipboard in search", k: "clipboardInSearch", kind: "toggle", cfg: "launcher.typing.clipboard", kw: "clipboard history search results paste" },
+                { n: [], icon: "notifications", label: "Notifications in search", k: "notificationsInSearch", kind: "toggle", cfg: "launcher.typing.notifications", kw: "notification history search results messages private" }
             ] },
             { t: "Snippets", rows: [
                 { n: [], kind: "w", w: "snippets", kw: "snippets saved text expand keyword placeholders" }
@@ -490,74 +414,50 @@ const PAGES_SOURCE = {
                 { n: [], kind: "w", w: "quicklinks", kw: "quicklinks search shortcuts keywords urls youtube github wiki" }
             ] },
             { t: "Power tools", rows: [
-                { n: [], icon: "terminal", label: "Script folders", k: "scriptsFolder", kind: "text", mono: true, cfg: "launcher.powerTools.scriptsFolder", placeholder: "~/.config/banditshell/scripts", kw: "script commands raycast scripts folder folders directory",
-                    why: "Scripts in these folders, separated by commas, show up by their file name, or by the Raycast style @raycast.title header. Type a script's name and press Enter to run it." },
-                { n: [], icon: "folder_code", label: "Project folders", k: "projectFolders", kind: "text", mono: true, cfg: "launcher.powerTools.projectFolders", placeholder: "~/Projects", kw: "projects git repositories code folders",
-                    why: "Git repositories in these folders, separated by commas, show up when you type their name or projects." },
+                { n: [], icon: "terminal", label: "Script folders", k: "scriptsFolder", kind: "text", mono: true, cfg: "launcher.powerTools.scriptsFolder", placeholder: "~/.config/banditshell/scripts, ~/scripts", kw: "script commands raycast scripts folder folders directory" },
+                { n: [], icon: "folder_code", label: "Project folders", k: "projectFolders", kind: "text", mono: true, cfg: "launcher.powerTools.projectFolders", placeholder: "~/Projects, ~/Work", kw: "projects git repositories code folders" },
                 { n: [], icon: "account_tree", label: "Project depth", k: "projectDepth", kind: "step", min: 1, max: 4, cfg: "launcher.powerTools.projectDepth", fmt: v => v === 1 ? "1 level" : `${v} levels`, kw: "projects search depth" },
-                { n: [], icon: "description", label: "Note folders", k: "noteFolders", kind: "text", mono: true, cfg: "launcher.powerTools.noteFolders", placeholder: "~/Obsidian", kw: "notes obsidian vaults folders",
-                    why: "Obsidian vaults inside these folders are searched along with the vaults Obsidian already knows about." },
-                { n: [], icon: "visibility_off", label: "Leave out vaults", k: "noteSkip", kind: "text", mono: true, cfg: "launcher.powerTools.noteSkip", placeholder: "Archive, ~/Obsidian/Work", kw: "notes obsidian vaults hide skip private exclude",
-                    why: "Vaults named here, by name or folder and separated by commas, are never searched and never get new notes." },
+                { n: [], icon: "description", label: "Note folders", k: "noteFolders", kind: "text", mono: true, cfg: "launcher.powerTools.noteFolders", placeholder: "~/Obsidian, ~/Notes", kw: "notes obsidian vaults folders" },
+                { n: [], icon: "visibility_off", label: "Leave out vaults", k: "noteSkip", kind: "text", mono: true, cfg: "launcher.powerTools.noteSkip", placeholder: "Archive, ~/Obsidian/Work", kw: "notes obsidian vaults hide skip private exclude" },
                 { n: [], icon: "note_add", label: "New notes go to", k: "noteVault", kind: "choice", o: s => s.noteVaults, cfg: "launcher.powerTools.noteVault", kw: "notes obsidian vault new note default" },
-                { n: [], icon: "edit_note", label: "Quick notes folder", k: "quickNoteFolder", kind: "text", mono: true, cfg: "launcher.powerTools.quickNoteFolder", placeholder: "~/Notes", kw: "quick notes capture jot folder markdown",
-                    why: "Quick notes are saved here as plain Markdown files. Left empty, they go in the vault new notes use, or ~/Notes when there is none." },
+                { n: [], icon: "edit_note", label: "Quick notes folder", k: "quickNoteFolder", kind: "text", mono: true, cfg: "launcher.powerTools.quickNoteFolder", placeholder: "~/Notes", kw: "quick notes capture jot folder markdown" },
                 { n: [], icon: "timer", label: "Focus round", k: "focusMinutes", kind: "step", min: 5, max: 120, step: 5, unit: " min", cfg: "launcher.powerTools.focusMinutes", kw: "pomodoro focus work minutes" },
                 { n: [], icon: "coffee", label: "Break", k: "breakMinutes", kind: "step", min: 1, max: 30, unit: " min", cfg: "launcher.powerTools.breakMinutes", kw: "pomodoro short break minutes" },
                 { n: [], icon: "self_improvement", label: "Long break", k: "longBreakMinutes", kind: "step", min: 5, max: 60, step: 5, unit: " min", cfg: "launcher.powerTools.longBreakMinutes", kw: "pomodoro long break minutes" },
                 { n: [], icon: "coffee", label: "Rounds before a long break", k: "roundsBeforeLongBreak", kind: "step", min: 2, max: 8, cfg: "launcher.powerTools.roundsBeforeLongBreak", fmt: v => `${v}`, kw: "pomodoro rounds long break" }
             ] },
             { t: "Developer tools", rows: [
-                { n: [], icon: "dns", label: "SSH hosts", k: "devOpsSsh", kind: "toggle", cfg: "launcher.devOps.ssh", kw: "ssh hosts servers remote connect terminal known_hosts",
-                    why: "Type ssh for the hosts in your SSH config and known hosts, then press Enter to connect in a terminal. Private keys are never read." },
-                { n: [], icon: "lan", label: "Listening ports", k: "devOpsPorts", kind: "toggle", cfg: "launcher.devOps.ports", kw: "ports listening sockets who uses port localhost server kill",
-                    why: "Type ports or port 3000 to see what listens there, then quit it or open it in the browser." },
-                { n: [], icon: "settings_suggest", label: "Services", k: "devOpsServices", kind: "toggle", cfg: "launcher.devOps.services", kw: "systemd services units systemctl start stop restart daemon",
-                    why: "Type services, service docker or restart sshd. System services ask for your password before they change." },
-                { n: [], icon: "deployed_code", label: "Containers", k: "devOpsContainers", kind: "toggle", cfg: "launcher.devOps.containers", kw: "containers podman docker logs shell exec",
-                    why: "Type containers, podman or docker to start and stop containers, follow their logs or open a shell inside." },
-                { n: [], icon: "mobile", label: "Phone through KDE Connect", k: "devOpsPhone", kind: "toggle", cfg: "launcher.devOps.phone", kw: "phone kde connect ring ping battery send file clipboard share link",
-                    why: "Type phone, ring phone or send to phone. Works with phones already paired in KDE Connect." }
+                { n: [], icon: "dns", label: "SSH hosts", k: "devOpsSsh", kind: "toggle", cfg: "launcher.devOps.ssh", kw: "ssh hosts servers remote connect terminal known_hosts" },
+                { n: [], icon: "lan", label: "Listening ports", k: "devOpsPorts", kind: "toggle", cfg: "launcher.devOps.ports", kw: "ports listening sockets who uses port localhost server kill" },
+                { n: [], icon: "settings_suggest", label: "Services", k: "devOpsServices", kind: "toggle", cfg: "launcher.devOps.services", kw: "systemd services units systemctl start stop restart daemon" },
+                { n: [], icon: "deployed_code", label: "Containers", k: "devOpsContainers", kind: "toggle", cfg: "launcher.devOps.containers", kw: "containers podman docker logs shell exec" },
+                { n: [], icon: "mobile", label: "Phone through KDE Connect", k: "devOpsPhone", kind: "toggle", cfg: "launcher.devOps.phone", kw: "phone kde connect ring ping battery send file clipboard share link" }
             ] },
             { t: "Utilities", rows: [
-                { n: [], icon: "password", label: "Password length", k: "passwordLength", kind: "step", min: 8, max: 64, step: 4, cfg: "launcher.utilities.passwordLength", fmt: v => `${v} characters`, kw: "password generator random length uuid developer",
-                    why: "Typing password makes one this long. Ask for another length with password 32, or password 20 simple for one without symbols." },
-                { n: [], icon: "notifications_active", label: "Reminders without a time", k: "reminderHour", kind: "step", min: 5, max: 12, cfg: "launcher.utilities.reminderHour", fmt: v => `${v < 10 ? "0" : ""}${v}:00`, kw: "reminder default time morning tomorrow remind me",
-                    why: "Remind me tomorrow to call mum rings at this hour. Tonight, this afternoon and this evening ring at 20:00, 15:00 and 19:00." }
+                { n: [], icon: "password", label: "Password length", k: "passwordLength", kind: "step", min: 8, max: 64, step: 4, cfg: "launcher.utilities.passwordLength", fmt: v => `${v} characters`, kw: "password generator random length uuid developer" },
+                { n: [], icon: "notifications_active", label: "Reminders without a time", k: "reminderHour", kind: "step", min: 5, max: 12, cfg: "launcher.utilities.reminderHour", fmt: v => `${v < 10 ? "0" : ""}${v}:00`, kw: "reminder default time morning tomorrow remind me" }
             ] },
             { t: "Online", rows: [
-                { n: [], icon: "translate", label: "Translate", k: "onlineTranslate", kind: "toggle", cfg: "launcher.online.translate", kw: "translate translation language google",
-                    why: "Type hello in german, translate bonjour or tr hola. The text goes to Google Translate." },
+                { n: [], icon: "translate", label: "Translate with Google", k: "onlineTranslate", kind: "toggle", cfg: "launcher.online.translate", kw: "translate translation language google" },
                 { n: [], icon: "language", label: "Translate into", k: "onlineTranslateTo", kind: "choice", o: [["", "System language"], ["en", "English"], ["da", "Danish"], ["de", "German"], ["fr", "French"], ["es", "Spanish"], ["it", "Italian"], ["nl", "Dutch"], ["sv", "Swedish"], ["no", "Norwegian"], ["fi", "Finnish"], ["pl", "Polish"], ["pt", "Portuguese"], ["ja", "Japanese"], ["zh-CN", "Chinese"], ["ko", "Korean"]], cfg: "launcher.online.translateTo", dis: s => !s.v("onlineTranslate"), kw: "translate target language default" },
-                { n: [], icon: "partly_cloudy_day", label: "Weather", k: "onlineWeather", kind: "toggle", cfg: "launcher.online.weather", kw: "weather forecast temperature rain city place",
-                    why: "Type weather paris or weather for the place you set. The place name goes to wttr.in." },
-                { n: [], icon: "menu_book", label: "Wiktionary definitions", k: "onlineDefine", kind: "toggle", cfg: "launcher.online.define", kw: "define dictionary meaning word",
-                    why: "Type define and a word. The offline dictionary answers at once; this adds Wiktionary's entry beside it." },
-                { n: [], icon: "package_2", label: "Packages", k: "onlinePackages", kind: "toggle", cfg: "launcher.online.packages", kw: "install package pacman aur flatpak apt dnf software",
-                    why: "Type install and a name to search the system packages, the AUR and Flatpak, then install or remove from the row." },
-                { n: [], icon: "book", label: "GitHub", k: "onlineGithub", kind: "toggle", cfg: "launcher.online.github", kw: "github gh repos pull requests issues notifications",
-                    why: "Type gh for your repositories, open pull requests, assigned issues and notifications. Needs the gh command, signed in." },
-                { n: [], icon: "bookmark", label: "Bookmarks and history", k: "onlineBrowser", kind: "toggle", cfg: "launcher.online.browser", kw: "browser bookmarks history firefox zen chromium",
-                    why: "Pages from your browsers show up as you type. The list is read in the background at most every few minutes and stays on this computer." },
+                { n: [], icon: "partly_cloudy_day", label: "Weather from wttr.in", k: "onlineWeather", kind: "toggle", cfg: "launcher.online.weather", kw: "weather wttr forecast temperature rain city place" },
+                { n: [], icon: "menu_book", label: "Wiktionary definitions", k: "onlineDefine", kind: "toggle", cfg: "launcher.online.define", kw: "define dictionary meaning word" },
+                { n: [], icon: "package_2", label: "Packages", k: "onlinePackages", kind: "toggle", cfg: "launcher.online.packages", kw: "install package pacman aur flatpak apt dnf software" },
+                { n: [], icon: "book", label: "GitHub", k: "onlineGithub", kind: "toggle", cfg: "launcher.online.github", kw: "github gh repos pull requests issues notifications" },
+                { n: [], icon: "bookmark", label: "Bookmarks and history", k: "onlineBrowser", kind: "toggle", cfg: "launcher.online.browser", kw: "browser bookmarks history firefox zen chromium" },
                 { n: [], icon: "speed", label: "Speed test", k: "onlineSpeedtest", kind: "toggle", cfg: "launcher.online.speedtest", kw: "speedtest internet speed bandwidth" },
-                { n: [], icon: "movie", label: "Video downloads", k: "onlineVideos", kind: "toggle", cfg: "launcher.online.videos", kw: "download video audio youtube yt-dlp",
-                    why: "Paste a video link to save the video or its sound to your Downloads folder with yt-dlp." }
+                { n: [], icon: "movie", label: "Video downloads", k: "onlineVideos", kind: "toggle", cfg: "launcher.online.videos", kw: "download video audio youtube yt-dlp" }
             ] },
             { t: "System controls", rows: [
-                { n: [], icon: "brightness_medium", label: "Brightness", k: "systemBrightness", kind: "toggle", cfg: "launcher.systemControls.brightness", kw: "brightness backlight dim brighter dimmer screen monitor ddcutil",
-                    why: "Type brightness for a slider per screen, brightness 40 to set them all, or brighter and dimmer. Monitors need ddcutil." },
+                { n: [], icon: "brightness_medium", label: "Brightness", k: "systemBrightness", kind: "toggle", cfg: "launcher.systemControls.brightness", kw: "brightness backlight dim brighter dimmer screen monitor ddcutil" },
                 { n: [], icon: "brightness_low", label: "Lowest brightness", k: "systemLowestBrightness", kind: "step", min: 1, max: 30, unit: "%", cfg: "launcher.systemControls.lowestBrightness", dis: s => !s.v("systemBrightness"), kw: "brightness minimum lowest floor black" },
-                { n: [], icon: "wifi", label: "Wi-Fi networks", k: "systemWifi", kind: "toggle", cfg: "launcher.systemControls.wifi", kw: "wifi wi-fi wireless networks join password",
-                    why: "Type wifi to see every network in range. Joining a locked one asks for its password on the shell's own card." },
-                { n: [], icon: "vpn_lock", label: "VPN and Tailscale", k: "systemVpn", kind: "toggle", cfg: "launcher.systemControls.vpn", kw: "vpn wireguard tailscale exit node tunnel",
-                    why: "Type vpn for your saved VPN connections, or tailscale for its status, devices and exit nodes." },
-                { n: [], icon: "screen_record", label: "Screen recording", k: "systemRecording", kind: "toggle", cfg: "launcher.systemControls.recording", kw: "record screen recording video capture wf-recorder",
-                    why: "Type record screen, record area or record window. Sound is only recorded when you say record screen with sound." },
+                { n: [], icon: "wifi", label: "Wi-Fi networks", k: "systemWifi", kind: "toggle", cfg: "launcher.systemControls.wifi", kw: "wifi wi-fi wireless networks join password" },
+                { n: [], icon: "vpn_lock", label: "VPN and Tailscale", k: "systemVpn", kind: "toggle", cfg: "launcher.systemControls.vpn", kw: "vpn wireguard tailscale exit node tunnel" },
+                { n: [], icon: "screen_record", label: "Screen recording", k: "systemRecording", kind: "toggle", cfg: "launcher.systemControls.recording", kw: "record screen recording video capture wf-recorder" },
                 { n: [], icon: "movie", label: "Recordings folder", k: "systemRecordingFolder", kind: "text", mono: true, cfg: "launcher.systemControls.recordingFolder", placeholder: "~/Videos/Recordings", dis: s => !s.v("systemRecording"), kw: "recordings folder videos save location" }
             ] },
             { t: "Plugins", rows: [
-                { n: [], icon: "low_priority", label: "Plugin results", k: "pluginRank", kind: "seg", o: [["first", "first"], ["mixed", "mixed"], ["last", "last"]], cfg: "launcher.plugins.rank", kw: "plugin results order rank first top priority above apps",
-                    why: "First puts every matching plugin row above apps, commands and settings. Mixed ranks them by how well they match, ahead of built-in rows that match as well. Last keeps them below the launcher's own rows." },
+                { n: [], icon: "low_priority", label: "Plugin results", k: "pluginRank", kind: "seg", o: [["first", "first"], ["mixed", "mixed"], ["last", "last"]], cfg: "launcher.plugins.rank", kw: "plugin results order rank first top priority above apps" },
                 { n: [], kind: "w", w: "plugins", kw: "launcher plugins extensions add ons tools results programs" }
             ] },
             { t: "Aliases and hotkeys", rows: [
@@ -571,19 +471,14 @@ const PAGES_SOURCE = {
                 { n: 73, kind: "w", w: "overrides", kw: "app icon overrides" }
             ] },
             { t: "AI", rows: [
-                { n: [], icon: "auto_awesome", label: "Answers and rewriting", k: "aiOn", kind: "toggle", cfg: "launcher.ai.enabled", state: s => s.aiNote, kw: "ai assistant ask question answer chat llm ollama rewrite selected text grammar translate summarise",
-                    why: "Type ? and a question to get an answer under the search field. Select text in any app, open the launcher and type fix, shorter, friendlier, summarise, translate or explain to work on it. Nothing is sent anywhere but the backend below." },
-                { n: [], icon: "dns", label: "Backend", k: "aiBackend", kind: "choice", o: [["ollama", "Ollama"], ["claude", "Claude Code"], ["codex", "Codex"], ["openai", "OpenAI compatible"]], cfg: "launcher.ai.backend", dis: s => !s.v("aiOn"), kw: "ai backend provider ollama openai anthropic claude code codex chatgpt subscription plan api local",
-                    why: "Ollama runs the model on this computer, so what you ask and select stays here. Claude Code and Codex answer with the plan you signed in to them with, and need no key. OpenAI compatible sends it to that server with your API key." },
+                { n: [], icon: "auto_awesome", label: "Answers and rewriting", k: "aiOn", kind: "toggle", cfg: "launcher.ai.enabled", state: s => s.aiNote, kw: "ai assistant ask question answer chat llm ollama rewrite selected text grammar translate summarise" },
+                { n: [], icon: "dns", label: "Backend", k: "aiBackend", kind: "choice", o: [["ollama", "Ollama, local"], ["claude", "Claude Code, online"], ["codex", "Codex, online"], ["openai", "OpenAI compatible, online"]], cfg: "launcher.ai.backend", dis: s => !s.v("aiOn"), kw: "ai backend provider ollama openai anthropic claude code codex chatgpt subscription plan api local" },
                 { n: [], icon: "neurology", label: "Model", k: "aiModel", kind: "choice", o: s => s.aiModels, cfg: "launcher.ai.model", dis: s => !s.v("aiOn"), state: s => s.aiModelNote, kw: "ai model llm qwen llama claude gpt" },
-                { n: [], icon: "travel_explore", label: "Search the web", k: "aiWeb", kind: "toggle", cfg: "launcher.ai.webSearch", dis: s => !s.v("aiOn") || s.v("aiBackend") !== "claude" && s.v("aiBackend") !== "codex", kw: "ai web search internet browse current claude code codex",
-                    why: "Lets Claude Code or Codex look things up online when an answer needs current facts. Off by default; what you ask then leaves this computer through that tool." },
+                { n: [], icon: "travel_explore", label: "Search the web", k: "aiWeb", kind: "toggle", cfg: "launcher.ai.webSearch", dis: s => !s.v("aiOn") || s.v("aiBackend") !== "claude" && s.v("aiBackend") !== "codex", kw: "ai web search internet browse current claude code codex" },
                 { n: [], icon: "verified_user", label: "Connection", kind: "button", btn: "Check", act: "aiCheck", state: s => s.aiCheckNote, dis: s => !s.v("aiOn"), kw: "ai check connection test sign in account claude codex chatgpt subscription" },
                 { n: [], icon: "login", label: "Account", kind: "button", btn: s => s.aiSignedIn ? "Sign out" : "Sign in", act: "aiAccount", state: s => s.aiAccountNote, dis: s => !s.v("aiOn") || s.v("aiBackend") !== "claude" && s.v("aiBackend") !== "codex", kw: "ai sign in out login logout account claude codex chatgpt subscription" },
-                { n: [], icon: "key", label: "API key", k: "aiKey", kind: "secret", dis: s => !s.v("aiOn") || s.v("aiBackend") !== "openai", kw: "ai api key token secret openai",
-                    why: "Only OpenAI compatible needs a key. It stays in a file only you can read in the shell's state folder, never in config.json." },
-                { n: [], icon: "link", label: "Address", k: "aiAddress", kind: "text", mono: true, cfg: "launcher.ai.openaiAddress", state: s => s.aiAddressNote, dis: s => !s.v("aiOn") || s.v("aiBackend") !== "openai", kw: "ai api address url endpoint base url openrouter groq lm studio llama.cpp",
-                    why: "Any server that speaks the OpenAI chat API: OpenAI, OpenRouter, Groq, LM Studio or llama.cpp. The key goes only to an https address or to this computer; a plain http server elsewhere is asked without it." }
+                { n: [], icon: "key", label: "API key", k: "aiKey", kind: "secret", dis: s => !s.v("aiOn") || s.v("aiBackend") !== "openai", kw: "ai api key token secret openai" },
+                { n: [], icon: "link", label: "Address", k: "aiAddress", kind: "text", mono: true, cfg: "launcher.ai.openaiAddress", state: s => s.aiAddressNote, dis: s => !s.v("aiOn") || s.v("aiBackend") !== "openai", kw: "ai api address url endpoint base url openrouter groq lm studio llama.cpp" }
             ] }
         ]
     },
@@ -594,12 +489,9 @@ const PAGES_SOURCE = {
             { rows: [
                 { n: 74, icon: "fiber_manual_record", label: "Record", k: "clip", kind: "toggle", cfg: "clipboard.record", keys: "shell:panel.clipboard.toggle", extra: { icon: "delete_sweep", tip: "clear it all", act: "clearClip" }, kw: "clipboard history on off" },
                 { n: 75, icon: "format_list_numbered", label: "Keep", k: "clipMax", kind: "step", min: 50, max: 2000, step: 50, cfg: "clipboard.maxEntries", fmt: v => `${v}`, dis: s => !s.v("clip"), kw: "clipboard limits" },
-                { n: 75, icon: "event_repeat", label: "Keep for", k: "clipDays", kind: "seg", o: [[0, "forever"], [1, "1 day"], [7, "1 week"], [30, "1 month"], [90, "3 months"]], cfg: "clipboard.keepDays", dis: s => !s.v("clip"), kw: "clipboard history time span days expire older",
-                    why: "Entries older than this are dropped, pinned ones stay. The count above still applies." },
-                { n: 75, icon: "block", label: "Never record from", k: "clipIgnore", kind: "text", mono: true, cfg: "clipboard.ignoreApps", placeholder: "keepassxc, 1password", dis: s => !s.v("clip"), kw: "clipboard disabled applications password manager exclude ignore apps window class",
-                    why: "Copies made in these apps are never stored. Separate window classes with commas; the app's name is enough." },
-                { n: 75, icon: "keyboard_return", label: "Enter on an entry", k: "clipEnter", kind: "seg", o: [["paste", "paste"], ["copy", "copy"]], cfg: "clipboard.enterAction", dis: s => !s.v("clip"), kw: "clipboard primary action paste copy enter wtype",
-                    why: "Paste types it into the app you were in. Copy only puts it back on the clipboard." },
+                { n: 75, icon: "event_repeat", label: "Keep for", k: "clipDays", kind: "seg", o: [[0, "forever"], [1, "1 day"], [7, "1 week"], [30, "1 month"], [90, "3 months"]], cfg: "clipboard.keepDays", dis: s => !s.v("clip"), kw: "clipboard history time span days expire older" },
+                { n: 75, icon: "block", label: "Never record from", k: "clipIgnore", kind: "text", mono: true, cfg: "clipboard.ignoreApps", placeholder: "keepassxc, 1password", dis: s => !s.v("clip"), kw: "clipboard disabled applications password manager exclude ignore apps window class" },
+                { n: 75, icon: "keyboard_return", label: "Enter on an entry", k: "clipEnter", kind: "seg", o: [["paste", "paste"], ["copy", "copy"]], cfg: "clipboard.enterAction", dis: s => !s.v("clip"), kw: "clipboard primary action paste copy enter wtype" },
                 { n: 75, icon: "notes", label: "Longest text", k: "clipText", kind: "seg", o: [[262144, "256 KB"], [1048576, "1 MB"], [8388608, "8 MB"]], cfg: "clipboard.maxText", dis: s => !s.v("clip"), kw: "clipboard limits" },
                 { n: 75, icon: "image", label: "Largest image", k: "clipBlob", kind: "seg", o: [[8388608, "8 MB"], [33554432, "32 MB"], [134217728, "128 MB"]], cfg: "clipboard.maxBlob", dis: s => !s.v("clip"), kw: "clipboard limits" }
             ] },
@@ -613,22 +505,15 @@ const PAGES_SOURCE = {
         status: s => s.v("widgetsOn") ? `${WIDGET_CARDS.filter(k => s.v(k)).length} widgets` : "off",
         groups: [
             { rows: [
-                { n: [], icon: "widgets", label: "Desktop widgets", k: "widgetsOn", kind: "toggle", cfg: "widgets.enabled", kw: "desktop widgets on screen wallpaper glass drag move size clock calendar",
-                    why: "Shows widgets on your desktop, under your windows, for the clock, media, weather, system load and AI limits. You can drag each one anywhere on its screen." },
-                { n: [], icon: "visibility", label: "Show them", k: "widgetsShown", kind: "seg", o: [["always", "always"], ["empty", "empty desktop"]], cfg: "widgets.shown", dis: s => !s.v("widgetsOn"), kw: "desktop widgets hide windows empty workspace",
-                    why: "Always keeps them on the desktop, under your windows. Empty desktop fades them out as soon as a window opens on that screen." }
+                { n: [], icon: "widgets", label: "Desktop widgets", k: "widgetsOn", kind: "toggle", cfg: "widgets.enabled", kw: "desktop widgets on screen wallpaper glass drag move size clock calendar" },
+                { n: [], icon: "visibility", label: "Show them", k: "widgetsShown", kind: "seg", o: [["always", "always"], ["empty", "empty desktop"]], cfg: "widgets.shown", dis: s => !s.v("widgetsOn"), kw: "desktop widgets hide windows empty workspace" }
             ] },
             { t: "On the desktop", rows: [
-                { n: [], icon: "schedule", label: "Clock", k: "widgetClock", kind: "toggle", cfg: "widgets.clock", dis: s => !s.v("widgetsOn"), kw: "desktop widget clock time big calendar month",
-                    why: "Shows the time in large figures, hours over minutes, with the date under it. Opening it adds this month's calendar, your world clocks and your next alarm." },
-                { n: [], icon: "music_note", label: "Now playing", k: "widgetMedia", kind: "toggle", cfg: "widgets.media", dis: s => !s.v("widgetsOn"), kw: "desktop widget media music player",
-                    why: "Shows only while something is playing or was just playing, with buttons to pause and skip." },
-                { n: [], icon: "partly_cloudy_day", label: "Weather", k: "widgetWeather", kind: "toggle", cfg: "widgets.weather", dis: s => !s.v("widgetsOn"), kw: "desktop widget weather temperature",
-                    why: "The temperature and the sky where you are. It follows the Weather setting under Clock." },
-                { n: [], icon: "memory", label: "System", k: "widgetSystem", kind: "toggle", cfg: "widgets.system", dis: s => !s.v("widgetsOn"), kw: "desktop widget cpu memory ram load",
-                    why: "How busy the processor is and how much memory is in use, read every two seconds while you can see it." },
-                { n: [], icon: "speed", label: "AI limits", k: "widgetLimits", kind: "toggle", cfg: "widgets.limits", dis: s => !s.v("widgetsOn"), kw: "desktop widget ai agent limits claude antigravity codex quota",
-                    why: "Five-hour and weekly usage limits for Claude, Antigravity and Codex." }
+                { n: [], icon: "schedule", label: "Clock", k: "widgetClock", kind: "toggle", cfg: "widgets.clock", dis: s => !s.v("widgetsOn"), kw: "desktop widget clock time big calendar month" },
+                { n: [], icon: "music_note", label: "Now playing", k: "widgetMedia", kind: "toggle", cfg: "widgets.media", dis: s => !s.v("widgetsOn"), kw: "desktop widget media music player" },
+                { n: [], icon: "partly_cloudy_day", label: "Weather", k: "widgetWeather", kind: "toggle", cfg: "widgets.weather", dis: s => !s.v("widgetsOn"), kw: "desktop widget weather temperature" },
+                { n: [], icon: "memory", label: "System", k: "widgetSystem", kind: "toggle", cfg: "widgets.system", dis: s => !s.v("widgetsOn"), kw: "desktop widget cpu memory ram load" },
+                { n: [], icon: "speed", label: "AI limits", k: "widgetLimits", kind: "toggle", cfg: "widgets.limits", dis: s => !s.v("widgetsOn"), kw: "desktop widget ai agent limits claude antigravity codex quota" }
             ] }
         ]
     },
@@ -655,8 +540,7 @@ const PAGES_SOURCE = {
             { t: "Alarms", rows: [
                 { n: 84, icon: "snooze", label: "Snooze", k: "snooze", kind: "step", min: 1, max: 30, unit: " min", cfg: "clock.snoozeMinutes", kw: "alarms" },
                 { n: 84, icon: "notifications_active", label: "Ring for", k: "ring", kind: "step", min: 1, max: 60, unit: " min", cfg: "clock.ringMinutes", kw: "alarms ring length" },
-                { n: 84, icon: "update", label: "Catch up", k: "catchUp", kind: "step", min: 0, max: 240, step: 15, unit: " min", cfg: "clock.catchUpMinutes", state: s => s.v("catchUp") ? "rings late after sleep" : "missed means missed", kw: "alarms catch-up",
-                    why: "If the laptop slept through an alarm, it still rings on wake when it is this late or less." },
+                { n: 84, icon: "update", label: "Catch up", k: "catchUp", kind: "step", min: 0, max: 240, step: 15, unit: " min", cfg: "clock.catchUpMinutes", state: s => s.v("catchUp") ? "rings late after sleep" : "missed means missed", kw: "alarms catch-up" },
                 { n: 85, icon: "hourglass", label: "Timers at once", k: "timerMax", kind: "step", min: 1, max: 12, cfg: "clock.timerMax", fmt: v => `${v}`, kw: "timer limits" },
                 { n: 85, icon: "alarm", label: "Most alarms", k: "alarmMax", kind: "step", min: 1, max: 20, cfg: "clock.alarmMax", fmt: v => `${v}`, kw: "alarm limits" }
             ] },
@@ -667,18 +551,13 @@ const PAGES_SOURCE = {
                 { n: 83, icon: "swipe", label: "Swiping right goes", k: "rightForward", kind: "seg", o: [[true, "forward"], [false, "back"]], cfg: "calendar.rightGoesForward", kw: "calendar scroll direction" }
             ] },
             { t: "Weather", preview: "weather", rows: [
-                { n: [], icon: "partly_cloudy_day", label: "Weather", k: "weatherShow", kind: "toggle", cfg: "weather.show", state: s => s.v("weatherShow") ? "beside the clock in the island" : "off", kw: "weather temperature forecast island",
-                    why: "The temperature beside the island’s clock. Pressing it opens the week ahead." },
-                { n: [], icon: "location_on", label: "Place", k: "weatherPlace", kind: "text", cfg: "weather.location", placeholder: "automatic", places: true, state: s => s.weatherPlaceState, bad: s => s.weatherPlaceTrouble !== "", offer: s => placeOffer(s), dis: s => !s.v("weatherShow"), kw: "weather location town city",
-                    why: "A town or city. Left empty, the weather uses your connection's location." },
-                { n: [], icon: "thermostat", label: "Units", k: "weatherUnits", kind: "seg", o: [["metric", "°C"], ["imperial", "°F"]], cfg: "weather.units", dis: s => !s.v("weatherShow"), kw: "weather units celsius fahrenheit temperature",
-                    why: "For the temperature in the island and the week ahead." },
-                { n: [], icon: "update", label: "Refresh after", k: "weatherMinutes", kind: "step", min: 5, max: 180, step: 5, unit: " min", cfg: "weather.minutes", dis: s => !s.v("weatherShow"), kw: "weather refresh interval",
-                    why: "How often the weather is fetched again while the island, the lock screen or the desktop card shows it." }
+                { n: [], icon: "partly_cloudy_day", label: "Weather", k: "weatherShow", kind: "toggle", cfg: "weather.show", state: s => s.v("weatherShow") ? "beside the clock in the island" : "off", kw: "weather temperature forecast island" },
+                { n: [], icon: "location_on", label: "Place", k: "weatherPlace", kind: "text", cfg: "weather.location", placeholder: "automatic", places: true, state: s => s.weatherPlaceState, bad: s => s.weatherPlaceTrouble !== "", offer: s => placeOffer(s), dis: s => !s.v("weatherShow"), kw: "weather location town city" },
+                { n: [], icon: "thermostat", label: "Units", k: "weatherUnits", kind: "seg", o: [["metric", "°C"], ["imperial", "°F"]], cfg: "weather.units", dis: s => !s.v("weatherShow"), kw: "weather units celsius fahrenheit temperature" },
+                { n: [], icon: "update", label: "Refresh after", k: "weatherMinutes", kind: "step", min: 5, max: 180, step: 5, unit: " min", cfg: "weather.minutes", dis: s => !s.v("weatherShow"), kw: "weather refresh interval" }
             ] },
             { t: "Ask", rows: [
-                { n: 87, icon: "smart_toy", label: "Helper", k: "cloud", kind: "text", mono: true, cfg: "clock.cloud", kw: "clock ai helper command",
-                    why: "The command the clock runs when you type a question into it. Your question goes on the end." },
+                { n: 87, icon: "smart_toy", label: "Helper", k: "cloud", kind: "text", mono: true, cfg: "clock.cloud", kw: "clock ai helper command" },
                 { n: 87, icon: "timer", label: "Give it", k: "cloudSeconds", kind: "step", min: 10, max: 600, step: 10, unit: " s", cfg: "clock.cloudSeconds" }
             ] }
         ]
@@ -692,7 +571,7 @@ const PAGES_SOURCE = {
             ] },
             { t: "Limits", rows: [
                 { n: 88, icon: "hourglass_bottom", label: "Daily cap", k: "capHours", kind: "step", min: 1, max: 16, unit: " h", cfg: "usage.capHours", state: s => `${s.usedLabel} so far`, kw: "screen time cap" },
-                { n: 88, icon: "filter_b_and_w", label: "Grey at the cap", k: "greyCap", kind: "toggle", cfg: "usage.greyAtCap", why: "Drains colour once the time is up. Input still works." },
+                { n: 88, icon: "filter_b_and_w", label: "Grey at the cap", k: "greyCap", kind: "toggle", cfg: "usage.greyAtCap" },
                 { n: 88, icon: "self_improvement", label: "Breaks", k: "breaks", kind: "toggle", cfg: "usage.breaks", state: s => s.v("breaks") ? `a nudge every ${s.v("breakEvery")} min` : "off", layer: [
                     { n: 88, icon: "timer", label: "Every", k: "breakEvery", kind: "step", min: 15, max: 120, step: 5, unit: " min", cfg: "usage.breakEvery" }
                 ] }
@@ -710,8 +589,7 @@ const PAGES_SOURCE = {
             ] },
             { t: "Hotkey sheet", rows: [
                 { n: 98, icon: "keyboard_alt", label: "Draw the board", k: "sheetBoard", kind: "toggle", cfg: "cheatsheet.board", keys: "shell:panel.hotkeys.toggle", kw: "hotkey sheet" },
-                { n: 98, icon: "keyboard", label: "Board", k: "sheetKeyboard", kind: "choice", o: [["iso", "ISO"], ["ansi", "ANSI"], ["file", "Custom"]], cfg: "cheatsheet.keyboard", dis: s => !s.v("sheetBoard"), kw: "hotkey sheet keyboard via import iso ansi custom",
-                    why: "ISO and ANSI are drawn from built-in layouts. Custom draws your own board from its VIA file, so the sheet matches the keyboard on your desk. Pick ISO or ANSI and the file is forgotten." },
+                { n: 98, icon: "keyboard", label: "Board", k: "sheetKeyboard", kind: "choice", o: [["iso", "ISO"], ["ansi", "ANSI"], ["file", "Custom"]], cfg: "cheatsheet.keyboard", dis: s => !s.v("sheetBoard"), kw: "hotkey sheet keyboard via import iso ansi custom" },
                 { n: 98, kind: "w", w: "via", kw: "via file import keyboard layout" },
                 { n: 98, icon: "description", label: "Read keys from", k: "bindsFile", kind: "path", ro: true, kw: "hotkey sheet layout file" }
             ] }
@@ -736,7 +614,7 @@ const PAGES_SOURCE = {
             { rows: [
                 { n: 100, icon: "mouse", label: "Mouse speed", k: "mouseSpeed", kind: "slider", min: -1, max: 1, step: 0.05, fmt: signed, kw: "mouse speed" },
                 { n: 100, icon: "touchpad_mouse", label: "Touchpad speed", k: "padSpeed", kind: "slider", min: -1, max: 1, step: 0.05, fmt: signed, state: s => s.touchpads.length ? s.touchpads.map(t => t.label).join(" · ") : "no touchpad here", dis: s => !s.touchpads.length, kw: "touchpad speed" },
-                { n: 100, icon: "swipe_vertical", label: "Natural scrolling", k: "naturalScroll", kind: "toggle", why: "Content follows your fingers." },
+                { n: 100, icon: "swipe_vertical", label: "Natural scrolling", k: "naturalScroll", kind: "toggle" },
                 { n: 100, icon: "touch_app", label: "Tap to click", k: "tapClick", kind: "toggle" }
             ] }
         ]
@@ -746,9 +624,8 @@ const PAGES_SOURCE = {
         status: s => s.v("autoKeyboard") ? `board ${Math.round(s.v("boardHeight") * 100)}%` : "no board",
         groups: [
             { t: "Touch", rows: [
-                { n: 101, icon: "border_left", label: "Finger-sized edges", k: "touchEdges", kind: "toggle", cfg: "control.touchEdges", why: "Wider swipe-in strips at the screen edges." },
-                { n: 101, icon: "gesture", label: "Gesture feel", k: "gestureFeel", kind: "seg", o: [[0.15, "light"], [0.25, "balanced"], [0.4, "firm"]], cfg: "control.pullCommit",
-                    why: "How far a pull has to travel before it commits. Light gives way at a nudge." }
+                { n: 101, icon: "border_left", label: "Finger-sized edges", k: "touchEdges", kind: "toggle", cfg: "control.touchEdges" },
+                { n: 101, icon: "gesture", label: "Gesture feel", k: "gestureFeel", kind: "seg", o: [[0.15, "light"], [0.25, "balanced"], [0.4, "firm"]], cfg: "control.pullCommit" }
             ] },
             { t: "Tablet", rows: [
                 { n: 102, icon: "keyboard_hide", label: "Keyboard on fold", k: "autoKeyboard", kind: "toggle", cfg: "tablet.autoKeyboard" },
@@ -765,11 +642,9 @@ const PAGES_SOURCE = {
             { rows: [
                 { n: 103, icon: "stylus", label: "Pen", k: "pen", kind: "toggle", cfg: "pen.enabled", state: s => s.v("pen") ? s.penName : "off", kw: "pen device" },
                 { n: 103, icon: "monitor", label: "Maps to", k: "penScreen", kind: "seg", o: s => s.screensOn.concat(["all"]), dis: s => !s.v("pen"), kw: "pen area mapping" },
-                { n: 103, icon: "aspect_ratio", label: "Keep the shape", k: "aspectLock", kind: "toggle", cfg: "pen.aspectLock", why: "Trims the pad to match the screen’s shape.", dis: s => !s.v("pen"), kw: "pen aspect lock" },
-                { n: 103, icon: "radio_button_unchecked", label: "Lower button", k: "penBtn1", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], cfg: "pen.lowerButton", state: s => s.penButtonNote, dis: s => !s.v("pen"), kw: "pen buttons",
-                    why: PEN_BUTTONS_WHY },
-                { n: 103, icon: "radio_button_checked", label: "Upper button", k: "penBtn2", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], cfg: "pen.upperButton", state: s => s.penButtonNote, dis: s => !s.v("pen"), kw: "pen buttons",
-                    why: PEN_BUTTONS_WHY }
+                { n: 103, icon: "aspect_ratio", label: "Keep the shape", k: "aspectLock", kind: "toggle", cfg: "pen.aspectLock", dis: s => !s.v("pen"), kw: "pen aspect lock" },
+                { n: 103, icon: "radio_button_unchecked", label: "Lower button", k: "penBtn1", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], cfg: "pen.lowerButton", state: s => s.penButtonNote, dis: s => !s.v("pen"), kw: "pen buttons" },
+                { n: 103, icon: "radio_button_checked", label: "Upper button", k: "penBtn2", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], cfg: "pen.upperButton", state: s => s.penButtonNote, dis: s => !s.v("pen"), kw: "pen buttons" }
             ] }
         ]
     },
@@ -781,10 +656,10 @@ const PAGES_SOURCE = {
                 { n: 104, kind: "w", w: "battery", kw: "battery charge health history" }
             ] },
             { t: "Charging", rows: [
-                { n: 106, icon: "battery_charging_80", label: "Hold the charge", k: "chargeLimit", kind: "toggle", cfg: "battery.holdCharge", state: s => s.chargeTrouble, why: "Stops charging short of full, which is kinder to the cells.", dis: s => !s.chargeSupported, kw: "charge limit" },
+                { n: 106, icon: "battery_charging_80", label: "Hold the charge", k: "chargeLimit", kind: "toggle", cfg: "battery.holdCharge", state: s => s.chargeTrouble, dis: s => !s.chargeSupported, kw: "charge limit" },
                 { n: 106, icon: "battery_full", label: "Stop at", k: "chargeMax", kind: "slider", cfg: "battery.holdAt", min: 60, max: 100, step: 5, fmt: v => `${v}%`, dis: s => !s.v("chargeLimit") || !s.chargeSupported, kw: "charge limit" },
                 { n: 107, icon: "battery_alert", label: "Warn at", k: "lowWarn", kind: "slider", cfg: "battery.warnAt", min: 5, max: 30, fmt: v => `${v}%`, kw: "low battery warning" },
-                { n: 107, icon: "battery_0_bar", label: "Nearly empty at 5%", k: "lowAction", kind: "choice", cfg: "battery.nearlyEmpty", o: ["sleep", "hibernate", ["nothing", "do nothing"]], unavailable: s => s.hibernatePossible ? [] : ["hibernate"], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", why: "What happens when the battery is nearly empty. It warns first, then acts.", kw: "low battery" }
+                { n: 107, icon: "battery_0_bar", label: "Nearly empty at 5%", k: "lowAction", kind: "choice", cfg: "battery.nearlyEmpty", o: ["sleep", "hibernate", ["nothing", "do nothing"]], unavailable: s => s.hibernatePossible ? [] : ["hibernate"], state: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", kw: "low battery" }
             ] }
         ]
     },
@@ -810,13 +685,13 @@ const PAGES_SOURCE = {
                 { n: 90, icon: "blur_on", label: "Blur", k: "lockBlur", kind: "slider", min: 0, max: 1, step: 0.05, fmt: pct, cfg: "lock.blur", kw: "lock screen look" },
                 { n: 90, icon: "brightness_4", label: "Dim", k: "lockDim", kind: "slider", min: 0, max: 1, step: 0.05, fmt: pct, cfg: "lock.dim", kw: "lock screen look" },
                 { n: 90, icon: "filter_b_and_w", label: "Drain colour", k: "lockDesat", kind: "slider", min: 0, max: 1, step: 0.05, fmt: pct, cfg: "lock.desaturate", kw: "lock screen look" },
-                { n: 90, icon: "lock", label: "Try it", kind: "button", btn: "Lock", act: "lockNow", why: "Locks the screen now. Your password brings you back." }
+                { n: 90, icon: "lock", label: "Try it", kind: "button", btn: "Lock", act: "lockNow" }
             ] },
             { t: "When idle", rows: [
                 { n: 91, kind: "fact", text: s => idleNote(s) },
                 { n: 91, icon: "lock_clock", label: "Lock after", k: "idleLock", kind: "choice", o: ["1 min", "5 min", "15 min", "never"], cfg: "idle.lock", held: s => idleHeld(s, "lock"), kw: "auto-lock idle" },
-                { n: 91, icon: "monitor", label: "Screens off after", k: "idleOff", kind: "choice", o: ["5 min", "10 min", "30 min", "never"], cfg: "idle.screensOff", held: s => idleHeld(s, "screensOff"), why: "A playing video holds it off.", kw: "screen-off idle" },
-                { n: 91, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], cfg: "idle.sleep", held: s => idleHeld(s, "sleep"), why: "On a laptop it only counts on battery.", kw: "suspend idle" }
+                { n: 91, icon: "monitor", label: "Screens off after", k: "idleOff", kind: "choice", o: ["5 min", "10 min", "30 min", "never"], cfg: "idle.screensOff", held: s => idleHeld(s, "screensOff"), kw: "screen-off idle" },
+                { n: 91, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], cfg: "idle.sleep", held: s => idleHeld(s, "sleep"), kw: "suspend idle" }
             ] }
         ]
     },
@@ -878,12 +753,12 @@ const PAGES_SOURCE = {
         groups: [
             { t: "Screenshots", rows: [
                 { n: 89, icon: "folder", label: "Saved to", k: "shotDir", kind: "path", cfg: "picker.dir", kw: "screenshots folder" },
-                { n: 89, icon: "folder_copy", label: "Also search in", k: "shotFolders", kind: "text", mono: true, cfg: "launcher.latest.screenshotFolders", placeholder: "~/Pictures/Shots, ~/Documents/Captures", why: "More folders for the launcher's screenshots search, separated by commas.", kw: "screenshots folders search more" },
+                { n: 89, icon: "folder_copy", label: "Also search in", k: "shotFolders", kind: "text", mono: true, cfg: "launcher.latest.screenshotFolders", placeholder: "~/Pictures/Shots, ~/Documents/Captures", kw: "screenshots folders search more" },
                 { n: 89, icon: "edit", label: "Edit with", k: "shotEditor", kind: "text", mono: true, cfg: "picker.editor", placeholder: "just save it", kw: "screenshots editor" },
-                { n: 89, icon: "highlight_alt", label: "Outline", k: "outline", kind: "step", min: 0, max: 6, unit: " px", cfg: "picker.outline", why: "A line around the selection. 0 draws none.", kw: "screenshots outline" }
+                { n: 89, icon: "highlight_alt", label: "Outline", k: "outline", kind: "step", min: 0, max: 6, unit: " px", cfg: "picker.outline", kw: "screenshots outline" }
             ] },
             { t: "Streaming", rows: [
-                { n: 95, icon: "cast", label: "Streamer mode", k: "stream", kind: "toggle", cfg: "stream.enabled", why: "Hides names, passwords and previews while you stream.", layer: [
+                { n: 95, icon: "cast", label: "Streamer mode", k: "stream", kind: "toggle", cfg: "stream.enabled", layer: [
                     { n: 95, icon: "monitor", label: "Band on", k: "streamScreen", kind: "choice", o: s => s.monitorNames, cfg: "stream.screen" },
                     { n: 95, icon: "height", label: "Band height", k: "streamHeight", kind: "slider", min: 200, max: 600, step: 20, fmt: v => `${v} px`, cfg: "stream.height" }
                 ] },
@@ -898,20 +773,14 @@ const PAGES_SOURCE = {
             { t: "Time", rows: [
                 { n: 109, icon: "schedule", label: "24-hour clock", k: "clock24", kind: "toggle", cfg: "region.clock24", state: s => s.timeExample, kw: "time format" },
                 { n: 109, icon: "calendar_today", label: "Dates", k: "dateFormat", kind: "choice", o: s => s.dateChoices, cfg: "region.dateFormat", kw: "date format" },
-                { n: [], icon: "date_range", label: "Week starts on", k: "firstDay", kind: "seg", o: [["locale", "system"], ["monday", "Mon"], ["sunday", "Sun"], ["saturday", "Sat"]], cfg: "region.firstDay", kw: "first day of the week calendar monday sunday saturday",
-                    why: "System follows your locale. The calendars and the alarm day buttons start their week on this day." },
-                { n: [], icon: "tag", label: "Week numbers", k: "weekNumbers", kind: "toggle", cfg: "region.weekNumbers", state: s => s.v("weekNumbers") ? "ISO week beside each row" : "off", kw: "calendar week number iso",
-                    why: "Adds a column of ISO week numbers to the calendar in the clock menu, the island and on the desktop." },
-                { n: 109, icon: "my_location", label: "Zone from network", k: "autoZone", kind: "toggle", cfg: "region.autoZone", state: s => s.autoZoneDetail, kw: "time zone",
-                    why: "Picks the zone nearest to where geoclue says you are when you turn this on, and sets it with timedatectl. After that it only looks again when the network changes, and suggests the new zone under Zone for you to pick; it never asks for your password on its own. It needs geoclue installed." },
-                { n: 109, icon: "public", label: "Zone", k: "zone", kind: "choice", o: s => s.zoneChoices, dis: s => s.v("autoZone") && !s.zoneSuggested, state: s => s.zoneSuggested ? `the network puts you in ${s.zoneSuggested} · pick it to switch` : s.v("autoZone") ? "set from the network" : "password needed", kw: "time zone",
-                    why: "Sets the system's time zone with timedatectl, which asks for your password. The shell's clocks follow it straight away." }
+                { n: [], icon: "date_range", label: "Week starts on", k: "firstDay", kind: "seg", o: [["locale", "system"], ["monday", "Mon"], ["sunday", "Sun"], ["saturday", "Sat"]], cfg: "region.firstDay", kw: "first day of the week calendar monday sunday saturday" },
+                { n: [], icon: "tag", label: "Week numbers", k: "weekNumbers", kind: "toggle", cfg: "region.weekNumbers", state: s => s.v("weekNumbers") ? "ISO week beside each row" : "off", kw: "calendar week number iso" },
+                { n: 109, icon: "my_location", label: "Zone from network", k: "autoZone", kind: "toggle", cfg: "region.autoZone", state: s => s.autoZoneDetail, kw: "time zone" },
+                { n: 109, icon: "public", label: "Zone", k: "zone", kind: "choice", o: s => s.zoneChoices, dis: s => s.v("autoZone") && !s.zoneSuggested, state: s => s.zoneSuggested ? `the network puts you in ${s.zoneSuggested} · pick it to switch` : s.v("autoZone") ? "set from the network" : "password needed", kw: "time zone" }
             ] },
             { t: "Language", rows: [
-                { n: 110, icon: "translate", label: "Language", k: "lang", kind: "choice", o: s => s.languageChoices, kw: "language",
-                    why: "Sets the system language with localectl, which asks for your password. It takes effect at next sign-in. The shell's own text stays English." },
-                { n: 110, icon: "payments", label: "Formats", k: "region", kind: "choice", o: s => s.formatChoices, state: s => s.moneyExample, kw: "region numbers currency",
-                    why: "Numbers, money, units and paper size, set with localectl, which asks for your password. They take effect at next sign-in." }
+                { n: 110, icon: "translate", label: "Language", k: "lang", kind: "choice", o: s => s.languageChoices, state: s => "password needed · at next sign-in", kw: "language" },
+                { n: 110, icon: "payments", label: "Formats", k: "region", kind: "choice", o: s => s.formatChoices, state: s => [s.moneyExample, "at next sign-in"].filter(Boolean).join(" · "), kw: "region numbers currency" }
             ] }
         ]
     },
@@ -920,9 +789,9 @@ const PAGES_SOURCE = {
         status: s => [s.v("reduceMotion") && "less motion", s.v("largerText") && "larger text", s.v("contrast") && "more contrast"].filter(Boolean).join(" · ") || "nothing on",
         groups: [
             { rows: [
-                { n: 113, icon: "animation", label: "Less motion", k: "reduceMotion", kind: "toggle", cfg: "access.lessMotion", why: "Turns off every animation. No motion at all.", kw: "accessibility reduce motion" },
-                { n: 113, icon: "format_size", label: "Larger text", k: "largerText", kind: "toggle", cfg: "access.largerText", why: "Raises the base text size, so every size steps up.", kw: "accessibility larger text" },
-                { n: 113, icon: "contrast", label: "More contrast", k: "contrast", kind: "toggle", cfg: "access.moreContrast", why: "Faint text gets brighter.", kw: "accessibility contrast" }
+                { n: 113, icon: "animation", label: "Less motion", k: "reduceMotion", kind: "toggle", cfg: "access.lessMotion", kw: "accessibility reduce motion" },
+                { n: 113, icon: "format_size", label: "Larger text", k: "largerText", kind: "toggle", cfg: "access.largerText", kw: "accessibility larger text" },
+                { n: 113, icon: "contrast", label: "More contrast", k: "contrast", kind: "toggle", cfg: "access.moreContrast", kw: "accessibility contrast" }
             ] }
         ]
     },
@@ -937,9 +806,8 @@ const PAGES_SOURCE = {
                 { n: 114, icon: "update", label: "Look every", k: "updEvery", kind: "step", min: 5, max: 240, step: 5, unit: " min", cfg: "updates.interval", kw: "updates interval" }
             ] },
             { t: "The system", rows: [
-                { n: [], icon: "memory", label: "New kernel", k: "kernelEvery", kind: "step", min: 0, max: 1440, step: 60, unit: " min", cfg: "packages.interval", state: s => s.v("kernelEvery") ? "the island says when Linux updates" : "never looks", kw: "kernel linux update pacman checkupdates apt dnf zypper system",
-                    why: "Asks pacman, apt, dnf or zypper what is waiting and tells you in the island when the kernel is in the list. Pressing it updates the system in the island, and once the new kernel is in place the island says it wants a restart. Any other distro updates from its own tool." },
-                { n: [], icon: "terminal", label: "Update with", k: "upgradeCmd", kind: "text", mono: true, cfg: "packages.upgrade", why: "Runs in a terminal when it is anything but a plain full upgrade. On Debian, Fedora and openSUSE the pacman line stands for apt, dnf or zypper.", kw: "system update command pacman yay paru apt dnf zypper" }
+                { n: [], icon: "memory", label: "New kernel", k: "kernelEvery", kind: "step", min: 0, max: 1440, step: 60, unit: " min", cfg: "packages.interval", state: s => s.v("kernelEvery") ? "the island says when Linux updates" : "never looks", kw: "kernel linux update pacman checkupdates apt dnf zypper system" },
+                { n: [], icon: "terminal", label: "Update with", k: "upgradeCmd", kind: "text", mono: true, cfg: "packages.upgrade", kw: "system update command pacman yay paru apt dnf zypper" }
             ] }
         ]
     },
@@ -948,11 +816,9 @@ const PAGES_SOURCE = {
         status: s => `${s.changeCount} recent changes`,
         groups: [
             { t: "Behaviour", rows: [
-                { n: 115, icon: "keyboard_tab", label: "Tab completion", k: "tabComplete", kind: "toggle", why: "Tab completion for the shell’s cli." },
-                { n: 116, icon: "edit_document", label: "Edit Hyprland files", k: "sourceEdits", kind: "toggle", cfg: "sourceEdits.acknowledged", state: s => s.v("sourceEdits") ? "only its own include" : "hands off", kw: "permission to edit hyprland files",
-                    why: "The shell writes borders, screen layout and binds into one file it owns. Your own Hyprland files are never touched." },
-                { n: [], icon: "password", label: "Ask for passwords", k: "polkitAgent", kind: "toggle", cfg: "polkit.agent", state: s => s.polkitNote, kw: "polkit password prompt authentication agent pkexec admin",
-                    why: "When a program needs your password to run as admin, the shell asks in its own card. Only one program can do this at a time, so another password agent that is running, such as hyprpolkitagent, is stopped." }
+                { n: 115, icon: "keyboard_tab", label: "Tab completion", k: "tabComplete", kind: "toggle" },
+                { n: 116, icon: "edit_document", label: "Edit Hyprland files", k: "sourceEdits", kind: "toggle", cfg: "sourceEdits.acknowledged", state: s => s.v("sourceEdits") ? "only its own include" : "hands off", kw: "permission to edit hyprland files" },
+                { n: [], icon: "password", label: "Ask for passwords", k: "polkitAgent", kind: "toggle", cfg: "polkit.agent", state: s => s.polkitNote, kw: "polkit password prompt authentication agent pkexec admin" }
             ] },
             { t: "Recent changes", rows: [
                 { n: [], kind: "w", w: "recent", kw: "recent changes undo history" }
@@ -963,8 +829,8 @@ const PAGES_SOURCE = {
                 { n: 117, icon: "sync", label: "Read Hyprland again", kind: "button", btn: "Read", act: "reread", kw: "shell actions re-read compositor" }
             ] },
             { t: "Keep a copy", rows: [
-                { n: [], icon: "upload", label: "Export settings", kind: "button", btn: "Export", act: "exportCfg", why: "Saves config.json and your lists to a file.", kw: "backup export" },
-                { n: [], icon: "download", label: "Restore from a file", kind: "button", btn: "Restore", act: "importCfg", why: "Reads a saved file and shows what changes first.", kw: "backup import restore" }
+                { n: [], icon: "upload", label: "Export settings", kind: "button", btn: "Export", act: "exportCfg", kw: "backup export" },
+                { n: [], icon: "download", label: "Restore from a file", kind: "button", btn: "Restore", act: "importCfg", kw: "backup import restore" }
             ] },
             { t: "Where things live", rows: [
                 { n: 118, icon: "settings", label: "Config", k: "cfgPath", kind: "path", ro: true, kw: "config file" },
@@ -981,7 +847,7 @@ const PAGES_SOURCE = {
                 { n: [120, 121], kind: "w", w: "about", kw: "device info about version compositor source design notes" }
             ] },
             { t: "New here", rows: [
-                { n: [], icon: "tour", label: "The tour", kind: "button", btn: "Show", act: "tour", why: "A few short steps over your own desktop: the launcher, the island, the rail, the hotkey sheet and Settings, each opened for real.", kw: "tour welcome guide introduction onboarding first run help start" }
+                { n: [], icon: "tour", label: "The tour", kind: "button", btn: "Show", act: "tour", kw: "tour welcome guide introduction onboarding first run help start" }
             ] }
         ]
     }
@@ -1003,7 +869,7 @@ const CATS = [
         blurb: s => (s.v("muted") ? "muted" : `${s.outputName} · ${Math.round(s.v("volume") * 100)}%`) + ` · popups ${s.v("notifTimeout")} s`,
         tiles: [
             { k: "muted", icon: "volume_off", label: "Mute" },
-            { k: "overAmp", icon: "campaign", label: "Past 100%" },
+            { k: "overAmp", icon: "campaign", label: "Up to 150%" },
             { k: "alerts", icon: "notifications_active", label: "Alert sounds" }
         ],
         suggest: s => s.v("overAmp") && s.v("volume") > 1 ? { icon: "campaign", label: "Volume is past 100%", detail: "some sources may crackle", go: "output" } : null,
@@ -1266,10 +1132,6 @@ function nameOf(page, s) {
     return page && page.lidless && !s.hasLid ? page.lidless : page ? page.name : "";
 }
 
-function whyOf(row, s) {
-    return row.why || (row.kind === "w" ? WIDGET_WHY[row.w] || "" : "") || "";
-}
-
 function numbers(row) {
     return [].concat(row.n === undefined ? [] : row.n);
 }
@@ -1515,13 +1377,13 @@ function bowAt(index, pos, bow, spread) {
 }
 
 const CLIP_POOL = ["git push --force-with-lease", "https://wiki.hypr.land/Configuring/", "~/.config/banditshell/config.json", "image · 1280 × 820", "qs -c banditshell", "meet at the climbing gym at 7?",
-    "hyprctl dispatch workspace 3", "#7fb3d4", "ssh bandit@fjordhuset.local", "https://usevia.app", "image · 412 × 236", "sudo pacman -Syu"];
+    "hyprctl dispatch workspace 3", "#7fb3d4", "ssh alex@server.example", "https://usevia.app", "image · 412 × 236", "sudo pacman -Syu"];
 
 const OPENS = [
     { k: "defBrowser", what: "a link", thing: "git.example.org/shell", icon: "link" },
     { k: "defFiles", what: "a folder", thing: "~/Projects", icon: "folder" },
     { k: "defTerm", what: "a terminal", thing: "open a shell here", icon: "terminal" },
-    { k: "defMail", what: "an email", thing: "mailto:ida@fjord.dk", icon: "mail" },
+    { k: "defMail", what: "an email", thing: "mailto:alex@example.com", icon: "mail" },
     { k: "defImages", what: "a picture", thing: "shaded_landscape.png", icon: "image" },
     { k: "defVideo", what: "a video", thing: "climbing.mp4", icon: "movie" }
 ];

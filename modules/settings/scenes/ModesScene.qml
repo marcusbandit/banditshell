@@ -15,7 +15,7 @@ SceneGauge {
         name: root.mode.icon
         size: Appearance.icon.hero
         fill: 1
-        color: Appearance.colour.accent
+        color: Appearance.colour.chosen
     }
 
     StyledText {

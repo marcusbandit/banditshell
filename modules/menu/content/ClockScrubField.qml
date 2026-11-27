@@ -2,6 +2,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import "../../../components/wheel-pass.js" as WheelPass
 
 Item {
     id: root
@@ -273,7 +274,13 @@ Item {
         onCanceled: root.release()
 
         onWheel: wheel => {
+            if (!scroll.active && WheelPass.passes(root, root.activeFocus, pointer.pressed)) {
+                wheel.accepted = false;
+                return;
+            }
             if (!scroll.feed(wheel)) {
+                if (wheel.angleDelta.y === 0)
+                    return;
                 const notches = wheel.angleDelta.y / 120;
                 root.nudge(Math.round(notches) || (notches > 0 ? 1 : notches < 0 ? -1 : 0));
                 wheel.accepted = true;

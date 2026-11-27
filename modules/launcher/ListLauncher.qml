@@ -35,6 +35,16 @@ LauncherConcept {
 
     property var capture: null
 
+    readonly property var maskSpan: !root.capture && !root.shownView && search.query === query.text ? search.secretSpan : null
+
+    function mirrorMask(): void {
+        if (!root.maskSpan)
+            return;
+        const anchor = query.cursorPosition === query.selectionStart ? query.selectionEnd : query.selectionStart;
+        maskedQuery.cursorPosition = anchor;
+        maskedQuery.moveCursorSelection(query.cursorPosition, TextInput.SelectCharacters);
+    }
+
     readonly property var argCommand: !root.capture && !root.shownView ? search.commandFor(root.input?.text ?? "") : null
     readonly property var argList: root.argCommand?.command.arguments ?? []
     property string argWord: ""
@@ -357,6 +367,7 @@ LauncherConcept {
         }
         onInquire: row => root.startCapture("ask", row)
         onPresent: view => root.present(view)
+        onSteer: id => Qt.callLater(root.steerArmed, id)
     }
 
     readonly property int pinnedLimit: 12
@@ -753,7 +764,8 @@ LauncherConcept {
             return true;
         }
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
-            Search.sectioned(root.actionsFor(row)).slice(1).find(a => !a.tucked && a.run)?.run();
+            if (!row.armed)
+                Search.secondaryAction(root.actionsFor(row))?.run();
             return true;
         }
 
@@ -784,6 +796,13 @@ LauncherConcept {
             return;
         root.steered = true;
         root.selected = at;
+    }
+
+    function steerArmed(id: string): void {
+        if (root.results.some(r => r.id === id))
+            root.steer(id);
+        else
+            search.armed = "";
     }
 
     function shortcutActions(row: var): var {
@@ -862,7 +881,12 @@ LauncherConcept {
             }
         });
 
-        acts.push(...search.appActions(entry));
+        acts.push(...search.appActions(entry).map(a => root.quick && a.arms === "forcequit" ? Object.assign({}, a, {
+                run: () => {
+                    search.retype(entry.name ?? "");
+                    Qt.callLater(search.armForceQuit, entry);
+                }
+            }) : a));
 
         acts.push(...Search.foldedActions((entry.actions ?? []).map(action => ({
                         icon: "open_in_new",
@@ -1305,10 +1329,14 @@ LauncherConcept {
                         font.family: Appearance.font.family
                         font.pixelSize: Appearance.font.size.normal
                         renderType: Text.NativeRendering
-                        color: Appearance.colour.text
-                        selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
-                        selectedTextColor: Appearance.colour.text
+                        color: root.maskSpan ? "transparent" : Appearance.colour.text
+                        selectionColor: root.maskSpan ? "transparent" : Qt.alpha(Appearance.colour.chosen, 0.3)
+                        selectedTextColor: root.maskSpan ? "transparent" : Appearance.colour.text
                         clip: true
+
+                        onCursorPositionChanged: root.mirrorMask()
+                        onSelectionStartChanged: root.mirrorMask()
+                        onSelectionEndChanged: root.mirrorMask()
 
                         readOnly: !!root.shownView && !root.filtering || !!root.argCommand
                         opacity: root.filtering ? 1 : viewIn.listShown
@@ -1326,6 +1354,27 @@ LauncherConcept {
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
                         }
+                    }
+
+                    TextInput {
+                        id: maskedQuery
+
+                        anchors.fill: query
+                        visible: !!root.maskSpan
+                        enabled: false
+                        readOnly: true
+                        activeFocusOnPress: false
+                        text: Search.masked(query.text, root.maskSpan)
+                        font: query.font
+                        renderType: Text.NativeRendering
+                        color: Appearance.colour.text
+                        selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
+                        selectedTextColor: Appearance.colour.text
+                        clip: true
+                        opacity: query.opacity
+                        cursorVisible: query.cursorVisible
+
+                        onTextChanged: root.mirrorMask()
                     }
 
                     SecretField {

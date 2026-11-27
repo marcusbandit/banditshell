@@ -10,6 +10,7 @@ import "clipboard-shelf.js" as Shelf
 import "clipboard-secret.js" as Secret
 import "clipboard-age.js" as Age
 import "clipboard-rules.js" as Rules
+import "dies-with-shell.js" as DiesWithShell
 
 Singleton {
     id: root
@@ -644,7 +645,7 @@ Singleton {
     Process {
         id: watcher
 
-        command: ["wl-paste", "--watch", Quickshell.shellPath("scripts/clip-record.sh")]
+        command: DiesWithShell.command(["wl-paste", "--watch", Quickshell.shellPath("scripts/clip-record.sh")])
 
         environment: ({
                 BANDITSHELL_CLIP_STORE: root.blobs,

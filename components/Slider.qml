@@ -1,5 +1,6 @@
 import QtQuick
 import qs.config
+import "wheel-pass.js" as WheelPass
 
 Item {
     id: root
@@ -151,6 +152,10 @@ Item {
         }
 
         onWheel: wheel => {
+            if (wheel.angleDelta.y === 0 || WheelPass.passes(root, root.activeFocus, pointer.pressed)) {
+                wheel.accepted = false;
+                return;
+            }
             const notches = wheel.angleDelta.y / 120;
             root.ask(root.value + notches * root.step);
         }

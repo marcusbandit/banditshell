@@ -43,7 +43,13 @@ list)
         echo "ERROR: Failed to load configuration"
         exit 0
     fi
-    setsid sleep 3601 >/dev/null 2>&1 &
+    (
+        for fd in /proc/self/fd/*; do
+            n=${fd##*/}
+            [ "$n" -gt 2 ] && { eval "exec $n>&-"; } 2>/dev/null
+        done
+        exec setsid sleep 3601 </dev/null >/dev/null 2>&1
+    ) &
     pid=$!
     disown
     printf '%s\n' "$target" >"$dir/inst/$pid"
