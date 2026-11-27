@@ -16,12 +16,10 @@ PanelWindow {
     readonly property string output: win.screen?.name ?? ""
     readonly property var frame: win.shell?.frame ?? null
 
-    readonly property bool railWide: !!win.frame?.rail && win.frame.railOpen > 0.9
-
     readonly property var flags: ({
             launcher: win.shell?.launcher?.open ?? false,
             island: win.shell?.island?.expanded ?? false,
-            sidebar: (win.shell?.menus?.open ?? false) || win.railWide,
+            sidebar: win.shell?.menus?.open ?? false,
             files: Files.windowOpen,
             hotkeys: win.shell?.hotkeys?.open ?? false,
             settings: Panels.isOpen("settings")

@@ -310,16 +310,13 @@ const PAGES_SOURCE = {
     },
     sidebar: {
         id: "sidebar", name: "Sidebar", icon: "side_navigation", preview: "sidebar",
-        status: s => s.v("sidebar") ? `${s.v("wsStyle")} · ${s.v("sidebarW")} px` : "hidden",
+        status: s => s.v("sidebar") ? "rail" : "hidden",
         groups: [
             { rows: [
                 { n: 58, icon: "side_navigation", label: "Sidebar", k: "sidebar", kind: "toggle", cfg: "sidebar.enabled", keys: "shell:screen.sidebar.toggle" },
-                { n: [], icon: "view_column_2", label: "Style", k: "sbStyle", kind: "seg", o: ["full", "rail"], cfg: "sidebar.style", dis: s => !s.v("sidebar"), kw: "sidebar rail simplified expand hover pips anomalies" },
-                { n: [], icon: "schedule", label: "Clock and battery", k: "sbGlance", kind: "choice", o: [["rail", "rail bottom"], ["rail top", "rail top"], ["top", "pill at the top"], ["tabs", "tabs off the rail"], ["wide", "wider rail"], ["off", "off"]], cfg: "sidebar.glance", dis: s => s.v("sbStyle") !== "rail", kw: "clock time battery glance rest resting place where rail bottom top pill tabs wide wider" },
-                { n: 59, icon: "width", label: "Width", k: "sidebarW", kind: "slider", min: 40, max: 72, fmt: v => `${v} px`, cfg: "sidebar.width", dis: s => !s.v("sidebar") }
+                { n: [], icon: "schedule", label: "Clock and battery", k: "sbGlance", kind: "choice", o: [["rail", "rail bottom"], ["rail top", "rail top"], ["top", "pill at the top"], ["tabs", "tabs off the rail"], ["wide", "wider rail"], ["off", "off"]], cfg: "sidebar.glance", dis: s => !s.v("sidebar"), kw: "clock time battery glance rest resting place where rail bottom top pill tabs wide wider" },
             ] },
             { t: "Workspaces", rows: [
-                { n: 60, kind: "w", w: "wsStyles", kw: "workspace style plates map blocks" },
                 { n: 61, icon: "palette", label: "App marks", k: "iconMode", kind: "seg", o: ["colour", "mono"], cfg: "sidebar.workspaces.iconMode", kw: "workspace icons" },
                 { n: 62, icon: "filter_5", label: "Always there", k: "persistent", kind: "step", min: 1, max: 10, cfg: "sidebar.workspaces.persistent", fmt: v => `${v}`, kw: "always-shown workspaces" },
                 { n: 63, icon: "stacks", label: "Special workspaces", k: "specialsShown", kind: "toggle", cfg: "sidebar.workspaces.rack", state: s => s.specialNames.join(" · ") || "none yet", kw: "scratchpad special", layer: [
@@ -327,23 +324,14 @@ const PAGES_SOURCE = {
                 ] }
             ] },
             { t: "Clock and date", rows: [
-                { n: [], icon: "schedule", label: "Clock when open", k: "sbClockWide", kind: "seg", o: ["stacked", "one line", "off"], cfg: "sidebar.clock.wideStyle", kw: "sidebar clock style wide open stacked one line hide" },
-                { n: [], icon: "format_size", label: "Size when open", k: "sbClockWideSize", kind: "seg", o: ["large", "small"], cfg: "sidebar.clock.wideSize", dis: s => s.v("sbClockWide") === "off", kw: "sidebar clock size big small large wide open" },
-                { n: [], icon: "schedule", label: "Clock at rest", k: "sbClock", kind: "seg", o: ["stacked", "one line", "off"], cfg: "sidebar.clock.style", dis: s => s.v("sbStyle") !== "rail" || !["rail", "rail top"].includes(s.v("sbGlance")), kw: "sidebar clock style rail rest compact stacked one line hide" },
-                { n: [], icon: "format_size", label: "Size at rest", k: "sbClockSize", kind: "seg", o: ["small", "large"], cfg: "sidebar.clock.size", dis: s => s.v("sbStyle") !== "rail" || !["rail", "rail top"].includes(s.v("sbGlance")) || s.v("sbClock") === "off", kw: "sidebar clock size big small large rail rest compact" },
+                { n: [], icon: "schedule", label: "Clock at rest", k: "sbClock", kind: "seg", o: ["stacked", "one line", "off"], cfg: "sidebar.clock.style", dis: s => !["rail", "rail top"].includes(s.v("sbGlance")), kw: "sidebar clock style rail rest compact stacked one line hide" },
+                { n: [], icon: "format_size", label: "Size at rest", k: "sbClockSize", kind: "seg", o: ["small", "large"], cfg: "sidebar.clock.size", dis: s => !["rail", "rail top"].includes(s.v("sbGlance")) || s.v("sbClock") === "off", kw: "sidebar clock size big small large rail rest compact" },
                 { n: [], icon: "calendar_today", label: "Date", k: "sbDate", kind: "seg", o: [["day and month", "14 oct"], ["day", "14"], ["off", "off"]], cfg: "sidebar.clock.date", kw: "sidebar calendar date hide" }
             ] },
             { t: "Status", rows: [
                 { n: [], icon: "sync", label: "Update button", k: "sbUpdate", kind: "seg", o: [["always", "always"], ["new", "when new"], ["never", "never"]], cfg: "sidebar.update", kw: "sidebar update button hide" },
                 { n: [], icon: "volume_up", label: "Sound", k: "sbSound", kind: "toggle", cfg: "sidebar.status.sound", kw: "sidebar status icons" },
-                { n: [], icon: "wifi", label: "Network", k: "sbNet", kind: "toggle", cfg: "sidebar.status.network", kw: "sidebar status icons" },
-                { n: [], icon: "bluetooth", label: "Bluetooth", k: "sbBt", kind: "toggle", cfg: "sidebar.status.bluetooth", kw: "sidebar status icons" },
-                { n: [], icon: "brightness_6", label: "Brightness", k: "sbBright", kind: "toggle", cfg: "sidebar.status.brightness", kw: "sidebar status icons screen backlight" },
                 { n: [], icon: "battery_5_bar", label: "Battery", k: "sbBatt", kind: "toggle", cfg: "sidebar.status.battery", state: s => s.hasBattery ? "" : "no battery in this machine", dis: s => !s.hasBattery, kw: "sidebar status icons" }
-            ] },
-            { t: "Tray", rows: [
-                { n: 64, icon: "apps", label: "Tray", k: "tray", kind: "toggle", cfg: "sidebar.tray.enabled", state: s => `${s.trayCount} apps`, kw: "tray" },
-                { n: 64, icon: "more_horiz", label: "Most icons", k: "trayMax", kind: "step", min: 1, max: 12, cfg: "sidebar.tray.max", fmt: v => `${v}`, dis: s => !s.v("tray") }
             ] },
             { t: "AI limits", rows: [
                 { n: [], icon: "speed", label: "Show in sidebar", k: "agentLimitsSidebar", kind: "toggle", cfg: "agentLimits.sidebar", kw: "ai agent limits claude antigravity codex quota sidebar rail" },
@@ -892,10 +880,9 @@ const CATS = [
         suggest: s => !s.v("fromWall") ? { icon: "colorize", label: "Take colours from the wallpaper", detail: s.wallName.toLowerCase(), set: ["fromWall", true] } : null,
         subs: ["colour", "wallpaper", "type", "shape"] },
     { id: "desktop", name: "Desktop", icon: "space_dashboard", preview: "desktop",
-        blurb: s => `${s.v("wsStyle")} workspaces · ${s.v("dropMode")} on drop`,
+        blurb: s => `${s.v("dropMode")} on drop`,
         tiles: [
             { k: "sidebar", icon: "side_navigation", label: "Sidebar" },
-            { k: "tray", icon: "apps", label: "Tray" },
             { k: "clip", icon: "content_paste", label: "Clipboard" },
             { k: "edgeLift", icon: "vertical_align_top", label: "Edge lift" }
         ],
@@ -1274,7 +1261,7 @@ function hitToOpen(hits, index, openUid, currentPage, back) {
 const ALIASES = {
     network: "wifi", ethernet: "wired", hotspot: "vpn", sound: "output", audio: "output", microphone: "mic", monitors: "screens", display: "screens",
     brightness: "light", theme: "colour", font: "type", appearance: "colour", general: "windows", keybinds: "shortcuts", hotkeys: "shortcuts",
-    device: "about", developer: "shell", cli: "shell", power: "powermode", idle: "lock", language: "region"
+    device: "about", developer: "shell", cli: "shell", power: "powermode", idle: "lock", language: "region", tray: "sidebar"
 };
 
 function everyHit() {
@@ -1389,8 +1376,8 @@ const OPENS = [
 ];
 
 const ZONES = {
-    tray: "tray", trayMax: "tray", wsStyles: "workspaces", iconMode: "workspaces", persistent: "workspaces", specialsShown: "workspaces",
-    sbClock: "clock", sbClockSize: "clock", sbClockWide: "clock", sbClockWideSize: "clock", sbDate: "clock", sbUpdate: "update", sbSound: "status", sbNet: "status", sbBt: "status", sbBright: "status", sbBatt: "status"
+    iconMode: "workspaces", persistent: "workspaces", specialsShown: "workspaces",
+    sbClock: "clock", sbClockSize: "clock", sbDate: "clock", sbUpdate: "update", sbSound: "status", sbBatt: "status"
 };
 
 function zoneOf(row) {

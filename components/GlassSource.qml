@@ -8,7 +8,8 @@ Item {
     property real softBlur: 6
     property real frostBlur: 48
 
-    readonly property bool ready: picture.status === Image.Ready && root.width > 0 && root.height > 0
+    property bool warm: false
+    readonly property bool ready: (picture.status === Image.Ready || picture.status === Image.Loading && root.warm) && root.width > 0 && root.height > 0
     readonly property size fine: Qt.size(Math.max(1, Math.round(root.width / 2)), Math.max(1, Math.round(root.height / 2)))
     readonly property size grain: Qt.size(Math.max(1, Math.round(root.width / 4)), Math.max(1, Math.round(root.height / 4)))
     readonly property Item soft: softTexture
@@ -45,9 +46,15 @@ Item {
         sourceSize: root.fine
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
+        retainWhileLoading: true
         cache: false
         smooth: true
         z: -1
+
+        onStatusChanged: if (picture.status === Image.Ready)
+            root.warm = true;
+        else if (picture.status !== Image.Loading)
+            root.warm = false
     }
 
     MultiEffect {
