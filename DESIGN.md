@@ -82,7 +82,7 @@ wallpaper behind it, lightly blurred at rest and frosted while it is in use, ben
 convex rim the way Apple's Liquid Glass bends it (`components/glass.frag`), lit by a thin
 highlight from the top left and dimmed only as far as white text needs. The clock keeps no
 glass at rest. The calendar card folded into the clock's large form, and timers left the
-desktop.
+desktop. The reasoning and the numbers are in `docs/architecture/desktop-widgets.md`.
 
 The thin border caelestia always draws around the screen: I'm not a fan. I keep an
 **invisible interaction region** (a hit-target ring / edge zones) for summoning things, but
