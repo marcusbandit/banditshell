@@ -67,7 +67,6 @@
       "tests/certificate-files.test.js",
       "tests/base64.test.js",
       "tests/check-modules.test.js",
-      "tests/colour-drift.test.js",
       "tests/config-guard.test.js",
       "tests/cli.test.js",
       "tests/configuration.test.js",

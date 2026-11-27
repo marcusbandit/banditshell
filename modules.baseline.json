@@ -115,7 +115,6 @@
     "R3 modules/ipc/CoreIpc.qml uses Shell of host without requiring it",
     "R3 modules/ipc/NotificationsIpc.qml uses Shell of host without requiring it",
     "R3 modules/island/InspectIpc.qml uses Shell of host without requiring it",
-    "R3 modules/island/IslandInspector.qml uses Wallpaper of wallpaper without requiring it",
     "R3 modules/island/IslandIpc.qml uses Shell of host without requiring it",
     "R3 modules/keyboard/KeyboardIpc.qml uses Shell of host without requiring it",
     "R3 modules/launcher/AlphabetRow.qml uses AppNotifications of notifications without requiring it",
