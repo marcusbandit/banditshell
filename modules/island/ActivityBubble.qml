@@ -272,7 +272,7 @@ Item {
             name: root.shownBadge?.icon ?? ""
             size: Math.round(parent.height * 0.75)
             fill: 1
-            color: Appearance.colour.onChosen
+            color: Qt.colorEqual(root.shownBadge?.tone ?? "transparent", Appearance.colour.textFaint) ? Appearance.colour.text : Appearance.colour.onChosen
         }
 
         StyledText {
