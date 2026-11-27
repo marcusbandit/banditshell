@@ -86,8 +86,8 @@ the cap does most of the work.
 
 ## States drive the glass
 
-Every pane has one number, `raised`, eased with the shell's `Follow`: 0 at rest, 0.6 while
-hovered or peeking, 1 while open or dragged. Each glass value is a straight line in it:
+Every pane has one number, `raised`, eased with the shell's `Follow`: 0 at rest, 0.25 while
+hovered, 1 while open or dragged. Each glass value is a straight line in it:
 
 | Value      | Rest  | Open  |
 | ---------- | ----- | ----- |
@@ -97,8 +97,9 @@ hovered or peeking, 1 while open or dragged. Each glass value is a straight line
 | lift       | 0.025 | 0.06  |
 | rim light  | 0.14  | 0.24  |
 
-So the glass is most transparent when nothing is asked of it, and frosts as soon as the pointer
-is on it, which is what "more transparent, especially when it's not in use" asked for.
+So the glass is most transparent when nothing is asked of it. Hovering only lights the rim a
+little; the frost comes with a click or a grab, which is what "more transparent, especially when
+it's not in use" asked for.
 
 The clock is the exception: the owner liked it as it was, so it has no glass at rest at all. The
 glass fades in when it is hovered or opened, or when the wallpaper behind the digits is busy
@@ -113,10 +114,16 @@ Each widget is placed on its own and remembered per screen in
   vertical, and stores the gaps to them. A widget dropped top right stays top right when the
   sidebar folds or the resolution changes, and it grows away from those edges: a right-anchored
   widget grows to the left, a bottom-anchored one upward.
-- The widget stays exactly under the pointer while dragged, with no snapping or lag. Dropped past
-  an edge, it is pulled back inside. While any widget is held, the whole screen takes pointer
+- The desk has a soft grid: a pitch of `padding.huge` stretched so the area ends on a whole cell,
+  with `padding.large` between cells. A widget's glass covers whole cells, so two neighbours one
+  cell apart sit exactly one gap apart and their edges line up. The pitch is stretched rather
+  than fixed so a right- or bottom-anchored widget lands on the same grid as a left one.
+- The widget stays exactly under the pointer while dragged, with no snapping or lag. While it is
+  held, a faint dot grid fades in around it and an outline shows the cell it will land in. On
+  release it glides into that cell. While any widget is held, the whole screen takes pointer
   input, so a fast drag that outruns the widget keeps going.
-- Overlap is allowed. The one hovered or open rises above the rest.
+- Widgets never overlap at rest. A drop, a resize or a pin that would crowd another widget sends
+  the one just touched to the nearest free cell; the others keep their places.
 - With nothing saved, the widgets stack from the top in two groups: work on the left (system,
   AI limits), time and the day on the right (clock, weather, now playing). The first drag saves
   every widget's place, so nothing shifts later when, say, the weather loads.
@@ -129,10 +136,11 @@ The owner disliked exactly that wrap, and on a 5120 px screen a column wastes th
 Every widget has a small, medium and large form. The form it rests at is the owner's choice per
 widget; nothing about it is global.
 
-- Hovering a small widget peeks it up to medium after the shell's dwell, and lets go 400 ms after
-  the pointer leaves.
-- A click opens the large form. Only one widget is large at a time; a click on it or on the empty
-  desktop closes it.
+- Hovering never changes the size. It only lights the rim, the same on every widget.
+- A click opens the large form in place, growing away from the anchored edges. Only one widget is
+  large at a time; a click on it or on the empty desktop closes it. The open widget is drawn above
+  the rest, and its glass samples the desk with the other widgets on it, so whatever it covers
+  shows through its frost instead of hiding behind it.
 - While a widget shows a size other than its resting one, a pin sits on the corner facing away
   from its anchor. Pressing it makes that size the resting one.
 - Right-click offers the three sizes, with the resting one marked, and Reset position.

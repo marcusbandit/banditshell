@@ -15,6 +15,7 @@ ColourField 1.0 ColourField.qml
 CommandJob 1.0 CommandJob.qml
 CommandQueue 1.0 CommandQueue.qml
 CrossfadeText 1.0 CrossfadeText.qml
+DotGrid 1.0 DotGrid.qml
 DropShadow 1.0 DropShadow.qml
 FittedImage 1.0 FittedImage.qml
 FloatingTooltip 1.0 FloatingTooltip.qml

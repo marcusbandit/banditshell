@@ -53,14 +53,75 @@ function stacked(key, heights, gap) {
     return { side, edge: "top", x: 0, y };
 }
 
-function sizeUp(size) {
-    return size === "small" ? "medium" : size;
-}
-
 function validSize(size, fallback) {
     return SIZES.includes(size) ? size : fallback;
 }
 
 function badgeSide(place) {
     return place && place.side === "right" ? "left" : "right";
+}
+
+function grid(area, pitch, gap) {
+    const cols = Math.max(1, Math.round((area.width + gap) / pitch));
+    const rows = Math.max(1, Math.round((area.height + gap) / pitch));
+    return {
+        x: area.x,
+        y: area.y,
+        width: area.width,
+        height: area.height,
+        gap,
+        px: (area.width + gap) / cols,
+        py: (area.height + gap) / rows
+    };
+}
+
+function span(length, pitch, gap) {
+    if (!(length > 0) || !(pitch > 0))
+        return 0;
+    return Math.max(1, Math.ceil((length + gap) / pitch - 1e-6)) * pitch - gap;
+}
+
+function boxOf(width, height, g) {
+    return { width: span(width, g.px, g.gap), height: span(height, g.py, g.gap) };
+}
+
+function snapPlace(place, g) {
+    return {
+        side: place.side,
+        edge: place.edge,
+        x: Math.max(0, Math.round(place.x / g.px) * g.px),
+        y: Math.max(0, Math.round(place.y / g.py) * g.py)
+    };
+}
+
+function crowds(a, b, gap) {
+    const slack = gap - 0.5;
+    return a.x < b.x + b.width + slack && b.x < a.x + a.width + slack && a.y < b.y + b.height + slack && b.y < a.y + a.height + slack;
+}
+
+function freeSpot(x, y, width, height, others, g) {
+    const lastCol = Math.max(0, Math.floor((g.width - width) / g.px + 1e-6));
+    const lastRow = Math.max(0, Math.floor((g.height - height) / g.py + 1e-6));
+    const wantCol = clamp(Math.round((x - g.x) / g.px), 0, lastCol);
+    const wantRow = clamp(Math.round((y - g.y) / g.py), 0, lastRow);
+    let best = null;
+    let bestDistance = Infinity;
+    for (let col = 0; col <= lastCol; col++) {
+        const dx = (col - wantCol) * g.px;
+        if (dx * dx >= bestDistance)
+            continue;
+        for (let row = 0; row <= lastRow; row++) {
+            const dy = (row - wantRow) * g.py;
+            const distance = dx * dx + dy * dy;
+            if (distance >= bestDistance)
+                continue;
+            const spot = { x: g.x + col * g.px, y: g.y + row * g.py, width, height };
+            if (others.some(o => crowds(spot, o, g.gap)))
+                continue;
+            best = spot;
+            bestDistance = distance;
+        }
+    }
+    const fallback = { x: g.x + wantCol * g.px, y: g.y + wantRow * g.py };
+    return best ? { x: best.x, y: best.y } : fallback;
 }

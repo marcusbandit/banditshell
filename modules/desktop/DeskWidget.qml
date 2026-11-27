@@ -14,6 +14,8 @@ Item {
     required property GlassSource backdrop
     property rect area: Qt.rect(0, 0, 0, 0)
     property real gap: Appearance.padding.large
+    property var grid: Placement.grid(root.area, Appearance.padding.huge, root.gap)
+    property var neighbours: []
     property var heights: ({})
     property string fallbackSize: "medium"
     property bool clearAtRest: false
@@ -24,23 +26,29 @@ Item {
     property Component large
 
     property bool expanded: false
-    property bool peeking: false
     property bool dragging: false
     property bool dragged: false
     property point grabAt: Qt.point(0, 0)
     property point dragTo: Qt.point(0, 0)
     property real restHeight: 0
+    property real restWidth: 0
 
     readonly property string rest: Placement.validSize(DesktopLayout.sizeOf(root.key, root.fallbackSize), root.fallbackSize)
-    readonly property string form: root.expanded ? "large" : root.peeking ? Placement.sizeUp(root.rest) : root.rest
+    readonly property string form: root.expanded ? "large" : root.rest
     readonly property bool hovered: hover.hovered
     readonly property bool held: grip.pressed || root.dragging
-    readonly property bool lifted: root.form !== root.rest || root.dragging || hover.hovered
+    readonly property bool lifted: root.form !== root.rest || root.dragging
     readonly property var saved: DesktopLayout.placeOf(root.output, root.key)
-    readonly property var place: Placement.isPlace(root.saved) ? root.saved : Placement.stacked(root.key, root.heights, root.gap)
+    readonly property var place: Placement.snapPlace(Placement.isPlace(root.saved) ? root.saved : Placement.stacked(root.key, root.heights, root.gap), root.grid)
     readonly property var spot: Placement.topLeft(root.place, root.width, root.height, root.area)
     readonly property Item shown: root.form === "small" ? smallView.item : root.form === "large" ? largeView.item : mediumView.item
     readonly property real shownHeight: root.shown ? root.shown.implicitHeight : 0
+    readonly property real shownWidth: root.shown ? root.shown.implicitWidth : 0
+    readonly property var box: Placement.boxOf(root.shownWidth, root.shownHeight, root.grid)
+    readonly property var restBox: Placement.boxOf(root.restWidth, root.restHeight, root.grid)
+    readonly property var restSpot: Placement.topLeft(root.place, root.restBox.width, root.restBox.height, root.area)
+    readonly property rect restRect: Qt.rect(root.restSpot.x, root.restSpot.y, root.restBox.width, root.restBox.height)
+    readonly property var landing: root.dragging ? Placement.freeSpot(root.dragTo.x, root.dragTo.y, root.restBox.width, root.restBox.height, root.neighbours, root.grid) : root.restSpot
     readonly property Item badge: badgeButton.visible ? badgeButton : null
 
     signal opened
@@ -58,21 +66,30 @@ Item {
 
     function close(): void {
         root.expanded = false;
-        root.peeking = false;
     }
 
     function pin(): void {
         DesktopLayout.resize(root.key, root.form);
         root.close();
+        root.moved();
     }
 
     function noteRest(): void {
-        if (root.form === root.rest && root.shownHeight > 0)
+        if (root.form === root.rest && root.shownHeight > 0 && root.shown) {
             root.restHeight = root.shownHeight;
+            root.restWidth = root.shown.implicitWidth;
+        }
+    }
+
+    function moveTo(x: real, y: real): void {
+        DesktopLayout.place(root.output, root.key, Placement.placeAt(x, y, root.restBox.width, root.restBox.height, root.area));
     }
 
     function drop(): void {
-        DesktopLayout.place(root.output, root.key, Placement.placeAt(root.dragTo.x, root.dragTo.y, root.width, root.height, root.area));
+        const to = root.landing;
+        slideX.value = root.dragTo.x - to.x;
+        slideY.value = root.dragTo.y - to.y;
+        root.moveTo(to.x, to.y);
         root.dragging = false;
         root.moved();
     }
@@ -80,19 +97,34 @@ Item {
     onVisibleChanged: if (!root.visible)
         root.close()
     onShownHeightChanged: root.noteRest()
+    onShownWidthChanged: root.noteRest()
     onFormChanged: root.noteRest()
     onRestChanged: root.noteRest()
 
-    x: root.dragging ? root.dragTo.x : root.spot.x
-    y: root.dragging ? root.dragTo.y : root.spot.y
+    x: root.dragging ? root.dragTo.x : root.spot.x + slideX.value
+    y: root.dragging ? root.dragTo.y : root.spot.y + slideY.value
     width: wide.value
     height: tall.value
     z: root.dragging ? 30 : root.expanded ? 20 : root.lifted ? 10 : 0
 
     Follow {
+        id: slideX
+
+        speed: Appearance.animation.settleSpeed
+        epsilon: 0.5
+    }
+
+    Follow {
+        id: slideY
+
+        speed: Appearance.animation.settleSpeed
+        epsilon: 0.5
+    }
+
+    Follow {
         id: wide
 
-        target: root.shown ? root.shown.implicitWidth : 0
+        target: root.box.width
         speed: Appearance.animation.revealSpeed
         epsilon: 0.5
         onTargetChanged: if (wide.value <= 0)
@@ -102,7 +134,7 @@ Item {
     Follow {
         id: tall
 
-        target: root.shownHeight
+        target: root.box.height
         speed: Appearance.animation.revealSpeed
         epsilon: 0.5
         onTargetChanged: if (tall.value <= 0)
@@ -112,7 +144,7 @@ Item {
     Follow {
         id: raised
 
-        target: root.expanded || root.dragging ? 1 : root.lifted ? 0.6 : 0
+        target: root.expanded || root.dragging ? 1 : root.lifted ? 0.6 : hover.hovered ? 0.25 : 0
         speed: Appearance.animation.revealSpeed
         epsilon: Appearance.animation.fadeEpsilon
         startsAtTarget: true
@@ -127,24 +159,12 @@ Item {
         startsAtTarget: true
     }
 
-    Timer {
-        interval: Appearance.animation.dwell
-        running: hover.hovered && !root.dragging && !root.peeking && !root.expanded && root.rest === "small"
-        onTriggered: root.peeking = true
-    }
-
-    Timer {
-        interval: 400
-        running: !hover.hovered && !badgeHover.hovered && root.peeking && !root.dragging
-        onTriggered: root.peeking = false
-    }
-
     Glass {
         anchors.fill: parent
         backdrop: root.backdrop
         origin: Qt.point(root.x, root.y)
-        opacity: root.clearAtRest ? Math.min(1, Math.max(raised.value / 0.6, backing.value)) : 1
-        frosting: 0.85 * raised.value
+        opacity: root.clearAtRest ? Math.min(1, Math.max(raised.value / 0.25, backing.value)) : 1
+        frosting: (root.expanded ? 1 : 0.85) * raised.value
         sheen: 0.14 + 0.1 * raised.value
         lift: 0.025 + 0.035 * raised.value
         ceiling: 0.5 - 0.15 * raised.value
@@ -295,11 +315,12 @@ Item {
 
         readonly property bool current: root.form === view.name
         readonly property Item item: loader.item
+        readonly property var box: Placement.boxOf(view.width, view.height, root.grid)
 
         width: loader.item ? loader.item.implicitWidth : 0
         height: loader.item ? loader.item.implicitHeight : 0
-        x: root.place.side === "right" ? root.width - view.width : 0
-        y: root.place.edge === "bottom" ? root.height - view.height : 0
+        x: root.place.side === "right" ? root.width - view.width - (view.box.width - view.width) / 2 : (view.box.width - view.width) / 2
+        y: root.place.edge === "bottom" ? root.height - view.height - (view.box.height - view.height) / 2 : (view.box.height - view.height) / 2
         opacity: fade.value
         visible: fade.value > 0.002
 

@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import qs.config
 import qs.components
 import qs.services
+import "placement.js" as Placement
 
 PanelWindow {
     id: win
@@ -27,6 +28,11 @@ PanelWindow {
     readonly property rect area: Qt.rect(win.reserve.left + win.margin, win.reserve.top + win.margin, Math.max(0, win.width - win.reserve.left - win.reserve.right - win.margin * 2), Math.max(0, win.height - win.reserve.top - win.reserve.bottom - win.margin * 2))
 
     readonly property var widgets: [clock, weather, media, system, limits]
+    readonly property var grid: Placement.grid(win.area, Appearance.padding.huge, Appearance.padding.large)
+    readonly property Item carried: win.widgets.find(w => w.visible && w.dragging) ?? null
+    readonly property bool raising: win.widgets.some(w => w.visible && w.expanded)
+    readonly property var restRects: win.widgets.map(w => w.visible ? w.restRect : null)
+    property var recent: []
     readonly property bool opened: sheet.open || win.widgets.some(w => w.visible && w.expanded)
     readonly property bool grabbing: win.widgets.some(w => w.held)
     readonly property var heights: ({
@@ -36,6 +42,31 @@ PanelWindow {
             system: system.visible ? system.restHeight : 0,
             limits: limits.visible ? limits.restHeight : 0
         })
+
+    function othersOf(w: Item): var {
+        return win.widgets.filter(o => o !== w && o.visible && o.restHeight > 0).map(o => o.restRect);
+    }
+
+    function touch(key: string): void {
+        win.recent = [...win.recent.filter(k => k !== key), key];
+    }
+
+    function resolve(): void {
+        if (win.carried)
+            return;
+        const order = win.widgets.filter(w => w.visible && w.restHeight > 0).sort((a, b) => win.recent.indexOf(a.key) - win.recent.indexOf(b.key));
+        const kept = [];
+        for (const w of order) {
+            const r = w.restRect;
+            if (kept.some(o => Placement.crowds(r, o, win.grid.gap))) {
+                const to = Placement.freeSpot(r.x, r.y, r.width, r.height, kept, win.grid);
+                w.moveTo(to.x, to.y);
+                kept.push(Qt.rect(to.x, to.y, r.width, r.height));
+            } else {
+                kept.push(r);
+            }
+        }
+    }
 
     function closeAll(except: Item): void {
         for (const w of win.widgets)
@@ -55,7 +86,10 @@ PanelWindow {
         const actions = sizes.map(([size, label, icon]) => ({
                     icon,
                     label,
-                    run: () => DesktopLayout.resize(w.key, size)
+                    run: () => {
+                        win.touch(w.key);
+                        DesktopLayout.resize(w.key, size);
+                    }
                 }));
         actions.push({
             icon: "restart_alt",
@@ -83,6 +117,7 @@ PanelWindow {
 
     onShowingChanged: if (!win.showing)
         win.closeAll(null)
+    onRestRectsChanged: tidy.restart()
 
     mask: Region {
         item: win.opened || win.grabbing ? catcher : null
@@ -139,6 +174,13 @@ PanelWindow {
     }
 
     Timer {
+        id: tidy
+
+        interval: 250
+        onTriggered: win.resolve()
+    }
+
+    Timer {
         interval: 60000
         repeat: true
         running: win.live && win.cfg.weather && Weather.wanted
@@ -170,6 +212,19 @@ PanelWindow {
         region: clock.visible ? Qt.rect(clock.x, clock.y, clock.width, clock.height) : Qt.rect(0, 0, 0, 0)
     }
 
+    GlassSource {
+        id: under
+
+        anchors.fill: parent
+        source: win.raising ? glass.source : ""
+
+        ShaderEffectSource {
+            anchors.fill: parent
+            sourceItem: win.raising ? desk : null
+            live: true
+        }
+    }
+
     MouseArea {
         id: catcher
 
@@ -177,6 +232,41 @@ PanelWindow {
         enabled: win.opened
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: win.closeAll(null)
+    }
+
+    DotGrid {
+        x: win.area.x
+        y: win.area.y
+        width: win.area.width
+        height: win.area.height
+        pitch: Qt.vector2d(win.grid.px, win.grid.py)
+        centre: win.carried ? Qt.point(win.carried.x + win.carried.width / 2 - win.area.x, win.carried.y + win.carried.height / 2 - win.area.y) : Qt.point(0, 0)
+        reach: Math.max(win.carried?.width ?? 0, win.carried?.height ?? 0) * 1.5 + Appearance.padding.huge * 8
+        colour: Appearance.withAlpha(Appearance.colour.text, 0.55)
+        dot: 1.75
+        opacity: gridShown.value
+        visible: gridShown.value > 0.002
+
+        Follow {
+            id: gridShown
+
+            target: win.carried ? 1 : 0
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+        }
+    }
+
+    SquircleRect {
+        x: win.carried?.landing.x ?? 0
+        y: win.carried?.landing.y ?? 0
+        width: win.carried?.restBox.width ?? 0
+        height: win.carried?.restBox.height ?? 0
+        radius: Appearance.rounding.large
+        color: Appearance.colour.fill
+        stroke: Appearance.colour.rim
+        strokeWidth: 1.5
+        opacity: gridShown.value
+        visible: win.carried !== null
     }
 
     Item {
@@ -188,73 +278,110 @@ PanelWindow {
         ClockWidget {
             id: clock
 
+            parent: clock.expanded ? above : desk
             output: win.output
-            backdrop: glass
+            backdrop: clock.expanded ? under : glass
             area: win.area
+            grid: win.grid
+            neighbours: win.othersOf(clock)
             heights: win.heights
             visible: win.cfg.clock
             running: win.live
             ink: backdrop.lightInk ? Appearance.colour.paper : Appearance.colour.ink
             backed: backdrop.busy
             onOpened: win.closeAll(clock)
-            onMoved: win.settle()
+            onMoved: {
+                win.touch(clock.key);
+                win.settle();
+            }
             onMenuAsked: (x, y) => win.menu(clock, x, y)
         }
 
         WeatherWidget {
             id: weather
 
+            parent: weather.expanded ? above : desk
             output: win.output
-            backdrop: glass
+            backdrop: weather.expanded ? under : glass
             area: win.area
+            grid: win.grid
+            neighbours: win.othersOf(weather)
             heights: win.heights
             visible: win.cfg.weather && Weather.ready
             onOpened: win.closeAll(weather)
-            onMoved: win.settle()
+            onMoved: {
+                win.touch(weather.key);
+                win.settle();
+            }
             onMenuAsked: (x, y) => win.menu(weather, x, y)
         }
 
         MediaWidget {
             id: media
 
+            parent: media.expanded ? above : desk
             output: win.output
-            backdrop: glass
+            backdrop: media.expanded ? under : glass
             area: win.area
+            grid: win.grid
+            neighbours: win.othersOf(media)
             heights: win.heights
             visible: win.cfg.media && Media.hasTrack
             running: win.live
             onOpened: win.closeAll(media)
-            onMoved: win.settle()
+            onMoved: {
+                win.touch(media.key);
+                win.settle();
+            }
             onMenuAsked: (x, y) => win.menu(media, x, y)
         }
 
         SystemWidget {
             id: system
 
+            parent: system.expanded ? above : desk
             output: win.output
-            backdrop: glass
+            backdrop: system.expanded ? under : glass
             area: win.area
+            grid: win.grid
+            neighbours: win.othersOf(system)
             heights: win.heights
             visible: win.cfg.system
             running: win.live && win.cfg.system
             onOpened: win.closeAll(system)
-            onMoved: win.settle()
+            onMoved: {
+                win.touch(system.key);
+                win.settle();
+            }
             onMenuAsked: (x, y) => win.menu(system, x, y)
         }
 
         AgentLimitsWidget {
             id: limits
 
+            parent: limits.expanded ? above : desk
             output: win.output
-            backdrop: glass
+            backdrop: limits.expanded ? under : glass
             area: win.area
+            grid: win.grid
+            neighbours: win.othersOf(limits)
             heights: win.heights
             visible: win.cfg.limits && AgentLimits.anyEnabled
             running: win.live && win.cfg.limits
             onOpened: win.closeAll(limits)
-            onMoved: win.settle()
+            onMoved: {
+                win.touch(limits.key);
+                win.settle();
+            }
             onMenuAsked: (x, y) => win.menu(limits, x, y)
         }
+    }
+
+    Item {
+        id: above
+
+        anchors.fill: parent
+        opacity: shown.value
     }
 
     ActionSheet {
@@ -262,5 +389,6 @@ PanelWindow {
 
         anchors.fill: parent
         z: 100
+        backdrop: glass
     }
 }
