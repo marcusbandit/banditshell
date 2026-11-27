@@ -21,7 +21,8 @@ test.after(() => {
         for (const pid of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
             try {
                 const cmdline = fs.readFileSync(`/proc/${pid}/cmdline`, "utf8");
-                if (path.basename(cmdline.split("\0")[0]) === "sleep")
+                const [program, length] = cmdline.split("\0");
+                if (path.basename(program) === "sleep" && length === "3601")
                     process.kill(Number(pid));
             } catch {
             }
