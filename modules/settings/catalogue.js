@@ -1515,13 +1515,13 @@ function bowAt(index, pos, bow, spread) {
 }
 
 const CLIP_POOL = ["git push --force-with-lease", "https://wiki.hypr.land/Configuring/", "~/.config/banditshell/config.json", "image · 1280 × 820", "qs -c banditshell", "meet at the climbing gym at 7?",
-    "hyprctl dispatch workspace 3", "#7fb3d4", "ssh bandit@fjordhuset.local", "https://usevia.app", "image · 412 × 236", "sudo pacman -Syu"];
+    "hyprctl dispatch workspace 3", "#7fb3d4", "ssh alex@server.example", "https://usevia.app", "image · 412 × 236", "sudo pacman -Syu"];
 
 const OPENS = [
     { k: "defBrowser", what: "a link", thing: "git.example.org/shell", icon: "link" },
     { k: "defFiles", what: "a folder", thing: "~/Projects", icon: "folder" },
     { k: "defTerm", what: "a terminal", thing: "open a shell here", icon: "terminal" },
-    { k: "defMail", what: "an email", thing: "mailto:ida@fjord.dk", icon: "mail" },
+    { k: "defMail", what: "an email", thing: "mailto:alex@example.com", icon: "mail" },
     { k: "defImages", what: "a picture", thing: "shaded_landscape.png", icon: "image" },
     { k: "defVideo", what: "a video", thing: "climbing.mp4", icon: "movie" }
 ];

@@ -66,7 +66,7 @@ function savedReports(home) {
 function secretWords(home) {
     return {
         text: [
-            "clone failed at https://marcus:s3cretpass@github.com/o/r.git",
+            "clone failed at https://alex:s3cretpass@github.com/o/r.git",
             "Authorization: Bearer abc123def",
             "retry with Bearer zzz111yyy",
             "Authorization: Basic dXNlcjpwYXNzd29yZA",
