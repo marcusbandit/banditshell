@@ -14,6 +14,19 @@ IpcHandler {
         return PanelWindows.pin(Shell.forScreen(""), "quickControls", true) || PanelWindows.missing("");
     }
 
+    function page(key: string): string {
+        const win = Shell.forScreen("");
+        if (!win)
+            return PanelWindows.missing("");
+        if (key && !Object.prototype.hasOwnProperty.call(win.quickControls.pages, key))
+            return `no page ${key}; pages: ${Object.keys(win.quickControls.pages).join(", ")}`;
+        if (key)
+            win.quickControls.openPage(key, true);
+        else
+            win.quickControls.back(true);
+        return key ? `page ${key}` : "back";
+    }
+
     function close(): string {
         return PanelWindows.unpin("quickControls");
     }

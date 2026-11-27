@@ -21,6 +21,14 @@ Singleton {
 
     readonly property string trouble: root.probed && !root.available ? "no power profile daemon installed · power-profiles-daemon does this" : ""
 
+    function label(profile: string): string {
+        return Logic.labelOf(profile);
+    }
+
+    function icon(profile: string): string {
+        return Logic.iconOf(profile);
+    }
+
     function set(profile: string): void {
         const name = Logic.nameFor(root.daemon, profile);
         if (!name)

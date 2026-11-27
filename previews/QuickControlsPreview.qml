@@ -24,7 +24,7 @@ ShellRoot {
 
             Component.onCompleted: {
                 pinned = true;
-                mixing = Quickshell.env("QUICKCONTROLS_MIXING") === "1";
+                page = Quickshell.env("QUICKCONTROLS_PAGE") ?? "";
             }
         }
     }
