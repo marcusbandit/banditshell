@@ -1,12 +1,13 @@
 {
   "name": "quickcontrols",
   "summary": "the quick controls panel",
-  "layer": 4,
+  "layer": 5,
   "owns": {
-    "qml": ["modules/quickcontrols", "previews/QuickControlsPreview.qml"]
+    "qml": ["modules/quickcontrols", "previews/QuickControlsPreview.qml"],
+    "tests": ["tests/quick-switches.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor", "audio", "display", "mixer"],
+    "packages": ["core", "compositor", "audio", "display", "mixer", "network", "notifications", "power", "capture"],
     "optional": []
   },
   "provides": {

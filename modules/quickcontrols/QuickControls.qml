@@ -6,6 +6,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.mixer
+import "quick-switches.js" as Switches
 
 Item {
     id: root
@@ -22,13 +23,35 @@ Item {
 
     readonly property real rowGap: Appearance.padding.normal
 
-    readonly property real sliderWidth: Appearance.sizes.screenSliderWidth
+    readonly property real sliderWidth: root.contentWidth - root.iconColumn - root.valueWidth - root.actionColumn - root.columnGap * 3
 
     readonly property real valueWidth: Appearance.sizes.screenValueWidth
 
     readonly property real actionColumn: root.iconColumn
 
-    readonly property real contentWidth: root.iconColumn + root.columnGap + root.sliderWidth + root.columnGap + root.valueWidth + root.columnGap + root.actionColumn
+    readonly property real levelsWidth: root.iconColumn + root.columnGap + Appearance.sizes.screenSliderWidth + root.columnGap + root.valueWidth + root.columnGap + root.actionColumn
+
+    readonly property real chevronRoom: Math.round(Appearance.sizes.rowHeight * 0.8) + Appearance.button.seam
+
+    readonly property real tileWidth: Math.ceil(Math.max(plainLabel.advanceWidth, detailedLabel.advanceWidth + root.chevronRoom) + Appearance.padding.normal * 2 + Appearance.font.iconSize + Appearance.padding.small)
+
+    readonly property real contentWidth: Math.max(root.levelsWidth, root.tileWidth * 2 + root.columnGap)
+
+    TextMetrics {
+        id: plainLabel
+
+        font.family: Appearance.font.family
+        font.pixelSize: Appearance.font.size.small
+        text: "Do not disturb"
+    }
+
+    TextMetrics {
+        id: detailedLabel
+
+        font.family: Appearance.font.family
+        font.pixelSize: Appearance.font.size.small
+        text: "Performance"
+    }
 
     readonly property real panelWidth: root.contentWidth + Appearance.padding.large * 2
 
@@ -83,6 +106,51 @@ Item {
     readonly property Item grabItem: rail
 
     property bool pinned: false
+
+    onPinnedChanged: {
+        if (root.pinned) {
+            keys.forceActiveFocus();
+            chain.start();
+        } else {
+            chain.reset();
+        }
+    }
+
+    function hasMenu(key: string): bool {
+        return (QsWindow.window?.statusKeys ?? []).includes(key);
+    }
+
+    function openMenu(key: string, keyed: bool): void {
+        const win = QsWindow.window;
+        root.pinned = false;
+        root.mixing = false;
+        if (!win?.openMenu(key, true) || !keyed)
+            return;
+        win.takeKeyboard();
+        win.menus.startKeys();
+    }
+
+    Item {
+        id: keys
+    }
+
+    FocusChain {
+        id: chain
+
+        scope: cardZone
+        holder: keys
+    }
+
+    Keys.onPressed: event => {
+        if (!root.pinned)
+            return;
+        if (event.key === Qt.Key_M && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
+            Audio.toggleMute();
+            event.accepted = true;
+        } else if (chain.handle(event)) {
+            event.accepted = true;
+        }
+    }
 
     readonly property var blobs: [
         {
@@ -215,6 +283,129 @@ Item {
             spacing: 0
             opacity: reveal.value
 
+            readonly property string focusGroup: "levels"
+
+            Grid {
+                id: switches
+
+                readonly property string focusGroup: "switches"
+
+                readonly property real tileWidth: (width - columnSpacing) / 2
+
+                width: parent.width
+                columns: 2
+                columnSpacing: root.columnGap
+                rowSpacing: root.columnGap
+
+                QuickSwitch {
+                    width: switches.tileWidth
+                    visible: Network.available
+                    icon: Network.enabled ? "wifi" : "wifi_off"
+                    label: Network.enabled && Network.activeName ? Network.activeName : "Wi-Fi"
+                    on: Network.enabled
+                    detailed: root.hasMenu("network")
+
+                    onToggled: Network.setEnabled(!Network.enabled)
+                    onOpened: keyed => root.openMenu("network", keyed)
+                }
+
+                QuickSwitch {
+                    width: switches.tileWidth
+                    visible: Bluetooth.available
+                    icon: Bluetooth.enabled ? "bluetooth" : "bluetooth_disabled"
+                    label: Bluetooth.enabled && Bluetooth.anyConnected ? Bluetooth.connectedDevices[0].name || "Bluetooth" : "Bluetooth"
+                    on: Bluetooth.enabled
+                    detailed: root.hasMenu("bluetooth")
+
+                    onToggled: Bluetooth.setEnabled(!Bluetooth.enabled)
+                    onOpened: keyed => root.openMenu("bluetooth", keyed)
+                }
+
+                QuickSwitch {
+                    width: switches.tileWidth
+                    icon: Notifications.quiet ? "do_not_disturb_on" : "do_not_disturb_off"
+                    label: "Do not disturb"
+                    on: Notifications.quiet
+
+                    onToggled: Notifications.setQuiet(!Notifications.quiet, "")
+                }
+
+                QuickSwitch {
+                    width: switches.tileWidth
+                    icon: "coffee"
+                    label: "Keep awake"
+                    on: Idle.awake
+
+                    onToggled: Idle.awake = !Idle.awake
+                }
+
+                QuickSwitch {
+                    width: switches.tileWidth
+                    visible: !!Audio.source
+                    icon: Audio.sourceMuted ? "mic_off" : "mic"
+                    label: "Microphone"
+                    on: !Audio.sourceMuted
+                    detailed: root.hasMenu("audio")
+
+                    onToggled: Audio.toggleSourceMute()
+                    onOpened: keyed => root.openMenu("audio", keyed)
+                }
+
+                QuickSwitch {
+                    width: switches.tileWidth
+                    visible: PowerProfile.available && PowerProfile.choices.length > 1
+                    icon: Switches.powerIcon(PowerProfile.profile)
+                    label: Switches.powerLabel(PowerProfile.profile)
+                    on: Switches.powerRaised(PowerProfile.profile)
+                    detailed: root.hasMenu("battery")
+
+                    onToggled: PowerProfile.set(Switches.nextProfile(PowerProfile.choices, PowerProfile.profile))
+                    onOpened: keyed => root.openMenu("battery", keyed)
+                }
+
+                QuickSwitch {
+                    width: switches.tileWidth
+                    icon: Appearance.light ? "light_mode" : "dark_mode"
+                    label: "Dark mode"
+                    on: !Appearance.light
+
+                    onToggled: DarkMode.choose(Appearance.light ? "dark" : "light")
+                }
+
+                QuickSwitch {
+                    width: switches.tileWidth
+                    visible: ScreenRecorder.enabled && ScreenRecorder.ready
+                    icon: ScreenRecorder.recording ? "stop_circle" : "screen_record"
+                    label: ScreenRecorder.recording ? ScreenRecorder.clock : "Record"
+                    on: ScreenRecorder.busy
+
+                    onToggled: {
+                        if (ScreenRecorder.recording) {
+                            ScreenRecorder.stop();
+                            return;
+                        }
+                        const screen = QsWindow.window?.screen?.name ?? "";
+                        root.pinned = false;
+                        ScreenRecorder.start("screen", false, screen, "");
+                    }
+                }
+
+                QuickSwitch {
+                    width: switches.tileWidth
+                    visible: Tunnels.list.length > 0
+                    icon: "vpn_lock"
+                    label: Tunnels.anyOn && Tunnels.activeName ? Tunnels.activeName : "VPN"
+                    on: Tunnels.anyOn
+
+                    onToggled: Tunnels.setFirst(!Tunnels.anyOn)
+                }
+            }
+
+            Item {
+                width: 1
+                height: root.rowGap * 1.5
+            }
+
             Item {
                 id: soundRow
 
@@ -228,6 +419,17 @@ Item {
 
                     name: Audio.icon(Audio.volume, Audio.muted)
                     color: Audio.muted ? Appearance.colour.textFaint : Audio.volume > 0 ? Appearance.huedOr(Appearance.hue.sound, Appearance.colour.textDim) : Appearance.colour.textDim
+
+                    readonly property bool keyable: true
+
+                    function press(): void {
+                        Audio.toggleMute();
+                    }
+
+                    FocusMark {
+                        shown: parent.activeFocus
+                        pill: "object"
+                    }
 
                     MouseArea {
                         anchors.fill: parent
@@ -272,6 +474,18 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: root.actionColumn
                     height: root.actionColumn
+
+                    readonly property bool keyable: true
+
+                    function press(): void {
+                        root.mixing = !root.mixing;
+                    }
+
+                    FocusMark {
+                        anchors.margins: -Appearance.padding.small - reach
+                        shown: parent.activeFocus
+                        pill: "object"
+                    }
 
                     SquircleRect {
                         anchors.centerIn: parent
@@ -423,6 +637,17 @@ Item {
 
                     name: "nightlight"
                     color: Display.warm ? root.warmthHue(Display.kelvin) : Appearance.colour.textFaint
+
+                    readonly property bool keyable: true
+
+                    function press(): void {
+                        Display.toggleWarm();
+                    }
+
+                    FocusMark {
+                        shown: parent.activeFocus
+                        pill: "object"
+                    }
 
                     MouseArea {
                         anchors.fill: parent
