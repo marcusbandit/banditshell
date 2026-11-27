@@ -900,6 +900,8 @@ PanelWindow {
             panel: SettingsPanel {
                 originX: chassis.barWidth
                 band: win.border
+                backdrop: behind
+                glassAt: Qt.point(0, chassis.streamReach)
                 menuOpen: menuLayer.open
                 yielded: win.panelOpen || menuLayer.open || Prompts.awayIn(settingsLayer.QsWindow.window) || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
             }

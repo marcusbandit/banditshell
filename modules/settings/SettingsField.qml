@@ -46,7 +46,7 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.small
         color: Appearance.colour.fillStrong
-        stroke: root.alarm ? Appearance.colour.alarm : input.activeFocus ? Appearance.colour.accent : root.framed ? Appearance.colour.textFaint : "transparent"
+        stroke: root.alarm ? Appearance.colour.alarm : input.activeFocus ? Appearance.colour.textDim : root.framed ? Appearance.colour.textFaint : "transparent"
         strokeWidth: root.alarm || input.activeFocus || root.framed ? Appearance.stroke.ring : 0
     }
 
@@ -64,8 +64,8 @@ Item {
         font.pixelSize: Appearance.font.size.small
         renderType: Text.NativeRendering
         color: Appearance.colour.text
-        selectionColor: Appearance.colour.accent
-        selectedTextColor: Appearance.colour.accentText
+        selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
+        selectedTextColor: Appearance.colour.text
         echoMode: root.masked ? TextInput.Password : TextInput.Normal
 
         onActiveFocusChanged: {
