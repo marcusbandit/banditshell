@@ -16,6 +16,7 @@ ASPECTS = ("squash", "pad", "tiles")
 LINES = ("ember", "ink", "white")
 THRESHOLD = 0.5
 OVERLAP = 0.25
+SEAM = 4.0
 
 
 def config_home(env):
@@ -211,15 +212,24 @@ def cut(rgb, aspect, run):
         canvas[oy:oy + h, ox:ox + w] = rgb
         return np.ascontiguousarray(run(canvas)[oy:oy + h, ox:ox + w])
     if aspect == "tiles" and w != h:
-        side = min(w, h)
-        out = np.zeros((h, w), np.uint8)
-        for start in tile_starts(max(w, h), side):
+        side, length = min(w, h), max(w, h)
+        total = np.zeros((h, w), np.float32)
+        weight = np.zeros((h, w), np.float32)
+        for start in tile_starts(length, side):
+            i = np.arange(side)
+            edge = np.minimum(i + 1, side - i).astype(np.float32)
+            ramp = np.exp((edge - edge.max()) / SEAM)
+            if start == 0:
+                ramp[:side // 2] = ramp.max()
+            if start + side >= length:
+                ramp[side // 2:] = ramp.max()
             if w > h:
-                window = (slice(None), slice(start, start + side))
+                window, ramp = (slice(None), slice(start, start + side)), ramp[None, :]
             else:
-                window = (slice(start, start + side), slice(None))
-            out[window] = np.maximum(out[window], run(np.ascontiguousarray(rgb[window])))
-        return out
+                window, ramp = (slice(start, start + side), slice(None)), ramp[:, None]
+            total[window] += run(np.ascontiguousarray(rgb[window])).astype(np.float32) * ramp
+            weight[window] += ramp
+        return (total / np.maximum(weight, 1e-6) + 0.5).astype(np.uint8)
     return run(rgb)
 
 

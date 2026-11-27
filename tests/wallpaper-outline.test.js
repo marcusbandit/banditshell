@@ -236,6 +236,35 @@ print(json.dumps([seen, pad.shape, tiles.shape, int(pad.min()), int(tiles.min())
         });
     });
 
+    test.it("blends where tiles overlap instead of cutting a straight seam", needsCv, () => {
+        home(env => {
+            const got = py(env, OUTLINE, `
+import numpy as np
+a = np.zeros((20, 30, 3), np.uint8)
+calls = []
+def run(x):
+    calls.append(1)
+    return np.full(x.shape[:2], 255 if len(calls) == 1 else 0, np.uint8)
+print(json.dumps(m.cut(a, "tiles", run)[0].tolist()))`, CV);
+            assert.strictEqual(got[0], 255);
+            assert.strictEqual(got[29], 0);
+            const middle = got.filter(v => v > 0 && v < 255);
+            assert.ok(middle.length >= 3, JSON.stringify(got));
+            assert.ok(got.every((v, i) => i === 0 || v <= got[i - 1]), JSON.stringify(got));
+        });
+    });
+
+    test.it("a saved override passes a cover the automatic gate refuses", needsCv, () => {
+        home(env => {
+            const got = py(env, TRANSITION, `
+import numpy as np
+mask = np.zeros((100, 200), np.float32)
+mask[:, :160] = 1
+print(json.dumps([m.shape(mask)[0]["ok"], m.shape(mask, chosen=True)[0]["ok"]]))`, CV);
+            assert.deepStrictEqual(got, [false, true]);
+        });
+    });
+
     test.it("fills outward from the seed, through the subject before across a gap", needsCv, () => {
         home(env => {
             const got = py(env, TRANSITION, `

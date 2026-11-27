@@ -368,7 +368,7 @@ def subject_mask(img, im, over):
     return model_mask(img, im, over["prep"] if over else None)
 
 
-def shape(m, threshold=Outline.THRESHOLD, seed=None, key="0"):
+def shape(m, threshold=Outline.THRESHOLD, seed=None, key="0", chosen=False):
     import cv2
     import numpy as np
     h, w = m.shape
@@ -379,7 +379,10 @@ def shape(m, threshold=Outline.THRESHOLD, seed=None, key="0"):
     b = keep[lab].astype(np.uint8)
     cover = float(b.mean())
     unsure = float(((m > 0.1) & (m < 0.9)).mean())
-    ok = 0.008 <= cover <= 0.72 and unsure <= 0.06
+    if chosen:
+        ok = 0.005 <= cover <= 0.98 and unsure <= 0.15
+    else:
+        ok = 0.008 <= cover <= 0.72 and unsure <= 0.06
     contours, _ = cv2.findContours(b, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
     contours = [c for c in contours if len(c) >= 40 and abs(cv2.contourArea(c)) >= 0.0008 * w * h]
     found = {"ok": ok, "cover": cover, "unsure": unsure, "contours": len(contours), "w": w, "h": h}
@@ -459,7 +462,7 @@ def outline(img, force=False):
     im = thumbnail(img)
     mask = subject_mask(img, im, over)
     m = np.asarray(mask.resize(im.size), np.float32) / 255.0
-    found, rgb, lines = shape(m, over["threshold"] if over else Outline.THRESHOLD, over["seed"] if over else None, key_of(img))
+    found, rgb, lines = shape(m, over["threshold"] if over else Outline.THRESHOLD, over["seed"] if over else None, key_of(img), bool(over))
     meta = {"img": img, "ok": found["ok"], "cover": round(found["cover"], 3), "unsure": round(found["unsure"], 3), "w": found["w"], "h": found["h"]}
     if over:
         meta["override"] = digest

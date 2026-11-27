@@ -1,0 +1,756 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outline tuner</title>
+<style>
+:root {
+    color-scheme: dark;
+    --bg: #0c0d10;
+    --card: #15171c;
+    --line: #262a32;
+    --text: #e7e8ec;
+    --muted: #9198a5;
+    --accent: #8ab4ff;
+    --good: #7fd18b;
+    --bad: #ef7b7b;
+    --chip: #1f232b;
+    --r: 12px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+body { padding: 16px; display: flex; flex-direction: column; gap: 14px; min-height: 100vh; }
+header { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+h1 { font-size: 17px; font-weight: 600; margin: 0 6px 0 0; }
+select, button { font: inherit; color: var(--text); background: var(--chip); border: 1px solid var(--line); border-radius: 9px; padding: 7px 12px; }
+select { min-width: 0; max-width: 100%; flex: 0 1 340px; }
+button { cursor: pointer; }
+button:hover:not(:disabled) { border-color: #3a404b; }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); color: #0b1020; border-color: transparent; font-weight: 600; }
+.seg { display: inline-flex; background: var(--chip); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 5px 11px; border-radius: 7px; }
+.seg button.on { background: #2c323d; }
+.badge { font-size: 12px; padding: 4px 10px; border-radius: 99px; background: #233; color: var(--good); border: 1px solid #2f4a3a; }
+.stage { display: grid; place-items: center; background: #08090b; border: 1px solid var(--line); border-radius: var(--r); padding: 8px; min-height: 120px; position: relative; }
+.frame { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
+.frame canvas { display: block; max-width: 100%; max-height: 62vh; width: auto; height: auto; border-radius: 6px; }
+.frame canvas.over { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none; touch-action: none; }
+.empty[hidden] { display: none; }
+.empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 15px; pointer-events: none; line-height: 1.4; }
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 12px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card h2 { font-size: 13px; font-weight: 600; margin: 0; color: var(--muted); }
+.slider { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; }
+.slider span:last-of-type { font-variant-numeric: tabular-nums; color: var(--muted); }
+.slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.stat { background: var(--chip); border-radius: 9px; padding: 6px 8px; min-width: 0; }
+.stat b { display: block; font-size: 11px; font-weight: 500; color: var(--muted); }
+.stat i { font-style: normal; font-variant-numeric: tabular-nums; }
+.pass { color: var(--good); }
+.fail { color: var(--bad); }
+.status { color: var(--muted); min-height: 1.4em; overflow-wrap: anywhere; }
+.swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1px solid #0006; vertical-align: -2px; margin-right: 6px; }
+@media (max-width: 600px) {
+    body { padding: 12px 16px; }
+    .frame canvas { max-height: 45vh; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+</style>
+</head>
+<body>
+<header>
+    <h1 data-t="title"></h1>
+    <select id="file" aria-label="Wallpaper"></select>
+    <div class="seg" id="views"></div>
+    <span class="badge" id="badge" hidden></span>
+</header>
+<div class="stage">
+    <div class="frame">
+        <canvas id="view" width="2" height="2"></canvas>
+        <canvas id="over" class="over" width="2" height="2"></canvas>
+    </div>
+    <div class="empty" id="empty" hidden></div>
+</div>
+<div class="panels">
+    <section class="card" id="prepare">
+        <h2 data-t="groupPrepare"></h2>
+        <div id="sliders"></div>
+        <div class="row"><span data-t="aspect"></span><div class="seg" id="aspect"></div></div>
+        <div class="row"><button id="resetPrep" data-t="resetPrepare"></button></div>
+    </section>
+    <section class="card">
+        <h2 data-t="groupCutout"></h2>
+        <div class="row"><button class="primary" id="run" data-t="runModel"></button></div>
+        <div class="status" id="runStatus"></div>
+        <label class="slider"><span data-t="threshold"></span><span id="thresholdValue"></span><input type="range" id="threshold" min="0.02" max="0.98" step="0.01"></label>
+        <div class="stats">
+            <div class="stat"><b data-t="cover"></b><i id="cover">-</i></div>
+            <div class="stat"><b data-t="unsure"></b><i id="unsure">-</i></div>
+            <div class="stat"><b data-t="contours"></b><i id="contours">-</i></div>
+            <div class="stat"><b data-t="gate"></b><i id="gate">-</i></div>
+        </div>
+    </section>
+    <section class="card">
+        <h2 data-t="groupMask"></h2>
+        <div class="seg" id="tools"></div>
+        <label class="slider"><span data-t="brushSize"></span><span id="brushValue"></span><input type="range" id="brush" min="2" max="90" step="1" value="18"></label>
+        <div class="row">
+            <button id="undo" data-t="undo"></button>
+            <button id="resetMask" data-t="resetMask"></button>
+            <button id="clearSeed" data-t="clearSeed"></button>
+        </div>
+    </section>
+    <section class="card">
+        <h2 data-t="groupResult"></h2>
+        <div class="row"><span data-t="lineColour"></span><div class="seg" id="lines"></div></div>
+        <div class="row">
+            <button id="play" data-t="play"></button>
+            <button class="primary" id="save" data-t="save"></button>
+            <button id="clear" data-t="clearOverride"></button>
+        </div>
+        <div class="status" id="saveStatus"></div>
+    </section>
+</div>
+<script>
+const T = {
+    title: "Outline tuner",
+    viewOriginal: "Original",
+    viewPrepared: "Prepared",
+    viewMask: "Mask",
+    viewOutline: "Outline",
+    groupPrepare: "Prepare",
+    contrast: "Contrast",
+    contrastTiles: "Contrast tiles",
+    brightness: "Brightness",
+    gamma: "Gamma",
+    sharpen: "Sharpen",
+    sharpenRadius: "Sharpen radius",
+    edgeBoost: "Edge boost",
+    aspect: "Fit",
+    aspectSquash: "Squash",
+    aspectPad: "Pad",
+    aspectTiles: "Tiles",
+    resetPrepare: "Reset",
+    groupCutout: "Cut-out",
+    runModel: "Run model",
+    running: "Running model",
+    refusedMemory: "Not enough memory",
+    refusedBusy: "Another cut-out is running",
+    modelFailed: "Model failed",
+    noMask: "No mask yet",
+    threshold: "Threshold",
+    cover: "Coverage",
+    unsure: "Unsure",
+    contours: "Outlines",
+    gate: "Gate",
+    pass: "Pass",
+    fail: "Fail",
+    groupMask: "Mask",
+    toolAdd: "Add",
+    toolErase: "Erase",
+    toolSeed: "Seed",
+    brushSize: "Brush size",
+    undo: "Undo",
+    resetMask: "Reset mask",
+    clearSeed: "Clear seed",
+    groupResult: "Result",
+    play: "Play",
+    lineColour: "Line",
+    lineEmber: "Accent",
+    lineInk: "Brightest",
+    lineWhite: "White",
+    save: "Save",
+    saving: "Saving",
+    saved: "Saved, used from the next wallpaper change",
+    savedFails: "Saved, but the gate fails so the shell keeps the noise flood",
+    clearOverride: "Clear override",
+    cleared: "Override cleared",
+    overrideActive: "Override saved"
+};
+
+const PREP = [
+    ["clip", "contrast", 0, 6, 0.1, 0],
+    ["tile", "contrastTiles", 2, 24, 1, 8],
+    ["brightness", "brightness", -0.5, 0.5, 0.01, 0],
+    ["gamma", "gamma", 0.3, 3, 0.05, 1],
+    ["sharpen", "sharpen", 0, 3, 0.05, 0],
+    ["radius", "sharpenRadius", 0.5, 8, 0.1, 2],
+    ["edges", "edgeBoost", 0, 1.5, 0.05, 0]
+];
+const SCALE = 2;
+const SCREEN = 5120;
+const OLD = [14, 14, 17];
+const $ = id => document.getElementById(id);
+
+const S = {
+    f: null, w: 0, h: 0, ember: "#ffffff", ink: "#ffffff", override: null,
+    view: "original", tool: "add", brush: 18,
+    prep: {}, threshold: 0.5, seed: null, line: "ember", base: "model",
+    orig: null, prepared: null, model: null, edits: null, undo: [],
+    stats: null, maps: null, playing: false, busy: false
+};
+
+for (const el of document.querySelectorAll("[data-t]"))
+    el.textContent = T[el.dataset.t];
+document.title = T.title;
+
+function segmented(host, items, current, pick) {
+    host.replaceChildren();
+    for (const [value, label] of items) {
+        const b = document.createElement("button");
+        b.textContent = label;
+        b.dataset.value = value;
+        b.className = value === current ? "on" : "";
+        b.onclick = () => pick(value);
+        host.append(b);
+    }
+}
+function mark(host, value) {
+    for (const b of host.children)
+        b.className = b.dataset.value === value ? "on" : "";
+}
+
+const views = [["original", T.viewOriginal], ["prepared", T.viewPrepared], ["mask", T.viewMask], ["outline", T.viewOutline]];
+segmented($("views"), views, S.view, v => { S.view = v; mark($("views"), v); stopPlay(); render(); });
+segmented($("tools"), [["add", T.toolAdd], ["erase", T.toolErase], ["seed", T.toolSeed]], S.tool, v => { S.tool = v; mark($("tools"), v); });
+segmented($("aspect"), [["squash", T.aspectSquash], ["pad", T.aspectPad], ["tiles", T.aspectTiles]], "squash", v => { S.prep.aspect = v; mark($("aspect"), v); prepChanged(); });
+
+const sliders = {};
+for (const [key, label, min, max, step] of PREP) {
+    const wrap = document.createElement("label");
+    wrap.className = "slider";
+    const name = document.createElement("span");
+    name.textContent = T[label];
+    const value = document.createElement("span");
+    const input = document.createElement("input");
+    Object.assign(input, { type: "range", min, max, step });
+    input.oninput = () => { S.prep[key] = Number(input.value); value.textContent = fmt(S.prep[key]); prepChanged(); };
+    wrap.append(name, value, input);
+    $("sliders").append(wrap);
+    sliders[key] = { input, value };
+}
+function fmt(v) { return Number.isInteger(v) ? String(v) : v.toFixed(2); }
+function defaults() {
+    const p = { aspect: "squash" };
+    for (const [key, , , , , d] of PREP) p[key] = d;
+    return p;
+}
+function showPrep() {
+    for (const [key] of PREP) {
+        sliders[key].input.value = S.prep[key];
+        sliders[key].value.textContent = fmt(S.prep[key]);
+    }
+    mark($("aspect"), S.prep.aspect);
+}
+function showLines() {
+    const items = [["ember", T.lineEmber, S.ember], ["ink", T.lineInk, S.ink], ["white", T.lineWhite, "#ffffff"]];
+    segmented($("lines"), items.map(([v, l]) => [v, l]), S.line, v => { S.line = v; mark($("lines"), v); render(); });
+    [...$("lines").children].forEach((b, i) => {
+        const sw = document.createElement("span");
+        sw.className = "swatch";
+        sw.style.background = items[i][2];
+        b.prepend(sw);
+    });
+}
+
+function rgbOf(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function lineRgb() { return rgbOf(S.line === "white" ? "#ffffff" : S.line === "ink" ? S.ink : S.ember); }
+
+async function api(path, body) {
+    const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    return r;
+}
+async function bitmapData(blob, w, h) {
+    const bmp = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+    const c = new OffscreenCanvas(w || bmp.width, h || bmp.height);
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.imageSmoothingEnabled = !!w;
+    g.drawImage(bmp, 0, 0, c.width, c.height);
+    return g.getImageData(0, 0, c.width, c.height);
+}
+function b64blob(b64, type) {
+    const bin = atob(b64);
+    const a = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    return new Blob([a], { type });
+}
+function channel(img) {
+    const out = new Uint8Array(img.width * img.height);
+    for (let i = 0; i < out.length; i++) out[i] = img.data[i * 4];
+    return out;
+}
+
+async function loadFiles() {
+    const r = await (await api("/api/files")).json();
+    const sel = $("file");
+    sel.replaceChildren();
+    for (const name of r.files) {
+        const o = document.createElement("option");
+        o.value = name;
+        o.textContent = name;
+        sel.append(o);
+    }
+    const asked = new URLSearchParams(location.search).get("file");
+    const pick = [asked, r.start, r.files[0]].find(v => v && r.files.includes(v));
+    if (pick) {
+        sel.value = pick;
+        await open(pick);
+    }
+}
+$("file").onchange = () => {
+    const u = new URL(location.href);
+    u.searchParams.set("file", $("file").value);
+    history.replaceState(null, "", u);
+    open($("file").value);
+};
+
+async function open(f) {
+    stopPlay();
+    S.f = f;
+    S.maps = S.stats = S.model = S.prepared = null;
+    S.undo = [];
+    const st = await (await api("/api/state?f=" + encodeURIComponent(f))).json();
+    [S.w, S.h] = st.size;
+    S.ember = st.ember;
+    S.ink = st.ink;
+    S.override = st.override;
+    const o = st.override;
+    S.prep = Object.assign(defaults(), o ? o.prep : {});
+    S.threshold = o ? o.threshold : 0.5;
+    S.seed = o ? o.seed : null;
+    S.line = o ? o.line : "ember";
+    S.base = o && o.edited && !st.hasEdits ? "hand" : "model";
+    $("threshold").value = S.threshold;
+    $("thresholdValue").textContent = S.threshold.toFixed(2);
+    showPrep();
+    showLines();
+    badge();
+    for (const c of [$("view"), $("over")]) {
+        c.width = S.w * SCALE;
+        c.height = S.h * SCALE;
+    }
+    const blob = await (await api("/api/original?f=" + encodeURIComponent(f))).blob();
+    S.orig = await bitmapData(blob, S.w * SCALE, S.h * SCALE);
+    S.edits = new Uint8Array(S.w * S.h).fill(128);
+    if (st.hasEdits) {
+        const r = await api("/api/edits?f=" + encodeURIComponent(f));
+        if (r.ok) {
+            const img = await bitmapData(await r.blob());
+            if (img.width === S.w && img.height === S.h) S.edits = channel(img);
+        }
+    }
+    $("runStatus").textContent = "";
+    $("saveStatus").textContent = "";
+    await Promise.all([loadPrepared(), loadMask()]);
+    render();
+    shapeSoon(0);
+}
+
+function badge() {
+    $("badge").hidden = !S.override;
+    $("badge").textContent = T.overrideActive;
+}
+
+let prepTimer = 0;
+function prepChanged() {
+    clearTimeout(prepTimer);
+    prepTimer = setTimeout(async () => {
+        S.base = "model";
+        await Promise.all([loadPrepared(), loadMask()]);
+        render();
+        shapeSoon(0);
+    }, 220);
+}
+async function loadPrepared() {
+    const f = S.f;
+    const r = await api("/api/prep", { f, prep: S.prep });
+    if (!r.ok || f !== S.f) return;
+    S.prepared = await bitmapData(await r.blob(), S.w * SCALE, S.h * SCALE);
+    if (S.view === "prepared") render();
+}
+async function loadMask() {
+    const f = S.f;
+    const r = await api("/api/mask", { f, prep: S.prep, base: S.base });
+    if (f !== S.f) return;
+    if (!r.ok) {
+        S.model = null;
+        return;
+    }
+    const j = await r.json();
+    S.base = j.source;
+    S.model = channel(await bitmapData(b64blob(j.mask, "image/png")));
+}
+
+function composite(i) {
+    const e = S.edits[i];
+    return e >= 192 ? 255 : e <= 64 ? 0 : S.model ? S.model[i] : 0;
+}
+function editsNeutral() {
+    for (let i = 0; i < S.edits.length; i++)
+        if (S.edits[i] >= 192 || S.edits[i] <= 64) return false;
+    return true;
+}
+function editsPng() {
+    if (editsNeutral()) return null;
+    const c = new OffscreenCanvas(S.w, S.h);
+    const g = c.getContext("2d");
+    const img = g.createImageData(S.w, S.h);
+    for (let i = 0; i < S.edits.length; i++) {
+        const v = S.edits[i];
+        img.data.set([v, v, v, 255], i * 4);
+    }
+    g.putImageData(img, 0, 0);
+    return c.convertToBlob({ type: "image/png" }).then(b => new Promise(ok => {
+        const rd = new FileReader();
+        rd.onload = () => ok(rd.result);
+        rd.readAsDataURL(b);
+    }));
+}
+function payload(edits) {
+    return { f: S.f, prep: S.prep, threshold: S.threshold, seed: S.seed, line: S.line, base: S.base, edits };
+}
+
+let shapeTimer = 0, shapeSerial = 0;
+function shapeSoon(delay = 180) {
+    clearTimeout(shapeTimer);
+    shapeTimer = setTimeout(shapeNow, delay);
+}
+async function shapeNow() {
+    const serial = ++shapeSerial;
+    if (!S.model && S.base !== "hand" && editsNeutral()) {
+        S.stats = S.maps = null;
+        readouts();
+        render();
+        return;
+    }
+    const r = await (await api("/api/shape", payload(await editsPng()))).json();
+    if (serial !== shapeSerial) return;
+    if (r.missing) {
+        S.stats = S.maps = null;
+    } else {
+        S.stats = r.stats;
+        S.maps = r.field ? await buildMaps(r.field, r.line) : null;
+    }
+    readouts();
+    render();
+}
+function readouts() {
+    const s = S.stats;
+    $("cover").textContent = s ? (s.cover * 100).toFixed(1) + "%" : "-";
+    $("unsure").textContent = s ? (s.unsure * 100).toFixed(1) + "%" : "-";
+    $("contours").textContent = s ? s.contours : "-";
+    $("gate").textContent = s ? (s.ok ? T.pass : T.fail) : "-";
+    $("gate").className = s ? (s.ok ? "pass" : "fail") : "";
+    $("play").disabled = !S.maps;
+}
+
+async function buildMaps(fieldB64, lineB64) {
+    const fw = S.w, fh = S.h, W = fw * SCALE, H = fh * SCALE;
+    const field = await bitmapData(b64blob(fieldB64, "image/png"));
+    const line = await bitmapData(b64blob(lineB64, "image/png"));
+    const n = W * H;
+    const sd = new Float32Array(n), inner = new Float32Array(n), surf = new Float32Array(n), lp = new Float32Array(n);
+    const at = (img, x, y, c) => img.data[(y * fw + x) * 4 + c];
+    const s16 = (x, y) => (at(line, x, y, 1) * 256 + at(line, x, y, 2)) / 65535;
+    for (let Y = 0; Y < H; Y++) {
+        const fy = Math.min(Math.max((Y + 0.5) / SCALE - 0.5, 0), fh - 1);
+        const y0 = Math.floor(fy), y1 = Math.min(y0 + 1, fh - 1), ty = fy - y0;
+        for (let X = 0; X < W; X++) {
+            const fx = Math.min(Math.max((X + 0.5) / SCALE - 0.5, 0), fw - 1);
+            const x0 = Math.floor(fx), x1 = Math.min(x0 + 1, fw - 1), tx = fx - x0;
+            const i = Y * W + X;
+            const bl = (a, b, c, d) => (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
+            const b = bl(at(field, x0, y0, 2), at(field, x1, y0, 2), at(field, x0, y1, 2), at(field, x1, y1, 2)) / 255;
+            sd[i] = (b * 2 - 1) * 16 * SCALE;
+            const nx = Math.min(Math.round(fx), fw - 1), ny = Math.min(Math.round(fy), fh - 1);
+            inner[i] = at(field, nx, ny, 1) / 255;
+            lp[i] = at(line, nx, ny, 0) / 255;
+            surf[i] = bl(s16(x0, y0), s16(x1, y0), s16(x0, y1), s16(x1, y1));
+        }
+    }
+    return { sd, inner, surf, lp };
+}
+
+const esc = x => { x = Math.min(Math.max(x, 0), 1); return x * x * (3 - 2 * x); };
+const view = $("view").getContext("2d", { willReadFrequently: true });
+
+function frame(t, still) {
+    const W = S.w * SCALE, H = S.h * SCALE, n = W * H;
+    const out = view.createImageData(W, H), o = out.data, src = S.orig.data, m = S.maps;
+    const ink = lineRgb();
+    const lw = Math.max(1, 2.5 * W / SCREEN);
+    const back = esc(t / 0.18);
+    const lum = 0.299 * OLD[0] + 0.587 * OLD[1] + 0.114 * OLD[2];
+    const st = OLD.map(c => (c + (lum - c) * 0.25 * back) * (1 - 0.2 * back));
+    const Ti = esc((t - 0.32) / 0.32) * 1.02 - 0.01;
+    const To = esc((t - 0.45) / 0.5) * 1.02 - 0.01;
+    const drawP = esc((t - 0.02) / 0.33);
+    const fade = 1 - esc((t - 0.45) / 0.25);
+    for (let i = 0; i < n; i++) {
+        const j = i * 4;
+        const inside = Math.min(Math.max(0.5 - m.sd[i], 0), 1);
+        const isIn = still || m.inner[i] <= Ti, isOut = still || m.surf[i] <= To;
+        let r, g, b;
+        const ir = isIn ? src[j] : st[0], ig = isIn ? src[j + 1] : st[1], ib = isIn ? src[j + 2] : st[2];
+        const or = isOut ? src[j] : st[0], og = isOut ? src[j + 1] : st[1], ob = isOut ? src[j + 2] : st[2];
+        r = or + (ir - or) * inside;
+        g = og + (ig - og) * inside;
+        b = ob + (ib - ob) * inside;
+        const lp = m.lp[i];
+        if (lp > 0 && lp <= drawP && fade > 0) {
+            const core = Math.min(Math.max(0.5 - (Math.abs(m.sd[i]) - lw * 0.5), 0), 1) * 0.9 * fade;
+            r += (ink[0] - r) * core;
+            g += (ink[1] - g) * core;
+            b += (ink[2] - b) * core;
+        }
+        o[j] = r; o[j + 1] = g; o[j + 2] = b; o[j + 3] = 255;
+    }
+    view.putImageData(out, 0, 0);
+}
+
+function render() {
+    if (!S.orig || S.playing) return;
+    $("empty").hidden = true;
+    const W = S.w * SCALE, H = S.h * SCALE;
+    if (S.view === "original") {
+        view.putImageData(S.orig, 0, 0);
+    } else if (S.view === "prepared") {
+        view.putImageData(S.prepared || S.orig, 0, 0);
+    } else if (S.view === "mask") {
+        const out = view.createImageData(W, H), o = out.data, src = S.orig.data;
+        const em = rgbOf(S.ember), cut = S.threshold * 255, has = S.model || !editsNeutral();
+        for (let Y = 0; Y < H; Y++) {
+            const row = Math.floor(Y / SCALE) * S.w;
+            for (let X = 0; X < W; X++) {
+                const j = (Y * W + X) * 4, v = has ? composite(row + Math.floor(X / SCALE)) : 0;
+                for (let c = 0; c < 3; c++) {
+                    const base = src[j + c] * 0.28;
+                    o[j + c] = v > cut ? base + (em[c] - base) * 0.62 : base + v * 0.3;
+                }
+                o[j + 3] = 255;
+            }
+        }
+        view.putImageData(out, 0, 0);
+        if (!has) empty(T.noMask);
+    } else if (S.maps) {
+        frame(0.44, true);
+    } else {
+        view.putImageData(S.orig, 0, 0);
+        if (S.model || !editsNeutral()) edgeOf();
+        else empty(T.noMask);
+    }
+    overlay();
+}
+function empty(text) {
+    $("empty").textContent = text;
+    $("empty").hidden = false;
+}
+function edgeOf() {
+    const W = S.w * SCALE, H = S.h * SCALE, img = view.getImageData(0, 0, W, H), o = img.data, cut = S.threshold * 255;
+    const on = (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h && composite(y * S.w + x) > cut;
+    const bad = [239, 123, 123];
+    for (let y = 0; y < S.h; y++)
+        for (let x = 0; x < S.w; x++) {
+            if (!on(x, y) || (on(x - 1, y) && on(x + 1, y) && on(x, y - 1) && on(x, y + 1))) continue;
+            for (let dy = 0; dy < SCALE; dy++)
+                for (let dx = 0; dx < SCALE; dx++) {
+                    const j = ((y * SCALE + dy) * W + x * SCALE + dx) * 4;
+                    o[j] = bad[0]; o[j + 1] = bad[1]; o[j + 2] = bad[2];
+                }
+        }
+    view.putImageData(img, 0, 0);
+}
+
+const over = $("over").getContext("2d");
+let cursor = null;
+function overlay() {
+    over.clearRect(0, 0, $("over").width, $("over").height);
+    const unit = $("over").width / $("over").getBoundingClientRect().width || 1;
+    if (S.seed) {
+        const x = S.seed[0] * S.w * SCALE, y = S.seed[1] * S.h * SCALE;
+        over.beginPath();
+        over.arc(x, y, 7 * unit, 0, Math.PI * 2);
+        over.fillStyle = "#ffffff";
+        over.fill();
+        over.lineWidth = 3 * unit;
+        over.strokeStyle = "#000000aa";
+        over.stroke();
+    }
+    if (cursor && S.tool !== "seed") {
+        over.beginPath();
+        over.arc(cursor[0] * SCALE, cursor[1] * SCALE, S.brush * SCALE, 0, Math.PI * 2);
+        over.lineWidth = 1.5 * unit;
+        over.strokeStyle = S.tool === "add" ? "#ffffffcc" : "#ef7b7bcc";
+        over.stroke();
+    }
+}
+function fieldPoint(e) {
+    const r = $("over").getBoundingClientRect();
+    return [(e.clientX - r.left) / r.width * S.w, (e.clientY - r.top) / r.height * S.h];
+}
+function paint(p) {
+    const v = S.tool === "add" ? 255 : 0, rad = S.brush, r2 = rad * rad;
+    const x0 = Math.max(0, Math.floor(p[0] - rad)), x1 = Math.min(S.w - 1, Math.ceil(p[0] + rad));
+    const y0 = Math.max(0, Math.floor(p[1] - rad)), y1 = Math.min(S.h - 1, Math.ceil(p[1] + rad));
+    for (let y = y0; y <= y1; y++)
+        for (let x = x0; x <= x1; x++)
+            if ((x + 0.5 - p[0]) ** 2 + (y + 0.5 - p[1]) ** 2 <= r2) S.edits[y * S.w + x] = v;
+}
+function stroke(a, b) {
+    const d = Math.hypot(b[0] - a[0], b[1] - a[1]), steps = Math.max(1, Math.ceil(d / Math.max(1, S.brush / 3)));
+    for (let k = 1; k <= steps; k++) paint([a[0] + (b[0] - a[0]) * k / steps, a[1] + (b[1] - a[1]) * k / steps]);
+}
+let drawing = null, queued = false;
+function soon() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => { queued = false; render(); });
+}
+$("over").onpointerdown = e => {
+    if (!S.orig) return;
+    stopPlay();
+    const p = fieldPoint(e);
+    if (S.tool === "seed") {
+        S.seed = [Math.min(Math.max(p[0] / S.w, 0), 1), Math.min(Math.max(p[1] / S.h, 0), 1)].map(v => Math.round(v * 10000) / 10000);
+        overlay();
+        shapeSoon(0);
+        return;
+    }
+    $("over").setPointerCapture(e.pointerId);
+    S.undo.push(S.edits.slice());
+    if (S.undo.length > 40) S.undo.shift();
+    if (S.view !== "mask" && S.view !== "outline") { S.view = "mask"; mark($("views"), "mask"); }
+    drawing = p;
+    paint(p);
+    soon();
+};
+$("over").onpointermove = e => {
+    if (!S.orig) return;
+    const p = fieldPoint(e);
+    cursor = p;
+    if (drawing) {
+        stroke(drawing, p);
+        drawing = p;
+        soon();
+    } else overlay();
+};
+$("over").onpointerup = $("over").onpointercancel = () => {
+    if (!drawing) return;
+    drawing = null;
+    shapeSoon(0);
+};
+$("over").onpointerleave = () => { cursor = null; if (!drawing) overlay(); };
+
+$("brush").oninput = () => { S.brush = Number($("brush").value); $("brushValue").textContent = S.brush; overlay(); };
+$("brushValue").textContent = S.brush;
+$("threshold").oninput = () => {
+    S.threshold = Number($("threshold").value);
+    $("thresholdValue").textContent = S.threshold.toFixed(2);
+    render();
+    shapeSoon();
+};
+$("undo").onclick = () => { if (S.undo.length) { S.edits = S.undo.pop(); render(); shapeSoon(0); } };
+$("resetMask").onclick = () => {
+    S.undo.push(S.edits.slice());
+    S.edits.fill(128);
+    if (S.base === "hand") { S.base = "model"; loadMask().then(() => { render(); shapeSoon(0); }); return; }
+    render();
+    shapeSoon(0);
+};
+$("clearSeed").onclick = () => { S.seed = null; overlay(); shapeSoon(0); };
+$("resetPrep").onclick = () => { S.prep = defaults(); showPrep(); prepChanged(); };
+
+let playStart = 0;
+function stopPlay() {
+    if (!S.playing) return;
+    S.playing = false;
+    render();
+}
+$("play").onclick = () => {
+    if (!S.maps) return;
+    if (S.view !== "outline") { S.view = "outline"; mark($("views"), "outline"); }
+    S.playing = true;
+    playStart = performance.now();
+    over.clearRect(0, 0, $("over").width, $("over").height);
+    const step = now => {
+        if (!S.playing) return;
+        const t = Math.min((now - playStart) / 2000, 1);
+        frame(t);
+        if (t < 1) requestAnimationFrame(step);
+        else setTimeout(() => stopPlay(), 700);
+    };
+    requestAnimationFrame(step);
+};
+
+function memoryText(r) { return `${T.refusedMemory} (${r.free} of ${r.need} GB free)`; }
+async function follow(id, onTick) {
+    for (;;) {
+        const j = await (await api("/api/job?id=" + encodeURIComponent(id))).json();
+        if (j.state !== "running") return j;
+        onTick(j);
+        await new Promise(ok => setTimeout(ok, 1000));
+    }
+}
+$("run").onclick = async () => {
+    if (S.busy) return;
+    S.busy = true;
+    $("run").disabled = true;
+    const f = S.f, status = $("runStatus");
+    try {
+        const r = await (await api("/api/run", { f, prep: S.prep })).json();
+        if (r.refused) { status.textContent = memoryText(r); return; }
+        if (r.job) {
+            status.textContent = T.running;
+            const j = await follow(r.job, j => { status.textContent = `${T.running} ${Math.round(j.seconds)} s`; });
+            status.textContent = j.state === "done" ? `${j.seconds} s` : j.state === "busy" ? T.refusedBusy : j.state === "memory" ? T.refusedMemory : T.modelFailed;
+        } else status.textContent = "";
+        if (f === S.f) {
+            S.base = "model";
+            await loadMask();
+            if (S.view === "original" || S.view === "prepared") { S.view = "mask"; mark($("views"), "mask"); }
+            render();
+            shapeSoon(0);
+        }
+    } finally {
+        S.busy = false;
+        $("run").disabled = false;
+    }
+};
+$("save").onclick = async () => {
+    if (S.busy) return;
+    S.busy = true;
+    $("save").disabled = true;
+    const status = $("saveStatus");
+    status.textContent = T.saving;
+    try {
+        const r = await (await api("/api/save", payload(await editsPng()))).json();
+        if (r.refused) { status.textContent = memoryText(r); return; }
+        const j = await follow(r.job, () => {});
+        if (j.state === "done") status.textContent = j.meta.ok ? T.saved : T.savedFails;
+        else status.textContent = j.state === "busy" ? T.refusedBusy : T.modelFailed;
+        const st = await (await api("/api/state?f=" + encodeURIComponent(S.f))).json();
+        S.override = st.override;
+        badge();
+    } finally {
+        S.busy = false;
+        $("save").disabled = false;
+    }
+};
+$("clear").onclick = async () => {
+    await api("/api/clear", { f: S.f });
+    await open(S.f);
+    $("saveStatus").textContent = T.cleared;
+};
+window.addEventListener("resize", () => overlay());
+
+loadFiles();
+</script>
+</body>
+</html>

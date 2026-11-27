@@ -111,6 +111,9 @@
 #   banditshell wallpaper list [screen]
 #   banditshell wallpaper palette
 #                                every picture, or the colours of the one worn
+#   banditshell wallpaper outline [<file>]
+#                                tune how the outline transition traces a
+#                                picture, in a page that prints its address
 #
 # screenshot                     a region saved or copied, or the whole desktop
 #   banditshell screenshot save [--freeze]
@@ -1969,8 +1972,42 @@ route_wallpaper() {
     set) [ $# -ge 2 ] || say_usage "wallpaper set <file> [screen|all]"
         ipc wallpaper set "$(absolute_path "$2")" "${3:-}" ;;
     list) ipc wallpaper list "${2:-}" ;;
+    outline) wallpaper_outline "${2:-}" ;;
     *) nope wallpaper "$1" ;;
     esac
+}
+
+wallpaper_outline() {
+    local file="$1" python ready pid port url _
+    local -a args=()
+    python="${XDG_DATA_HOME:-$HOME/.local/share}/banditshell/cutout/venv/bin/python"
+    if [ ! -x "$python" ]; then
+        echo "banditshell: the outline cut-out is not installed; Settings, Wallpaper, Character outlines installs it" >&2
+        exit 1
+    fi
+    if [ -n "$file" ]; then
+        [ -f "$file" ] || { echo "banditshell: no such file: $file" >&2; exit 2; }
+        args=(--file "$(absolute_path "$file")")
+    fi
+    ready="$RUN_DIR/outline-tuner"
+    port=0
+    if [ -r "$ready" ] && read -r pid port _ <"$ready" && [[ $pid =~ ^[0-9]+$ ]] &&
+        tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null | grep -q "outline-tuner.py"; then
+        kill "$pid" 2>/dev/null || true
+    fi
+    [[ $port =~ ^[0-9]+$ ]] || port=0
+    mkdir -p "$RUN_DIR"
+    rm -f "$ready"
+    detach outline-tuner "$python" "$SHELL_DIR/scripts/outline-tuner.py" --ready "$ready" --port "$port" "${args[@]}" >/dev/null 2>&1
+    for _ in $(seq 100); do
+        [ -s "$ready" ] && break
+        sleep 0.1
+    done
+    if ! read -r pid port url <"$ready" 2>/dev/null || [ -z "$url" ]; then
+        echo "banditshell: the outline tuner did not start" >&2
+        exit 1
+    fi
+    echo "$url"
 }
 
 screenshot_dir() {
