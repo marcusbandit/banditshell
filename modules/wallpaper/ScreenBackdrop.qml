@@ -11,7 +11,7 @@ GlassSource {
 
     required property string output
     property point screenOrigin: Qt.point(0, 0)
-    property bool windows: false
+    property bool live: false
 
     readonly property var monitor: Hyprland.monitors.values.find(m => m.name === root.output) ?? null
     readonly property int workspace: root.monitor?.activeWorkspace?.id ?? Hypr.activeOn(root.output)
@@ -24,8 +24,6 @@ GlassSource {
     }
 
     readonly property var shown: {
-        if (!root.windows)
-            return [];
         const out = Hyprland.toplevels.values.filter(t => {
             const w = t.workspace;
             if (!w || !t.lastIpcObject?.mapped || t.lastIpcObject?.hidden)
@@ -37,10 +35,22 @@ GlassSource {
 
     source: Wallpaper.enabled ? Wallpaper.faceOf(Wallpaper.shownOn(root.output)) : ""
 
-    onWindowsChanged: if (root.windows)
+    onLiveChanged: if (root.live)
         Hyprland.refreshToplevels()
 
+    Timer {
+        interval: 1500
+        repeat: true
+        running: !root.live && root.shown.length > 0
+        onTriggered: {
+            for (let i = 0; i < captures.count; i++)
+                captures.itemAt(i)?.captureFrame();
+        }
+    }
+
     Repeater {
+        id: captures
+
         model: root.shown
 
         ScreencopyView {
@@ -54,7 +64,7 @@ GlassSource {
             width: span[0]
             height: span[1]
             captureSource: modelData.wayland ?? null
-            live: true
+            live: root.live
             paintCursor: false
         }
     }

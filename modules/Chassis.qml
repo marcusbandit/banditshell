@@ -66,7 +66,8 @@ Item {
         speed: Appearance.animation.revealSpeed
     }
 
-    readonly property bool reachesIn: root.railOpen > 0.01 && root.rail || root.panels.some(p => p && p.w > 0 && p.h > 0 && p.x + p.w > root.holeX && p.y + p.h > root.holeY && p.x < root.holeX + root.holeWidth && p.y < root.holeY + root.holeHeight)
+    readonly property real deepest: root.panels.reduce((most, p) => p ? Math.max(most, Math.max(0, Math.min(p.x + p.w, root.holeX + root.holeWidth) - Math.max(p.x, root.holeX)) * Math.max(0, Math.min(p.y + p.h, root.holeY + root.holeHeight) - Math.max(p.y, root.holeY))) : most, 0)
+    readonly property bool reachesIn: root.rail && root.railOpen > 0.01 || root.deepest > Math.pow(Appearance.padding.huge * 4, 2)
 
     BlobField {
         anchors.fill: parent
