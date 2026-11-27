@@ -494,12 +494,6 @@ Item {
                     height: root.heroHeight * root.scaleAt(card.offset)
                     visible: card.width >= 1
 
-                    DropShadow {
-                        anchors.fill: parent
-                        radius: Math.min(Appearance.rounding.normal, card.width / 2)
-                        opacity: Math.min(1, card.width / Appearance.padding.huge)
-                    }
-
                     SquircleRect {
                         anchors.fill: parent
                         radius: Appearance.rounding.normal
@@ -518,6 +512,13 @@ Item {
                         decodeHeight: root.heroHeight
                     }
 
+                    SquircleRect {
+                        anchors.fill: parent
+                        radius: Appearance.rounding.normal
+                        rim: 1
+                        opacity: Math.min(1, card.width / Appearance.padding.huge)
+                    }
+
                     Button {
                         id: badge
 
@@ -527,7 +528,7 @@ Item {
 
                         visible: !!root.badgeFor(card.path) && card.width >= badge.width + 2 * Appearance.padding.small
                         interactive: false
-                        paint: Wallpaper.isFrozen(card.path) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
+                        paint: Appearance.colour.readableSurface
                         icon: root.badgeFor(card.path)
                         iconFill: Wallpaper.isFrozen(card.path) ? 0 : 1
                     }
@@ -647,15 +648,9 @@ Item {
                 anchors.fill: parent
             }
 
-            DropShadow {
+            GlassPanel {
                 anchors.fill: parent
                 pill: "place"
-            }
-
-            SquircleRect {
-                anchors.fill: parent
-                pill: "place"
-                color: Appearance.colour.surface
             }
 
             Row {
@@ -681,9 +676,7 @@ Item {
                         SquircleRect {
                             anchors.fill: parent
                             pill: "object"
-                            color: "transparent"
-                            stroke: Appearance.colour.text
-                            strokeWidth: Appearance.stroke.ring
+                            color: Appearance.colour.chosen
                             visible: swatch.picked
                         }
 
@@ -693,7 +686,7 @@ Item {
                             height: width
                             pill: "object"
                             color: swatch.modelData.colour
-                            stroke: Appearance.colour.textGhost
+                            stroke: swatch.picked ? Appearance.withAlpha(Appearance.colour.onChosen, 0.25) : Appearance.colour.textGhost
                             strokeWidth: Appearance.stroke.line
                             scale: swell.value
 
@@ -740,53 +733,30 @@ Item {
                     }
                 }
 
-                Item {
-                    id: field
+                SearchField {
+                    id: query
 
                     anchors.verticalCenter: parent.verticalCenter
                     visible: root.searching
                     width: visible ? Math.round(root.heroWidth * 0.45) : 0
-                    height: Appearance.button.height(0)
+                    height: searchButton.height
+                    icon: ""
+                    placeholder: "Search by name"
 
-                    SquircleRect {
-                        anchors.fill: parent
-                        pill: "place"
-                        color: Appearance.colour.fill
+                    onTextChanged: root.keepPlace(() => {
+                        root.query = query.text;
+                    })
+                    Keys.onReturnPressed: event => {
+                        root.forceActiveFocus();
+                        event.accepted = true;
                     }
-
-                    TextInput {
-                        id: query
-
-                        anchors.fill: parent
-                        anchors.leftMargin: Appearance.padding.normal
-                        anchors.rightMargin: Appearance.padding.normal
-                        verticalAlignment: TextInput.AlignVCenter
-
-                        font.family: Appearance.font.family
-                        font.pixelSize: Appearance.font.size.small
-                        renderType: Text.NativeRendering
-                        color: Appearance.colour.text
-                        selectionColor: Appearance.colour.accent
-                        selectedTextColor: Appearance.colour.accentText
-                        clip: true
-
-                        onTextChanged: root.keepPlace(() => {
-                            root.query = query.text;
-                        })
-
-                        Keys.onEscapePressed: event => {
-                            root.stopSearch();
-                            event.accepted = true;
-                        }
-                        Keys.onReturnPressed: root.forceActiveFocus()
-                        Keys.onEnterPressed: root.forceActiveFocus()
-
-                        StyledText {
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: !query.text
-                            text: "Search by name"
-                            color: Appearance.colour.textFaint
-                        }
+                    Keys.onEnterPressed: event => {
+                        root.forceActiveFocus();
+                        event.accepted = true;
+                    }
+                    Keys.onEscapePressed: event => {
+                        root.stopSearch();
+                        event.accepted = true;
                     }
                 }
             }
@@ -806,15 +776,9 @@ Item {
                 anchors.fill: parent
             }
 
-            DropShadow {
+            GlassPanel {
                 anchors.fill: parent
                 pill: "place"
-            }
-
-            SquircleRect {
-                anchors.fill: parent
-                pill: "place"
-                color: Appearance.colour.surface
             }
 
             Row {
