@@ -274,7 +274,7 @@ Item {
             visible: root.isSection && !!root.glyph
             size: Appearance.font.size.large
             name: root.glyph
-            color: root.isBack && root.under ? Appearance.colour.text : root.modelData.section === root.launcher.marked ? Appearance.colour.text : Appearance.colour.textDim
+            color: root.isBack && root.under || root.modelData.section === root.launcher.marked ? Appearance.colour.text : Appearance.colour.textDim
 
             Behavior on color {
                 ColorAnimation {

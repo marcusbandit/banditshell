@@ -573,7 +573,7 @@ Item {
                             anchors.fill: parent
                             radius: Appearance.rounding.small
                             color: Appearance.colour.fill
-                            stroke: (input.activeFocus || holder.activeFocus) ? Appearance.colour.separator : entry.lacking ? Appearance.colour.alarm : "transparent"
+                            stroke: (input.activeFocus || holder.activeFocus) ? Appearance.colour.chosen : entry.lacking ? Appearance.colour.alarm : "transparent"
                             strokeWidth: Appearance.stroke.ring
                         }
 
