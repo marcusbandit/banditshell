@@ -157,7 +157,7 @@ Item {
                                     height: 25
                                     name: modelData.ic
                                     size: Appearance.icon.large
-                                    color: root.colourful ? modelData.app : root.walking ? Appearance.blend(Appearance.colour.textDim, Appearance.colour.onChosen, cell.lit) : cell.on ? Appearance.colour.onChosen : Appearance.colour.textDim
+                                    color: root.colourful ? (cell.on && !root.walking ? Appearance.blend(modelData.app, Appearance.colour.onChosen, 0.35) : modelData.app) : root.walking ? Appearance.blend(Appearance.colour.textDim, Appearance.colour.onChosen, cell.lit) : cell.on ? Appearance.colour.onChosen : Appearance.colour.textDim
                                 }
                             }
                         }

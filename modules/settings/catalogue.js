@@ -779,8 +779,8 @@ const PAGES_SOURCE = {
                 { n: 109, icon: "public", label: "Zone", k: "zone", kind: "choice", o: s => s.zoneChoices, dis: s => s.v("autoZone") && !s.zoneSuggested, state: s => s.zoneSuggested ? `the network puts you in ${s.zoneSuggested} · pick it to switch` : s.v("autoZone") ? "set from the network" : "password needed", kw: "time zone" }
             ] },
             { t: "Language", rows: [
-                { n: 110, icon: "translate", label: "Language", k: "lang", kind: "choice", o: s => s.languageChoices, kw: "language" },
-                { n: 110, icon: "payments", label: "Formats", k: "region", kind: "choice", o: s => s.formatChoices, state: s => s.moneyExample, kw: "region numbers currency" }
+                { n: 110, icon: "translate", label: "Language", k: "lang", kind: "choice", o: s => s.languageChoices, state: s => "password needed · at next sign-in", kw: "language" },
+                { n: 110, icon: "payments", label: "Formats", k: "region", kind: "choice", o: s => s.formatChoices, state: s => [s.moneyExample, "at next sign-in"].filter(Boolean).join(" · "), kw: "region numbers currency" }
             ] }
         ]
     },

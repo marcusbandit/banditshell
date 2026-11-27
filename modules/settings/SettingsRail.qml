@@ -453,20 +453,10 @@ Item {
                 width: parent.width - Appearance.padding.normal * 2
                 topPadding: Appearance.padding.normal
                 bottomPadding: Appearance.padding.normal
-                visible: root.listingRecent || root.hits.length === 0
-                text: root.listingRecent ? (root.recent.length ? "changed lately" : "type a setting, or a number from the list") : `nothing called “${SettingsView.query.trim()}”. try fewer letters, or a number from the list.`
+                visible: root.listingRecent ? root.recent.length > 0 : root.hits.length === 0
+                text: root.listingRecent ? "changed lately" : `nothing called “${SettingsView.query.trim()}”`
                 color: Appearance.colour.textFaint
                 wrapMode: Text.WordWrap
-            }
-
-            StyledText {
-                x: Appearance.padding.normal
-                width: parent.width - Appearance.padding.normal * 2
-                topPadding: Appearance.padding.small
-                bottomPadding: Appearance.padding.normal
-                visible: query.activeFocus && !root.tiny && !root.listingRecent && root.hits.length > 0 && !(root.hitOpen && root.hits.length < 2)
-                text: root.hitOpen ? "enter next\nshift+enter back" : "enter opens it"
-                color: Appearance.colour.textFaint
             }
 
             Repeater {
@@ -599,6 +589,7 @@ Item {
         property bool active: false
         property bool pointed: false
         property var cuts: []
+        readonly property string markedLabel: Catalogue.marked(hr.label, hr.query, Appearance.colour.chosen)
         readonly property string crumbs: hr.cuts.length ? hr.cuts.find(c => ink.advanceWidth(c) <= words.width) ?? hr.cuts[hr.cuts.length - 1] : hr.detail
 
         signal picked
@@ -631,8 +622,8 @@ Item {
             StyledText {
                 width: parent.width
                 textFormat: Text.StyledText
-                text: Catalogue.marked(hr.label, hr.query, Appearance.colour.chosen)
-                color: hr.query ? Appearance.colour.textDim : Appearance.colour.text
+                text: hr.markedLabel
+                color: hr.markedLabel.indexOf("<font") >= 0 ? Appearance.colour.textDim : Appearance.colour.text
                 elide: Text.ElideRight
             }
 
