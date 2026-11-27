@@ -60,6 +60,10 @@ QtObject {
 
     readonly property bool intent: root.listing || !!root.listAsk || root.matches.some(m => m.typed)
 
+    readonly property var secretSpan: Scripts.secretSpan(ScriptCommands.scripts, root.search.query)
+
+    readonly property bool secret: !!root.secretSpan || ScriptCommands.scannedAt === 0 && /\S\s+\S/.test(root.text)
+
     function signature(script: var): string {
         return script.arguments.map(a => a.optional ? `[${a.placeholder}]` : `<${a.placeholder}>`).join(" ");
     }

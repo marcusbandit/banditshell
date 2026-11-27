@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "narrowing.js" as Narrowing
+import "file-search.js" as Logic
 
 Singleton {
     id: root
@@ -15,29 +16,19 @@ Singleton {
 
     readonly property string hidden: Config.values.launcher.hiddenFiles
 
-    readonly property var noise: ["node_modules", ".cache", ".git", ".npm", ".cargo", ".rustup", ".gradle", ".m2", ".var", ".steam", ".local/share/Steam", ".local/share/Trash", ".mozilla", ".pki", ".nv", ".venv", "venv", "__pycache__", ".tox", ".mypy_cache", ".pytest_cache"]
-
-    readonly property var appNoise: ["Cache", "Code Cache", "GPUCache", "CacheStorage", "Service Worker", "IndexedDB", "blob_storage", "Local Storage", "Session Storage", "Crashpad", "DawnCache", "DawnGraphiteCache", "DawnWebGPUCache", "GrShaderCache", "ShaderCache", "WebStorage", "Partitions", "CachedData", "workspaceStorage", "History", "logs"]
-
-    readonly property var grepNoise: root.noise.concat(["miniforge", "miniforge3", "miniconda3", "anaconda3", "mambaforge", "Android/Sdk", "site-packages", ".venv", "venv"])
-
-    readonly property var binaryTypes: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "icns", "tiff", "heic", "avif", "psd", "xcf", "mp3", "flac", "wav", "ogg", "opus", "m4a", "aac", "mp4", "mkv", "webm", "mov", "avi", "zip", "tar", "gz", "xz", "bz2", "zst", "7z", "rar", "iso", "img", "jar", "apk", "aab", "so", "o", "a", "dll", "exe", "bin", "class", "pyc", "woff", "woff2", "ttf", "otf", "eot", "pdf", "sqlite", "db", "wasm", "blend", "fbx"]
-
     readonly property string configDir: Quickshell.env("XDG_CONFIG_HOME") || `${System.home}/.config`
-    readonly property bool configSearched: root.hidden === ".config" || root.hidden === "all"
 
     readonly property int findLimit: 600
 
-    function excluding(flag: string, names: var, prefix: string): var {
-        return names.reduce((out, n) => out.concat([flag, prefix + n]), []);
-    }
-
     function commands(text: string): var {
-        const base = ["nice", "-n", "10", root.fd, "--fixed-strings", "--ignore-case", ...(root.ignoring ? ["--no-global-ignore-file"] : ["--no-ignore-vcs"]), "--type", "f", "--type", "d", "--max-results", String(root.findLimit), ...(text.indexOf("/") >= 0 ? ["--full-path"] : []), ...root.excluding("--exclude", root.noise, "")];
-        const out = [base.concat(root.hidden === "all" ? ["--hidden", "--exclude", "/.config"] : [], ["--", text, System.home])];
-        if (root.configSearched)
-            out.push(base.concat(root.excluding("--exclude", root.appNoise, ""), ["--", text, root.configDir]));
-        return out;
+        return Logic.findCommands({
+            fd: root.fd,
+            ignoring: root.ignoring,
+            hidden: root.hidden,
+            home: System.home,
+            configDir: root.configDir,
+            limit: root.findLimit
+        }, text);
     }
 
     property bool fdFound: false
@@ -50,15 +41,12 @@ Singleton {
 
     readonly property int grepBudget: 2000
 
-    function grepCommands(text: string, within: var): var {
-        const base = ["nice", "-n", "19", "rg", "--fixed-strings", "--smart-case", "--max-count", "1", "--line-number", "--with-filename", "--no-heading", "--color", "never", "--max-filesize", "1M", "--max-columns", "240", "--max-columns-preview"];
-        if (within)
-            return [base.concat(["--", text], within)];
-        const walk = base.concat(["--threads", "2", "--glob", `!*.{${root.binaryTypes.join(",")}}`]);
-        const out = [walk.concat(root.excluding("--glob", root.grepNoise, "!"), ["--", text, System.home])];
-        if (root.configSearched)
-            out.push(walk.concat(["--no-ignore-vcs"], root.excluding("--glob", root.noise.concat(root.appNoise), "!"), ["--", text, root.configDir]));
-        return out;
+    function grepCommands(within: var): var {
+        return Logic.grepCommands({
+            hidden: root.hidden,
+            home: System.home,
+            configDir: root.configDir
+        }, within);
     }
 
     property string grepped: ""
@@ -245,7 +233,7 @@ Singleton {
 
         onTriggered: {
             root.stopGrep();
-            const commands = root.grepCommands(root.grepAsked, root.grepWithin);
+            const commands = root.grepCommands(root.grepWithin);
             root.grepFound = [];
             root.grepCut = "";
             root.grepLeft = commands.length;
@@ -253,6 +241,7 @@ Singleton {
                     command: command,
                     generation: root.grepGeneration,
                     query: root.grepAsked,
+                    stdinEnabled: true,
                     running: true
                 })));
             grepBudgetTimer.restart();
@@ -278,6 +267,11 @@ Singleton {
 
             stdout: SplitParser {
                 onRead: line => root.hit(run.generation, run.query, line)
+            }
+
+            onStarted: {
+                run.write(run.query);
+                run.stdinEnabled = false;
             }
 
             onExited: root.grepEnded(run.generation, run.query)

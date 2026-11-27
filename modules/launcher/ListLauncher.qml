@@ -35,6 +35,16 @@ LauncherConcept {
 
     property var capture: null
 
+    readonly property var maskSpan: !root.capture && !root.shownView && search.query === query.text ? search.secretSpan : null
+
+    function mirrorMask(): void {
+        if (!root.maskSpan)
+            return;
+        const anchor = query.cursorPosition === query.selectionStart ? query.selectionEnd : query.selectionStart;
+        maskedQuery.cursorPosition = anchor;
+        maskedQuery.moveCursorSelection(query.cursorPosition, TextInput.SelectCharacters);
+    }
+
     readonly property var argCommand: !root.capture && !root.shownView ? search.commandFor(root.input?.text ?? "") : null
     readonly property var argList: root.argCommand?.command.arguments ?? []
     property string argWord: ""
@@ -1319,10 +1329,14 @@ LauncherConcept {
                         font.family: Appearance.font.family
                         font.pixelSize: Appearance.font.size.normal
                         renderType: Text.NativeRendering
-                        color: Appearance.colour.text
-                        selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
-                        selectedTextColor: Appearance.colour.text
+                        color: root.maskSpan ? "transparent" : Appearance.colour.text
+                        selectionColor: root.maskSpan ? "transparent" : Qt.alpha(Appearance.colour.chosen, 0.3)
+                        selectedTextColor: root.maskSpan ? "transparent" : Appearance.colour.text
                         clip: true
+
+                        onCursorPositionChanged: root.mirrorMask()
+                        onSelectionStartChanged: root.mirrorMask()
+                        onSelectionEndChanged: root.mirrorMask()
 
                         readOnly: !!root.shownView && !root.filtering || !!root.argCommand
                         opacity: root.filtering ? 1 : viewIn.listShown
@@ -1340,6 +1354,27 @@ LauncherConcept {
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
                         }
+                    }
+
+                    TextInput {
+                        id: maskedQuery
+
+                        anchors.fill: query
+                        visible: !!root.maskSpan
+                        enabled: false
+                        readOnly: true
+                        activeFocusOnPress: false
+                        text: Search.masked(query.text, root.maskSpan)
+                        font: query.font
+                        renderType: Text.NativeRendering
+                        color: Appearance.colour.text
+                        selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
+                        selectedTextColor: Appearance.colour.text
+                        clip: true
+                        opacity: query.opacity
+                        cursorVisible: query.cursorVisible
+
+                        onTextChanged: root.mirrorMask()
                     }
 
                     SecretField {

@@ -1436,6 +1436,18 @@ function looksLikeSecret(text) {
     return TOKENISH.test(String(text || ""));
 }
 
+function masked(text, span) {
+    var raw = String(text || "");
+    if (!span || span.end <= span.start)
+        return raw;
+    return raw.slice(0, span.start) + "•".repeat(Math.min(raw.length, span.end) - span.start) + raw.slice(span.end);
+}
+
+function sendableQuery(text, claimed) {
+    var typed = String(text || "");
+    return claimed || looksLikeSecret(typed) ? "" : typed;
+}
+
 function fallbackRows(chosen, text, webTemplate) {
     return FALLBACKS.filter(f => chosen && chosen[f.id] && (f.id === "terminal" || !looksLikeSecret(text))).map((f, i) => ({
                 id: f.id,

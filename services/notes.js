@@ -189,11 +189,11 @@ function findCommand(roots) {
     return ["sh", "-c", 'for r in "$@"; do for d in "$r"/*/.obsidian; do [ -d "$d" ] && printf "%s\\n" "$d"; done; done', "sh"].concat(roots);
 }
 
-var CONTENT = `max=$1; needle=$2; shift 2
-grep -rIl -i -F --include='*.md' --exclude-dir='.*' -- "$needle" "$@" 2>/dev/null | head -n "$max"`;
+var CONTENT = `max=$1; shift
+grep -rIl -i -F -f - --include='*.md' --exclude-dir='.*' -- "$@" 2>/dev/null | head -n "$max"`;
 
-function contentCommand(text, vaults, max) {
-    return ["nice", "-n", "10", "sh", "-c", CONTENT, "sh", String(max || 40), String(text)].concat(vaults.map(v => v.path));
+function contentCommand(vaults, max) {
+    return ["nice", "-n", "10", "sh", "-c", CONTENT, "sh", String(max || 40)].concat(vaults.map(v => v.path));
 }
 
 function contentHits(text, notes, limit) {
@@ -221,6 +221,6 @@ function quickBody(text) {
     return String(text || "").trim() + "\n";
 }
 
-function quickCommand(folder, name, body) {
-    return ["sh", "-c", 'mkdir -p "$1" && f="$1/$2.md" && n=1 && while [ -e "$f" ]; do n=$((n+1)); f="$1/$2 $n.md"; done && printf "%s" "$3" > "$f"', "sh", folder, name, body];
+function quickCommand(folder, name) {
+    return ["sh", "-c", 'mkdir -p "$1" && f="$1/$2.md" && n=1 && while [ -e "$f" ]; do n=$((n+1)); f="$1/$2 $n.md"; done && cat > "$f"', "sh", folder, name];
 }
