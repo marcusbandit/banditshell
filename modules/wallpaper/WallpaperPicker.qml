@@ -150,6 +150,10 @@ Item {
     readonly property real stripWidth: Math.min(Math.round(root.width * 0.8), Math.round(root.heroWidth * 2.6))
     readonly property real room: Math.max(0, (root.stripWidth - root.heroWidth - root.gap) / 2)
 
+    readonly property real barRoom: Math.round(root.width - 2 * Appearance.padding.huge)
+
+    readonly property bool swatchesShown: root.colour !== "" || root.offered.length > 1 || root.offered.some(swatch => root.countOf(swatch.name) < root.shelf.length)
+
     readonly property real farScale: 0.62
 
     readonly property int maxSides: 5
@@ -652,7 +656,7 @@ Item {
 
             anchors.horizontalCenter: parent.horizontalCenter
             y: strip.y + strip.height + root.rowGap
-            width: Math.min(root.stripWidth, Math.max(root.heroWidth, about.implicitWidth + actions.implicitWidth + details.inner))
+            width: Math.min(root.barRoom, Math.max(root.heroWidth, about.implicitWidth + actions.implicitWidth + details.inner))
             height: Math.max(about.implicitHeight, actions.implicitHeight) + Appearance.padding.small * 2
 
             MouseArea {
@@ -686,7 +690,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     StyledText {
-                        width: Math.min(implicitWidth, root.stripWidth - actions.implicitWidth - details.inner - Appearance.font.size.small * 3)
+                        width: Math.max(0, Math.min(implicitWidth, root.barRoom - actions.implicitWidth - details.inner - Appearance.font.size.small * 3))
                         elide: Text.ElideRight
                         text: strip.currentPath ? root.titleOf(strip.currentPath) : root.emptyWords
                         color: Appearance.colour.text
@@ -709,7 +713,7 @@ Item {
                 spacing: Appearance.padding.small
 
                 Repeater {
-                    model: root.offered.length > 1 ? root.offered : []
+                    model: root.swatchesShown ? root.offered : []
 
                     Item {
                         id: swatch
