@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "components/glass-place.js"), "utf8").replace(/^\.pragma .*$/m, "");
-const { placeOf, originOn, sourceIn } = new Function(src + "\nreturn { placeOf, originOn, sourceIn };")();
+const { placeOf, sourceIn } = new Function(src + "\nreturn { placeOf, sourceIn };")();
 
 test.describe("where an item sits in its window", () => {
     test.it("adds every parent's position, scrolled content included", () => {
@@ -13,7 +13,7 @@ test.describe("where an item sits in its window", () => {
         const list = { x: 40, y: 100, parent: content };
         const scrolled = { x: 0, y: -250, parent: list };
         const card = { x: 8, y: 300, parent: scrolled };
-        assert.deepStrictEqual(placeOf(card), { x: 48, y: 150, beneath: false });
+        assert.deepStrictEqual(placeOf(card), { x: 48, y: 150, scale: 1, shown: true, beneath: false });
     });
 
     test.it("notices glass under it from any parent but not from itself", () => {
@@ -26,13 +26,18 @@ test.describe("where an item sits in its window", () => {
     });
 });
 
-test.describe("where an item reads the backdrop", () => {
-    test.it("reads its own spot from a full-window backdrop", () => {
-        assert.deepStrictEqual(originOn({ x: 930, y: 52 }, { x: 0, y: 0 }), { x: 930, y: 52 });
+test.describe("whether an item is on screen", () => {
+    test.it("is hidden when any parent is invisible or fully transparent", () => {
+        const content = { x: 0, y: 0, parent: null };
+        assert.strictEqual(placeOf({ x: 0, y: 0, parent: { x: 0, y: 0, parent: content, opacity: 0 } }).shown, false);
+        assert.strictEqual(placeOf({ x: 0, y: 0, parent: { x: 0, y: 0, parent: content, visible: false } }).shown, false);
+        assert.strictEqual(placeOf({ x: 0, y: 0, parent: { x: 0, y: 0, parent: content, opacity: 0.4 } }).shown, true);
     });
 
-    test.it("reads from a screen-sized backdrop shifted to a small window's place on the screen", () => {
-        assert.deepStrictEqual(originOn({ x: 30, y: 40 }, { x: -900, y: -12 }), { x: 930, y: 52 });
+    test.it("multiplies the scale of every parent", () => {
+        const content = { x: 0, y: 0, parent: null, scale: 1 };
+        const peek = { x: 0, y: 0, parent: content, scale: 0.96 };
+        assert.strictEqual(placeOf({ x: 0, y: 0, parent: peek, scale: 0.5 }).scale, 0.48);
     });
 });
 

@@ -121,7 +121,12 @@ what's new log, the wallpaper picker's pills, the workspace card) gets glass by 
 - A panel works out where it reads the backdrop from: its place in the window minus the
   backdrop's (`components/glass-place.js`). The place follows every parent's position, so a card
   inside a scrolled list or a sliding sheet keeps sampling what is really behind it.
+- While a panel shows on screen and samples a `ScreenBackdrop`, it holds it, and the backdrop
+  captures the windows behind it live instead of every 1.5 seconds, so a window dragged under a
+  card shows there at once.
 - A window with no backdrop of its own gets the solid material described under Floating windows.
+  A panel whose backdrop exists but is not ready, such as with the wallpaper off, keeps the
+  translucent readable surface it had before.
 
 ### Glass on glass
 

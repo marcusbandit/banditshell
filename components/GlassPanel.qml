@@ -18,13 +18,15 @@ Item {
     readonly property GlassSource found: Backdrops.on(root.QsWindow.window ?? null)
     readonly property GlassSource source: root.backdrop ?? root.found
     readonly property var place: Place.placeOf(root)
-    readonly property point placed: {
-        const at = root.source ? Place.originOn(root.place, Place.placeOf(root.source)) : null;
-        return at ? Qt.point(at.x, at.y) : Qt.point(0, 0);
-    }
+    readonly property var sourcePlace: root.source ? Place.placeOf(root.source) : null
+    readonly property point placed: root.place && root.sourcePlace ? root.mapToItem(root.source, 0, 0) : Qt.point(0, 0)
 
     readonly property bool glassy: root.source?.ready ?? false
     readonly property real depth: root.layered ? 1 : 0
+    readonly property GlassSource sampled: root.glassy && root.place.shown ? root.source : null
+
+    onSampledChanged: Backdrops.hold(root, root.sampled)
+    Component.onDestruction: Backdrops.hold(root, null)
 
     Loader {
         anchors.fill: parent
@@ -48,7 +50,7 @@ Item {
         visible: !root.glassy
         radius: root.radius
         cornerPower: root.pill === "object" ? 2 : Appearance.rounding.power
-        color: Appearance.colour.pane
+        color: root.source ? Appearance.colour.readableSurface : Appearance.colour.pane
         rim: 1
     }
 
