@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import qs.services
+import qs.modules.wallpaper
 
 PanelWindow {
     id: win
@@ -36,6 +37,13 @@ PanelWindow {
     }
 
     visible: win.state.open && !win.state.hiding
+
+    ScreenBackdrop {
+        anchors.fill: parent
+        output: win.screen?.name ?? ""
+        screenOrigin: Qt.point(win.screen?.x ?? 0, win.screen?.y ?? 0)
+        live: win.visible
+    }
 
     Picker {
         anchors.fill: parent

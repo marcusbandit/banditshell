@@ -117,7 +117,7 @@ what's new log, the wallpaper picker's pills, the workspace card) gets glass by 
   caller can still pass a `backdrop` of its own, as the desktop widgets do.
 - The shell window has one per screen. Another layer window that wants glass makes its own
   `ScreenBackdrop`, screen-sized, at minus its place on the screen, so the picture lines up with
-  the wallpaper.
+  the wallpaper. The screenshot picker does this.
 - A panel works out where it reads the backdrop from: its place in the window minus the
   backdrop's (`components/glass-place.js`). The place follows every parent's position, so a card
   inside a scrolled list or a sliding sheet keeps sampling what is really behind it.
