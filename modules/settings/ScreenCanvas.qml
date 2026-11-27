@@ -249,7 +249,7 @@ FocusScope {
             height: 2
             rotation: Math.atan2(link.toY - link.fromY, link.toX - link.fromX) * 180 / Math.PI
             transformOrigin: Item.Left
-            color: Appearance.colour.accent
+            color: Appearance.colour.chosen
             opacity: 0.6
             z: 4
         }
@@ -357,7 +357,7 @@ FocusScope {
                 anchors.fill: parent
                 radius: 6
                 color: "transparent"
-                stroke: mon.clashing ? Appearance.colour.alarm : mon.picked ? Appearance.colour.accent : Appearance.colour.fillStronger
+                stroke: mon.clashing ? Appearance.colour.alarm : mon.picked ? Appearance.colour.chosen : Appearance.colour.fillStronger
                 strokeWidth: mon.picked || mon.clashing ? 3 : 2
             }
 
@@ -368,7 +368,7 @@ FocusScope {
                 height: 8
                 pill: "object"
                 visible: root.editable && mon.changed
-                color: Appearance.colour.accent
+                color: Appearance.colour.chosen
             }
 
             Item {
@@ -398,7 +398,7 @@ FocusScope {
                     StyledText {
                         visible: !!mon.follows && mon.height > 44
                         text: `follows ${mon.follows}`
-                        color: Appearance.colour.accent
+                        color: Appearance.colour.chosen
                         font.pixelSize: Appearance.font.size.small
                     }
 
@@ -509,7 +509,7 @@ FocusScope {
                     y: guide.vertical ? guide.from : Math.round(guide.at) - 1
                     width: guide.vertical ? 2 : guide.to - guide.from
                     height: guide.vertical ? guide.to - guide.from : 2
-                    color: Appearance.colour.accent
+                    color: Appearance.colour.chosen
                     opacity: guide.modelData.kind === "centre" ? 1 : 0.8
                 }
 
@@ -523,7 +523,7 @@ FocusScope {
                     SquircleRect {
                         anchors.fill: parent
                         radius: 6
-                        color: Appearance.colour.accent
+                        color: Appearance.colour.chosen
                     }
 
                     StyledText {
@@ -531,7 +531,7 @@ FocusScope {
 
                         anchors.centerIn: parent
                         text: "centred"
-                        color: Appearance.colour.accentText
+                        color: Appearance.colour.onChosen
                         font.pixelSize: Appearance.font.size.small
                     }
                 }
@@ -545,7 +545,7 @@ FocusScope {
             width: 12
             height: 12
             pill: "object"
-            color: Appearance.colour.accent
+            color: Appearance.colour.chosen
             stroke: Appearance.colour.surfaceSolid
             strokeWidth: Appearance.stroke.ring
         }

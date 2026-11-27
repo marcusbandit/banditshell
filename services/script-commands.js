@@ -198,6 +198,42 @@ function askFor(script, text) {
     return null;
 }
 
+function secretSpanOf(script, text) {
+    var at = script.arguments.findIndex(a => a.type === "password");
+    if (at < 0)
+        return null;
+    var raw = String(text || "");
+    var lead = raw.length - raw.replace(LEADING_SPACE, "").length;
+    var lower = raw.slice(lead).toLowerCase();
+    var heads = [script.title.toLowerCase(), script.word].filter((h, i, all) => h && all.indexOf(h) === i);
+    var count = script.mode === "list" ? Math.max(1, script.arguments.length) : script.arguments.length;
+    for (var i = 0; i < heads.length; i++) {
+        if (lower.indexOf(heads[i] + " ") !== 0)
+            continue;
+        var start = lead + heads[i].length + 1;
+        var rest = raw.slice(start);
+        var words = [];
+        var m;
+        WORD.lastIndex = 0;
+        while ((m = WORD.exec(rest)) !== null)
+            words.push({ start: start + m.index, end: start + m.index + m[0].length });
+        if (words.length <= at)
+            return null;
+        return { start: words[count === 1 ? 0 : at].start, end: at >= count - 1 ? raw.length : words[at].end };
+    }
+    return null;
+}
+
+function secretSpan(scripts, text) {
+    var found = null;
+    for (var i = 0; i < (scripts || []).length; i++) {
+        var span = secretSpanOf(scripts[i], text);
+        if (span)
+            found = found ? { start: Math.min(found.start, span.start), end: Math.max(found.end, span.end) } : span;
+    }
+    return found;
+}
+
 function ambientScore(place) {
     return place >= 2 ? 0.25 + place * 0.05 : 0;
 }

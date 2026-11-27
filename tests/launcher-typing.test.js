@@ -156,7 +156,7 @@ test.describe("skin tones", () => {
 
 test.describe("snippets", () => {
     const LIST = [
-        { id: "a", name: "Sign-off", keyword: ";sig", text: "Kind regards,\nMarcus" },
+        { id: "a", name: "Sign-off", keyword: ";sig", text: "Kind regards,\nAlex" },
         { id: "b", name: "Address", keyword: "", text: "Main Street 1" },
         { id: "c", name: "Bug report", keyword: "bug", text: "Steps: {cursor}\nSeen on {date}" }
     ];
@@ -216,7 +216,7 @@ test.describe("snippets", () => {
     });
 
     test.it("shortens previews and names", () => {
-        assert.strictEqual(Snippets.preview("Kind regards,\n  Marcus", 80), "Kind regards, Marcus");
+        assert.strictEqual(Snippets.preview("Kind regards,\n  Alex", 80), "Kind regards, Alex");
         assert.strictEqual(Snippets.preview("x".repeat(100), 10).length, 10);
         assert.strictEqual(Snippets.suggestName("Thanks for getting back to me so quickly today"), "Thanks for getting back");
     });
@@ -371,7 +371,7 @@ test.describe("clipboard privacy", () => {
 
 test.describe("clipboard in search", () => {
     const ENTRIES = [
-        { id: "1", kind: "text", text: "ssh marcus@homehub.local" },
+        { id: "1", kind: "text", text: "ssh alex@homebase.local" },
         { id: "2", kind: "image", file: "/tmp/a.png", text: "" },
         { id: "3", kind: "url", text: "https://example.com/homework" },
         { id: "4", kind: "text", text: "Remember the milk\nand the bread" }

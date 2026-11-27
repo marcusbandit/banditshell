@@ -49,12 +49,6 @@
     "status(): string",
     "toggle(path: string): string"
   ],
-  "mixer": [
-    "close(): string",
-    "open(): string",
-    "status(): string",
-    "toggle(): string"
-  ],
   "hotkeys": [
     "close(): string",
     "open(screen: string): string",
@@ -115,6 +109,12 @@
   "migration": [
     "migrate(): string",
     "status(): string"
+  ],
+  "mixer": [
+    "close(): string",
+    "open(): string",
+    "status(): string",
+    "toggle(): string"
   ],
   "mode": [
     "choose(id: string): string",
@@ -178,6 +178,7 @@
   "quickcontrols": [
     "close(): string",
     "open(): string",
+    "page(key: string): string",
     "status(): string",
     "toggle(): string"
   ],

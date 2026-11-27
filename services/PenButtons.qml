@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "dies-with-shell.js" as DiesWithShell
 
 Singleton {
     id: root
@@ -31,7 +32,7 @@ Singleton {
             return;
         }
         root.ranWith = root.signature;
-        helper.command = ["python3", Quickshell.shellPath("scripts/pen-buttons.py"), "--device", root.device, "--lower", root.lower, "--upper", root.upper];
+        helper.command = DiesWithShell.command(["python3", Quickshell.shellPath("scripts/pen-buttons.py"), "--device", root.device, "--lower", root.lower, "--upper", root.upper]);
         helper.running = true;
     }
 

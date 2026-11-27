@@ -19,12 +19,12 @@ Column {
     property real uptime: 0
 
     readonly property var tiles: [
-        { page: "colour", icon: "palette", title: "Colour", line: "theme and accent" },
-        { page: "wallpaper", icon: "wallpaper", title: "Wallpaper", line: "pick a new one" },
-        { page: "widgets", icon: "widgets", title: "Widgets", line: "on your desktop" },
-        { page: "sidebar", icon: "side_navigation", title: "Sidebar", line: "workspaces, status" },
-        { page: "notifications", icon: "notifications", title: "Notifications", line: "popups and sounds" },
-        { page: "lock", icon: "lock", title: "Lock and idle", line: "when it locks" }
+        { page: "colour", icon: "palette", title: "Colour" },
+        { page: "wallpaper", icon: "wallpaper", title: "Wallpaper" },
+        { page: "widgets", icon: "widgets", title: "Widgets" },
+        { page: "sidebar", icon: "side_navigation", title: "Sidebar" },
+        { page: "notifications", icon: "notifications", title: "Notifications" },
+        { page: "lock", icon: "lock", title: "Lock and idle" }
     ].filter(t => !!Catalogue.PAGE_BY_ID[t.page])
 
     spacing: Appearance.padding.large
@@ -103,60 +103,6 @@ Column {
         }
     }
 
-    Item {
-        width: parent.width
-        height: hint.implicitHeight + Appearance.padding.card * 2
-
-        SquircleRect {
-            anchors.fill: parent
-            radius: Appearance.rounding.normal
-            color: Appearance.colour.fill
-        }
-
-        Item {
-            id: bulb
-
-            x: Appearance.padding.card
-            anchors.verticalCenter: parent.verticalCenter
-            width: 40
-            height: 40
-
-            SquircleRect {
-                anchors.fill: parent
-                pill: "object"
-                color: Appearance.colour.accentFill
-            }
-
-            Icon {
-                anchors.centerIn: parent
-                name: "lightbulb"
-                color: Appearance.colour.accent
-            }
-        }
-
-        Column {
-            id: hint
-
-            x: bulb.x + bulb.width + Appearance.padding.card
-            width: parent.width - x - Appearance.padding.card
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 2
-
-            StyledText {
-                width: parent.width
-                text: "Make yourself at home"
-                font.weight: Font.DemiBold
-            }
-
-            StyledText {
-                width: parent.width
-                text: "Point at the bottom right corner to open settings from anywhere. Drag the top edge to move this window."
-                color: Appearance.colour.textFaint
-                wrapMode: Text.WordWrap
-            }
-        }
-    }
-
     StyledText {
         x: Appearance.padding.small
         text: "Make it yours"
@@ -231,13 +177,6 @@ Column {
                         width: parent.width
                         text: tile.modelData.title
                         font.weight: Font.DemiBold
-                        elide: Text.ElideRight
-                    }
-
-                    StyledText {
-                        width: parent.width
-                        text: tile.modelData.line
-                        color: Appearance.colour.textFaint
                         elide: Text.ElideRight
                     }
                 }

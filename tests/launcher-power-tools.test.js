@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Scripts = lib("services/script-commands.js", ["parseScript", "readScan", "argumentsFrom", "askFor", "missing", "commandFor", "outputLines", "lastLine", "runKey", "titleFromFile", "listAsk", "readItems", "readList", "itemAction", "selectCommand", "ambientScore", "linkRefusal", "fileRefusal", "refusalOf", "groupCommand", "stopGroupCommand", "foldersFrom", "workingFolder"]);
+const Scripts = lib("services/script-commands.js", ["parseScript", "readScan", "argumentsFrom", "askFor", "missing", "commandFor", "outputLines", "lastLine", "runKey", "titleFromFile", "listAsk", "readItems", "readList", "itemAction", "selectCommand", "ambientScore", "linkRefusal", "fileRefusal", "refusalOf", "groupCommand", "stopGroupCommand", "foldersFrom", "workingFolder", "secretSpan"]);
 const Projects = lib("services/projects.js", ["listFrom", "readScan", "rank", "ago", "editorFor", "terminalLine", "shellLine", "projectAsk", "parentWithin", "scanCommand", "ambientScore", "quote"]);
 const Notes = lib("services/notes.js", ["withoutSkipped", "vaultsFrom", "defaultVault", "readIndex", "search", "openUri", "newUri", "fileNameFor", "notesAsk", "indexCommand", "ambientScore", "contentCommand", "contentHits", "quickFileName", "quickBody", "quickCommand"]);
 const Monitor = lib("services/system-monitor.js", ["monitorAsk", "readSample", "topProcesses", "SESSION", "readDisks", "bytesText", "uptimeText", "cpuText"]);
@@ -18,6 +18,7 @@ const Pomodoro = lib("services/pomodoro.js", ["pomodoroAsk", "nextRound", "round
 const Lorem = lib("services/lorem.js", ["loremAsk", "generate", "describe", "preview"]);
 const Picks = lib("services/colour-picks.js", ["colourAsk", "readPicked", "remember", "forget", "readHistory"]);
 const Ranking = lib("services/ranking.js", ["place", "EXACT", "PREFIX", "WORD", "ANYWHERE"]);
+const Search = lib("modules/launcher/search.js", ["masked", "sendableQuery", "looksLikeKey"]);
 const os = require("node:os");
 const { execFileSync } = require("node:child_process");
 
@@ -753,9 +754,11 @@ test.describe("quick notes, content search and focus goals", () => {
         assert.strictEqual(Notes.quickFileName("Call the dentist: Monday?\nmore", at), "2026-11-12 0905 Call the dentist Monday");
         assert.strictEqual(Notes.quickFileName("???", at), "2026-11-12 0905");
         const dir = scratch();
-        const command = Notes.quickCommand(path.join(dir, "new", "folder"), "a", Notes.quickBody("  hello "));
-        execFileSync(command[0], command.slice(1));
-        execFileSync(command[0], command.slice(1));
+        const body = Notes.quickBody("  hello ");
+        const command = Notes.quickCommand(path.join(dir, "new", "folder"), "a");
+        assert.ok(!command.includes(body));
+        execFileSync(command[0], command.slice(1), { input: body });
+        execFileSync(command[0], command.slice(1), { input: body });
         assert.strictEqual(fs.readFileSync(path.join(dir, "new", "folder", "a.md"), "utf8"), "hello\n");
         assert.strictEqual(fs.readFileSync(path.join(dir, "new", "folder", "a 2.md"), "utf8"), "hello\n");
     });
@@ -765,8 +768,9 @@ test.describe("quick notes, content search and focus goals", () => {
         fs.writeFileSync(path.join(dir, "groceries.md"), "Buy Oat Milk\n");
         fs.writeFileSync(path.join(dir, "other.md"), "nothing here\n");
         const vaults = [{ path: dir, name: "v" }];
-        const command = Notes.contentCommand("oat milk", vaults, 10);
-        const out = execFileSync(command[0], command.slice(1), { encoding: "utf8" });
+        const command = Notes.contentCommand(vaults, 10);
+        assert.ok(!command.some(a => /oat/i.test(a)));
+        const out = execFileSync(command[0], command.slice(1), { encoding: "utf8", input: "oat milk" });
         const notes = Notes.readIndex(`1\t${path.join(dir, "groceries.md")}\n2\t${path.join(dir, "other.md")}\n`, vaults);
         assert.deepStrictEqual(Notes.contentHits(out, notes, 5).map(n => n.name), ["groceries"]);
     });
@@ -788,5 +792,56 @@ test.describe("quick notes, content search and focus goals", () => {
         assert.strictEqual(Pomodoro.minutesToClock({ hour: 9, minute: 0 }, now), 0);
         assert.strictEqual(Pomodoro.minutesToClock({ hour: 10, minute: 0 }, now), 0);
         assert.strictEqual(Pomodoro.minutesToClock({ hour: 23, minute: 59 }, now), 480);
+    });
+});
+
+test.describe("a script's password argument", () => {
+    const script = (title, args, mode) => ({ title: title, word: title.toLowerCase(), mode: mode || "compact", arguments: args });
+    const vault = script("Unlock vault", [{ type: "text", placeholder: "name" }, { type: "password", placeholder: "password" }]);
+    const login = script("Login", [{ type: "password", placeholder: "password" }]);
+    const middle = script("Mount", [{ type: "text" }, { type: "password" }, { type: "text" }]);
+    const plain = script("Say", [{ type: "text" }]);
+
+    test.it("is found from its first character to its end, and nothing before it", () => {
+        assert.deepStrictEqual(Scripts.secretSpan([vault], "unlock vault alex hunter2"), { start: 18, end: 25 });
+        assert.deepStrictEqual(Scripts.secretSpan([login], "  login hunter 2"), { start: 8, end: 16 });
+        assert.deepStrictEqual(Scripts.secretSpan([middle], "mount disk s3cret /mnt"), { start: 11, end: 17 });
+        assert.strictEqual(Scripts.secretSpan([vault], "unlock vault alex"), null);
+        assert.strictEqual(Scripts.secretSpan([vault], "unlock vault"), null);
+        assert.strictEqual(Scripts.secretSpan([login], "login "), null);
+        assert.strictEqual(Scripts.secretSpan([plain], "say hello there"), null);
+        assert.strictEqual(Scripts.secretSpan([login], "loginhunter2"), null);
+    });
+
+    test.it("is masked in the field by one dot per character, so the caret keeps its place", () => {
+        const typed = "unlock vault alex hunter2";
+        const shown = Search.masked(typed, Scripts.secretSpan([plain, vault], typed));
+        assert.strictEqual(shown, "unlock vault alex •••••••");
+        assert.strictEqual(shown.length, typed.length);
+        assert.strictEqual(Search.masked("say hi", null), "say hi");
+    });
+
+    test.it("covers every matching script's password, not just the first one found", () => {
+        const first = script("Go", [{ type: "password" }, { type: "text" }]);
+        const last = script("Go x", [{ type: "text" }, { type: "password" }]);
+        const typed = "go x y hunter2";
+        const span = Scripts.secretSpan([first, last], typed);
+        assert.deepStrictEqual(span, { start: 3, end: typed.length });
+        assert.strictEqual(Search.masked(typed, span), "go " + "•".repeat(11));
+    });
+
+    test.it("keeps dated and long file names searchable while keys stay out", () => {
+        for (const t of ["screenshot_2026-11-27_14-30-05.png", "2026-11-27-meeting-notes-final.md", "holiday photos", "report_v2_final_FINAL_2024_reviewed.pdf"])
+            assert.strictEqual(Search.sendableQuery(t, false), t, t);
+        for (const t of ["ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8", "sk-proj-4f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.x"])
+            assert.ok(Search.looksLikeKey(t), t);
+    });
+
+    test.it("never goes to a search outside the shell", () => {
+        const typed = "login hunter2";
+        const claimed = !!Scripts.secretSpan([login], typed);
+        assert.strictEqual(Search.sendableQuery(typed, claimed), "");
+        assert.strictEqual(Search.sendableQuery("ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8", false), "");
+        assert.strictEqual(Search.sendableQuery("holiday photos", false), "holiday photos");
     });
 });

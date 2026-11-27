@@ -15,7 +15,7 @@ Item {
         anchors.fill: parent
         visible: !picture.ready
         pill: "object"
-        color: Appearance.colour.accentFill
+        color: Appearance.colour.fillStrong
     }
 
     StyledText {
@@ -24,7 +24,7 @@ Item {
         text: root.login.charAt(0).toUpperCase()
         font.pixelSize: root.height > 64 ? Appearance.font.size.display : Appearance.font.size.normal
         font.weight: Font.DemiBold
-        color: Appearance.colour.accent
+        color: Appearance.colour.text
     }
 
     SquircleImage {
