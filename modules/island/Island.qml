@@ -366,7 +366,6 @@ Item {
     readonly property real bubblePitch: root.compactHeight + root.budGap
     readonly property real stackStep: Math.round(Appearance.padding.small * 0.9)
     readonly property real shadowRoom: Appearance.padding.huge * 2
-    readonly property real reachWidth: root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2
     readonly property real restRaise: 0.35
     readonly property real fieldStep: Appearance.padding.huge * 4
 
@@ -1269,7 +1268,8 @@ Item {
             height: root.host?.height ?? 0
             output: root.host?.name ?? ""
             screenOrigin: Qt.point(root.host?.x ?? 0, root.host?.y ?? 0)
-            region: Qt.rect(((root.host?.width ?? 0) - root.reachWidth) / 2, 0, root.reachWidth, root.y + root.islandTop + root.taskRoom)
+            region: Qt.rect(0, 0, root.host?.width ?? 0, root.y + root.islandTop + root.taskRoom)
+            active: !root.yielded && presence.value > 0.001
             live: root.expanded && !root.yielded
         }
 

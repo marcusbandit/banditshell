@@ -47,6 +47,7 @@ layout(std140, binding = 0) uniform buf {
     float spread;
     float raised;
     float bandRaised;
+    float daylight;
 };
 
 layout(binding = 1) uniform sampler2D source;
@@ -146,8 +147,13 @@ vec4 glassBody(vec2 p, float joined, float own, float cover) {
     float light = dot(colour, luma);
     float broad = dot(texture(frost, clamp(at / view, vec2(0.0), vec2(1.0))).rgb, luma);
     colour = mix(vec3(light), colour, saturation);
-    colour *= min(1.0, ceiling / max(broad, 0.0001));
-    colour = colour + lift;
+    if (daylight > 0.5) {
+        float floorLevel = 0.55 + 0.15 * r;
+        colour = floorLevel + colour * (1.0 - floorLevel);
+    } else {
+        colour *= min(1.0, ceiling / max(broad, 0.0001));
+        colour = colour + lift;
+    }
 
     float lit = litFrom(normal);
     float rimLine = clamp(1.0 + joined / 1.25, 0.0, 1.0);

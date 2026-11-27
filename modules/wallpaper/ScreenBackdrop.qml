@@ -12,6 +12,7 @@ GlassSource {
     required property string output
     property point screenOrigin: Qt.point(0, 0)
     property bool live: false
+    property bool active: true
     property rect region: Qt.rect(0, 0, 0, 0)
 
     function within(client: var): bool {
@@ -52,7 +53,7 @@ GlassSource {
     Timer {
         interval: 1500
         repeat: true
-        running: !root.live && root.shown.length > 0
+        running: root.active && !root.live && root.shown.length > 0
         onTriggered: {
             for (let i = 0; i < captures.count; i++)
                 captures.itemAt(i)?.captureFrame();
@@ -62,7 +63,7 @@ GlassSource {
     Repeater {
         id: captures
 
-        model: root.shown
+        model: root.active ? root.shown : []
 
         ScreencopyView {
             required property var modelData

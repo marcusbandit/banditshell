@@ -31,6 +31,7 @@ ShaderEffect {
     property real bezel: Appearance.padding.large * 1.25
     property real bend: root.bezel * 0.9
     property real spread: 0.05
+    readonly property real daylight: Appearance.light ? 1 : 0
 
     readonly property bool glassy: (root.backdrop?.ready ?? false) && root.width > 0 && root.height > 0
     readonly property real glass: root.glassy ? 1 : 0

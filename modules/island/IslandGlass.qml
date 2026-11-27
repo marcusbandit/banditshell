@@ -16,6 +16,7 @@ Item {
     default property alias content: inner.data
 
     readonly property bool glassy: root.backdrop?.ready ?? false
+    readonly property real floorLevel: 0.55 + 0.15 * root.raise
 
     Loader {
         anchors.fill: parent
@@ -24,23 +25,31 @@ Item {
         sourceComponent: Glass {
             backdrop: root.backdrop
             origin: root.origin
-            radius: root.pill !== "" ? Math.min(root.width, root.height) / 2 : root.radius
+            radius: root.pill === "object" ? Math.min(root.width, root.height) / 2 : root.radius
             power: root.pill === "object" ? 2 : root.power
             bezel: Math.min(Appearance.padding.large * 1.25, Math.min(root.width, root.height) * 0.3)
             frosting: root.raise
             sheen: 0.14 + 0.1 * root.raise
-            lift: 0.025 + 0.035 * root.raise
-            ceiling: 0.32 - 0.12 * root.raise
+            shade: Appearance.light ? 1 - root.floorLevel : 1
+            lift: Appearance.light ? root.floorLevel : 0.025 + 0.035 * root.raise
+            ceiling: Appearance.light ? 1 : 0.32 - 0.12 * root.raise
             saturation: 0.9 - 0.2 * root.raise
         }
     }
 
     SquircleRect {
         anchors.fill: parent
-        visible: !root.glassy
-        pill: root.pill
-        radius: root.pill !== "" ? Math.min(width, height) / 2 : root.radius
-        cornerPower: root.pill === "object" ? 2 : root.power
+        visible: !root.glassy && root.pill === "object"
+        pill: "object"
+        color: root.fallback
+        rim: 1
+    }
+
+    SquircleRect {
+        anchors.fill: parent
+        visible: !root.glassy && root.pill !== "object"
+        radius: root.radius
+        cornerPower: root.power
         color: root.fallback
         rim: 1
     }
