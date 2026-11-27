@@ -357,6 +357,7 @@ LauncherConcept {
         }
         onInquire: row => root.startCapture("ask", row)
         onPresent: view => root.present(view)
+        onSteer: id => Qt.callLater(root.steerArmed, id)
     }
 
     readonly property int pinnedLimit: 12
@@ -753,7 +754,8 @@ LauncherConcept {
             return true;
         }
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
-            Search.sectioned(root.actionsFor(row)).slice(1).find(a => !a.tucked && a.run)?.run();
+            if (!row.armed)
+                Search.secondaryAction(root.actionsFor(row))?.run();
             return true;
         }
 
@@ -784,6 +786,13 @@ LauncherConcept {
             return;
         root.steered = true;
         root.selected = at;
+    }
+
+    function steerArmed(id: string): void {
+        if (root.results.some(r => r.id === id))
+            root.steer(id);
+        else
+            search.armed = "";
     }
 
     function shortcutActions(row: var): var {
@@ -862,7 +871,12 @@ LauncherConcept {
             }
         });
 
-        acts.push(...search.appActions(entry));
+        acts.push(...search.appActions(entry).map(a => root.quick && a.arms === "forcequit" ? Object.assign({}, a, {
+                run: () => {
+                    search.retype(entry.name ?? "");
+                    Qt.callLater(search.armForceQuit, entry);
+                }
+            }) : a));
 
         acts.push(...Search.foldedActions((entry.actions ?? []).map(action => ({
                         icon: "open_in_new",

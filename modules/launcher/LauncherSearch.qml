@@ -30,6 +30,7 @@ QtObject {
     signal retype(string text)
     signal inquire(var row)
     signal present(var view)
+    signal steer(string id)
 
     property bool presents: false
 
@@ -998,13 +999,14 @@ QtObject {
 
     function appRow(entry: var): var {
         const arming = root.armed === `uninstall:${entry.id}`;
+        const forcing = root.armed === `forcequit:${entry.id}`;
         return {
             key: `app:${entry.id}`,
             kind: "app",
             entry: entry,
-            label: entry.name ?? "",
-            detail: arming ? Uninstaller.detailFor(entry.id) : entry.genericName || (entry.comment ?? "").replace(/^play this game on steam\.?$/i, ""),
-            armed: arming,
+            label: forcing ? `Press Enter again to force quit ${entry.name ?? ""}` : entry.name ?? "",
+            detail: forcing ? "" : arming ? Uninstaller.detailFor(entry.id) : entry.genericName || (entry.comment ?? "").replace(/^play this game on steam\.?$/i, ""),
+            armed: arming || forcing,
             iconSource: Apps.iconPath(entry.icon),
             icon: "apps",
             score: root.appScore(entry)
@@ -1896,6 +1898,11 @@ QtObject {
         }
         switch (row?.kind) {
         case "app":
+            if (root.armed === `forcequit:${row.entry.id}`) {
+                root.armed = "";
+                root.forceQuit(root.windowsOf(row.entry));
+                return;
+            }
             if (root.armed === `uninstall:${row.entry.id}`) {
                 const entry = row.entry;
                 if (Uninstaller.ready(entry.id))
@@ -1994,15 +2001,23 @@ QtObject {
                 icon: "close",
                 label: open.length > 1 ? `Quit · ${open.length} windows` : "Quit",
                 short: "Quit",
+                destructive: true,
                 run: () => open.forEach(t => Hypr.closeWindow(Hypr.windowAddress(t.address)))
             },
             {
                 icon: "dangerous",
                 label: "Force quit",
                 tucked: true,
-                run: () => root.forceQuit(open)
+                destructive: true,
+                arms: "forcequit",
+                run: () => root.armForceQuit(entry)
             }
         ];
+    }
+
+    function armForceQuit(entry: var): void {
+        root.armed = `forcequit:${entry.id}`;
+        root.steer(`app:${entry.id}`);
     }
 
     function forceQuit(open: var): void {
@@ -2028,6 +2043,17 @@ QtObject {
                     alarm: true,
                     button: true,
                     run: () => root.pressProcess(row)
+                },
+                cancel
+            ];
+        if (row.kind === "app" && root.armed === `forcequit:${row.entry.id}`)
+            return [
+                {
+                    icon: "dangerous",
+                    label: "Force quit",
+                    alarm: true,
+                    button: true,
+                    run: () => root.activate(row)
                 },
                 cancel
             ];
@@ -2177,6 +2203,7 @@ QtObject {
                     {
                         icon: "close",
                         label: "Close",
+                        destructive: true,
                         run: () => Hypr.closeWindow(row.address)
                     }
                 ]);
@@ -2186,12 +2213,17 @@ QtObject {
                 {
                     icon: "close",
                     label: "Quit",
+                    destructive: true,
                     run: () => root.kill(row.pid, "TERM")
                 },
                 {
                     icon: "dangerous",
                     label: "Force quit",
-                    run: () => root.kill(row.pid, "KILL")
+                    destructive: true,
+                    run: () => {
+                        root.armed = `killhard:${row.pid}`;
+                        root.steer(row.key);
+                    }
                 }
             ];
         case "zone":

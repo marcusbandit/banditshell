@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Search = lib("modules/launcher/search.js", ["parentQuery", "sectioned", "aliasTarget", "aliasesById"]);
+const Search = lib("modules/launcher/search.js", ["parentQuery", "sectioned", "secondaryAction", "aliasTarget", "aliasesById"]);
 const Chords = lib("services/chords.js", ["hotkeyCommand", "toggleStep", "sameChord"]);
 const Protocol = lib("services/plugin-protocol.js", ["withoutCommands", "commandOf"]);
 
@@ -52,6 +52,41 @@ test.describe("sectioned", () => {
     test.it("leaves a single group flat with no headings", () => {
         const flat = [{ label: "Open" }, { label: "Copy" }];
         assert.deepStrictEqual(Search.sectioned(flat), flat);
+    });
+});
+
+test.describe("Ctrl+Enter's action", () => {
+    const run = () => {};
+    const label = actions => Search.secondaryAction(actions)?.label ?? null;
+
+    test.it("never quits a running app, and matches what a stopped app does", () => {
+        const running = [
+            { label: "Open", run },
+            { label: "Pin", section: "Favorites", run },
+            { label: "Quit", destructive: true, run },
+            { label: "New window", run },
+            { label: "Force quit", tucked: true, destructive: true, run },
+            { label: "Uninstall", alarm: true, tucked: true, run }
+        ];
+        assert.strictEqual(label(running), "New window");
+        assert.strictEqual(label(running.filter(a => !a.destructive)), "New window");
+        assert.strictEqual(label(running.filter(a => a.label !== "New window")), "Pin");
+    });
+
+    test.it("does nothing on a process row, where every other action kills", () => {
+        assert.strictEqual(label([{ label: "Quit", destructive: true, run }, { label: "Force quit", destructive: true, run }]), null);
+    });
+
+    test.it("skips closing windows, stopping scripts and anything marked as an alarm", () => {
+        assert.strictEqual(label([{ label: "Switch to", run }, { label: "Close", destructive: true, run }]), null);
+        assert.strictEqual(label([{ label: "Run", run }, { label: "Stop", destructive: true, run }, { label: "Edit script", run }]), "Edit script");
+        assert.strictEqual(label([{ label: "Open", run }, { label: "Move to trash", alarm: true, run }, { label: "Show in folder", run }]), "Show in folder");
+    });
+
+    test.it("still takes the next plain action", () => {
+        assert.strictEqual(label([{ label: "Open", run }, { label: "Copy path", run }]), "Copy path");
+        assert.strictEqual(label([{ label: "Open", run }]), null);
+        assert.strictEqual(label([]), null);
     });
 });
 
