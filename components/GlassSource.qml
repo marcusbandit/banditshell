@@ -14,9 +14,31 @@ Item {
     readonly property Item soft: softTexture
     readonly property Item frost: frostTexture
 
+    default property alias layers: scene.data
+
+    Item {
+        id: scene
+
+        width: root.width
+        height: root.height
+    }
+
+    ShaderEffectSource {
+        id: sceneTexture
+
+        width: root.width
+        height: root.height
+        sourceItem: scene
+        hideSource: true
+        textureSize: root.fine
+        smooth: true
+        visible: false
+    }
+
     Image {
         id: picture
 
+        parent: scene
         width: root.width
         height: root.height
         source: root.source ? (root.source.startsWith("/") ? `file://${root.source}` : root.source) : ""
@@ -25,7 +47,7 @@ Item {
         asynchronous: true
         cache: false
         smooth: true
-        visible: false
+        z: -1
     }
 
     MultiEffect {
@@ -33,7 +55,7 @@ Item {
 
         width: root.width
         height: root.height
-        source: picture
+        source: sceneTexture
         autoPaddingEnabled: false
         blurEnabled: true
         blurMax: Math.max(1, Math.round(root.softBlur))
@@ -46,7 +68,7 @@ Item {
 
         width: root.width
         height: root.height
-        source: picture
+        source: sceneTexture
         autoPaddingEnabled: false
         blurEnabled: true
         blurMax: Math.max(1, Math.round(root.frostBlur))

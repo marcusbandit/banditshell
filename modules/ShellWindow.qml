@@ -523,10 +523,20 @@ PanelWindow {
             }
         }
 
+        ScreenBackdrop {
+            id: behind
+
+            anchors.fill: parent
+            output: win.screen?.name ?? ""
+            screenOrigin: Qt.point(win.screen?.x ?? 0, win.screen?.y ?? 0)
+            windows: chassis.reachesIn && !chassis.bare
+        }
+
         Chassis {
             id: chassis
 
             anchors.fill: parent
+            backdrop: behind
 
             railWanted: sidebar.railWanted
             readable: settingsLayer.open

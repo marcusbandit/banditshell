@@ -40,6 +40,7 @@ Item {
     readonly property real streamFlare: Math.min(Appearance.sizes.gap, root.streamReach)
 
     property var panels: []
+    property Item backdrop: null
     property bool readable: false
 
     Follow {
@@ -65,10 +66,15 @@ Item {
         speed: Appearance.animation.revealSpeed
     }
 
+    readonly property bool reachesIn: root.railOpen > 0.01 && root.rail || root.panels.some(p => p && p.w > 0 && p.h > 0 && p.x + p.w > root.holeX && p.y + p.h > root.holeY && p.x < root.holeX + root.holeWidth && p.y < root.holeY + root.holeHeight)
+
     BlobField {
         anchors.fill: parent
 
         panels: root.panels
+
+        backdrop: root.backdrop
+        restRaise: Math.max(root.rail ? railGrowth.value : (root.sidebar ? 1 : 0), readableShown.value)
 
         colour: Appearance.blend(Appearance.colour.surface, Appearance.colour.readableSurface, readableShown.value)
 
