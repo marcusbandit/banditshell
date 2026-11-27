@@ -1,7 +1,9 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import qs.components
 import qs.services
+import qs.modules.wallpaper
 
 PanelWindow {
     id: win
@@ -36,6 +38,40 @@ PanelWindow {
     }
 
     visible: win.state.open && !win.state.hiding
+
+    readonly property string frozen: win.state.frozenByScreen[win.screen?.name ?? ""] ?? ""
+
+    Loader {
+        anchors.fill: parent
+        active: win.visible
+        sourceComponent: win.frozen !== "" ? stillGlass : liveGlass
+    }
+
+    Component {
+        id: liveGlass
+
+        ScreenBackdrop {
+            output: win.screen?.name ?? ""
+            screenOrigin: Qt.point(win.screen?.x ?? 0, win.screen?.y ?? 0)
+            live: true
+        }
+    }
+
+    Component {
+        id: stillGlass
+
+        GlassSource {
+            id: still
+
+            readonly property var host: still.QsWindow.window ?? null
+
+            source: win.frozen
+
+            onHostChanged: still.host ? Backdrops.offer(still.host, still) : Backdrops.withdraw(still)
+            Component.onCompleted: Backdrops.offer(still.host, still)
+            Component.onDestruction: Backdrops.withdraw(still)
+        }
+    }
 
     Picker {
         anchors.fill: parent

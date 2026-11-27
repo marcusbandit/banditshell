@@ -70,7 +70,7 @@ launcher's groups in the config.
 | compositor | 1 | Hypr, HyprConfig, Monitors, Keymap, CompositorSync, chords and Lua helpers | core | migration | compositor, cli |
 | apps | 2 | Apps, AppIcons, DesktopIndex, Launching, DefaultApps, StartupApps | core, compositor | none | apps, startup |
 | audio | 2 | Audio, Bluetooth | core, compositor | output | audio, volume |
-| capture | 2 | ScreenRecorder, modules/picker | core, compositor | picker | picker |
+| capture | 3 | ScreenRecorder, modules/picker | core, compositor, wallpaper | picker | picker |
 | cheatsheet | 2 | Keyboards, modules/cheatsheet | core, compositor | hotkeys | cheatsheet |
 | clipboard | 2 | Clipboard, Dictation, Typist, modules/clipboard | core, compositor | clipboard | clipboard |
 | clock | 2 | Clock, Localisation, Weather | core, compositor | timer, alarm, zone | clock, weather |
