@@ -74,7 +74,7 @@ Item {
             Icon {
                 anchors.verticalCenter: parent.verticalCenter
                 name: root.toast?.icon ?? "check"
-                color: Appearance.colour.accent
+                color: Appearance.colour.text
             }
 
             StyledText {
@@ -86,7 +86,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: !!root.toast?.action
                 text: root.toast?.action?.label ?? ""
-                color: Appearance.colour.accent
+                color: Appearance.colour.text
                 font.underline: true
 
                 MouseArea {

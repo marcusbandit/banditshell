@@ -65,15 +65,9 @@ Item {
                     anchors.margins: -4
                     visible: wp.on
                     radius: Appearance.rounding.normal + 4
-                    color: Appearance.colour.accent
-                }
-
-                SquircleRect {
-                    anchors.fill: parent
-                    anchors.margins: -2
-                    visible: wp.on
-                    radius: Appearance.rounding.normal + 2
-                    color: Appearance.colour.surfaceSolid
+                    color: "transparent"
+                    stroke: Appearance.colour.chosen
+                    strokeWidth: 2
                 }
 
                 SquircleRect {

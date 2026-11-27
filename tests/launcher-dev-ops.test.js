@@ -25,7 +25,7 @@ const files = entries => entries.map(([pattern, list]) => `\u001d${pattern}\n` +
 test.describe("ssh hosts", () => {
     test.it("reads ssh and ssh with a host", () => {
         assert.deepStrictEqual(Ssh.ask("ssh"), { words: "" });
-        assert.deepStrictEqual(Ssh.ask("ssh homehub"), { words: "homehub" });
+        assert.deepStrictEqual(Ssh.ask("ssh homebase"), { words: "homebase" });
         assert.deepStrictEqual(Ssh.ask("  SSH me@box "), { words: "me@box" });
         assert.strictEqual(Ssh.ask("sshd"), null);
         assert.strictEqual(Ssh.ask("show ssh"), null);
@@ -88,15 +88,15 @@ test.describe("ssh hosts", () => {
     });
 
     test.it("offers an ambient row only for a configured host name typed in full or nearly", () => {
-        const hosts = [{ name: "homehub", known: false }, { name: "hometown", known: true }];
-        assert.deepStrictEqual(Ssh.ambient(hosts, "homehub").map(h => h.name), ["homehub"]);
-        assert.deepStrictEqual(Ssh.ambient(hosts, "homeh").map(h => h.name), ["homehub"]);
+        const hosts = [{ name: "homebase", known: false }, { name: "hometown", known: true }];
+        assert.deepStrictEqual(Ssh.ambient(hosts, "homebase").map(h => h.name), ["homebase"]);
+        assert.deepStrictEqual(Ssh.ambient(hosts, "homeb").map(h => h.name), ["homebase"]);
         assert.deepStrictEqual(Ssh.ambient(hosts, "hom"), []);
-        assert.deepStrictEqual(Ssh.ambient(hosts, "home hub"), []);
+        assert.deepStrictEqual(Ssh.ambient(hosts, "home base"), []);
     });
 
     test.it("accepts plain targets and refuses option and shell tricks", () => {
-        for (const ok of ["homehub", "me@box.lan", "10.0.0.1", "::1", "fe80::1%eth0", "a_b-c"])
+        for (const ok of ["homebase", "me@box.lan", "198.51.100.1", "::1", "fe80::1%eth0", "a_b-c"])
             assert.ok(Ssh.validTarget(ok), ok);
         for (const bad of ["-oProxyCommand=x", "a b", "$(id)", "box;rm", "", "me@-x", "`x`"])
             assert.ok(!Ssh.validTarget(bad), bad);

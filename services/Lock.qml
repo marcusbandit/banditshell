@@ -8,6 +8,7 @@ import qs.config
 import "lock-hint.js" as LockHint
 import "lock-pam.js" as LockPam
 import "lock-face.js" as LockFace
+import "dies-with-shell.js" as DiesWithShell
 
 Singleton {
     id: root
@@ -652,7 +653,7 @@ Singleton {
         id: monitor
 
         running: SessionControl.logind
-        command: ["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1"]
+        command: DiesWithShell.command(["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1"])
 
         stdout: SplitParser {
             onRead: line => root.hear(line)

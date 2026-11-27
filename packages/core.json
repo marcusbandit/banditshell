@@ -37,6 +37,7 @@
     "js": [
       "services/colours.js",
       "services/desktop-entries.js",
+      "services/dies-with-shell.js",
       "services/notify.js",
       "services/packages.js",
       "services/quoting.js",
@@ -61,6 +62,7 @@
       "scripts/write-private.sh"
     ],
     "tests": [
+      "tests/dies-with-shell.test.js",
       "tests/backoff.test.js",
       "tests/certificate-files.test.js",
       "tests/base64.test.js",
@@ -95,7 +97,8 @@
       "tests/trace.test.js",
       "tests/user-folders.test.js",
       "tests/wall-clock.test.js",
-      "tests/weekdays.test.js"
+      "tests/weekdays.test.js",
+      "tests/wheel-pass.test.js"
     ]
   },
   "requires": {

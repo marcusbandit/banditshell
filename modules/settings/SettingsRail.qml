@@ -126,7 +126,7 @@ Item {
             anchors.fill: parent
             radius: Appearance.rounding.small
             color: Appearance.colour.fillStrong
-            stroke: query.activeFocus ? Appearance.colour.accent : "transparent"
+            stroke: query.activeFocus ? Appearance.colour.textDim : "transparent"
             strokeWidth: query.activeFocus ? Appearance.stroke.ring : 0
         }
 
@@ -152,8 +152,8 @@ Item {
             font.pixelSize: Appearance.font.size.small
             renderType: Text.NativeRendering
             color: Appearance.colour.text
-            selectionColor: Appearance.colour.accent
-            selectedTextColor: Appearance.colour.accentText
+            selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
+            selectedTextColor: Appearance.colour.text
 
             text: SettingsView.query
             onTextEdited: {
@@ -262,24 +262,8 @@ Item {
             width: root.width
             height: root.rowHeight
             radius: Appearance.rounding.normal
-            color: Appearance.colour.fillStrong
+            color: Appearance.colour.chosen
             visible: !SettingsView.searching && glide.ready
-
-            SquircleRect {
-                anchors.fill: parent
-                radius: Appearance.rounding.normal
-                color: Appearance.colour.accentFill
-            }
-
-            SquircleRect {
-                x: 0
-                y: (parent.height - height) / 2
-                width: 3
-                height: Math.round(parent.height * 0.5)
-                pill: "place"
-                color: Appearance.colour.accent
-                visible: !root.tiny
-            }
         }
 
         Follow {
@@ -308,6 +292,7 @@ Item {
                 id: homeRow
 
                 width: parent.width
+                at: homeRow.y
                 icon: "home"
                 label: "Home"
                 on: SettingsView.home
@@ -331,6 +316,7 @@ Item {
                         id: catRow
 
                         width: parent.width
+                        at: cat.y
                         icon: cat.modelData.icon
                         label: cat.modelData.name
                         hue: Appearance.hue.of(cat.modelData.id)
@@ -390,6 +376,7 @@ Item {
                                     required property var modelData
 
                                     width: column.width
+                                    at: cat.y + subs.y + column.y + sub.y
                                     icon: sub.modelData.icon
                                     iconScale: 0.9
                                     inset: Appearance.padding.small
@@ -466,20 +453,10 @@ Item {
                 width: parent.width - Appearance.padding.normal * 2
                 topPadding: Appearance.padding.normal
                 bottomPadding: Appearance.padding.normal
-                visible: root.listingRecent || root.hits.length === 0
-                text: root.listingRecent ? (root.recent.length ? "changed lately" : "type a setting, or a number from the list") : `nothing called “${SettingsView.query.trim()}”. try fewer letters, or a number from the list.`
+                visible: root.listingRecent ? root.recent.length > 0 : root.hits.length === 0
+                text: root.listingRecent ? "changed lately" : `nothing called “${SettingsView.query.trim()}”`
                 color: Appearance.colour.textFaint
                 wrapMode: Text.WordWrap
-            }
-
-            StyledText {
-                x: Appearance.padding.normal
-                width: parent.width - Appearance.padding.normal * 2
-                topPadding: Appearance.padding.small
-                bottomPadding: Appearance.padding.normal
-                visible: query.activeFocus && !root.tiny && !root.listingRecent && root.hits.length > 0 && !(root.hitOpen && root.hits.length < 2)
-                text: root.hitOpen ? "enter next\nshift+enter back" : "enter opens it"
-                color: Appearance.colour.textFaint
             }
 
             Repeater {
@@ -530,6 +507,9 @@ Item {
         property color hue: "transparent"
         property real iconScale: 1
         property real inset: Appearance.padding.normal
+        property real at: -10000
+
+        readonly property real covered: glide.ready && !SettingsView.searching ? Math.max(0, 1 - Math.abs(glide.value - rr.at) / root.rowHeight) : 0
 
         signal clicked
 
@@ -550,13 +530,13 @@ Item {
             name: rr.icon
             size: Math.round(Appearance.font.iconSize * rr.iconScale)
             fill: rr.on ? 1 : 0
-            color: markTone.value
+            color: Appearance.blend(markTone.value, Appearance.colour.onChosen, rr.covered)
             opacity: rr.dimmed ? Appearance.opacity.disabled : 1
 
             FollowColour {
                 id: markTone
 
-                target: Appearance.hued && rr.hue.a > 0 && !rr.dimmed ? rr.hue : rr.on || rr.lit || hover.hovered ? Appearance.colour.text : Appearance.colour.textDim
+                target: Appearance.hued && rr.hue.a > 0 && !rr.dimmed && (Appearance.huedAtRest || hover.hovered) ? rr.hue : rr.on || rr.lit || hover.hovered ? Appearance.colour.text : Appearance.colour.textDim
                 speed: Appearance.animation.revealSpeed
             }
         }
@@ -568,7 +548,7 @@ Item {
             visible: !root.tiny
             text: rr.label
             elide: Text.ElideRight
-            color: labelTone.value
+            color: Appearance.blend(labelTone.value, Appearance.colour.onChosen, rr.covered)
             opacity: rr.dimmed ? Appearance.opacity.disabled : 1
 
             FollowColour {
@@ -609,6 +589,7 @@ Item {
         property bool active: false
         property bool pointed: false
         property var cuts: []
+        readonly property string markedLabel: Catalogue.marked(hr.label, hr.query, Appearance.colour.chosen)
         readonly property string crumbs: hr.cuts.length ? hr.cuts.find(c => ink.advanceWidth(c) <= words.width) ?? hr.cuts[hr.cuts.length - 1] : hr.detail
 
         signal picked
@@ -641,7 +622,8 @@ Item {
             StyledText {
                 width: parent.width
                 textFormat: Text.StyledText
-                text: Catalogue.marked(hr.label, hr.query, Appearance.colour.accent)
+                text: hr.markedLabel
+                color: hr.markedLabel.indexOf("<font") >= 0 ? Appearance.colour.textDim : Appearance.colour.text
                 elide: Text.ElideRight
             }
 
@@ -650,7 +632,7 @@ Item {
 
                 width: parent.width
                 textFormat: Text.StyledText
-                text: Catalogue.marked(hr.crumbs, hr.query, Appearance.colour.accent)
+                text: Catalogue.marked(hr.crumbs, hr.query, Appearance.colour.text)
                 elide: Text.ElideRight
                 color: Appearance.colour.textFaint
             }

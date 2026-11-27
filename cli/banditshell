@@ -1065,13 +1065,35 @@ health_check() {
     return 0
 }
 
+shell_session() {
+    local sid
+    sid=$(ps -o sid= -p "$1" 2>/dev/null | tr -d ' ')
+    [ "$sid" = "$1" ] && echo "$sid"
+    return 0
+}
+
+end_helpers() {
+    local sid pid
+    for sid in "$@"; do
+        for pid in $(pgrep -U "$(id -u)" -s "$sid" 2>/dev/null); do
+            if grep -qzx 'BANDITSHELL_HELPER=1' "/proc/$pid/environ" 2>/dev/null; then
+                kill "$pid" 2>/dev/null || true
+            fi
+        done
+    done
+    return 0
+}
+
 stop_pid() {
-    local tries
+    local tries session
+    session=$(shell_session "$1")
     kill "$1" 2>/dev/null || return 0
     for ((tries = 0; tries < 40; tries++)); do
-        kill -0 "$1" 2>/dev/null || return 0
+        kill -0 "$1" 2>/dev/null || break
         sleep 0.05
     done
+    [ -z "$session" ] || end_helpers "$session"
+    return 0
 }
 
 launch_failed() {
@@ -1146,8 +1168,8 @@ flush_running() {
 }
 
 stop_shell() {
-    local -a pids
-    local pid alive tries=0
+    local -a pids sessions=()
+    local pid alive session tries=0
     mapfile -t pids < <(shell_pids)
     [ "${#pids[@]}" -gt 0 ] || return 1
     if dry; then
@@ -1155,6 +1177,10 @@ stop_shell() {
         return 0
     fi
     flush_shells "${pids[@]}"
+    for pid in "${pids[@]}"; do
+        session=$(shell_session "$pid")
+        [ -z "$session" ] || sessions+=("$session")
+    done
     kill "${pids[@]}" 2>/dev/null || true
     while [ "$tries" -lt 40 ]; do
         alive=0
@@ -1163,10 +1189,11 @@ stop_shell() {
                 alive=1
             fi
         done
-        [ "$alive" = 0 ] && return 0
+        [ "$alive" = 0 ] && break
         sleep 0.05
         tries=$((tries + 1))
     done
+    end_helpers "${sessions[@]}"
     return 0
 }
 

@@ -129,6 +129,7 @@ QtObject {
                 {
                     icon: "close",
                     label: "Clear",
+                    destructive: true,
                     run: () => Clock.removeAlarm(row.alarmId)
                 }
             ];
@@ -142,6 +143,7 @@ QtObject {
             {
                 icon: "close",
                 label: "Cancel",
+                destructive: true,
                 run: () => Clock.removeTimer(row.timerId)
             }
         ];
