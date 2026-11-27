@@ -339,8 +339,8 @@ Item {
             font.family: Appearance.font.family
             font.pixelSize: Appearance.font.size.normal
             color: Appearance.colour.text
-            selectionColor: Appearance.colour.accent
-            selectedTextColor: Appearance.colour.accentText
+            selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
+            selectedTextColor: Appearance.colour.text
             clip: true
             onTextEdited: {
                 root.filter = text;
@@ -573,7 +573,7 @@ Item {
                             anchors.fill: parent
                             radius: Appearance.rounding.small
                             color: Appearance.colour.fill
-                            stroke: (input.activeFocus || holder.activeFocus) ? Appearance.colour.accent : entry.lacking ? Appearance.colour.alarm : "transparent"
+                            stroke: (input.activeFocus || holder.activeFocus) ? Appearance.colour.chosen : entry.lacking ? Appearance.colour.alarm : "transparent"
                             strokeWidth: Appearance.stroke.ring
                         }
 
@@ -590,8 +590,8 @@ Item {
                             font.family: Appearance.font.family
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.text
-                            selectionColor: Appearance.colour.accent
-                            selectedTextColor: Appearance.colour.accentText
+                            selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
+                            selectedTextColor: Appearance.colour.text
                             clip: true
                             onTextEdited: root.setValue(entry.modelData.key, text)
                             onActiveFocusChanged: if (activeFocus)

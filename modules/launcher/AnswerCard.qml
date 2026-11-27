@@ -70,7 +70,7 @@ Item {
                 FollowColour {
                     id: hint
 
-                    target: root.holds ? Appearance.colour.accent : Appearance.colour.textFaint
+                    target: root.holds ? Appearance.colour.text : Appearance.colour.textFaint
                     speed: Appearance.animation.revealSpeed
                 }
             }

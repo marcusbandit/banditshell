@@ -76,7 +76,7 @@ MenuRow {
             anchors.verticalCenter: parent.verticalCenter
             text: "copy"
             font.pixelSize: Appearance.font.size.small
-            color: root.holds ? Appearance.colour.accent : Appearance.colour.textGhost
+            color: root.holds ? Appearance.colour.text : Appearance.colour.textGhost
 
             Behavior on color {
                 ColorAnimation {

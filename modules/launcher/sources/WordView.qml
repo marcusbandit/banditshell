@@ -252,7 +252,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             name: "menu_book"
             size: Appearance.font.size.normal
-            color: Appearance.colour.accent
+            color: Appearance.colour.textDim
         }
 
         StyledText {
@@ -329,7 +329,7 @@ Item {
             text: group.modelData.part
             font.pixelSize: Appearance.font.size.normal
             font.italic: true
-            color: Appearance.colour.accent
+            color: Appearance.colour.textDim
         }
 
         Repeater {

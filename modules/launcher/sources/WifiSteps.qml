@@ -45,7 +45,7 @@ Column {
                     size: root.mark
                     thickness: Math.max(2, Math.round(root.mark / 8))
                     value: step.yours ? 1 : step.working ? 0.28 : 0
-                    colour: Appearance.colour.accent
+                    colour: Appearance.colour.chosen
                     track: step.active ? Appearance.colour.fillStrong : Appearance.colour.fill
 
                     RotationAnimator on rotation {
@@ -63,7 +63,7 @@ Column {
                     width: root.mark
                     size: root.mark
                     name: step.phase === "done" ? "check" : step.phase === "failed" ? "close" : "priority_high"
-                    color: step.phase === "failed" ? Appearance.colour.alarm : step.phase === "done" ? Appearance.colour.accent : Appearance.colour.textDim
+                    color: step.phase === "failed" ? Appearance.colour.alarm : step.phase === "done" ? Appearance.colour.text : Appearance.colour.textDim
                 }
 
                 StyledText {

@@ -31,7 +31,7 @@ Item {
         radius: Appearance.rounding.small
         color: root.focused ? Appearance.colour.fillStrong : Appearance.colour.fill
         strokeWidth: root.missing || root.focused ? 1 : 0
-        stroke: root.missing ? Appearance.colour.alarm : Appearance.colour.accent
+        stroke: root.missing ? Appearance.colour.alarm : Appearance.colour.separator
     }
 
     TextInput {
@@ -45,8 +45,8 @@ Item {
         font.pixelSize: Appearance.font.size.normal
         renderType: Text.NativeRendering
         color: Appearance.colour.text
-        selectionColor: Appearance.colour.accent
-        selectedTextColor: Appearance.colour.accentText
+        selectionColor: Qt.alpha(Appearance.colour.chosen, 0.3)
+        selectedTextColor: Appearance.colour.text
         cursorVisible: activeFocus
 
         onTextEdited: root.edited(input.text)

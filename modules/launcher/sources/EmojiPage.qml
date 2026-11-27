@@ -233,7 +233,7 @@ Item {
                             anchors.fill: parent
                             radius: Appearance.rounding.normal
                             color: shade.value
-                            stroke: cell.chosen ? Appearance.colour.accent : "transparent"
+                            stroke: cell.chosen ? Appearance.colour.chosen : "transparent"
                             strokeWidth: Appearance.stroke.ring
 
                             FollowColour {
