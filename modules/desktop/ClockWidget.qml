@@ -30,6 +30,14 @@ DeskWidget {
         return best;
     }
 
+    readonly property string alarmText: {
+        if (!root.nextAlarm)
+            return "";
+        const at = new Date(root.nextAlarm.when);
+        const time = TimeFormat.clock(at.getHours(), at.getMinutes());
+        return at.toDateString() === clock.date.toDateString() ? time : `${Qt.locale().dayName(at.getDay(), Locale.ShortFormat)} ${time}`;
+    }
+
     key: "clock"
     fallbackSize: "medium"
     clearAtRest: true
@@ -164,7 +172,7 @@ DeskWidget {
                     visible: !!root.nextAlarm
                     icon: "alarm"
                     label: root.nextAlarm?.label || "Alarm"
-                    value: root.nextAlarm ? TimeFormat.clock(new Date(root.nextAlarm.when).getHours(), new Date(root.nextAlarm.when).getMinutes()) : ""
+                    value: root.alarmText
                     aside: ""
                 }
             }

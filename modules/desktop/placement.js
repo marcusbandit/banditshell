@@ -12,7 +12,7 @@ function clamp(value, low, high) {
 }
 
 function isPlace(place) {
-    return !!place && (place.side === "left" || place.side === "right") && (place.edge === "top" || place.edge === "bottom") && isFinite(place.x) && isFinite(place.y);
+    return !!place && (place.side === "left" || place.side === "right") && (place.edge === "top" || place.edge === "bottom") && typeof place.x === "number" && isFinite(place.x) && typeof place.y === "number" && isFinite(place.y);
 }
 
 function topLeft(place, width, height, area) {

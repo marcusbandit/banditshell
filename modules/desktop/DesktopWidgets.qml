@@ -28,6 +28,7 @@ PanelWindow {
 
     readonly property var widgets: [clock, weather, media, system, limits]
     readonly property bool opened: sheet.open || win.widgets.some(w => w.visible && w.expanded)
+    readonly property bool grabbing: win.widgets.some(w => w.held)
     readonly property var heights: ({
             clock: clock.visible ? clock.restHeight : 0,
             weather: weather.visible ? weather.restHeight : 0,
@@ -80,8 +81,11 @@ PanelWindow {
     WlrLayershell.namespace: "banditshell"
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
+    onShowingChanged: if (!win.showing)
+        win.closeAll(null)
+
     mask: Region {
-        item: win.opened ? catcher : null
+        item: win.opened || win.grabbing ? catcher : null
 
         Region {
             intersection: Intersection.Combine
@@ -155,7 +159,7 @@ PanelWindow {
         id: glass
 
         anchors.fill: parent
-        source: Wallpaper.enabled && win.live ? Wallpaper.faceOf(Wallpaper.shownOn(win.output)) : ""
+        source: Wallpaper.enabled && win.wanted ? Wallpaper.faceOf(Wallpaper.shownOn(win.output)) : ""
     }
 
     Backdrop {

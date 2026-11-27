@@ -232,10 +232,13 @@ DeskWidget {
             elide: Text.ElideRight
         }
 
-        Row {
-            spacing: Appearance.padding.normal
+        Item {
+            width: parent.width
+            height: Math.max(nowIcon.height, nowTemp.implicitHeight, nowWords.implicitHeight)
 
             Icon {
+                id: nowIcon
+
                 anchors.verticalCenter: parent.verticalCenter
                 name: Weather.icon
                 size: Math.round(Appearance.font.iconSize * 2.6)
@@ -244,6 +247,9 @@ DeskWidget {
             }
 
             StyledText {
+                id: nowTemp
+
+                x: nowIcon.width + Appearance.padding.normal
                 anchors.verticalCenter: parent.verticalCenter
                 text: Weather.temperature
                 font.family: Appearance.font.lock
@@ -252,24 +258,32 @@ DeskWidget {
             }
 
             Column {
+                id: nowWords
+
+                x: nowTemp.x + nowTemp.width + Appearance.padding.large
+                width: parent.width - x
                 anchors.verticalCenter: parent.verticalCenter
-                leftPadding: Appearance.padding.small
 
                 StyledText {
+                    width: parent.width
                     text: Weather.summary.trim()
+                    elide: Text.ElideRight
                 }
 
                 StyledText {
+                    width: parent.width
                     visible: root.range !== ""
                     text: root.range
                     color: Appearance.colour.textDim
+                    elide: Text.ElideRight
                 }
             }
         }
 
-        Row {
-            spacing: Appearance.padding.large
+        Flow {
+            width: parent.width
             visible: !!root.facts
+            spacing: Appearance.padding.large
 
             Fact {
                 icon: "thermostat"

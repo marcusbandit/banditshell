@@ -34,6 +34,7 @@ Item {
     readonly property string rest: Placement.validSize(DesktopLayout.sizeOf(root.key, root.fallbackSize), root.fallbackSize)
     readonly property string form: root.expanded ? "large" : root.peeking ? Placement.sizeUp(root.rest) : root.rest
     readonly property bool hovered: hover.hovered
+    readonly property bool held: grip.pressed || root.dragging
     readonly property bool lifted: root.form !== root.rest || root.dragging || hover.hovered
     readonly property var saved: DesktopLayout.placeOf(root.output, root.key)
     readonly property var place: Placement.isPlace(root.saved) ? root.saved : Placement.stacked(root.key, root.heights, root.gap)
@@ -76,6 +77,8 @@ Item {
         root.moved();
     }
 
+    onVisibleChanged: if (!root.visible)
+        root.close()
     onShownHeightChanged: root.noteRest()
     onFormChanged: root.noteRest()
     onRestChanged: root.noteRest()
@@ -132,7 +135,7 @@ Item {
 
     Timer {
         interval: 400
-        running: !hover.hovered && root.peeking && !root.dragging
+        running: !hover.hovered && !badgeHover.hovered && root.peeking && !root.dragging
         onTriggered: root.peeking = false
     }
 

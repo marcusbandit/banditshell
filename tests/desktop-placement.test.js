@@ -61,6 +61,7 @@ test("a saved place must name its edges and offsets", () => {
     assert.ok(Place.isPlace({ side: "left", edge: "bottom", x: 1, y: 2 }));
     assert.ok(!Place.isPlace({ side: "middle", edge: "top", x: 1, y: 2 }));
     assert.ok(!Place.isPlace({ side: "left", edge: "top", x: "a", y: 2 }));
+    assert.ok(!Place.isPlace({ side: "left", edge: "top", x: "12", y: 0 }));
     assert.ok(!Place.isPlace(null));
 });
 
@@ -77,12 +78,20 @@ test("weather facts read feels-like, wind and humidity in the chosen units", () 
     assert.strictEqual(Facts.facts(null, false), null);
 });
 
-test("hourly slots start at the current three-hour block and run into tomorrow", () => {
-    const day = (date, temps) => ({ date, hourly: temps.map((t, i) => ({ time: String(i * 300), tempC: String(t), weatherCode: "113", chanceofrain: String(i * 10) })) });
-    const data = { weather: [day("2026-03-04", [1, 2, 3, 4, 5, 6, 7, 8]), day("2026-03-05", [9, 10, 11, 12, 13, 14, 15, 16])] };
-    const now = new Date(2026, 2, 4, 19, 30).getTime();
-    const slots = Facts.hours(data, now, false, 4);
-    assert.deepStrictEqual(slots.map(s => [s.hour, s.temp]), [[18, 7], [21, 8], [0, 9], [3, 10]]);
-    assert.strictEqual(slots[0].rain, 60);
-    assert.deepStrictEqual(Facts.hours({}, now, false, 4), []);
+const day = (date, temps) => ({ date, hourly: temps.map((t, i) => ({ time: String(i * 300), tempC: String(t), weatherCode: "113", chanceofrain: String(i * 10) })) });
+const twoDays = { weather: [day("2026-03-04", [1, 2, 3, 4, 5, 6, 7, 8]), day("2026-03-05", [9, 10, 11, 12, 13, 14, 15, 16])] };
+
+test("hourly slots start at the current three-hour block until it ends, then run into tomorrow", () => {
+    const at = (h, m) => new Date(2026, 2, 4, h, m).getTime();
+    assert.deepStrictEqual(Facts.hours(twoDays, at(19, 30), false, 4).map(s => [s.hour, s.temp]), [[18, 7], [21, 8], [0, 9], [3, 10]]);
+    assert.deepStrictEqual(Facts.hours(twoDays, at(20, 59), false, 2).map(s => s.hour), [18, 21]);
+    assert.deepStrictEqual(Facts.hours(twoDays, at(21, 0), false, 2).map(s => s.hour), [21, 0]);
+    assert.strictEqual(Facts.hours(twoDays, at(19, 30), false, 1)[0].rain, 60);
+    assert.deepStrictEqual(Facts.hours({}, at(19, 30), false, 4), []);
+});
+
+test("hourly slots follow the clock of the weather's place, not the machine's", () => {
+    const place = Object.assign({ current_condition: [{ localObsDateTime: "2026-03-04 01:30 PM", observation_time: "06:30 PM" }] }, twoDays);
+    const now = Date.UTC(2026, 2, 4, 18, 30);
+    assert.deepStrictEqual(Facts.hours(place, now, false, 3).map(s => s.hour), [12, 15, 18]);
 });
