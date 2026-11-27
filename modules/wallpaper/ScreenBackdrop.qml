@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import qs.components
@@ -12,6 +13,12 @@ GlassSource {
     required property string output
     property point screenOrigin: Qt.point(0, 0)
     property bool live: false
+    readonly property var host: root.QsWindow.window ?? null
+    readonly property bool capturing: root.live || Backdrops.holds(root)
+
+    onHostChanged: root.host ? Backdrops.offer(root.host, root) : Backdrops.withdraw(root)
+    Component.onCompleted: Backdrops.offer(root.host, root)
+    Component.onDestruction: Backdrops.withdraw(root)
     property bool active: true
     property rect region: Qt.rect(0, 0, 0, 0)
 
@@ -47,13 +54,13 @@ GlassSource {
 
     source: Wallpaper.enabled ? Wallpaper.faceOf(Wallpaper.shownOn(root.output)) : ""
 
-    onLiveChanged: if (root.live)
+    onCapturingChanged: if (root.capturing)
         Hyprland.refreshToplevels()
 
     Timer {
         interval: 1500
         repeat: true
-        running: root.active && !root.live && root.shown.length > 0
+        running: root.active && !root.capturing && root.shown.length > 0
         onTriggered: {
             for (let i = 0; i < captures.count; i++)
                 captures.itemAt(i)?.captureFrame();
@@ -76,7 +83,7 @@ GlassSource {
             width: span[0]
             height: span[1]
             captureSource: modelData.wayland ?? null
-            live: root.live
+            live: root.capturing
             paintCursor: false
         }
     }

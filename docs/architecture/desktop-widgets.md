@@ -105,6 +105,49 @@ The clock is the exception: the owner liked it as it was, so it has no glass at 
 glass fades in when it is hovered or opened, or when the wallpaper behind the digits is busy
 enough that they would not read (the existing ink check in `Backdrop.qml`).
 
+## Glass everywhere, without wiring
+
+The widgets own their glass sources, but every other card in the shell (sheets, menus, the
+what's new log, the wallpaper picker's pills, the workspace card) gets glass by default.
+`components/GlassPanel.qml` finds what to sample on its own:
+
+- Each `ScreenBackdrop` offers itself to the `Backdrops` registry under the window it lives in,
+  and a panel uses the one in its own window. It has to be the same window: a window renders
+  with its own scene graph, and a texture from another window's backdrop comes out black. A
+  caller can still pass a `backdrop` of its own, as the desktop widgets do.
+- The shell window has one per screen. Another layer window that wants glass makes its own
+  `ScreenBackdrop`, screen-sized, at minus its place on the screen, so the picture lines up with
+  the wallpaper.
+- A panel works out where it reads the backdrop from: its place in the window minus the
+  backdrop's (`components/glass-place.js`). The place follows every parent's position, so a card
+  inside a scrolled list or a sliding sheet keeps sampling what is really behind it.
+- While a panel shows on screen and samples a `ScreenBackdrop`, it holds it, and the backdrop
+  captures the windows behind it live instead of every 1.5 seconds, so a window dragged under a
+  card shows there at once.
+- A window with no backdrop of its own gets the solid material described under Floating windows.
+  A panel whose backdrop exists but is not ready, such as with the wallpaper off, keeps the
+  translucent readable surface it had before.
+
+### Glass on glass
+
+A sheet inside a chassis pop-out, such as the launcher's Ctrl+K sheet over the launcher, has
+the pop-out's frosted glass behind it, not the wallpaper. Sampling the wallpaper clearly there
+would read as a hole punched through the pop-out. So a panel whose parents say there is glass
+beneath (`glassBeneath` on a `LazyPanel` or the launcher, true while its pop-out has chassis
+blobs) is drawn as a second pane: fully frosted, a little lighter and greyer, with a brighter
+rim. It keeps the same colour as the pane under it and separates from it by light and edge, the
+way one sheet of frosted glass reads over another.
+
+### Floating windows
+
+The files and mixer windows are ordinary toplevels. The compositor puts them wherever the user
+drags them, over other windows, and the shell cannot read what is behind a toplevel, so they
+cannot be refraction glass. Their sheets use a solid version of the same material: the window's
+own neutral surface lifted toward white (`Appearance.colour.pane`), with the same top-left rim
+light and no tint or shadow. Next to a glass card it reads as the same glass seen against an
+opaque wall. The same material shows wherever a panel has no backdrop yet, for example while
+the wallpaper is still loading or when it is turned off.
+
 ## Placement
 
 Each widget is placed on its own and remembered per screen in
