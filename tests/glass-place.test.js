@@ -44,4 +44,12 @@ test.describe("which backdrop a window has", () => {
         assert.strictEqual(sourceIn(entries, picker), null);
         assert.strictEqual(sourceIn([], shell), null);
     });
+
+    test.it("prefers the newest of two backdrops in one window and falls back when it goes", () => {
+        const shell = {};
+        const first = {};
+        const second = {};
+        assert.strictEqual(sourceIn([{ window: shell, source: first }, { window: shell, source: second }], shell), second);
+        assert.strictEqual(sourceIn([{ window: shell, source: first }], shell), first);
+    });
 });

@@ -12,7 +12,7 @@ QtObject {
     function offer(win: var, source: var): void {
         if (!win || !source || Place.sourceIn(root.entries, win) === source)
             return;
-        root.entries = root.entries.filter(e => e.window !== win && e.source !== source).concat([
+        root.entries = root.entries.filter(e => e.source !== source).concat([
             {
                 window: win,
                 source: source

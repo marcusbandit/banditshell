@@ -16,7 +16,7 @@ function placeOf(item) {
 }
 
 function sourceIn(entries, win) {
-    for (var i = 0; i < entries.length; i++)
+    for (var i = entries.length - 1; i >= 0; i--)
         if (entries[i].window === win)
             return entries[i].source;
     return null;
