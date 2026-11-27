@@ -38,19 +38,8 @@ Item {
         height: list.height > 0 ? list.height + root.pad * 2 : 0
         visible: height > 0.5
 
-        DropShadow {
+        GlassPanel {
             anchors.fill: parent
-            radius: Appearance.rounding.large
-            blur: Appearance.padding.large
-            offset.y: Math.round(Appearance.padding.small / 2)
-        }
-
-        SquircleRect {
-            anchors.fill: parent
-            radius: Appearance.rounding.large
-            color: Appearance.colour.surfaceSolid
-            stroke: Appearance.colour.fillStrong
-            strokeWidth: 1
         }
 
         Column {

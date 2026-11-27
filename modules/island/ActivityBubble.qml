@@ -53,7 +53,7 @@ Item {
         if (root.kind === "launch" && a.state === "here")
             return {
                 icon: "check",
-                tone: Appearance.colour.accent
+                tone: Appearance.colour.chosen
             };
         if (root.kind === "launch" && a.state === "lost")
             return {
@@ -67,7 +67,7 @@ Item {
         if (root.kind === "external" && a.state === "ended")
             return {
                 icon: a.outcome === "failed" ? "priority_high" : a.outcome === "cancelled" ? "close" : "check",
-                tone: a.outcome === "failed" ? Appearance.colour.failed : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent
+                tone: a.outcome === "failed" ? Appearance.colour.failed : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.chosen
             };
         if (root.kind === "timer")
             return {
@@ -200,7 +200,7 @@ Item {
             size: root.size - root.thickness
             thickness: root.thickness
             track: "transparent"
-            colour: root.shownRing === "track" && !Media.playing ? Appearance.colour.textFaint : Appearance.colour.accent
+            colour: root.shownRing === "track" && !Media.playing ? Appearance.colour.textFaint : Appearance.colour.text
             value: root.shownRing === "progress" && root.front?.rec ? Launching.progress(root.front.rec) : root.trackProgress
         }
 
@@ -210,7 +210,7 @@ Item {
             size: root.size - root.thickness
             thickness: root.thickness
             track: Appearance.colour.fillStrong
-            colour: root.front?.ending ? Appearance.colour.alarm : Appearance.colour.accent
+            colour: root.front?.ending ? Appearance.colour.alarm : Appearance.colour.text
             value: measure.value
         }
 
@@ -220,7 +220,7 @@ Item {
             size: root.size - root.thickness
             thickness: root.thickness
             track: "transparent"
-            colour: root.shownRing === "alarm" ? Appearance.colour.alarm : Appearance.colour.accent
+            colour: root.shownRing === "alarm" ? Appearance.colour.alarm : Appearance.colour.text
             opacity: root.shownRing === "voice" ? 0.3 + 0.7 * Math.min(1, voice.value * 1.6) : 1
             value: 1
         }
@@ -263,7 +263,7 @@ Item {
         SquircleRect {
             anchors.fill: parent
             pill: "object"
-            color: root.shownBadge?.icon ? (root.shownBadge.tone ?? Appearance.colour.accent) : Appearance.colour.fillStrong
+            color: root.shownBadge?.icon ? (root.shownBadge.tone ?? Appearance.colour.chosen) : Appearance.colour.fillStrong
         }
 
         Icon {
@@ -272,7 +272,7 @@ Item {
             name: root.shownBadge?.icon ?? ""
             size: Math.round(parent.height * 0.75)
             fill: 1
-            color: Appearance.colour.ink
+            color: Qt.colorEqual(root.shownBadge?.tone ?? "transparent", Appearance.colour.textFaint) ? Appearance.colour.text : Appearance.colour.onChosen
         }
 
         StyledText {

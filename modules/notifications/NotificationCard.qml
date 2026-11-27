@@ -373,7 +373,7 @@ Item {
                         name: "push_pin"
                         size: Appearance.font.size.small
                         fill: 1
-                        color: Appearance.colour.accent
+                        color: Appearance.colour.text
                         opacity: root.pinned ? 1 : root.keepLeaves ? 0 : Math.min(1, Math.max(0, -swipe.pulled / Math.max(1, swipe.throwDistance)))
                         visible: opacity > 0.01
                     }
@@ -599,8 +599,8 @@ Item {
                             font.pixelSize: Appearance.font.size.small
                             renderType: Text.NativeRendering
                             color: Appearance.colour.text
-                            selectionColor: Appearance.colour.accent
-                            selectedTextColor: Appearance.colour.accentText
+                            selectionColor: Appearance.colour.chosen
+                            selectedTextColor: Appearance.colour.onChosen
 
                             onAccepted: reply.submit()
                             onActiveFocusChanged: if (!input.activeFocus)
@@ -735,7 +735,7 @@ Item {
         SquircleRect {
             anchors.fill: parent
             pill: "object"
-            color: corner.on ? Appearance.colour.accent : cornerArea.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
+            color: corner.on ? Appearance.colour.chosen : cornerArea.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
             scale: cornerScale.value
         }
 
@@ -743,7 +743,7 @@ Item {
             anchors.centerIn: parent
             name: corner.icon
             size: Appearance.font.size.small
-            color: corner.on ? Appearance.colour.accentText : cornerArea.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
+            color: corner.on ? Appearance.colour.onChosen : cornerArea.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
         }
 
         MouseArea {

@@ -7,7 +7,7 @@ Item {
 
     property string icon: ""
     property string glyph: ""
-    property color tone: Appearance.colour.accent
+    property color tone: Appearance.colour.text
     property string title: ""
     property string subtitle: ""
 

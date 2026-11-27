@@ -7,7 +7,7 @@ Item {
     property var levels: []
     property bool running: true
     property real pitch: 4
-    property color colour: Appearance.colour.accent
+    property color colour: Appearance.colour.text
     property int mode: 0
     property real flow: 0
     property real caret: 0

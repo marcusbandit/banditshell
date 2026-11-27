@@ -26,7 +26,7 @@ Item {
     readonly property bool cancelled: root.result === "cancelled"
     readonly property bool restarting: SystemUpgrade.good && Pacman.restartNeeded
 
-    readonly property color tone: root.failed ? Appearance.colour.failed : root.cancelled ? Appearance.colour.textDim : Appearance.colour.accent
+    readonly property color tone: root.failed ? Appearance.colour.failed : root.cancelled ? Appearance.colour.textDim : Appearance.colour.text
 
     readonly property string subtitle: {
         const parts = [];
