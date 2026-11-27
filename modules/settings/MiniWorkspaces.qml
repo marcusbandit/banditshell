@@ -132,14 +132,14 @@ Item {
                         SquircleRect {
                             anchors.fill: parent
                             radius: Appearance.rounding.normal
-                            color: Appearance.colour.accentFill
+                            color: Appearance.colour.chosen
                             visible: cell.on && !root.walking
                         }
 
                         SquircleRect {
                             anchors.fill: parent
                             radius: Appearance.rounding.normal
-                            color: Appearance.colour.accentFill
+                            color: Appearance.colour.chosen
                             opacity: cell.lit
                             visible: root.walking
                         }
@@ -157,7 +157,7 @@ Item {
                                     height: 25
                                     name: modelData.ic
                                     size: Appearance.icon.large
-                                    color: root.colourful ? modelData.app : modelData.focus ? Appearance.colour.text : Appearance.colour.textDim
+                                    color: root.colourful ? (cell.on && !root.walking ? Appearance.blend(modelData.app, Appearance.colour.onChosen, 0.35) : modelData.app) : root.walking ? Appearance.blend(Appearance.colour.textDim, Appearance.colour.onChosen, cell.lit) : cell.on ? Appearance.colour.onChosen : Appearance.colour.textDim
                                 }
                             }
                         }
@@ -199,7 +199,7 @@ Item {
                             width: modelData.empty ? 12 : 14 + ((grp.modelData.id * 7 + modelData.i * 5) % 18)
                             height: 5
                             radius: Appearance.rounding.normal
-                            color: modelData.empty ? (grp.on ? Appearance.colour.accent : Appearance.colour.textGhost) : grp.on ? (modelData.focus ? Appearance.colour.accent : Appearance.colour.accentFill) : Appearance.colour.textFaint
+                            color: modelData.empty ? (grp.on ? Appearance.colour.chosen : Appearance.colour.fillStrong) : grp.on && modelData.focus ? Appearance.colour.chosen : grp.on ? Appearance.colour.textDim : Appearance.colour.textFaint
                         }
                     }
                 }
@@ -242,7 +242,7 @@ Item {
                                 width: 9
                                 height: 9
                                 radius: 2
-                                color: blk.on ? (modelData.focus ? Appearance.colour.accent : Appearance.colour.accentFill) : Appearance.colour.textFaint
+                                color: blk.on && modelData.focus ? Appearance.colour.chosen : blk.on ? Appearance.colour.textDim : Appearance.colour.textFaint
                             }
                         }
                     }
@@ -253,7 +253,7 @@ Item {
                         width: 4.5
                         height: 4.5
                         radius: 2
-                        color: blk.on ? Appearance.colour.accent : Appearance.colour.textGhost
+                        color: blk.on ? Appearance.colour.chosen : Appearance.colour.fillStrong
                     }
                 }
             }

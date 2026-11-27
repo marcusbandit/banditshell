@@ -16,7 +16,7 @@ Item {
     property bool seen: true
 
     readonly property color pane: Appearance.colour.pane
-    readonly property color edge: root.big || root.lit ? Qt.alpha(Appearance.colour.accent, Appearance.opacity.trail) : Appearance.colour.fillStronger
+    readonly property color edge: root.big || root.lit ? Qt.alpha(Appearance.colour.chosen, Appearance.opacity.trail) : Appearance.colour.fillStronger
     readonly property real edgeWidth: root.big || root.lit ? 1.5 : 1
     readonly property real winRadius: root.big ? Appearance.rounding.small : 3
 

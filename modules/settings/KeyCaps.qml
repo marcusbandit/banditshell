@@ -27,7 +27,7 @@ Row {
             SquircleRect {
                 anchors.fill: parent
                 radius: Appearance.rounding.small
-                color: root.listening ? Appearance.colour.accentFill : Appearance.colour.fillStrong
+                color: root.listening ? Appearance.colour.chosen : Appearance.colour.fillStrong
             }
 
             StyledText {
@@ -35,6 +35,7 @@ Row {
 
                 anchors.centerIn: parent
                 text: modelData
+                color: root.listening ? Appearance.colour.onChosen : Appearance.colour.text
             }
         }
     }

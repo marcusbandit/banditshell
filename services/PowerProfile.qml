@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "powerprofile.js" as Logic
+import "dies-with-shell.js" as DiesWithShell
 
 Singleton {
     id: root
@@ -19,6 +20,14 @@ Singleton {
     readonly property var choices: Logic.choices(root.daemon, root.names)
 
     readonly property string trouble: root.probed && !root.available ? "no power profile daemon installed · power-profiles-daemon does this" : ""
+
+    function label(profile: string): string {
+        return Logic.labelOf(profile);
+    }
+
+    function icon(profile: string): string {
+        return Logic.iconOf(profile);
+    }
 
     function set(profile: string): void {
         const name = Logic.nameFor(root.daemon, profile);
@@ -90,7 +99,7 @@ fi
     Process {
         id: watcher
 
-        command: root.daemon === "tuned" ? ["gdbus", "monitor", "--system", "--dest", "com.redhat.tuned"] : ["gdbus", "monitor", "--system", "--dest", "net.hadess.PowerProfiles"]
+        command: DiesWithShell.command(["gdbus", "monitor", "--system", "--dest", root.daemon === "tuned" ? "com.redhat.tuned" : "net.hadess.PowerProfiles"])
 
         stdout: SplitParser {
             onRead: line => root.refresh()

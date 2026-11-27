@@ -87,7 +87,6 @@ launcher's groups in the config.
 | keyboard | 3 | modules/keyboard, Keystrokes | core, compositor, display | keyboard | tablet.autoKeyboard, tablet.height, tablet.seam, tablet.repeat, tablet.repeatDelay, tablet.repeatInterval |
 | launcher | 3 | the launcher itself, LauncherHotkeys, search.js | core, compositor, apps | launcher | launcher |
 | notifications | 3 | Notifications, AppNotifications, AlertSounds, modules/notifications | core, compositor, apps | notifications, quiet | notifications, sound |
-| quickcontrols | 3 | modules/quickcontrols | core, compositor, audio, display | quickcontrols | screen.grabFraction, screen.linger |
 | settings | 3 | modules/settings, Settings, Modes, ThemeSwitcher | core, compositor, display | settings, mode | settings, corner, menu |
 | stream | 3 | StreamState, Obs, modules/stream | core, compositor, apps, audio, network | stream | obs, stream |
 | windows | 3 | modules/windows, modules/workshop, WindowLayouts, WorkshopLayouts, LayoutDraft | core, compositor, apps | none | windows |
@@ -101,6 +100,7 @@ launcher's groups in the config.
 | island | 5 | modules/island, Notices, Activities, Levels | core, compositor, notifications, media, apps, clock, audio, display (optional: clipboard, capture, updates, files) | island, inspect, activity | island |
 | launcher-online | 5 | browser, define, github, packages, speedtest, translate and video sources | core, compositor, launcher, files, apps | none | launcher.online |
 | lock | 5 | Lock, modules/lock | core, compositor, media, wallpaper, clock, power, notifications | none | lock |
+| quickcontrols | 5 | modules/quickcontrols | core, compositor, audio, bar, display, network, notifications, power, capture | quickcontrols | screen.grabFraction, screen.linger |
 | screentime | 5 | Usage, UsageApps, UsageLimits | core, compositor, power | none | usage |
 | session | 5 | modules/session | core, compositor, power | session | session |
 | host | 5 | shell.qml, ShellWindow, Chassis, Ipc (the list of every target), the Shell window registry | core, compositor, tour | border | none |

@@ -687,6 +687,23 @@ PanelWindow {
                     menuLayer.hide();
             }
 
+            function onClockRequested(deliberate: bool): void {
+                if (deliberate && menuLayer.pinned && menuLayer.currentKey === "clock") {
+                    menuLayer.hide();
+                    return;
+                }
+                win.openMenu("clock", deliberate);
+            }
+
+            function onClockPulled(): void {
+                win.openMenu("clock", true);
+            }
+
+            function onClockPullEnded(open: bool): void {
+                if (!open)
+                    menuLayer.hide();
+            }
+
             function onUpdateRequested(deliberate: bool): void {
                 if (deliberate && menuLayer.pinned && menuLayer.currentKey === "update") {
                     menuLayer.hide();
@@ -901,6 +918,8 @@ PanelWindow {
             panel: SettingsPanel {
                 originX: chassis.barWidth
                 band: win.border
+                backdrop: behind
+                glassAt: Qt.point(0, chassis.streamReach)
                 menuOpen: menuLayer.open
                 yielded: win.panelOpen || menuLayer.open || Prompts.awayIn(settingsLayer.QsWindow.window) || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
             }

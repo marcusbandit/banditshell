@@ -191,7 +191,7 @@ Item {
             lead: checking ? spinner : null
             label: "VIA layout"
             detail: checking ? `checking ${root.busyName}…` : root.imported ? `${Keyboards.board.name || Keyboards.stored.replace(/\.json$/, "")} · ${Keyboards.keyCount} keys · ${Keyboards.variant.toUpperCase()}` : "nothing imported"
-            detailColour: checking ? Appearance.colour.accent : Appearance.colour.textFaint
+            detailColour: checking ? Appearance.colour.text : Appearance.colour.textFaint
             detailLines: 2
             flashing: !!root.hear("layout")?.ok
             onPointed: SettingsView.hovered = root.row
@@ -262,7 +262,7 @@ Item {
             lead: checking ? spinner : null
             label: "VIA keymap"
             detail: checking ? `checking ${root.busyName}…` : Keyboards.storedKeymap ? `${Keyboards.storedKeymap.replace(/\.keymap\.json$/, "")} · layer 0` : "nothing imported"
-            detailColour: checking ? Appearance.colour.accent : Appearance.colour.textFaint
+            detailColour: checking ? Appearance.colour.text : Appearance.colour.textFaint
             detailLines: 2
             flashing: !!root.hear("keymap")?.ok
             onPointed: SettingsView.hovered = root.row

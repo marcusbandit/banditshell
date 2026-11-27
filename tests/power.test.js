@@ -11,7 +11,7 @@ const load = (file, names) => new Function(fs.readFileSync(path.join(ROOT, "serv
 const Battery = load("battery.js", ["lowStep", "countdownMessage", "nearlyEmptyChoice", "nearlyEmptyAction", "afterResume", "phaseOf", "stateText", "noteText", "timeText", "flow", "percentOf", "nearlyEmptyFraction", "rearmMargin", "graceSeconds"]);
 const Suspension = load("suspension.js", ["parseHibernate", "resolve", "commandFor", "logindCommand", "logoutCommand"]);
 const Lid = load("lid.js", ["internalOutput", "hasLid", "externalScreens", "differsFromLogind", "chooseAction", "closedFrom", "closedFromProperty"]);
-const Profile = load("powerprofile.js", ["nameFor", "profileFor", "parseProbe", "parseActive", "choices"]);
+const Profile = load("powerprofile.js", ["nameFor", "profileFor", "parseProbe", "parseActive", "choices", "labelOf", "iconOf"]);
 const Charge = load("chargelimit.js", ["parseProbe", "wanted", "shouldWrite", "elsewhere", "trouble"]);
 
 const onBattery = (percentage, extra) => Object.assign({ reading: true, onBattery: true, percentage, warnAt: 0.15, action: "suspend" }, extra);
@@ -333,4 +333,12 @@ test("a battery at 99.6 percent does not read 99", () => {
     assert.strictEqual(Battery.percentOf(0.994), 99);
     assert.strictEqual(Battery.percentOf(1.2), 100);
     assert.strictEqual(Battery.percentOf(NaN), 0);
+});
+
+test("every power mode reads as words, and an unknown one as the setting's name", () => {
+    assert.strictEqual(Profile.labelOf("saver"), "Energy saver");
+    assert.strictEqual(Profile.labelOf("fast"), "Performance");
+    assert.strictEqual(Profile.labelOf("custom-tuned"), "Power mode");
+    assert.strictEqual(Profile.iconOf("saver"), "eco");
+    assert.strictEqual(Profile.iconOf("custom-tuned"), "bolt");
 });

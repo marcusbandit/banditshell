@@ -143,7 +143,7 @@ Column {
                 width: 6
                 height: 6
                 pill: "object"
-                color: Appearance.colour.accent
+                color: Appearance.colour.chosen
             }
         }
     }

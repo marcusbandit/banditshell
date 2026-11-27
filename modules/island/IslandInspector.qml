@@ -63,7 +63,7 @@ Scope {
         {
             appName: "Discord",
             appIcon: "discord",
-            summary: "marcus",
+            summary: "alex",
             body: "are you coming tonight?"
         },
         {

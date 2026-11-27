@@ -79,7 +79,7 @@ test("one app is one group whatever it says, newest first inside", () => {
 
 test("the app that spoke last is on top, however many it sent before", () => {
     const torrent = [note("qBittorrent", "Download completed", 1), note("qBittorrent", "Download completed", 40)];
-    const chat = note("Discord", "marcus", 5);
+    const chat = note("Discord", "alex", 5);
     const groups = Search.byApp([chat, ...torrent]);
     assert.deepStrictEqual(groups.map(g => g.entries[0]), [torrent[0], chat]);
     assert.strictEqual(groups[0].entries[1], torrent[1]);

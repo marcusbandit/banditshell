@@ -325,7 +325,7 @@ ShellRoot {
         },
         {
             name: "a notification while dictating takes the island, dictation buds off",
-            run: () => preview.notify("Discord", "marcus", "are you coming tonight?", false),
+            run: () => preview.notify("Discord", "alex", "are you coming tonight?", false),
             wait: 200,
             expect: "one notification, beside it: dictation"
         },
@@ -343,7 +343,7 @@ ShellRoot {
             name: "two more arrive: a stack",
             run: () => {
                 preview.notify("Firefox", "Download finished", "linux-zen-6.17.tar.zst", false);
-                preview.notify("Discord", "marcus", "bring the switch", false);
+                preview.notify("Discord", "alex", "bring the switch", false);
             },
             expect: "3 notifications stacked"
         },
@@ -476,7 +476,7 @@ ShellRoot {
         },
         {
             name: "a notification on top of it all",
-            run: () => preview.notify("Discord", "marcus", "on my way", false),
+            run: () => preview.notify("Discord", "alex", "on my way", false),
             expect: "one notification, beside it: dictation, 2 launches"
         },
         {
@@ -599,7 +599,7 @@ ShellRoot {
         },
         {
             name: "a notification still takes the island over the row",
-            run: () => preview.notify("Discord", "marcus", "did the update go through?", false),
+            run: () => preview.notify("Discord", "alex", "did the update go through?", false),
             wait: 400,
             expect: "one notification, below it: upgrade"
         },
@@ -712,7 +712,7 @@ ShellRoot {
         {
             name: "the notifications row opens the history",
             run: () => {
-                preview.remember("Discord", "marcus", "are you coming tonight?");
+                preview.remember("Discord", "alex", "are you coming tonight?");
                 preview.remember("Firefox", "Download finished", "linux-zen-6.17.tar.zst");
                 preview.remember("Signal", "Mum", "call me when you get a minute");
                 island.choose({
@@ -820,8 +820,8 @@ ShellRoot {
         {
             name: "the history folds by app too",
             run: () => {
-                preview.arrive("Discord", "marcus", "are you coming tonight?");
-                preview.arrive("Discord", "marcus", "we leave at eight");
+                preview.arrive("Discord", "alex", "are you coming tonight?");
+                preview.arrive("Discord", "alex", "we leave at eight");
                 island.choose({
                     kind: "notifications"
                 });
@@ -1110,7 +1110,7 @@ ShellRoot {
                 Moments.offerUndo();
                 preview.notify("Firefox", "Download finished", "linux-zen-6.17.tar.zst", false);
                 preview.notify("Signal", "Mum", "call me when you get a minute", false);
-                preview.notify("Discord", "marcus", "are you coming tonight?", false);
+                preview.notify("Discord", "alex", "are you coming tonight?", false);
                 preview.order = Notifications.popups.map(e => e.summary).join("|");
                 preview.mine = Notifications.popups.slice();
             },
@@ -1158,7 +1158,7 @@ ShellRoot {
                 Moments.offerUndo();
                 preview.notify("Firefox", "Download finished", "linux-zen-6.17.tar.zst", false);
                 preview.notify("Signal", "Mum", "call me when you get a minute", false);
-                preview.notify("Discord", "marcus", "are you coming tonight?", false);
+                preview.notify("Discord", "alex", "are you coming tonight?", false);
                 preview.order = Notifications.popups.map(e => e.summary).join("|");
                 preview.mine = Notifications.popups.slice();
             },
@@ -1226,7 +1226,7 @@ ShellRoot {
         {
             name: "a muted app's card offers unmute instead",
             run: () => {
-                preview.notify("Discord", "marcus", "still coming?", false);
+                preview.notify("Discord", "alex", "still coming?", false);
                 preview.mine = [Notifications.popups[0]];
                 preview.hushing(true);
             },

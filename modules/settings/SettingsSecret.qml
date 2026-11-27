@@ -37,7 +37,7 @@ Row {
             anchors.fill: parent
             radius: Appearance.rounding.normal
             color: Appearance.colour.fill
-            stroke: input.activeFocus ? Appearance.colour.accent : "transparent"
+            stroke: input.activeFocus ? Appearance.colour.textDim : "transparent"
             strokeWidth: input.activeFocus ? Appearance.stroke.ring : 0
         }
 
@@ -75,7 +75,7 @@ Row {
                         width: 9
                         height: 9
                         pill: "object"
-                        color: root.alarm ? Appearance.colour.alarm : Appearance.colour.accent
+                        color: root.alarm ? Appearance.colour.alarm : Appearance.colour.text
                         scale: grow.value
 
                         Follow {
