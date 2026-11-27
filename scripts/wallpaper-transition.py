@@ -335,7 +335,11 @@ def cutout_alone(a):
     with tempfile.TemporaryDirectory(dir=CACHE) as d:
         src, out = os.path.join(d, "in.png"), os.path.join(d, "out.png")
         Image.fromarray(a).save(src)
-        subprocess.run([sys.executable, os.path.abspath(__file__), "cutout-one", src, out], check=True)
+        done = subprocess.run([sys.executable, os.path.abspath(__file__), "cutout-one", src, out])
+        if done.returncode in (-9, 137):
+            sys.exit(3)
+        if done.returncode != 0:
+            raise RuntimeError(f"cutout-one failed with {done.returncode}")
         return np.asarray(Image.open(out).convert("L"))
 
 

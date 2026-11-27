@@ -213,11 +213,11 @@ def cut(rgb, aspect, run):
         return np.ascontiguousarray(run(canvas)[oy:oy + h, ox:ox + w])
     if aspect == "tiles" and w != h:
         side, length = min(w, h), max(w, h)
-        total = np.zeros((h, w), np.float32)
-        weight = np.zeros((h, w), np.float32)
+        total = np.zeros((h, w), np.float64)
+        weight = np.zeros((h, w), np.float64)
         for start in tile_starts(length, side):
             i = np.arange(side)
-            edge = np.minimum(i + 1, side - i).astype(np.float32)
+            edge = np.minimum(i + 1, side - i).astype(np.float64)
             ramp = np.exp((edge - edge.max()) / SEAM)
             if start == 0:
                 ramp[:side // 2] = ramp.max()
@@ -227,9 +227,9 @@ def cut(rgb, aspect, run):
                 window, ramp = (slice(None), slice(start, start + side)), ramp[None, :]
             else:
                 window, ramp = (slice(start, start + side), slice(None)), ramp[:, None]
-            total[window] += run(np.ascontiguousarray(rgb[window])).astype(np.float32) * ramp
+            total[window] += run(np.ascontiguousarray(rgb[window])).astype(np.float64) * ramp
             weight[window] += ramp
-        return (total / np.maximum(weight, 1e-6) + 0.5).astype(np.uint8)
+        return np.clip(total / np.maximum(weight, 1e-300) + 0.5, 0, 255).astype(np.uint8)
     return run(rgb)
 
 

@@ -183,6 +183,26 @@ print(json.dumps([m.public_host(ok), m.public_host(gone) == socket.gethostname()
         });
     });
 
+    test.it("listens on the tailnet address, else only on loopback", () => {
+        home(env => {
+            const got = py(env, TUNER, `
+import types
+ok = lambda *a, **k: types.SimpleNamespace(returncode=0, stdout="100.64.0.7\\n")
+def gone(*a, **k): raise FileNotFoundError()
+print(json.dumps([m.bind_host(ok), m.bind_host(gone)]))`);
+            assert.deepStrictEqual(got, ["100.64.0.7", "127.0.0.1"]);
+        });
+    });
+
+    test.it("lets in only the token from the link or its cookie", () => {
+        home(env => {
+            const got = py(env, TUNER, `
+print(json.dumps([m.allowed("t0k", {"k": "t0k"}, None), m.allowed("t0k", {}, "a=1; outline-tuner=t0k"), m.allowed("t0k", {"k": "nope"}, "outline-tuner=nope"), m.allowed("t0k", {}, None)]))`);
+            assert.deepStrictEqual(got, [true, true, false, false]);
+            assert.strictEqual(py(env, TUNER, `print(json.dumps(m.tuner_url("box", 8123, "a.jpg", "t0k")))`), "http://box:8123/?k=t0k&file=a.jpg");
+        });
+    });
+
     test.it("puts the starting file in the query, escaped", () => {
         home(env => {
             assert.strictEqual(py(env, TUNER, `print(json.dumps(m.tuner_url("box", 8123, "32x9/a b&c.jpg")))`), "http://box:8123/?file=32x9%2Fa+b%26c.jpg");
@@ -251,6 +271,17 @@ print(json.dumps(m.cut(a, "tiles", run)[0].tolist()))`, CV);
             const middle = got.filter(v => v > 0 && v < 255);
             assert.ok(middle.length >= 3, JSON.stringify(got));
             assert.ok(got.every((v, i) => i === 0 || v <= got[i - 1]), JSON.stringify(got));
+        });
+    });
+
+    test.it("tiles agreeing everywhere stay full at the real thumbnail size", needsCv, () => {
+        home(env => {
+            const got = py(env, OUTLINE, `
+import numpy as np
+a = np.zeros((360, 1280, 3), np.uint8)
+out = m.cut(a, "tiles", lambda x: np.full(x.shape[:2], 255, np.uint8))
+print(json.dumps([int(out.min()), list(out.shape)]))`, CV);
+            assert.deepStrictEqual(got, [255, [360, 1280]]);
         });
     });
 

@@ -731,7 +731,7 @@ $("save").onclick = async () => {
     status.textContent = T.saving;
     try {
         const r = await (await api("/api/save", payload(await editsPng()))).json();
-        if (r.refused) { status.textContent = memoryText(r); return; }
+        if (r.refused) { status.textContent = r.refused === "mask" ? T.noMask : memoryText(r); return; }
         const j = await follow(r.job, () => {});
         if (j.state === "done") status.textContent = j.meta.ok ? T.saved : T.savedFails;
         else status.textContent = j.state === "busy" ? T.refusedBusy : T.modelFailed;

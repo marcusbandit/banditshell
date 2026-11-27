@@ -4,6 +4,7 @@ import base64
 import glob
 import importlib.util
 import io
+import secrets
 import json
 import os
 import socket
@@ -15,6 +16,9 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+THUMBS = 6
+IDLE = 2 * 3600
+COOKIE = "outline-tuner"
 
 
 def sibling(name, file):
@@ -80,9 +84,25 @@ def public_host(run=subprocess.run):
     return socket.gethostname()
 
 
-def tuner_url(host, port, start=None):
-    query = "?" + urllib.parse.urlencode({"file": start}) if start else ""
+def tuner_url(host, port, start=None, token=None):
+    fields = {k: v for k, v in (("k", token), ("file", start)) if v}
+    query = "?" + urllib.parse.urlencode(fields) if fields else ""
     return f"http://{host}:{port}/{query}"
+
+
+def bind_host(run=subprocess.run):
+    try:
+        done = run(["tailscale", "ip", "-4"], capture_output=True, text=True, timeout=5)
+        if done.returncode == 0 and done.stdout.split():
+            return done.stdout.split()[0]
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return "127.0.0.1"
+
+
+def allowed(token, query, cookie):
+    jar = dict(part.strip().split("=", 1) for part in (cookie or "").split(";") if "=" in part)
+    return secrets.compare_digest(query.get("k", ""), token) or secrets.compare_digest(jar.get(COOKIE, ""), token)
 
 
 def neutral_edits(edits):
@@ -164,7 +184,10 @@ class Tuner:
         im = Transition.thumbnail(path)
         arr = np.asarray(im)
         with self.lock:
+            self.thumbs.pop(path, None)
             self.thumbs[path] = (stamp, im, arr)
+            while len(self.thumbs) > THUMBS:
+                self.thumbs.pop(next(iter(self.thumbs)))
         return im, arr
 
     def model(self, path, prep):
@@ -280,7 +303,9 @@ class Tuner:
         im, _ = self.thumb(path)
         base, source = self.base_mask(path, over["prep"], body.get("base"))
         edits = decode_png(body.get("edits"))
-        if edits is not None and (base is None or edits.shape != base.shape):
+        if base is None:
+            return {"refused": "mask"}
+        if edits is not None and edits.shape != base.shape:
             edits = None
         mask_png = edits_png = None
         if base is not None and (source == "hand" or not neutral_edits(edits)):
@@ -288,10 +313,9 @@ class Tuner:
         if not neutral_edits(edits):
             edits_png = png_bytes(np.ascontiguousarray(edits), "L")
         settings = dict(over, size=list(im.size))
-        Outline.write_override(folder, path, settings, mask_png, edits_png)
-        over = Outline.read_override(folder, path)[0]
-        if Transition.needs_model(path, over) and not Transition.room():
+        if mask_png is None and Transition.needs_model(path, over) and not Transition.room():
             return {"refused": "memory", "free": round(free_memory() / (1 << 30), 1), "need": round(Transition.CUTOUT_ROOM / (1 << 30), 1)}
+        Outline.write_override(folder, path, settings, mask_png, edits_png)
 
         def work():
             subprocess.run(Transition.capped_command([path, "--force"]), env=Transition.capped_env(),
@@ -314,23 +338,32 @@ class Tuner:
         key = Transition.key_of(path)
         for stale in glob.glob(os.path.join(Transition.outline_dir(), f"{key}-o*")):
             name = os.path.basename(stale)
-            if not name.startswith(keep + "-") and not name.startswith(keep + "."):
+            if keep == key or (not name.startswith(keep + "-") and not name.startswith(keep + ".")):
                 try:
                     os.remove(stale)
                 except OSError:
                     pass
 
 
-def handler(tuner, page):
+def handler(tuner, page, token, seen):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
             pass
+
+        def let_in(self):
+            url = urllib.parse.urlparse(self.path)
+            if not allowed(token, dict(urllib.parse.parse_qsl(url.query)), self.headers.get("Cookie")):
+                self.send(403, {"error": "open the link banditshell wallpaper outline printed"})
+                return False
+            seen[0] = time.monotonic()
+            return True
 
         def send(self, code, body, kind="application/json"):
             if not isinstance(body, bytes):
                 body = json.dumps(body).encode()
             self.send_response(code)
             self.send_header("Content-Type", kind)
+            self.send_header("Set-Cookie", f"{COOKIE}={token}; Path=/; HttpOnly; SameSite=Strict")
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
@@ -350,6 +383,8 @@ def handler(tuner, page):
             return path
 
         def do_GET(self):
+            if not self.let_in():
+                return
             url = urllib.parse.urlparse(self.path)
             q = dict(urllib.parse.parse_qsl(url.query))
             if url.path == "/":
@@ -383,6 +418,8 @@ def handler(tuner, page):
                 self.send(404, {"error": "not found"})
 
         def do_POST(self):
+            if not self.let_in():
+                return
             url = urllib.parse.urlparse(self.path)
             try:
                 length = int(self.headers.get("Content-Length") or 0)
@@ -418,13 +455,21 @@ def handler(tuner, page):
     return Handler
 
 
-def serve(port):
+def serve(host, port):
     try:
-        return ThreadingHTTPServer(("0.0.0.0", port), None)
+        return ThreadingHTTPServer((host, port), None)
     except OSError:
         if port == 0:
             raise
-        return ThreadingHTTPServer(("0.0.0.0", 0), None)
+        return ThreadingHTTPServer((host, 0), None)
+
+
+def watch_idle(server, seen):
+    while True:
+        time.sleep(60)
+        if time.monotonic() - seen[0] > IDLE:
+            server.shutdown()
+            return
 
 
 def main(argv):
@@ -435,11 +480,15 @@ def main(argv):
     args = parser.parse_args(argv)
     ensure_venv()
     tuner = Tuner(wallpaper_dir(os.environ), args.file)
-    server = serve(args.port)
-    server.RequestHandlerClass = handler(tuner, os.path.join(HERE, "outline-tuner.html"))
+    host = bind_host()
+    server = serve(host, args.port)
+    token = secrets.token_urlsafe(16)
+    seen = [time.monotonic()]
+    server.RequestHandlerClass = handler(tuner, os.path.join(HERE, "outline-tuner.html"), token, seen)
+    threading.Thread(target=watch_idle, args=(server, seen), daemon=True).start()
     port = server.server_address[1]
     _, start = tuner.files()
-    url = tuner_url(public_host(), port, start)
+    url = tuner_url(public_host() if host != "127.0.0.1" else host, port, start, token)
     if args.ready:
         tmp = f"{args.ready}.{os.getpid()}.tmp"
         with open(tmp, "w") as f:
