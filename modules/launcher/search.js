@@ -67,6 +67,14 @@ function sectioned(actions) {
     }));
 }
 
+function destructive(action) {
+    return !!(action && (action.alarm || action.destructive));
+}
+
+function secondaryAction(actions) {
+    return sectioned(actions).slice(1).find(a => !a.tucked && a.run && !destructive(a)) ?? null;
+}
+
 var PICTURE = /\.(?:png|jpe?g|webp|gif|bmp|svg|avif|tiff?)$/i;
 
 function streamName(label) {

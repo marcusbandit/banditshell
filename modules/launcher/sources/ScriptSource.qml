@@ -372,6 +372,7 @@ QtObject {
             out.push({
                 icon: "stop",
                 label: "Stop",
+                destructive: true,
                 run: () => ScriptCommands.stop(script.path)
             });
         else if (run?.lines.length)
