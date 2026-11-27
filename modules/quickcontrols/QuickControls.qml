@@ -340,7 +340,9 @@ Item {
                     }
 
                     Button {
-                        x: root.iconColumn + root.columnGap - padX
+                        id: mixerOpen
+
+                        x: root.iconColumn + root.columnGap - mixerOpen.padX
                         style: "bare"
                         text: "Open volume mixer"
 

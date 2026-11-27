@@ -284,6 +284,11 @@ Column {
                 color: reportBody.activeFocus ? Appearance.colour.fillStrong : Appearance.colour.fill
             }
 
+            FocusMark {
+                shown: reportBody.activeFocus
+                around: Appearance.rounding.small
+            }
+
             TextEdit {
                 id: reportBody
 

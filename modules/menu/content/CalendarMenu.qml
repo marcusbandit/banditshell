@@ -485,7 +485,7 @@ Column {
                             text: `${cellText.day.getDate()}`
                             font.pixelSize: Appearance.font.size.normal
 
-                            color: cellText.isToday ? Appearance.colour.onChosen : cellText.inMonth ? Appearance.colour.text : Appearance.colour.textFaint
+                            color: cellText.isToday ? Appearance.blend(Appearance.colour.text, Appearance.colour.onChosen, pane.glow) : cellText.inMonth ? Appearance.colour.text : Appearance.colour.textFaint
 
                             Loader {
                                 id: tile

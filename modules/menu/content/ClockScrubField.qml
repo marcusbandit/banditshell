@@ -172,8 +172,15 @@ Item {
     SquircleRect {
         anchors.fill: parent
         radius: Appearance.rounding.normal
-        color: root.grabbed || root.typing ? Appearance.colour.fillStrong : Appearance.colour.fill
+        color: plateTone.value
         opacity: hoverFade.value
+
+        FollowColour {
+            id: plateTone
+
+            target: root.grabbed || root.typing ? Appearance.colour.fillStrong : Appearance.colour.fill
+            speed: Appearance.animation.revealSpeed
+        }
 
         Follow {
             id: hoverFade

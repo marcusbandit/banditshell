@@ -210,7 +210,7 @@ Column {
 
             name: tool.icon
             fill: toolFill.value
-            color: tool.on ? Appearance.colour.onChosen : tool.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+            color: tool.on ? Appearance.blend(Appearance.colour.text, Appearance.colour.onChosen, toolFade.value) : tool.hovered ? Appearance.colour.text : Appearance.colour.textFaint
 
             Follow {
                 id: toolFill
