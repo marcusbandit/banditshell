@@ -367,11 +367,19 @@ QtObject {
         const typed = Search.pathQuery(root.query, System.home);
         if (typed)
             FileSearch.list(typed.dir);
-        else
-            FileSearch.find(root.query);
     }
 
-    readonly property string grepFor: root.quiet || root.path || root.intent || root.aliasId || root.text.length < 4 || !/[a-z].*[a-z].*[a-z]/i.test(root.text) || Calculator.answerFor(root.text) ? "" : root.text
+    readonly property bool sourceSecret: root.sources.some(s => !!s.secret)
+
+    readonly property bool secretTyped: Search.looksLikeKey(root.text) || root.sourceSecret
+
+    readonly property var secretSpan: root.sources.reduce((found, s) => found ?? s.secretSpan ?? null, null)
+
+    readonly property string findFor: root.quiet || root.path || root.cliLine !== null ? "" : Search.sendableQuery(root.query, root.intent || root.secretTyped)
+
+    onFindForChanged: FileSearch.find(root.findFor)
+
+    readonly property string grepFor: root.quiet || root.path || root.intent || root.secretTyped || root.aliasId || root.text.length < 4 || !/[a-z].*[a-z].*[a-z]/i.test(root.text) || Calculator.answerFor(root.text) ? "" : root.text
 
     onGrepForChanged: FileSearch.grep(root.grepFor)
 

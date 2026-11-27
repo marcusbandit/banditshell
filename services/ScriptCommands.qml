@@ -41,6 +41,7 @@ Singleton {
 
     onFoldersChanged: {
         root.scripts = [];
+        root.scannedAt = 0;
         settle.restart();
     }
 

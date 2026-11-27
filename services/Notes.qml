@@ -104,8 +104,10 @@ Singleton {
         const name = Logic.quickFileName(text, Date.now());
         const folder = root.quickFolder;
         const job = writer.createObject(root, {
-            command: Logic.quickCommand(folder, name, Logic.quickBody(text)),
-            folder: folder
+            command: Logic.quickCommand(folder, name),
+            body: Logic.quickBody(text),
+            folder: folder,
+            stdinEnabled: true
         });
         job.running = true;
         root.indexedAt = 0;
@@ -118,6 +120,12 @@ Singleton {
             id: write
 
             property string folder: ""
+            property string body: ""
+
+            onStarted: {
+                write.write(write.body);
+                write.stdinEnabled = false;
+            }
 
             onExited: code => {
                 if (code !== 0)
@@ -140,6 +148,11 @@ Singleton {
 
             property string term: ""
             property int serial: 0
+
+            onStarted: {
+                search.write(search.term);
+                search.stdinEnabled = false;
+            }
 
             stdout: StdioCollector {
                 onStreamFinished: {
@@ -169,7 +182,8 @@ Singleton {
             root.grep = grepper.createObject(root, {
                 term: term,
                 serial: root.serial,
-                command: Logic.contentCommand(term, root.vaults, 40)
+                command: Logic.contentCommand(root.vaults, 40),
+                stdinEnabled: true
             });
             root.grep.running = true;
         }

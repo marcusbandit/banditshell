@@ -3,6 +3,7 @@ import Quickshell
 import qs.config
 import qs.services
 import "../../services/plugin-protocol.js" as Protocol
+import "search.js" as Search
 import "../../services/ranking.js" as Ranking
 
 QtObject {
@@ -26,7 +27,9 @@ QtObject {
 
     Component.onDestruction: PluginHost.watch(root, false)
 
-    readonly property var asked: root.plugin && root.search.active ? Protocol.asked(root.plugin, root.search.query) : null
+    readonly property var typedAsk: root.plugin && root.search.active ? Protocol.asked(root.plugin, root.search.query) : null
+
+    readonly property var asked: root.typedAsk && (root.typedAsk.prefixed || Search.sendableQuery(root.typedAsk.text, root.search.intent || root.search.secretTyped)) ? root.typedAsk : null
 
     readonly property string askKey: root.asked ? `${root.asked.prefixed}\n${root.asked.text}` : ""
 
@@ -51,7 +54,7 @@ QtObject {
         }
     }
 
-    readonly property bool intent: !!root.asked?.prefixed
+    readonly property bool intent: !!root.typedAsk?.prefixed
 
     readonly property var answer: PluginHost.answers[root.pluginId] ?? null
 
