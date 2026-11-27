@@ -6,6 +6,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import qs.config
 import "workspace-key.js" as WorkspaceKey
+import "dies-with-shell.js" as DiesWithShell
 
 Singleton {
     id: root
@@ -857,7 +858,7 @@ Singleton {
         const argv = ["python3", Quickshell.shellPath("scripts/pen-pad.py"), "--device-name", String(Config.values.pen.pad ?? "")];
         if (Config.values.pen.grabPad)
             argv.push("--grab");
-        pad.command = argv;
+        pad.command = DiesWithShell.command(argv);
         pad.running = true;
     }
 

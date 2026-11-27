@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "lid.js" as Logic
+import "dies-with-shell.js" as DiesWithShell
 
 Singleton {
     id: root
@@ -92,7 +93,7 @@ Singleton {
     Process {
         id: monitor
 
-        command: ["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1", "--object-path", "/org/freedesktop/login1"]
+        command: DiesWithShell.command(["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1", "--object-path", "/org/freedesktop/login1"])
 
         stdout: SplitParser {
             onRead: line => root.hear(line)
