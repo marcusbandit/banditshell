@@ -30,17 +30,17 @@ PanelWindow {
     readonly property var widgets: [clock, weather, media, system, limits]
     readonly property var grid: Placement.grid(win.area, Appearance.padding.huge, Appearance.padding.large)
     readonly property Item carried: win.widgets.find(w => w.visible && w.dragging) ?? null
-    readonly property bool raising: win.widgets.some(w => w.visible && w.expanded)
+    readonly property bool raising: win.widgets.some(w => w.visible && w.overlaid)
     readonly property var restRects: win.widgets.map(w => w.visible ? w.restRect : null)
     property var recent: []
     readonly property bool opened: sheet.open || win.widgets.some(w => w.visible && w.expanded)
     readonly property bool grabbing: win.widgets.some(w => w.held)
     readonly property var heights: ({
-            clock: clock.visible ? clock.restHeight : 0,
-            weather: weather.visible ? weather.restHeight : 0,
-            media: media.visible ? media.restHeight : 0,
-            system: system.visible ? system.restHeight : 0,
-            limits: limits.visible ? limits.restHeight : 0
+            clock: clock.visible ? clock.restBox.height : 0,
+            weather: weather.visible ? weather.restBox.height : 0,
+            media: media.visible ? media.restBox.height : 0,
+            system: system.visible ? system.restBox.height : 0,
+            limits: limits.visible ? limits.restBox.height : 0
         })
 
     function othersOf(w: Item): var {
@@ -216,11 +216,11 @@ PanelWindow {
         id: under
 
         anchors.fill: parent
-        source: win.raising ? glass.source : ""
+        source: glass.source
 
         ShaderEffectSource {
             anchors.fill: parent
-            sourceItem: win.raising ? desk : null
+            sourceItem: win.raising || sheet.open ? desk : null
             live: true
         }
     }
@@ -264,9 +264,9 @@ PanelWindow {
         ClockWidget {
             id: clock
 
-            parent: clock.expanded ? above : desk
+            parent: clock.overlaid ? above : desk
             output: win.output
-            backdrop: clock.expanded ? under : glass
+            backdrop: clock.overlaid ? under : glass
             area: win.area
             grid: win.grid
             neighbours: win.othersOf(clock)
@@ -286,9 +286,9 @@ PanelWindow {
         WeatherWidget {
             id: weather
 
-            parent: weather.expanded ? above : desk
+            parent: weather.overlaid ? above : desk
             output: win.output
-            backdrop: weather.expanded ? under : glass
+            backdrop: weather.overlaid ? under : glass
             area: win.area
             grid: win.grid
             neighbours: win.othersOf(weather)
@@ -305,9 +305,9 @@ PanelWindow {
         MediaWidget {
             id: media
 
-            parent: media.expanded ? above : desk
+            parent: media.overlaid ? above : desk
             output: win.output
-            backdrop: media.expanded ? under : glass
+            backdrop: media.overlaid ? under : glass
             area: win.area
             grid: win.grid
             neighbours: win.othersOf(media)
@@ -325,9 +325,9 @@ PanelWindow {
         SystemWidget {
             id: system
 
-            parent: system.expanded ? above : desk
+            parent: system.overlaid ? above : desk
             output: win.output
-            backdrop: system.expanded ? under : glass
+            backdrop: system.overlaid ? under : glass
             area: win.area
             grid: win.grid
             neighbours: win.othersOf(system)
@@ -345,9 +345,9 @@ PanelWindow {
         AgentLimitsWidget {
             id: limits
 
-            parent: limits.expanded ? above : desk
+            parent: limits.overlaid ? above : desk
             output: win.output
-            backdrop: limits.expanded ? under : glass
+            backdrop: limits.overlaid ? under : glass
             area: win.area
             grid: win.grid
             neighbours: win.othersOf(limits)
@@ -375,6 +375,6 @@ PanelWindow {
 
         anchors.fill: parent
         z: 100
-        backdrop: glass
+        backdrop: under
     }
 }
