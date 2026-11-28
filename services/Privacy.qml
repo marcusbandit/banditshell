@@ -60,7 +60,8 @@ Singleton {
     property string heardKey: ""
 
     readonly property var holders: Logic.holders(root.usages, root.listeners, guess => {
-        const entry = Apps.entryFor(guess);
+        const lower = guess.toLowerCase();
+        const entry = Apps.entryFor(guess) ?? Apps.all.find(e => (e.name ?? "").toLowerCase() === lower || (e.id ?? "").split(".").pop().toLowerCase() === lower);
         return entry ? {
             name: entry.name,
             spec: AppIcons.markFor(entry.id, "")

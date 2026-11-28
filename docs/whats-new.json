@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-11-28-island-sections",
+      "date": "2026-11-28",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The island sorts notifications into Messages, Apps and Silent"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A bar under the list shows the apps still further down"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Apps on your mic show by name and icon, with Using microphone"
+        }
+      ]
+    },
+    {
       "id": "2026-11-28-limits-pace",
       "date": "2026-11-28",
       "changes": [
