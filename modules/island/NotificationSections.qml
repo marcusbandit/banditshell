@@ -18,10 +18,11 @@ Item {
     property real contentLead: Appearance.padding.card
 
     signal chosen(var activity)
+    signal lifted
 
     readonly property var sections: Sections.split(root.groups, root.holders.length)
     readonly property var opened: Sections.newest(root.groups)
-    readonly property var drawn: root.groups.reduce((all, g) => all.concat(g.entries.filter(e => !e.leaving)), [])
+    readonly property var drawn: root.placed.filter(p => p.entry && p.top - scroller.contentY < root.viewHeight && p.top + p.height - scroller.contentY > 0).map(p => p.entry)
 
     readonly property real markSize: Appearance.font.line.small + Appearance.padding.small
     readonly property real barHeight: root.markSize + Appearance.padding.normal * 2
@@ -41,7 +42,6 @@ Item {
         wheel.scrollTo(0)
 
     readonly property var placed: {
-        scroller.contentY;
         list.implicitHeight;
         sectionRepeater.count;
         const out = [];
@@ -61,13 +61,12 @@ Item {
                     });
             }
             const deck = section.deck;
-            for (const p of deck.placed)
-                out.push({
-                    key: `entry:${p.entry.id || out.length}`,
+            deck.placed.forEach((p, n) => out.push({
+                    key: `entry:${p.entry.id || `${section.modelData.key}:${n}`}`,
                     entry: p.entry,
                     top: section.y + deck.y + p.top,
                     height: p.height
-                });
+                }));
         }
         return out;
     }
@@ -79,9 +78,13 @@ Item {
     Flickable {
         id: scroller
 
-        function nudge(by: real): void {
+        function nudge(by: real): bool {
+            const to = wheel.bound(scroller.contentY - by);
+            if (Math.abs(to - scroller.contentY) < 0.01)
+                return false;
             wheel.stop();
-            scroller.contentY = wheel.bound(scroller.contentY - by);
+            scroller.contentY = to;
+            return true;
         }
 
         function glide(speed: real): void {
@@ -144,7 +147,10 @@ Item {
                         Repeater {
                             id: holderRows
 
-                            model: section.modelData.key === "silent" ? root.holders : []
+                            model: ScriptModel {
+                                values: section.modelData.key === "silent" ? root.holders : []
+                                objectProp: "key"
+                            }
 
                             SilentRow {
                                 required property var modelData
@@ -182,6 +188,7 @@ Item {
 
                         onDismissed: entry => Notifications.forget(entry)
                         onKept: entry => Notifications.forget(entry)
+                        onLifted: root.lifted()
                     }
                 }
             }

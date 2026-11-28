@@ -747,8 +747,16 @@ Item {
                     onCountTapped: root.toggle(slot.group)
                     onReleased: root.part(slot.modelData, false)
                     onKept: root.part(slot.modelData, true)
-                    onScrolled: by => root.scroller ? root.scroller.nudge(by) : root.dragBy(by)
-                    onScrollEnded: speed => root.scroller ? root.scroller.glide(speed) : root.dragEnd(speed)
+                    onScrolled: by => {
+                        if (!root.scroller || rise.held || !root.scroller.nudge(by))
+                            root.dragBy(by);
+                    }
+                    onScrollEnded: speed => {
+                        if (root.scroller && !rise.held)
+                            root.scroller.glide(speed);
+                        else
+                            root.dragEnd(speed);
+                    }
                 }
 
                 Separator {

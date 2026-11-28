@@ -28,7 +28,7 @@ Item {
         topRightRadius: root.joinedAbove ? root.seam : Appearance.rounding.normal
         bottomLeftRadius: root.joinedBelow ? root.seam : Appearance.rounding.normal
         bottomRightRadius: root.joinedBelow ? root.seam : Appearance.rounding.normal
-        color: area.containsMouse ? Appearance.colour.fill : Appearance.colour.tile
+        color: area.containsMouse && root.holder?.kind === "mic" ? Appearance.colour.fill : Appearance.colour.tile
     }
 
     AppMark {

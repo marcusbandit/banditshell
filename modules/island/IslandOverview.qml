@@ -318,6 +318,7 @@ Item {
             maxHeight: Math.max(Appearance.font.line.small * 8, root.room - root.topInset - root.bottomInset - notices.y)
 
             onChosen: activity => root.chosen(activity)
+            onLifted: root.lifted()
         }
     }
 }

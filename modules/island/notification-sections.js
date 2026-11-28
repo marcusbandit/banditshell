@@ -15,8 +15,6 @@ function sectionOf(entry) {
         return "silent";
     if (/^im(\.|$)/.test(String(entry.category || "")))
         return "messages";
-    if (entry.canReply)
-        return "messages";
     const names = [entry.appName, entry.desktopEntry, entry.appId].map(n => String(n || "").split(".").pop());
     return names.some(n => CHATS.test(n)) ? "messages" : "apps";
 }

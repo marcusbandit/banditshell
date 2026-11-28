@@ -201,10 +201,12 @@ function named(found, table) {
         const name = known.unit || listener.binary || listener.app;
         let row = out.find(r => r.name === name);
         if (!row) {
-            row = { name: name, command: known.command || "", device: listener.device, pid: listener.pid, processes: 0 };
+            row = { name: name, command: known.command || "", device: listener.device, pid: listener.pid, processes: 0, apps: [] };
             out.push(row);
             pids[name] = [];
         }
+        if (!row.apps.includes(listener.app))
+            row.apps.push(listener.app);
         const key = listener.pid > 0 ? listener.pid : `app:${listener.app}`;
         if (!pids[name].includes(key)) {
             pids[name].push(key);
@@ -233,16 +235,18 @@ function appGuesses(name) {
 function holders(usages, listeners, find) {
     const out = [];
     for (const usage of usages || []) {
-        const heard = usage.kind === "mic" ? (listeners || []).map(l => l.name) : [];
+        const heard = usage.kind === "mic" ? (listeners || []).filter(l => !l.apps || l.apps.some(app => usage.apps.includes(app))).map(l => l.name) : [];
         const names = heard.length > 0 ? heard : usage.apps;
         for (const name of names) {
             let found = null;
-            for (const guess of appGuesses(name)) {
+            const guesses = appGuesses(name);
+            for (const guess of guesses) {
                 found = find(guess);
                 if (found)
                     break;
             }
-            const shown = found ? found.name : name;
+            const last = guesses[guesses.length - 1] || name;
+            const shown = found ? found.name : last.charAt(0).toUpperCase() + last.slice(1);
             const key = `${usage.kind}:${shown}`;
             if (out.some(h => h.key === key))
                 continue;

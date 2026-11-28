@@ -68,12 +68,26 @@ Singleton {
         } : null;
     })
 
+    property bool again: false
+
     function listen(): void {
         if (root.mocked) {
             root.listeners = root.mocked;
             return;
         }
+        if (dump.running || names.running) {
+            root.again = true;
+            return;
+        }
         dump.running = true;
+    }
+
+    function take(rows: var): void {
+        if (root.again) {
+            root.again = false;
+            Qt.callLater(root.listen);
+        }
+        root.listeners = root.heardKey === "" ? [] : rows;
     }
 
     function mock(usages: var, rows: var): void {
@@ -129,7 +143,7 @@ Singleton {
                 root.found = Logic.listeners(text);
                 const pids = root.found.map(l => String(l.pid)).filter(pid => pid !== "0");
                 if (pids.length === 0) {
-                    root.listeners = Logic.named(root.found, "");
+                    root.take(Logic.named(root.found, ""));
                     return;
                 }
                 names.command = ["sh", "-c", 'for p; do [ -r "/proc/$p/cmdline" ] || continue; printf "%s\\t%s\\t%s\\n" "$p" "$(tr "\\0" " " < "/proc/$p/cmdline")" "$(tail -n 1 "/proc/$p/cgroup" 2>/dev/null)"; done', "sh", ...pids];
@@ -142,7 +156,7 @@ Singleton {
         id: names
 
         stdout: StdioCollector {
-            onStreamFinished: root.listeners = Logic.named(root.found, text)
+            onStreamFinished: root.take(Logic.named(root.found, text))
         }
     }
 

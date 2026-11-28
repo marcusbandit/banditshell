@@ -10,10 +10,9 @@ const note = (appName, extra) => Object.assign({ appName, urgency: 1, time: 0 },
 const group = (key, ...entries) => ({ key, entries });
 
 test.describe("notification sections", () => {
-    test.it("chats and replyable notes are messages, quiet ones are silent, the rest are apps", () => {
+    test.it("chats are messages, quiet ones are silent, the rest are apps", () => {
         assert.strictEqual(S.sectionOf(note("Discord")), "messages");
         assert.strictEqual(S.sectionOf(note("Mail", { category: "im.received" })), "messages");
-        assert.strictEqual(S.sectionOf(note("Thing", { canReply: true })), "messages");
         assert.strictEqual(S.sectionOf(note("Discord", { urgency: 0 })), "silent");
         assert.strictEqual(S.sectionOf(note("Firefox")), "apps");
         assert.strictEqual(S.sectionOf(note("Sessions")), "apps");
