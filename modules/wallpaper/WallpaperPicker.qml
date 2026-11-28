@@ -364,7 +364,7 @@ Item {
             }
             GradientStop {
                 position: 1
-                color: Qt.rgba(0, 0, 0, root.shade)
+                color: Appearance.withAlpha(Appearance.grey(0), root.shade)
             }
         }
     }
