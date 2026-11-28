@@ -9,6 +9,8 @@ const PRESENTATION = {
     screen: { name: "Screen", state: "Screen shared", icon: "screen_share", priority: 20, menu: "" }
 };
 
+const USING = { mic: "Using microphone", camera: "Using camera", screen: "Sharing screen" };
+
 function classOf(node) {
     return String((node.props || {})["media.class"] || "");
 }
@@ -199,14 +201,56 @@ function named(found, table) {
         const name = known.unit || listener.binary || listener.app;
         let row = out.find(r => r.name === name);
         if (!row) {
-            row = { name: name, command: known.command || "", device: listener.device, pid: listener.pid, processes: 0 };
+            row = { name: name, command: known.command || "", device: listener.device, pid: listener.pid, processes: 0, apps: [] };
             out.push(row);
             pids[name] = [];
         }
+        if (!row.apps.includes(listener.app))
+            row.apps.push(listener.app);
         const key = listener.pid > 0 ? listener.pid : `app:${listener.app}`;
         if (!pids[name].includes(key)) {
             pids[name].push(key);
             row.processes = pids[name].length;
+        }
+    }
+    return out;
+}
+
+function appGuesses(name) {
+    const out = [];
+    const add = guess => {
+        if (guess && !out.includes(guess))
+            out.push(guess);
+    };
+    const raw = String(name || "").trim();
+    add(raw);
+    const bare = raw.replace(/^PipeWire ALSA \[(.*)\]$/, "$1");
+    add(bare);
+    const parts = bare.split(/[-_ ]+/).filter(part => part !== "");
+    for (let i = parts.length - 1; i > 0; i--)
+        add(parts.slice(0, i).join("-"));
+    return out;
+}
+
+function holders(usages, listeners, find) {
+    const out = [];
+    for (const usage of usages || []) {
+        const heard = usage.kind === "mic" ? (listeners || []).filter(l => !l.apps || l.apps.some(app => usage.apps.includes(app))).map(l => l.name) : [];
+        const names = heard.length > 0 ? heard : usage.apps;
+        for (const name of names) {
+            let found = null;
+            const guesses = appGuesses(name);
+            for (const guess of guesses) {
+                found = find(guess);
+                if (found)
+                    break;
+            }
+            const last = guesses[guesses.length - 1] || name;
+            const shown = found ? found.name : last.charAt(0).toUpperCase() + last.slice(1);
+            const key = `${usage.kind}:${shown}`;
+            if (out.some(h => h.key === key))
+                continue;
+            out.push({ key: key, kind: usage.kind, name: shown, spec: found ? found.spec || "" : "", icon: PRESENTATION[usage.kind].icon, line: USING[usage.kind] });
         }
     }
     return out;

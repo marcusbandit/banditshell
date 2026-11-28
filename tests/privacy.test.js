@@ -239,7 +239,7 @@ test.describe("what is listening", () => {
     test.it("one row per program, named by its unit, then its binary, then what PipeWire calls it", () => {
         const found = P.listeners(dump);
         const table = "1042\t/home/x/.venv/bin/python -m voice\t0::/user.slice/user@1000.service/app.slice/diablo-voice.service\n";
-        assert.deepStrictEqual(P.named(found, table), [{ name: "diablo-voice", command: "python -m voice", device: "Scarlett 2i2 USB Mic1", pid: 1042, processes: 1 }]);
+        assert.deepStrictEqual(P.named(found, table), [{ name: "diablo-voice", command: "python -m voice", device: "Scarlett 2i2 USB Mic1", pid: 1042, processes: 1, apps: ["PipeWire ALSA [python3.12]"] }]);
         const helper = found.concat([{ app: "pw-record", binary: "pw-cat", pid: 2187, device: "Scarlett 2i2 USB Mic1" }]);
         const both = table + "2187\tpw-record --raw -\t0::/user.slice/user@1000.service/app.slice/diablo-voice.service\n";
         const rows = P.named(helper, both);
@@ -250,3 +250,34 @@ test.describe("what is listening", () => {
     });
 });
 
+
+test.describe("holders", () => {
+    const H = new Function(src + "\nreturn { holders, appGuesses };")();
+    const apps = { diablo: { name: "Diablo", spec: "image:/diablo.svg" }, firefox: { name: "Firefox", spec: "" } };
+    const find = guess => apps[guess] ?? null;
+
+    test.it("guesses an app from a unit, then shorter prefixes", () => {
+        assert.deepStrictEqual(H.appGuesses("diablo-ears"), ["diablo-ears", "diablo"]);
+        assert.deepStrictEqual(H.appGuesses("PipeWire ALSA [python3.12]"), ["PipeWire ALSA [python3.12]", "python3.12"]);
+    });
+
+    test.it("a listener the shell keeps quiet stays out, even beside one it shows", () => {
+        const rows = H.holders([{ kind: "mic", apps: ["Discord"] }], [{ name: "discord", apps: ["Discord"] }, { name: "dictation", apps: ["voice"] }], find);
+        assert.deepStrictEqual(rows.map(r => r.name), ["Discord"]);
+    });
+
+    test.it("a unit the desktop knows shows the app's name, mark and what it uses", () => {
+        const rows = H.holders([{ kind: "mic", apps: ["PipeWire ALSA [python3.12]"] }], [{ name: "diablo-ears" }], find);
+        assert.deepStrictEqual(rows, [{ key: "mic:Diablo", kind: "mic", name: "Diablo", spec: "image:/diablo.svg", icon: "mic", line: "Using microphone" }]);
+    });
+
+    test.it("before the listeners are named, the PipeWire names stand in, one row per app", () => {
+        const rows = H.holders([{ kind: "camera", apps: ["firefox", "Firefox"] }, { kind: "mic", apps: ["obs"] }], [], find);
+        assert.deepStrictEqual(rows.map(r => [r.key, r.line]), [["camera:Firefox", "Using camera"], ["mic:Obs", "Using microphone"]]);
+    });
+});
+
+test.it("a unit no app matches still reads as a name, not a process", () => {
+    const H = new Function(src + "\nreturn { holders };")();
+    assert.strictEqual(H.holders([{ kind: "mic", apps: ["x"] }], [{ name: "diablo-ears" }], () => null)[0].name, "Diablo");
+});

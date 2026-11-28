@@ -47,6 +47,10 @@ Item {
 
     property bool clearQuiet: false
 
+    property bool briefRest: false
+    property var opened: null
+    property var scroller: null
+
     signal dismissed(var entry)
     signal kept(var entry)
     signal history
@@ -285,6 +289,21 @@ Item {
     }
 
     readonly property real listHeight: root.tops[root.tops.length - 1]
+
+    readonly property var placed: {
+        root.reshaped;
+        const out = [];
+        for (let i = 0; i < slots.count; i++) {
+            const slot = slots.itemAt(i);
+            if (slot && !slot.leaving && !slot.tucks && slot.height > 0.5)
+                out.push({
+                    entry: slot.modelData,
+                    top: slot.y,
+                    height: slot.height
+                });
+        }
+        return out;
+    }
 
     readonly property real foldedHeight: {
         root.reshaped;
@@ -717,6 +736,7 @@ Item {
                     count: slot.tally
                     countOpen: slot.spread
                     folded: slot.tally > 1 && !slot.spread
+                    collapsed: root.briefRest && slot.modelData !== root.opened
                     tiled: root.grouped
                     joinedAbove: root.grouped && !!slot.above && !slot.apart
                     joinedBelow: root.grouped && !!slot.belowSeen && !slot.belowSeen.apart
@@ -727,8 +747,16 @@ Item {
                     onCountTapped: root.toggle(slot.group)
                     onReleased: root.part(slot.modelData, false)
                     onKept: root.part(slot.modelData, true)
-                    onScrolled: by => root.dragBy(by)
-                    onScrollEnded: speed => root.dragEnd(speed)
+                    onScrolled: by => {
+                        if (!root.scroller || rise.held || !root.scroller.nudge(by))
+                            root.dragBy(by);
+                    }
+                    onScrollEnded: speed => {
+                        if (root.scroller && !rise.held)
+                            root.scroller.glide(speed);
+                        else
+                            root.dragEnd(speed);
+                    }
                 }
 
                 Separator {

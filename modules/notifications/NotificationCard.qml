@@ -19,6 +19,7 @@ Item {
     property int count: 1
     property bool countOpen: false
     property bool folded: false
+    property bool collapsed: false
     property bool tiled: false
     property bool joinedAbove: false
     property bool joinedBelow: false
@@ -399,7 +400,7 @@ Item {
                         text: root.entry?.summary || (!root.entry?.body ? "(no message)" : "")
                         font.family: root.family
                         wrapMode: Text.Wrap
-                        maximumLineCount: 2
+                        maximumLineCount: root.collapsed ? 1 : 2
                         elide: Text.ElideRight
                     }
                 }
@@ -471,7 +472,7 @@ Item {
                     color: Appearance.colour.textDim
                     topPadding: Appearance.padding.small / 2
 
-                    lines: root.page ? 12 : 2
+                    lines: root.page ? 12 : root.collapsed ? 1 : 2
                 }
 
                 Item {
@@ -479,7 +480,7 @@ Item {
 
                     width: parent.width + root.closeRoom
                     height: Appearance.font.line.small + Appearance.padding.small / 2
-                    visible: !!root.entry?.appName || root.count > 1
+                    visible: root.count > 1 || !!root.entry?.appName && !root.collapsed
 
                     Item {
                         id: tally
@@ -543,7 +544,7 @@ Item {
                     id: buttons
 
                     width: parent.width + root.closeRoom
-                    visible: root.actions.length > 0
+                    visible: root.actions.length > 0 && !root.collapsed
                     topPadding: Appearance.padding.normal
                     spacing: Appearance.padding.small
 

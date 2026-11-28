@@ -57,19 +57,43 @@ Singleton {
     property var listeners: []
     property var found: []
     property var mocked: null
+    property string heardKey: ""
+
+    readonly property var holders: Logic.holders(root.usages, root.listeners, guess => {
+        const lower = guess.toLowerCase();
+        const entry = Apps.entryFor(guess) ?? Apps.all.find(e => (e.name ?? "").toLowerCase() === lower || (e.id ?? "").split(".").pop().toLowerCase() === lower);
+        return entry ? {
+            name: entry.name,
+            spec: AppIcons.markFor(entry.id, "")
+        } : null;
+    })
+
+    property bool again: false
 
     function listen(): void {
         if (root.mocked) {
             root.listeners = root.mocked;
             return;
         }
+        if (dump.running || names.running) {
+            root.again = true;
+            return;
+        }
         dump.running = true;
     }
 
+    function take(rows: var): void {
+        if (root.again) {
+            root.again = false;
+            Qt.callLater(root.listen);
+        }
+        root.listeners = root.heardKey === "" ? [] : rows;
+    }
+
     function mock(usages: var, rows: var): void {
-        root.mockedUsages = usages;
         root.mocked = rows;
         root.listeners = rows ?? [];
+        root.mockedUsages = usages;
     }
 
     function settle(): void {
@@ -79,6 +103,14 @@ Singleton {
         const hushed = root.quiet.mic ? Logic.usages(root.snapshot, {}).find(u => u.kind === "mic") ?? null : null;
         const step = Logic.micStep(root.heard, mic, micMoment.running, hushed);
         root.heard = step.heard;
+        const heardKey = mic ? mic.apps.join("\n") : "";
+        if (heardKey !== root.heardKey) {
+            root.heardKey = heardKey;
+            if (mic)
+                root.listen();
+            else if (!root.mocked)
+                root.listeners = [];
+        }
         if (!mic)
             micMoment.stop();
         else if (step.announce)
@@ -111,7 +143,7 @@ Singleton {
                 root.found = Logic.listeners(text);
                 const pids = root.found.map(l => String(l.pid)).filter(pid => pid !== "0");
                 if (pids.length === 0) {
-                    root.listeners = Logic.named(root.found, "");
+                    root.take(Logic.named(root.found, ""));
                     return;
                 }
                 names.command = ["sh", "-c", 'for p; do [ -r "/proc/$p/cmdline" ] || continue; printf "%s\\t%s\\t%s\\n" "$p" "$(tr "\\0" " " < "/proc/$p/cmdline")" "$(tail -n 1 "/proc/$p/cgroup" 2>/dev/null)"; done', "sh", ...pids];
@@ -124,7 +156,7 @@ Singleton {
         id: names
 
         stdout: StdioCollector {
-            onStreamFinished: root.listeners = Logic.named(root.found, text)
+            onStreamFinished: root.take(Logic.named(root.found, text))
         }
     }
 

@@ -733,7 +733,7 @@ ShellRoot {
             holds: () => Notifications.history.length === preview.before - 1 && preview.gapless()
         },
         {
-            name: "back in the overview, the newest sit under the clock with a row for the rest",
+            name: "back in the overview, every notification sits in its section, the newest one open",
             run: () => {
                 preview.remember("Steam", "Download complete", "Hollow Knight: Silksong");
                 preview.remember("Thunderbird", "Invoice", "your invoice for October is ready");
@@ -741,17 +741,72 @@ ShellRoot {
             },
             wait: 1500,
             expect: "overview",
-            holds: () => island.recent.length === 3 && island.unlisted === Notifications.history.length - 3
+            holds: () => preview.sections()?.sections.map(s => s.key).join() === "messages,apps" && preview.cardOf(preview.sections()?.opened)?.collapsed === false && preview.cards(island.stage).filter(c => c.collapsed).length > 0
         },
         {
             name: "a swipe away in the overview closes its row and the next one comes up",
             run: () => {
                 preview.before = Notifications.history.length;
-                preview.cardOf(island.recentGroups.find(g => g.entries.length === 1)?.entries[0])?.fling(1);
+                preview.cardOf(island.appGroups.find(g => g.entries.length === 1)?.entries[0])?.fling(1);
             },
             wait: 1500,
             expect: "overview",
-            holds: () => Notifications.history.length === preview.before - 1 && island.recent.length === 3 && preview.gapless() && preview.tidy()
+            holds: () => Notifications.history.length === preview.before - 1 && preview.gapless() && preview.tidy()
+        },
+        {
+            name: "Diablo listening: Silent names the app, not its process",
+            run: () => Privacy.mock([{
+                        kind: "mic",
+                        apps: ["PipeWire ALSA [python3.12]"]
+                    }], [{
+                        name: "diablo-ears",
+                        command: "python -m voice.ears run",
+                        device: "",
+                        pid: 1052,
+                        processes: 1
+                    }]),
+            wait: 1500,
+            expect: "overview",
+            holds: () => preview.sections()?.sections.some(s => s.key === "silent") && Privacy.holders[0]?.line === "Using microphone" && !Privacy.holders[0]?.name.startsWith("PipeWire")
+        },
+        {
+            name: "a long list scrolls, and a bar holds the marks of the cards still below",
+            run: () => {
+                for (const [app, summary] of [["Steam", "Friend online"], ["Firefox", "Download finished"], ["Signal", "Mum"], ["Spotify", "New release"], ["GitHub", "Review requested"], ["Weather", "Very cloudy"], ["Telegram", "Sam"]])
+                    preview.remember(app, summary, "something happened a little while ago");
+            },
+            wait: 1500,
+            expect: "overview",
+            holds: () => preview.sections()?.overflows && preview.sections()?.below.length > 0
+        },
+        {
+            name: "scrolled down: the marks of the cards in view have left the bar",
+            run: () => {
+                preview.shelved = preview.sections()?.below.length ?? 0;
+                preview.scrollSections(0.6);
+            },
+            wait: 1500,
+            expect: "overview",
+            holds: () => (preview.sections()?.below.length ?? 0) < preview.shelved
+        },
+        {
+            name: "at the bottom, Silent holds Diablo and the bar is empty",
+            run: () => preview.scrollSections(1),
+            wait: 1500,
+            expect: "overview",
+            holds: () => (preview.sections()?.below.length ?? 1) === 0
+        },
+        {
+            name: "the microphone stops and the list goes back to the top",
+            run: () => {
+                preview.scrollSections(0);
+                Privacy.mock(null, null);
+                for (const e of Notifications.history.filter(e => ["Steam", "Firefox", "Signal", "Spotify", "GitHub", "Weather", "Telegram"].includes(e.appName) && e.body === "something happened a little while ago"))
+                    Notifications.forget(e);
+            },
+            wait: 1500,
+            expect: "overview",
+            holds: () => Privacy.holders.length === 0
         },
         {
             name: "a click on one with nothing to open shows it big in the island",
@@ -779,7 +834,7 @@ ShellRoot {
             },
             wait: 1500,
             expect: "overview",
-            holds: () => island.recentGroups[0]?.entries.length === 3 && preview.torrents().length === 1 && preview.torrents()[0].count === 3 && preview.tidy()
+            holds: () => island.appGroups[0]?.entries.length === 3 && preview.torrents().length === 1 && preview.torrents()[0].count === 3 && preview.tidy()
         },
         {
             name: "a click on the folded group opens it up to all of them",
@@ -807,7 +862,7 @@ ShellRoot {
             run: () => {
                 for (const n of [1, 2, 3, 4])
                     preview.arrive(`App ${n}`, "Something happened", "a line of text");
-                for (const entry of [island.recent[0], island.recent[1]]) {
+                for (const entry of [island.appGroups[0]?.entries[0], island.appGroups[1]?.entries[0]]) {
                     const area = preview.drag(entry, 140);
                     area?.advance(300, 0);
                     area?.conclude();
@@ -815,7 +870,7 @@ ShellRoot {
             },
             wait: 2500,
             expect: "overview",
-            holds: () => island.recent.length === 3 && preview.tidy()
+            holds: () => island.appGroups.length >= 4 && preview.tidy()
         },
         {
             name: "the history folds by app too",
@@ -1344,6 +1399,29 @@ ShellRoot {
         return out;
     }
 
+    property int shelved: 0
+
+    function sections(): var {
+        const find = item => {
+            for (const child of item?.children ?? []) {
+                if (child.below !== undefined && child.opened !== undefined && typeof child.foldAll === "function")
+                    return child;
+                const deeper = find(child);
+                if (deeper)
+                    return deeper;
+            }
+            return null;
+        };
+        return find(island.stage);
+    }
+
+    function scrollSections(part: real): void {
+        const list = preview.sections();
+        const flick = list?.children.find(c => c.contentHeight !== undefined);
+        if (flick)
+            flick.contentY = Math.max(0, flick.contentHeight - flick.height) * part;
+    }
+
     function cardOf(entry: var): Item {
         return preview.cards(island.stage).find(c => c.entry === entry && c.opacity > 0.01) ?? null;
     }
@@ -1377,14 +1455,22 @@ ShellRoot {
         return area;
     }
 
+    function deckOf(item: Item): var {
+        for (let at = item?.parent; at; at = at.parent)
+            if (at.placed !== undefined && typeof at.foldAll === "function")
+                return at;
+        return null;
+    }
+
     function tidy(): bool {
         const rows = preview.cards(island.stage).filter(c => c.opacity > 0.01 && !c.entry.leaving).map(c => ({
                     y: c.mapToItem(island.stage, 0, 0).y,
                     h: c.height,
-                    app: c.entry.appName
+                    app: c.entry.appName,
+                    deck: preview.deckOf(c)
                 })).sort((p, q) => p.y - q.y);
         return rows.every((r, i) => {
-            if (i === 0)
+            if (i === 0 || r.deck !== rows[i - 1].deck)
                 return true;
             const gap = r.y - (rows[i - 1].y + rows[i - 1].h);
             return Math.abs(gap) < 2 || r.app !== rows[i - 1].app && Math.abs(gap - Appearance.padding.small) < 2;
