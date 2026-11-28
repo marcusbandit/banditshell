@@ -12,7 +12,12 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Dragging an opened desktop widget keeps it under the pointer"
+          "text": "An opened desktop widget stays open while you drag it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The drag grid lines up with widget edges and lights up around the card"
         }
       ]
     },

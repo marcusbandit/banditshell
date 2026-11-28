@@ -98,8 +98,13 @@ Item {
 
     function drop(): void {
         const to = root.landing;
-        slideX.value = root.dragTo.x - to.x;
-        slideY.value = root.dragTo.y - to.y;
+        if (root.expanded) {
+            root.turnedSide = "left";
+            root.turnedEdge = "top";
+            root.turned = true;
+        }
+        slideX.value = root.dragTo.x - (root.expanded ? Placement.clamp(to.x, root.area.x, Math.max(root.area.x, root.area.x + root.area.width - root.width)) : to.x);
+        slideY.value = root.dragTo.y - (root.expanded ? Placement.clamp(to.y, root.area.y, Math.max(root.area.y, root.area.y + root.area.height - root.height)) : to.y);
         root.moveTo(to.x, to.y);
         root.dragging = false;
         root.moved();
@@ -212,10 +217,6 @@ Item {
             const at = grip.mapToItem(root.parent, m.x, m.y);
             if (!root.dragging && Math.hypot(at.x - grip.pressAt.x, at.y - grip.pressAt.y) < Appearance.padding.small)
                 return;
-            if (!root.dragging && root.expanded) {
-                root.grabAt = Qt.point(root.grabAt.x * root.restBox.width / Math.max(1, root.width), root.grabAt.y * root.restBox.height / Math.max(1, root.height));
-                root.close();
-            }
             root.dragging = true;
             root.dragged = true;
             root.dragTo = Qt.point(at.x - root.grabAt.x, at.y - root.grabAt.y);

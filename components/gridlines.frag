@@ -9,7 +9,7 @@ layout(std140, binding = 0) uniform buf {
 
     vec2 size;
     vec2 pitch;
-    vec2 centre;
+    vec4 box;
     vec4 colour;
     float weight;
     float reach;
@@ -23,6 +23,7 @@ void main() {
     float across = 1.0 - smoothstep(inner - aa, inner + aa, d.x);
     float down = 1.0 - smoothstep(inner - aa, inner + aa, d.y);
     float line = max(across, down);
-    float near = 1.0 - smoothstep(0.0, reach, length(p - centre));
+    vec2 outside = max(abs(p - box.xy - box.zw * 0.5) - box.zw * 0.5, 0.0);
+    float near = 1.0 - smoothstep(0.0, reach, length(outside));
     fragColor = colour * line * near * near * qt_Opacity;
 }

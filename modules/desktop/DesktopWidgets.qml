@@ -118,6 +118,8 @@ PanelWindow {
     onShowingChanged: if (!win.showing)
         win.closeAll(null)
     onRestRectsChanged: tidy.restart()
+    onCarriedChanged: if (win.carried)
+        gridLines.card = win.carried
 
     mask: Region {
         item: win.opened || win.grabbing ? catcher : null
@@ -235,13 +237,17 @@ PanelWindow {
     }
 
     GridLines {
-        x: win.area.x - win.grid.gap / 2
-        y: win.area.y - win.grid.gap / 2
-        width: win.area.width + win.grid.gap
-        height: win.area.height + win.grid.gap
+        id: gridLines
+
+        property Item card: null
+
+        x: win.area.x + (win.grid.px - win.grid.gap) / 2
+        y: win.area.y + (win.grid.py - win.grid.gap) / 2
+        width: win.area.width + win.grid.gap - win.grid.px
+        height: win.area.height + win.grid.gap - win.grid.py
         pitch: Qt.vector2d(win.grid.px, win.grid.py)
-        centre: win.carried ? Qt.point(win.carried.dragTo.x + win.carried.grabAt.x - x, win.carried.dragTo.y + win.carried.grabAt.y - y) : Qt.point(0, 0)
-        reach: Appearance.padding.huge * 14
+        box: gridLines.card ? Qt.rect(gridLines.card.x - x, gridLines.card.y - y, gridLines.card.width, gridLines.card.height) : Qt.rect(0, 0, 0, 0)
+        reach: gridLines.card ? Math.max(gridLines.card.width, gridLines.card.height) * 0.75 : 1
         colour: Appearance.withAlpha(Appearance.colour.text, 0.28)
         opacity: gridShown.value
         visible: gridShown.value > 0.002
