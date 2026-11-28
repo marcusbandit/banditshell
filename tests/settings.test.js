@@ -101,8 +101,8 @@ test("every page lands in exactly one category", () => {
         assert.ok(Catalogue.CAT_BY_ID[p.cat].pages.includes(p));
 });
 
-test("every row number from the settings list 1 to 121 has a row", () => {
-    const covered = new Set();
+test("every row number from the settings list 1 to 121 has a row, bar the ones the rail retired", () => {
+    const covered = new Set([59, 60, 64]);
     for (const r of Catalogue.ROWS)
         for (const n of [].concat(r.n === undefined ? [] : r.n))
             covered.add(n);
@@ -200,19 +200,18 @@ test("statuses, blurbs, details and options all render against a live state", ()
     }
 });
 
-test("a row's line under its label only says what is true now, and shortcuts, explanations and pending changes each have their own field", () => {
+test("a row's line under its label only says what is true now, rows carry no explanation, and shortcuts and pending changes each have their own field", () => {
     const Lua = lib(path.join(ROOT, "services/hyprland-lua.js"), ["actionTable", "actionDescription", "scanLua", "bindAction"]);
     const actions = Lua.actionTable(fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8"));
     const bound = Lua.scanLua(fs.readFileSync(path.join(ROOT, "docs/hyprland-binds.example.lua"), "utf8")).binds.map(b => Lua.bindAction(b.expr, actions));
     const filesActions = Object.values(DEFAULTS.files.keys).map(String);
     for (const r of Catalogue.ROWS) {
         const name = r.k || r.label || r.w;
-        assert.ok(!("detail" in r), `${name} has a detail; say state, keys, why or pending`);
+        assert.ok(!("detail" in r), `${name} has a detail; say state, keys or pending`);
+        assert.ok(!("why" in r), `${name} explains itself under its label; put the fact in the label, a value or the state`);
         for (const f of ["state", "pending"])
             if (f in r)
-                assert.strictEqual(typeof r[f], "function", `${name} ${f} is a fixed line, which explains the row, so it belongs in why`);
-        if ("why" in r)
-            assert.strictEqual(typeof r.why, "string", `${name} why changes with the machine, which is state`);
+                assert.strictEqual(typeof r[f], "function", `${name} ${f} is a fixed line, which explains the row; settings show no helper text`);
         if (!r.keys)
             continue;
         const [set, id] = r.keys.split(":");
@@ -292,7 +291,7 @@ test("a shortened search path drops whole segments from the start, never part of
 test("a search hit names its row with the heading it sits under and marks what matched", () => {
     const s = fakeState();
     const titles = q => Catalogue.search(q).map(h => Catalogue.hitTitle(h, s));
-    assert.deepStrictEqual(titles("volume").slice(0, 4), ["Volume", "Volume by app", "Volume: keys step by", "Volume: past 100%"]);
+    assert.deepStrictEqual(titles("volume").slice(0, 4), ["Volume", "Volume by app", "Volume: keys step by", "Allow volume up to 150%"]);
     assert.strictEqual(titles("snooze")[0], "Alarms: snooze");
     assert.ok(titles("ethernet").includes("Ethernet"));
     const mixer = Catalogue.search("volume by app")[0];
@@ -403,19 +402,17 @@ test("pages count the settings they cover and the new ones among them", () => {
 
 test("sidebar rows point the replica at the part they change", () => {
     assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.sbClock), "clock");
-    assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.trayMax), "tray");
-    assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.sidebarW), "");
+    assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.persistent), "workspaces");
+    assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.sbGlance), "");
     assert.strictEqual(Catalogue.zoneOf(null), "");
 });
 
-test("the sidebar style row offers full and rail and defaults to rail", () => {
-    const row = Catalogue.ROW_BY_KEY.sbStyle;
-    assert.strictEqual(row.cfg, "sidebar.style");
-    assert.deepStrictEqual(row.o, ["full", "rail"]);
+test("the sidebar is the rail: no style choice and no rows for the open sidebar", () => {
+    for (const k of ["sbStyle", "sidebarW", "sbClockWide", "sbClockWideSize", "sbNet", "sbBt", "sbBright", "tray", "trayMax"])
+        assert.strictEqual(Catalogue.ROW_BY_KEY[k], undefined, k);
+    assert.ok(!Catalogue.ROWS.some(r => r.w === "wsStyles"));
+    assert.ok(!Catalogue.ROWS.some(r => String(r.dis ?? "").includes("sbStyle")));
     assert.strictEqual(lookup(DEFAULTS, "sidebar.style"), "rail");
-    assert.strictEqual(lookup(DEFAULTS, "sidebar.status.brightness"), false);
-    assert.strictEqual(CONFIG_BACKED.sbStyle, "sidebar.style");
-    assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.sbBright), "status");
 });
 
 test("the launcher position says when the screen moved it to fit", () => {

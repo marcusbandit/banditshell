@@ -346,16 +346,6 @@ Item {
             anchors.fill: parent
         }
 
-        DropShadow {
-            x: hull.x
-            y: hull.y
-            width: hull.width
-            height: hull.height
-            radius: hull.radius
-            opacity: Appearance.opacity.glow * (1 - root.flown)
-            visible: opacity > 0.01
-        }
-
         Item {
             id: hull
 
@@ -384,14 +374,6 @@ Item {
                 strokeWidth: Appearance.stroke.ring
                 opacity: 1 - root.flown
                 visible: opacity > 0.01
-            }
-
-            ArtGlow {
-                anchors.fill: parent
-                radius: hull.radius
-                source: Media.available ? Media.artUrl : ""
-                moving: panel.visible && Media.playing
-                opacity: root.grown ? root.mix(root.origin?.glow ?? 0, 0.62) : 0.62
             }
 
             Item {
@@ -435,14 +417,6 @@ Item {
 
                         Item {
                             anchors.fill: parent
-
-                            DropShadow {
-                                anchors.fill: art
-                                radius: artBox.corner
-                                blur: Appearance.padding.normal / artBox.size
-                                offset.y: Appearance.padding.hair / artBox.size
-                                opacity: art.ready ? Appearance.opacity.glow : 0
-                            }
 
                             SquircleRect {
                                 anchors.fill: parent

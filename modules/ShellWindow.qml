@@ -407,6 +407,11 @@ PanelWindow {
 
         Region {
             intersection: Intersection.Combine
+            item: glance.timeItem
+        }
+
+        Region {
+            intersection: Intersection.Combine
             item: quickLayer.active ? quickLayer.maskItem : null
         }
 
@@ -418,11 +423,6 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: Appearance.bare ? null : settingsCorner.maskItem
-        }
-
-        Region {
-            intersection: Intersection.Combine
-            item: sidebar.touchOpen ? touchAway : null
         }
 
         Region {
@@ -512,23 +512,22 @@ PanelWindow {
             wanted: wallpaperLayer.open
         }
 
-        Item {
-            id: touchAway
+        ScreenBackdrop {
+            id: behind
 
             anchors.fill: parent
-            visible: sidebar.touchOpen
-
-            TapHandler {
-                onTapped: sidebar.touched = false
-            }
+            output: win.screen?.name ?? ""
+            screenOrigin: Qt.point(win.screen?.x ?? 0, win.screen?.y ?? 0)
+            live: chassis.reachesIn && !chassis.bare
+            active: !chassis.bare
         }
 
         Chassis {
             id: chassis
 
             anchors.fill: parent
+            backdrop: behind
 
-            railWanted: sidebar.railWanted
             readable: settingsLayer.open
 
             panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs, ...keyringLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs), ...body.lowered(glance.blobs)]
@@ -558,8 +557,6 @@ PanelWindow {
             expansion: chassis.railOpen
 
             menusShown: menuLayer.open
-            openKey: menuLayer.currentKey
-            menuOpen: sidebarSheet.open
 
             pullSpan: Math.hypot(win.width, win.height)
 
@@ -568,6 +565,7 @@ PanelWindow {
             awake: Idle.awake
 
             glanceReach: Math.max(0, glance.footReach - win.border)
+            glanceTime: glance.timeItem
 
             onMarkPressed: opens => win.pressMark(opens)
             onMenuAsked: (x, y, actions) => {
@@ -593,6 +591,8 @@ PanelWindow {
             bare: chassis.bare
             islandOut: islandLayer.out
             yielded: win.underFullscreen || fullscreenBorder.yielded
+
+            onClockRequested: deliberate => sidebar.clockRequested(deliberate)
         }
 
         Loader {
@@ -717,6 +717,8 @@ PanelWindow {
         NotificationCorner {
             id: corner
 
+            backdrop: behind
+
             onStage: !win.screen?.name || !Focus.offStageScreen || win.screen.name === Focus.offStageScreen
 
             anchors.fill: parent
@@ -744,6 +746,7 @@ PanelWindow {
 
             anchors.fill: parent
             z: 200
+            backdrop: behind
 
             Keys.onPressed: event => event.accepted = sidebarSheet.key(event)
 
@@ -904,6 +907,8 @@ PanelWindow {
             panel: SettingsPanel {
                 originX: chassis.barWidth
                 band: win.border
+                backdrop: behind
+                glassAt: Qt.point(0, chassis.streamReach)
                 menuOpen: menuLayer.open
                 yielded: win.panelOpen || menuLayer.open || Prompts.awayIn(settingsLayer.QsWindow.window) || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
             }

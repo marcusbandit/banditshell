@@ -49,6 +49,7 @@ rule	wallpaper next,prev,clear @screen,all
 rule	wallpaper set @file @screen,all
 rule	wallpaper list @screen
 rule	wallpaper palette
+rule	wallpaper outline @file
 verb	screenshot	a region saved or copied, or the whole desktop
 rule	screenshot save --freeze
 rule	screenshot copy --freeze

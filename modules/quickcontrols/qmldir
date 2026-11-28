@@ -1,3 +1,6 @@
 module qs.modules.quickcontrols
+LevelBar 1.0 LevelBar.qml
 QuickControls 1.0 QuickControls.qml
 QuickControlsIpc 1.0 QuickControlsIpc.qml
+QuickTile 1.0 QuickTile.qml
+QuickToggle 1.0 QuickToggle.qml

@@ -12,6 +12,67 @@
       ]
     },
     {
+      "id": "2026-11-28-glass-round-two",
+      "date": "2026-11-28",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "major",
+          "text": "The sidebar stays folded; the wide sidebar is gone"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The frame, sidebar and pop-outs bend and frost what is behind them"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Quick controls open Wi-Fi, Bluetooth, sound and power in place",
+          "go": "panel quickcontrols open"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Desktop widgets settle on a soft grid and open where they sit",
+          "go": "panel settings open widgets"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Settings, the island and the screenshot picker turn to clear glass"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Restarting the shell no longer leaves helper programs running"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-27-outline-tuner",
+      "date": "2026-11-27",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell wallpaper outline tunes how a picture's outline is traced",
+          "go": "panel settings open wallpaper"
+        }
+      ]
+    },
+    {
+      "id": "2026-11-27-bright-outline",
+      "date": "2026-11-27",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The wallpaper outline line is bright and thicker on dark pictures"
+        }
+      ]
+    },
+    {
       "id": "2026-11-27-glass-surfaces",
       "date": "2026-11-27",
       "changes": [

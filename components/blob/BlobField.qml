@@ -36,6 +36,28 @@ ShaderEffect {
 
     readonly property vector4d size: Qt.vector4d(width, height, 0, 0)
 
+    property Item backdrop: null
+    property point origin: Qt.point(0, 0)
+    property real bezel: Appearance.padding.large * 1.25
+    property real bend: root.bezel * 0.9
+    property real spread: 0.05
+    property real restRaise: 0
+    property real openRaise: 1
+    property real openReach: Appearance.padding.large * 2
+    property real shade: 1
+
+    readonly property bool glassy: (root.backdrop?.ready ?? false) && root.width > 0 && root.height > 0
+    readonly property real glass: root.glassy ? 1 : 0
+    readonly property vector2d view: Qt.vector2d(Math.max(1, root.backdrop?.width ?? 1), Math.max(1, root.backdrop?.height ?? 1))
+    readonly property variant soft: root.glassy ? root.backdrop.soft : blank
+    readonly property variant frost: root.glassy ? root.backdrop.frost : blank
+
+    Image {
+        id: blank
+
+        visible: false
+    }
+
     function slotRect(i: int): vector4d {
         const p = root.panels[i];
         return p ? Qt.vector4d(p.x, p.y, p.w, p.h) : Qt.vector4d(0, 0, 0, 0);

@@ -11,7 +11,6 @@ ShaderEffect {
     property real t: 0
     property bool outline: false
     property color ember
-    property color ink
     property real seed: 0
 
     readonly property var under: root.underItem ? capture : root.source
@@ -25,7 +24,7 @@ ShaderEffect {
     readonly property real lw: Math.max(root.line?.implicitWidth ?? 1, 1)
     readonly property real lh: Math.max(root.line?.implicitHeight ?? 1, 1)
     readonly property real glow: 0.9
-    readonly property real lineW: 1.5
+    readonly property real lineW: 2.5
     readonly property real sdRange: 16
     readonly property real hasUnder: root.underItem ? 1 : 0
     readonly property vector4d cropMap: {

@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 Column {
     id: root
@@ -132,7 +133,7 @@ Column {
 
     Separator {
         width: parent.width
-        visible: PowerProfile.available
+        visible: PowerProfile.available && Battery.available
     }
 
     Column {
@@ -141,17 +142,31 @@ Column {
         spacing: Appearance.padding.small
 
         StyledText {
+            visible: Battery.available
             text: "POWER MODE"
             color: Appearance.colour.textFaint
             font.pixelSize: Appearance.font.size.small
         }
 
-        Segments {
-            width: parent.width
+        Repeater {
+            model: PowerProfile.choices
 
-            options: PowerProfile.choices
-            current: Math.max(0, PowerProfile.choices.indexOf(PowerProfile.profile))
-            onPicked: index => PowerProfile.set(PowerProfile.choices[index])
+            delegate: MenuRow {
+                id: modeRow
+
+                required property string modelData
+
+                width: parent.width
+                icon: PowerProfile.icon(modeRow.modelData)
+                label: PowerProfile.label(modeRow.modelData)
+                selected: modeRow.modelData === PowerProfile.profile
+                onActivated: PowerProfile.set(modeRow.modelData)
+
+                Icon {
+                    visible: modeRow.selected
+                    name: "check"
+                }
+            }
         }
     }
 

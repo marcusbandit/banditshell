@@ -15,6 +15,7 @@ import "files-listing.js" as Listing
 import "files-trash.js" as Trash
 import "files-commands.js" as FilesCommands
 import "files-clipboard.js" as ClipboardFiles
+import "dies-with-shell.js" as DiesWithShell
 
 Singleton {
     id: root
@@ -355,7 +356,7 @@ Singleton {
         if (!root.windowOpen || root.helpersMissing || !root.cwd)
             return;
         root.watcher = folderWatch.createObject(root, {
-            command: [root.helper("bs-ls"), "--watch", root.cwd],
+            command: DiesWithShell.command([root.helper("bs-ls"), "--watch", root.cwd]),
             running: true
         });
     }

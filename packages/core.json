@@ -37,6 +37,7 @@
     "js": [
       "services/colours.js",
       "services/desktop-entries.js",
+      "services/dies-with-shell.js",
       "services/notify.js",
       "services/packages.js",
       "services/quoting.js",
@@ -61,11 +62,11 @@
       "scripts/write-private.sh"
     ],
     "tests": [
+      "tests/dies-with-shell.test.js",
       "tests/backoff.test.js",
       "tests/certificate-files.test.js",
       "tests/base64.test.js",
       "tests/check-modules.test.js",
-      "tests/colour-drift.test.js",
       "tests/config-guard.test.js",
       "tests/cli.test.js",
       "tests/configuration.test.js",
@@ -77,6 +78,7 @@
       "tests/focus-chain.test.js",
       "tests/fixtures/menu-chains.json",
       "tests/font-axes.test.js",
+      "tests/glass-place.test.js",
       "tests/lint-rules.test.js",
       "tests/markup.test.js",
       "tests/notify.test.js",
@@ -106,6 +108,7 @@
   "provides": {
     "singletons": [
       "Appearance",
+      "Backdrops",
       "Compositor",
       "Config",
       "ControlTuning",

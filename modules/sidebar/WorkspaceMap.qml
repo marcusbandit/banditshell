@@ -82,7 +82,7 @@ Item {
                 FollowColour {
                     id: emptyTone
 
-                    target: slotItem.isActive ? Appearance.colour.accent : Appearance.colour.fillStrong
+                    target: slotItem.isActive ? Appearance.colour.chosen : Appearance.colour.fillStrong
                     speed: Appearance.animation.revealSpeed
                 }
             }
@@ -121,7 +121,7 @@ Item {
                     FollowColour {
                         id: barTone
 
-                        target: windowBar.focused ? Appearance.colour.accent : slotItem.isActive ? Appearance.colour.accentFill : mouse.containsMouse ? Appearance.colour.text : Appearance.colour.textFaint
+                        target: windowBar.focused ? Appearance.colour.chosen : slotItem.isActive || mouse.containsMouse ? Appearance.colour.textDim : Appearance.colour.textFaint
                         speed: Appearance.animation.revealSpeed
                     }
 

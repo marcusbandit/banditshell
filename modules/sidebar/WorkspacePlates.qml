@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Effects
 import Quickshell
 import qs.config
 import qs.components
@@ -328,7 +327,8 @@ Item {
         SquircleRect {
             anchors.fill: parent
             radius: root.radius
-            color: Appearance.colour.accentFill
+            color: Appearance.colour.chosen
+            rim: 1
             opacity: eclipseFade.value
 
             Follow {
@@ -396,7 +396,7 @@ Item {
                 SquircleRect {
                     anchors.fill: parent
                     radius: root.radius
-                    color: Appearance.colour.accentFill
+                    color: Appearance.colour.chosen
                     opacity: openFade.value
                 }
             }
@@ -639,7 +639,7 @@ Item {
                             FollowColour {
                                 id: markTone
 
-                                target: row.lit ? Appearance.colour.text : Appearance.colour.textDim
+                                target: slotItem.isActive && !layout.eclipsed ? Appearance.colour.onChosen : row.lit ? Appearance.colour.text : Appearance.colour.textDim
                                 speed: Appearance.animation.revealSpeed
                             }
                         }
@@ -660,6 +660,8 @@ Item {
 
             readonly property real fullW: root.tagWidth(tag.modelData.count)
 
+            readonly property bool onActive: layout.active === layout.idAt(root.heldSlot) && !layout.eclipsed
+
             width: tag.fullW * growth.value
             height: root.tagHeight * growth.value
             x: root.tagX + (tag.fullW - width) / 2
@@ -678,8 +680,8 @@ Item {
             SquircleRect {
                 anchors.fill: parent
                 radius: root.radius
-                color: Appearance.colour.accentFill
-                visible: layout.active === layout.idAt(root.heldSlot) && !layout.eclipsed
+                color: Appearance.colour.chosen
+                visible: tag.onActive
             }
 
             InkText {
@@ -691,7 +693,7 @@ Item {
                 opacity: Math.max(0, (growth.value - 0.4) / 0.6)
 
                 text: `${tag.modelData.count}`
-                color: Appearance.colour.text
+                color: tag.onActive ? Appearance.colour.onChosen : Appearance.colour.text
             }
         }
     }
@@ -744,45 +746,19 @@ Item {
                 onWheel: wheel => wheel.accepted = true
             }
 
-            MultiEffect {
-                anchors.fill: card
-                source: card
-
-                opacity: Math.min(1, pad.shown * 2)
-
-                shadowEnabled: true
-                shadowColor: "black"
-                shadowOpacity: 0.35
-
-                blurMax: Appearance.padding.normal
-                shadowBlur: 1
-                shadowVerticalOffset: Math.round(Appearance.padding.small / 3)
-            }
-
-            SquircleRect {
+            GlassPanel {
                 id: card
 
                 anchors.fill: parent
 
-                layer.enabled: true
-                layer.samples: 4
-                visible: false
+                opacity: Math.min(1, pad.shown * 2)
 
                 radius: root.radius
-
-                color: Appearance.colour.surface
 
                 SquircleRect {
                     anchors.fill: parent
                     radius: root.radius
                     color: Appearance.colour.fillStronger
-                }
-
-                SquircleRect {
-                    anchors.fill: parent
-                    radius: root.radius
-                    color: Appearance.colour.accentFill
-                    opacity: pad.shown
                 }
 
                 Repeater {

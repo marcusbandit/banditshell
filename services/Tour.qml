@@ -55,6 +55,7 @@ Singleton {
     readonly property var steps: Logic.plan({
         bare: Appearance.bare,
         sidebar: Logic.sidebarOf(root.layouts),
+        railTime: Config.values.sidebar.clock.style !== "off" && ["rail", "rail top", "wide", "tabs"].includes(Config.values.sidebar.glance),
         chords: root.chords
     })
 

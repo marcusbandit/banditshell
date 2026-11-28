@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.config
 import qs.components
 import qs.services
@@ -810,6 +811,39 @@ Item {
                     Keys.onEscapePressed: event => {
                         root.stopSearch();
                         event.accepted = true;
+                    }
+                }
+
+                Button {
+                    id: tune
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    keyed: keys.active
+                    visible: !!strip.currentPath && Wallpaper.kindOf(strip.currentPath) === "still"
+                    interactive: !tuner.running
+                    size: 0
+                    style: "bare"
+                    icon: "auto_fix_high"
+                    onClicked: {
+                        tuner.command = [`${Quickshell.shellDir}/cli/banditshell`, "wallpaper", "outline", strip.currentPath];
+                        tuner.running = true;
+                    }
+
+                    Process {
+                        id: tuner
+
+                        stdout: StdioCollector {
+                            onStreamFinished: {
+                                const url = text.trim().split("\n").pop();
+                                if (url.startsWith("http"))
+                                    Qt.openUrlExternally(url);
+                            }
+                        }
+                    }
+
+                    FloatingTooltip {
+                        text: "Tune the outline"
+                        shown: tune.hovered
                     }
                 }
 

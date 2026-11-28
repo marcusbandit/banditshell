@@ -22,7 +22,7 @@
     "optional": []
   },
   "provides": {
-    "singletons": ["Battery", "Idle", "Power", "Suspension"],
+    "singletons": ["Battery", "Idle", "Power", "PowerProfile", "Suspension"],
     "ipc": []
   },
   "config": {

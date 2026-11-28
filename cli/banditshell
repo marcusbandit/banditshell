@@ -111,6 +111,9 @@
 #   banditshell wallpaper list [screen]
 #   banditshell wallpaper palette
 #                                every picture, or the colours of the one worn
+#   banditshell wallpaper outline [<file>]
+#                                tune how the outline transition traces a
+#                                picture, in a page that prints its address
 #
 # screenshot                     a region saved or copied, or the whole desktop
 #   banditshell screenshot save [--freeze]
@@ -1065,13 +1068,35 @@ health_check() {
     return 0
 }
 
+shell_session() {
+    local sid
+    sid=$(ps -o sid= -p "$1" 2>/dev/null | tr -d ' ')
+    [ "$sid" = "$1" ] && echo "$sid"
+    return 0
+}
+
+end_helpers() {
+    local sid pid
+    for sid in "$@"; do
+        for pid in $(pgrep -U "$(id -u)" -s "$sid" 2>/dev/null); do
+            if grep -qzx 'BANDITSHELL_HELPER=1' "/proc/$pid/environ" 2>/dev/null; then
+                kill "$pid" 2>/dev/null || true
+            fi
+        done
+    done
+    return 0
+}
+
 stop_pid() {
-    local tries
+    local tries session
+    session=$(shell_session "$1")
     kill "$1" 2>/dev/null || return 0
     for ((tries = 0; tries < 40; tries++)); do
-        kill -0 "$1" 2>/dev/null || return 0
+        kill -0 "$1" 2>/dev/null || break
         sleep 0.05
     done
+    [ -z "$session" ] || end_helpers "$session"
+    return 0
 }
 
 launch_failed() {
@@ -1146,8 +1171,8 @@ flush_running() {
 }
 
 stop_shell() {
-    local -a pids
-    local pid alive tries=0
+    local -a pids sessions=()
+    local pid alive session tries=0
     mapfile -t pids < <(shell_pids)
     [ "${#pids[@]}" -gt 0 ] || return 1
     if dry; then
@@ -1155,6 +1180,10 @@ stop_shell() {
         return 0
     fi
     flush_shells "${pids[@]}"
+    for pid in "${pids[@]}"; do
+        session=$(shell_session "$pid")
+        [ -z "$session" ] || sessions+=("$session")
+    done
     kill "${pids[@]}" 2>/dev/null || true
     while [ "$tries" -lt 40 ]; do
         alive=0
@@ -1163,10 +1192,11 @@ stop_shell() {
                 alive=1
             fi
         done
-        [ "$alive" = 0 ] && return 0
+        [ "$alive" = 0 ] && break
         sleep 0.05
         tries=$((tries + 1))
     done
+    end_helpers "${sessions[@]}"
     return 0
 }
 
@@ -1969,8 +1999,46 @@ route_wallpaper() {
     set) [ $# -ge 2 ] || say_usage "wallpaper set <file> [screen|all]"
         ipc wallpaper set "$(absolute_path "$2")" "${3:-}" ;;
     list) ipc wallpaper list "${2:-}" ;;
+    outline) wallpaper_outline "${2:-}" ;;
     *) nope wallpaper "$1" ;;
     esac
+}
+
+wallpaper_outline() {
+    local file="$1" python ready pid port url _
+    local -a args=()
+    python="${XDG_DATA_HOME:-$HOME/.local/share}/banditshell/cutout/venv/bin/python"
+    if [ ! -x "$python" ]; then
+        echo "banditshell: the outline cut-out is not installed; Settings, Wallpaper, Character outlines installs it" >&2
+        exit 1
+    fi
+    if [ -n "$file" ]; then
+        [ -f "$file" ] || { echo "banditshell: no such file: $file" >&2; exit 2; }
+        args=(--file "$(absolute_path "$file")")
+    fi
+    ready="$RUN_DIR/outline-tuner"
+    port=0
+    if [ -r "$ready" ] && read -r pid port _ <"$ready" && [[ $pid =~ ^[0-9]+$ ]] &&
+        tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null | grep -q "outline-tuner.py"; then
+        kill "$pid" 2>/dev/null || true
+        for _ in $(seq 30); do
+            kill -0 "$pid" 2>/dev/null || break
+            sleep 0.1
+        done
+    fi
+    [[ $port =~ ^[0-9]+$ ]] || port=0
+    mkdir -p "$RUN_DIR"
+    rm -f "$ready"
+    detach outline-tuner "$python" "$SHELL_DIR/scripts/outline-tuner.py" --ready "$ready" --port "$port" "${args[@]}" >/dev/null 2>&1
+    for _ in $(seq 100); do
+        [ -s "$ready" ] && break
+        sleep 0.1
+    done
+    if ! read -r pid port url <"$ready" 2>/dev/null || [ -z "$url" ]; then
+        echo "banditshell: the outline tuner did not start" >&2
+        exit 1
+    fi
+    echo "$url"
 }
 
 screenshot_dir() {

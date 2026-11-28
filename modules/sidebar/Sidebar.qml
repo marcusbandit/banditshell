@@ -17,8 +17,6 @@ Item {
 
     property bool menusShown: false
 
-    property bool menuOpen: false
-
     property real pullSpan: 0
 
     property string modeIcon: ""
@@ -29,6 +27,8 @@ Item {
 
     property real glanceReach: 0
 
+    property Item glanceTime: null
+
     readonly property var slotEntry: Anomalies.modeEntry({
         modeIcon: root.modeIcon,
         modeName: root.modeName,
@@ -38,21 +38,10 @@ Item {
 
     property real fullWidth: width
     property real expansion: 1
-    property string openKey: ""
 
     readonly property bool rail: Appearance.sizes.sidebarRail
     readonly property real revealed: root.rail ? Math.max(0, Math.min(1, (root.expansion - 0.3) / 0.5)) : 1
     readonly property real railRestWidth: root.fullWidth - Appearance.sizes.sidebarWidth + Appearance.sizes.railWidth
-
-    property bool dwelt: false
-    property bool touched: false
-    readonly property bool touchOpen: root.rail && root.touched
-    property bool pressedAtRest: false
-    readonly property bool holding: root.menusShown && root.menuKeys.indexOf(root.openKey) >= 0
-    readonly property bool railWanted: root.rail && (root.dwelt || root.holding || root.touched)
-
-    onRailChanged: if (!root.rail)
-        root.touched = false
 
     clip: root.rail && root.expansion < 1
 
@@ -110,6 +99,8 @@ Item {
     }
 
     function iconFor(key: string): Item {
+        if (root.rail)
+            return resting.item?.anchorFor(key) ?? null;
         return tray.iconFor(key) ?? (key === "update" ? (update.visible ? update : clock.timeItem) : key === "agentLimits" ? (root.rail && root.revealed < 0.5 && resting.item?.limitsItem ? resting.item.limitsItem : agentLimits) : key === "clock" ? clock.timeItem : key === "calendar" ? clock.dateItem : null) ?? status.iconFor(key);
     }
 
@@ -125,9 +116,9 @@ Item {
         return group.sideGap + root.cornerRise(group.sideGap) + group.overhang - Appearance.sizes.band;
     }
 
-    readonly property var blobs: root.expansion < 0.98 || !workspaces.visible ? [] : workspaces.blobs.map(b => ({
-                x: b.x + workspaces.x,
-                y: b.y + workspaces.y,
+    readonly property var blobs: root.expansion < 0.98 || !(spaces.item?.workspaces.visible ?? false) ? [] : spaces.item.workspaces.blobs.map(b => ({
+                x: b.x + spaces.item.workspaces.x,
+                y: b.y + spaces.item.workspaces.y,
                 w: b.w,
                 h: b.h,
                 radius: b.radius,
@@ -158,32 +149,43 @@ Item {
             menusShown: root.menusShown
         }
 
-        Workspaces {
-            id: workspaces
+        Loader {
+            id: spaces
 
-            readonly property real ceiling: tray.y + tray.height + tray.overhang + Appearance.padding.large
-            readonly property real floor: foot.y - Appearance.padding.large
-            readonly property var place: Placement.between(workspaces.implicitHeight, body.height, workspaces.ceiling, workspaces.floor)
+            anchors.fill: parent
+            active: !root.rail
 
-            anchors.left: parent.left
-            anchors.right: parent.right
-            y: workspaces.place.y
-            height: workspaces.implicitHeight
-            visible: workspaces.place.fits
+            sourceComponent: Item {
+                readonly property alias workspaces: workspaces
 
-            screen: root.screen
-        }
+                Workspaces {
+                    id: workspaces
 
-        RailPips {
-            id: crowded
+                    readonly property real ceiling: tray.y + tray.height + tray.overhang + Appearance.padding.large
+                    readonly property real floor: foot.y - Appearance.padding.large
+                    readonly property var place: Placement.between(workspaces.implicitHeight, body.height, workspaces.ceiling, workspaces.floor)
 
-            anchors.left: parent.left
-            anchors.right: parent.right
-            y: Placement.between(crowded.implicitHeight, body.height, workspaces.ceiling, workspaces.floor).y
-            height: crowded.implicitHeight
-            visible: !workspaces.place.fits
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    y: workspaces.place.y
+                    height: workspaces.implicitHeight
+                    visible: workspaces.place.fits
 
-            screen: root.screen
+                    screen: root.screen
+                }
+
+                RailPips {
+                    id: crowded
+
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    y: Placement.between(crowded.implicitHeight, body.height, workspaces.ceiling, workspaces.floor).y
+                    height: crowded.implicitHeight
+                    visible: !workspaces.place.fits
+
+                    screen: root.screen
+                }
+            }
         }
 
         Column {
@@ -245,7 +247,7 @@ Item {
                     anchors.centerIn: parent
                     name: root.slotIcon || "radio_button_unchecked"
                     fill: 1
-                    color: Appearance.colour.accent
+                    color: Appearance.colour.text
                 }
 
                 MouseArea {
@@ -298,10 +300,38 @@ Item {
             id: rest
 
             readonly property Item limitsItem: railLimits
-            readonly property bool holdsRest: anomalies.pointing || pips.pressing || railLimits.hovered
             readonly property int slotsReserved: 4
             readonly property real limitsFloor: railLimits.visible ? railLimits.y + railLimits.height : glance.headEdge
             readonly property var place: Placement.rail(pips.implicitHeight, rest.height, Math.max(glance.headEdge, rest.limitsFloor) + Appearance.padding.large, rest.height - anomalies.anchors.bottomMargin, (Appearance.sizes.statusSlot + Appearance.sizes.statusGap) * rest.slotsReserved, Appearance.padding.huge)
+
+            function anchorFor(key: string): Item {
+                if (key === "clock")
+                    return glance.timeItem ?? root.glanceTime ?? railFoot;
+                if (key === "calendar")
+                    return glance.dateItem ?? glance.timeItem ?? railFoot;
+                if (key === "agentLimits")
+                    return railLimits.visible ? railLimits : railHead;
+                return anomalies.markFor(key) ?? (root.tray.iconFor(key) ? railHead : railFoot);
+            }
+
+            Item {
+                id: railHead
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+                y: root.endMargin(root.tray)
+                height: Appearance.sizes.statusSlot
+            }
+
+            Item {
+                id: railFoot
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: root.endMargin(root.status)
+                height: Appearance.sizes.statusSlot
+            }
 
             AgentLimitsGlance {
                 id: railLimits
@@ -311,10 +341,7 @@ Item {
                 anchors.right: parent.right
                 y: Math.round(glance.headEdge > 0 ? glance.headEdge + Appearance.padding.normal : root.endMargin(root.tray))
 
-                onRequested: deliberate => {
-                    root.pressedAtRest = true;
-                    root.agentLimitsRequested(deliberate);
-                }
+                onRequested: deliberate => root.agentLimitsRequested(deliberate)
                 onReleased: root.agentLimitsReleased()
             }
 
@@ -327,8 +354,6 @@ Item {
                 height: pips.implicitHeight
 
                 screen: root.screen
-
-                onHeld: root.pressedAtRest = true
             }
 
             RailGlance {
@@ -339,6 +364,9 @@ Item {
                 topInset: root.endMargin(root.tray) + Appearance.padding.large
                 bottomInset: root.endMargin(root.status) + Appearance.padding.large
                 tabsReach: root.glanceReach
+
+                onClockRequested: deliberate => root.clockRequested(deliberate)
+                onCalendarRequested: deliberate => root.calendarRequested(deliberate)
             }
 
             RailAnomalies {
@@ -357,33 +385,12 @@ Item {
 
                 enabled: root.revealed === 0
 
-                onMarkPressed: opens => {
-                    root.pressedAtRest = true;
-                    root.markPressed(opens);
-                }
+                onMarkPressed: opens => root.markPressed(opens)
             }
         }
     }
 
-    HoverHandler {
-        id: pointer
-
-        onHoveredChanged: {
-            if (!pointer.hovered)
-                root.pressedAtRest = false;
-            else
-                root.touched = false;
-        }
-    }
-
-    TapHandler {
-        acceptedDevices: PointerDevice.TouchScreen | PointerDevice.Stylus
-        enabled: root.rail && !root.touched
-        onTapped: root.touched = true
-    }
-
     function menuActions(): var {
-        const rail = root.rail;
         return [
             {
                 icon: "side_navigation",
@@ -391,15 +398,6 @@ Item {
                 run: () => root.markPressed({
                         settings: "sidebar"
                     })
-            },
-            {
-                icon: rail ? "left_panel_open" : "left_panel_close",
-                label: rail ? "Keep the sidebar open" : "Fold the sidebar",
-                run: () => {
-                    root.dwelt = false;
-                    root.pressedAtRest = pointer.hovered;
-                    Config.set("sidebar.style", rail ? "full" : "rail");
-                }
             }
         ];
     }
@@ -409,27 +407,6 @@ Item {
         z: -1
         acceptedButtons: Qt.RightButton
         onPressed: mouse => root.menuAsked(mouse.x, mouse.y, root.menuActions())
-    }
-
-    DragHandler {
-        acceptedDevices: PointerDevice.TouchScreen | PointerDevice.Stylus
-        enabled: root.rail && !root.touched
-        target: null
-        yAxis.enabled: false
-        onTranslationChanged: if (active && translation.x > 0)
-            root.touched = true
-    }
-
-    Timer {
-        interval: Appearance.animation.dwell
-        running: root.rail && pointer.hovered && !root.dwelt && !root.pressedAtRest && !root.menuOpen && !(resting.item?.holdsRest ?? false)
-        onTriggered: root.dwelt = true
-    }
-
-    Timer {
-        interval: Appearance.animation.grace
-        running: !pointer.hovered && root.dwelt && !root.menuOpen
-        onTriggered: root.dwelt = false
     }
 
     Component {

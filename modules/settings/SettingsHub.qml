@@ -72,7 +72,7 @@ Column {
             visible: !root.note?.set
             anchors.verticalCenter: parent.verticalCenter
             name: "chevron_right"
-            color: Appearance.colour.accent
+            color: Appearance.colour.text
         }
     }
 
@@ -134,7 +134,7 @@ Column {
                     SquircleRect {
                         anchors.fill: parent
                         radius: Appearance.rounding.large
-                        color: Appearance.colour.accentFill
+                        color: Appearance.colour.chosen
                         visible: tile.on
                     }
                 }
@@ -149,7 +149,7 @@ Column {
                         name: tile.modelData.icon
                         size: Appearance.icon.large
                         fill: tile.on ? 1 : 0
-                        color: tile.on ? Appearance.colour.accent : tile.explains ? Appearance.colour.textGhost : Appearance.colour.textFaint
+                        color: tile.on ? Appearance.colour.onChosen : tile.explains ? Appearance.colour.textGhost : Appearance.colour.textFaint
                     }
 
                     Item {
@@ -161,14 +161,14 @@ Column {
                         width: parent.width
                         text: tile.modelData.label
                         elide: Text.ElideRight
-                        color: tile.on || tileHover.hovered ? Appearance.colour.text : Appearance.colour.textDim
+                        color: tile.on ? Appearance.colour.onChosen : tileHover.hovered ? Appearance.colour.text : Appearance.colour.textDim
                     }
 
                     StyledText {
                         width: parent.width
                         text: tile.det
                         elide: Text.ElideRight
-                        color: tile.explains ? Appearance.colour.text : Appearance.colour.textFaint
+                        color: tile.on ? Qt.alpha(Appearance.colour.onChosen, 0.7) : tile.explains ? Appearance.colour.text : Appearance.colour.textFaint
                     }
                 }
 
@@ -209,7 +209,7 @@ Column {
                 width: root.width
                 card: true
                 icon: page.modelData.icon
-                iconColour: page.closed ? Appearance.colour.textDim : Appearance.hueFor(page.modelData.id, Appearance.colour.textDim)
+                iconColour: page.closed || !Appearance.huedAtRest && !page.hot ? Appearance.colour.textDim : Appearance.hueFor(page.modelData.id, Appearance.colour.textDim)
                 label: Catalogue.nameOf(page.modelData, SettingsState)
                 detail: String(page.modelData.status(root.s) ?? "")
                 off: false

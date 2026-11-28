@@ -57,7 +57,7 @@ Column {
                     SquircleRect {
                         anchors.fill: parent
                         radius: Appearance.rounding.large
-                        color: Appearance.colour.accentFill
+                        color: Appearance.colour.chosen
                         visible: mode.on
                     }
                 }
@@ -71,14 +71,14 @@ Column {
                         name: mode.modelData.icon
                         size: Appearance.icon.large
                         fill: mode.on ? 1 : 0
-                        color: mode.on ? Appearance.colour.accent : Appearance.colour.textFaint
+                        color: mode.on ? Appearance.colour.onChosen : Appearance.colour.textFaint
                         bottomPadding: 4
                     }
 
                     StyledText {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: mode.modelData.name
-                        color: mode.on || hover.hovered ? Appearance.colour.text : Appearance.colour.textDim
+                        color: mode.on ? Appearance.colour.onChosen : hover.hovered ? Appearance.colour.text : Appearance.colour.textDim
                     }
                 }
 
@@ -99,15 +99,5 @@ Column {
                 }
             }
         }
-    }
-
-    StyledText {
-        x: Appearance.padding.normal
-        width: root.width - Appearance.padding.normal * 2
-        topPadding: Appearance.padding.small
-        bottomPadding: Appearance.padding.normal
-        text: "a mode flips a few settings and puts them back when you leave it. its glyph sits above the status icons."
-        color: Appearance.colour.textFaint
-        wrapMode: Text.WordWrap
     }
 }

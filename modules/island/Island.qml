@@ -10,6 +10,7 @@ import qs.components
 import qs.components.blob
 import qs.modules.media
 import qs.modules.notifications
+import qs.modules.wallpaper
 import qs.services
 import "pointer-watch.js" as PointerWatch
 
@@ -365,6 +366,7 @@ Item {
     readonly property real bubblePitch: root.compactHeight + root.budGap
     readonly property real stackStep: Math.round(Appearance.padding.small * 0.9)
     readonly property real shadowRoom: Appearance.padding.huge * 2
+    readonly property real restRaise: 0.35
     readonly property real fieldStep: Appearance.padding.huge * 4
 
     readonly property real rowsWidth: {
@@ -567,7 +569,6 @@ Item {
             body: Qt.rect(root.pillX + shift, root.pillY, root.pillWidth, root.pillHeight),
             radius: root.pillRadius,
             power: root.pillPower,
-            glow: glow.value,
             titleSize: parts.titleSize,
             transportZoom: parts.transportZoom ?? 1
         };
@@ -1162,14 +1163,6 @@ Item {
         target: root.openness
     }
 
-    Follow {
-        id: glow
-
-        speed: Appearance.animation.revealSpeed * 0.6
-        epsilon: 0.004
-        target: !Media.hasTrack || root.tasking ? 0 : root.openness > 0 ? 0.62 * root.openness : root.rest === "compact" && root.passing.some(p => p.kind === "music") ? 0.45 : 0
-    }
-
     Pull {
         id: zone
 
@@ -1268,6 +1261,18 @@ Item {
             item: !root.interactive ? null : root.whole ? hit : bubblesHit
         }
 
+        ScreenBackdrop {
+            id: behind
+
+            width: root.host?.width ?? 0
+            height: root.host?.height ?? 0
+            output: root.host?.name ?? ""
+            screenOrigin: Qt.point(root.host?.x ?? 0, root.host?.y ?? 0)
+            region: Qt.rect(0, 0, root.host?.width ?? 0, root.y + root.islandTop + root.taskRoom)
+            active: !root.yielded && presence.value > 0.001
+            live: root.expanded && !root.yielded
+        }
+
         Item {
             id: scene
 
@@ -1287,7 +1292,7 @@ Item {
             Repeater {
                 model: 3
 
-                SquircleRect {
+                IslandGlass {
                     id: layer
 
                     required property int index
@@ -1308,9 +1313,11 @@ Item {
                     x: root.centreX - width / 2
                     y: root.pillY + layer.stand - height + layer.reach
                     radius: root.pillRadius
-                    cornerPower: root.pillPower
-                    color: Appearance.blend(Appearance.colour.island, Appearance.colour.paper, layer.depth < 1 ? 0.06 * layer.depth : 0.09 - 0.03 * layer.depth)
-                    rim: 1
+                    power: root.pillPower
+                    backdrop: behind
+                    origin: Qt.point(root.surfaceX + layer.x, root.y + layer.y)
+                    raise: Math.min(1, root.restRaise + 0.2 * layer.depth)
+                    fallback: Appearance.blend(Appearance.colour.island, Appearance.colour.paper, layer.depth < 1 ? 0.06 * layer.depth : 0.09 - 0.03 * layer.depth)
                     opacity: Math.max(layer.shown * layer.kept, layer.ghostness)
                     visible: layer.opacity > 0.01
 
@@ -1361,29 +1368,31 @@ Item {
                     Repeater {
                         model: 2
 
-                        SquircleRect {
-                            id: behind
+                        IslandGlass {
+                            id: shell
 
                             required property int index
 
-                            readonly property int d: behind.index + 1
+                            readonly property int d: shell.index + 1
 
                             Follow {
                                 id: behindShown
 
                                 speed: Appearance.animation.revealSpeed
                                 epsilon: 0.004
-                                target: (under?.twin?.depth ?? 0) >= behind.d ? 1 : 0
+                                target: (under?.twin?.depth ?? 0) >= shell.d ? 1 : 0
                             }
 
-                            z: -behind.d
+                            z: -shell.d
                             x: under?.twin?.x ?? 0
-                            y: (under?.twin?.y ?? 0) + root.stackStep * behind.d * behindShown.value
+                            y: (under?.twin?.y ?? 0) + root.stackStep * shell.d * behindShown.value
                             width: under?.twin?.width ?? 0
                             height: width
                             pill: "object"
-                            color: Appearance.blend(Appearance.colour.island, Appearance.colour.paper, 0.06 * behind.d)
-                            rim: 1
+                            backdrop: behind
+                            origin: Qt.point(root.surfaceX + shell.x, root.y + shell.y)
+                            raise: Math.min(1, root.restRaise + 0.2 * shell.d)
+                            fallback: Appearance.blend(Appearance.colour.island, Appearance.colour.paper, 0.06 * shell.d)
                             opacity: (under?.fade ?? 0) * behindShown.value
                             visible: opacity > 0.01
                         }
@@ -1411,11 +1420,12 @@ Item {
                     target: root.voiceAside ? 1 : 0
                 }
 
-                SquircleRect {
+                IslandGlass {
                     anchors.fill: parent
                     pill: "object"
-                    color: Appearance.colour.island
-                    rim: 1
+                    backdrop: behind
+                    origin: Qt.point(root.surfaceX + voiceCapsule.x, root.y + voiceCapsule.y)
+                    raise: root.restRaise
                 }
 
                 ActivityRow {
@@ -1451,6 +1461,11 @@ Item {
                 edge: root.edge
                 neck: root.neck
 
+                backdrop: behind
+                origin: Qt.point(root.surfaceX, root.y)
+                raised: root.restRaise + (1 - root.restRaise) * Math.max(root.opened, root.squared)
+                bezel: Math.min(Appearance.padding.large * 1.25, Math.max(1, root.pillHeight) * 0.3)
+
                 source: inkSource
                 visible: presence.value > 0.001
             }
@@ -1468,16 +1483,6 @@ Item {
                 id: ink
 
                 anchors.fill: parent
-
-                ArtGlow {
-                    x: root.centreX - root.largeWidth / 2
-                    y: root.pillY
-                    width: root.largeWidth
-                    height: Math.max(root.compactHeight, overview.implicitHeight, root.pillHeight)
-                    moving: visible && Media.playing
-                    opacity: glow.value
-                    visible: glow.value > 0.005
-                }
 
                 Pull {
                     id: shut
@@ -1782,6 +1787,8 @@ Item {
                         id: face
 
                         anchors.fill: parent
+                        backdrop: behind
+                        origin: Qt.point(root.surfaceX + bubble.x, root.y + bubble.y)
                         group: bubble.group
                         size: bubble.size
                         live: grow.value > 0.5
@@ -1799,13 +1806,17 @@ Item {
                         onClicked: root.tapBubble(bubble.key)
                     }
 
-                    SquircleRect {
+                    IslandGlass {
+                        id: tag
+
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: parent.height + Appearance.padding.small + root.stackStep * 2
                         width: label.implicitWidth + Appearance.padding.normal * 2
                         height: label.implicitHeight + Appearance.padding.small
                         pill: "object"
-                        color: Appearance.colour.island
+                        backdrop: behind
+                        origin: Qt.point(root.surfaceX + bubble.x + tag.x, root.y + bubble.y + tag.y)
+                        raise: 1
                         opacity: hoverGlow.value
                         visible: opacity > 0.01 && !!face.label
 

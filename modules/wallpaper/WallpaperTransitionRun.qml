@@ -18,7 +18,6 @@ Item {
     property string fieldPath: ""
     property string linePath: ""
     property color ember: Appearance.colour.accentBright
-    property color ink: Appearance.colour.accentBright
     property bool failed: false
     property real t: 0
 
@@ -70,7 +69,6 @@ Item {
             return;
         }
         root.ember = found.ember || Appearance.colour.accentBright;
-        root.ink = found.ink || Appearance.colour.accentBright;
         root.fieldPath = found.field;
         root.linePath = found.line;
         root.kind = found.kind;

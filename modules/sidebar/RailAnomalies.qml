@@ -116,6 +116,15 @@ Item {
             root.held = next;
     }
 
+    function markFor(key: string): Item {
+        for (let i = 0; i < marks.count; i++) {
+            const mark = marks.itemAt(i);
+            if (mark?.present && mark.entry?.opens?.menu === key)
+                return mark;
+        }
+        return null;
+    }
+
     function toneColour(tone: string): color {
         return tone === "alarm" ? Appearance.colour.alarm : tone === "warning" ? Appearance.colour.warning : tone === "notice" ? Appearance.colour.text : Appearance.colour.textDim;
     }
@@ -131,6 +140,8 @@ Item {
         spacing: 0
 
         Repeater {
+            id: marks
+
             model: ScriptModel {
                 values: root.held
                 objectProp: "key"

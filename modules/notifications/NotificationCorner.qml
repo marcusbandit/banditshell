@@ -15,6 +15,8 @@ Item {
 
     required property bool onStage
 
+    property GlassSource backdrop: null
+
     property bool wanted: Config.values.notifications.placement !== "island"
 
     readonly property var items: root.wanted && root.onStage ? Notifications.popups : []
@@ -40,6 +42,8 @@ Item {
 
         GlassPanel {
             anchors.fill: parent
+            backdrop: root.backdrop
+            origin: Qt.point(root.x + plate.x, root.y + plate.y)
         }
 
         Column {
