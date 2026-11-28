@@ -137,19 +137,23 @@ Item {
 
     readonly property real screenAspect: root.height > 0 ? root.width / root.height : 16 / 9
 
-    readonly property real heroHeight: Math.round(root.height * 0.3)
+    readonly property real heroHeight: Math.round(Math.max(root.height * 0.14, 140))
     readonly property real heroWidth: Math.round(root.heroHeight * root.screenAspect)
 
     readonly property real pitch: Math.round(root.width * 0.08)
 
-    readonly property real rowGap: Appearance.padding.large
+    readonly property real rowGap: Appearance.padding.normal
 
-    readonly property real dimming: 0.35
+    readonly property real shade: 0.55
     readonly property real stripCentre: root.height - Appearance.sizes.border - Appearance.padding.huge - details.height - root.rowGap - root.heroHeight / 2
 
     readonly property real gap: Appearance.padding.normal
-    readonly property real stripWidth: Math.round(root.width * 0.8)
+    readonly property real stripWidth: Math.min(Math.round(root.width * 0.8), Math.round(root.heroWidth * 2.6))
     readonly property real room: Math.max(0, (root.stripWidth - root.heroWidth - root.gap) / 2)
+
+    readonly property real barRoom: Math.round(root.width - 2 * Appearance.padding.huge)
+
+    readonly property bool swatchesShown: root.colour !== "" || root.offered.length > 1 || root.offered.some(swatch => root.countOf(swatch.name) < root.shelf.length)
 
     readonly property real farScale: 0.62
 
@@ -179,7 +183,7 @@ Item {
 
     readonly property real panelWidth: root.width
 
-    readonly property real riseDistance: root.height - filters.y
+    readonly property real riseDistance: root.height - strip.y
 
     readonly property Item maskItem: catcher
 
@@ -346,10 +350,23 @@ Item {
     }
 
     Rectangle {
-        anchors.fill: parent
-        color: "black"
-        opacity: root.dimming * root.revealed
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: root.riseDistance + Appearance.padding.huge * 2
+        opacity: root.revealed
         visible: opacity > 0
+
+        gradient: Gradient {
+            GradientStop {
+                position: 0
+                color: "transparent"
+            }
+            GradientStop {
+                position: 1
+                color: Appearance.withAlpha(Appearance.grey(0), root.shade)
+            }
+        }
     }
 
     MouseArea {
@@ -634,12 +651,14 @@ Item {
         }
 
         Item {
-            id: filters
+            id: details
+
+            readonly property real inner: Appearance.padding.large + Appearance.padding.huge + Appearance.padding.small
 
             anchors.horizontalCenter: parent.horizontalCenter
-            y: strip.y - root.rowGap - filters.height
-            width: filterRow.implicitWidth + Appearance.padding.small * 2
-            height: filterRow.implicitHeight + Appearance.padding.small * 2
+            y: strip.y + strip.height + root.rowGap
+            width: Math.min(root.barRoom, Math.max(root.heroWidth, about.implicitWidth + actions.implicitWidth + details.inner))
+            height: Math.max(about.implicitHeight, actions.implicitHeight) + Appearance.padding.small * 2
 
             MouseArea {
                 anchors.fill: parent
@@ -651,13 +670,51 @@ Item {
             }
 
             Row {
-                id: filterRow
+                id: about
 
-                anchors.centerIn: parent
+                anchors.left: parent.left
+                anchors.leftMargin: Appearance.padding.large
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: Appearance.padding.normal
+
+                AspectMark {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: !!strip.currentPath
+                    aspect: Wallpaper.aspectOf(strip.currentPath)
+                    reference: root.screenAspect
+                    fits: Wallpaper.fits(strip.currentPath, root.screenAspect)
+
+                    size: Appearance.font.size.small * 2
+                }
+
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    StyledText {
+                        width: Math.max(0, Math.min(implicitWidth, root.barRoom - actions.implicitWidth - details.inner - Appearance.font.size.small * 3))
+                        elide: Text.ElideRight
+                        text: strip.currentPath ? root.titleOf(strip.currentPath) : root.emptyWords
+                        color: Appearance.colour.text
+                    }
+
+                    StyledText {
+                        visible: !!strip.currentPath
+                        text: strip.currentPath ? root.detailsOf(strip.currentPath) : ""
+                        color: Appearance.colour.textDim
+                    }
+                }
+            }
+
+            Row {
+                id: actions
+
+                anchors.right: parent.right
+                anchors.rightMargin: Appearance.padding.small
+                anchors.verticalCenter: parent.verticalCenter
                 spacing: Appearance.padding.small
 
                 Repeater {
-                    model: root.offered
+                    model: root.swatchesShown ? root.offered : []
 
                     Item {
                         id: swatch
@@ -735,7 +792,7 @@ Item {
 
                     anchors.verticalCenter: parent.verticalCenter
                     visible: root.searching
-                    width: visible ? Math.round(root.heroWidth * 0.45) : 0
+                    width: visible ? Appearance.font.size.small * 16 : 0
                     height: searchButton.height
                     icon: ""
                     placeholder: "Search by name"
@@ -756,71 +813,6 @@ Item {
                         event.accepted = true;
                     }
                 }
-            }
-        }
-
-        Item {
-            id: details
-
-            readonly property real inner: Appearance.padding.large + Appearance.padding.huge + Appearance.padding.small
-
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: strip.y + strip.height + root.rowGap
-            width: Math.min(root.stripWidth, Math.max(root.heroWidth, about.implicitWidth + actions.implicitWidth + details.inner))
-            height: Math.max(about.implicitHeight, actions.implicitHeight) + Appearance.padding.small * 2
-
-            MouseArea {
-                anchors.fill: parent
-            }
-
-            GlassPanel {
-                anchors.fill: parent
-                pill: "place"
-            }
-
-            Row {
-                id: about
-
-                anchors.left: parent.left
-                anchors.leftMargin: Appearance.padding.large
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: Appearance.padding.normal
-
-                AspectMark {
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: !!strip.currentPath
-                    aspect: Wallpaper.aspectOf(strip.currentPath)
-                    reference: root.screenAspect
-                    fits: Wallpaper.fits(strip.currentPath, root.screenAspect)
-
-                    size: Appearance.font.size.small * 2
-                }
-
-                Column {
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    StyledText {
-                        width: Math.min(implicitWidth, root.stripWidth - actions.implicitWidth - details.inner - Appearance.font.size.small * 3)
-                        elide: Text.ElideRight
-                        text: strip.currentPath ? root.titleOf(strip.currentPath) : root.emptyWords
-                        color: Appearance.colour.text
-                    }
-
-                    StyledText {
-                        visible: !!strip.currentPath
-                        text: strip.currentPath ? root.detailsOf(strip.currentPath) : ""
-                        color: Appearance.colour.textDim
-                    }
-                }
-            }
-
-            Row {
-                id: actions
-
-                anchors.right: parent.right
-                anchors.rightMargin: Appearance.padding.small
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: Appearance.padding.small
 
                 Button {
                     id: tune
