@@ -191,7 +191,7 @@ const S = {
     view: "original", tool: "add", brush: 18,
     prep: {}, threshold: 0.5, seed: null, line: "ember", base: "model",
     orig: null, prepared: null, model: null, edits: null, undo: [],
-    stats: null, maps: null, playing: false, busy: false
+    stats: null, maps: null, playing: false, busy: false, drawn: 0, shaped: 0
 };
 
 for (const el of document.querySelectorAll("[data-t]"))
@@ -423,7 +423,7 @@ function shapeSoon(delay = 180) {
     shapeTimer = setTimeout(shapeNow, delay);
 }
 async function shapeNow() {
-    const serial = ++shapeSerial;
+    const serial = ++shapeSerial, drawn = S.drawn;
     if (!S.model && S.base !== "hand" && editsNeutral()) {
         S.stats = S.maps = null;
         readouts();
@@ -438,6 +438,7 @@ async function shapeNow() {
         S.stats = r.stats;
         S.maps = r.field ? await buildMaps(r.field, r.line) : null;
     }
+    S.shaped = drawn;
     readouts();
     render();
 }
@@ -543,11 +544,11 @@ function render() {
         }
         view.putImageData(out, 0, 0);
         if (!has) empty(T.noMask);
-    } else if (S.maps) {
+    } else if (S.maps && S.shaped === S.drawn) {
         frame(0.44, true);
     } else {
         view.putImageData(S.orig, 0, 0);
-        if (S.model || !editsNeutral()) edgeOf();
+        if (S.model || !editsNeutral()) edgeOf(S.maps ? lineRgb() : [239, 123, 123]);
         else empty(T.noMask);
     }
     overlay();
@@ -556,10 +557,9 @@ function empty(text) {
     $("empty").textContent = text;
     $("empty").hidden = false;
 }
-function edgeOf() {
+function edgeOf(bad) {
     const W = S.w * SCALE, H = S.h * SCALE, img = view.getImageData(0, 0, W, H), o = img.data, cut = S.threshold * 255;
     const on = (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h && composite(y * S.w + x) > cut;
-    const bad = [239, 123, 123];
     for (let y = 0; y < S.h; y++)
         for (let x = 0; x < S.w; x++) {
             if (!on(x, y) || (on(x - 1, y) && on(x + 1, y) && on(x, y - 1) && on(x, y + 1))) continue;
@@ -606,12 +606,13 @@ function paint(p) {
     for (let y = y0; y <= y1; y++)
         for (let x = x0; x <= x1; x++)
             if ((x + 0.5 - p[0]) ** 2 + (y + 0.5 - p[1]) ** 2 <= r2) S.edits[y * S.w + x] = v;
+    S.drawn++;
 }
 function stroke(a, b) {
     const d = Math.hypot(b[0] - a[0], b[1] - a[1]), steps = Math.max(1, Math.ceil(d / Math.max(1, S.brush / 3)));
     for (let k = 1; k <= steps; k++) paint([a[0] + (b[0] - a[0]) * k / steps, a[1] + (b[1] - a[1]) * k / steps]);
 }
-let drawing = null, queued = false;
+let drawing = null, queued = false, lastShape = 0;
 function soon() {
     if (queued) return;
     queued = true;
@@ -643,6 +644,11 @@ $("over").onpointermove = e => {
         stroke(drawing, p);
         drawing = p;
         soon();
+        const now = performance.now();
+        if (now - lastShape > 300) {
+            lastShape = now;
+            shapeNow();
+        }
     } else overlay();
 };
 $("over").onpointerup = $("over").onpointercancel = () => {
@@ -660,7 +666,7 @@ $("threshold").oninput = () => {
     render();
     shapeSoon();
 };
-$("undo").onclick = () => { if (S.undo.length) { S.edits = S.undo.pop(); render(); shapeSoon(0); } };
+$("undo").onclick = () => { if (S.undo.length) { S.edits = S.undo.pop(); S.drawn++; render(); shapeSoon(0); } };
 $("resetMask").onclick = () => {
     S.undo.push(S.edits.slice());
     S.edits.fill(128);
