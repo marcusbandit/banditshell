@@ -9,6 +9,8 @@ const PRESENTATION = {
     screen: { name: "Screen", state: "Screen shared", icon: "screen_share", priority: 20, menu: "" }
 };
 
+const USING = { mic: "Using microphone", camera: "Using camera", screen: "Sharing screen" };
+
 function classOf(node) {
     return String((node.props || {})["media.class"] || "");
 }
@@ -207,6 +209,44 @@ function named(found, table) {
         if (!pids[name].includes(key)) {
             pids[name].push(key);
             row.processes = pids[name].length;
+        }
+    }
+    return out;
+}
+
+function appGuesses(name) {
+    const out = [];
+    const add = guess => {
+        if (guess && !out.includes(guess))
+            out.push(guess);
+    };
+    const raw = String(name || "").trim();
+    add(raw);
+    const bare = raw.replace(/^PipeWire ALSA \[(.*)\]$/, "$1");
+    add(bare);
+    const parts = bare.split(/[-_ ]+/).filter(part => part !== "");
+    for (let i = parts.length - 1; i > 0; i--)
+        add(parts.slice(0, i).join("-"));
+    return out;
+}
+
+function holders(usages, listeners, find) {
+    const out = [];
+    for (const usage of usages || []) {
+        const heard = usage.kind === "mic" ? (listeners || []).map(l => l.name) : [];
+        const names = heard.length > 0 ? heard : usage.apps;
+        for (const name of names) {
+            let found = null;
+            for (const guess of appGuesses(name)) {
+                found = find(guess);
+                if (found)
+                    break;
+            }
+            const shown = found ? found.name : name;
+            const key = `${usage.kind}:${shown}`;
+            if (out.some(h => h.key === key))
+                continue;
+            out.push({ key: key, kind: usage.kind, name: shown, spec: found ? found.spec || "" : "", icon: PRESENTATION[usage.kind].icon, line: USING[usage.kind] });
         }
     }
     return out;

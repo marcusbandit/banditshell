@@ -117,11 +117,7 @@ Item {
 
     readonly property var alerts: root.deckEntries.filter(e => !e.leaving)
 
-    readonly property int recentMax: 3
     readonly property var appGroups: root.offStage ? Notifications.byApp(Notifications.history.filter(e => !root.deckEntries.includes(e))) : []
-    readonly property var recentGroups: root.appGroups.slice(0, root.recentMax)
-    readonly property var recent: root.recentGroups.map(g => g.entries[0])
-    readonly property int unlisted: root.appGroups.slice(root.recentMax).reduce((sum, g) => sum + g.entries.filter(e => !e.leaving).length, 0)
 
     readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music" && a.kind !== "level"), ...(root.lifting ? [
                 {
@@ -133,13 +129,6 @@ Item {
                     key: "quiet",
                     kind: "quiet",
                     text: Notifications.quietLine
-                }
-            ] : []), ...(root.unlisted > 0 ? [
-                {
-                    key: "notifications",
-                    kind: "notifications",
-                    count: root.unlisted,
-                    more: root.recent.length > 0
                 }
             ] : [])]
 
@@ -1510,7 +1499,8 @@ Item {
                     y: root.pillY
                     width: root.largeWidth
                     activities: root.overviewRows
-                    notifications: root.recentGroups
+                    notifications: root.appGroups
+                    holders: root.offStage ? Privacy.holders : []
                     room: root.taskRoom
                     watched: overviewFade.value > 0.01 && taskFade.value < 0.99
                     arrivals: root.deckEntries.length > 0 ? deck.implicitHeight : 0

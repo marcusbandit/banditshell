@@ -24,4 +24,6 @@ IslandUpgrade 1.0 IslandUpgrade.qml
 IslandWeather 1.0 IslandWeather.qml
 IslandWifi 1.0 IslandWifi.qml
 MockNotification 1.0 MockNotification.qml
+NotificationSections 1.0 NotificationSections.qml
+SilentRow 1.0 SilentRow.qml
 TaskHeader 1.0 TaskHeader.qml

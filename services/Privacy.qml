@@ -57,6 +57,15 @@ Singleton {
     property var listeners: []
     property var found: []
     property var mocked: null
+    property string heardKey: ""
+
+    readonly property var holders: Logic.holders(root.usages, root.listeners, guess => {
+        const entry = Apps.entryFor(guess);
+        return entry ? {
+            name: entry.name,
+            spec: AppIcons.markFor(entry.id, "")
+        } : null;
+    })
 
     function listen(): void {
         if (root.mocked) {
@@ -67,9 +76,9 @@ Singleton {
     }
 
     function mock(usages: var, rows: var): void {
-        root.mockedUsages = usages;
         root.mocked = rows;
         root.listeners = rows ?? [];
+        root.mockedUsages = usages;
     }
 
     function settle(): void {
@@ -79,6 +88,14 @@ Singleton {
         const hushed = root.quiet.mic ? Logic.usages(root.snapshot, {}).find(u => u.kind === "mic") ?? null : null;
         const step = Logic.micStep(root.heard, mic, micMoment.running, hushed);
         root.heard = step.heard;
+        const heardKey = mic ? mic.apps.join("\n") : "";
+        if (heardKey !== root.heardKey) {
+            root.heardKey = heardKey;
+            if (mic)
+                root.listen();
+            else if (!root.mocked)
+                root.listeners = [];
+        }
         if (!mic)
             micMoment.stop();
         else if (step.announce)

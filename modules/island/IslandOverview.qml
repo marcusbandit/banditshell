@@ -5,13 +5,13 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
-import "deck-fit.js" as DeckFit
 
 Item {
     id: root
 
     property var activities: []
     property var notifications: []
+    property var holders: []
     property real room: 100000
     property bool watched: false
 
@@ -56,23 +56,17 @@ Item {
         }
     }
     readonly property real topInset: Appearance.padding.large
-    readonly property bool hasNotices: root.notifications.length > 0
-    readonly property bool hasSummary: !!root.listed
-    readonly property real bottomInset: root.hasNotices && !root.hasSummary ? Appearance.padding.small - Appearance.stroke.line : root.pad
+    readonly property bool hasNotices: root.notifications.length > 0 || root.holders.length > 0
+    readonly property real bottomInset: root.hasNotices ? Appearance.padding.small : root.pad
     readonly property real deckHeight: root.hasNotices ? notices.height : 0
     property real laidDeckHeight: 0
     readonly property real restHeight: root.implicitHeight - root.laidDeckHeight
-    readonly property real settledHeight: root.restHeight + (root.hasNotices ? notices.fullHeight : 0)
+    readonly property real settledHeight: root.restHeight + (root.hasNotices ? notices.implicitHeight : 0)
     readonly property real arrivalsTop: column.y + clockBox.height
     readonly property real rowPitch: Appearance.font.line.small + Appearance.padding.small * 2 + rows.spacing
 
-    readonly property var live: root.activities.filter(a => a.kind !== "notifications")
-    readonly property var listed: root.activities.find(a => a.kind === "notifications") ?? null
-    readonly property int clipped: DeckFit.clippedEntries(root.notifications, notices.hiddenCards)
+    readonly property var live: root.activities.filter(a => a.kind !== "notifications" && a.kind !== "privacy")
     readonly property var drawn: root.hasNotices ? notices.drawn : []
-    readonly property var summary: root.listed && root.clipped > 0 ? Object.assign({}, root.listed, {
-        count: root.listed.count + root.clipped
-    }) : root.listed
 
     readonly property bool mediaHovered: media.visible && media.hovered
 
@@ -311,37 +305,19 @@ Item {
             })
         }
 
-        AlertDeck {
+        NotificationSections {
             id: notices
 
             x: -root.pad
             width: root.width
             visible: root.hasNotices
             groups: root.notifications
-            fanned: 1
-            footed: false
-            wholeCards: root.hasSummary
+            holders: root.holders
             contentLead: root.pad
-            liftsAway: false
-            warm: root.watched
-            maxHeight: Math.max(Appearance.font.line.small * 8, root.room - root.topInset - root.bottomInset - notices.y - (root.hasSummary ? summaryRow.height + column.spacing : 0))
+            watched: root.watched
+            maxHeight: Math.max(Appearance.font.line.small * 8, root.room - root.topInset - root.bottomInset - notices.y)
 
-            onDismissed: entry => Notifications.forget(entry)
-            onKept: entry => Notifications.forget(entry)
-            onLifted: root.lifted()
-        }
-
-        ActivityRow {
-            id: summaryRow
-
-            x: root.rowX - root.pad
-            width: root.rowWidth
-            visible: root.hasSummary
-            activity: root.summary
-            lights: true
-            live: root.watched
-
-            onChosen: root.chosen(root.summary)
+            onChosen: activity => root.chosen(activity)
         }
     }
 }

@@ -250,3 +250,24 @@ test.describe("what is listening", () => {
     });
 });
 
+
+test.describe("holders", () => {
+    const H = new Function(src + "\nreturn { holders, appGuesses };")();
+    const apps = { diablo: { name: "Diablo", spec: "image:/diablo.svg" }, firefox: { name: "Firefox", spec: "" } };
+    const find = guess => apps[guess] ?? null;
+
+    test.it("guesses an app from a unit, then shorter prefixes", () => {
+        assert.deepStrictEqual(H.appGuesses("diablo-ears"), ["diablo-ears", "diablo"]);
+        assert.deepStrictEqual(H.appGuesses("PipeWire ALSA [python3.12]"), ["PipeWire ALSA [python3.12]", "python3.12"]);
+    });
+
+    test.it("a unit the desktop knows shows the app's name, mark and what it uses", () => {
+        const rows = H.holders([{ kind: "mic", apps: ["PipeWire ALSA [python3.12]"] }], [{ name: "diablo-ears" }], find);
+        assert.deepStrictEqual(rows, [{ key: "mic:Diablo", kind: "mic", name: "Diablo", spec: "image:/diablo.svg", icon: "mic", line: "Using microphone" }]);
+    });
+
+    test.it("before the listeners are named, the PipeWire names stand in, one row per app", () => {
+        const rows = H.holders([{ kind: "camera", apps: ["firefox", "Firefox"] }, { kind: "mic", apps: ["obs"] }], [], find);
+        assert.deepStrictEqual(rows.map(r => [r.key, r.line]), [["camera:Firefox", "Using camera"], ["mic:obs", "Using microphone"]]);
+    });
+});
