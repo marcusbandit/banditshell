@@ -16,6 +16,7 @@ Item {
 
     readonly property bool open: root.concept?.open ?? false
     readonly property var blobs: root.concept?.blobs ?? []
+    readonly property bool glassBeneath: root.blobs.length > 0
     readonly property Item maskItem: root.concept?.maskItem ?? null
 
     readonly property real drawnHeight: root.concept?.drawnHeight ?? 0

@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "dies-with-shell.js" as DiesWithShell
 
 Singleton {
     id: root
@@ -87,7 +88,7 @@ Singleton {
 
         sourceComponent: Process {
             running: true
-            command: ["inotifywait", "-m", "-q", "-e", "close_write", "-e", "moved_to", "--format", "%e|%f", "--", root.dir]
+            command: DiesWithShell.command(["inotifywait", "-m", "-q", "-e", "close_write", "-e", "moved_to", "--format", "%e|%f", "--", root.dir])
 
             stdout: SplitParser {
                 onRead: line => root.saw(line)

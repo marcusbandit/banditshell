@@ -1,15 +1,16 @@
 {
   "name": "capture",
   "summary": "screen recording and region picking",
-  "layer": 2,
+  "layer": 3,
   "owns": {
     "qml": ["modules/picker"],
     "services": ["ScreenRecorder", "Screenshots"],
     "js": ["services/recording.js"],
-    "scripts": ["scripts/screen-record.sh"]
+    "scripts": ["scripts/screen-record.sh"],
+    "tests": ["tests/picker-place.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor"],
+    "packages": ["core", "compositor", "wallpaper"],
     "optional": []
   },
   "provides": {

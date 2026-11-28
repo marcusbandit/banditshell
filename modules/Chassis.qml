@@ -17,9 +17,7 @@ Item {
 
     readonly property real band: root.bare ? 0 : Appearance.sizes.border
     readonly property bool rail: root.sidebar && Appearance.sizes.sidebarRail
-    property bool railWanted: false
-
-    readonly property real railOpen: root.rail ? railGrowth.value : 1
+    readonly property real railOpen: root.rail ? 0 : 1
     readonly property real sidebarSpan: Appearance.sizes.railWidth + (Appearance.sizes.sidebarWidth - Appearance.sizes.railWidth) * root.railOpen
 
     readonly property real fullBarWidth: root.sidebar ? root.band + Appearance.sizes.sidebarWidth : root.band
@@ -40,15 +38,8 @@ Item {
     readonly property real streamFlare: Math.min(Appearance.sizes.gap, root.streamReach)
 
     property var panels: []
+    property Item backdrop: null
     property bool readable: false
-
-    Follow {
-        id: railGrowth
-
-        target: root.rail && root.railWanted ? 1 : 0
-        speed: Appearance.animation.resizeSpeed
-        epsilon: 0.002
-    }
 
     Follow {
         id: readableShown
@@ -65,10 +56,16 @@ Item {
         speed: Appearance.animation.revealSpeed
     }
 
+    readonly property real deepest: root.panels.reduce((most, p) => p ? Math.max(most, Math.max(0, Math.min(p.x + p.w, root.holeX + root.holeWidth) - Math.max(p.x, root.holeX)) * Math.max(0, Math.min(p.y + p.h, root.holeY + root.holeHeight) - Math.max(p.y, root.holeY))) : most, 0)
+    readonly property bool reachesIn: root.deepest > Math.pow(Appearance.padding.huge * 4, 2)
+
     BlobField {
         anchors.fill: parent
 
         panels: root.panels
+
+        backdrop: root.backdrop
+        restRaise: Math.max(root.rail ? 0 : (root.sidebar ? 1 : 0), readableShown.value)
 
         colour: Appearance.blend(Appearance.colour.surface, Appearance.colour.readableSurface, readableShown.value)
 

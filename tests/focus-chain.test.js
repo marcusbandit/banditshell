@@ -231,3 +231,8 @@ test.describe("nearest", () => {
     });
 });
 
+
+test("a tile half a row wide, beside its twin, is where the keyboard starts", () => {
+    const rects = [box(0, 0, 172, 63), box(180, 0, 172, 63), box(0, 71, 352, 63)];
+    assert.strictEqual(Chain.first(rects, 352), 0);
+});

@@ -76,8 +76,10 @@ month and the rest. Settings can turn the column off, or keep it to an empty des
 **AMENDED 2026-11-27: free widgets on clear glass (#891).** The column is gone; it wrapped
 like text and the owner hated it. Each widget sits where it was dropped, anchored to the two
 screen edges nearest its centre, so it grows away from them. Each has a small, medium and
-large form: hover peeks a small one up to medium, a click opens large, and a pin on the
-corner makes the shown size the resting one. The surface is glass with no tint: the
+large form: a click opens large in place, above the others, which show through its frost;
+hover only lights the rim; and a pin on the corner makes the shown size the resting one.
+Drops settle on a soft grid, so neighbours line up one gap apart, and widgets never overlap
+at rest. The surface is glass with no tint: the
 wallpaper behind it, lightly blurred at rest and frosted while it is in use, bent by a
 convex rim the way Apple's Liquid Glass bends it (`components/glass.frag`), lit by a thin
 highlight from the top left and dimmed only as far as white text needs. The clock keeps no
@@ -670,11 +672,6 @@ banditshell/
 │   ├── squirclefill.frag        the convex path of it, drawn by a shader (+ .qsb)
 │   ├── SquircleImage.qml              a picture cut to that same corner, by mask
 │   ├── BlurredImage.qml         the same cut, the picture blurred to colour
-│   ├── ImagePalette.qml         a picture's main colours and how much of it each
-│   │                            covers, read off a 24px copy in a Canvas
-│   ├── ColourField.qml          up to four colours blended into a slow, soft
-│   │                            field, each as large as its share, all fields
-│   │                            on one clock so two of them agree (+ .frag)
 │   ├── Waveform.qml             levels as one smooth mirrored curve: a ring of
 │   │                            levels, a playhead gliding through it, a shader
 │   │                            drawing a B-spline with soft ends (+ .frag)
@@ -2178,10 +2175,8 @@ waiting or stuck. One mark is not about the unusual: with more than one keyboard
 always shows the current one's code (`DK`, `US`) on a small chip of its own, so it never reads as part of the time below it, because the switch bind changes every key with
 nothing else moving; it is dim on the first layout and plain light on any other, and a press moves
 every keyboard to the next layout. Every mark's tooltip says what it is and then what a press does ("VPN on,
-click for settings"). Battery, sound, airplane and update open their sidebar menus, so the rail
-grows under them; VPN, a mode and quiet open their Settings page; keep-awake and a screen
-recording stop. Pointing at a mark holds the rail at rest so it can be pressed before the rail
-grows; after the press the rail stays at rest until the pointer leaves it. The workspace marks
+click for settings"). Battery, sound, airplane and update open their menus beside the rail, level with the mark; VPN, a mode and quiet open their Settings page; keep-awake and a screen
+recording stop. The workspace marks
 never move for a status mark: they keep their place, leave four status slots under them wherever
 the rail is tall enough, and the status marks stay a clear gap below, so they read as their own
 group and never as one more workspace. Every mark shows while
@@ -2205,10 +2200,9 @@ it the same way: a small time on top, the battery as a level rather than a batte
 
 - `rail` (the default): at the rail's foot, the time, the date under it, and under that the
   battery as an upright level bar with a nub on top and its percent below. The time and date read
-  sideways when the clock is one line. The resting clock (`sidebar.clock.style` and `size`)
-  and the open one (`wideStyle` and `wideSize`) are chosen apart: stacked or one line, small or
-  large. One line turns the time on its side so it reads as 14:32. The defaults are one line small
-  at rest and stacked large when open, so the wide column is used for something.
+  sideways when the clock is one line. `sidebar.clock.style` and `size` pick stacked or one line,
+  small or large; one line turns the time on its side so it reads as 14:32. A press on the time
+  opens the clock menu and a press on the date the calendar, both beside the rail.
 - `rail top`: the same at the rail's head, where the Duo puts it.
 - `top`: a pill melts out of the top band at the centre with the time and the battery meter and
   percent. It steps back while the island is out, since the island owns that spot.
@@ -2225,15 +2219,16 @@ nothing. The clock style `off` and the sidebar's battery toggle still hide each 
 mode draws no glance outside the rail. `wide` widens the rail but not its workspace marks. This
 bends 2.1 for two readings everyone asks for; nothing else joins them at rest.
 
-Pointing anywhere on the rail, workspace marks included, for `anim.dwell` grows it into the full column: the clock, tray, status
-icons and mode icon, with the workspaces turning from marks into plates. It is not a new panel.
-`Chassis` smooths one number (`railOpen`, through `Follow`) and the cutout's left edge simply
-moves, so the growth is the band swelling over the windows, and the content fades in as the
-edge passes it. Leaving for `anim.grace` collapses it, and it holds open while a menu opened
-from one of its icons is up, so every door the full column has is still there. The windows do
-not re-tile: the reservation stays at the rail, and the column only overlaps them while you are
-pointing at it. Scrolling the sound icon changes the volume in both styles, and the optional
-brightness icon (`sidebar.status.brightness`) does the same for the screen.
+**THE RAIL ONLY, 2026-11-27 (#923): the full column is retired.** The sidebar is always the
+rail. `Appearance.sizes.sidebarRail` is fixed true, so a saved `sidebar.style: "full"` reads as
+the rail, and nothing grows it: no dwell, no press, no touch or drag, no open menu. `Chassis`
+keeps `railOpen` at 0. The full body's code stays in `Sidebar.qml` until its contents have a new
+home (sound, network, Bluetooth and battery go to quick controls in #903); it is never visible,
+so it takes no input, and its workspace plates are not built at all. Its status icons still
+supply the menus the rail's marks open. Every menu asked of the rail opens beside it at the item
+that asked: the time, the date, the AI limit bars or the mark; a menu with no item on the rail
+(a tray app, or sound while no mark shows) opens at the rail's head or foot. Settings lost the
+style choice and every row that only changed the open column.
 
 **BARE, same day, the rest of the promise.** `edge.bare` is the chrome's master switch: the
 chassis draws nothing on any screen (a full-window hole, zero inset, zero radius, no
@@ -4267,12 +4262,19 @@ the eye already is.
 
 The first version melted out of the band like the notch it replaced and stacked
 cards inside it. It read as a notch with things in it, and that is what it was.
-The island is its own object: the theme's surface colour, the one the panels
-wear, opaque, floating a gap below the band with a soft shadow and the chassis'
-sheen along its edge. It is not part of the chassis field, so it never bridges
-into the band. It was the darkest stop of the ramp until 2026-10-18, and against
-a coloured theme that read as a black hole cut out of the screen rather than a
-thing of ours; `colour.island` names the surface it wears now.
+The island is its own object, floating a gap below the band. It is not part of
+the chassis field, so it never bridges into the band. Since 2026-11-27 (#904) it
+is the same clear glass as the chassis and the desktop widgets
+(`docs/architecture/desktop-widgets.md`): its window keeps its own
+`ScreenBackdrop` of the screen behind it, the wallpaper plus still frames of the
+windows under it, live while it is open, and `island.frag` bends that picture at
+the rim and lights the edge from the top left. It is clear-ish at rest, a third
+of the way to frosted so the row reads over a busy wallpaper, and frosts fully
+as it opens or grows into a card. The stack layers, the side bubbles' shells and
+the voice capsule are the same glass (`IslandGlass`), a little more frosted per
+layer instead of tinted. Before that it was an opaque fill, and once the chassis
+turned to glass it was the one solid shape on the desktop. `colour.island`
+remains the fallback when there is no wallpaper to sample.
 
 It has three sizes and no others. Compact is a capsule as tall as a button.
 Large is one width, `island.width`, for a notification or for the overview. A
@@ -4325,14 +4327,11 @@ and a bubble can never disagree.
 
 ### Lit by the music
 
-The media card made the cover its light, and the island borrows that. Behind
-everything in the overview sits a field of the cover's own colours: its main
-colours are picked out (the same clustering the wallpaper theming uses, run on a
-tiny copy of the cover) and blended into a slow, soft wash, each colour as large
-as its share of the cover, darkened enough to keep the words readable. A blurred
-cover read as a smudge of the picture; the colours read as the song. The island
-takes that tint, a track-change glance in compact form glows the same way more
-faintly, and the card itself uses the same field (`ArtGlow`). The player in the overview is the card's anatomy at a
+The cover is the only colour the music brings. Until 2026-11-27 a slow wash of
+the cover's main colours (`ArtGlow`) sat behind the overview, the compact
+glance and the media card, with drop shadows under the card and its cover. It
+was tint and glow at once, against the no-glow call and the zero-tint glass, so
+it was cut (#904). The player in the overview is the card's anatomy at a
 smaller scale, without the lyrics: those belong to the card. Its words are never
 cut to the cover's height; a long title takes two lines and the row grows to
 hold it. The expand
@@ -4482,9 +4481,9 @@ and no pin; reading the history is the launcher either way.
 
 **Each notification is its own tile, and the tiles are joined.** In the
 overview and the history a notification is a tile of `colour.tile`, a veil of
-paper over whatever the island shows, so the cover's colour field behind the
-overview comes through the cards as it does through the rest of the island;
-they were solid at first and read as grey slabs on a coloured island. A tile is
+paper over whatever the island shows, so the glass behind the overview comes
+through the cards as it does through the rest of the island; they were solid at
+first and read as grey slabs on a coloured island. A tile is
 set a small padding in from the island's
 edge so the column's corners are concentric with the island's. Tiles that
 border each other are joined into one column, as on Android: a hairline seam

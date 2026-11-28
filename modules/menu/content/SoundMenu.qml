@@ -41,7 +41,7 @@ Column {
             anchors.verticalCenter: parent.verticalCenter
 
             name: level.glyph
-            color: !level.muted ? (level.value > 0 ? Appearance.huedOr(Appearance.hue.sound, Appearance.colour.text) : Appearance.colour.text) : level.urgent ? Appearance.colour.warning : Appearance.colour.textFaint
+            color: !level.muted ? Appearance.colour.text : level.urgent ? Appearance.colour.warning : Appearance.colour.textFaint
 
             readonly property bool keyable: true
 
@@ -75,7 +75,6 @@ Column {
             to: level.max
             warnAbove: 1
             dimmed: level.muted
-            hue: Appearance.hue.sound
             onMoved: v => level.requested(v)
         }
 
@@ -206,7 +205,6 @@ Column {
             to: Audio.maxVolume
             warnAbove: 1
             dimmed: channel.muted
-            hue: Appearance.hue.sound
             onMoved: v => Audio.setStreamVolume(channel.node, v)
         }
 
@@ -263,6 +261,7 @@ Column {
         label: "Open volume mixer"
         onActivated: {
             PanelWindows.close("menus");
+            PanelWindows.close("quickControls");
             Panels.open("mixer");
         }
     }

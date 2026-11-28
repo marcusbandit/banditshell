@@ -6,6 +6,7 @@ import qs.config
 import qs.components.blob
 import qs.components
 import qs.services
+import "picker-place.js" as Place
 
 MouseArea {
     id: root
@@ -42,7 +43,10 @@ MouseArea {
             const dy = py - o.at[1];
             return dx >= 0 && dy >= 0 && dx <= o.size[0] && dy <= o.size[1];
         });
-        return hit ? Qt.rect(hit.at[0] - root.screen.x, hit.at[1] - root.screen.y, hit.size[0], hit.size[1]) : null;
+        if (!hit)
+            return null;
+        const r = Place.clampRect(hit.at[0] - root.screen.x, hit.at[1] - root.screen.y, hit.size[0], hit.size[1], root.width, root.height);
+        return Qt.rect(r.x, r.y, r.width, r.height);
     }
 
     function hover(x: real, y: real): void {
@@ -53,7 +57,8 @@ MouseArea {
 
     function span(x: real, y: real): void {
         root.onWindow = false;
-        root.selection = Qt.rect(Math.min(root.origin.x, x), Math.min(root.origin.y, y), Math.abs(x - root.origin.x), Math.abs(y - root.origin.y));
+        const r = Place.span(root.origin.x, root.origin.y, x, y, root.width, root.height);
+        root.selection = Qt.rect(r.x, r.y, r.width, r.height);
     }
 
     function commit(): void {
@@ -109,10 +114,17 @@ MouseArea {
         cache: false
     }
 
+    Follow {
+        id: dim
+
+        target: root.rw > 0 && root.rh > 0 ? 1 : 0
+        speed: Appearance.animation.revealSpeed
+    }
+
     BlobField {
         anchors.fill: parent
 
-        colour: Appearance.colour.scrim
+        colour: Appearance.withAlpha(Appearance.colour.scrim, Appearance.colour.scrim.a * dim.value)
         content: Qt.vector4d(root.rx, root.ry, root.rw, root.rh)
         baseRadius: Qt.vector4d(root.radius, root.radius, root.radius, root.radius)
         gap: 0
@@ -121,43 +133,59 @@ MouseArea {
         smoothing: 0
 
         outlineWidth: Appearance.sizes.pickerOutline
-        outlineColour: Appearance.colour.accent
+        outlineColour: Appearance.withAlpha(Appearance.colour.chosen, dim.value)
     }
 
-    Item {
+    GlassPanel {
         id: readout
 
-        x: Math.min(root.width - width, Math.max(0, root.rx + root.rw / 2 - width / 2))
+        readonly property var at: Place.readoutAt(root.selection, readout.width, readout.height, root.width, root.height, Appearance.padding.normal)
 
-        y: root.ry + root.rh + Appearance.padding.normal > root.height - readout.height ? root.ry - height - Appearance.padding.normal : root.ry + root.rh + Appearance.padding.normal
-
-        implicitWidth: hint.implicitWidth + Appearance.padding.large * 2
-
-        implicitHeight: Math.max(Appearance.sizes.minTarget, hint.implicitHeight + Appearance.padding.normal * 2)
-        width: implicitWidth
-        height: implicitHeight
+        x: readout.at.x
+        y: readout.at.y
+        width: facts.implicitWidth + Appearance.padding.large * 2
+        height: Math.max(Appearance.sizes.minTarget, facts.implicitHeight + Appearance.padding.normal * 2)
+        pill: "object"
+        opacity: dim.value
+        visible: readout.opacity > 0
 
         SquircleRect {
             anchors.fill: parent
-            radius: Appearance.rounding.normal
-
-            color: tone.value
-
-            FollowColour {
-                id: tone
-
-                target: cancel.containsMouse ? Appearance.colour.fill : Appearance.colour.surface
-                speed: Appearance.animation.revealSpeed
-            }
+            pill: "object"
+            color: Appearance.colour.chosen
+            opacity: pressedLook.value
         }
 
-        StyledText {
-            id: hint
+        Follow {
+            id: pressedLook
+
+            target: cancel.containsMouse ? 1 : 0
+            speed: Appearance.animation.revealSpeed
+        }
+
+        Row {
+            id: facts
 
             anchors.centerIn: parent
-            text: `${root.rw} x ${root.rh}   ${root.onWindow ? "window" : "region"}   ${root.state.clipboardOnly ? "to clipboard" : "to editor"}   tap here or esc to cancel`
-            font.pixelSize: Appearance.font.size.small
-            color: Appearance.colour.textDim
+            spacing: Appearance.padding.normal
+
+            StyledText {
+                text: `${Math.round(root.rw)} x ${Math.round(root.rh)}`
+                font.pixelSize: Appearance.font.size.small
+                color: Appearance.blend(Appearance.colour.text, Appearance.colour.onChosen, pressedLook.value)
+            }
+
+            StyledText {
+                text: root.onWindow ? "window" : "region"
+                font.pixelSize: Appearance.font.size.small
+                color: Appearance.blend(Appearance.colour.textDim, Appearance.colour.onChosen, pressedLook.value)
+            }
+
+            StyledText {
+                text: root.state.clipboardOnly ? "to clipboard" : "to editor"
+                font.pixelSize: Appearance.font.size.small
+                color: Appearance.blend(Appearance.colour.textDim, Appearance.colour.onChosen, pressedLook.value)
+            }
         }
 
         MouseArea {

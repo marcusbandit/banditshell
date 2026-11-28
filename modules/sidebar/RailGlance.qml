@@ -11,6 +11,9 @@ Item {
     property real bottomInset: 0
     property real tabsReach: 0
 
+    signal clockRequested(bool deliberate)
+    signal calendarRequested(bool deliberate)
+
     readonly property string place: Config.values.sidebar.glance
     readonly property bool inRail: root.place === "rail" || root.place === "rail top"
     readonly property bool atHead: root.place === "rail top"
@@ -25,6 +28,9 @@ Item {
 
     readonly property bool footInUse: (stack.visible && !root.atHead) || wide.visible || root.tabsReach > 0
     readonly property real headEdge: stack.visible && root.atHead ? stack.y + stack.height : 0
+    readonly property Item timeItem: stack.visible ? (stackedTime.visible ? stackedTime : sidewaysTime.visible ? sidewaysTime : null) : wide.visible && wideTime.visible ? wideTime : null
+    readonly property Item dateItem: stack.visible ? (stackedDate.visible ? stackedDate : sidewaysDate.visible ? sidewaysDate : null) : null
+
     readonly property real topEdge: stack.visible && !root.atHead ? stack.y : wide.visible ? wide.y : root.height - root.tabsReach
 
     function footY(column: Item): real {
@@ -209,6 +215,32 @@ Item {
         BatteryReading {
             anchors.horizontalCenter: parent.horizontalCenter
             stacked: true
+        }
+    }
+
+    Item {
+        x: 0
+        y: root.timeItem ? root.timeItem.parent.y + root.timeItem.y : 0
+        width: root.width
+        height: root.timeItem?.height ?? 0
+        visible: root.timeItem !== null
+
+        TapHandler {
+            cursorShape: Qt.PointingHandCursor
+            onTapped: root.clockRequested(true)
+        }
+    }
+
+    Item {
+        x: 0
+        y: root.dateItem ? root.dateItem.parent.y + root.dateItem.y : 0
+        width: root.width
+        height: root.dateItem?.height ?? 0
+        visible: root.dateItem !== null
+
+        TapHandler {
+            cursorShape: Qt.PointingHandCursor
+            onTapped: root.calendarRequested(true)
         }
     }
 }

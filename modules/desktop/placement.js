@@ -53,14 +53,115 @@ function stacked(key, heights, gap) {
     return { side, edge: "top", x: 0, y };
 }
 
-function sizeUp(size) {
-    return size === "small" ? "medium" : size;
-}
-
 function validSize(size, fallback) {
     return SIZES.includes(size) ? size : fallback;
 }
 
 function badgeSide(place) {
     return place && place.side === "right" ? "left" : "right";
+}
+
+function grid(area, pitch, gap) {
+    const cols = Math.max(1, Math.round((area.width + gap) / pitch));
+    const rows = Math.max(1, Math.round((area.height + gap) / pitch));
+    return {
+        x: area.x,
+        y: area.y,
+        width: area.width,
+        height: area.height,
+        gap,
+        px: (area.width + gap) / cols,
+        py: (area.height + gap) / rows
+    };
+}
+
+function span(length, pitch, gap) {
+    if (!(length > 0) || !(pitch > 0))
+        return 0;
+    return Math.max(1, Math.ceil((length + gap) / pitch - 1e-6)) * pitch - gap;
+}
+
+function boxOf(width, height, g) {
+    return { width: span(width, g.px, g.gap), height: span(height, g.py, g.gap) };
+}
+
+function snapPlace(place, g) {
+    return {
+        side: place.side,
+        edge: place.edge,
+        x: Math.max(0, Math.round(place.x / g.px) * g.px),
+        y: Math.max(0, Math.round(place.y / g.py) * g.py)
+    };
+}
+
+function crowds(a, b, gap) {
+    const slack = gap - 0.5;
+    return a.x < b.x + b.width + slack && b.x < a.x + a.width + slack && a.y < b.y + b.height + slack && b.y < a.y + a.height + slack;
+}
+
+function freeSpot(x, y, width, height, others, g) {
+    const lastCol = Math.max(0, Math.floor((g.width - width) / g.px + 1e-6));
+    const lastRow = Math.max(0, Math.floor((g.height - height) / g.py + 1e-6));
+    const wantCol = clamp(Math.round((x - g.x) / g.px), 0, lastCol);
+    const wantRow = clamp(Math.round((y - g.y) / g.py), 0, lastRow);
+    let best = null;
+    let bestDistance = Infinity;
+    for (let col = 0; col <= lastCol; col++) {
+        const dx = (col - wantCol) * g.px;
+        if (dx * dx >= bestDistance)
+            continue;
+        for (let row = 0; row <= lastRow; row++) {
+            const dy = (row - wantRow) * g.py;
+            const distance = dx * dx + dy * dy;
+            if (distance >= bestDistance)
+                continue;
+            const spot = { x: g.x + col * g.px, y: g.y + row * g.py, width, height };
+            if (others.some(o => crowds(spot, o, g.gap)))
+                continue;
+            best = spot;
+            bestDistance = distance;
+        }
+    }
+    const fallback = { x: g.x + wantCol * g.px, y: g.y + wantRow * g.py };
+    return best ? { x: best.x, y: best.y } : fallback;
+}
+
+function overlapArea(a, b) {
+    const w = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+    const h = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+    return w > 0 && h > 0 ? w * h : 0;
+}
+
+function openFrom(rest, side, edge, width, height, area) {
+    const x = side === "right" ? rest.x + rest.width - width : rest.x;
+    const y = edge === "bottom" ? rest.y + rest.height - height : rest.y;
+    return {
+        side,
+        edge,
+        x: clamp(x, area.x, Math.max(area.x, area.x + area.width - width)),
+        y: clamp(y, area.y, Math.max(area.y, area.y + area.height - height)),
+        width,
+        height
+    };
+}
+
+function opening(rest, natural, width, height, others, area) {
+    let best = null;
+    let bestScore = Infinity;
+    for (const side of ["left", "right"]) {
+        for (const edge of ["top", "bottom"]) {
+            const r = openFrom(rest, side, edge, width, height, area);
+            const anchorX = side === "right" ? rest.x + rest.width - width : rest.x;
+            const anchorY = edge === "bottom" ? rest.y + rest.height - height : rest.y;
+            const pushed = Math.abs(r.x - anchorX) + Math.abs(r.y - anchorY);
+            const covered = others.reduce((sum, o) => sum + overlapArea(r, o), 0);
+            const turned = (side !== natural.side ? 1 : 0) + (edge !== natural.edge ? 1 : 0);
+            const score = covered + pushed * 64 + turned;
+            if (score < bestScore) {
+                best = r;
+                bestScore = score;
+            }
+        }
+    }
+    return best;
 }

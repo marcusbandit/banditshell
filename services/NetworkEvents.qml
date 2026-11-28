@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "wifilist.js" as WifiList
+import "dies-with-shell.js" as DiesWithShell
 
 Singleton {
     id: root
@@ -24,7 +25,7 @@ Singleton {
         id: watcher
 
         running: Network.managerRunning
-        command: ["nmcli", "monitor"]
+        command: DiesWithShell.command(["nmcli", "monitor"])
         environment: ({
                 LC_ALL: "C"
             })
