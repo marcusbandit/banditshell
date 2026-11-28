@@ -194,6 +194,15 @@ const S = {
     stats: null, maps: null, playing: false, busy: false, drawn: 0, shaped: 0
 };
 
+const UI_KEY = "outline-tuner:ui", DRAFT_KEY = "outline-tuner:draft:";
+function stored(key) {
+    try { return JSON.parse(localStorage.getItem(key) || "null"); } catch { return null; }
+}
+function store(key, value) {
+    try { value === null ? localStorage.removeItem(key) : localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+Object.assign(S, (({ view, tool, brush }) => ({ view, tool, brush }))(Object.assign({ view: S.view, tool: S.tool, brush: S.brush }, stored(UI_KEY) || {})));
+
 for (const el of document.querySelectorAll("[data-t]"))
     el.textContent = T[el.dataset.t];
 document.title = T.title;
@@ -348,10 +357,47 @@ async function open(f) {
     }
     $("runStatus").textContent = "";
     $("saveStatus").textContent = "";
+    await restoreDraft(f);
     await Promise.all([loadPrepared(), loadMask()]);
     render();
     shapeSoon(0);
+    S.kept = keepSignature();
+    S.keptDrawn = S.drawn;
 }
+
+async function restoreDraft(f) {
+    const d = stored(DRAFT_KEY + f);
+    if (!d) return;
+    S.prep = Object.assign(defaults(), d.prep || {});
+    S.threshold = d.threshold ?? S.threshold;
+    S.seed = d.seed ?? null;
+    S.line = d.line || S.line;
+    if (d.edits) {
+        try {
+            const img = await bitmapData(await (await fetch(d.edits)).blob());
+            if (img.width === S.w && img.height === S.h) S.edits = channel(img);
+        } catch {}
+    }
+    $("threshold").value = S.threshold;
+    $("thresholdValue").textContent = S.threshold.toFixed(2);
+    showPrep();
+    showLines();
+}
+
+function keepSignature() {
+    return JSON.stringify([S.prep, S.threshold, S.seed, S.line]);
+}
+setInterval(async () => {
+    store(UI_KEY, { view: S.view, tool: S.tool, brush: S.brush });
+    if (!S.f || !S.edits || drawing) return;
+    const sig = keepSignature();
+    if (sig === S.kept && S.drawn === S.keptDrawn) return;
+    const f = S.f, drawn = S.drawn;
+    const edits = await editsPng();
+    store(DRAFT_KEY + f, { prep: S.prep, threshold: S.threshold, seed: S.seed, line: S.line, edits });
+    S.kept = sig;
+    S.keptDrawn = drawn;
+}, 800);
 
 function badge() {
     $("badge").hidden = !S.override;
@@ -525,30 +571,14 @@ function render() {
     } else if (S.view === "prepared") {
         view.putImageData(S.prepared || S.orig, 0, 0);
     } else if (S.view === "mask") {
-        const out = view.createImageData(W, H), o = out.data, src = S.orig.data;
-        const em = rgbOf(S.ember), cut = S.threshold * 255, has = S.model || !editsNeutral();
-        const cells = new Uint8Array(S.w * S.h);
-        if (has)
-            for (let i = 0; i < cells.length; i++) cells[i] = composite(i) > cut ? 1 : 0;
-        const at = (X, Y) => X >= 0 && Y >= 0 && X < W && Y < H && cells[Math.floor(Y / SCALE) * S.w + Math.floor(X / SCALE)] === 1;
-        for (let Y = 0; Y < H; Y++) {
-            for (let X = 0; X < W; X++) {
-                const j = (Y * W + X) * 4, inside = at(X, Y);
-                const edge = has && (inside !== at(X + 1, Y) || inside !== at(X, Y + 1) || inside !== at(X - 1, Y) || inside !== at(X, Y - 1));
-                for (let c = 0; c < 3; c++) {
-                    const base = Math.min(255, src[j + c] * 1.6);
-                    o[j + c] = edge ? em[c] : inside ? base + (em[c] - base) * 0.3 : base;
-                }
-                o[j + 3] = 255;
-            }
-        }
-        view.putImageData(out, 0, 0);
+        const has = S.model || !editsNeutral();
+        cells(0, 0, S.w - 1, S.h - 1, "mask");
         if (!has) empty(T.noMask);
     } else if (S.maps && S.shaped === S.drawn) {
         frame(0.44, true);
     } else {
         view.putImageData(S.orig, 0, 0);
-        if (S.model || !editsNeutral()) edgeOf(S.maps ? lineRgb() : [239, 123, 123]);
+        if (S.model || !editsNeutral()) cells(0, 0, S.w - 1, S.h - 1, "edge");
         else empty(T.noMask);
     }
     overlay();
@@ -557,19 +587,29 @@ function empty(text) {
     $("empty").textContent = text;
     $("empty").hidden = false;
 }
-function edgeOf(bad) {
-    const W = S.w * SCALE, H = S.h * SCALE, img = view.getImageData(0, 0, W, H), o = img.data, cut = S.threshold * 255;
+function cells(x0, y0, x1, y1, mode) {
+    x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(S.w - 1, x1); y1 = Math.min(S.h - 1, y1);
+    if (x1 < x0 || y1 < y0) return;
+    const W = S.w * SCALE, cw = (x1 - x0 + 1) * SCALE, ch = (y1 - y0 + 1) * SCALE;
+    const img = view.createImageData(cw, ch), o = img.data, src = S.orig.data, cut = S.threshold * 255;
+    const tint = rgbOf(S.ember), line = mode === "mask" ? tint : S.maps ? lineRgb() : [239, 123, 123];
     const on = (x, y) => x >= 0 && y >= 0 && x < S.w && y < S.h && composite(y * S.w + x) > cut;
-    for (let y = 0; y < S.h; y++)
-        for (let x = 0; x < S.w; x++) {
-            if (!on(x, y) || (on(x - 1, y) && on(x + 1, y) && on(x, y - 1) && on(x, y + 1))) continue;
+    for (let y = y0; y <= y1; y++)
+        for (let x = x0; x <= x1; x++) {
+            const inside = on(x, y);
+            const edge = inside !== on(x - 1, y) || inside !== on(x + 1, y) || inside !== on(x, y - 1) || inside !== on(x, y + 1);
+            const mark = mode === "mask" ? edge : edge && inside;
             for (let dy = 0; dy < SCALE; dy++)
                 for (let dx = 0; dx < SCALE; dx++) {
-                    const j = ((y * SCALE + dy) * W + x * SCALE + dx) * 4;
-                    o[j] = bad[0]; o[j + 1] = bad[1]; o[j + 2] = bad[2];
+                    const j = ((y * SCALE + dy) * W + x * SCALE + dx) * 4, k = (((y - y0) * SCALE + dy) * cw + (x - x0) * SCALE + dx) * 4;
+                    for (let c = 0; c < 3; c++) {
+                        const base = mode === "mask" ? Math.min(255, src[j + c] * 1.6) : src[j + c];
+                        o[k + c] = mark ? line[c] : mode === "mask" && inside ? base + (tint[c] - base) * 0.3 : base;
+                    }
+                    o[k + 3] = 255;
                 }
         }
-    view.putImageData(img, 0, 0);
+    view.putImageData(img, x0 * SCALE, y0 * SCALE);
 }
 
 const over = $("over").getContext("2d");
@@ -607,16 +647,26 @@ function paint(p) {
         for (let x = x0; x <= x1; x++)
             if ((x + 0.5 - p[0]) ** 2 + (y + 0.5 - p[1]) ** 2 <= r2) S.edits[y * S.w + x] = v;
     S.drawn++;
+    const d = S.dirty;
+    S.dirty = d ? [Math.min(d[0], x0 - 1), Math.min(d[1], y0 - 1), Math.max(d[2], x1 + 1), Math.max(d[3], y1 + 1)] : [x0 - 1, y0 - 1, x1 + 1, y1 + 1];
 }
 function stroke(a, b) {
     const d = Math.hypot(b[0] - a[0], b[1] - a[1]), steps = Math.max(1, Math.ceil(d / Math.max(1, S.brush / 3)));
     for (let k = 1; k <= steps; k++) paint([a[0] + (b[0] - a[0]) * k / steps, a[1] + (b[1] - a[1]) * k / steps]);
 }
-let drawing = null, queued = false, lastShape = 0;
+let drawing = null, queued = false;
 function soon() {
     if (queued) return;
     queued = true;
-    requestAnimationFrame(() => { queued = false; render(); });
+    requestAnimationFrame(() => {
+        queued = false;
+        const d = S.dirty;
+        S.dirty = null;
+        if (drawing && d && (S.view === "mask" || S.view === "outline")) {
+            cells(d[0], d[1], d[2], d[3], S.view === "mask" ? "mask" : "edge");
+            overlay();
+        } else render();
+    });
 }
 $("over").onpointerdown = e => {
     if (!S.orig) return;
@@ -634,7 +684,8 @@ $("over").onpointerdown = e => {
     if (S.view !== "mask" && S.view !== "outline") { S.view = "mask"; mark($("views"), "mask"); }
     drawing = p;
     paint(p);
-    soon();
+    S.dirty = null;
+    render();
 };
 $("over").onpointermove = e => {
     if (!S.orig) return;
@@ -644,11 +695,6 @@ $("over").onpointermove = e => {
         stroke(drawing, p);
         drawing = p;
         soon();
-        const now = performance.now();
-        if (now - lastShape > 300) {
-            lastShape = now;
-            shapeNow();
-        }
     } else overlay();
 };
 $("over").onpointerup = $("over").onpointercancel = () => {
@@ -659,6 +705,7 @@ $("over").onpointerup = $("over").onpointercancel = () => {
 $("over").onpointerleave = () => { cursor = null; if (!drawing) overlay(); };
 
 $("brush").oninput = () => { S.brush = Number($("brush").value); $("brushValue").textContent = S.brush; overlay(); };
+$("brush").value = S.brush;
 $("brushValue").textContent = S.brush;
 $("threshold").oninput = () => {
     S.threshold = Number($("threshold").value);
@@ -743,7 +790,10 @@ $("save").onclick = async () => {
         const r = await (await api("/api/save", payload(await editsPng()))).json();
         if (r.refused) { status.textContent = r.refused === "mask" ? T.noMask : memoryText(r); return; }
         const j = await follow(r.job, () => {});
-        if (j.state === "done") status.textContent = j.meta.ok ? T.saved : T.savedFails;
+        if (j.state === "done") {
+            status.textContent = j.meta.ok ? T.saved : T.savedFails;
+            store(DRAFT_KEY + S.f, null);
+        }
         else status.textContent = j.state === "busy" ? T.refusedBusy : T.modelFailed;
         const st = await (await api("/api/state?f=" + encodeURIComponent(S.f))).json();
         S.override = st.override;
@@ -755,6 +805,7 @@ $("save").onclick = async () => {
 };
 $("clear").onclick = async () => {
     await api("/api/clear", { f: S.f });
+    store(DRAFT_KEY + S.f, null);
     await open(S.f);
     $("saveStatus").textContent = T.cleared;
 };
