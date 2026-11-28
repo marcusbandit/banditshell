@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-11-28-media-widget",
+      "date": "2026-11-28",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The media widget's artist line no longer runs into its buttons"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Dragging an opened desktop widget keeps it under the pointer"
+        }
+      ]
+    },
+    {
       "id": "2026-11-27-picker-dock",
       "date": "2026-11-27",
       "changes": [

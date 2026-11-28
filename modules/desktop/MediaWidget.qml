@@ -88,8 +88,10 @@ DeskWidget {
     }
 
     medium: Item {
+        readonly property real wordsHeight: Appearance.font.line.normal * 2 + Appearance.font.line.small + 2
+
         implicitWidth: Math.round(Appearance.font.size.small * 24) + root.pad * 2
-        implicitHeight: mediumArt.height + root.pad * 2
+        implicitHeight: Math.max(mediumArt.y + mediumArt.height, mediumControls.y + mediumControls.height) + root.pad
 
         Art {
             id: mediumArt
@@ -115,7 +117,7 @@ DeskWidget {
             id: mediumControls
 
             x: mediumArt.x + mediumArt.width + root.pad - Appearance.padding.small
-            y: mediumArt.y + mediumArt.height - height - Appearance.padding.small
+            y: root.pad + Math.max(mediumArt.height - height - Appearance.padding.small, parent.wordsHeight)
         }
 
         Item {
