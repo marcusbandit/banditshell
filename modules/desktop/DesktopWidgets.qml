@@ -241,10 +241,10 @@ PanelWindow {
 
         property Item card: null
 
-        x: win.area.x + (win.grid.px - win.grid.gap) / 2
-        y: win.area.y + (win.grid.py - win.grid.gap) / 2
-        width: win.area.width + win.grid.gap - win.grid.px
-        height: win.area.height + win.grid.gap - win.grid.py
+        x: win.area.x - win.grid.gap / 2
+        y: win.area.y - win.grid.gap / 2
+        width: win.area.width + win.grid.gap
+        height: win.area.height + win.grid.gap
         pitch: Qt.vector2d(win.grid.px, win.grid.py)
         box: gridLines.card ? Qt.rect(gridLines.card.x - x, gridLines.card.y - y, gridLines.card.width, gridLines.card.height) : Qt.rect(0, 0, 0, 0)
         reach: gridLines.card ? Math.max(gridLines.card.width, gridLines.card.height) * 0.75 : 1

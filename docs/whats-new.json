@@ -17,7 +17,7 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The drag grid lines up with widget edges and lights up around the card"
+          "text": "The drag grid lights up around the whole card, not just the pointer"
         }
       ]
     },
