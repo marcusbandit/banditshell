@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.config
 import qs.components
 import qs.services
@@ -397,7 +398,6 @@ Item {
             }
 
             function step(delta: int): void {
-
                 strip.goal = Math.round(strip.goal) + delta;
             }
 
@@ -425,7 +425,6 @@ Item {
             height: root.heroHeight
 
             function scrub(dx: real): void {
-
                 const steps = Math.round((-dx - strip.scrubSpent) / root.pitch);
                 if (steps === 0)
                     return;
@@ -585,14 +584,12 @@ Item {
 
             onReleased: mouse => {
                 if (!swipe.dragging) {
-
                     const hit = strip.cardAt(mouse.x, mouse.y - strip.y);
                     if (!hit) {
                         root.hide();
                         return;
                     }
                     if (hit.entry === Math.round(glide.value))
-
                         root.acceptAt(swipe.mapToItem(root, mouse.x, mouse.y));
                     else
                         strip.goal = hit.entry;
@@ -824,6 +821,39 @@ Item {
                 anchors.rightMargin: Appearance.padding.small
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: Appearance.padding.small
+
+                Button {
+                    id: tune
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    keyed: keys.active
+                    visible: !!strip.currentPath && Wallpaper.kindOf(strip.currentPath) === "still"
+                    interactive: !tuner.running
+                    size: 0
+                    style: "bare"
+                    icon: "auto_fix_high"
+                    onClicked: {
+                        tuner.command = [`${Quickshell.shellDir}/cli/banditshell`, "wallpaper", "outline", strip.currentPath];
+                        tuner.running = true;
+                    }
+
+                    Process {
+                        id: tuner
+
+                        stdout: StdioCollector {
+                            onStreamFinished: {
+                                const url = text.trim().split("\n").pop();
+                                if (url.startsWith("http"))
+                                    Qt.openUrlExternally(url);
+                            }
+                        }
+                    }
+
+                    FloatingTooltip {
+                        text: "Tune the outline"
+                        shown: tune.hovered
+                    }
+                }
 
                 Button {
                     id: shuffle

@@ -23,7 +23,6 @@ layout(std140, binding = 0) uniform buf {
     float hasUnder;
     vec4 cropMap;
     vec4 ember;
-    vec4 ink;
 };
 layout(binding = 1) uniform sampler2D source;
 layout(binding = 2) uniform sampler2D under;
@@ -112,7 +111,7 @@ vec3 outline(vec2 uv) {
     if (lp > 0.0 && lp <= drawP && fade > 0.0) {
         float d = abs(sdPx) - lineW * 0.5;
         float core = clamp(0.5 - d / max(fwidth(sdPx), 1e-3), 0.0, 1.0);
-        c = mix(c, ink.rgb, core * 0.75 * fade);
+        c = mix(c, ember.rgb, core * 0.9 * fade);
     }
     return c;
 }
