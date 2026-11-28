@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-11-28-media-widget",
+      "date": "2026-11-28",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The media widget's artist line no longer runs into its buttons"
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "An opened desktop widget stays open while you drag it"
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The drag grid lights up around the whole card, not just the pointer"
+        }
+      ]
+    },
+    {
       "id": "2026-11-27-picker-dock",
       "date": "2026-11-27",
       "changes": [

@@ -5,7 +5,7 @@ ShaderEffect {
     id: root
 
     property vector2d pitch: Qt.vector2d(32, 32)
-    property point centre: Qt.point(0, 0)
+    property rect box: Qt.rect(0, 0, 0, 0)
     property color colour: Appearance.colour.rim
     property real weight: 1
     property real reach: 360
