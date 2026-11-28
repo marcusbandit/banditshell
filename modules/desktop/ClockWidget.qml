@@ -40,7 +40,7 @@ DeskWidget {
 
     key: "clock"
     fallbackSize: "medium"
-    clearAtRest: true
+    clearByDefault: true
 
     TextMetrics {
         id: heroMetrics

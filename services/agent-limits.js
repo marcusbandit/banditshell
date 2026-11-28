@@ -98,8 +98,10 @@ function formatReset(resetsAt, nowMs) {
     var resetMs = Date.parse(resetsAt);
     if (!isFinite(resetMs))
         return "";
-    var diffMs = Math.max(0, resetMs - nowMs);
-    var totalMins = Math.floor(diffMs / 60000);
+    return formatMinutes(Math.floor(Math.max(0, resetMs - nowMs) / 60000));
+}
+
+function formatMinutes(totalMins) {
     var days = Math.floor(totalMins / 1440);
     var hours = Math.floor((totalMins % 1440) / 60);
     var mins = totalMins % 60;
@@ -108,6 +110,18 @@ function formatReset(resetsAt, nowMs) {
     if (hours > 0)
         return hours + "h " + mins + "m";
     return Math.max(1, mins) + "m";
+}
+
+function paceNote(share, pace, durationMins) {
+    var s = Number(share);
+    var p = Number(pace);
+    var d = Number(durationMins);
+    if (!isFinite(s) || !isFinite(p) || p < 0 || !(d > 0))
+        return null;
+    var mins = Math.round((p - s) * d);
+    if (Math.abs(mins) < 5)
+        return { kind: "even", time: "" };
+    return { kind: mins > 0 ? "ahead" : "behind", time: formatMinutes(Math.abs(mins)) };
 }
 
 function compactEntries(providers) {

@@ -14,6 +14,7 @@ Singleton {
     property bool keep: true
     property var places: ({})
     property var sizes: ({})
+    property var clears: ({})
 
     function placeOf(output: string, key: string): var {
         return root.places[output]?.[key] ?? null;
@@ -57,12 +58,26 @@ Singleton {
         root.save();
     }
 
+    function clearOf(key: string, fallback: bool): bool {
+        return root.clears[key] ?? fallback;
+    }
+
+    function setClear(key: string, clear: bool): void {
+        if (root.clears[key] === clear)
+            return;
+        root.clears = Object.assign({}, root.clears, {
+            [key]: clear
+        });
+        root.save();
+    }
+
     function save(): void {
         if (!root.loaded || !root.keep)
             return;
         store.setText(JSON.stringify({
             places: root.places,
-            sizes: root.sizes
+            sizes: root.sizes,
+            clears: root.clears
         }, null, 4) + "\n");
     }
 
@@ -72,6 +87,7 @@ Singleton {
         const clean = value => value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
         root.places = clean(disk?.places);
         root.sizes = clean(disk?.sizes);
+        root.clears = clean(disk?.clears);
         root.loaded = true;
     }
 
