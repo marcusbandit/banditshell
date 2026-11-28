@@ -47,6 +47,10 @@ Singleton {
         return Logic.paceFraction(resetsAt, durationMins, root.nowMs);
     }
 
+    function paceNote(share: real, pace: real, durationMins: int): var {
+        return Logic.paceNote(share, pace, durationMins);
+    }
+
     function formatReset(resetsAt: string): string {
         return Logic.formatReset(resetsAt, root.nowMs);
     }

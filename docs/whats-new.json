@@ -1,6 +1,24 @@
 {
   "entries": [
     {
+      "id": "2026-11-28-limits-pace",
+      "date": "2026-11-28",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Rest on a limits bar to see the break you need or the time you wasted",
+          "go": "panel settings open widgets"
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Right-click any desktop widget to hide its background until hover",
+          "go": "panel settings open widgets"
+        }
+      ]
+    },
+    {
       "id": "2026-11-28-media-widget",
       "date": "2026-11-28",
       "changes": [

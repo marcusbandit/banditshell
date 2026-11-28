@@ -12,6 +12,16 @@ DeskWidget {
 
     readonly property real pad: Appearance.padding.card
 
+    function paceWords(note: var): string {
+        if (!note)
+            return "";
+        if (note.kind === "ahead")
+            return `Take a break for ${note.time}`;
+        if (note.kind === "behind")
+            return `You wasted ${note.time}`;
+        return "Right on pace";
+    }
+
     function tightest(windows: var): var {
         let best = null;
         for (const w of windows ?? []) {
@@ -53,6 +63,10 @@ DeskWidget {
                     width: parent.width
                     spacing: Appearance.padding.hair
 
+                    HoverHandler {
+                        id: briefHover
+                    }
+
                     Item {
                         width: parent.width
                         height: briefName.implicitHeight
@@ -82,6 +96,8 @@ DeskWidget {
                         owner: brief.modelData.id
                         share: brief.worst?.left ?? 0
                         pace: brief.worst ? AgentLimits.paceFraction(brief.worst.window.resetsAt, brief.worst.window.durationMins) : -1
+                        durationMins: brief.worst?.window.durationMins ?? 0
+                        hovered: briefHover.hovered
                     }
                 }
             }
@@ -235,6 +251,10 @@ DeskWidget {
 
         spacing: Appearance.padding.hair
 
+        HoverHandler {
+            id: lineHover
+        }
+
         Item {
             width: parent.width
             height: lineValue.implicitHeight
@@ -275,6 +295,8 @@ DeskWidget {
             owner: line.owner
             share: line.share
             pace: AgentLimits.paceFraction(line.window.resetsAt, line.window.durationMins)
+            durationMins: line.window.durationMins ?? 0
+            hovered: lineHover.hovered
         }
     }
 
@@ -293,6 +315,8 @@ DeskWidget {
         property string owner: ""
         property real share: 0
         property real pace: -1
+        property int durationMins: 0
+        property bool hovered: false
 
         height: 4
 
@@ -325,6 +349,11 @@ DeskWidget {
             width: 2
             height: bar.height + 4
             color: Appearance.colour.text
+        }
+
+        FloatingTooltip {
+            text: root.paceWords(AgentLimits.paceNote(bar.share, bar.pace, bar.durationMins))
+            shown: bar.hovered
         }
     }
 }

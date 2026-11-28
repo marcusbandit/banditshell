@@ -77,3 +77,12 @@ test("mergeReadings keeps last good reading when a poll errors", () => {
     assert.equal(merged[0].primary[0].usedPercent, 85);
     assert.equal(merged[0].error, "timeout");
 });
+
+test("paceNote turns the gap between usage left and time left into a break or wasted time", () => {
+    assert.deepEqual({ ...Logic.paceNote(0.4, 0.6, 300) }, { kind: "ahead", time: "1h 0m" });
+    assert.deepEqual({ ...Logic.paceNote(0.79, 0.85, 10080) }, { kind: "ahead", time: "10h 5m" });
+    assert.deepEqual({ ...Logic.paceNote(0.9, 0.5, 10080) }, { kind: "behind", time: "2d 19h" });
+    assert.deepEqual({ ...Logic.paceNote(0.5, 0.505, 300) }, { kind: "even", time: "" });
+    assert.equal(Logic.paceNote(0.5, -1, 300), null);
+    assert.equal(Logic.paceNote(0.5, 0.5, 0), null);
+});

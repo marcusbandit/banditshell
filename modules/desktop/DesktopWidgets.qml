@@ -92,9 +92,14 @@ PanelWindow {
                     }
                 }));
         actions.push({
+            icon: w.clearAtRest ? "visibility" : "visibility_off",
+            label: w.clearAtRest ? "Always show background" : "Hide background until hover",
+            apart: true,
+            run: () => DesktopLayout.setClear(w.key, !w.clearAtRest)
+        });
+        actions.push({
             icon: "restart_alt",
             label: "Reset position",
-            apart: true,
             run: () => DesktopLayout.forget(win.output, w.key)
         });
         sheet.popup(x, y, actions, sizes.findIndex(s => s[0] === w.rest));

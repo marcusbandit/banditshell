@@ -18,7 +18,8 @@ Item {
     property var neighbours: []
     property var heights: ({})
     property string fallbackSize: "medium"
-    property bool clearAtRest: false
+    property bool clearByDefault: false
+    readonly property bool clearAtRest: DesktopLayout.clearOf(root.key, root.clearByDefault)
     property bool backed: false
 
     property Component small

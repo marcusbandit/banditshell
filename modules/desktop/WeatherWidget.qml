@@ -20,6 +20,7 @@ DeskWidget {
 
     key: "weather"
     fallbackSize: "medium"
+    clearByDefault: true
 
     WallClock {
         id: clock
