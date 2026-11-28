@@ -526,13 +526,17 @@ function render() {
     } else if (S.view === "mask") {
         const out = view.createImageData(W, H), o = out.data, src = S.orig.data;
         const em = rgbOf(S.ember), cut = S.threshold * 255, has = S.model || !editsNeutral();
+        const cells = new Uint8Array(S.w * S.h);
+        if (has)
+            for (let i = 0; i < cells.length; i++) cells[i] = composite(i) > cut ? 1 : 0;
+        const at = (X, Y) => X >= 0 && Y >= 0 && X < W && Y < H && cells[Math.floor(Y / SCALE) * S.w + Math.floor(X / SCALE)] === 1;
         for (let Y = 0; Y < H; Y++) {
-            const row = Math.floor(Y / SCALE) * S.w;
             for (let X = 0; X < W; X++) {
-                const j = (Y * W + X) * 4, v = has ? composite(row + Math.floor(X / SCALE)) : 0;
+                const j = (Y * W + X) * 4, inside = at(X, Y);
+                const edge = has && (inside !== at(X + 1, Y) || inside !== at(X, Y + 1) || inside !== at(X - 1, Y) || inside !== at(X, Y - 1));
                 for (let c = 0; c < 3; c++) {
-                    const base = src[j + c] * 0.28;
-                    o[j + c] = v > cut ? base + (em[c] - base) * 0.62 : base + v * 0.3;
+                    const base = Math.min(255, src[j + c] * 1.6);
+                    o[j + c] = edge ? em[c] : inside ? base + (em[c] - base) * 0.3 : base;
                 }
                 o[j + 3] = 255;
             }
